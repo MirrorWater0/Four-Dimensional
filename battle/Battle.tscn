@@ -83,7 +83,7 @@ void fragment()
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ts8fe"]
 shader = SubResource("Shader_vj222")
-shader_parameter/moduate = Color(0.67451, 1, 1, 1)
+shader_parameter/moduate = Color(0.03529412, 0.3254902, 1, 1)
 
 [sub_resource type="Animation" id="Animation_0jh7n"]
 length = 0.001
@@ -288,7 +288,7 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="."]
 y_sort_enabled = true
-position = Vector2(1180, 310)
+position = Vector2(1100, 310)
 
 [node name="Left" type="Node2D" parent="."]
 y_sort_enabled = true
@@ -366,10 +366,10 @@ metadata/_edit_lock_ = true
 
 [node name="Retreat" type="Button" parent="."]
 material = SubResource("ShaderMaterial_jhxqk")
-offset_left = 1795.0
-offset_top = 692.0
-offset_right = 1894.0
-offset_bottom = 788.0
+offset_left = 1804.0
+offset_top = 15.0
+offset_right = 1903.0
+offset_bottom = 111.0
 theme = ExtResource("4_eoytn")
 text = "撤退
 "

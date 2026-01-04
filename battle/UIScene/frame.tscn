@@ -1,9 +1,8 @@
-[gd_scene load_steps=13 format=3 uid="uid://de0vuounbh3nm"]
+[gd_scene load_steps=12 format=3 uid="uid://de0vuounbh3nm"]
 
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="1_g8f4n"]
-[ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="1_ylebs"]
+[ext_resource type="Texture2D" uid="uid://bbm87emmfa4bx" path="res://asset/PlayerCharater/2025.6.18.png" id="1_vy7wh"]
 [ext_resource type="Script" uid="uid://b0dpufjdj1b0s" path="res://battle/UIScene/Frame.cs" id="2_mrq4a"]
-[ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="4_87ftq"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/skill.tscn" id="4_cihc2"]
 [ext_resource type="Texture2D" uid="uid://crhyxks7dpe0j" path="res://asset/Symbol/combo.png" id="5_c24xe"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="5_k0umg"]
@@ -11,58 +10,137 @@
 [ext_resource type="Texture2D" uid="uid://dorvx0qdykxd0" path="res://asset/Symbol/follow.png" id="7_ubyw8"]
 [ext_resource type="Texture2D" uid="uid://x828y48o1jyv" path="res://asset/Symbol/rigidity.png" id="8_v1oe5"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_dpkkg"]
-shader = ExtResource("1_ylebs")
-shader_parameter/intense = 400.0
+[sub_resource type="Shader" id="Shader_t0px3"]
+code = "shader_type canvas_item;
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_5bmmg"]
+uniform sampler2D avatar_tex;
+uniform vec4 theme_color : source_color = vec4(0.2, 0.7, 1.0, 1.0);
+uniform float rotation_speed : hint_range(-10.0, 10.0) = 1.2;
+
+// 三角形绘制函数
+float sdTriangle(in vec2 p, in float r) {
+    const float k = sqrt(3.0);
+    p.x = abs(p.x) - r;
+    p.y = p.y + r / k;
+    if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+    p.x -= clamp(p.x, -2.0 * r, 0.0);
+    return -length(p) * sign(p.y);
+}
+
+void fragment() {
+    vec2 uv = UV;
+    vec2 p = uv - vec2(0.5);
+    float dist = length(p);
+    float angle = atan(p.y, p.x);
+    float pixel_size = fwidth(dist);
+    
+    vec4 final_output = vec4(0.0);
+
+    // --- 1. 头像裁剪层 ---
+    float avatar_mask = smoothstep(0.35, 0.35 - pixel_size, dist);
+    vec4 tex = texture(avatar_tex, uv);
+    final_output = mix(final_output, tex, avatar_mask);
+
+    // --- 2. 内轨道：高密度小圆球 (16个) ---
+    float ball_track_radius = 0.38;
+    float ball_count = 16.0; // 增加数量
+    float ball_angle_offset = TIME * rotation_speed;
+    float ball_sector = round((angle - ball_angle_offset) * ball_count / (2.0 * PI)) / ball_count * 2.0 * PI;
+    vec2 ball_center = vec2(cos(ball_sector + ball_angle_offset), sin(ball_sector + ball_angle_offset)) * ball_track_radius;
+    float ball_dist = length(p - ball_center);
+    // 让圆球忽大忽小一点点，增加灵动感
+    float ball_size = 0.012 + 0.003 * sin(TIME * 4.0 + ball_sector);
+    float balls_mask = smoothstep(ball_size, ball_size - pixel_size, ball_dist);
+    final_output = mix(final_output, theme_color, balls_mask);
+
+    // --- 3. 不对称断裂环 (关键不对称元素) ---
+    // 只在某些角度显示圆环
+    float ring_spin = TIME * rotation_speed * 0.5;
+    float ring_angle = mod(angle + ring_spin, 2.0 * PI);
+    float arc_mask = step(1.5, ring_angle); // 这里的 1.5 决定了断开的缺口大小
+    float ring_dist = smoothstep(0.42, 0.418, dist) - smoothstep(0.415, 0.413, dist);
+    final_output = mix(final_output, theme_color, ring_dist * arc_mask * 0.6);
+
+    // --- 4. 旋转三角形层 ---
+    float tri_track_radius = 0.45;
+    float tri_count = 3.0;
+    float tri_angle_offset = -TIME * rotation_speed * 0.8; 
+    float tri_sector = round((angle - tri_angle_offset) * tri_count / (2.0 * PI)) / tri_count * 2.0 * PI;
+    vec2 tri_p = p - vec2(cos(tri_sector + tri_angle_offset), sin(tri_sector + tri_angle_offset)) * tri_track_radius;
+    float sa = sin(tri_sector + tri_angle_offset + PI/2.0);
+    float ca = cos(tri_sector + tri_angle_offset + PI/2.0);
+    tri_p = vec2(tri_p.x * ca - tri_p.y * sa, tri_p.x * sa + tri_p.y * ca);
+    float tri_mask = smoothstep(0.0, -pixel_size, sdTriangle(tri_p, 0.022));
+    final_output = mix(final_output, theme_color * 1.3, tri_mask);
+
+    // --- 5. 侧边重型装饰块 (不对称重点) ---
+    // 这种装饰块只在特定角度（如左上角）出现，且运动轨迹不同
+    float heavy_arc_dist = smoothstep(0.49, 0.485, dist) - smoothstep(0.46, 0.455, dist);
+    // 只保留 45 度的弧长
+    float heavy_arc_mask = step(0.9, cos(angle - TIME * 0.3)); 
+    final_output = mix(final_output, theme_color, heavy_arc_dist * heavy_arc_mask * 0.8);
+
+    // --- 6. 细碎刻度线 (扫描感) ---
+    float notch_angle = mod(angle + TIME * 0.1, PI / 12.0); // 每 15 度一个位置
+    float notch_mask = step(0.12, notch_angle); // 极细的线
+    float notch_dist = smoothstep(0.48, 0.478, dist) - smoothstep(0.465, 0.463, dist);
+    // 只在某些区域出现刻度，不要铺满全圆
+    float notch_area = step(0.0, sin(angle * 2.0 + TIME)); 
+    final_output = mix(final_output, theme_color, notch_dist * (1.0 - notch_mask) * notch_area * 0.5);
+
+    // --- 7. 整体发光 ---
+    float glow = exp(-pow(dist - 0.43, 2.0) / 0.003);
+    final_output.rgb += theme_color.rgb * glow * 0.4;
+    final_output.a = max(final_output.a, glow * 0.3);
+
+    COLOR = final_output;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t0px3"]
+shader = SubResource("Shader_t0px3")
+shader_parameter/avatar_tex = ExtResource("1_vy7wh")
+shader_parameter/theme_color = Color(1, 1, 1, 1)
+shader_parameter/rotation_speed = 1.3100005372249992
 
 [node name="frame" type="TextureRect"]
-material = SubResource("ShaderMaterial_dpkkg")
+material = SubResource("ShaderMaterial_t0px3")
 custom_minimum_size = Vector2(217, 217)
 offset_right = 217.0
 offset_bottom = 217.0
+pivot_offset = Vector2(108.5, 108.5)
 texture = ExtResource("1_g8f4n")
 script = ExtResource("2_mrq4a")
 
-[node name="Texture" type="TextureRect" parent="."]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 225.0
-offset_bottom = 225.0
-expand_mode = 1
-stretch_mode = 1
-flip_h = true
-
 [node name="SkillControl" type="Control" parent="."]
-material = SubResource("ShaderMaterial_5bmmg")
 anchors_preset = 0
-offset_left = 220.0
-offset_right = 320.0
-offset_bottom = 112.0
-scale = Vector2(2, 2)
-theme = ExtResource("4_87ftq")
+offset_left = 108.5
+offset_top = 108.5
+offset_right = 108.5
+offset_bottom = 108.5
 
 [node name="skill1" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
+offset_left = -25.5
+offset_top = -168.5
+offset_right = 34.5
+offset_bottom = -108.5
 
 [node name="skill2" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
-offset_top = 29.0
-offset_bottom = 54.0
+offset_left = 74.5
+offset_top = 50.5
+offset_right = 134.5
+offset_bottom = 110.5
 
 [node name="skill3" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
-offset_top = 58.0
-offset_bottom = 83.0
-
-[node name="skill4" parent="SkillControl" instance=ExtResource("4_cihc2")]
-layout_mode = 0
-offset_top = 87.0
-offset_bottom = 112.0
+offset_left = -138.5
+offset_top = 51.5
+offset_right = -78.5
+offset_bottom = 111.5
 
 [node name="ComboNum" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 34.0
 offset_top = -61.0
@@ -83,6 +161,7 @@ texture = ExtResource("5_c24xe")
 expand_mode = 1
 
 [node name="CarryNum" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 149.0
 offset_top = -61.0
@@ -103,6 +182,7 @@ texture = ExtResource("7_ubyw8")
 expand_mode = 1
 
 [node name="PowerRate" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 35.0
 offset_top = 214.0
@@ -123,6 +203,7 @@ texture = ExtResource("7_jfm87")
 expand_mode = 1
 
 [node name="DefenceRate" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 151.0
 offset_top = 214.0

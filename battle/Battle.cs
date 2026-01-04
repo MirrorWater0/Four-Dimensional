@@ -12,9 +12,8 @@ public partial class Battle : Node2D
 	static public bool Istest = true;
 	[Signal]
 	public delegate void NextEventHandler();
-	PackedScene _echo = (PackedScene)ResourceLoader.Load("res://charater/PlayerCharater/Echo/Echo.tscn");
-	PackedScene _test1 = (PackedScene)ResourceLoader.Load("res://charater/EnemyCharater/EnemyTemplate.tscn");
-	private PackedScene _kasiya = ResourceLoader.Load<PackedScene>("res://charater/PlayerCharater/Kasiya/kasiya.tscn");
+	
+	PackedScene _test1 = (PackedScene)ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
 	public PlayerCharater[] Players = new PlayerCharater[]{};
 	public Charater[] Enemies;
 	public Node2D Right => field??= GetNode("Right") as Node2D;
@@ -49,7 +48,7 @@ public partial class Battle : Node2D
 		EnemyTemplate test3 = _test1.Instantiate<EnemyTemplate>();
 		test3.PositionIndex = 2;
 		EnemyTemplate test4 = _test1.Instantiate<EnemyTemplate>();
-		test4.PositionIndex = 3;
+		test4.PositionIndex = 9;
 		Enemies = new Charater[] { test1,test2,test3,test4 };
 
 		for (int i = 0; i < Players.Length; i++)
@@ -85,24 +84,27 @@ public partial class Battle : Node2D
 	
 	public void SetCharaterPostion()
 	{
-		Vector2 gapy = new Vector2(0, 160);
+		Vector2 gapy = new Vector2(0, 260);
 		Vector2 gapx = new Vector2(280, 0);
+		Vector2 xoffset = new Vector2(50, 0);
 		for (int j = 0; j < Players.Length; j++)
 		{
 			int i = Players[j].PositionIndex;
 			Left.AddChild(Players[j]);
 			if (i <= 3)
 			{
-				Players[j].Position = gapy * (i-1);
+				Players[j].Position = (gapy+xoffset) * (i-1);
 			}
 			else if(i <= 6)
 			{
-				Players[j].Position = -gapx + gapy * (i-4);
+				Players[j].Position = -gapx + (gapy+xoffset) * (i-4);
 			}
 			else
 			{
-				Players[j].Position = -2*gapx + gapy * (i-7);
+				Players[j].Position = -2*gapx + (gapy+xoffset) * (i-7);
 			}
+
+			
 		}
 		
 		for (int j = 0; j < Enemies.Length; j++)
@@ -111,16 +113,17 @@ public partial class Battle : Node2D
 			Right.AddChild(Enemies[j]);
 			if (i <= 3)
 			{
-				Enemies[j].Position =gapy * (i-1);
+				Enemies[j].Position =(gapy+xoffset) * (i-1);
 			}
 			else if(i <= 6)
 			{
-				Enemies[j].Position =gapx + gapy * (i-4);
+				Enemies[j].Position =gapx + (gapy+xoffset) * (i-4);
 			}
 			else
 			{
-				Enemies[j].Position =2*gapx + gapy * (i-7);
+				Enemies[j].Position =2*gapx + (gapy+xoffset) * (i-7);
 			}
+			
 		}
 		
 	}
@@ -207,20 +210,18 @@ public partial class Battle : Node2D
 	}
 	public void test()
 	{
-		Echo echo = _echo.Instantiate<Echo>();
-		echo.PositionIndex = 7;
-		Kasiya kasiya = _kasiya.Instantiate<Kasiya>();
-		kasiya.PositionIndex = 2;
-		Echo echo3 = _echo.Instantiate<Echo>();
-		echo3.PositionIndex = 4;
-		Echo echo4 = _echo.Instantiate<Echo>();
-		echo4.PositionIndex = 6;
+		// Echo echo = _echo.Instantiate<Echo>();
+		// echo.PositionIndex = 7;
+		// Kasiya kasiya = _kasiya.Instantiate<Kasiya>();
+		// kasiya.PositionIndex = 2;
+		// Echo echo3 = _echo.Instantiate<Echo>();
+		// echo3.PositionIndex = 4;
 		
-		Players = new PlayerCharater[] { echo,kasiya,echo3 ,echo4};
-		for (int i = 0; i < Players.Length; i++)
-		{
-			Players[i].Istest = true;
-		}
+		// Players = new PlayerCharater[] { echo, kasiya, echo3 };
+		// for (int i = 0; i < Players.Length; i++)
+		// {
+		// 	Players[i].Istest = true;
+		// }
 	}
 	
 

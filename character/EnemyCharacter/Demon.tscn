@@ -1,0 +1,23 @@
+[gd_scene load_steps=6 format=3 uid="uid://s730qn6ddxgg"]
+
+[ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_heyqv"]
+[ext_resource type="Script" uid="uid://qef81iti4rkt" path="res://character/EnemyCharacter/Demon.cs" id="2_se7fp"]
+[ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="3_w73r8"]
+[ext_resource type="Texture2D" uid="uid://cyxqg6nucggy5" path="res://asset/EnemyCharater/demon.png" id="4_n6o37"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5a0ga"]
+resource_local_to_scene = true
+shader = ExtResource("3_w73r8")
+shader_parameter/blur_amount = 1.0
+shader_parameter/time_scale = 1.943
+shader_parameter/pulse_speed = 3.36
+shader_parameter/center = Vector2(0.5, 0.5)
+shader_parameter/radial_blur = true
+shader_parameter/motion_blur = false
+
+[node name="Demon" instance=ExtResource("1_heyqv")]
+script = ExtResource("2_se7fp")
+
+[node name="Sprite2D" parent="." index="2"]
+material = SubResource("ShaderMaterial_5a0ga")
+texture = ExtResource("4_n6o37")

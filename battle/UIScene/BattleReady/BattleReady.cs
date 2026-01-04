@@ -38,7 +38,7 @@ public partial class BattleReady : Control
             //text
             frame.NameLabel.Text = PlayerInfo.PlayerCharaters[i].CharaterName;
             frame.Power.Text = PlayerInfo.PlayerCharaters[i].Power.ToString();
-            frame.Defence.Text = PlayerInfo.PlayerCharaters[i].Defense.ToString();
+            frame.Defence.Text = PlayerInfo.PlayerCharaters[i].Survivability.ToString();
             
             for (int j = 0; j < frame.SkillButtonContainer.GetChildCount(); j++)
             {
@@ -46,7 +46,7 @@ public partial class BattleReady : Control
                 button.Modulate = new Color(0.9f, 0.9f, 0.9f, 1f);
                 button.SelfSkill = PlayerInfo.PlayerCharaters[i].Skills[j];
                 button.NameLabel.Text = button.SelfSkill.SkillName;
-                button.ButtonDown += () => 
+                button.Pressed += () => 
                 { 
                     readyChange.Add(button);
                     button.Modulate = new Color(1, 1, 1, 1);
@@ -67,10 +67,10 @@ public partial class BattleReady : Control
                 untakeButton.Modulate = new Color(0.9f, 0.9f, 0.9f, 0.9f);
                 untake.AddChild(untakeButton);
                 
-                untakeButton.Position = j * 30 * Vector2.Down;
+                untakeButton.Position = j * 50 * Vector2.Down;
                 untakeButton.PositionIndex = untakeButton.Position;
                 
-                untakeButton.ButtonDown += () =>
+                untakeButton.Pressed += () =>
                 {
                     readyChange.Add(untakeButton);
                     untakeButton.Modulate = new Color(1, 1, 1, 1);
@@ -91,7 +91,7 @@ public partial class BattleReady : Control
             Grid.GetChild(remap[positionindex]-1).AddChild(portait);
             
             
-            portait.PortaitButton.ButtonDown += () =>{_dragTarget = portait;GD.Print("well");};
+            portait.PortaitButton.Pressed += () =>{_dragTarget = portait;GD.Print("well");};
             portait.PortaitButton.ButtonUp += () => {
                 _dragTarget = null;
                 var olderParent = portait.GetParent();

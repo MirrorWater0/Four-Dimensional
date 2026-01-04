@@ -7,6 +7,8 @@ shader_type canvas_item;
 // Original shader by Yohei Nishitsuji (https://x.com/YoheiNishitsuji/status/1910686773564629432)
 // Adapted for Shadertoy
 uniform float intense;
+uniform vec4 efcolor : source_color ;
+uniform vec4 mapcolor : source_color = vec4(1.);
 // HSV to RGB conversion
 vec3 hsv(float h, float s, float v) {
   vec4 t = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
@@ -75,6 +77,6 @@ void fragment() {
   fragColor = o;
 	COLOR.a = (COLOR.r +COLOR.b+COLOR.g)/3.;
 	vec4 tex = texture(TEXTURE,UV);
-	fragColor = intense*fragColor/300. + tex;
+	fragColor = efcolor*fragColor/300. + mapcolor*tex;
 	fragColor.a = tex.a;
 }

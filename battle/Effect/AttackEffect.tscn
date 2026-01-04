@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://pw6pn4gpqtmq" path="res://battle/Effect/AttackEffect.cs" id="1_nymrw"]
 [ext_resource type="Shader" uid="uid://bhg4bm8wdcihc" path="res://shader/cleanbg.gdshader" id="1_w33ss"]
-[ext_resource type="SpriteFrames" uid="uid://cfgwhmruicynr" path="res://charater/PlayerCharater/Echo.tres" id="2_elpvn"]
+[ext_resource type="SpriteFrames" uid="uid://cfgwhmruicynr" path="res://character/PlayerCharacter/Echo.tres" id="2_elpvn"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_agumj"]
 shader = ExtResource("1_w33ss")

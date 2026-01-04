@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://dxvldl73uw02a"]
+[gd_scene load_steps=25 format=3 uid="uid://dxvldl73uw02a"]
 
 [ext_resource type="Script" uid="uid://cgpmcjgic6wbb" path="res://Map/Map.cs" id="1_exof5"]
 [ext_resource type="Texture2D" uid="uid://dumj1lsd56obi" path="res://asset/Map/pandemos_empire_krita.jpg" id="1_we4l4"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://dmqc0oaqsktsg" path="res://Map/SiteButton.tscn" id="5_soa74"]
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
+[ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
 [ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="8_wihts"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="9_jv280"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
@@ -14,6 +15,8 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vkbln"]
 shader = ExtResource("8_wihts")
 shader_parameter/intense = 1.0
+shader_parameter/efcolor = Color(0.30588236, 0.44313726, 0.9098039, 1)
+shader_parameter/mapcolor = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_wmtri"]
 texture = ExtResource("3_wefki")
@@ -37,9 +40,14 @@ Button/styles/pressed = SubResource("StyleBoxTexture_noyql")
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_mb101"]
 shader = ExtResource("9_jv280")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_h0fhp"]
-resource_local_to_scene = true
-shader = ExtResource("9_jv280")
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
+shader = ExtResource("8_vk5l4")
+shader_parameter/rotation_speed = 3.0
+shader_parameter/scale = 1.90000002086168
+shader_parameter/color = Color(0, 1, 1, 1)
+shader_parameter/thickness = 0.02509999937971
+shader_parameter/dist2 = 1.0
+shader_parameter/dist1 = 1.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b38e6"]
 
@@ -59,16 +67,6 @@ Button/styles/focus = SubResource("StyleBoxTexture_b38e6")
 Button/styles/hover = SubResource("StyleBoxTexture_fl2tk")
 Button/styles/normal = SubResource("StyleBoxTexture_hgu68")
 Button/styles/pressed = SubResource("StyleBoxTexture_7mxfi")
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_b32u3"]
-frequency = 0.0032
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_7xl14"]
-noise = SubResource("FastNoiseLite_b32u3")
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_wbmu0"]
-shader = ExtResource("9_jv280")
-shader_parameter/noise = SubResource("NoiseTexture2D_7xl14")
 
 [node name="Map" type="Control"]
 layout_mode = 3
@@ -122,9 +120,9 @@ layer = 2
 
 [node name="ReadyButton" type="Button" parent="UI"]
 z_index = 4
-material = SubResource("ShaderMaterial_h0fhp")
-offset_left = 1790.0
-offset_top = 944.0
+material = SubResource("ShaderMaterial_cccvd")
+offset_left = 1773.0
+offset_top = 927.0
 offset_right = 1921.0
 offset_bottom = 1075.0
 focus_mode = 0
@@ -149,11 +147,3 @@ metadata/_edit_lock_ = true
 
 [node name="BattleReadyLayer" type="CanvasLayer" parent="."]
 layer = -1
-
-[node name="ColorRect" type="ColorRect" parent="."]
-material = SubResource("ShaderMaterial_wbmu0")
-layout_mode = 0
-offset_left = -972.0
-offset_top = -553.0
-offset_right = 28.0
-offset_bottom = 447.0

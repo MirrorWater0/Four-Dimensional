@@ -4,7 +4,7 @@
 [ext_resource type="Shader" uid="uid://dooc06jwt4ft2" path="res://shader/Crystal.gdshader" id="1_jyqaa"]
 [ext_resource type="Texture2D" uid="uid://bihcv0ce7nvyj" path="res://asset/2.jpg" id="2_3blau"]
 [ext_resource type="Texture2D" uid="uid://deraktmr5w000" path="res://asset/UI/轨迹素材_093.png" id="3_0x5cs"]
-[ext_resource type="Shader" uid="uid://cbu3v2iauiawe" path="res://shader/BG1.gdshader" id="3_ppimv"]
+[ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_hhmim"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="3_x8w3b"]
 [ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="4_ekwrc"]
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="5_wwb3n"]
@@ -13,14 +13,19 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
 shader = ExtResource("1_jyqaa")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_um1i1"]
-shader = ExtResource("3_ppimv")
-shader_parameter/isADDtex = false
-shader_parameter/light = Vector4(0, 0, 0, 0)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_e2bq2"]
+shader = ExtResource("3_hhmim")
+shader_parameter/speed = 1.0
+shader_parameter/bg_color = Color(0.05882353, 0.09803922, 0.16862746, 1)
+shader_parameter/rect_color = Color(0.003921569, 0.16078432, 0.30588236, 1)
+shader_parameter/rect_count = 60.0
+shader_parameter/edge_blur = 0.003
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_kjvqh"]
 shader = ExtResource("4_ekwrc")
-shader_parameter/intense = 100.0
+shader_parameter/intense = 1000.0
+shader_parameter/efcolor = Color(1, 1, 1, 1)
+shader_parameter/mapcolor = Color(0.8560673, 0.8560673, 0.85606724, 1)
 
 [node name="BattleReady" type="Control"]
 material = SubResource("ShaderMaterial_ejwt2")
@@ -29,14 +34,14 @@ anchors_preset = 0
 script = ExtResource("1_53jkx")
 
 [node name="bg" type="TextureRect" parent="."]
-material = SubResource("ShaderMaterial_um1i1")
+material = SubResource("ShaderMaterial_e2bq2")
 layout_mode = 0
+offset_top = -600.0
 offset_right = 1920.0
-offset_bottom = 1080.0
+offset_bottom = 1320.0
 mouse_filter = 2
 texture = ExtResource("2_3blau")
 expand_mode = 1
-metadata/_edit_lock_ = true
 
 [node name="TextureRect" type="TextureRect" parent="."]
 material = SubResource("ShaderMaterial_kjvqh")

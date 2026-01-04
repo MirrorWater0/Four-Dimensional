@@ -14,7 +14,9 @@ public partial class Frame : TextureRect
 	public Area2D Detector2 => field ??= GetNode("SkillControl/skill2/Detector") as Area2D;
 	public Area2D Detector3 => field ??= GetNode("SkillControl/skill3/Detector") as Area2D;
 	public Area2D Detector4 => field ??= GetNode("SkillControl/skill4/Detector") as Area2D;
-
+	public SkillButton SkillButton1 => field ??= GetNode("SkillControl/skill1") as SkillButton;
+	public SkillButton SkillButton2 => field ??= GetNode("SkillControl/skill2") as SkillButton;
+	public SkillButton SkillButton3 => field ??= GetNode("SkillControl/skill3") as SkillButton;
 	public override void _Ready()
 	{
 		for (int i = 0; i < SkillButtonContainer.GetChildCount(); i++) //初始化每个按钮的PositionIndex
@@ -23,6 +25,11 @@ public partial class Frame : TextureRect
 			skillButton.PositionIndex = skillButton.Position;
 		}
 	}
+
+    public override void _Process(double delta)
+    {
+        
+    }
 
 	public void SortButtons()
 	{
