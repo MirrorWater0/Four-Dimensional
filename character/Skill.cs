@@ -9,8 +9,9 @@ public partial class Skill
     public enum PropertyType
     {
         Power,
-        Defence
+        Survivalibility
     }
+
     public PackedScene AttackScene = ResourceLoader.Load<PackedScene>("res://battle/Effect/AttackEffect.tscn");
     public PackedScene DescendingScene = ResourceLoader.Load<PackedScene>("res://battle/UIScene/Descending.tscn");
     public PackedScene BurnScene = ResourceLoader.Load<PackedScene>("res://battle/Effect/burn.tscn");
@@ -121,10 +122,12 @@ public partial class Skill
             case PropertyType.Power:;
                 target.BattlePower = (int)((target.BattlePower - num)* (1-rate));
                 break;
-            case PropertyType.Defence:;
+            case PropertyType.Survivalibility:;
                 target.BattleSurvivability = (int)((target.BattleSurvivability - num) * (1-rate));
                 break;
         }
+        target.PowerIconLabel.Text = OwnerCharater.BattlePower.ToString();
+        target.SurvivabilityIconLabel.Text = OwnerCharater.BattleSurvivability.ToString();
 
         Node2D descending = DescendingScene.Instantiate() as Node2D;
         OwnerCharater.BattleNode.AddChild(descending);
@@ -141,18 +144,16 @@ public partial class Skill
                 target.BattlePower += value;
                 target.BattlePower =(int) (target.BattlePower* rate);
                 break;
-            case PropertyType.Defence:
+            case PropertyType.Survivalibility:
                 target.BattleSurvivability += value;
                 target.BattleSurvivability =(int) (target.BattleSurvivability* rate);
                 break;
         }
 
-        if (OwnerCharater is PlayerCharater)
-        {
-            PlayerCharater pc = OwnerCharater as PlayerCharater;
-            pc.SelfFrame.Power.Text = OwnerCharater.BattlePower.ToString();
-            pc.SelfFrame.Defence.Text = OwnerCharater.BattleSurvivability.ToString();
-        }
+
+            target.PowerIconLabel.Text = OwnerCharater.BattlePower.ToString();
+            target.SurvivabilityIconLabel.Text = OwnerCharater.BattleSurvivability.ToString();
+        
 
         Node2D burn = BurnScene.Instantiate() as Node2D;
         OwnerCharater.AddChild(burn);

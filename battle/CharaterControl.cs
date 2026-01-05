@@ -27,7 +27,7 @@ public partial class CharaterControl : Control
 		{
 			BattleNode.Players[i].SelfFrame = CharatersControl[i];
 			var skillButtons = CharatersControl[i].SkillButtonContainer;
-			BattleNode.Players[i].SkillButton = skillButtons;
+			BattleNode.Players[i].SkillButtonControl = skillButtons;
 			for (int j = 0; j < skillButtons.GetChildCount(); j++)
 			{
 				var skillButton = skillButtons.GetChild<SkillButton>(j);

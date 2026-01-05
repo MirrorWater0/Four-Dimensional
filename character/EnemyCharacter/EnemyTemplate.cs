@@ -34,8 +34,8 @@ public partial class EnemyTemplate : Charater
 	{
 		base.GetHurt(damage);
 		Tween tween = CreateTween();
-		tween.TweenProperty(this,"position",Position + 20*Vector2.Right,0.3f);
-		tween.TweenProperty(this,"position",Position + 20*Vector2.Left,0.2f);
+		tween.TweenProperty(this,"position",OriginalPosition + 20*Vector2.Right,0.3f);
+		tween.TweenProperty(this,"position",OriginalPosition,0.2f);
 	}
 	
 	public override void Dying()

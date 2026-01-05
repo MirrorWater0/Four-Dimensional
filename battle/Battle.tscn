@@ -288,11 +288,11 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="."]
 y_sort_enabled = true
-position = Vector2(1100, 310)
+position = Vector2(1100, 280)
 
 [node name="Left" type="Node2D" parent="."]
 y_sort_enabled = true
-position = Vector2(740, 310)
+position = Vector2(740, 280)
 
 [node name="BattlePlayer" type="AnimationPlayer" parent="."]
 libraries = {
@@ -320,36 +320,27 @@ offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_5fvgj")
 metadata/_edit_lock_ = true
 
-[node name="CharaterControl" type="Control" parent="."]
+[node name="CharaterControl" type="HBoxContainer" parent="."]
 modulate = Color(0.92, 0.92, 0.92, 1)
 material = SubResource("ShaderMaterial_uifq5")
-layout_mode = 3
-anchors_preset = 0
-offset_left = 60.0
-offset_top = 810.0
-offset_right = 160.0
-offset_bottom = 910.0
-theme = ExtResource("4_eoytn")
+offset_left = 134.0
+offset_top = 790.0
+offset_right = 1787.0
+offset_bottom = 1007.0
+theme_override_constants/separation = 250
 script = ExtResource("3_3vtlu")
-metadata/_edit_lock_ = true
 
 [node name="frame1" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-layout_mode = 0
+layout_mode = 2
 
 [node name="frame2" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-layout_mode = 0
-offset_left = 450.0
-offset_right = 667.0
+layout_mode = 2
 
 [node name="frame3" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-layout_mode = 0
-offset_left = 900.0
-offset_right = 1117.0
+layout_mode = 2
 
 [node name="frame4" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-layout_mode = 0
-offset_left = 1350.0
-offset_right = 1567.0
+layout_mode = 2
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(960, 540)

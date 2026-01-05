@@ -8,6 +8,11 @@ uniform float outer_radius: hint_range(10.0, 100.0, 1.0) = 30.0;
 uniform float glow_intensity: hint_range(0.0, 2.0, 0.1) = 0.5;
 uniform float glow_radius: hint_range(0.0, 50.0, 1.0) = 15.0;
 uniform bool disable = false;
+
+
+void vertex(){
+	
+}
 // Smooth step function
 float SMOOTH(float r) {
 	return mix(1.0, 0.0, smoothstep(0.9, 1.0, r));
@@ -28,6 +33,7 @@ float movingRing(vec2 uv, vec2 center, float r1, float r2) {
 }
 
 void fragment() {
+	vec4 modulate = COLOR;
 	vec2 uv = UV * vec2(1.0, 1.0);
 	vec2 center = vec2(0.5, 0.5);
 
@@ -45,12 +51,8 @@ void fragment() {
 
 	// Transparent background with ring and glow
 	vec4 color = vec4(ring_color.rgb * (0.1 + 0.9 * combined), ring_color.a * combined);
-
-	COLOR = color;
-
-	if(disable){
-	COLOR *= vec4(0.7);
-	}
+	
+	COLOR = color*modulate;
 }
 
 //void light() {

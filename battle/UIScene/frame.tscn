@@ -1,9 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://de0vuounbh3nm"]
+[gd_scene load_steps=14 format=3 uid="uid://de0vuounbh3nm"]
 
+[ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="1_fegvg"]
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="1_g8f4n"]
-[ext_resource type="Texture2D" uid="uid://bbm87emmfa4bx" path="res://asset/PlayerCharater/2025.6.18.png" id="1_vy7wh"]
 [ext_resource type="Script" uid="uid://b0dpufjdj1b0s" path="res://battle/UIScene/Frame.cs" id="2_mrq4a"]
-[ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/skill.tscn" id="4_cihc2"]
+[ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="4_cihc2"]
 [ext_resource type="Texture2D" uid="uid://crhyxks7dpe0j" path="res://asset/Symbol/combo.png" id="5_c24xe"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="5_k0umg"]
 [ext_resource type="Texture2D" uid="uid://dotqtgs6iu0xe" path="res://asset/Symbol/sword0.png" id="7_jfm87"]
@@ -97,16 +97,44 @@ void fragment() {
 }"
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_t0px3"]
+resource_local_to_scene = true
 shader = SubResource("Shader_t0px3")
-shader_parameter/avatar_tex = ExtResource("1_vy7wh")
+shader_parameter/avatar_tex = ExtResource("1_fegvg")
 shader_parameter/theme_color = Color(1, 1, 1, 1)
 shader_parameter/rotation_speed = 1.3100005372249992
+
+[sub_resource type="Shader" id="Shader_uuwda"]
+code = "shader_type canvas_item;
+
+
+void vertex() {
+
+	// Called for every vertex the material is visible on.
+}
+float circleSDF(vec2 uv,float r){
+	return length(uv) - r;
+}
+
+void fragment() {
+	vec4 modulate = COLOR;
+	// Called for every pixel the material is visible on.
+	vec2 uv =UV -0.5;
+	float circle = smoothstep(0.02,0.,circleSDF(uv,0.43))-smoothstep(0.02,0.,circleSDF(uv,0.40));
+	COLOR = vec4(vec3(1.),1.)*circle*modulate;
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fegvg"]
+shader = SubResource("Shader_uuwda")
 
 [node name="frame" type="TextureRect"]
 material = SubResource("ShaderMaterial_t0px3")
 custom_minimum_size = Vector2(217, 217)
-offset_right = 217.0
-offset_bottom = 217.0
+offset_left = 133.99998
+offset_top = 81.99999
+offset_right = 351.0
+offset_bottom = 299.0
+scale = Vector2(0.8, 0.8)
 pivot_offset = Vector2(108.5, 108.5)
 texture = ExtResource("1_g8f4n")
 script = ExtResource("2_mrq4a")
@@ -120,10 +148,11 @@ offset_bottom = 108.5
 
 [node name="skill1" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
-offset_left = -25.5
-offset_top = -168.5
-offset_right = 34.5
-offset_bottom = -108.5
+offset_left = -54.375
+offset_top = -190.62497
+offset_right = 5.625
+offset_bottom = -130.62497
+scale = Vector2(1.5, 1.5)
 
 [node name="skill2" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
@@ -131,13 +160,17 @@ offset_left = 74.5
 offset_top = 50.5
 offset_right = 134.5
 offset_bottom = 110.5
+scale = Vector2(1.5, 1.5)
+MySkillType = 1
 
 [node name="skill3" parent="SkillControl" instance=ExtResource("4_cihc2")]
 layout_mode = 0
-offset_left = -138.5
-offset_top = 51.5
-offset_right = -78.5
-offset_bottom = 111.5
+offset_left = -145.625
+offset_top = 60.625004
+offset_right = -85.625
+offset_bottom = 120.625
+scale = Vector2(1.5, 1.5)
+MySkillType = 2
 
 [node name="ComboNum" type="Label" parent="."]
 visible = false
@@ -232,3 +265,21 @@ offset_right = 148.0
 offset_bottom = 201.0
 theme = ExtResource("5_k0umg")
 text = "echo"
+
+[node name="Selected" type="ColorRect" parent="."]
+modulate = Color(0.7294118, 1, 1, 1)
+material = SubResource("ShaderMaterial_fegvg")
+layout_mode = 0
+offset_left = 0.3750229
+offset_top = 0.37501335
+offset_right = 217.37503
+offset_bottom = 217.37502
+
+[node name="ClickButton" type="Button" parent="."]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 0
+offset_left = 12.8750305
+offset_top = 12.875015
+offset_right = 206.62502
+offset_bottom = 205.375
+mouse_filter = 1

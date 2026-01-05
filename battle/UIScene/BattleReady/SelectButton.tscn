@@ -1,0 +1,40 @@
+[gd_scene load_steps=6 format=3 uid="uid://b6yv4na1485yt"]
+
+[ext_resource type="Shader" uid="uid://c408um4o4bs3p" path="res://shader/UI/CapsuleUI.gdshader" id="1_ey3wg"]
+[ext_resource type="Script" uid="uid://b5hjosvibe62b" path="res://battle/UIScene/BattleReady/SelectButton.cs" id="2_kqylh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_uwaj7"]
+shader = ExtResource("1_ey3wg")
+shader_parameter/bg_color = Color(0.95, 0.95, 0.95, 1)
+shader_parameter/outer_rim_color = Color(0.95, 0.95, 0.95, 1)
+shader_parameter/inner_rim_color = Color(0.5, 0.5, 0.5, 1)
+shader_parameter/selected_color = Color(0.95, 0.95, 0.93, 1)
+shader_parameter/selected_fill = 0.0
+shader_parameter/selected_rotation = 0.0
+shader_parameter/outer_thickness = 0.051000002422499996
+shader_parameter/inner_thickness = 0.00400000019
+shader_parameter/inner_line_gap = 0.06700000248398
+shader_parameter/antialiasing = 0.012000000569999999
+
+[sub_resource type="Gradient" id="Gradient_5w4iu"]
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_dbxj7"]
+gradient = SubResource("Gradient_5w4iu")
+width = 60
+height = 25
+
+[node name="SelectButton" type="TextureButton"]
+material = SubResource("ShaderMaterial_uwaj7")
+custom_minimum_size = Vector2(60, 25)
+texture_normal = SubResource("GradientTexture2D_dbxj7")
+ignore_texture_size = true
+script = ExtResource("2_kqylh")
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 7.777778
+offset_top = -0.111109495
+offset_right = 47.77778
+offset_bottom = 22.888891
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = " well"

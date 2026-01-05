@@ -84,7 +84,7 @@ public partial class Battle : Node2D
 	
 	public void SetCharaterPostion()
 	{
-		Vector2 gapy = new Vector2(0, 260);
+		Vector2 gapy = new Vector2(0, 200);
 		Vector2 gapx = new Vector2(280, 0);
 		Vector2 xoffset = new Vector2(50, 0);
 		for (int j = 0; j < Players.Length; j++)
@@ -103,7 +103,7 @@ public partial class Battle : Node2D
 			{
 				Players[j].Position = -2*gapx + (gapy+xoffset) * (i-7);
 			}
-
+			Players[j].OriginalPosition = Players[j].Position;
 			
 		}
 		
@@ -123,7 +123,7 @@ public partial class Battle : Node2D
 			{
 				Enemies[j].Position =2*gapx + (gapy+xoffset) * (i-7);
 			}
-			
+			Enemies[j].OriginalPosition = Enemies[j].Position;
 		}
 		
 	}

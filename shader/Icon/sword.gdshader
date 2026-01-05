@@ -36,6 +36,7 @@ float smin(float a, float b, float k) {
 }
 
 void fragment() {
+	vec4 modulate = COLOR;
     vec2 uv = UV - 0.5;
     uv *= 2.0;
 	uv = roate(uv,angle*2.*PI,vec2(0.));
@@ -66,7 +67,7 @@ void fragment() {
     sword_dist = smin(sword_dist, pommel_dist, 0.03);
 
     // 边缘抗锯齿
-    float alpha = 1.0 - smoothstep(-0.001, 0.03, sword_dist);
+    float alpha = 1.0 - smoothstep(-0.001, 0.06, sword_dist);
 
     // 5. 颜色逻辑
     vec4 color;
@@ -93,5 +94,5 @@ void fragment() {
 
     color.a *= alpha;
 
-    COLOR = color;
+    COLOR = color*modulate;
 }

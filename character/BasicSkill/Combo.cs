@@ -16,7 +16,7 @@ public partial class Combo : Skill
 		if (OwnerCharater.Energe > 0)
 		{
 			await Task.Delay(1500);
-			OwnerCharater.UpdateEnerge(-1);
+			OwnerCharater.UpdataEnerge(-1);
 			Effect();
 		}
 		else

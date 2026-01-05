@@ -39,10 +39,11 @@ public partial class Charater : Node2D
 	public TextureProgressBar LifeBar2 => field??=GetNode<TextureProgressBar>("Life/LifeBar2");
 	public Label PowerIconLabel => field??=GetNode<Label>("PowerIcon/Label");
 	public Label SurvivabilityIconLabel => field??=GetNode<Label>("SurvivabilityIcon/Label");
+	public Label EnergeIconLabel => field??=GetNode<Label>("EnergeIcon/Label");
 	public TextureRect Hoverframe => field??=GetNode<TextureRect>("Hoverframe");
 	// public Control SkillControl => field??=GetNode<Control>("SkillControl");
 	//action and skill
-	public Skill[] Skills;
+	public Skill[] Skills = new Skill[3];
 	public int DoubleHitLayer = 1;
 	
 	public AnimatedSprite2D Animate1 => field??=GetNode("Effect/Effect1") as AnimatedSprite2D;
@@ -61,6 +62,7 @@ public partial class Charater : Node2D
 	public List<Buff> DyingBuffs = new List<Buff>();
 	public List<Buff> HurtBuffs = new List<Buff>();
 	
+	public Vector2 OriginalPosition;
 	public virtual void Initialize()
 	{
 		APlayer.Play("RESET");
@@ -89,6 +91,7 @@ public partial class Charater : Node2D
 		LifeBar2.Value = Life;
 		PowerIconLabel.Text = BattlePower.ToString();
 		SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+		EnergeIconLabel.Text = Energe.ToString();
 
 		Block = 0;
 		BlockLabel.Text = Block.ToString();
@@ -109,7 +112,7 @@ public partial class Charater : Node2D
 	{
 		Block = 0;
 		UpdataBlock(0);
-		Energe += 1;
+		UpdataEnerge(1);
 	}
 
 	public virtual void GetHurt(float damage)
@@ -179,9 +182,10 @@ public partial class Charater : Node2D
 	}
 
 	public virtual void DisableSkill(){}
-	public virtual void UpdateEnerge(int num)
+	public virtual void UpdataEnerge(int num)
 	{
 		Energe += num;
+		EnergeIconLabel.Text = Energe.ToString();
 	}
 
 	public void UpdataBlock(int num)

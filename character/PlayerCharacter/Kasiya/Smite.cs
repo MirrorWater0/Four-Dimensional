@@ -9,7 +9,7 @@ public partial class Smite : Skill
     public override void Effect()
     {
         base.Effect();
-        DescendingProperties(Chosetarget1()[0],PropertyType.Defence,0,0.3f);
+        DescendingProperties(Chosetarget1()[0],PropertyType.Survivalibility,0,0.3f);
         Attack1(3);
         OwnerCharater.EndAction();
     }

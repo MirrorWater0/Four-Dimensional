@@ -1,5 +1,5 @@
 shader_type canvas_item;
-
+uniform vec4 color : source_color = vec4(0.6,1.,1.,1.);
 // 辅助函数：二维向量的“点积”变体
 float ndot(vec2 a, vec2 b) { 
     return a.x * b.x - a.y * b.y; 
@@ -16,8 +16,9 @@ float sdRhombus(in vec2 p, in vec2 b) {
 }
 
 void fragment() {
+	vec4 modulate = COLOR;
     vec2 uv = UV - 0.5;
     uv *= 2.0;
-    float Rhombus = smoothstep(0.02,0.,sdRhombus(uv,vec2(0.5,0.7)));
-	COLOR = Rhombus*vec4(0.6,1.,1.,1.);
+    float Rhombus = smoothstep(0.08,0.,sdRhombus(uv,vec2(0.5,0.7)));
+	COLOR = Rhombus*color*modulate;
 }

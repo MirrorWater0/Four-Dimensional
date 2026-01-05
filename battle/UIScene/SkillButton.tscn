@@ -1,0 +1,207 @@
+[gd_scene load_steps=21 format=3 uid="uid://bvnftwrftpkc7"]
+
+[ext_resource type="Script" uid="uid://bhf4wionnrjlp" path="res://battle/UIScene/SkillButton.cs" id="1_gvdwr"]
+[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_etfs1"]
+[ext_resource type="Shader" uid="uid://bjwq3ux2tr1an" path="res://shader/UI4.gdshader" id="3_77nt8"]
+[ext_resource type="Shader" uid="uid://bfmj030vf135v" path="res://shader/UI/skillBgCircle.gdshader" id="4_qx430"]
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="5_c13mg"]
+[ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="6_codvk"]
+[ext_resource type="Shader" uid="uid://d2x4imm7580bq" path="res://shader/shockwave.gdshader" id="7_w5goj"]
+[ext_resource type="Shader" uid="uid://cca31j43kxjx3" path="res://shader/Effect/SparkLight.gdshader" id="8_i6771"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="9_etfs1"]
+
+[sub_resource type="Shader" id="Shader_tjicg"]
+code = "shader_type canvas_item;
+varying vec4 modulate;
+void vertex() {
+	modulate = COLOR;
+	// Called for every vertex the material is visible on.
+}
+float circleSDF(vec2 uv,float r){
+	return length(uv) - r;
+}
+
+void fragment() {
+	// Called for every pixel the material is visible on.
+	vec2 uv =UV -0.5;
+	float circle = smoothstep(0.02,0.,circleSDF(uv,0.4));
+	COLOR = vec4(vec3(6.2),1.)*circle*modulate;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fla6k"]
+shader = SubResource("Shader_tjicg")
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tgstj"]
+size = Vector2(89.5, 18.5)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_h1nnv"]
+resource_local_to_scene = true
+shader = ExtResource("3_77nt8")
+shader_parameter/speed = 1.0
+shader_parameter/ring_color = Color(0.7675111, 0.99999994, 0.9956437, 1)
+shader_parameter/inner_radius = 25.0
+shader_parameter/outer_radius = 30.0
+shader_parameter/glow_intensity = 0.5000000074506
+shader_parameter/glow_radius = 8.0
+shader_parameter/disable = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_76cfv"]
+shader = ExtResource("4_qx430")
+shader_parameter/EXcolor = Color(1, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_epdhb"]
+resource_local_to_scene = true
+shader = ExtResource("5_c13mg")
+shader_parameter/sword_color = Color(1, 1, 1, 0.78431374)
+shader_parameter/blade_color = Color(1, 1, 1, 0.78431374)
+shader_parameter/handle_color = Color(1, 1, 1, 0.78431374)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jup60"]
+resource_local_to_scene = true
+shader = ExtResource("6_codvk")
+shader_parameter/color = Color(1, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gvdwr"]
+shader = ExtResource("9_etfs1")
+shader_parameter/symbol_color = Color(0.62967473, 0.62967473, 0.6296747, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.49600002193006
+shader_parameter/petal_pinch = 0.60900002240773
+shader_parameter/ring_radius = 0.74600003310593
+shader_parameter/glow_intensity = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tjicg"]
+resource_local_to_scene = true
+shader = ExtResource("7_w5goj")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/glow_color = Color(1, 1, 1, 1)
+shader_parameter/progress = 1.0
+shader_parameter/base_thickness = 0.0050000002375
+shader_parameter/max_thickness = 0.0
+shader_parameter/glow_intensity = 19.0010009025475
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_d3be8"]
+resource_local_to_scene = true
+shader = ExtResource("8_i6771")
+shader_parameter/main_color = Color(0.2, 0.6, 1, 1)
+shader_parameter/progress = 1.0
+shader_parameter/glow_intensity = 25.0
+shader_parameter/ray_count = 15.0
+
+[sub_resource type="Environment" id="Environment_epdhb"]
+glow_enabled = true
+glow_intensity = 7.5
+
+[node name="skill1" type="Button"]
+modulate = Color(0.8217884, 0.8217889, 0.82178843, 1)
+material = SubResource("ShaderMaterial_fla6k")
+custom_minimum_size = Vector2(60, 60)
+offset_left = 254.0
+offset_top = 102.0
+offset_right = 314.0
+offset_bottom = 162.0
+focus_mode = 0
+mouse_filter = 1
+theme_override_colors/font_outline_color = Color(1, 0, 0, 1)
+theme_override_constants/outline_size = 0
+keep_pressed_outside = true
+script = ExtResource("1_gvdwr")
+
+[node name="Label" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 20.000002
+offset_top = 18.000002
+offset_right = 69.77778
+offset_bottom = 73.0
+scale = Vector2(0.45, 0.45)
+theme = ExtResource("2_etfs1")
+theme_override_colors/font_color = Color(0.898039, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.317647, 0.329412, 0.341176, 0.454902)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 35
+text = "11"
+
+[node name="Detector" type="Area2D" parent="."]
+visible = false
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Detector"]
+position = Vector2(49.5, 12.75)
+shape = SubResource("RectangleShape2D_tgstj")
+
+[node name="AbleRing" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_h1nnv")
+layout_mode = 1
+anchors_preset = -1
+anchor_top = -0.116000004
+offset_left = -11.0
+offset_top = -4.04
+offset_right = 71.0
+offset_bottom = 71.0
+mouse_filter = 1
+metadata/_edit_lock_ = true
+
+[node name="ColorRect2" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_76cfv")
+layout_mode = 0
+offset_left = -1.0
+offset_top = -1.0
+offset_right = 61.0
+offset_bottom = 61.0
+mouse_filter = 1
+
+[node name="SwordIcon" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_epdhb")
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 49.0
+offset_bottom = 49.0
+mouse_filter = 1
+
+[node name="RhomboidIcon" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_jup60")
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 50.0
+offset_bottom = 50.0
+mouse_filter = 1
+
+[node name="TerminateSkillIcon" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_gvdwr")
+layout_mode = 0
+offset_left = 12.0
+offset_top = 11.0
+offset_right = 49.0
+offset_bottom = 48.0
+
+[node name="ShockWave" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_tjicg")
+layout_mode = 0
+offset_left = -112.0
+offset_top = -110.0
+offset_right = 172.02151
+offset_bottom = 171.0
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="SparkLight" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_d3be8")
+layout_mode = 0
+offset_left = -70.0
+offset_top = -70.0
+offset_right = 130.0
+offset_bottom = 130.0
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_epdhb")

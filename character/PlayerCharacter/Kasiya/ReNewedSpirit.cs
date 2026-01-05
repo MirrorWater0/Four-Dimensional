@@ -15,7 +15,7 @@ public partial class ReNewedSpirit : Skill
     {
         base.Effect();
         IncreaseProperties(OwnerCharater,PropertyType.Power,500,1);
-        IncreaseProperties(OwnerCharater,PropertyType.Defence,500,1);
+        IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,500,1);
         
         OwnerCharater.EndAction();
         await Task.Delay(1000);
