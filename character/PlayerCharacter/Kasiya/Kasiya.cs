@@ -19,7 +19,7 @@ public partial class Kasiya : PlayerCharater
 
     public void test()
     {
-        Skills = new Skill[] { new ReNewedSpirit(this),new Determination(this),new Smite(this) };
+        TakenSkills = new Skill[] { new ReNewedSpirit(this),new Determination(this),new Smite(this) };
         BattleLifemax = 50;
         BattlePower = 10;
         BattleSurvivability = 1700;
@@ -34,3 +34,6 @@ public partial class Kasiya : PlayerCharater
         }
     }
 }
+
+
+

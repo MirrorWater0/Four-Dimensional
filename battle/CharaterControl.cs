@@ -31,8 +31,8 @@ public partial class CharaterControl : Control
 			for (int j = 0; j < skillButtons.GetChildCount(); j++)
 			{
 				var skillButton = skillButtons.GetChild<SkillButton>(j);
-				skillButton.Connect(Button.SignalName.Pressed,Callable.From(BattleNode.Players[i].Skills[j].Effect));
-				skillButton.NameLabel.Text = BattleNode.Players[i].Skills[j].SkillName;
+				skillButton.Connect(Button.SignalName.Pressed,Callable.From(BattleNode.Players[i].TakenSkills[j].Effect));
+				skillButton.NameLabel.Text = BattleNode.Players[i].TakenSkills[j].SkillName;
 			}
 		}
 	}

@@ -5,6 +5,7 @@ using System;
 public partial class SelectButton : TextureButton
 {
     Color out_orignalColor;
+    public Skill MySkill;
     public Label ThisLabel => field??= GetNode("Label") as Label;
     public override void _Process(double delta)
     {
@@ -33,6 +34,12 @@ public partial class SelectButton : TextureButton
     public void Selected()
     {
         out_orignalColor = new Color(245f, 180f, 0f, 255f)/255f;
+        ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color", out_orignalColor);
+    }
+
+    public void UnSelected()
+    {
+        out_orignalColor = new Color(0.95f, 0.95f, 0.95f);
         ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color", out_orignalColor);
     }
 }

@@ -13,8 +13,9 @@ public partial class BattleReady : Control
     private List<SkillButton> readyChange = new List<SkillButton>();
     Control FrameContainer => field??=GetNode("frame") as Control;
     public GridContainer Grid => field??=GetNode("GridContainer") as GridContainer;
-    HBoxContainer  SkillDisplay => field??=GetNode("HBoxContainer") as HBoxContainer;
-    
+    HBoxContainer  SkillContainer => field??=GetNode("SkillContainer") as HBoxContainer;
+
+    PackedScene SekectButtonScene = GD.Load<PackedScene>("res://battle/UIScene/BattleReady/SelectButton.tscn");
     private PortaitFrame _dragTarget;
     public override void _Ready()
     {
@@ -70,27 +71,86 @@ public partial class BattleReady : Control
 
         }
 
+        //give each frame a click event to select
         for(int i = 0;i < FrameContainer.GetChildCount(); i++)
         {
             var frame = FrameContainer.GetChild<Frame>(i);
+            frame.IDindex = i;
             frame.ClickButton.Visible = true;
+            
             frame.ClickButton.Pressed += () =>
             {
+                if(frame.Selected.Visible) return;
                 frame.Selected.Visible = true;
                 foreach (var other in FrameContainer.GetChildren().Where(x => x != frame).OfType<Frame>())
                 {
                     other.Selected.Visible = false;
                 }
+                GD.Print("select",PlayerInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count);
+                ClearSkillContainer();
+
+                for(int j = 0; j < PlayerInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count; j++)
+                {
+                    var selectbutton = SekectButtonScene.Instantiate() as SelectButton;
+                    var character = PlayerInfo.PlayerCharaters[frame.IDindex];
+                    var skill = character.GainedSkills[j];
+                    selectbutton.MySkill = skill;
+                    selectbutton.ThisLabel.Text = skill.SkillName;
+                    if(character.TakenSkills.Contains(skill))
+                    {
+                        selectbutton.Selected();
+                    }
+                    switch (skill.SkillType)
+                    {
+                        case Skill.SkillTypes.Attack:
+                            SkillContainer.GetChild<VBoxContainer>(0).AddChild(selectbutton);
+                            break;
+                        case Skill.SkillTypes.Defence:
+                            SkillContainer.GetChild<VBoxContainer>(1).AddChild(selectbutton);
+                            break;
+                        case Skill.SkillTypes.Special:
+                            SkillContainer.GetChild<VBoxContainer>(2).AddChild(selectbutton);
+                            break;
+                    }
+                    
+
+                    selectbutton.Pressed += () =>
+                    {
+                        PlayerInfo.PlayerCharaters[frame.IDindex].TakenSkills[j] = skill;
+                        foreach(SelectButton button in GetParent().GetChildren().Where(x => x.GetType() == selectbutton.GetType()))
+                        {
+                            button.UnSelected();
+                        }
+
+                        selectbutton.Selected();
+                    };
+                }
+                for (int i = 0;i < SkillContainer.GetChildCount(); i++ )
+                {
+                    SkillContainer.GetChild<VBoxContainer>(i).QueueSort();
+                }
+
             };
             for(int j = 0;j < frame.SkillButtonContainer.GetChildCount(); j++)
             {
                 frame.SkillButtonContainer.GetChild<Button>(j).Visible = false;
             }
+
+
         }
     }
 
 
-
+    public void ClearSkillContainer()
+    {
+        for (int i = 0; i < SkillContainer.GetChildCount(); i++)
+        {
+            for(int j = 1;j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
+            {
+                SkillContainer.GetChild<VBoxContainer>(i).GetChild<SelectButton>(j).QueueFree();
+            }
+        }
+    }
     
 
     public void ComfirmTactics()

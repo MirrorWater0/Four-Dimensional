@@ -43,7 +43,9 @@ public partial class Charater : Node2D
 	public TextureRect Hoverframe => field??=GetNode<TextureRect>("Hoverframe");
 	// public Control SkillControl => field??=GetNode<Control>("SkillControl");
 	//action and skill
-	public Skill[] Skills = new Skill[3];
+	public Skill[] TakenSkills = new Skill[3];
+	public List<Skill> GainedSkills = new List<Skill>();
+	public Skill[] AllSkills;
 	public int DoubleHitLayer = 1;
 	
 	public AnimatedSprite2D Animate1 => field??=GetNode("Effect/Effect1") as AnimatedSprite2D;
@@ -92,6 +94,7 @@ public partial class Charater : Node2D
 		PowerIconLabel.Text = BattlePower.ToString();
 		SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
 		EnergeIconLabel.Text = Energe.ToString();
+		Modulate = new Color(1,1,1,1);
 
 		Block = 0;
 		BlockLabel.Text = Block.ToString();

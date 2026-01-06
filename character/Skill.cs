@@ -26,6 +26,7 @@ public partial class Skill
     public SkillTypes SkillType;
     public Charater OwnerCharater;
     public bool Enable;
+    public string Description;
     
     public Skill(SkillTypes skillType, Charater ownerCharater)
     {
@@ -63,7 +64,7 @@ public partial class Skill
         return targets;
     }
     
-    public async void Attack1(float rate) //顺位一段攻击
+    public async void Attack1(float basis) //顺位一段攻击
     {
         Charater[] targets = Chosetarget1();
         if(targets.Length == 0) return;
@@ -75,11 +76,11 @@ public partial class Skill
         
         OwnerCharater.APlayer.Play("attack");
         await Task.Delay(600);
-        targets[0].GetHurt(rate*OwnerCharater.BattlePower);
+        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         
     }
     
-    public async void Attack2(float rate)//顺位二段攻击
+    public async void Attack2(float basis)//顺位二段攻击
     {
         Charater[] targets = Chosetarget1();
         if(targets.Length == 0) return;
@@ -92,12 +93,12 @@ public partial class Skill
         
         OwnerCharater.APlayer.Play("attack");
         await Task.Delay(600);
-        targets[0].GetHurt(rate*OwnerCharater.BattlePower);
+        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         await Task.Delay(150);
-        targets[0].GetHurt(rate*OwnerCharater.BattlePower);
+        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
     }
 
-    public async void Attack3(float rate,Charater target,int num)
+    public async void Attack3(float basis,Charater target,int num)
     {
         if(target == null) return;
         
@@ -110,24 +111,25 @@ public partial class Skill
         await Task.Delay(600);
         for (int i = 0; i < num; i++)
         {
-            target.GetHurt(rate*OwnerCharater.BattlePower);
+            target.GetHurt(basis + OwnerCharater.BattlePower);
             await Task.Delay(150);
         }
     }
 
-    public async void DescendingProperties(Charater target,PropertyType type,int num,float rate)
+    public async void DescendingProperties(Charater target,PropertyType type,int num)
     {
         switch (type)
         {
-            case PropertyType.Power:;
-                target.BattlePower = (int)((target.BattlePower - num)* (1-rate));
+            case PropertyType.Power:
+                target.BattlePower -= num;
                 break;
-            case PropertyType.Survivalibility:;
-                target.BattleSurvivability = (int)((target.BattleSurvivability - num) * (1-rate));
+            case PropertyType.Survivalibility:
+                target.BattleSurvivability -= num;
+                GD.Print("surv",target.BattleSurvivability);
                 break;
         }
-        target.PowerIconLabel.Text = OwnerCharater.BattlePower.ToString();
-        target.SurvivabilityIconLabel.Text = OwnerCharater.BattleSurvivability.ToString();
+        target.PowerIconLabel.Text = target.BattlePower.ToString();
+        target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
         Node2D descending = DescendingScene.Instantiate() as Node2D;
         OwnerCharater.BattleNode.AddChild(descending);
@@ -136,23 +138,23 @@ public partial class Skill
         descending.QueueFree();
     }
 
-    public async void IncreaseProperties(Charater target,PropertyType type, int value,float rate)
+    public async void IncreaseProperties(Charater target,PropertyType type, int value)
     {
         switch (type)
         {
             case PropertyType.Power :
                 target.BattlePower += value;
-                target.BattlePower =(int) (target.BattlePower* rate);
+                target.BattlePower =(int) (target.BattlePower);
                 break;
             case PropertyType.Survivalibility:
                 target.BattleSurvivability += value;
-                target.BattleSurvivability =(int) (target.BattleSurvivability* rate);
+                target.BattleSurvivability =(int) (target.BattleSurvivability);
                 break;
         }
 
 
-            target.PowerIconLabel.Text = OwnerCharater.BattlePower.ToString();
-            target.SurvivabilityIconLabel.Text = OwnerCharater.BattleSurvivability.ToString();
+            target.PowerIconLabel.Text = target.BattlePower.ToString();
+            target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
         
 
         Node2D burn = BurnScene.Instantiate() as Node2D;

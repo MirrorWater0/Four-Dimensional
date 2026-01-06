@@ -22,7 +22,7 @@ public partial class Demon : EnemyTemplate
 		Power = 20;
 		Survivability = 20;
 		Speed = 18;
-		Skills = new Skill[] {new Attack(this),new Combo(this) };
+		TakenSkills = new Skill[] {new Attack(this),new Combo(this) };
 		DyingBuffs.Add(new Buff(this,new Charater[]{this},Buff.BuffType.Rebirth,1));
 		base.Initialize();
     }

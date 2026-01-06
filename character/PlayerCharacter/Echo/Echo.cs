@@ -17,7 +17,7 @@ public partial class Echo : PlayerCharater
 
 	public void test()
 	{
-		Skills = new Skill[] { new FollowingLight(this),new SacredOnslaught(this),new Combo(this) };
+		TakenSkills = new Skill[] { new FollowingLight(this),new SacredOnslaught(this),new Combo(this) };
 		BattleLifemax = 2000;
 		BattlePower = 1300;
 		BattleSurvivability = 1400;

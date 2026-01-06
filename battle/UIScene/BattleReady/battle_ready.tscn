@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://d2k684qebwu0s"]
+[gd_scene load_steps=19 format=3 uid="uid://d2k684qebwu0s"]
 
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="1_53jkx"]
 [ext_resource type="Shader" uid="uid://dooc06jwt4ft2" path="res://shader/Crystal.gdshader" id="1_jyqaa"]
@@ -10,7 +10,6 @@
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="5_wwb3n"]
 [ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="8_e2bq2"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="11_5w4iu"]
-[ext_resource type="PackedScene" uid="uid://b6yv4na1485yt" path="res://battle/UIScene/BattleReady/SelectButton.tscn" id="11_dbxj7"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
 shader = ExtResource("1_jyqaa")
@@ -255,7 +254,7 @@ offset_bottom = 1029.0
 theme_override_font_sizes/font_size = 50
 text = "battle"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
+[node name="SkillContainer" type="HBoxContainer" parent="."]
 layout_mode = 0
 offset_left = 875.0
 offset_top = 72.0
@@ -264,26 +263,23 @@ offset_bottom = 372.0
 scale = Vector2(2, 2)
 theme_override_constants/separation = 100
 
-[node name="VBoxContainer1" type="VBoxContainer" parent="HBoxContainer"]
+[node name="AttackFence" type="VBoxContainer" parent="SkillContainer"]
 layout_mode = 2
 
-[node name="skill1" parent="HBoxContainer/VBoxContainer1" instance=ExtResource("11_5w4iu")]
+[node name="skill1" parent="SkillContainer/AttackFence" instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 
-[node name="SelectButton" parent="HBoxContainer/VBoxContainer1" instance=ExtResource("11_dbxj7")]
+[node name="DefenseFence" type="VBoxContainer" parent="SkillContainer"]
 layout_mode = 2
 
-[node name="VBoxContainer2" type="VBoxContainer" parent="HBoxContainer"]
-layout_mode = 2
-
-[node name="skill1" parent="HBoxContainer/VBoxContainer2" instance=ExtResource("11_5w4iu")]
+[node name="skill1" parent="SkillContainer/DefenseFence" instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 MySkillType = 1
 
-[node name="VBoxContainer3" type="VBoxContainer" parent="HBoxContainer"]
+[node name="SpecialFence" type="VBoxContainer" parent="SkillContainer"]
 layout_mode = 2
 
-[node name="skill1" parent="HBoxContainer/VBoxContainer3" instance=ExtResource("11_5w4iu")]
+[node name="skill1" parent="SkillContainer/SpecialFence" instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 MySkillType = 2
 

@@ -4,12 +4,8 @@ using System;
 public partial class Frame : TextureRect
 {
 	public Label NameLabel => field??=GetNode<Label>("Name");
-	public TextureRect Potrait => field ??= GetNode("Texture") as TextureRect;
+	public int IDindex;
 	public Control SkillButtonContainer => field ??= GetNode("SkillControl") as Control;
-	public Area2D Detector1 => field ??= GetNode("SkillControl/skill1/Detector") as Area2D;
-	public Area2D Detector2 => field ??= GetNode("SkillControl/skill2/Detector") as Area2D;
-	public Area2D Detector3 => field ??= GetNode("SkillControl/skill3/Detector") as Area2D;
-	public Area2D Detector4 => field ??= GetNode("SkillControl/skill4/Detector") as Area2D;
 	public SkillButton SkillButton1 => field ??= GetNode("SkillControl/skill1") as SkillButton;
 	public SkillButton SkillButton2 => field ??= GetNode("SkillControl/skill2") as SkillButton;
 	public SkillButton SkillButton3 => field ??= GetNode("SkillControl/skill3") as SkillButton;

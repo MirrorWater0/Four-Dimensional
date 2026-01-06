@@ -26,8 +26,8 @@ public partial class EnemyTemplate : Charater
 	{
 		base.StartAction();
 		Random random = new Random();
-		int i = random.Next(0, Skills.Length);
-		Skills[i].Effect();
+		int i = random.Next(0, TakenSkills.Length);
+		TakenSkills[i].Effect();
 	}
 	
 	public override void GetHurt(float damage)

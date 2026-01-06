@@ -34,12 +34,9 @@ public partial class Battle : Node2D
 		RetreatButton = GetNode("Retreat") as Button;
 		RetreatButton.ButtonDown += Retreat;
 		UsedSkills.Clear();
-		if(Istest) test();
-		else
-		{
-			GD.Print(PlayerInfo.PlayerCharaters.Length);
-			Players = PlayerInfo.PlayerCharaters.ToArray();
-		}
+
+		Players = PlayerInfo.PlayerCharaters.ToArray();
+		
 		
 		EnemyTemplate test1 = _test1.Instantiate<EnemyTemplate>();
 		test1.PositionIndex = 1;
@@ -133,7 +130,7 @@ public partial class Battle : Node2D
 		EmitSignal(SignalName.Next);
 	}
 
-	public async void BattleBegin1()
+	public async Task BattleBegin1()
 	{
 		for(int i = 0; i < 100; i++){
 			GD.Print("turn ",i);
@@ -207,21 +204,6 @@ public partial class Battle : Node2D
 			Left.RemoveChild(Players[i]);
 		}
 		GetTree().ChangeSceneToFile("res://Map/Map.tscn");
-	}
-	public void test()
-	{
-		// Echo echo = _echo.Instantiate<Echo>();
-		// echo.PositionIndex = 7;
-		// Kasiya kasiya = _kasiya.Instantiate<Kasiya>();
-		// kasiya.PositionIndex = 2;
-		// Echo echo3 = _echo.Instantiate<Echo>();
-		// echo3.PositionIndex = 4;
-		
-		// Players = new PlayerCharater[] { echo, kasiya, echo3 };
-		// for (int i = 0; i < Players.Length; i++)
-		// {
-		// 	Players[i].Istest = true;
-		// }
 	}
 	
 
