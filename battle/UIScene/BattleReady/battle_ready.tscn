@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://d2k684qebwu0s"]
+[gd_scene load_steps=23 format=3 uid="uid://d2k684qebwu0s"]
 
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="1_53jkx"]
 [ext_resource type="Shader" uid="uid://dooc06jwt4ft2" path="res://shader/Crystal.gdshader" id="1_jyqaa"]
@@ -8,7 +8,8 @@
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="3_x8w3b"]
 [ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="4_ekwrc"]
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="5_wwb3n"]
-[ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="8_e2bq2"]
+[ext_resource type="Texture2D" uid="uid://xt2qlq4i1viq" path="res://asset/PlayerCharater/Echo/76843029_p0.jpg" id="8_e2bq2"]
+[ext_resource type="PackedScene" uid="uid://b6yv4na1485yt" path="res://battle/UIScene/BattleReady/SelectButton.tscn" id="10_5w4iu"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="11_5w4iu"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
@@ -142,6 +143,15 @@ shader_parameter/avatar_tex = ExtResource("8_e2bq2")
 shader_parameter/theme_color = Color(1, 1, 1, 1)
 shader_parameter/rotation_speed = 1.3100005372249992
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_uwaj7"]
+resource_local_to_scene = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qtj4k"]
+resource_local_to_scene = true
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7qnj3"]
+resource_local_to_scene = true
+
 [node name="BattleReady" type="Control"]
 material = SubResource("ShaderMaterial_ejwt2")
 layout_mode = 3
@@ -157,6 +167,7 @@ offset_bottom = 1320.0
 mouse_filter = 2
 texture = ExtResource("2_3blau")
 expand_mode = 1
+metadata/_edit_lock_ = true
 
 [node name="TextureRect" type="TextureRect" parent="."]
 material = SubResource("ShaderMaterial_kjvqh")
@@ -256,31 +267,57 @@ text = "battle"
 
 [node name="SkillContainer" type="HBoxContainer" parent="."]
 layout_mode = 0
-offset_left = 875.0
-offset_top = 72.0
-offset_right = 1255.0
-offset_bottom = 372.0
-scale = Vector2(2, 2)
-theme_override_constants/separation = 100
+offset_left = 830.0
+offset_top = 220.0
+offset_right = 1290.0
+offset_bottom = 422.5
+theme_override_constants/separation = 130
 
 [node name="AttackFence" type="VBoxContainer" parent="SkillContainer"]
+custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
+theme_override_constants/separation = 14
 
-[node name="skill1" parent="SkillContainer/AttackFence" instance=ExtResource("11_5w4iu")]
+[node name="SelectButton" parent="SkillContainer/AttackFence" instance=ExtResource("10_5w4iu")]
+material = SubResource("ShaderMaterial_uwaj7")
 layout_mode = 2
 
 [node name="DefenseFence" type="VBoxContainer" parent="SkillContainer"]
+custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
+theme_override_constants/separation = 14
 
-[node name="skill1" parent="SkillContainer/DefenseFence" instance=ExtResource("11_5w4iu")]
+[node name="SelectButton2" parent="SkillContainer/DefenseFence" instance=ExtResource("10_5w4iu")]
+material = SubResource("ShaderMaterial_qtj4k")
 layout_mode = 2
-MySkillType = 1
 
 [node name="SpecialFence" type="VBoxContainer" parent="SkillContainer"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SelectButton3" parent="SkillContainer/SpecialFence" instance=ExtResource("10_5w4iu")]
+material = SubResource("ShaderMaterial_7qnj3")
 layout_mode = 2
 
-[node name="skill1" parent="SkillContainer/SpecialFence" instance=ExtResource("11_5w4iu")]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 875.0
+offset_top = 72.0
+offset_right = 1255.0
+offset_bottom = 132.0
+scale = Vector2(2, 2)
+theme_override_constants/separation = 110
+
+[node name="skill1" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
+layout_mode = 2
+
+[node name="skill2" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 MySkillType = 2
+
+[node name="skill3" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
+layout_mode = 2
+MySkillType = 1
 
 [connection signal="pressed" from="Button" to="." method="ComfirmTactics"]

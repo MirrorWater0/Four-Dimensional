@@ -1,77 +1,87 @@
-shader_type canvas_item; // 用于2D节点的着色器类型
-/////////////////////
-// Fire Flame shader
-#define iTime TIME
-#define NUM_OCTAVES 5
-#define iResolution (1./SCREEN_PIXEL_SIZE)
-#define fragCoord ((UV * iResolution).xy)
-#define fragColor COLOR
-// procedural noise from IQ
-vec2 hash( vec2 p )
-{
-	p = vec2( dot(p,vec2(127.1,311.7)),
-			 dot(p,vec2(269.5,183.3)) );
-	return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+shader_type canvas_item;
+
+// --- Palette ---
+uniform vec4 color_outer : source_color = vec4(0.96, 0.35, 0.15, 1.0);
+uniform vec4 color_inner : source_color = vec4(1.0, 0.8, 0.0, 1.0);
+uniform vec4 color_core : source_color = vec4(1.0, 1.0, 0.9, 1.0);
+
+// --- Controls ---
+uniform float speed = 1.0;
+uniform float horizontal_sway = 0.5;
+uniform vec2 noise_scale = vec2(2.0, 3.0);
+
+// --- Thresholds ---
+uniform float outer_threshold : hint_range(0.0, 1.0) = 0.25;
+uniform float inner_threshold : hint_range(0.0, 1.0) = 0.55;
+uniform float core_threshold : hint_range(0.0, 1.0) = 0.8;
+
+// --- Boundary Limit ---
+uniform float edge_margin : hint_range(0.0, 0.5) = 0.15; // How far from edge to stop
+
+// --- Helper Functions ---
+vec2 hash(vec2 p) {
+    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+    return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
 }
 
-float noise( in vec2 p )
-{
-	const float K1 = 0.366025404; // (sqrt(3)-1)/2;
-	const float K2 = 0.211324865; // (3-sqrt(3))/6;
-
-	vec2 i = floor( p + (p.x+p.y)*K1 );
-
-	vec2 a = p - i + (i.x+i.y)*K2;
-	vec2 o = (a.x>a.y) ? vec2(1.0,0.0) : vec2(0.0,1.0);
-	vec2 b = a - o + K2;
-	vec2 c = a - 1.0 + 2.0*K2;
-
-	vec3 h = max( 0.5-vec3(dot(a,a), dot(b,b), dot(c,c) ), 0.0 );
-
-	vec3 n = h*h*h*h*vec3( dot(a,hash(i+0.0)), dot(b,hash(i+o)), dot(c,hash(i+1.0)));
-
-	return dot( n, vec3(70.0) );
+float noise(vec2 p) {
+    const float K1 = 0.366025404;
+    const float K2 = 0.211324865;
+    vec2 i = floor(p + (p.x + p.y) * K1);
+    vec2 a = p - i + (i.x + i.y) * K2;
+    float m = step(a.y, a.x);
+    vec2 o = vec2(m, 1.0 - m);
+    vec2 b = a - o + K2;
+    vec2 c = a - 1.0 + 2.0 * K2;
+    vec3 h = max(0.5 - vec3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
+    vec3 n = h * h * h * h * vec3(dot(a, hash(i + 0.0)), dot(b, hash(i + o)), dot(c, hash(i + 1.0)));
+    return dot(n, vec3(70.0));
 }
 
-float fbm(vec2 uv)
-{
-	float f;
-	mat2 m = mat2( vec2(1.6,  1.2), vec2(-1.2,  1.6) );
-	f  = 0.5000*noise( uv ); uv = m*uv;
-	f += 0.2500*noise( uv ); uv = m*uv;
-	f += 0.1250*noise( uv ); uv = m*uv;
-	f += 0.0625*noise( uv ); uv = m*uv;
-	f = 0.5 + 0.5*f;
-	return f;
-}
-uniform vec4 modulate :source_color = vec4(1.);
-uniform vec3 light : source_color = vec3(0.);
-// no defines, standard redish flames
-//#define BLUE_FLAME
-//#define GREEN_FLAME
-vec4 fire(vec2 uv){
-	vec2 q =uv;
-	q.x *= 1.;
-	q.y *= 2.;
-	float strength = floor(q.x+1.);
-	float T3 = max(3.,1.25*strength)*iTime;
-	q.x = mod(q.x,1.)-0.5;
-	q.y -= 0.0;
-	float n = fbm(strength*q - vec2(0,T3));
-	float c = 1. - 16. * pow( max( 0., length((q-vec2(0,0.75))*vec2(1.8+q.y*1.5,.75) ) - n * max( 0., q.y+.25 ) ),1.2 );
-	//float c1 = n * c * (1.5-pow(1.25*uv.y,4.));
-	float c1 = 1.5*n * c * (1.5-pow(1.10*uv.y,4.));
-	c1=clamp(c1,0.,1.);
+void fragment() {
+    vec2 uv = UV;
+    vec2 centered_uv = uv - 0.5;
 
-	vec3 col = vec3(1.5*c1, 1.5*c1*c1*c1, c1*c1*c1*c1*c1*c1);
+    // 1. Base Gradient (Shape)
+    float y_grad = smoothstep(1.0, 0.2, uv.y);
+    float x_grad = 1.0 - abs(centered_uv.x) * 2.5;
+    x_grad = smoothstep(0.0, 1.0, x_grad);
+    float base_shape = y_grad * x_grad;
 
-	float a = c * (1.-pow(uv.y,2.));
-	return vec4( mix(vec3(0.),col,a), 1.0);
-}
-void fragment()
-{
-	vec2 fire_uv = 1. - UV ;
-	fragColor = fire(fire_uv)*modulate;
-	if((fragColor.b+fragColor.g+fragColor.r) < 0.1) fragColor.a = (fragColor.b+fragColor.g+fragColor.r);
-	fragColor.rgb += 2.*light;
+    // 2. Distortion & Noise
+    float time = TIME * speed;
+    vec2 noise_uv = uv * noise_scale;
+    noise_uv.y -= time;
+    noise_uv.x += sin(uv.y * 10.0 - time) * horizontal_sway;
+
+    float n = noise(noise_uv);
+
+    // 3. Calculate Heat
+    float heat = base_shape + n * 0.5 - (uv.y * 0.8);
+
+    // 4. BOUNDARY LIMIT (The Fix)
+    // We calculate the distance to the closest edge (Left, Right, Top, or Bottom)
+    // "d_edge" will be 0.0 at the edge and 0.5 at the center
+    float d_edge = min(uv.x, min(uv.y, min(1.0 - uv.x, 1.0 - uv.y)));
+
+    // We create a multiplier that is 0.0 at the edge and 1.0 inside
+    float boundary_mask = smoothstep(0.0, edge_margin, d_edge);
+
+    // Multiply HEAT by the mask.
+    // This reduces the heat near edges, forcing the threshold check
+    // below to fail, causing the fire to "shrink" cleanly.
+    heat *= boundary_mask;
+
+    // 5. Threshold Coloring (Toon Look)
+    vec4 final_color = vec4(0.0);
+
+    if (heat > core_threshold) {
+        final_color = color_core;
+    } else if (heat > inner_threshold) {
+        final_color = color_inner;
+    } else if (heat > outer_threshold) {
+        final_color = color_outer;
+    }
+
+    COLOR = final_color;
 }

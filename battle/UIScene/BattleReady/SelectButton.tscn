@@ -1,41 +1,176 @@
-[gd_scene load_steps=6 format=3 uid="uid://b6yv4na1485yt"]
+[gd_scene load_steps=14 format=3 uid="uid://b6yv4na1485yt"]
 
-[ext_resource type="Shader" uid="uid://c408um4o4bs3p" path="res://shader/UI/CapsuleUI.gdshader" id="1_ey3wg"]
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="2_ey3wg"]
 [ext_resource type="Script" uid="uid://b5hjosvibe62b" path="res://battle/UIScene/BattleReady/SelectButton.cs" id="2_kqylh"]
+[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="3_kqylh"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uwaj7"]
 resource_local_to_scene = true
-shader = ExtResource("1_ey3wg")
-shader_parameter/bg_color = Color(0.9490196, 0.9490196, 0.9490196, 1)
-shader_parameter/outer_rim_color = Color(0.95, 0.95, 0.95, 1)
-shader_parameter/inner_rim_color = Color(0.5, 0.5, 0.5, 1)
-shader_parameter/selected_color = Color(0.95, 0.95, 0.93, 1)
-shader_parameter/selected_fill = 0.0
-shader_parameter/selected_rotation = 0.0
-shader_parameter/outer_thickness = 0.05100000242249999
-shader_parameter/inner_thickness = 0.00400000019
-shader_parameter/inner_line_gap = 0.06700000248398
-shader_parameter/antialiasing = 0.01200000056999999
 
-[sub_resource type="Gradient" id="Gradient_5w4iu"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ey3wg"]
+bg_color = Color(0.21230483, 0.21230483, 0.21230483, 1)
+border_color = Color(0.446777, 0.4467771, 0.44677675, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_dbxj7"]
-gradient = SubResource("Gradient_5w4iu")
-width = 60
-height = 25
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kqylh"]
+bg_color = Color(0.6255971, 0.6255972, 0.6255969, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
 
-[node name="SelectButton" type="TextureButton"]
+[sub_resource type="Theme" id="Theme_kqylh"]
+Button/styles/focus = null
+Button/styles/hover = null
+Button/styles/normal = SubResource("StyleBoxFlat_ey3wg")
+Button/styles/pressed = SubResource("StyleBoxFlat_kqylh")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kqylh"]
+resource_local_to_scene = true
+shader = ExtResource("2_ey3wg")
+shader_parameter/sword_color = Color(1, 1, 1, 1)
+shader_parameter/blade_color = Color(1, 1, 1, 1)
+shader_parameter/handle_color = Color(1, 1, 1, 1)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
+[sub_resource type="Environment" id="Environment_ey3wg"]
+glow_enabled = true
+glow_intensity = 8.0
+glow_strength = 0.42
+glow_hdr_threshold = 4.0
+glow_hdr_scale = 4.0
+glow_hdr_luminance_cap = 256.0
+glow_map_strength = 1.0
+
+[sub_resource type="Shader" id="Shader_benw5"]
+code = "shader_type canvas_item;
+
+// --- Settings ---
+uniform vec4 glow_color : source_color = vec4(1.0, 0.2, 0.5, 1.0);
+uniform float rect_size : hint_range(0.0, 1.0) = 0.2;
+uniform float intensity : hint_range(0.001, 0.05) = 0.005;
+
+// --- Directional Control (Multipliers) ---
+// 1.0 is default. 0.0 is off.
+uniform float glow_left : hint_range(0.0, 5.0) = 1.0;
+uniform float glow_right : hint_range(0.0, 5.0) = 1.0;
+uniform float glow_top : hint_range(0.0, 5.0) = 1.0;
+uniform float glow_bottom : hint_range(0.0, 5.0) = 1.0;
+
+// --- Boundary Fade ---
+uniform float edge_softness : hint_range(0.0, 0.5) = 0.1;
+
+float sdBox(vec2 p, vec2 b) {
+    vec2 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
+void fragment() {
+	vec4 tex = texture(TEXTURE,UV /2.);
+    // 1. Coordinates (-1 to 1)
+    vec2 p = 2.0 * (UV - 0.5);
+
+    // 2. Base SDF Distance
+    float dist = sdBox(p, vec2(rect_size));
+
+    // 3. DIRECTIONAL INTENSITY LOGIC
+    // Determine if pixel is on Left (-1) or Right (+1) side
+    float h_mix = smoothstep(-0.01, 0.01, p.x);
+    // Mix between Left and Right intensity
+    float h_int = mix(glow_left, glow_right, h_mix);
+
+    // Determine if pixel is on Top (-1) or Bottom (+1) side (Godot UV.y is positive down)
+    float v_mix = smoothstep(-0.01, 0.01, p.y);
+    // Mix between Top and Bottom intensity
+    float v_int = mix(glow_top, glow_bottom, v_mix);
+
+    // Calculate which edge is closer: Horizontal or Vertical?
+    // d_geom measures distance to the respective axis edge relative to box size
+    vec2 d_geom = abs(p) - vec2(rect_size);
+    // If d_geom.x > d_geom.y, we are closer to the Left/Right edges.
+    float corner_blend = smoothstep(-0.01, 0.01, d_geom.x - d_geom.y);
+
+    // Combine to get the final multiplier for this specific pixel
+    float current_side_intensity = mix(v_int, h_int, corner_blend);
+
+    // 4. Calculate Glow
+    // Apply the directional multiplier to the base intensity
+    float glow = (intensity * current_side_intensity) / abs(dist);
+    glow = clamp(glow, 0.0, 1.0);
+
+    // 5. Boundary Mask (Prevent cut-off)
+    float dist_to_edge = 1.0 - max(abs(p.x), abs(p.y));
+    float mask = smoothstep(0.0, edge_softness, dist_to_edge);
+
+    // 6. Output
+    COLOR = glow_color;
+    COLOR.a *= tex.a;
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ey3wg"]
+shader = SubResource("Shader_benw5")
+shader_parameter/glow_color = Color(1, 1, 1, 1)
+shader_parameter/rect_size = 0.3950000187625
+shader_parameter/intensity = 0.007000000332500001
+shader_parameter/glow_left = 1.0
+shader_parameter/glow_right = 1.0
+shader_parameter/glow_top = 1.46000006935
+shader_parameter/glow_bottom = 1.5750000748125
+shader_parameter/edge_softness = 0.5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_apc1k"]
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="Theme" id="Theme_8vcpf"]
+Panel/styles/panel = SubResource("StyleBoxFlat_apc1k")
+
+[node name="SelectButton" type="Button"]
+z_index = 2
 material = SubResource("ShaderMaterial_uwaj7")
-custom_minimum_size = Vector2(60, 25)
-texture_normal = SubResource("GradientTexture2D_dbxj7")
-ignore_texture_size = true
+custom_minimum_size = Vector2(216, 45)
+offset_right = 216.0
+offset_bottom = 45.0
+focus_mode = 0
+theme = SubResource("Theme_kqylh")
+toggle_mode = true
+action_mode = 0
 script = ExtResource("2_kqylh")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_kqylh")
+layout_mode = 0
+offset_right = 36.0
+offset_bottom = 42.857143
+mouse_filter = 1
+color = Color(0.74558026, 0.7455802, 0.7455802, 1)
 
 [node name="Label" type="Label" parent="."]
 layout_mode = 0
-offset_left = 7.777778
-offset_top = -0.111109495
-offset_right = 47.77778
-offset_bottom = 22.888891
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = " well"
+offset_left = 37.0
+offset_top = -3.0
+offset_right = 177.0
+offset_bottom = 46.0
+theme = ExtResource("3_kqylh")
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "镜花水月"
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_ey3wg")
+
+[node name="Border" type="Panel" parent="."]
+z_index = -1
+material = SubResource("ShaderMaterial_ey3wg")
+layout_mode = 0
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 218.0
+offset_bottom = 47.0
+mouse_filter = 2
+theme = SubResource("Theme_8vcpf")

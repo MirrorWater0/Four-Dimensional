@@ -1,6 +1,6 @@
 [gd_scene load_steps=14 format=3 uid="uid://de0vuounbh3nm"]
 
-[ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="1_fegvg"]
+[ext_resource type="Texture2D" uid="uid://xt2qlq4i1viq" path="res://asset/PlayerCharater/Echo/76843029_p0.jpg" id="1_fegvg"]
 [ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="1_g8f4n"]
 [ext_resource type="Script" uid="uid://b0dpufjdj1b0s" path="res://battle/UIScene/Frame.cs" id="2_mrq4a"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="4_cihc2"]

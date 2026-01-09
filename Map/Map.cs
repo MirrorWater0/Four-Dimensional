@@ -57,5 +57,10 @@ public partial class Map : Control
         DragButton.ButtonDown += () => {_isDrag = true;_velocity = Vector2.Zero;_targetPos = Camera.GlobalPosition;};
         DragButton.ButtonUp += () => {_isDrag = false ;};
      }
+
+     public void CloseWindow()
+     {
+         GetTree().Quit();
+     }
     
 }

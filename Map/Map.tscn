@@ -145,5 +145,14 @@ mouse_filter = 2
 color = Color(1, 1, 1, 0)
 metadata/_edit_lock_ = true
 
+[node name="Button" type="Button" parent="UI"]
+offset_left = 1839.0
+offset_top = 31.0
+offset_right = 1901.0
+offset_bottom = 62.0
+text = "x"
+
 [node name="BattleReadyLayer" type="CanvasLayer" parent="."]
 layer = -1
+
+[connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

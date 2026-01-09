@@ -21,9 +21,10 @@ public partial class SkillButton : Button
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
     
+    private static Tip globalTooltip;
+    
     public override void _Ready()
     {
-        
         MouseEntered += mouse_entered;
         MouseExited += mouse_exited;
         Modulate = new Color(0.92f, 0.92f, 0.92f);
@@ -42,7 +43,16 @@ public partial class SkillButton : Button
                 RhomboidIcon.Visible = false;
                 SwordIcon.Visible = false;
                 break;
-        }       
+        }
+        
+        // Create global tooltip once
+        if (globalTooltip == null)
+        {
+            var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+            globalTooltip = tipScene.Instantiate() as Tip;
+            globalTooltip.Visible = false;
+            GetTree().Root.AddChild(globalTooltip);
+        }
     }
     
     public override void _Process(double delta)
@@ -60,11 +70,22 @@ public partial class SkillButton : Button
     {
         Modulate = new Color(2.5f, 2.5f, 2.5f);
         
-        
+        // Show tooltip with skill description
+        if (SelfSkill != null && globalTooltip != null)
+        {
+            globalTooltip.Description.Text = SelfSkill.Description;
+            globalTooltip.Visible = true;
+        }
     }
     public void mouse_exited()
     {
         Modulate = new Color(0.9f, 0.9f, 0.9f);
+        
+        // Hide tooltip
+        if (globalTooltip != null)
+        {
+            globalTooltip.Visible = false;
+        }
     }
 
     public void Enable()

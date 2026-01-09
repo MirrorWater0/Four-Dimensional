@@ -40,12 +40,12 @@ public partial class ReadyButton : Button
     {
         ((ShaderMaterial)Material).SetShaderParameter("color", new Color(1, 1, 1, 1));
         CreateTween().TweenMethod(Callable.From<float>(value => ((ShaderMaterial)Material).SetShaderParameter("rotation_speed", value)),
-            3f,0.5f,0.5f);
+            3f,0.5f,0.15f);
     }
     public void mouse_right_entered()
     {
         ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
         CreateTween().TweenMethod(Callable.From<float>(value => ((ShaderMaterial)Material).SetShaderParameter("rotation_speed", value)),
-            0.5f,3f,0.5f);
+            0.5f,3f,0.15f);
     }
 }

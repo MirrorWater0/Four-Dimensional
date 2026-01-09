@@ -19,12 +19,13 @@ public partial class Demon : EnemyTemplate
     public override void Initialize()
     {
 		Lifemax = 50;
-		Power = 20;
-		Survivability = 20;
+		Power = 15;
+		Survivability = 15;
 		Speed = 18;
 		TakenSkills = new Skill[] {new Attack(this),new Combo(this) };
-		DyingBuffs.Add(new Buff(this,new Charater[]{this},Buff.BuffType.Rebirth,1));
+		
 		base.Initialize();
+		DyingBuff.BuffAdd(Buff.BuffName.Rebirth,this,1);
     }
 
 	

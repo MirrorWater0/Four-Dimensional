@@ -81,6 +81,7 @@ public partial class BattleReady : Control
             frame.ClickButton.Pressed += () =>
             {
                 if(frame.Selected.Visible) return;
+
                 frame.Selected.Visible = true;
                 foreach (var other in FrameContainer.GetChildren().Where(x => x != frame).OfType<Frame>())
                 {
@@ -89,48 +90,58 @@ public partial class BattleReady : Control
                 GD.Print("select",PlayerInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count);
                 ClearSkillContainer();
 
-                for(int j = 0; j < PlayerInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count; j++)
+                
+
+                var character = PlayerInfo.PlayerCharaters[frame.IDindex];
+                
+                for(int j = 0; j < character.GainedSkills.Count; j++)
                 {
                     var selectbutton = SekectButtonScene.Instantiate() as SelectButton;
-                    var character = PlayerInfo.PlayerCharaters[frame.IDindex];
                     var skill = character.GainedSkills[j];
                     selectbutton.MySkill = skill;
                     selectbutton.ThisLabel.Text = skill.SkillName;
-                    if(character.TakenSkills.Contains(skill))
-                    {
-                        selectbutton.Selected();
-                    }
+                    
+
+                    int skillIndex = -1;
                     switch (skill.SkillType)
                     {
                         case Skill.SkillTypes.Attack:
+                            skillIndex = 0;
                             SkillContainer.GetChild<VBoxContainer>(0).AddChild(selectbutton);
                             break;
                         case Skill.SkillTypes.Defence:
+                            skillIndex = 1;
                             SkillContainer.GetChild<VBoxContainer>(1).AddChild(selectbutton);
                             break;
                         case Skill.SkillTypes.Special:
+                            skillIndex = 2;
                             SkillContainer.GetChild<VBoxContainer>(2).AddChild(selectbutton);
                             break;
                     }
                     
-
+                    if(character.TakenSkills.Contains(skill))
+                    {
+                        selectbutton.ButtonPressed = true;
+                    }
+                    
                     selectbutton.Pressed += () =>
                     {
-                        PlayerInfo.PlayerCharaters[frame.IDindex].TakenSkills[j] = skill;
-                        foreach(SelectButton button in GetParent().GetChildren().Where(x => x.GetType() == selectbutton.GetType()))
+
+                        PlayerInfo.PlayerCharaters[frame.IDindex].TakenSkills[skillIndex] = skill;
+                        for(int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
-                            button.UnSelected();
+                            SelectButton button = SkillContainer.GetChild<VBoxContainer>(skillIndex).GetChild<SelectButton>(i);
+                            if(button != selectbutton) button.ButtonPressed = false;
                         }
 
-                        selectbutton.Selected();
                     };
                 }
                 for (int i = 0;i < SkillContainer.GetChildCount(); i++ )
                 {
                     SkillContainer.GetChild<VBoxContainer>(i).QueueSort();
                 }
-
             };
+
             for(int j = 0;j < frame.SkillButtonContainer.GetChildCount(); j++)
             {
                 frame.SkillButtonContainer.GetChild<Button>(j).Visible = false;
@@ -145,7 +156,7 @@ public partial class BattleReady : Control
     {
         for (int i = 0; i < SkillContainer.GetChildCount(); i++)
         {
-            for(int j = 1;j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
+            for(int j = 0;j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
             {
                 SkillContainer.GetChild<VBoxContainer>(i).GetChild<SelectButton>(j).QueueFree();
             }

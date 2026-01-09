@@ -6,6 +6,7 @@ public partial class SacredOnslaught : Skill
     public SacredOnslaught(Charater owner) : base(SkillTypes.Attack, owner)
     {
         OwnerCharater = owner;
+        Description = "对最多4个目标发动攻击，每个目标受到2次基础伤害（40%+战斗力）的打击。";
     }
 
     public override string SkillName { get; set; } = "圣域冲击";

@@ -151,8 +151,8 @@ alpha_curve = SubResource("CurveTexture_mwuhv")
 frequency = 0.0032
 
 [sub_resource type="NoiseTexture2D" id="NoiseTexture2D_w1eyl"]
-seamless = true
 noise = SubResource("FastNoiseLite_yuiy5")
+seamless = true
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_g7dnj"]
 resource_local_to_scene = true
@@ -192,7 +192,7 @@ curve = SubResource("Curve2D_uorei")
 
 [node name="PathFollow2D" type="PathFollow2D" parent="Path2D"]
 position = Vector2(163.211, 10.6154)
-rotation = 0.067082
+rotation = 0.06708201
 
 [node name="Sprite2D" type="Sprite2D" parent="Path2D/PathFollow2D"]
 position = Vector2(1.59068, 3.88278)

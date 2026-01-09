@@ -12,13 +12,14 @@ public partial class ReNewedSpirit : Skill
     public ReNewedSpirit(Charater owner) : base(SkillTypes.Defence, owner)
     {
         OwnerCharater = owner;
+        Description = "提升自身2点战斗力和2点生存能力。";
     }
 
     public async override void Effect()
     {
         base.Effect();
-        IncreaseProperties(OwnerCharater,PropertyType.Power,1);
-        IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,1);
+        IncreaseProperties(OwnerCharater,PropertyType.Power,2);
+        IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,2);
         
         OwnerCharater.EndAction();
     }

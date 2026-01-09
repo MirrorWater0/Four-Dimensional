@@ -2,44 +2,48 @@ using Godot;
 using System;
 
 
-public partial class SelectButton : TextureButton
+public partial class SelectButton : Button
 {
     Color out_orignalColor;
     public Skill MySkill;
     public Label ThisLabel => field??= GetNode("Label") as Label;
+    public Vector2 OriginalScale;
+    public Panel Border => field??= GetNode("Border") as Panel;
     public override void _Process(double delta)
     {
 
     }
     public override void _Ready()
     {
+        Border.Visible = false;
+        PivotOffset = Scale/2;
+        OriginalScale = Scale;
         MouseEntered += mouse_entered;
         MouseExited += mouse_exited;
-        ButtonDown += Selected;
-        out_orignalColor = (Color)((ShaderMaterial)Material).GetShaderParameter("outer_rim_color");
+        Pressed += () =>{CreateTween().TweenProperty(this, "scale", OriginalScale, 0.2f);};
     }
 
     public void mouse_entered()
     {
-        ((ShaderMaterial)Material).SetShaderParameter("bg_color", new Color(1.5f, 1.5f, 1.5f));
-        ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color",out_orignalColor * new Color(1.5f, 1.5f, 1.5f));
+        CreateTween().TweenProperty(this, "scale", 1.05f*OriginalScale, 0.15f);
+        Border.Visible = true;
     }
 
     public void mouse_exited()
     {
-        ((ShaderMaterial)Material).SetShaderParameter("bg_color", 0.95f*new Color(1, 1, 1));
-        ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color", out_orignalColor);
+        CreateTween().TweenProperty(this, "scale", OriginalScale, 0.2f);
+        Border.Visible = false;
     }
 
-    public void Selected()
-    {
-        out_orignalColor = new Color(245f, 180f, 0f, 255f)/255f;
-        ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color", out_orignalColor);
-    }
+    // public void Selected()
+    // {
+    //     out_orignalColor = new Color(245f, 180f, 0f, 255f)/255f;
+    //     Rect.Color = out_orignalColor;
+        
+    // }
 
-    public void UnSelected()
-    {
-        out_orignalColor = new Color(0.95f, 0.95f, 0.95f);
-        ((ShaderMaterial)Material).SetShaderParameter("outer_rim_color", out_orignalColor);
-    }
+    // public void UnSelected()
+    // {
+    //     out_orignalColor = new Color(100f, 155f, 255f, 255f)/255f;
+    // }
 }

@@ -33,6 +33,7 @@ public partial class CharaterControl : Control
 				var skillButton = skillButtons.GetChild<SkillButton>(j);
 				skillButton.Connect(Button.SignalName.Pressed,Callable.From(BattleNode.Players[i].TakenSkills[j].Effect));
 				skillButton.NameLabel.Text = BattleNode.Players[i].TakenSkills[j].SkillName;
+				skillButton.SelfSkill = BattleNode.Players[i].TakenSkills[j];
 			}
 		}
 	}
