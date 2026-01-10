@@ -3,5 +3,5 @@ using System;
 
 static public partial class PlayerInfo
 {
-    static public PlayerCharater[] PlayerCharaters;
+    static public PlayerCharacter[] PlayerCharaters;
 }

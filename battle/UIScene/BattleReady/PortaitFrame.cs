@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-public partial class PortaitFrame : Node2D
+public partial class PortaitFrame : Control
 {
     public Charater Charater;
     public Button PortaitButton => field??= GetNode("Button") as Button;

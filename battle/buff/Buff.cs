@@ -2,12 +2,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class Buff
 {
+    public PackedScene HintScene = GD.Load<PackedScene>("res://LabelNode/BuffHintLabel.tscn");
     public enum BuffType
     {
         Dying,
@@ -31,6 +33,22 @@ public partial class Buff
         ThisBuffName = name;
         Stack = stack;
     }
+
+    public void TweenLabel()
+    {
+        Tween tween = BuffIcon.CreateTween();
+        BuffIcon.GetChild<Label>(0).PivotOffset = BuffIcon.GetChild<Label>(0).Size / 2;
+        tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(2f, 2f), 0.15f);
+        tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(1f, 1f), 0.35f);
+    }
+
+    public void Hint(BuffName name,BuffHintLabel.Which which)
+    {
+        BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
+        label.Initialize(which, name.ToString());
+        label.Position = Owner.Position + new Vector2(0, -50f);
+        Owner.AddChild(label);
+    }
 }
 
 public class DyingBuff : Buff
@@ -44,10 +62,11 @@ public class DyingBuff : Buff
         {
             case BuffName.Rebirth:
                 await Task.Delay(200);
-                Owner.CreateTween().TweenProperty(Owner, "modulate", new Color(1, 1, 1, 1), 0.5f);
+                Owner.CreateTween().TweenProperty(Owner, "modulate", new Godot.Color(1, 1, 1, 1), 0.5f);
                 Owner.Recovery(Owner.BattleLifemax);
                 Owner.State = Charater.CharaterState.Normal;
                 Stack--;
+                TweenLabel();
                 GD.Print("Rebirth", Owner.Life, "array");
                 break;
         }
@@ -71,7 +90,7 @@ public class DyingBuff : Buff
                 icon =
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Rebirth.tscn").Instantiate()
                     as ColorRect;
-
+                    
                 break;
             default:
                 return;
@@ -95,6 +114,7 @@ public partial class HurtBuff : Buff
                 damage = 0;
                 Stack--;
                 BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                TweenLabel();
                 break;
         }
 
@@ -102,11 +122,18 @@ public partial class HurtBuff : Buff
         {
             BuffIcon.QueueFree();
             Owner.HurtBuffs.Remove(this);
+            Hint(BuffName.DamageImmune,BuffHintLabel.Which.vanish);
         }
     }
 
     public static void BuffAdd(BuffName name, Charater target, int stack)
     {
+        if(target.HurtBuffs.Any(x => x.ThisBuffName == name))
+        {
+            Buff buff0 = target.HurtBuffs.First(x => x.ThisBuffName == name);
+            buff0.Stack += stack;
+            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
+        }
         HurtBuff buff = null;
         ColorRect icon = null;
         switch (name)

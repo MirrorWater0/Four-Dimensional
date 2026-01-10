@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-public partial class Echo : PlayerCharater
+public partial class Echo : PlayerCharacter
 {
 	public override PackedScene CharaterScene { get; set; } = ChoseCharater._Echo;
 	Label label => field ??= GetNode<Label>("Label");

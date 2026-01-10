@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Threading.Tasks;
 
 public partial class KasiyaSpecialSkill : Node
 {
@@ -16,10 +17,10 @@ public class TerminateLight : Skill
 
     public override string SkillName { get; set; } = "终末之光";
 
-    public override void Effect()
+    public async override Task Effect()
     {
-        base.Effect();
-        Attack1(10 + OwnerCharater.BattlePower);
+        await base.Effect();
+        await Attack1(10 + OwnerCharater.BattlePower);
         OwnerCharater.EndAction();
     }
 }

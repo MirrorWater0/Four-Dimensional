@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Threading.Tasks;
 
 public partial class Defense : Skill
 {
@@ -9,9 +10,9 @@ public partial class Defense : Skill
     }
     public override string SkillName { set; get; } = "坚不可摧";
 
-    public async override void Effect()
+    public async override Task Effect()
     {
-        base.Effect();
+        await base.Effect();
         OwnerCharater.UpdataBlock(2*OwnerCharater.BattleSurvivability);
         OwnerCharater.EndAction();
     }

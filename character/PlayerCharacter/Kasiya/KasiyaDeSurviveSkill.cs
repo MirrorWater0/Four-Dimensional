@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Threading.Tasks;
 
 public partial class KasiyaDeSurviveSkill
 {
@@ -15,11 +16,11 @@ public partial class ReNewedSpirit : Skill
         Description = "提升自身2点战斗力和2点生存能力。";
     }
 
-    public async override void Effect()
+    public async override Task Effect()
     {
-        base.Effect();
-        IncreaseProperties(OwnerCharater,PropertyType.Power,2);
-        IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,2);
+        await base.Effect();
+        await IncreaseProperties(OwnerCharater,PropertyType.Power,2);
+        await IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,2);
         
         OwnerCharater.EndAction();
     }

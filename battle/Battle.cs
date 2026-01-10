@@ -16,7 +16,7 @@ public partial class Battle : Node2D
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
-    public PlayerCharater[] Players = new PlayerCharater[] { };
+    public PlayerCharacter[] Players = new PlayerCharacter[] { };
     public Charater[] Enemies;
     public Node2D Right => field ??= GetNode("Right") as Node2D;
     public Node2D Left => field ??= GetNode("Left") as Node2D;
@@ -146,7 +146,7 @@ public partial class Battle : Node2D
                 return;
             }
 
-			await Task.Delay(1000);
+			await Task.Delay(800);
 			
             DyingDetector(Enemies);
             Enemies[0].StartAction();
@@ -154,7 +154,7 @@ public partial class Battle : Node2D
             Array.Reverse(Enemies);
 
             await ToSignal(this, SignalName.Next);
-            await Task.Delay(1500);
+            await Task.Delay(500);
 
             if (
                 Players.All(x => x.State == Charater.CharaterState.Dying)
@@ -162,6 +162,7 @@ public partial class Battle : Node2D
             )
             {
                 GD.Print("over");
+                Retreat();
                 return;
             }
         }

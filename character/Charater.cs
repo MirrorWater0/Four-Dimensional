@@ -63,7 +63,7 @@ public partial class Charater : Node2D
 
     public int PositionIndex;
 
-    public PackedScene Number = ResourceLoader.Load<PackedScene>("res://EffectNode/Number.tscn");
+    public PackedScene Number = ResourceLoader.Load<PackedScene>("res://LabelNode/Number.tscn");
 
     public bool IsPlayer;
 
@@ -259,6 +259,7 @@ public partial class Charater : Node2D
 
     public async void PlayAnimatedSprite(AnimatedSprite2D animation)
     {
+        animation.Frame = 0;
 		Tween activetween = CreateTween();
 
         CreateTween().TweenProperty(animation, "modulate", new Color(1, 1, 1, 1), 0.15f);

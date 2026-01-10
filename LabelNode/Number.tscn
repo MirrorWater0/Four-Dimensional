@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cuswws5b0y001"]
 
-[ext_resource type="Script" uid="uid://bit7v53qindo5" path="res://EffectNode/Number.cs" id="1_au4bt"]
+[ext_resource type="Script" uid="uid://bit7v53qindo5" path="res://LabelNode/Number.cs" id="1_au4bt"]
 [ext_resource type="FontFile" uid="uid://cfccx8dim5ojw" path="res://asset/font/千图笔锋手写体.ttf" id="2_s3g7q"]
 
 [node name="Node2D" type="Node2D"]

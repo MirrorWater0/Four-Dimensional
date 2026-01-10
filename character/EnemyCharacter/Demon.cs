@@ -26,6 +26,7 @@ public partial class Demon : EnemyTemplate
 		
 		base.Initialize();
 		DyingBuff.BuffAdd(Buff.BuffName.Rebirth,this,1);
+		UpdataEnerge(1);
     }
 
 	

@@ -15,11 +15,11 @@ public partial class Attack : Skill
 
     public override string SkillName { set; get; } = "流影二段";
 
-    public async override void Effect()
+    public async override Task Effect()
     {
-        base.Effect();
+        await base.Effect();
         
-        Attack2(1);
+        await Attack2(1);
         OwnerCharater.EndAction();
     }
 }

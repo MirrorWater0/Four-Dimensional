@@ -21,7 +21,7 @@ public partial class ChoseCharater : CanvasLayer
         Kasiya kasiya2 = _Kasiya.Instantiate() as Kasiya;
         kasiya2.TakenSkills = new Skill[] { new Attack(kasiya2),new Defense(kasiya2),new TerminateLight(kasiya2)};
         kasiya2.GainedSkills.Add(new Cast(kasiya2));
-        PlayerInfo.PlayerCharaters = new PlayerCharater[]{kasiya1, kasiya2,_echo1,_echo2};
+        PlayerInfo.PlayerCharaters = new PlayerCharacter[]{kasiya1, kasiya2,_echo1,_echo2};
 
         for (int i = 0;i < 4; i++)
         {

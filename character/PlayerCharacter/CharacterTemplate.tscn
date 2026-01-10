@@ -299,7 +299,7 @@ tracks/13/keys = {
 
 [sub_resource type="Animation" id="Animation_c66ar"]
 resource_name = "attack"
-length = 1.4
+length = 0.8
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -307,10 +307,10 @@ tracks/0/path = NodePath("Sprite2D:scale")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.6, 0.7, 0.933333),
+"times": PackedFloat32Array(0.53333336, 0.6333333, 0.78333336),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector2(0.16, 0.16), Vector2(0.18, 0.18), Vector2(0.16, 0.16)]
+"values": [Vector2(0.16, 0.16), Vector2(0.165, 0.165), Vector2(0.16, 0.16)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -331,7 +331,7 @@ tracks/2/path = NodePath("Effect/Effect2:frame")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.466667),
+"times": PackedFloat32Array(0, 0.4),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
 "values": [0, 9]
@@ -343,7 +343,7 @@ tracks/3/path = NodePath("Effect/Effect2:self_modulate")
 tracks/3/interp = 1
 tracks/3/loop_wrap = true
 tracks/3/keys = {
-"times": PackedFloat32Array(0, 0.466667, 0.566667),
+"times": PackedFloat32Array(0, 0.36666667, 0.43333334),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
 "values": [Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
@@ -355,7 +355,7 @@ tracks/4/path = NodePath("Effect/explode:frame")
 tracks/4/interp = 2
 tracks/4/loop_wrap = true
 tracks/4/keys = {
-"times": PackedFloat32Array(0, 0.56666666),
+"times": PackedFloat32Array(0, 0.5),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
 "values": [0, 14]
@@ -367,7 +367,7 @@ tracks/5/path = NodePath("Effect/explode:modulate")
 tracks/5/interp = 1
 tracks/5/loop_wrap = true
 tracks/5/keys = {
-"times": PackedFloat32Array(0.033333335, 0.16666667, 0.5, 0.6333333),
+"times": PackedFloat32Array(0.033333335, 0.16666667, 0.4, 0.53333336),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
 "values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
@@ -888,6 +888,7 @@ texture = SubResource("GradientTexture2D_4ikhs")
 metadata/_edit_lock_ = true
 
 [node name="State" type="HBoxContainer" parent="."]
+z_index = 2
 offset_left = -96.25
 offset_top = -261.25
 offset_right = 31.75

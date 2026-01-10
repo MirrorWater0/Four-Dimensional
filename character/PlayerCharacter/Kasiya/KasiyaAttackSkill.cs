@@ -18,9 +18,9 @@ public partial class Determination : Skill
     public override string SkillName { get; set; } = "剑意已决";
     public override async Task Effect()
     {
-        base.Effect();
+        await base.Effect();
         await Attack1(6);
-        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune,OwnerCharater,1);
+        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune,OwnerCharater,2);
         OwnerCharater.EndAction();
     }
 }
@@ -35,9 +35,9 @@ public partial class Smite : Skill
 
     public override async Task Effect()
     {
-        base.Effect();
-        DescendingProperties(Chosetarget1()[0],PropertyType.Survivalibility,2);
-        Attack1(3);
+        await base.Effect();
+        await DescendingProperties(Chosetarget1()[0],PropertyType.Survivalibility,2);
+        await Attack1(3);
         OwnerCharater.EndAction();
     }
     
@@ -55,7 +55,7 @@ public partial class Cast : Skill
     public override string SkillName { get; set; } = "投射";
     public override async Task Effect()
     {
-        base.Effect();
+        await base.Effect();
         await Attack1(10);
         OwnerCharater.UpdataBlock(10+OwnerCharater.BattlePower);
         OwnerCharater.EndAction();

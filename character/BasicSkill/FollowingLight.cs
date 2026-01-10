@@ -11,10 +11,10 @@ public partial class FollowingLight : Skill
     }
     public override string SkillName { set; get; } = "流光日影";
 
-    public async override void Effect()
+    public async override Task Effect()
     {
-        base.Effect();
-        Attack1(1);
+        await base.Effect();
+        await Attack1(1);
         Charater[] targets = (OwnerCharater.IsPlayer) switch
         {
             true => OwnerCharater.BattleNode.Players, false => OwnerCharater.BattleNode.Enemies,

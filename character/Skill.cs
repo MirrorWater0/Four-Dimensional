@@ -86,8 +86,9 @@ public partial class Skill
         attack.AnimationPlayer0.Play("Attack1");
         attack.Sprite1.GlobalPosition = targets[0].GlobalPosition;
 
-        await Task.Delay(600);
+        await Task.Delay(700);
         targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        await Task.Delay(200);
     }
 
     public async Task Attack2(float basis) //顺位二段攻击
@@ -102,9 +103,9 @@ public partial class Skill
         attack.AnimationPlayer0.Play("Attack1");
         attack.Sprite1.GlobalPosition = targets[0].GlobalPosition;
 
-        await Task.Delay(600);
+        await Task.Delay(700);
         targets[0].GetHurt(basis + OwnerCharater.BattlePower);
-        await Task.Delay(150);
+        await Task.Delay(200);
         targets[0].GetHurt(basis + OwnerCharater.BattlePower);
     }
 

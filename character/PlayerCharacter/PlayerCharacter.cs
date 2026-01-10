@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class PlayerCharater : Charater
+public partial class PlayerCharacter : Charater
 {
     public Frame SelfFrame;
     public Control SkillButtonControl;
