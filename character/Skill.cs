@@ -35,10 +35,9 @@ public partial class Skill
     public bool Enable;
     public string Description;
 
-    public Skill(SkillTypes skillType, Charater ownerCharater)
+    public Skill(SkillTypes skillType)
     {
         SkillType = skillType;
-        OwnerCharater = ownerCharater;
     }
 
     public virtual async Task Effect()

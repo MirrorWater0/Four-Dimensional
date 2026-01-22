@@ -46,7 +46,7 @@ public partial class Buff
     {
         BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
         label.Initialize(which, name.ToString());
-        label.Position = Owner.Position + new Vector2(0, -50f);
+        label.Position = Vector2.Zero;
         Owner.AddChild(label);
     }
 }
@@ -121,6 +121,7 @@ public partial class HurtBuff : Buff
         if (Stack == 0)
         {
             BuffIcon.QueueFree();
+            BuffIcon = null;
             Owner.HurtBuffs.Remove(this);
             Hint(BuffName.DamageImmune,BuffHintLabel.Which.vanish);
         }
@@ -133,6 +134,9 @@ public partial class HurtBuff : Buff
             Buff buff0 = target.HurtBuffs.First(x => x.ThisBuffName == name);
             buff0.Stack += stack;
             buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
+            buff0.TweenLabel();
+            buff0.Hint(BuffName.DamageImmune,BuffHintLabel.Which.gain);
+            return;
         }
         HurtBuff buff = null;
         ColorRect icon = null;
@@ -149,6 +153,7 @@ public partial class HurtBuff : Buff
                 return;
         }
         buff.BuffIcon = icon;
+        buff.Hint(buff.ThisBuffName,BuffHintLabel.Which.gain);
         buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
         target.StateIconContainer.AddChild(icon);
     }

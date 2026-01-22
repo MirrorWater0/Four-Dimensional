@@ -1,8 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://bu7e2ppfhmetu"]
+[gd_scene load_steps=6 format=3 uid="uid://bu7e2ppfhmetu"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_ivrln"]
 [ext_resource type="Script" uid="uid://c5xtioxeamb0m" path="res://character/PlayerCharacter/Echo/Echo.cs" id="1_p8ruw"]
-[ext_resource type="Texture2D" uid="uid://c8mvcfgxridg4" path="res://asset/PlayerCharater/Test1.png" id="3_gue1o"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_dsw3a"]
 [ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="5_jxkbc"]
 
@@ -18,9 +17,8 @@ shader_parameter/motion_blur = false
 
 [node name="Echo" instance=ExtResource("1_ivrln")]
 script = ExtResource("1_p8ruw")
-Portrait = ExtResource("3_gue1o")
+Portrait = ExtResource("5_jxkbc")
 
 [node name="Sprite2D" parent="." index="2"]
 material = SubResource("ShaderMaterial_0wxsi")
 texture = ExtResource("5_jxkbc")
-flip_h = false

@@ -7,6 +7,7 @@
 z_index = -1
 layout_mode = 3
 anchors_preset = 0
+mouse_filter = 2
 script = ExtResource("1_ufud0")
 
 [node name="Button" type="Button" parent="."]
@@ -17,6 +18,7 @@ offset_left = 1.76471
 offset_top = 2.765
 offset_right = 89.7647
 offset_bottom = 90.765
+mouse_filter = 1
 keep_pressed_outside = true
 
 [node name="TextureRect" type="TextureRect" parent="."]

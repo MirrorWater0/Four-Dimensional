@@ -38,7 +38,7 @@ public partial class Battle : Node2D
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
 
-        Players = PlayerInfo.PlayerCharaters.ToArray();
+        Players = GameInfo.PlayerCharaters.ToArray();
 
         EnemyTemplate test1 = _test1.Instantiate<EnemyTemplate>();
         test1.PositionIndex = 1;
@@ -195,7 +195,7 @@ public partial class Battle : Node2D
 
         EmitS();
 
-        await Task.Delay(1500);
+        await Task.Delay(1000);
         for (int i = 0; i < Players.Length; i++)
         {
             Players[i].State = Charater.CharaterState.Normal;

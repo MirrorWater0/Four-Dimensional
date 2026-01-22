@@ -9,24 +9,24 @@ public partial class ChoseCharater : CanvasLayer
     static public PackedScene _Kasiya = ResourceLoader.Load<PackedScene>("res://character/PlayerCharacter/Kasiya/kasiya.tscn");
     public override void _Ready()
     {
-        Echo _echo1 = _Echo.Instantiate() as Echo;
-        _echo1.TakenSkills = new Skill[] { new Attack(_echo1),new FollowingLight(_echo1),new SacredOnslaught(_echo1) };
-        
-        Echo _echo2 = _Echo.Instantiate() as Echo;
-        _echo2.TakenSkills = new Skill[] { new Attack(_echo2),new FollowingLight(_echo2),new SacredOnslaught(_echo2) };
-        Kasiya kasiya1 = _Kasiya.Instantiate() as Kasiya;
-        kasiya1.TakenSkills = new Skill[] { new Attack(kasiya1),new Defense(kasiya1),new TerminateLight(kasiya1) };
-        kasiya1.GainedSkills.Add(new ReNewedSpirit(kasiya1));
-        kasiya1.GainedSkills.Add(new Determination(kasiya1));
-        Kasiya kasiya2 = _Kasiya.Instantiate() as Kasiya;
-        kasiya2.TakenSkills = new Skill[] { new Attack(kasiya2),new Defense(kasiya2),new TerminateLight(kasiya2)};
-        kasiya2.GainedSkills.Add(new Cast(kasiya2));
-        PlayerInfo.PlayerCharaters = new PlayerCharacter[]{kasiya1, kasiya2,_echo1,_echo2};
+        PlayerInfoStructure _echoStructure = new PlayerInfoStructure();
+        _echoStructure.CharacterScene = _Echo;
+        _echoStructure.LifeMax = 50;
+        _echoStructure.Power = 10;
+        _echoStructure.Survivability = 10;
+        _echoStructure.Speed = 10;
+        PlayerInfoStructure _kasiyaStructure = new PlayerInfoStructure();
+        _kasiyaStructure.CharacterScene = _Kasiya;
+        _kasiyaStructure.LifeMax = 50;
+        _kasiyaStructure.Power = 10;
+        _kasiyaStructure.Survivability = 10;
+        _kasiyaStructure.Speed = 10;
+        GameInfo.PlayerCharaters = new PlayerInfoStructure[]{_kasiyaStructure, _kasiyaStructure,_echoStructure, _echoStructure};
 
         for (int i = 0;i < 4; i++)
         {
-            var character = PlayerInfo.PlayerCharaters[i];
-            character.GainedSkills.AddRange(character.TakenSkills);
+            var character = GameInfo.PlayerCharaters[i];
+            GameInfo.PlayerCharaters[i].GainedSkills.AddRange(character.TakenSkills);
         }
         InitializePostion();
     }
@@ -39,15 +39,6 @@ public partial class ChoseCharater : CanvasLayer
 
     public void InitializePostion()
     {
-        for (int i = 0; i < PlayerInfo.PlayerCharaters.Length; i++)
-        {
-            var charater = PlayerInfo.PlayerCharaters[i];
-            charater.PositionIndex = i + 1;
-            charater.Lifemax = 50;
-            charater.Power = 10;
-            charater.Survivability = 10;
-            charater.UntakeSkills = new List<Skill>() { new Attack(charater), new Combo(charater)};
-        }
-        PlayerInfo.PlayerCharaters[0].UntakeSkills.Add(new ReNewedSpirit(PlayerInfo.PlayerCharaters[0]));
+        GameInfo.PlayerCharaters[0].GainedSkills.Add(new ReNewedSpirit(null));
     }
 }

@@ -1,4 +1,4 @@
-[gd_scene load_steps=81 format=3 uid="uid://dcivwl06q4oiv"]
+[gd_scene load_steps=83 format=3 uid="uid://dcivwl06q4oiv"]
 
 [ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Charater.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
@@ -6,8 +6,8 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="3_lucsw"]
 [ext_resource type="Texture2D" uid="uid://cff55km7arrr3" path="res://asset/CharaterState/life.png" id="4_eq06d"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="5_yic7g"]
-[ext_resource type="Texture2D" uid="uid://bbm87emmfa4bx" path="res://asset/PlayerCharater/2025.6.18.png" id="6_faub5"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="7_5ewuv"]
+[ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="7_lyi1f"]
 [ext_resource type="Material" uid="uid://cxcwh7k21rmok" path="res://tres/hit.tres" id="8_ek3d4"]
 [ext_resource type="Shader" uid="uid://bhg4bm8wdcihc" path="res://shader/cleanbg.gdshader" id="9_lyi1f"]
 [ext_resource type="SpriteFrames" uid="uid://cfgwhmruicynr" path="res://character/PlayerCharacter/Echo.tres" id="10_gvqk1"]
@@ -20,6 +20,7 @@
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Texture2D" uid="uid://crc0gqw5o21cw" path="res://asset/Effect/Shield.png" id="16_lyi1f"]
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="16_yic7g"]
+[ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 
 [sub_resource type="Shader" id="Shader_vajdu"]
 code = "shader_type canvas_item;
@@ -739,6 +740,18 @@ shader_parameter/rotation_speed = 0.0
 shader_parameter/pulse_speed = 1.0
 shader_parameter/edge_softness = 0.5
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_oexsw"]
+shader = ExtResource("21_gvqk1")
+shader_parameter/wing_color = Color(1, 1, 1, 1)
+shader_parameter/flip_vertical = false
+shader_parameter/wing_size = 0.63300002680762
+shader_parameter/pivot = Vector2(0.7, 0.7)
+shader_parameter/rotation = 0.8660001296266504
+shader_parameter/edge_smoothness = 0.02400000114
+shader_parameter/blade_count = 5
+shader_parameter/wing_span = 1.3280000598201198
+shader_parameter/spine_thickness = 0.11900000495398
+
 [node name="CharacterTemplate" type="Node2D"]
 scale = Vector2(0.8, 0.8)
 script = ExtResource("1_4ikhs")
@@ -805,7 +818,7 @@ texture_progress = ExtResource("4_eq06d")
 [node name="Sprite2D" type="Sprite2D" parent="."]
 material = SubResource("ShaderMaterial_37ane")
 scale = Vector2(0.16, 0.16)
-texture = ExtResource("6_faub5")
+texture = ExtResource("7_lyi1f")
 
 [node name="Hit" type="GPUParticles2D" parent="."]
 self_modulate = Color(25.946, 45.946, 64.324, 1)
@@ -843,6 +856,7 @@ scale = Vector2(1.5, 1.5)
 sprite_frames = ExtResource("10_gvqk1")
 animation = &"attack"
 frame = 14
+metadata/_edit_lock_ = true
 
 [node name="Effect2" type="AnimatedSprite2D" parent="Effect"]
 self_modulate = Color(1, 1, 1, 0)
@@ -851,6 +865,7 @@ scale = Vector2(2, 2)
 sprite_frames = ExtResource("11_oexsw")
 animation = &"attack"
 frame = 2
+metadata/_edit_lock_ = true
 
 [node name="Effect3" type="AnimatedSprite2D" parent="Effect"]
 visible = false
@@ -860,23 +875,27 @@ sprite_frames = ExtResource("12_1e6xj")
 animation = &"light2"
 autoplay = "light2"
 frame_progress = 0.288486
+metadata/_edit_lock_ = true
 
 [node name="explode" type="AnimatedSprite2D" parent="Effect"]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(1.1920929e-07, -58.75)
 scale = Vector2(0.7, 0.7)
 sprite_frames = SubResource("SpriteFrames_faub5")
+metadata/_edit_lock_ = true
 
 [node name="absorb" type="AnimatedSprite2D" parent="Effect"]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(0, -31.249996)
 sprite_frames = SubResource("SpriteFrames_114sw")
+metadata/_edit_lock_ = true
 
 [node name="shield" type="AnimatedSprite2D" parent="Effect"]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(0, -25)
 scale = Vector2(0.8, 0.8)
 sprite_frames = SubResource("SpriteFrames_ek3d4")
+metadata/_edit_lock_ = true
 
 [node name="Hoverframe" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(200, 400)
@@ -941,6 +960,24 @@ offset_left = 26.0
 offset_top = 13.0
 offset_right = 46.0
 offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 20
+text = "10"
+
+[node name="wing" type="ColorRect" parent="State"]
+material = SubResource("ShaderMaterial_oexsw")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="State/wing"]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 14.0
+offset_right = 37.0
+offset_bottom = 49.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"

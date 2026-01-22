@@ -52,23 +52,22 @@ public partial class BattleReady : Control
                 [6] = 8,
                 [3] = 9,
             };
-        for (int i = 0; i < PlayerInfo.PlayerCharaters.Length; i++)
+        for (int i = 0; i < GameInfo.PlayerCharaters.Length; i++)
         {
-            var portait = PortaitScene.Instantiate() as PortaitFrame;
-            portait.PortaitRect.Texture = PlayerInfo.PlayerCharaters[i].Portrait;
-            var positionindex = PlayerInfo.PlayerCharaters[i].PositionIndex;
-            portait.Charater = PlayerInfo.PlayerCharaters[i]; //portrait获取角色引用
-            Grid.GetChild(remap[positionindex] - 1).AddChild(portait);
+            var portrait = PortaitScene.Instantiate() as PortaitFrame;
+            portrait.PortaitRect.Texture = GameInfo.PlayerCharaters[i].Portrait;
+            var positionindex = GameInfo.PlayerCharaters[i].PositionIndex;
+            portrait.Charater = GameInfo.PlayerCharaters[i]; //portrait获取角色引用
+            Grid.GetChild(remap[positionindex] - 1).AddChild(portrait);
 
-            portait.PortaitButton.Pressed += () =>
+            portrait.PortaitButton.ButtonDown += () =>
             {
-                _dragTarget = portait;
-                GD.Print("well");
+                _dragTarget = portrait;
             };
-            portait.PortaitButton.ButtonUp += () =>
+            portrait.PortaitButton.ButtonUp += () =>
             {
                 _dragTarget = null;
-                var olderParent = portait.GetParent();
+                var olderParent = portrait.GetParent();
                 var newParent = Grid.GetChildren()
                     .OfType<TextureRect>()
                     .Where(x => x.GetGlobalRect().HasPoint(GetViewport().GetMousePosition()))
@@ -82,13 +81,13 @@ public partial class BattleReady : Control
                         CreateTween()
                             .TweenProperty(overPortait, "position", new Vector2(0, 0), 0.2f);
                     }
-                    portait.Reparent(newParent);
-                    CreateTween().TweenProperty(portait, "position", new Vector2(0, 0), 0.1f);
+                    portrait.Reparent(newParent);
+                    CreateTween().TweenProperty(portrait, "position", new Vector2(0, 0), 0.1f);
                     _dragTarget = null;
                 }
                 else
                 {
-                    CreateTween().TweenProperty(portait, "position", new Vector2(0, 0), 0.2f);
+                    CreateTween().TweenProperty(portrait, "position", new Vector2(0, 0), 0.2f);
                 }
             };
         }
@@ -112,10 +111,10 @@ public partial class BattleReady : Control
                 {
                     other.Selected.Visible = false;
                 }
-                GD.Print("select", PlayerInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count);
+                GD.Print("select", GameInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count);
                 ClearSkillContainer();
 
-                var character = PlayerInfo.PlayerCharaters[frame.IDindex];
+                var character = GameInfo.PlayerCharaters[frame.IDindex];
 
                 for (int j = 0; j < character.GainedSkills.Count; j++)
                 {
@@ -148,7 +147,7 @@ public partial class BattleReady : Control
 
                     selectbutton.Pressed += () =>
                     {
-                        PlayerInfo.PlayerCharaters[frame.IDindex].TakenSkills[skillIndex] = skill;
+                        GameInfo.PlayerCharaters[frame.IDindex].TakenSkills[skillIndex] = skill;
                         for (int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
                             SelectButton button = SkillContainer

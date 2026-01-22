@@ -30,7 +30,7 @@ public partial class Charater : Node2D
     public int BattleSurvivability;
     public int Survivability;
     public int Speed;
-
+    public int BattleSpeed;
     public int Block;
 
     //properties label
@@ -64,6 +64,7 @@ public partial class Charater : Node2D
     public int PositionIndex;
 
     public PackedScene Number = ResourceLoader.Load<PackedScene>("res://LabelNode/Number.tscn");
+    
 
     public bool IsPlayer;
 

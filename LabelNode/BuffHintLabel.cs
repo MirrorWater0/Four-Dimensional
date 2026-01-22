@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-public partial class BuffHintLabel : Label
+public partial class BuffHintLabel : RichTextLabel
 {
     public enum Which
     {
@@ -14,17 +14,17 @@ public partial class BuffHintLabel : Label
         switch (which)
         {
             case Which.vanish:
-                Text = $"{name}"+"结束";
+                Text = $"[color=yellow]{name}[/color]"+"结束";
                 break;
             case Which.gain:
-                Text = $"{name}"+"获得";
+                Text = $"[color=yellow]{name}[/color]"+"获得";
                 break;
         }
     }
     public override async void _Ready()
     {
-        GD.Print("BuffHintLabel");
         Position += new Vector2(0, -250);
+        PivotOffset = Size / 2;
         Random random = new Random();
         int offset = random.Next(-100, 100);
         Scale = new Vector2(0.1f, 0.1f);
@@ -46,6 +46,6 @@ public partial class BuffHintLabel : Label
             .TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.2f)
             .SetEase(Tween.EaseType.Out);
         await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
-        QueueFree();
+        // QueueFree();
     }
 }
