@@ -31,7 +31,7 @@ public partial class Skill
 
     public virtual string SkillName { set; get; }
     public SkillTypes SkillType;
-    public Charater OwnerCharater;
+    public Character OwnerCharater;
     public bool Enable;
     public string Description;
 
@@ -46,13 +46,13 @@ public partial class Skill
         OwnerCharater.BattleNode.UsedSkills.Add(this);
     }
 
-    public Charater[] Chosetarget1()
+    public Character[] Chosetarget1()
     {
         int index = OwnerCharater.PositionIndex;
-        Charater[] targets = (OwnerCharater.IsPlayer) switch
+        Character[] targets = (OwnerCharater.IsPlayer) switch
         {
-            true => OwnerCharater.BattleNode.Enemies,
-            false => OwnerCharater.BattleNode.Players,
+            true => OwnerCharater.BattleNode.Enemies.Cast<Character>().ToArray(),
+            false => OwnerCharater.BattleNode.Players.Cast<Character>().ToArray(),
         };
 
         int[] id = (index % 3) switch
@@ -68,14 +68,14 @@ public partial class Skill
                 int iindex = Array.IndexOf(id, x.PositionIndex);
                 return iindex;
             })
-            .Where(x => x.State == Charater.CharaterState.Normal)
+            .Where(x => x.State == Character.CharaterState.Normal)
             .ToArray();
         return targets;
     }
 
     public async Task Attack1(float basis) //顺位一段攻击
     {
-        Charater[] targets = Chosetarget1();
+        Character[] targets = Chosetarget1();
         if (targets.Length == 0)
             return;
 
@@ -92,7 +92,7 @@ public partial class Skill
 
     public async Task Attack2(float basis) //顺位二段攻击
     {
-        Charater[] targets = Chosetarget1();
+        Character[] targets = Chosetarget1();
         if (targets.Length == 0)
             return;
 
@@ -105,10 +105,15 @@ public partial class Skill
         await Task.Delay(700);
         targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         await Task.Delay(200);
-        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        
+        // Only apply second hit if target is still alive
+        if (targets[0].State == Character.CharaterState.Normal)
+        {
+            targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        }
     }
 
-    public async Task Attack3(float basis, Charater target, int num)
+    public async Task Attack3(float basis, Character target, int num)
     {
         if (target == null)
             return;
@@ -122,21 +127,27 @@ public partial class Skill
         await Task.Delay(600);
         for (int i = 0; i < num; i++)
         {
+            // Stop attacking if target has died
+            if (target.State != Character.CharaterState.Normal)
+                break;
+            
             target.GetHurt(basis + OwnerCharater.BattlePower);
             await Task.Delay(150);
         }
     }
 
-    public async Task DescendingProperties(Charater target, PropertyType type, int num)
+    public async Task DescendingProperties(Character target, PropertyType type, int num)
     {
+        ColorRect icon = null;
         switch (type)
         {
             case PropertyType.Power:
                 target.BattlePower -= num;
+                icon = target.PowerIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Survivalibility:
                 target.BattleSurvivability -= num;
-                GD.Print("surv", target.BattleSurvivability);
+                icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
         }
         target.PowerIconLabel.Text = target.BattlePower.ToString();
@@ -145,21 +156,27 @@ public partial class Skill
         Node2D descending = DescendingScene.Instantiate() as Node2D;
         OwnerCharater.BattleNode.AddChild(descending);
         descending.GlobalPosition = target.GlobalPosition + new Vector2(0, -50);
-        await Task.Delay(1000);
+
+        if(icon.PivotOffset == Vector2.Zero) icon.PivotOffset = icon.Size / 2;
+        icon.Scale = new Vector2(2, 2);
+        icon.Modulate = new Color(1, 1, 1, 0.3f);
+        icon.CreateTween().TweenProperty(target.PowerIconLabel, "modulate", new Color(1, 1, 1, 1), 0.5f);
+        icon.CreateTween().TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f);
         descending.QueueFree();
     }
 
-    public async Task IncreaseProperties(Charater target, PropertyType type, int value)
+    public async Task IncreaseProperties(Character target, PropertyType type, int value)
     {
+        ColorRect icon = null;
         switch (type)
         {
             case PropertyType.Power:
                 target.BattlePower += value;
-
+                icon = target.PowerIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Survivalibility:
                 target.BattleSurvivability += value;
-
+                icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
         }
 
@@ -168,6 +185,11 @@ public partial class Skill
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
         target.PlayAnimatedSprite(target.absorb);
 
+        if(icon.PivotOffset == Vector2.Zero) icon.PivotOffset = icon.Size / 2;
+        icon.Scale = new Vector2(1.8f, 1.8f);
+        icon.Modulate = 5*new Color(1, 1, 1, 0.1f);
+        icon.CreateTween().TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f).SetEase(Tween.EaseType.Out);
+        icon.CreateTween().TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f).SetEase(Tween.EaseType.Out);
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }

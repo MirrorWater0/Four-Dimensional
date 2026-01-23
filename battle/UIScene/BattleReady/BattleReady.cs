@@ -52,13 +52,22 @@ public partial class BattleReady : Control
                 [6] = 8,
                 [3] = 9,
             };
-        for (int i = 0; i < GameInfo.PlayerCharaters.Length; i++)
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var portrait = PortaitScene.Instantiate() as PortaitFrame;
-            portrait.PortaitRect.Texture = GameInfo.PlayerCharaters[i].Portrait;
-            var positionindex = GameInfo.PlayerCharaters[i].PositionIndex;
-            portrait.Charater = GameInfo.PlayerCharaters[i]; //portrait获取角色引用
-            Grid.GetChild(remap[positionindex] - 1).AddChild(portrait);
+            portrait.PortaitRect.Texture = GameInfo.PlayerCharacters[i].CharacterScene.Instantiate<PlayerCharacter>().Portrait;
+            portrait.PortaitIndex = i;
+            var positionindex = GameInfo.PlayerCharacters[i].PositionIndex;
+
+            if (remap.ContainsKey(positionindex))
+            {
+                Grid.GetChild(remap[positionindex] - 1).AddChild(portrait);
+            }
+            else
+            {
+                GD.PrintErr($"Invalid PositionIndex: {positionindex}. Valid values are 1-9.");
+                continue;
+            }
 
             portrait.PortaitButton.ButtonDown += () =>
             {
@@ -111,10 +120,10 @@ public partial class BattleReady : Control
                 {
                     other.Selected.Visible = false;
                 }
-                GD.Print("select", GameInfo.PlayerCharaters[frame.IDindex].GainedSkills.Count);
+                GD.Print("select", GameInfo.PlayerCharacters[frame.IDindex].GainedSkills.Count);
                 ClearSkillContainer();
 
-                var character = GameInfo.PlayerCharaters[frame.IDindex];
+                var character = GameInfo.PlayerCharacters[frame.IDindex];
 
                 for (int j = 0; j < character.GainedSkills.Count; j++)
                 {
@@ -147,7 +156,7 @@ public partial class BattleReady : Control
 
                     selectbutton.Pressed += () =>
                     {
-                        GameInfo.PlayerCharaters[frame.IDindex].TakenSkills[skillIndex] = skill;
+                        GameInfo.PlayerCharacters[frame.IDindex].TakenSkills[skillIndex] = skill;
                         for (int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
                             SelectButton button = SkillContainer
@@ -202,8 +211,25 @@ public partial class BattleReady : Control
             var texture = Grid.GetChild<TextureRect>(i);
             if (texture.GetChildCount() > 0)
             {
-                GD.Print(i + 1);
-                texture.GetChild<PortaitFrame>(0).Charater.PositionIndex = remap[i + 1];
+                int gridIndex = i + 1;
+                if (remap.ContainsKey(gridIndex))
+                {
+                    var portrait = texture.GetChild<PortaitFrame>(0);
+                    if (portrait != null)
+                    {
+                        // Update both the data structure and the character instance
+                        GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = remap[gridIndex];
+                    
+                    }
+                    else
+                    {
+                        GD.PrintErr($"Portrait or Charater is null at grid index {gridIndex}");
+                    }
+                }
+                else
+                {
+                    GD.PrintErr($"Invalid grid index: {gridIndex}. Valid values are 1-9.");
+                }
             }
         }
         // GetTree().ChangeSceneToFile("res://battle/Battle.tscn");

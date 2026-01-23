@@ -22,12 +22,12 @@ public partial class Buff
         DamageImmune,
     }
 
-    public Charater Owner;
+    public Character Owner;
     public BuffName ThisBuffName;
     public int Stack;
     public ColorRect BuffIcon;
 
-    public Buff(Charater owner, BuffName name, int stack)
+    public Buff(Character owner, BuffName name, int stack)
     {
         Owner = owner;
         ThisBuffName = name;
@@ -36,6 +36,10 @@ public partial class Buff
 
     public void TweenLabel()
     {
+        if(Stack == 0) return;
+        // Check if BuffIcon is still valid (not disposed or queued for deletion)
+        if(BuffIcon == null || !GodotObject.IsInstanceValid(BuffIcon)) return;
+        
         Tween tween = BuffIcon.CreateTween();
         BuffIcon.GetChild<Label>(0).PivotOffset = BuffIcon.GetChild<Label>(0).Size / 2;
         tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(2f, 2f), 0.15f);
@@ -53,7 +57,7 @@ public partial class Buff
 
 public class DyingBuff : Buff
 {
-    public DyingBuff(Charater owner, BuffName name, int stack)
+    public DyingBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
     public async void Trigger()
@@ -64,21 +68,35 @@ public class DyingBuff : Buff
                 await Task.Delay(200);
                 Owner.CreateTween().TweenProperty(Owner, "modulate", new Godot.Color(1, 1, 1, 1), 0.5f);
                 Owner.Recovery(Owner.BattleLifemax);
-                Owner.State = Charater.CharaterState.Normal;
-                Stack--;
-                TweenLabel();
+                Owner.State = Character.CharaterState.Normal;
+                
+                // Only tween the label if we still have stacks after this use
+                if (Stack > 1)
+                {
+                    Stack--;
+                    TweenLabel();
+                }
+                else
+                {
+                    Stack = 0;
+                }
+                
                 GD.Print("Rebirth", Owner.Life, "array");
                 break;
         }
 
         if (Stack == 0)
         {
-            BuffIcon.QueueFree();
+            // Check if BuffIcon is still valid before queuing for deletion
+            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
+            {
+                BuffIcon.QueueFree();
+            }
             Owner.DyingBuffs.Remove(this);
         }
     }
 
-    public static void BuffAdd(BuffName name, Charater target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack)
     {
         DyingBuff buff = null;
         ColorRect icon = null;
@@ -103,7 +121,7 @@ public class DyingBuff : Buff
 
 public partial class HurtBuff : Buff
 {
-    public HurtBuff(Charater owner, BuffName name, int stack)
+    public HurtBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
     public void Trigger(ref float damage)
@@ -113,21 +131,30 @@ public partial class HurtBuff : Buff
             case BuffName.DamageImmune:
                 damage = 0;
                 Stack--;
-                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
-                TweenLabel();
+                
+                // Only update the label and tween if we still have stacks
+                if (Stack > 0)
+                {
+                    BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                    TweenLabel();
+                }
                 break;
         }
 
         if (Stack == 0)
         {
-            BuffIcon.QueueFree();
+            // Check if BuffIcon is still valid before queuing for deletion
+            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
+            {
+                BuffIcon.QueueFree();
+            }
             BuffIcon = null;
             Owner.HurtBuffs.Remove(this);
             Hint(BuffName.DamageImmune,BuffHintLabel.Which.vanish);
         }
     }
 
-    public static void BuffAdd(BuffName name, Charater target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack)
     {
         if(target.HurtBuffs.Any(x => x.ThisBuffName == name))
         {

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 public partial class FollowingLight : Skill
 {
-    public FollowingLight(Charater owner):base(Skill.SkillTypes.Attack,owner)
+    public FollowingLight(Character owner):base(Skill.SkillTypes.Attack)
     {
         Description = "对最前方的敌人发动攻击，造成基础伤害+战斗力的伤害。";
     }
@@ -14,10 +14,10 @@ public partial class FollowingLight : Skill
     public async override Task Effect()
     {
         await base.Effect();
-        await Attack1(1);
-        Charater[] targets = (OwnerCharater.IsPlayer) switch
+        await Attack1(10);
+        Character[] targets = (OwnerCharater.IsPlayer) switch
         {
-            true => OwnerCharater.BattleNode.Players, false => OwnerCharater.BattleNode.Enemies,
+            true => OwnerCharater.BattleNode.Enemies.Cast<Character>().ToArray(), false => OwnerCharater.BattleNode.Players.Cast<Character>().ToArray(),
         };
         var MaxNum = targets.Max(x => x.PositionIndex);
         var target = targets.Where(x => x.PositionIndex == MaxNum).ToArray();

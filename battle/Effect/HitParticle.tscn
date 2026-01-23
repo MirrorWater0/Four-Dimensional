@@ -1,0 +1,13 @@
+[gd_scene load_steps=4 format=3 uid="uid://2h0l4rb4lswj"]
+
+[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="1_17w5o"]
+[ext_resource type="Material" uid="uid://cxcwh7k21rmok" path="res://tres/hit.tres" id="2_s7rud"]
+[ext_resource type="Script" uid="uid://dmgfovd4ptryh" path="res://battle/Effect/HitParticle.cs" id="3_s7rud"]
+
+[node name="HitParticle" type="GPUParticles2D"]
+amount = 30
+texture = ExtResource("1_17w5o")
+lifetime = 1.25
+explosiveness = 1.0
+process_material = ExtResource("2_s7rud")
+script = ExtResource("3_s7rud")

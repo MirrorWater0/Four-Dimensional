@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 public partial class Attack : Skill
 {
     
-    public Attack(Charater owner) : base(Skill.SkillTypes.Attack, owner)
+    public Attack() : base(Skill.SkillTypes.Attack)
     {
         Description = "对前方敌人发动二段连续攻击，每次造成基础伤害+战斗力的伤害。";
     }

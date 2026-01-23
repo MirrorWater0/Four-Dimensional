@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 static public partial class GameInfo
 {
-    static public PlayerInfoStructure[] PlayerCharaters;
+    static public PlayerInfoStructure[] PlayerCharacters;
 }
 
 public struct PlayerInfoStructure
@@ -17,5 +17,5 @@ public struct PlayerInfoStructure
     public int Speed;
     public List<Skill> GainedSkills = new List<Skill>();
     public Skill[] TakenSkills = new Skill[3];
-    public Vector2 PostionIndex;
+    public int PositionIndex;
 }

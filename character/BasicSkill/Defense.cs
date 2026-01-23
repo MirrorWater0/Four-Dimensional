@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 public partial class Defense : Skill
 {
-    public Defense(Charater owner):base(Skill.SkillTypes.Defence,owner)
+    public Defense():base(Skill.SkillTypes.Defence)
     {
         Description = "获得护盾，护盾值为2倍战斗生存能力。";
     }

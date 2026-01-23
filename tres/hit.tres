@@ -17,14 +17,14 @@ curve_y = SubResource("Curve_w7qek")
 
 [sub_resource type="Curve" id="Curve_p1s2n"]
 _limits = [0.0, 1.5, 0.0, 1.0]
-_data = [Vector2(1e-05, 1.5), 0.0, 0.0, 0, 0, Vector2(1, 0.131868), 0.0, 0.0, 0, 0]
-point_count = 2
+_data = [Vector2(0, 1.011236), 0.0, 0.0, 0, 0, Vector2(0.5530303, 1.5), 0.0, 0.0, 0, 0, Vector2(1, 0.5898876), 0.0, 0.0, 0, 0]
+point_count = 3
 
 [sub_resource type="CurveTexture" id="CurveTexture_fbo3g"]
 curve = SubResource("Curve_p1s2n")
 
 [sub_resource type="Curve" id="Curve_6q4r3"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+_data = [Vector2(0, 0.48314613), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
 point_count = 2
 
 [sub_resource type="Curve" id="Curve_8ws1s"]
@@ -32,7 +32,7 @@ _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
 point_count = 2
 
 [sub_resource type="Curve" id="Curve_a1kgq"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+_data = [Vector2(0, 0.32584274), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
 point_count = 2
 
 [sub_resource type="CurveXYZTexture" id="CurveXYZTexture_hmaty"]
@@ -43,21 +43,20 @@ curve_z = SubResource("Curve_a1kgq")
 [resource]
 particle_flag_align_y = true
 particle_flag_disable_z = true
-emission_shape = 3
-emission_box_extents = Vector3(700, 600, 1)
 angle_min = -20.0
 angle_max = 20.0
 direction = Vector3(0, 0, 0)
 spread = 0.0
+initial_velocity_max = 62.84
 directional_velocity_min = 0.999984
 directional_velocity_max = 0.999984
 directional_velocity_curve = SubResource("CurveXYZTexture_pf0lj")
-radial_velocity_min = 414.0
-radial_velocity_max = 1000.0
+radial_velocity_min = 355.17996
+radial_velocity_max = 941.17993
 radial_velocity_curve = SubResource("CurveTexture_fbo3g")
 gravity = Vector3(0, 0, 0)
-scale_min = 0.2
-scale_max = 0.6
+scale_min = 0.099999994
+scale_max = 0.29999998
 scale_curve = SubResource("CurveXYZTexture_hmaty")
 scale_over_velocity_max = 50.0
 alpha_curve = SubResource("CurveTexture_0a6kk")

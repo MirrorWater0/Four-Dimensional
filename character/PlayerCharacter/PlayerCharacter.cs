@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class PlayerCharacter : Charater
+public partial class PlayerCharacter : Character
 {
     public Frame SelfFrame;
     public Control SkillButtonControl;
@@ -13,6 +13,13 @@ public partial class PlayerCharacter : Charater
 
     public override async void Initialize()
     {
+        PositionIndex = GameInfo.PlayerCharacters[CharacterIndex].PositionIndex;
+        Skills = GameInfo.PlayerCharacters[CharacterIndex].TakenSkills.ToArray();
+        BattleLifemax = GameInfo.PlayerCharacters[CharacterIndex].LifeMax;
+        Life = BattleLifemax;
+        BattlePower = GameInfo.PlayerCharacters[CharacterIndex].Power;
+        BattleSurvivability = GameInfo.PlayerCharacters[CharacterIndex].Survivability;
+        Speed = GameInfo.PlayerCharacters[CharacterIndex].Speed;
         base.Initialize();
         IsPlayer = true;
         await Task.Delay(200); //等待CharaterControl执行connnect
@@ -42,9 +49,9 @@ public partial class PlayerCharacter : Charater
         base.EndAction();
     }
 
-    public override void GetHurt(float damage)
+    public override async Task GetHurt(float damage)
     {
-        base.GetHurt(damage);
+        await base.GetHurt(damage);
         Tween tween = CreateTween();
         tween.TweenProperty(this, "position", OriginalPosition + 20 * Vector2.Left, 0.3f);
         tween.TweenProperty(this, "position", OriginalPosition, 0.2f);

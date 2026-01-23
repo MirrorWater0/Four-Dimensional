@@ -9,6 +9,9 @@ public partial class AttackEffect : Node2D
     public async override void _Ready()
     {
         await Task.Delay(3000);
-        QueueFree();
+        if (IsInstanceValid(this))
+        {
+            QueueFree();
+        }
     }
 }

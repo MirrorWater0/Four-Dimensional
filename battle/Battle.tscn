@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://cnapr4f8u0e1k"]
+[gd_scene load_steps=29 format=3 uid="uid://cnapr4f8u0e1k"]
 
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
+[ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="10_t871k"]
 
 [sub_resource type="Shader" id="Shader_vj222"]
 code = "shader_type canvas_item;
@@ -389,6 +390,18 @@ shader_parameter/rotation_speed = 1.3100005372249992
 resource_local_to_scene = true
 shader = ExtResource("7_r8nfv")
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
+shader = ExtResource("10_t871k")
+shader_parameter/wing_color = Color(1, 1, 1, 1)
+shader_parameter/flip_vertical = false
+shader_parameter/wing_size = 0.63300002680762
+shader_parameter/pivot = Vector2(0.7, 0.7)
+shader_parameter/rotation = 0.8660001296266504
+shader_parameter/edge_smoothness = 0.02400000114
+shader_parameter/blade_count = 5
+shader_parameter/wing_span = 1.3280000598201198
+shader_parameter/spine_thickness = 0.11900000495398
+
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_n3ui2")
 
@@ -492,3 +505,66 @@ offset_right = 92.0
 offset_bottom = 72.0
 theme = ExtResource("7_wuq8c")
 text = "撤退"
+
+[node name="PlayerSpeed" type="ColorRect" parent="."]
+modulate = Color(18.892157, 18.892157, 18.892157, 1)
+z_index = 1
+material = SubResource("ShaderMaterial_bim3i")
+custom_minimum_size = Vector2(80, 80)
+offset_left = -2.0
+offset_top = 1014.0
+offset_right = 78.0
+offset_bottom = 1094.0
+metadata/_edit_use_anchors_ = true
+
+[node name="ColorRect" type="ColorRect" parent="PlayerSpeed"]
+z_index = -1
+layout_mode = 0
+offset_left = 29.0
+offset_top = 21.0
+offset_right = 161.0
+offset_bottom = 61.0
+color = Color(1, 1, 1, 0.47843137)
+
+[node name="Label" type="Label" parent="PlayerSpeed"]
+layout_mode = 0
+offset_left = 81.0
+offset_top = 12.0
+offset_right = 127.0
+offset_bottom = 67.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 40
+text = "10"
+
+[node name="EnemySpeed" type="ColorRect" parent="."]
+z_index = 1
+material = SubResource("ShaderMaterial_bim3i")
+custom_minimum_size = Vector2(80, 80)
+offset_left = 1923.0
+offset_top = 1012.0
+offset_right = 2003.0
+offset_bottom = 1092.0
+scale = Vector2(-1, 1)
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="EnemySpeed"]
+layout_mode = 0
+offset_left = 116.0
+offset_top = 13.0
+offset_right = 162.0
+offset_bottom = 68.0
+scale = Vector2(-1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 40
+text = "10"
+
+[node name="ColorRect" type="ColorRect" parent="EnemySpeed"]
+z_index = -1
+layout_mode = 0
+offset_left = 29.0
+offset_top = 21.0
+offset_right = 161.0
+offset_bottom = 61.0
+color = Color(1, 1, 1, 0.47843137)

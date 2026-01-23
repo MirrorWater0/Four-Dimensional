@@ -1,0 +1,28 @@
+[gd_scene load_steps=3 format=3 uid="uid://dmi0svevasppy"]
+
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="1_kq8gk"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_eq06d"]
+shader = ExtResource("1_kq8gk")
+shader_parameter/sword_color = Color(1, 0, 0, 1)
+shader_parameter/blade_color = Color(1, 0.2, 0.2, 1)
+shader_parameter/handle_color = Color(0.38417843, 0.13872549, 0.13861337, 1)
+shader_parameter/glow_intensity = 0.730000034675
+shader_parameter/angle = 0.0
+
+[node name="PowerIcon" type="ColorRect"]
+material = SubResource("ShaderMaterial_eq06d")
+custom_minimum_size = Vector2(40, 40)
+metadata/_edit_use_anchors_ = true
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 14.0
+offset_right = 37.0
+offset_bottom = 49.0
+theme_override_colors/font_color = Color(1, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 20
+text = "10"

@@ -1,6 +1,6 @@
-[gd_scene load_steps=83 format=3 uid="uid://dcivwl06q4oiv"]
+[gd_scene load_steps=82 format=3 uid="uid://dcivwl06q4oiv"]
 
-[ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Charater.cs" id="1_4ikhs"]
+[ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Character.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
 [ext_resource type="Texture2D" uid="uid://d3dbbwbx5lfad" path="res://asset/CharaterState/lifebar.png" id="2_4ikhs"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="3_lucsw"]
@@ -19,7 +19,6 @@
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Texture2D" uid="uid://crc0gqw5o21cw" path="res://asset/Effect/Shield.png" id="16_lyi1f"]
-[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="16_yic7g"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 
 [sub_resource type="Shader" id="Shader_vajdu"]
@@ -132,7 +131,7 @@ length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite2D:self_modulate")
+tracks/0/path = NodePath("Sprite:self_modulate")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -156,7 +155,7 @@ tracks/1/keys = {
 tracks/2/type = "value"
 tracks/2/imported = false
 tracks/2/enabled = true
-tracks/2/path = NodePath("Sprite2D:scale")
+tracks/2/path = NodePath("Sprite:scale")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
@@ -204,7 +203,7 @@ tracks/5/keys = {
 tracks/6/type = "value"
 tracks/6/imported = false
 tracks/6/enabled = true
-tracks/6/path = NodePath("Sprite2D:material:shader_parameter/motion_blur")
+tracks/6/path = NodePath("Sprite:material:shader_parameter/motion_blur")
 tracks/6/interp = 1
 tracks/6/loop_wrap = true
 tracks/6/keys = {
@@ -216,7 +215,7 @@ tracks/6/keys = {
 tracks/7/type = "value"
 tracks/7/imported = false
 tracks/7/enabled = true
-tracks/7/path = NodePath("Sprite2D:material:shader_parameter/blur_amount")
+tracks/7/path = NodePath("Sprite:material:shader_parameter/blur_amount")
 tracks/7/interp = 1
 tracks/7/loop_wrap = true
 tracks/7/keys = {
@@ -304,7 +303,7 @@ length = 0.8
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("Sprite2D:scale")
+tracks/0/path = NodePath("Sprite:scale")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -737,7 +736,7 @@ shader_parameter/size = 0.76900003326762
 shader_parameter/thickness = 0.1130000053675
 shader_parameter/curvature = 0.61500002595262
 shader_parameter/rotation_speed = 0.0
-shader_parameter/pulse_speed = 1.0
+shader_parameter/pulse_speed = 0.0
 shader_parameter/edge_softness = 0.5
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oexsw"]
@@ -815,7 +814,7 @@ value = 100.0
 texture_under = ExtResource("2_4ikhs")
 texture_progress = ExtResource("4_eq06d")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite" type="Sprite2D" parent="."]
 material = SubResource("ShaderMaterial_37ane")
 scale = Vector2(0.16, 0.16)
 texture = ExtResource("7_lyi1f")
@@ -910,8 +909,9 @@ metadata/_edit_lock_ = true
 z_index = 2
 offset_left = -96.25
 offset_top = -261.25
-offset_right = 31.75
+offset_right = 75.75
 offset_bottom = -221.25
+pivot_offset = Vector2(20, 20)
 
 [node name="PowerIcon" type="ColorRect" parent="State"]
 material = SubResource("ShaderMaterial_eq06d")
@@ -947,12 +947,10 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="EnergeIcon" type="TextureRect" parent="State"]
+[node name="EnergeIcon" type="ColorRect" parent="State"]
 material = SubResource("ShaderMaterial_5ewuv")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-texture = ExtResource("16_yic7g")
-expand_mode = 1
 
 [node name="Label" type="Label" parent="State/EnergeIcon"]
 layout_mode = 0
@@ -965,13 +963,13 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="wing" type="ColorRect" parent="State"]
+[node name="SpeedIcon" type="ColorRect" parent="State"]
 material = SubResource("ShaderMaterial_oexsw")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/wing"]
+[node name="Label" type="Label" parent="State/SpeedIcon"]
 layout_mode = 0
 offset_left = 23.0
 offset_top = 14.0

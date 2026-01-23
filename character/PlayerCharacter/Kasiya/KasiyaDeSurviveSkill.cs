@@ -10,9 +10,8 @@ public partial class ReNewedSpirit : Skill
 {
     public override string SkillName { get; set; } = "重振精神";
 
-    public ReNewedSpirit(Charater owner) : base(SkillTypes.Defence, owner)
+    public ReNewedSpirit() : base(SkillTypes.Defence)
     {
-        OwnerCharater = owner;
         Description = "提升自身2点战斗力和2点生存能力。";
     }
 

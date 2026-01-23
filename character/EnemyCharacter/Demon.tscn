@@ -5,7 +5,7 @@
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="3_w73r8"]
 [ext_resource type="Texture2D" uid="uid://cyxqg6nucggy5" path="res://asset/EnemyCharater/demon.png" id="4_n6o37"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_5a0ga"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_heyqv"]
 resource_local_to_scene = true
 shader = ExtResource("3_w73r8")
 shader_parameter/blur_amount = 1.0
@@ -17,7 +17,8 @@ shader_parameter/motion_blur = false
 
 [node name="Demon" instance=ExtResource("1_heyqv")]
 script = ExtResource("2_se7fp")
+Portrait = ExtResource("4_n6o37")
 
-[node name="Sprite2D" parent="." index="2"]
-material = SubResource("ShaderMaterial_5a0ga")
+[node name="Sprite" parent="." index="2"]
+material = SubResource("ShaderMaterial_heyqv")
 texture = ExtResource("4_n6o37")
