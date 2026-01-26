@@ -17,7 +17,7 @@ public partial class FollowingLight : Skill
         await Attack1(10);
         Character[] targets = (OwnerCharater.IsPlayer) switch
         {
-            true => OwnerCharater.BattleNode.Enemies.Cast<Character>().ToArray(), false => OwnerCharater.BattleNode.Players.Cast<Character>().ToArray(),
+            true => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(), false => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
         };
         var MaxNum = targets.Max(x => x.PositionIndex);
         var target = targets.Where(x => x.PositionIndex == MaxNum).ToArray();

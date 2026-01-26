@@ -9,7 +9,7 @@ using Godot;
 
 public partial class Buff
 {
-    public PackedScene HintScene = GD.Load<PackedScene>("res://LabelNode/BuffHintLabel.tscn");
+    static public PackedScene HintScene = GD.Load<PackedScene>("res://LabelNode/BuffHintLabel.tscn");
     public enum BuffType
     {
         Dying,

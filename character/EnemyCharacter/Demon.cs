@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-public partial class Demon : EnemyTemplate
+public partial class Demon : EnemyCharacter
 {
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()

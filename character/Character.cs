@@ -18,19 +18,19 @@ public partial class Character : Node2D
 
     public virtual PackedScene CharaterScene { set; get; }
     public CharaterState State = CharaterState.Normal;
-    public HBoxContainer StateIconContainer => field ??= GetNode<HBoxContainer>("State");
+    public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
 
     //charater basic properties
     [Export]
     public Texture2D Portrait;
     public virtual string CharaterName { get; set; }
     public int BattleLifemax;
-    public int Life;
+    public int Life { get; protected set; }
     public int BattlePower;
     public int BattleSurvivability;
     public int Speed;
-    public int Block;
-
+    public int Block { get; protected set; }
+    public int Energe { get; protected set; } = 1;
     //properties label
     public Label LifeLabel => field ??= GetNode("Life") as Label;
     public Label PowerLabel;
@@ -41,17 +41,22 @@ public partial class Character : Node2D
     public TextureProgressBar LifeBar => field ??= GetNode<TextureProgressBar>("Life/LifeBar");
     public TextureProgressBar LifeBar2 => field ??= GetNode<TextureProgressBar>("Life/LifeBar2");
     public Label PowerIconLabel => field ??= GetNode<Label>("State/PowerIcon/Label");
-    public Label SurvivabilityIconLabel =>field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
+    public Label SurvivabilityIconLabel =>
+        field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
     public Label SpeedIconLabel => field ??= GetNode<Label>("State/SpeedIcon/Label");
     public Label EnergeIconLabel => field ??= GetNode<Label>("State/EnergeIcon/Label");
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
     public Node2D Sprite => field ??= GetNode<Node2D>("Sprite");
+    public AnimationPlayer TrailAnimation => field ??= GetNode<AnimationPlayer>("TrailAnimation");
+    public Node2D trail => field ??= GetNode<Node2D>("Path2D");
+
     // public Control SkillControl => field??=GetNode<Control>("SkillControl");
     //action and skill
     public Skill[] Skills = new Skill[3];
-    public int DoubleHitLayer = 1;
+
+    // public int DoubleHitLayer = 1;
 
     public AnimatedSprite2D Animate1 => field ??= GetNode("Effect/Effect1") as AnimatedSprite2D;
     public AnimationPlayer CAplayer => field ??= GetNode("Player") as AnimationPlayer;
@@ -60,12 +65,16 @@ public partial class Character : Node2D
     public int PositionIndex;
 
     public PackedScene Number = ResourceLoader.Load<PackedScene>("res://LabelNode/Number.tscn");
-    public PackedScene HitParticleScene = ResourceLoader.Load<PackedScene>("res://battle/Effect/HitParticle.tscn");
-
+    public PackedScene HitParticleScene = ResourceLoader.Load<PackedScene>(
+        "res://battle/Effect/HitParticle.tscn"
+    );
+    public PackedScene CharacterEffectScene = ResourceLoader.Load<PackedScene>(
+        "res://battle/Effect/CharacterEffect.tscn"
+    );
     public bool IsPlayer;
 
     //buff
-    public int Energe = 1;
+
     public List<DyingBuff> DyingBuffs = new List<DyingBuff>();
     public List<HurtBuff> HurtBuffs = new List<HurtBuff>();
 
@@ -73,14 +82,12 @@ public partial class Character : Node2D
 
     public virtual void Initialize()
     {
-
         for (int i = 0; i < Skills.Length; i++)
         {
             Skills[i].OwnerCharater = this;
         }
         //初始化数值
         State = CharaterState.Normal;
-
 
         BlockLabel.Text = Block.ToString();
         Life = BattleLifemax;
@@ -120,6 +127,16 @@ public partial class Character : Node2D
         Block = 0;
         UpdataBlock(0);
         UpdataEnerge(1);
+        TrailAnimation.Play("trail");
+        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
+    }
+
+    public virtual async void EndAction()
+    {
+        BattleNode.EmitS();
+        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
+        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
+        TrailAnimation.Stop();
     }
 
     public virtual async Task GetHurt(float damage)
@@ -138,7 +155,7 @@ public partial class Character : Node2D
         attacknum.Position = Position + new Vector2(0, -50f);
         attacknum.NumberLabel.Text = (-(int)damage).ToString();
 
-        BattleNode.BattlePlayer.Play("hit");
+        BattleNode.BattleAnimationPlayer.Play("hit");
 
         Life -= Math.Clamp((int)damage - Block, 0, Life);
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
@@ -172,7 +189,6 @@ public partial class Character : Node2D
     {
         State = CharaterState.Dying;
 
-        GD.Print("Dying");
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.5f);
 
         if (DyingBuffs != null)
@@ -183,11 +199,6 @@ public partial class Character : Node2D
                 if (DyingBuffs[i].Stack == 0)
                     DyingBuffs.RemoveAt(i);
             }
-    }
-
-    public virtual void EndAction()
-    {
-        BattleNode.EmitS();
     }
 
     public virtual void DisableSkill() { }
@@ -202,7 +213,9 @@ public partial class Character : Node2D
     {
         if (num > 0)
         {
-            PlayAnimatedSprite(shield);
+            CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
+            AddChild(characterEffect);
+            characterEffect.Animation.Play("shield");
         }
         Block += num;
         BlockLabel.Text = Block.ToString();

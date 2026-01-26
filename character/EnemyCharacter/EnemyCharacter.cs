@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class EnemyTemplate : Character
+public partial class EnemyCharacter : Character
 {
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
@@ -18,7 +18,6 @@ public partial class EnemyTemplate : Character
 
     public override void Initialize()
     {
-        
         base.Initialize();
     }
 
@@ -28,6 +27,14 @@ public partial class EnemyTemplate : Character
         Random random = new Random();
         int i = random.Next(0, Skills.Length);
         await Skills[i].Effect();
+    }
+
+    public override void EndAction()
+    {
+        BattleNode.EnemySpeed += BattleNode
+            .EnemiesList.Where(x => x.State != CharaterState.Dying)
+            .Sum(x => x.Speed);
+        base.EndAction();
     }
 
     public override async Task GetHurt(float damage)

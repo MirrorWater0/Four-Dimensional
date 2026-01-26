@@ -19,7 +19,7 @@ public partial class Attack : Skill
     {
         await base.Effect();
         
-        await Attack2(1);
+        await Attack2(5);
         OwnerCharater.EndAction();
     }
 }

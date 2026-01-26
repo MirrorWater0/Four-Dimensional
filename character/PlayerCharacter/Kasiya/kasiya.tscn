@@ -20,7 +20,7 @@ shader_parameter/motion_blur = false
 script = ExtResource("2_q5rnf")
 Portrait = ExtResource("3_pnud8")
 
-[node name="Sprite2D" parent="." index="2"]
+[node name="Sprite" parent="." index="9"]
 material = SubResource("ShaderMaterial_mwp8k")
 texture = ExtResource("5_qnjc5")
 flip_h = false

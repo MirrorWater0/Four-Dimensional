@@ -13,7 +13,7 @@ public partial class Defense : Skill
     public async override Task Effect()
     {
         await base.Effect();
-        OwnerCharater.UpdataBlock(2*OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataBlock(30 + OwnerCharater.BattleSurvivability);
         OwnerCharater.EndAction();
     }
 }

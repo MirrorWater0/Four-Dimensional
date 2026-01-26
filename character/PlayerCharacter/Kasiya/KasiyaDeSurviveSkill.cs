@@ -12,15 +12,15 @@ public partial class ReNewedSpirit : Skill
 
     public ReNewedSpirit() : base(SkillTypes.Defence)
     {
-        Description = "提升自身2点战斗力和2点生存能力。";
+        Description = "提升自身5点战斗力和5点生存能力。";
     }
 
     public async override Task Effect()
     {
         await base.Effect();
-        await IncreaseProperties(OwnerCharater,PropertyType.Power,2);
-        await IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,2);
-        
+        IncreaseProperties(OwnerCharater,PropertyType.Power,5);
+        IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,5);
+        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
         OwnerCharater.EndAction();
     }
 }

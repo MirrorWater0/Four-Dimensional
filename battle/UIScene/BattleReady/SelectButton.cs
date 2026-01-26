@@ -1,31 +1,36 @@
-using Godot;
 using System;
-
+using Godot;
 
 public partial class SelectButton : Button
 {
     Color out_orignalColor;
     public Skill MySkill;
-    public Label ThisLabel => field??= GetNode("Label") as Label;
+    public Label ThisLabel => field ??= GetNode("Label") as Label;
     public Vector2 OriginalScale;
-    public Panel Border => field??= GetNode("Border") as Panel;
-    public override void _Process(double delta)
-    {
+    public Panel Border => field ??= GetNode("Border") as Panel;
+    public AnimationPlayer animation => field ??= GetNode("AnimationPlayer") as AnimationPlayer;
+    public override void _Process(double delta) { }
 
-    }
     public override void _Ready()
     {
         Border.Visible = false;
-        PivotOffset = Scale/2;
+        PivotOffset = Size / 2;
         OriginalScale = Scale;
         MouseEntered += mouse_entered;
         MouseExited += mouse_exited;
-        Pressed += () =>{CreateTween().TweenProperty(this, "scale", OriginalScale, 0.2f);};
+        Pressed += () =>
+        {
+            CreateTween().TweenProperty(this, "scale", OriginalScale, 0.1f);
+        };
+        ButtonDown += () =>
+        {
+            animation.Play("explode");
+        };
     }
 
     public void mouse_entered()
     {
-        CreateTween().TweenProperty(this, "scale", 1.05f*OriginalScale, 0.15f);
+        CreateTween().TweenProperty(this, "scale", 1.02f * OriginalScale, 0.15f);
         Border.Visible = true;
     }
 
@@ -39,7 +44,7 @@ public partial class SelectButton : Button
     // {
     //     out_orignalColor = new Color(245f, 180f, 0f, 255f)/255f;
     //     Rect.Color = out_orignalColor;
-        
+
     // }
 
     // public void UnSelected()

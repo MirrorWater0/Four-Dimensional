@@ -51,8 +51,8 @@ public partial class Skill
         int index = OwnerCharater.PositionIndex;
         Character[] targets = (OwnerCharater.IsPlayer) switch
         {
-            true => OwnerCharater.BattleNode.Enemies.Cast<Character>().ToArray(),
-            false => OwnerCharater.BattleNode.Players.Cast<Character>().ToArray(),
+            true => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(),
+            false => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
         };
 
         int[] id = (index % 3) switch
@@ -105,7 +105,7 @@ public partial class Skill
         await Task.Delay(700);
         targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         await Task.Delay(200);
-        
+
         // Only apply second hit if target is still alive
         if (targets[0].State == Character.CharaterState.Normal)
         {
@@ -130,7 +130,7 @@ public partial class Skill
             // Stop attacking if target has died
             if (target.State != Character.CharaterState.Normal)
                 break;
-            
+
             target.GetHurt(basis + OwnerCharater.BattlePower);
             await Task.Delay(150);
         }
@@ -157,15 +157,17 @@ public partial class Skill
         OwnerCharater.BattleNode.AddChild(descending);
         descending.GlobalPosition = target.GlobalPosition + new Vector2(0, -50);
 
-        if(icon.PivotOffset == Vector2.Zero) icon.PivotOffset = icon.Size / 2;
+        if (icon.PivotOffset == Vector2.Zero)
+            icon.PivotOffset = icon.Size / 2;
         icon.Scale = new Vector2(2, 2);
         icon.Modulate = new Color(1, 1, 1, 0.3f);
-        icon.CreateTween().TweenProperty(target.PowerIconLabel, "modulate", new Color(1, 1, 1, 1), 0.5f);
+        icon.CreateTween()
+            .TweenProperty(target.PowerIconLabel, "modulate", new Color(1, 1, 1, 1), 0.5f);
         icon.CreateTween().TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f);
         descending.QueueFree();
     }
 
-    public async Task IncreaseProperties(Character target, PropertyType type, int value)
+    public void IncreaseProperties(Character target, PropertyType type, int value)
     {
         ColorRect icon = null;
         switch (type)
@@ -180,16 +182,24 @@ public partial class Skill
                 break;
         }
 
-        
+        CharacterEffect characterEffect =
+            target.CharacterEffectScene.Instantiate<CharacterEffect>();
+        target.AddChild(characterEffect);
+        characterEffect.Animation.Play("absorb");
+        target.BattleNode.BattleAnimationPlayer.Play("blue");
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-        target.PlayAnimatedSprite(target.absorb);
 
-        if(icon.PivotOffset == Vector2.Zero) icon.PivotOffset = icon.Size / 2;
+        if (icon.PivotOffset == Vector2.Zero)
+            icon.PivotOffset = icon.Size / 2;
         icon.Scale = new Vector2(1.8f, 1.8f);
-        icon.Modulate = 5*new Color(1, 1, 1, 0.1f);
-        icon.CreateTween().TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f).SetEase(Tween.EaseType.Out);
-        icon.CreateTween().TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f).SetEase(Tween.EaseType.Out);
+        icon.Modulate = 5 * new Color(1, 1, 1, 0.1f);
+        icon.CreateTween()
+            .TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f)
+            .SetEase(Tween.EaseType.Out);
+        icon.CreateTween()
+            .TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f)
+            .SetEase(Tween.EaseType.Out);
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }

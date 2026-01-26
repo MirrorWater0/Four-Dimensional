@@ -22,7 +22,7 @@ public partial class Kasiya : PlayerCharacter
     {
         if (skill.OwnerCharater == this & skill.SkillType == Skill.SkillTypes.Defence)
         {
-            Recovery(500);
+            Recovery(20);
         }
     }
 }

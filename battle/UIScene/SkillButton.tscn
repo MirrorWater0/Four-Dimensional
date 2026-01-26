@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://bvnftwrftpkc7"]
+[gd_scene load_steps=20 format=3 uid="uid://bvnftwrftpkc7"]
 
 [ext_resource type="Script" uid="uid://bhf4wionnrjlp" path="res://battle/UIScene/SkillButton.cs" id="1_gvdwr"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_etfs1"]
@@ -93,10 +93,6 @@ shader_parameter/main_color = Color(0.2, 0.6, 1, 1)
 shader_parameter/progress = 1.0
 shader_parameter/glow_intensity = 25.0
 shader_parameter/ray_count = 15.0
-
-[sub_resource type="Environment" id="Environment_epdhb"]
-glow_enabled = true
-glow_intensity = 7.5
 
 [node name="skill1" type="Button"]
 modulate = Color(0.8217884, 0.8217889, 0.82178843, 1)
@@ -203,6 +199,3 @@ offset_right = 130.0
 offset_bottom = 130.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_epdhb")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3 uid="uid://cnapr4f8u0e1k"]
+[gd_scene load_steps=39 format=3 uid="uid://cnapr4f8u0e1k"]
 
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
@@ -9,7 +9,8 @@
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
-[ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="10_t871k"]
+[ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
+[ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
 
 [sub_resource type="Shader" id="Shader_vj222"]
 code = "shader_type canvas_item;
@@ -87,12 +88,28 @@ void fragment()
 shader = SubResource("Shader_vj222")
 shader_parameter/moduate = Color(0.03529412, 0.3254902, 1, 1)
 
+[sub_resource type="Animation" id="Animation_4km6a"]
+resource_name = "Incapacitate"
+length = 1.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.16666667, 1.0333333, 1.4666667),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
+
 [sub_resource type="Animation" id="Animation_0jh7n"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("start:self_modulate")
+tracks/0/path = NodePath("CanvasLayer/start:self_modulate")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -104,7 +121,7 @@ tracks/0/keys = {
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
-tracks/1/path = NodePath("ColorRect:self_modulate")
+tracks/1/path = NodePath("CanvasLayer/ColorRect:self_modulate")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
@@ -149,6 +166,45 @@ tracks/4/keys = {
 "update": 0,
 "values": [Color(1, 1, 1, 1)]
 }
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 0)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 0)]
+}
+
+[sub_resource type="Animation" id="Animation_ttuon"]
+resource_name = "blue"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.3, 0.73333335, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
 
 [sub_resource type="Animation" id="Animation_r8nfv"]
 resource_name = "end"
@@ -172,7 +228,7 @@ length = 0.8
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("ColorRect:self_modulate")
+tracks/0/path = NodePath("CanvasLayer/ColorRect:self_modulate")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -211,7 +267,7 @@ resource_name = "start"
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("start:self_modulate")
+tracks/0/path = NodePath("CanvasLayer/start:self_modulate")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -235,21 +291,13 @@ tracks/1/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_od72c"]
 _data = {
+&"Incapacitate": SubResource("Animation_4km6a"),
 &"RESET": SubResource("Animation_0jh7n"),
+&"blue": SubResource("Animation_ttuon"),
 &"end": SubResource("Animation_r8nfv"),
 &"hit": SubResource("Animation_xpomc"),
 &"start": SubResource("Animation_8cf7v")
 }
-
-[sub_resource type="Gradient" id="Gradient_c6e3k"]
-offsets = PackedFloat32Array(0.88961, 1)
-colors = PackedColorArray(1, 1, 1, 0, 0.921569, 0, 0, 0.333333)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_5fvgj"]
-gradient = SubResource("Gradient_c6e3k")
-fill = 2
-fill_from = Vector2(0.490826, 0.5)
-fill_to = Vector2(0, 0.00458716)
 
 [sub_resource type="Shader" id="Shader_1euq2"]
 code = "shader_type canvas_item;
@@ -295,7 +343,7 @@ void fragment() {
     float dist = length(p);
     float angle = atan(p.y, p.x);
     float pixel_size = fwidth(dist);
-    
+
     vec4 final_output = vec4(0.0);
 
     // --- 1. 头像裁剪层 ---
@@ -326,7 +374,7 @@ void fragment() {
     // --- 4. 旋转三角形层 ---
     float tri_track_radius = 0.45;
     float tri_count = 3.0;
-    float tri_angle_offset = -TIME * rotation_speed * 0.8; 
+    float tri_angle_offset = -TIME * rotation_speed * 0.8;
     float tri_sector = round((angle - tri_angle_offset) * tri_count / (2.0 * PI)) / tri_count * 2.0 * PI;
     vec2 tri_p = p - vec2(cos(tri_sector + tri_angle_offset), sin(tri_sector + tri_angle_offset)) * tri_track_radius;
     float sa = sin(tri_sector + tri_angle_offset + PI/2.0);
@@ -339,7 +387,7 @@ void fragment() {
     // 这种装饰块只在特定角度（如左上角）出现，且运动轨迹不同
     float heavy_arc_dist = smoothstep(0.49, 0.485, dist) - smoothstep(0.46, 0.455, dist);
     // 只保留 45 度的弧长
-    float heavy_arc_mask = step(0.9, cos(angle - TIME * 0.3)); 
+    float heavy_arc_mask = step(0.9, cos(angle - TIME * 0.3));
     final_output = mix(final_output, theme_color, heavy_arc_dist * heavy_arc_mask * 0.8);
 
     // --- 6. 细碎刻度线 (扫描感) ---
@@ -347,7 +395,7 @@ void fragment() {
     float notch_mask = step(0.12, notch_angle); // 极细的线
     float notch_dist = smoothstep(0.48, 0.478, dist) - smoothstep(0.465, 0.463, dist);
     // 只在某些区域出现刻度，不要铺满全圆
-    float notch_area = step(0.0, sin(angle * 2.0 + TIME)); 
+    float notch_area = step(0.0, sin(angle * 2.0 + TIME));
     final_output = mix(final_output, theme_color, notch_dist * (1.0 - notch_mask) * notch_area * 0.5);
 
     // --- 7. 整体发光 ---
@@ -363,7 +411,7 @@ resource_local_to_scene = true
 shader = SubResource("Shader_t0px3")
 shader_parameter/avatar_tex = ExtResource("6_jhxqk")
 shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/rotation_speed = 1.3100005372249992
+shader_parameter/rotation_speed = 1.3790005405024992
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_d0b6a"]
 resource_local_to_scene = true
@@ -390,17 +438,74 @@ shader_parameter/rotation_speed = 1.3100005372249992
 resource_local_to_scene = true
 shader = ExtResource("7_r8nfv")
 
+[sub_resource type="Gradient" id="Gradient_4km6a"]
+offsets = PackedFloat32Array(0.88961, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 0, 0, 0.33333334)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ttuon"]
+gradient = SubResource("Gradient_4km6a")
+fill = 2
+fill_from = Vector2(0.490826, 0.5)
+fill_to = Vector2(0, 0.00458716)
+
+[sub_resource type="Gradient" id="Gradient_c6e3k"]
+offsets = PackedFloat32Array(0.88961, 1)
+colors = PackedColorArray(1, 1, 1, 0, 0, 0.50790066, 0.83706623, 0.333333)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_4km6a"]
+gradient = SubResource("Gradient_c6e3k")
+fill = 2
+fill_from = Vector2(0.490826, 0.5)
+fill_to = Vector2(0, 0.00458716)
+
+[sub_resource type="Environment" id="Environment_4km6a"]
+glow_enabled = true
+glow_intensity = 7.5
+glow_map_strength = 0.81
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_4km6a"]
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(100, 300, 1)
+direction = Vector3(-1.5, -1, 0)
+spread = 30.0
+initial_velocity_min = 217.65
+initial_velocity_max = 417.65
+scale_min = 0.19999999
+color = Color(0.902454, 1.6990223, 1.8247963, 0.9019608)
+hue_variation_min = -0.18000002
+hue_variation_max = 0.009999977
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
-shader = ExtResource("10_t871k")
-shader_parameter/wing_color = Color(1, 1, 1, 1)
-shader_parameter/flip_vertical = false
-shader_parameter/wing_size = 0.63300002680762
-shader_parameter/pivot = Vector2(0.7, 0.7)
-shader_parameter/rotation = 0.8660001296266504
-shader_parameter/edge_smoothness = 0.02400000114
-shader_parameter/blade_count = 5
-shader_parameter/wing_span = 1.3280000598201198
-shader_parameter/spine_thickness = 0.11900000495398
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ttuon"]
+bg_color = Color(0.48178947, 0.48178947, 0.48178947, 0.69803923)
+border_width_left = 2
+border_width_top = 1
+border_width_right = 2
+border_width_bottom = 1
+border_color = Color(0.96474224, 0.96474224, 0.9647421, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bim3i"]
+bg_color = Color(18.892157, 18.892157, 18.892157, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="Theme" id="Theme_boaws"]
+ProgressBar/colors/font_color = Color(1, 1, 1, 1)
+ProgressBar/styles/background = SubResource("StyleBoxFlat_ttuon")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_bim3i")
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_n3ui2")
@@ -416,11 +521,11 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="."]
 y_sort_enabled = true
-position = Vector2(1100, 280)
+position = Vector2(1200, 280)
 
 [node name="Left" type="Node2D" parent="."]
 y_sort_enabled = true
-position = Vector2(740, 280)
+position = Vector2(840, 280)
 
 [node name="BattlePlayer" type="AnimationPlayer" parent="."]
 libraries = {
@@ -428,33 +533,15 @@ libraries = {
 }
 autoplay = "start"
 
-[node name="start" type="Label" parent="."]
-offset_left = 609.0
-offset_top = 478.0
-offset_right = 1301.0
-offset_bottom = 600.0
-theme_override_colors/font_color = Color(0.647059, 0.756863, 0.862745, 1)
-theme_override_colors/font_outline_color = Color(0.267, 0.267, 0.267, 0.854)
-theme_override_constants/outline_size = 10
-theme_override_fonts/font = ExtResource("2_f4e3u")
-theme_override_font_sizes/font_size = 100
-text = "BATTLE START"
-metadata/_edit_lock_ = true
-
-[node name="ColorRect" type="NinePatchRect" parent="."]
-self_modulate = Color(1, 1, 1, 0)
-offset_right = 1920.0
-offset_bottom = 1080.0
-texture = SubResource("GradientTexture2D_5fvgj")
-metadata/_edit_lock_ = true
-
 [node name="CharaterControl" type="HBoxContainer" parent="."]
 modulate = Color(0.92, 0.92, 0.92, 1)
+z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
-offset_left = 134.0
-offset_top = 790.0
-offset_right = 1787.0
-offset_bottom = 1007.0
+offset_left = 220.0
+offset_top = 823.00006
+offset_right = 1873.0
+offset_bottom = 1040.0
+scale = Vector2(0.9, 0.9)
 theme_override_constants/separation = 250
 script = ExtResource("3_3vtlu")
 
@@ -489,10 +576,9 @@ metadata/_edit_lock_ = true
 
 [node name="Retreat" type="Button" parent="."]
 material = SubResource("ShaderMaterial_jhxqk")
-offset_left = 1804.0
-offset_top = 15.0
-offset_right = 1903.0
-offset_bottom = 111.0
+offset_left = 1824.0
+offset_right = 1923.0
+offset_bottom = 96.0
 theme = ExtResource("4_eoytn")
 text = "撤退
 "
@@ -506,65 +592,98 @@ offset_bottom = 72.0
 theme = ExtResource("7_wuq8c")
 text = "撤退"
 
-[node name="PlayerSpeed" type="ColorRect" parent="."]
-modulate = Color(18.892157, 18.892157, 18.892157, 1)
-z_index = 1
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="start" type="Label" parent="CanvasLayer"]
+offset_left = 609.0
+offset_top = 478.0
+offset_right = 1302.0
+offset_bottom = 600.9167
+theme_override_colors/font_color = Color(0.647059, 0.756863, 0.862745, 1)
+theme_override_colors/font_outline_color = Color(0.267, 0.267, 0.267, 0.854)
+theme_override_constants/outline_size = 10
+theme_override_fonts/font = ExtResource("2_f4e3u")
+theme_override_font_sizes/font_size = 100
+text = "BATTLE START"
+metadata/_edit_lock_ = true
+
+[node name="Incapacitate" type="Label" parent="CanvasLayer"]
+self_modulate = Color(1, 1, 1, 0)
+z_index = 2
+offset_left = 609.0
+offset_top = 478.0
+offset_right = 1302.0
+offset_bottom = 600.9167
+theme_override_colors/font_color = Color(0.90955436, 0.93862605, 0.9671909, 1)
+theme_override_colors/font_outline_color = Color(0.267, 0.267, 0.267, 0.854)
+theme_override_constants/outline_size = 10
+theme_override_fonts/font = ExtResource("2_f4e3u")
+theme_override_font_sizes/font_size = 100
+text = "Incapacitate"
+metadata/_edit_lock_ = true
+
+[node name="ColorRect" type="NinePatchRect" parent="CanvasLayer"]
+self_modulate = Color(1, 1, 1, 0)
+offset_right = 1920.0
+offset_bottom = 1080.0
+texture = SubResource("GradientTexture2D_ttuon")
+metadata/_edit_lock_ = true
+
+[node name="ColorRect3" type="NinePatchRect" parent="CanvasLayer"]
+self_modulate = Color(1, 1, 1, 0)
+offset_right = 1920.0
+offset_bottom = 1080.0
+texture = SubResource("GradientTexture2D_4km6a")
+metadata/_edit_lock_ = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_4km6a")
+
+[node name="GPUParticles2D" type="GPUParticles2D" parent="."]
+z_index = 2
+position = Vector2(2218, 1339)
+amount = 20
+texture = ExtResource("13_ttuon")
+lifetime = 10.0
+preprocess = 10.0
+visibility_rect = Rect2(-2300, -1200, 2000, 1100)
+process_material = SubResource("ParticleProcessMaterial_4km6a")
+
+[node name="SpeedBox" type="HBoxContainer" parent="."]
+offset_left = 612.0
+offset_top = 8.0
+offset_right = 1472.0
+offset_bottom = 48.0
+theme_override_constants/separation = 60
+
+[node name="PlayerSpeed" type="ProgressBar" parent="SpeedBox"]
 material = SubResource("ShaderMaterial_bim3i")
-custom_minimum_size = Vector2(80, 80)
-offset_left = -2.0
-offset_top = 1014.0
-offset_right = 78.0
-offset_bottom = 1094.0
-metadata/_edit_use_anchors_ = true
+custom_minimum_size = Vector2(400, 11)
+layout_mode = 2
+theme = SubResource("Theme_boaws")
+show_percentage = false
 
-[node name="ColorRect" type="ColorRect" parent="PlayerSpeed"]
-z_index = -1
+[node name="Label" type="Label" parent="SpeedBox/PlayerSpeed"]
+layout_direction = 3
 layout_mode = 0
-offset_left = 29.0
-offset_top = 21.0
-offset_right = 161.0
-offset_bottom = 61.0
-color = Color(1, 1, 1, 0.47843137)
+offset_left = 405.0
+offset_top = -8.0
+offset_right = 445.0
+offset_bottom = 15.0
+text = "(40) "
+script = ExtResource("11_d0b6a")
 
-[node name="Label" type="Label" parent="PlayerSpeed"]
+[node name="EnemySpeed" type="ProgressBar" parent="SpeedBox"]
+custom_minimum_size = Vector2(400, 11)
+layout_mode = 2
+theme = SubResource("Theme_boaws")
+show_percentage = false
+
+[node name="Label" type="Label" parent="SpeedBox/EnemySpeed"]
 layout_mode = 0
-offset_left = 81.0
-offset_top = 12.0
-offset_right = 127.0
-offset_bottom = 67.0
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 40
-text = "10"
-
-[node name="EnemySpeed" type="ColorRect" parent="."]
-z_index = 1
-material = SubResource("ShaderMaterial_bim3i")
-custom_minimum_size = Vector2(80, 80)
-offset_left = 1923.0
-offset_top = 1012.0
-offset_right = 2003.0
-offset_bottom = 1092.0
-scale = Vector2(-1, 1)
-metadata/_edit_use_anchors_ = true
-
-[node name="Label" type="Label" parent="EnemySpeed"]
-layout_mode = 0
-offset_left = 116.0
-offset_top = 13.0
-offset_right = 162.0
-offset_bottom = 68.0
-scale = Vector2(-1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 40
-text = "10"
-
-[node name="ColorRect" type="ColorRect" parent="EnemySpeed"]
-z_index = -1
-layout_mode = 0
-offset_left = 29.0
-offset_top = 21.0
-offset_right = 161.0
-offset_bottom = 61.0
-color = Color(1, 1, 1, 0.47843137)
+offset_left = 410.0
+offset_top = -8.0
+offset_right = 439.0
+offset_bottom = 15.0
+text = "(40)"
+script = ExtResource("11_d0b6a")

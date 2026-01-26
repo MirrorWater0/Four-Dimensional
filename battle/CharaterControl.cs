@@ -22,15 +22,15 @@ public partial class CharaterControl : Control
 
     public void Connect()
     {
-        for (int i = 0; i < CharatersControl.Length && i < BattleNode.Players.Count; i++)
+        for (int i = 0; i < CharatersControl.Length && i < BattleNode.PlayersList.Count; i++)
         {
-            BattleNode.Players[i].SelfFrame = CharatersControl[i];
+            BattleNode.PlayersList[i].SelfFrame = CharatersControl[i];
             var skillButtons = CharatersControl[i].SkillButtonContainer;
-            BattleNode.Players[i].SkillButtonControl = skillButtons;
+            BattleNode.PlayersList[i].SkillButtonControl = skillButtons;
             for (int j = 0; j < skillButtons.GetChildCount(); j++)
             {
                 var skillButton = skillButtons.GetChild<SkillButton>(j);
-                var skill = BattleNode.Players[i].Skills[j];
+                var skill = BattleNode.PlayersList[i].Skills[j];
 
                 skillButton.NameLabel.Text = skill.SkillName;
                 skillButton.SelfSkill = skill;

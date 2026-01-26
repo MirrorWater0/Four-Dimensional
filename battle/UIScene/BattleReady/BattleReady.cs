@@ -55,7 +55,10 @@ public partial class BattleReady : Control
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var portrait = PortaitScene.Instantiate() as PortaitFrame;
-            portrait.PortaitRect.Texture = GameInfo.PlayerCharacters[i].CharacterScene.Instantiate<PlayerCharacter>().Portrait;
+            portrait.PortaitRect.Texture = GameInfo
+                .PlayerCharacters[i]
+                .CharacterScene.Instantiate<PlayerCharacter>()
+                .Portrait;
             portrait.PortaitIndex = i;
             var positionindex = GameInfo.PlayerCharacters[i].PositionIndex;
 
@@ -157,6 +160,7 @@ public partial class BattleReady : Control
                     selectbutton.Pressed += () =>
                     {
                         GameInfo.PlayerCharacters[frame.IDindex].TakenSkills[skillIndex] = skill;
+                        selectbutton.ButtonPressed = true;
                         for (int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
                             SelectButton button = SkillContainer
@@ -218,8 +222,9 @@ public partial class BattleReady : Control
                     if (portrait != null)
                     {
                         // Update both the data structure and the character instance
-                        GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = remap[gridIndex];
-                    
+                        GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = remap[
+                            gridIndex
+                        ];
                     }
                     else
                     {

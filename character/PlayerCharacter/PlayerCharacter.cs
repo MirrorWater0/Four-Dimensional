@@ -11,7 +11,7 @@ public partial class PlayerCharacter : Character
     public List<Skill> UntakeSkills;
     public bool Istest;
 
-    public override async void Initialize()
+    public override void Initialize()
     {
         PositionIndex = GameInfo.PlayerCharacters[CharacterIndex].PositionIndex;
         Skills = GameInfo.PlayerCharacters[CharacterIndex].TakenSkills.ToArray();
@@ -22,7 +22,6 @@ public partial class PlayerCharacter : Character
         Speed = GameInfo.PlayerCharacters[CharacterIndex].Speed;
         base.Initialize();
         IsPlayer = true;
-        await Task.Delay(200); //等待CharaterControl执行connnect
     }
 
     public override void StartAction()
@@ -44,6 +43,10 @@ public partial class PlayerCharacter : Character
 
     public override void EndAction()
     {
+        BattleNode.PlayerSpeed += BattleNode
+            .PlayersList.Where(x => x.State != CharaterState.Dying)
+            .Sum(x => x.Speed);
+
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();
         base.EndAction();

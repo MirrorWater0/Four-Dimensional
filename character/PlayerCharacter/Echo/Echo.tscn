@@ -5,20 +5,20 @@
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_dsw3a"]
 [ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="5_jxkbc"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_0wxsi"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_uu75k"]
 resource_local_to_scene = true
 shader = ExtResource("4_dsw3a")
 shader_parameter/blur_amount = 1.0
-shader_parameter/time_scale = 1.0
-shader_parameter/pulse_speed = 1.0
+shader_parameter/time_scale = 1.943
+shader_parameter/pulse_speed = 3.36
 shader_parameter/center = Vector2(0.5, 0.5)
-shader_parameter/radial_blur = false
+shader_parameter/radial_blur = true
 shader_parameter/motion_blur = false
 
 [node name="Echo" instance=ExtResource("1_ivrln")]
 script = ExtResource("1_p8ruw")
 Portrait = ExtResource("5_jxkbc")
 
-[node name="Sprite2D" parent="." index="2"]
-material = SubResource("ShaderMaterial_0wxsi")
+[node name="Sprite" parent="." index="9"]
+material = SubResource("ShaderMaterial_uu75k")
 texture = ExtResource("5_jxkbc")

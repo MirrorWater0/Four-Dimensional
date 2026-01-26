@@ -1,39 +1,39 @@
 shader_type canvas_item;
 render_mode unshaded;
 
-uniform vec4 glow_color : source_color = vec4(1.0, 0.5, 0.0, 1.0);
-uniform float intensity : hint_range(0.0, 10.0) = 0.0;
-uniform float spread : hint_range(0.0, 10.0) = 3.0;
+uniform vec4 glow_color : source_color = vec4(0.0, 0.5, 1.0, 1.0);
+uniform float intensity : hint_range(0.0, 20.0) = 5.0;       // 亮度强度
+uniform float beam_width : hint_range(0.0, 1.0) = 0.2;      // 光柱的核心宽度
+uniform float horizontal_softness : hint_range(0.1, 10.0) = 3.0; // 横向边缘柔和度
+uniform float vertical_softness : hint_range(0.1, 10.0) = 1.5;   // 纵向边缘柔和度
 
 void fragment() {
-    // 1. 采样核心文本
-    vec4 tex = texture(TEXTURE, UV);
-
-    // 2. 采样周边 Alpha (用于生成外发光)
-    float a = 0.0;
-    vec2 ps = TEXTURE_PIXEL_SIZE * spread;
-    a += texture(TEXTURE, UV + vec2(ps.x, 0.0)).a;
-    a += texture(TEXTURE, UV + vec2(-ps.x, 0.0)).a;
-    a += texture(TEXTURE, UV + vec2(0.0, ps.y)).a;
-    a += texture(TEXTURE, UV + vec2(0.0, -ps.y)).a;
-    float glow_mask = clamp(a / 4.0, 0.0, 1.0);
-
-    // --- 核心修正：防白块逻辑 ---
-    // 如果原始文字没像素，且发光遮罩也没像素，直接“丢弃”该像素点
-    // 这样 CanvasGroup 的空白区域就绝对不会变白
-    if (tex.a + glow_mask <= 0.0001) {
-        discard;
-    }
-
-    // 3. 计算最终颜色
-    // 文字部分保持原色，边缘部分混合发光色
-    vec3 final_color = mix(tex.rgb, glow_color.rgb, glow_mask * intensity * (1.0 - tex.a));
-
-    // 如果是文字本身，也让它带点发光色
-    final_color += glow_color.rgb * tex.a * intensity * 0.5;
-
-    // 最终透明度：文字透明度 + 发光透明度
-    float final_alpha = clamp(tex.a + (glow_mask * intensity), 0.0, 1.0);
-
-    COLOR = vec4(final_color, final_alpha);
+    // 1. 获取坐标，归一化到 -1.0 到 1.0 范围
+    vec2 uv = UV * 2.0 - 1.0;
+    
+    // 2. 计算横向(X)的衰减
+    // 距离中心线(x=0)越远，亮度越低
+    float x_dist = abs(uv.x);
+    // 使用 exp 或 pow 函数制造“中间亮，两边极快变暗”的霓虹感
+    float x_glow = exp(-x_dist * horizontal_softness / beam_width);
+    
+    // 3. 计算纵向(Y)的衰减
+    // 防止光柱在 ColorRect 边缘被硬生生切断，制造上下消失感
+    float y_dist = abs(uv.y);
+    float y_glow = pow(clamp(1.0 - y_dist, 0.0, 1.0), vertical_softness);
+    
+    // 4. 合成最终光场
+    float beam = x_glow * y_glow;
+    
+    // 5. 核心高亮：在最中心的地方额外增加一层白光，模拟“过载”
+    float core = exp(-x_dist * 20.0) * y_glow;
+    
+    // 合成颜色：(基础颜色 * 强度 + 核心白光) * 整体形状
+    vec3 final_rgb = (glow_color.rgb * intensity + vec3(1.0) * core) * beam;
+    
+    // 透明度计算：直接使用 beam 作为 alpha，
+    // 乘以 intensity 的一部分，让亮度高的时候发光范围更明显
+    float final_a = clamp(beam * intensity * 0.5, 0.0, 1.0);
+    
+    COLOR = vec4(final_rgb, final_a);
 }
