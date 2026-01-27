@@ -44,10 +44,13 @@ shader = ExtResource("9_jv280")
 shader = ExtResource("8_vk5l4")
 shader_parameter/rotation_speed = 3.0
 shader_parameter/scale = 1.90000002086168
-shader_parameter/color = Color(0, 1, 1, 1)
-shader_parameter/thickness = 0.02509999937971
-shader_parameter/dist2 = 1.0
-shader_parameter/dist1 = 1.0
+shader_parameter/color = Color(6.7383053e-06, 0.93292904, 0.9329293, 1)
+shader_parameter/thickness = 0.01999999950874
+shader_parameter/dist2 = 0.5000000074506
+shader_parameter/dist1 = 0.70000001043084
+shader_parameter/outer_ring_dist = 0.26999999396496
+shader_parameter/triangle_dist = 0.27999999374144
+shader_parameter/hover = 0.0
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b38e6"]
 
@@ -121,20 +124,20 @@ layer = 2
 [node name="ReadyButton" type="Button" parent="UI"]
 z_index = 4
 material = SubResource("ShaderMaterial_cccvd")
-offset_left = 1773.0
-offset_top = 927.0
-offset_right = 1921.0
-offset_bottom = 1075.0
+offset_left = 1706.0
+offset_top = 862.0
+offset_right = 1923.0
+offset_bottom = 1079.0
 focus_mode = 0
 theme = SubResource("Theme_6uk3n")
 script = ExtResource("7_1svsv")
 
 [node name="Label" type="Label" parent="UI/ReadyButton"]
 layout_mode = 0
-offset_left = 33.0
-offset_top = 43.0
-offset_right = 103.0
-offset_bottom = 92.0
+offset_left = 74.0
+offset_top = 80.0
+offset_right = 144.0
+offset_bottom = 129.0
 theme = ExtResource("10_svc60")
 text = "战术"
 

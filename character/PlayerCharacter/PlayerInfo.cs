@@ -1,15 +1,17 @@
-using Godot;
 using System;
 using System.Collections.Generic;
+using Godot;
 
-static public partial class GameInfo
+public static partial class GameInfo
 {
-    static public PlayerInfoStructure[] PlayerCharacters;
+    public static PlayerInfoStructure[] PlayerCharacters;
+    public static int Seed = 1112;
 }
 
 public struct PlayerInfoStructure
 {
     public PlayerInfoStructure() { }
+
     public PackedScene CharacterScene;
     public int LifeMax;
     public int Power;

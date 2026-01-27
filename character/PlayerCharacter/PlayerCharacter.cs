@@ -44,7 +44,7 @@ public partial class PlayerCharacter : Character
     public override void EndAction()
     {
         BattleNode.PlayerSpeed += BattleNode
-            .PlayersList.Where(x => x.State != CharaterState.Dying)
+            .PlayersList.Where(x => x.State != CharacterState.Dying)
             .Sum(x => x.Speed);
 
         BattleNode.RetreatButton.Disabled = true;

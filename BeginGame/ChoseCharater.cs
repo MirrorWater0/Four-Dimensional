@@ -1,16 +1,20 @@
-using Godot;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Godot;
 
 public partial class ChoseCharater : CanvasLayer
 {
-    static public PackedScene _Echo = (PackedScene)ResourceLoader.Load("res://character/PlayerCharacter/Echo/Echo.tscn");
-    static public PackedScene _Kasiya = ResourceLoader.Load<PackedScene>("res://character/PlayerCharacter/Kasiya/kasiya.tscn");
+    public static PackedScene _Echo = (PackedScene)
+        ResourceLoader.Load("res://character/PlayerCharacter/Echo/Echo.tscn");
+    public static PackedScene _Kasiya = ResourceLoader.Load<PackedScene>(
+        "res://character/PlayerCharacter/Kasiya/kasiya.tscn"
+    );
+
     public override void _Ready()
     {
         GameInfo.PlayerCharacters = new PlayerInfoStructure[4];
-        
+
         // Initialize Kasiya characters (indices 0 and 1)
         for (int i = 0; i < 2; i++)
         {
@@ -22,7 +26,7 @@ public partial class ChoseCharater : CanvasLayer
             kasiyaStructure.Speed = 10;
             GameInfo.PlayerCharacters[i] = kasiyaStructure;
         }
-        
+
         // Initialize Echo characters (indices 2 and 3)
         for (int i = 2; i < 4; i++)
         {
@@ -42,19 +46,23 @@ public partial class ChoseCharater : CanvasLayer
             GameInfo.PlayerCharacters[i].TakenSkills[2] = new SacredOnslaught();
             GameInfo.PlayerCharacters[i].PositionIndex = i + 1;
 
-            GameInfo.PlayerCharacters[i].GainedSkills.AddRange(GameInfo.PlayerCharacters[i].TakenSkills);
+            GameInfo
+                .PlayerCharacters[i]
+                .GainedSkills.AddRange(GameInfo.PlayerCharacters[i].TakenSkills);
         }
-        InitializePostion();
+        test();
     }
-    
+
     public void Start()
     {
         Battle.Istest = false;
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
 
-    public void InitializePostion()
+    public void test()
     {
         GameInfo.PlayerCharacters[0].GainedSkills.Add(new ReNewedSpirit());
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(new Determination());
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(new TerminateLight());
     }
 }

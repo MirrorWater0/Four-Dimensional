@@ -17,7 +17,7 @@ public partial class Battle : Node2D
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
     public List<PlayerCharacter> PlayersList = new();
-    public List<EnemyCharacter> EnemiesList;
+    public List<EnemyCharacter> EnemiesList = new();
     public Node2D Right => field ??= GetNode("Right") as Node2D;
     public Node2D Left => field ??= GetNode("Left") as Node2D;
 
@@ -41,18 +41,15 @@ public partial class Battle : Node2D
         get => _playerSpeed;
         set
         {
-            if (_playerSpeed != value)
-            {
-                _playerSpeed = Math.Clamp(value, 0, 100);
-                PlayerSpeedLabel.Text =
-                    _playerSpeed.ToString()
-                    + "("
-                    + PlayersList
-                        .Where(x => x.State != Character.CharaterState.Dying)
-                        .Sum(x => x.Speed)
-                    + ")";
-                CreateTween().TweenProperty(PlayerSpeedBar, "value", _playerSpeed, 0.3f);
-            }
+            _playerSpeed = Math.Clamp(value, 0, 100);
+            PlayerSpeedLabel.Text =
+                _playerSpeed.ToString()
+                + "("
+                + PlayersList
+                    .Where(x => x.State != Character.CharacterState.Dying)
+                    .Sum(x => x.Speed)
+                + ")";
+            CreateTween().TweenProperty(PlayerSpeedBar, "value", _playerSpeed, 0.3f);
         }
     }
 
@@ -61,18 +58,15 @@ public partial class Battle : Node2D
         get => _enemySpeed;
         set
         {
-            if (_enemySpeed != value)
-            {
-                _enemySpeed = Math.Clamp(value, 0, 100);
-                EnemySpeedLabel.Text =
-                    _enemySpeed.ToString()
-                    + "("
-                    + EnemiesList
-                        .Where(x => x.State != Character.CharaterState.Dying)
-                        .Sum(x => x.Speed)
-                    + ")";
-                CreateTween().TweenProperty(EnemySpeedBar, "value", _enemySpeed, 0.3f);
-            }
+            _enemySpeed = Math.Clamp(value, 0, 100);
+            EnemySpeedLabel.Text =
+                _enemySpeed.ToString()
+                + "("
+                + EnemiesList
+                    .Where(x => x.State != Character.CharacterState.Dying)
+                    .Sum(x => x.Speed)
+                + ")";
+            CreateTween().TweenProperty(EnemySpeedBar, "value", _enemySpeed, 0.3f);
         }
     }
 
@@ -100,38 +94,60 @@ public partial class Battle : Node2D
         }
 
         EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
-        test1.PositionIndex = 1;
         EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
-        test2.PositionIndex = 2;
         EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
-        test4.PositionIndex = 3;
         EnemiesList = new() { test1, test2, test4 };
+        RandomPosition(EnemiesList);
 
         PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
         EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
         SetCharaterPostion(); //加入节点树
 
-        for (int i = 0; i < EnemiesList.Count; i++)
-        {
-            EnemiesList[i].BattleNode = this;
-            EnemiesList[i].Initialize();
-        }
-
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
 
         CharaterControl.DisableAll();
-        for (int i = 0; i < PlayersList.Count; i++)
+        for (int i = 0; i < EnemiesList.Count; i++)
         {
-            GD.Print(PlayersList[i].State);
+            GD.Print(EnemiesList[i].PositionIndex);
         }
 
         await Task.Delay(1000);
         PlayerSpeed = 0;
         EnemySpeed = 0;
-        PlayerSpeedLabel.Text = "(" + PlayersList.Sum(x => x.Speed) + ")";
-        EnemySpeedLabel.Text = "(" + EnemiesList.Sum(x => x.Speed) + ")";
+        // PlayerSpeedLabel.Text = "(" + PlayersList.Sum(x => x.Speed) + ")";
+        // EnemySpeedLabel.Text = "(" + EnemiesList.Sum(x => x.Speed) + ")";
 
         BattleBegin1();
+    }
+
+    public void RandomPosition<T>(List<T> list) where T : Character
+    {
+        Random random = new Random(GameInfo.Seed);
+
+        // 1. 准备所有可能的位置 (1 到 9)
+        List<int> possiblePositions = Enumerable.Range(1, 9).ToList();
+
+        // 2. 洗牌算法：打乱这个列表
+        for (int i = possiblePositions.Count - 1; i > 0; i--)
+        {
+            int k = random.Next(i + 1); // 随机选一个索引
+            // 交换位置
+            int value = possiblePositions[k];
+            possiblePositions[k] = possiblePositions[i];
+            possiblePositions[i] = value;
+        }
+
+        // 3. 按顺序分配给敌人
+        for (int i = 0; i < list.Count; i++)
+        {
+            // 注意：如果敌人数量超过9个，这里会溢出，需要加判断
+            if (i < possiblePositions.Count)
+            {
+                list[i].PositionIndex = possiblePositions[i];
+                list[i].BattleNode = this;
+                list[i].Initialize();
+            }
+        }
     }
 
     public void SetCharaterPostion()
@@ -166,24 +182,6 @@ public partial class Battle : Node2D
                 c.Position = new Vector2(xPos, yPos);
                 c.OriginalPosition = c.Position;
                 c.ZIndex = row; // 确保前排遮挡后排
-
-                // 4. 同步方框 Shader 参数 (让斜度完全匹配)
-                // var colorRect = c.GetNodeOrNull<ColorRect>("ColorRect");
-                // if (colorRect?.Material is ShaderMaterial mat)
-                // {
-                //     // 斜率固定为 50/200 = 0.25
-                //     float skewVal = (bSkew / bGapY) * side;
-                //     mat.SetShaderParameter("skew_strength", skewVal);
-
-                //     // 平行四边形要求：顶边宽度和底边宽度完全一致
-                //     float boxWidth = 0.5f;
-                //     mat.SetShaderParameter("base_top_width", boxWidth);
-                //     mat.SetShaderParameter("base_bottom_width", boxWidth);
-
-                //     // 垂直位置对齐 (根据你的 ColorRect 大小调整)
-                //     mat.SetShaderParameter("base_top_y", 0.5f);
-                //     mat.SetShaderParameter("base_bottom_y", 0.8f);
-                // }
             }
         }
 
@@ -198,6 +196,12 @@ public partial class Battle : Node2D
 
     public async Task BattleBegin1()
     {
+        // Null checks for lists
+        if (PlayersList == null || EnemiesList == null)
+        {
+            return;
+        }
+
         if (PlayersList.Sum(x => x.Speed) < EnemiesList.Sum(x => x.Speed))
         {
             await CharacterAction(EnemiesList);
@@ -217,6 +221,12 @@ public partial class Battle : Node2D
     public async Task CharacterAction<T>(List<T> characterlist)
         where T : Character
     {
+        // Null check for characterlist
+        if (characterlist == null || characterlist.Count == 0)
+        {
+            return;
+        }
+
         DyingDetector(characterlist);
         characterlist[0].StartAction();
 
@@ -225,23 +235,31 @@ public partial class Battle : Node2D
         await ToSignal(this, SignalName.Next);
         await Task.Delay(800);
 
-        if (
-            PlayersList.All(x => x.State == Character.CharaterState.Dying)
-            || EnemiesList.All(x => x.State == Character.CharaterState.Dying)
-        )
+        // Null checks for lists before accessing
+        if (PlayersList != null && EnemiesList != null)
         {
-            GD.Print("over");
-            Retreat();
-            await Task.Delay(5000);
+            if (
+                PlayersList.All(x => x.State == Character.CharacterState.Dying)
+                || EnemiesList.All(x => x.State == Character.CharacterState.Dying)
+            )
+            {
+                GD.Print("over");
+                Retreat();
+                await Task.Delay(5000);
+            }
         }
 
         if (PlayerSpeed == 100)
         {
             PlayerSpeed = 0;
             BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
+            label.TargetPosition = Vector2.Zero;
             label.Text = "[color=yellow]超速触发[/color]";
-            PlayersList[PlayersList.Count - 1].AddChild(label);
-            await CharacterAction(PlayersList);
+            if (PlayersList != null && PlayersList.Count > 0)
+            {
+                PlayersList[PlayersList.Count - 1].AddChild(label);
+                await CharacterAction(PlayersList);
+            }
         }
 
         if (EnemySpeed == 100)
@@ -249,21 +267,30 @@ public partial class Battle : Node2D
             EnemySpeed = 0;
 
             BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
-            label.Position = Vector2.Zero;
+            label.TargetPosition = Vector2.Zero;
             label.Text = "[color=yellow]超速触发[/color]";
-            EnemiesList[EnemiesList.Count - 1].AddChild(label);
-            await CharacterAction(EnemiesList);
+            if (EnemiesList != null && EnemiesList.Count > 0)
+            {
+                EnemiesList[EnemiesList.Count - 1].AddChild(label);
+                await CharacterAction(EnemiesList);
+            }
         }
     }
 
     public void DyingDetector<T>(List<T> c)
         where T : Character
     {
-        if (c.All(x => x.State == Character.CharaterState.Dying))
+        // Null check for list
+        if (c == null || c.Count == 0)
+        {
+            return;
+        }
+
+        if (c.All(x => x.State == Character.CharacterState.Dying))
             return;
         while (c.Count > 0)
         {
-            if (c[0].State == Character.CharaterState.Dying)
+            if (c[0].State == Character.CharacterState.Dying)
             {
                 c.Reverse(1, c.Count - 1);
                 c.Reverse();
@@ -278,7 +305,19 @@ public partial class Battle : Node2D
 
     public async void Retreat()
     {
-        BattleAnimationPlayer.Play("end");
+        // Check if Battle instance is still valid before proceeding
+        if (!IsInstanceValid(this))
+        {
+            return;
+        }
+
+        // Check if lists are initialized
+        if (PlayersList == null || EnemiesList == null)
+        {
+            return;
+        }
+
+        BattleAnimationPlayer?.Play("end");
 
         // Disable retreat button to prevent multiple retreats
         if (RetreatButton != null)
@@ -286,43 +325,7 @@ public partial class Battle : Node2D
             RetreatButton.Disabled = true;
         }
 
-        // Mark all players as dying
-        for (int i = 0; i < PlayersList.Count; i++)
-        {
-            if (PlayersList[i] != null && IsInstanceValid(PlayersList[i]))
-            {
-                PlayersList[i].State = Character.CharaterState.Dying;
-            }
-        }
-
-        EmitS();
-
         await Task.Delay(800);
-
-        // Remove all players from scene tree
-        for (int i = 0; i < PlayersList.Count; i++)
-        {
-            if (PlayersList[i] != null && IsInstanceValid(PlayersList[i]))
-            {
-                PlayersList[i].State = Character.CharaterState.Normal;
-                if (Left != null && Left.IsAncestorOf(PlayersList[i]))
-                {
-                    Left.RemoveChild(PlayersList[i]);
-                }
-            }
-        }
-
-        // Remove all enemies from scene tree
-        for (int i = 0; i < EnemiesList.Count; i++)
-        {
-            if (EnemiesList[i] != null && IsInstanceValid(EnemiesList[i]))
-            {
-                if (Right != null && Right.IsAncestorOf(EnemiesList[i]))
-                {
-                    Right.RemoveChild(EnemiesList[i]);
-                }
-            }
-        }
 
         // Clear lists
         PlayersList.Clear();

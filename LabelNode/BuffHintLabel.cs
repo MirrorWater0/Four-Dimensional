@@ -9,6 +9,8 @@ public partial class BuffHintLabel : RichTextLabel
         gain
     }
 
+    public Vector2 TargetPosition { get; set; } = Vector2.Zero;
+
     public void Initialize(Which which, string name)
     {
         switch (which)
@@ -23,10 +25,16 @@ public partial class BuffHintLabel : RichTextLabel
     }
     public override async void _Ready()
     {
-        Position += new Vector2(0, -250);
+        // Wait for layout to be calculated
+        await ToSignal(GetTree(), "process_frame");
+        
+        // Center the label horizontally by offsetting by half the width
+        float centeredX = -Size.X / 2;
+        Position = TargetPosition + new Vector2(centeredX, -250);
+        
         PivotOffset = Size / 2;
+        
         Random random = new Random();
-        int offset = random.Next(-100, 100);
         Scale = new Vector2(0.1f, 0.1f);
         Modulate = new Color(1, 1, 1, 0);
         CreateTween()

@@ -478,7 +478,7 @@ hue_variation_max = 0.009999977
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ttuon"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d0b6a"]
 bg_color = Color(0.48178947, 0.48178947, 0.48178947, 0.69803923)
 border_width_left = 2
 border_width_top = 1
@@ -490,7 +490,7 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bim3i"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4km6a"]
 bg_color = Color(18.892157, 18.892157, 18.892157, 1)
 border_width_left = 2
 border_width_top = 2
@@ -504,8 +504,8 @@ corner_radius_bottom_left = 5
 
 [sub_resource type="Theme" id="Theme_boaws"]
 ProgressBar/colors/font_color = Color(1, 1, 1, 1)
-ProgressBar/styles/background = SubResource("StyleBoxFlat_ttuon")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_bim3i")
+ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
 
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_n3ui2")

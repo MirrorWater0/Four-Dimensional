@@ -32,7 +32,7 @@ public partial class EnemyCharacter : Character
     public override void EndAction()
     {
         BattleNode.EnemySpeed += BattleNode
-            .EnemiesList.Where(x => x.State != CharaterState.Dying)
+            .EnemiesList.Where(x => x.State != CharacterState.Dying)
             .Sum(x => x.Speed);
         base.EndAction();
     }

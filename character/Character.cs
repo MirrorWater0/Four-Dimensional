@@ -10,14 +10,23 @@ public partial class Character : Node2D
 {
     public int CharacterIndex;
 
-    public enum CharaterState
+    public enum CharacterState
     {
         Normal,
         Dying,
     }
 
+    
     public virtual PackedScene CharaterScene { set; get; }
-    public CharaterState State = CharaterState.Normal;
+    
+    private CharacterState _state = CharacterState.Normal;
+    public CharacterState State { get => _state; set
+        {
+            _state = value;
+            if(IsPlayer) BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
+            else BattleNode.EnemySpeed = BattleNode.EnemySpeed;
+        ;}
+    }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
 
     //charater basic properties
@@ -87,7 +96,7 @@ public partial class Character : Node2D
             Skills[i].OwnerCharater = this;
         }
         //初始化数值
-        State = CharaterState.Normal;
+        State = CharacterState.Normal;
 
         BlockLabel.Text = Block.ToString();
         Life = BattleLifemax;
@@ -187,7 +196,7 @@ public partial class Character : Node2D
 
     public virtual void Dying()
     {
-        State = CharaterState.Dying;
+        State = CharacterState.Dying;
 
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.5f);
 

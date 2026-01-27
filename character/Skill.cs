@@ -68,7 +68,7 @@ public partial class Skill
                 int iindex = Array.IndexOf(id, x.PositionIndex);
                 return iindex;
             })
-            .Where(x => x.State == Character.CharaterState.Normal)
+            .Where(x => x.State == Character.CharacterState.Normal)
             .ToArray();
         return targets;
     }
@@ -107,7 +107,7 @@ public partial class Skill
         await Task.Delay(200);
 
         // Only apply second hit if target is still alive
-        if (targets[0].State == Character.CharaterState.Normal)
+        if (targets[0].State == Character.CharacterState.Normal)
         {
             targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         }
@@ -128,7 +128,7 @@ public partial class Skill
         for (int i = 0; i < num; i++)
         {
             // Stop attacking if target has died
-            if (target.State != Character.CharaterState.Normal)
+            if (target.State != Character.CharacterState.Normal)
                 break;
 
             target.GetHurt(basis + OwnerCharater.BattlePower);
@@ -190,16 +190,17 @@ public partial class Skill
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
-        if (icon.PivotOffset == Vector2.Zero)
-            icon.PivotOffset = icon.Size / 2;
-        icon.Scale = new Vector2(1.8f, 1.8f);
-        icon.Modulate = 5 * new Color(1, 1, 1, 0.1f);
-        icon.CreateTween()
-            .TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f)
-            .SetEase(Tween.EaseType.Out);
-        icon.CreateTween()
-            .TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f)
-            .SetEase(Tween.EaseType.Out);
+        Buff.GhostExplode(icon,new Vector2(1.8f, 1.8f));
+        // if (icon.PivotOffset == Vector2.Zero)
+        //     icon.PivotOffset = icon.Size / 2;
+        // icon.Scale = new Vector2(1.8f, 1.8f);
+        // icon.Modulate = 5 * new Color(1, 1, 1, 0.1f);
+        // icon.CreateTween()
+        //     .TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f)
+        //     .SetEase(Tween.EaseType.Out);
+        // icon.CreateTween()
+        //     .TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f)
+        //     .SetEase(Tween.EaseType.Out);
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }

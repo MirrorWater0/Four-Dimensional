@@ -39,7 +39,7 @@ public partial class GlowLabel : Label
         {
             return;
         }
-        AddThemeColorOverride("font_color",new Color(0.6f, 0.9f, 1f,1));
+        AddThemeColorOverride("font_color", new Color(0.6f, 0.9f, 1f, 1));
         // 1. Create a ghost label using Duplicate to preserve all inspector properties
         // Duplicate flags: 0 = default (includes script, signals, groups, etc.)
         Label ghost = Duplicate() as Label;
@@ -49,21 +49,23 @@ public partial class GlowLabel : Label
 
         AddChild(ghost);
         ghost.Position = Vector2.Zero;
-        ghost.PivotOffset =Size / 2; // Ensure scaling from center
+        ghost.PivotOffset = Size / 2; // Ensure scaling from center
         ghost.Scale = Vector2.One;
         // 2. Animation effects
-        Tween t = CreateTween();
-        t.SetParallel(true);
+        Tween t1 = CreateTween();
+        Tween t2 = CreateTween();
+        t1.SetParallel(true);
         // Ghost scales up quickly
-        t.TweenProperty(ghost, "scale", new Vector2( 2.5f, 2.5f), 0.5f);
+        t1.TweenProperty(ghost, "scale", new Vector2(2.5f, 2.5f), 0.5f);
         // Ghost fades out
-        t.TweenProperty(ghost, "theme_override_colors/font_color", new Color(1, 1, 1, 0), 0.5f);
+        t1.TweenProperty(ghost, "theme_override_colors/font_color", new Color(1, 1, 1, 0), 0.5f);
         // Add a slight scale bounce to the original Label
-        t.TweenProperty(this, "scale", new Vector2(Math.Sign(OriginalScale.X) * 1.2f, 1.2f), 0.05f);
-        t.TweenProperty(this, "theme_override_colors/font_color", new Color(1, 1, 1, 1), 0.4f);
-        t.Chain().TweenProperty(this, "scale", OriginalScale, 0.2f);
-        
+        t2.SetParallel(true);
+        t2.TweenProperty(this, "scale", new Vector2(Math.Sign(OriginalScale.X) * 1.2f, 1.2f), 0.4f);
+        t2.TweenProperty(this, "theme_override_colors/font_color", new Color(1, 1, 1, 1), 0.2f);
+        t2.Chain().TweenProperty(this, "scale", OriginalScale, 0.2f);
+
         // 3. Delete ghost after animation ends
-        t.TweenCallback(Callable.From(() => ghost.QueueFree()));
+        t1.Chain().TweenCallback(Callable.From(ghost.QueueFree));
     }
 }
