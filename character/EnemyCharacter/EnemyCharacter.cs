@@ -6,13 +6,16 @@ using Godot;
 
 public partial class EnemyCharacter : Character
 {
+    public Control IntentionContorl => field ??= GetNode<Control>("Intention");
+    public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
-
+    public int IntentionIndex;
     public override void _Ready()
     {
         base._Ready();
+        IntentionContorl.Visible = true;
         IsPlayer = false;
     }
 
@@ -24,13 +27,14 @@ public partial class EnemyCharacter : Character
     public override async void StartAction()
     {
         base.StartAction();
-        Random random = new Random();
-        int i = random.Next(0, Skills.Length);
-        await Skills[i].Effect();
+        await Skills[IntentionIndex].Effect();
     }
 
     public override void EndAction()
     {
+        IntentionIndex = BattleNode.BattleIntentionRandom.Next(0, Skills.Length);
+        DisplayIntention();
+
         BattleNode.EnemySpeed += BattleNode
             .EnemiesList.Where(x => x.State != CharacterState.Dying)
             .Sum(x => x.Speed);
@@ -49,5 +53,20 @@ public partial class EnemyCharacter : Character
     {
         BattleNode.EnemiesDyingNum++;
         base.Dying();
+    }
+
+    public void DisplayIntention()
+    {
+        var skill = Skills[IntentionIndex];
+        switch (skill.SkillType)
+        {
+            case Skill.SkillTypes.Attack:
+                AttackIntention.Visible = true;
+                break;
+            case Skill.SkillTypes.Defence:
+                break;
+            case Skill.SkillTypes.Special:
+                break;
+        }
     }
 }

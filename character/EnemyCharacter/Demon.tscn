@@ -19,6 +19,6 @@ shader_parameter/motion_blur = false
 script = ExtResource("2_se7fp")
 Portrait = ExtResource("4_n6o37")
 
-[node name="Sprite" parent="." index="2"]
+[node name="Sprite" parent="." index="9"]
 material = SubResource("ShaderMaterial_heyqv")
 texture = ExtResource("4_n6o37")

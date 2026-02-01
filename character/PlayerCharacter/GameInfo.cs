@@ -5,7 +5,8 @@ using Godot;
 public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
-    public static int Seed = 1112;
+    public static int Seed = 1113;
+    public static Random IntentionRandom = new Random(Seed);
 }
 
 public struct PlayerInfoStructure

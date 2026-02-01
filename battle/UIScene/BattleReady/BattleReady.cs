@@ -22,18 +22,47 @@ public partial class BattleReady : Control
         "res://battle/UIScene/BattleReady/SelectButton.tscn"
     );
     private PortaitFrame _dragTarget;
-
+    ShaderMaterial BGmaterial;
     public override void _Ready()
     {
+        Modulate = new Color(1, 1, 1, 0);
+        BGmaterial = GetNode<ColorRect>("BG").Material as ShaderMaterial;
+        BGmaterial.SetShaderParameter("appearance", 0f);
         Initialize();
     }
 
+    public void StartAnimation()
+    {
+        Tween tween = CreateTween();
+        tween.TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.3f);
+        tween.TweenMethod(
+            Callable.From(() => BGmaterial.SetShaderParameter("appearance", 1f)),
+            0.0f,
+            1f,
+            0.4
+        );
+    }
     public override async void _Process(double delta)
     {
         if (_dragTarget != null)
         {
             _dragTarget.GlobalPosition =
                 GetViewport().GetMousePosition() - _dragTarget.PortaitRect.Size;
+        }
+
+        // Manually check for mouse over TextureRects to ensure highlighting works during drag
+        var mousePos = GetViewport().GetMousePosition();
+        for (int i = 0; i < Grid.GetChildCount(); i++)
+        {
+            var tex = Grid.GetChild<TextureRect>(i);
+            bool isOver = tex.GetGlobalRect().HasPoint(mousePos);
+
+            Color accent_color = new Color(0.69f, 0.75f, 0.80f);
+            Color targetColor = isOver
+                ? accent_color + 5 * new Color(0.2f, 0.2f, 0.2f)
+                : accent_color;
+
+            ((ShaderMaterial)(tex.Material)).SetShaderParameter("line_color", targetColor);
         }
     }
 
@@ -47,7 +76,7 @@ public partial class BattleReady : Control
             frame.IDindex = i;
             frame.ClickButton.Visible = true;
 
-            frame.ClickButton.Pressed += () =>
+            frame.ClickButton.Pressed += async () =>
             {
                 if (frame.Selected.Visible)
                     return;
@@ -60,7 +89,7 @@ public partial class BattleReady : Control
                     other.Selected.Visible = false;
                 }
 
-                ClearSkillContainer();
+                await ClearSkillContainer();
 
                 var character = GameInfo.PlayerCharacters[frame.IDindex];
 
@@ -87,25 +116,25 @@ public partial class BattleReady : Control
                             SkillContainer.GetChild<VBoxContainer>(2).AddChild(selectbutton);
                             break;
                     }
-
+                    selectbutton.StartAnimation(0.05f * (j - 1));
                     // If the character has already taken this skill, mark the button as pressed
                     if (character.TakenSkills.Contains(skill))
                     {
-                        selectbutton.ButtonPressed = true;
+                        selectbutton.Button.ButtonPressed = true;
                         selectbutton.animation.Play("explode");
                     }
 
-                    selectbutton.Pressed += () =>
+                    selectbutton.Button.Pressed += () =>
                     {
                         GameInfo.PlayerCharacters[frame.IDindex].TakenSkills[skillIndex] = skill;
-                        selectbutton.ButtonPressed = true;
+                        selectbutton.Button.ButtonPressed = true;
                         for (int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
                             SelectButton button = SkillContainer
                                 .GetChild<VBoxContainer>(skillIndex)
                                 .GetChild<SelectButton>(i);
                             if (button != selectbutton)
-                                button.ButtonPressed = false;
+                                button.Button.ButtonPressed = false;
                         }
                     };
                 }
@@ -124,6 +153,14 @@ public partial class BattleReady : Control
 
     public void InitializePostion()
     {
+        for (int i = 0; i < Grid.GetChildCount(); i++)
+        {
+            Color accent_color = new Color(0.69f, 0.75f, 0.80f);
+            var tex = Grid.GetChild<TextureRect>(i);
+            tex.Material.ResourceLocalToScene = true;
+            tex.Material = tex.Material.Duplicate() as ShaderMaterial;
+            ((ShaderMaterial)(tex.Material)).SetShaderParameter("line_color", accent_color);
+        }
         System.Collections.Generic.Dictionary<int, int> remap =
             new System.Collections.Generic.Dictionary<int, int>()
             {
@@ -172,32 +209,59 @@ public partial class BattleReady : Control
                     );
                 if (newParent != null)
                 {
-                    if (newParent.GetChildCount() > 0)
+                    if (newParent.GetChildCount() > 0 && olderParent != newParent)
                     {
                         var overPortait = newParent.GetChild<PortaitFrame>(0);
                         overPortait.Reparent(olderParent);
-                        CreateTween()
-                            .TweenProperty(overPortait, "position", new Vector2(0, 0), 0.2f);
+                        TweenSetAnimation(overPortait, 0.2f);
                     }
                     portrait.Reparent(newParent);
-                    CreateTween().TweenProperty(portrait, "position", new Vector2(0, 0), 0.1f);
+                    TweenSetAnimation(portrait, 0.2f);
                     _dragTarget = null;
                 }
                 else
                 {
-                    CreateTween().TweenProperty(portrait, "position", new Vector2(0, 0), 0.2f);
+                    TweenSetAnimation(portrait, 0.1f);
+                }
+
+                void TweenSetAnimation(PortaitFrame p, float time)
+                {
+                    CreateTween().TweenProperty(p, "position", new Vector2(0, 0), time);
+                    Tween tween = CreateTween();
+                    tween
+                        .Chain()
+                        .TweenCallback(
+                            Callable.From(() =>
+                            {
+                                p.Animation.Play("explode");
+                            })
+                        );
                 }
             };
         }
     }
 
-    public void ClearSkillContainer()
+    public async Task ClearSkillContainer()
     {
+        int buttonsCount = 0;
+        int cumulativeIndex = 0;
+        for (int i = 0; i < SkillContainer.GetChildCount(); i++)
+        {
+            buttonsCount += SkillContainer.GetChild<VBoxContainer>(i).GetChildCount();
+            for (int j = 0; j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
+            {
+                var button = SkillContainer.GetChild<VBoxContainer>(i).GetChild<SelectButton>(j);
+                button.FadeAnimation(0.05f * cumulativeIndex);
+                cumulativeIndex++;
+            }
+        }
+        await ToSignal(GetTree().CreateTimer(0.2f + 0.05f * (buttonsCount-1)), "timeout");
         for (int i = 0; i < SkillContainer.GetChildCount(); i++)
         {
             for (int j = 0; j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
             {
-                SkillContainer.GetChild<VBoxContainer>(i).GetChild<SelectButton>(j).QueueFree();
+                var button = SkillContainer.GetChild<VBoxContainer>(i).GetChild<SelectButton>(j);
+                button.QueueFree();
             }
         }
     }

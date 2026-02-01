@@ -1,5 +1,5 @@
-using Godot;
 using System;
+using Godot;
 
 public partial class SkillButton : Button
 {
@@ -8,21 +8,20 @@ public partial class SkillButton : Button
     public Frame SelfFrame => field ??= GetParent().GetParent() as Frame;
     public VBoxContainer SelfContainer => field ??= GetParent() as VBoxContainer;
     public Label NameLabel => field ??= GetChild(0) as Label;
-    public Area2D Detector => field??= GetChild(1) as Area2D;
-    
+
     public Vector2 PositionIndex;
     public Skill SelfSkill;
-    private ColorRect ShockWave => field??= GetNode<ColorRect>("ShockWave");
-    private ColorRect AbleRing => field??= GetNode<ColorRect>("AbleRing");
-    private ColorRect SparkLight => field??= GetNode<ColorRect>("SparkLight");
-    private ColorRect SwordIcon => field??= GetNode<ColorRect>("SwordIcon");
-    private ColorRect RhomboidIcon => field??= GetNode<ColorRect>("RhomboidIcon");
-    private ColorRect TerminateSkillIcon => field??= GetNode<ColorRect>("TerminateSkillIcon");
+    private ColorRect ShockWave => field ??= GetNode<ColorRect>("ShockWave");
+    private ColorRect AbleRing => field ??= GetNode<ColorRect>("AbleRing");
+    private ColorRect SparkLight => field ??= GetNode<ColorRect>("SparkLight");
+    private ColorRect SwordIcon => field ??= GetNode<ColorRect>("SwordIcon");
+    private ColorRect RhomboidIcon => field ??= GetNode<ColorRect>("RhomboidIcon");
+    private ColorRect TerminateSkillIcon => field ??= GetNode<ColorRect>("TerminateSkillIcon");
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
-    
+
     private static Tip globalTooltip;
-    
+
     public override void _Ready()
     {
         MouseEntered += mouse_entered;
@@ -44,7 +43,7 @@ public partial class SkillButton : Button
                 SwordIcon.Visible = false;
                 break;
         }
-        
+
         // Create global tooltip once
         if (globalTooltip == null)
         {
@@ -54,7 +53,7 @@ public partial class SkillButton : Button
             GetTree().Root.AddChild(globalTooltip);
         }
     }
-    
+
     public override void _Process(double delta)
     {
         if (Disabled)
@@ -66,10 +65,11 @@ public partial class SkillButton : Button
             AbleRing.Visible = true;
         }
     }
+
     public void mouse_entered()
     {
         Modulate = new Color(2.5f, 2.5f, 2.5f);
-        
+
         // Show tooltip with skill description
         if (SelfSkill != null && globalTooltip != null)
         {
@@ -77,10 +77,11 @@ public partial class SkillButton : Button
             globalTooltip.Visible = true;
         }
     }
+
     public void mouse_exited()
     {
         Modulate = new Color(0.9f, 0.9f, 0.9f);
-        
+
         // Hide tooltip
         if (globalTooltip != null)
         {
@@ -94,21 +95,27 @@ public partial class SkillButton : Button
         var tween = ShockWave.CreateTween();
 
         CreateTween().Parallel().TweenCallback(Callable.From(() => animating = false));
-                tween.TweenMethod(
-            Callable.From<float>(value => ((ShaderMaterial)SparkLight.Material).SetShaderParameter("progress", value)),
-            0.3,
-            1f,
-            0.4f
-        ).SetEase(Tween.EaseType.Out);
+        tween
+            .TweenMethod(
+                Callable.From<float>(value =>
+                    ((ShaderMaterial)SparkLight.Material).SetShaderParameter("progress", value)
+                ),
+                0.3,
+                1f,
+                0.4f
+            )
+            .SetEase(Tween.EaseType.Out);
 
-        tween.Parallel().TweenMethod(
-            Callable.From<float>(value => ((ShaderMaterial)ShockWave.Material).SetShaderParameter("progress", value)),
-            0.3,
-            1f,
-            0.4f
-        ).SetEase(Tween.EaseType.Out);
-        
+        tween
+            .Parallel()
+            .TweenMethod(
+                Callable.From<float>(value =>
+                    ((ShaderMaterial)ShockWave.Material).SetShaderParameter("progress", value)
+                ),
+                0.3,
+                1f,
+                0.4f
+            )
+            .SetEase(Tween.EaseType.Out);
     }
-
-
 }

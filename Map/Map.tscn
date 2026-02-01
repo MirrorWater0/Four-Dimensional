@@ -156,6 +156,5 @@ offset_bottom = 62.0
 text = "x"
 
 [node name="BattleReadyLayer" type="CanvasLayer" parent="."]
-layer = -1
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

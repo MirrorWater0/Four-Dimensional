@@ -1,6 +1,6 @@
 shader_type canvas_item;
-render_mode blend_mix, unshaded;
 
+render_mode blend_add;
 uniform float speed: hint_range(0.1, 3.0, 0.1) = 1.0;
 uniform vec4 ring_color: source_color = vec4(0.0, 1.0, 1.0, 1.0);
 uniform float inner_radius: hint_range(5.0, 50.0, 1.0) = 20.0;

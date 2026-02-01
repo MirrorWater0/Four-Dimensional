@@ -1,8 +1,7 @@
-[gd_scene load_steps=7 format=3 uid="uid://x33qtsalo03x"]
+[gd_scene load_steps=6 format=3 uid="uid://x33qtsalo03x"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_qhjne"]
 [ext_resource type="Script" uid="uid://1wyntidcg13k" path="res://character/PlayerCharacter/Kasiya/Kasiya.cs" id="2_q5rnf"]
-[ext_resource type="Texture2D" uid="uid://bbm87emmfa4bx" path="res://asset/PlayerCharater/2025.6.18.png" id="3_pnud8"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_57vc2"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="5_qnjc5"]
 
@@ -18,9 +17,7 @@ shader_parameter/motion_blur = false
 
 [node name="Kasiya" instance=ExtResource("1_qhjne")]
 script = ExtResource("2_q5rnf")
-Portrait = ExtResource("3_pnud8")
+Portrait = ExtResource("5_qnjc5")
 
 [node name="Sprite" parent="." index="9"]
 material = SubResource("ShaderMaterial_mwp8k")
-texture = ExtResource("5_qnjc5")
-flip_h = false

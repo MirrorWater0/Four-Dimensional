@@ -10,7 +10,7 @@ using Godot;
 public partial class Battle : Node2D
 {
     public static bool Istest = true;
-
+    public Random BattleIntentionRandom = new Random(GameInfo.IntentionRandom.Next());
     [Signal]
     public delegate void NextEventHandler();
 
@@ -108,7 +108,9 @@ public partial class Battle : Node2D
         CharaterControl.DisableAll();
         for (int i = 0; i < EnemiesList.Count; i++)
         {
-            GD.Print(EnemiesList[i].PositionIndex);
+            var enemy = EnemiesList[i];
+            enemy.IntentionIndex = BattleIntentionRandom.Next(0, enemy.Skills.Length);
+            enemy.DisplayIntention();
         }
 
         await Task.Delay(1000);
@@ -176,7 +178,7 @@ public partial class Battle : Node2D
 
                 // 3. 基础位置计算 (平行四边形逻辑)
                 // x = (列间距 + 行偏移) * 阵营系数
-                float xPos = (col * bGapX + row * bSkew - 100 * (row - 1)) * side;
+                float xPos = col * bGapX  * side - (row * bSkew - 100 * (row - 1));
                 float yPos = row * bGapY;
 
                 c.Position = new Vector2(xPos, yPos);
@@ -186,7 +188,7 @@ public partial class Battle : Node2D
         }
 
         ProcessList(PlayersList, Left, -1);
-        ProcessList(EnemiesList, Right, -1);
+        ProcessList(EnemiesList, Right, 1);
     }
 
     public void EmitS()

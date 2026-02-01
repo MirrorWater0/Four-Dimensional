@@ -13,27 +13,35 @@ public partial class ReadyButton : Button
 
     public override async void _Ready()
     {
-        ThisBattleReady = _readyScene.Instantiate() as BattleReady;
-        ThisBattleReady.Modulate = new Color(1, 1, 1, 0);
-        Layer.AddChild(ThisBattleReady);
-        ButtonDown += Opean;
+        ButtonDown += Click;
         MouseEntered += mouse_entered;
         MouseExited += mouse_right_entered;
         _originalColor = (Color)((ShaderMaterial)Material).GetShaderParameter("color");
     }
 
-    public void Opean()
+    public void Click()
     {
-        if (ThisBattleReady.Modulate.A == 0)
+        if (Layer.GetChildCount() == 0)
         {
-            CreateTween().TweenProperty(ThisBattleReady, "modulate", new Color(1, 1, 1, 1), 0.3f);
-            Layer.Layer = 1;
+            ThisBattleReady = _readyScene.Instantiate() as BattleReady;
+            Layer.AddChild(ThisBattleReady);
+            ThisBattleReady.StartAnimation();
         }
         else
         {
-            CreateTween().TweenProperty(ThisBattleReady, "modulate", new Color(1, 1, 1, 0), 0.3f);
-            Layer.Layer = -1;
+            Disabled = true;
+            Tween tween = CreateTween();
+            tween.TweenProperty(ThisBattleReady, "modulate", new Color(1, 1, 1, 0), 0.3f);
             ThisBattleReady.ComfirmTactics();
+            tween
+                .Chain()
+                .TweenCallback(
+                    Callable.From(() =>
+                    {
+                        Disabled = false;
+                        ThisBattleReady.QueueFree();
+                    })
+                );
         }
     }
 
@@ -43,8 +51,8 @@ public partial class ReadyButton : Button
         TweenShader("dist2", 1f);
         ((ShaderMaterial)Material).SetShaderParameter("color", new Color(1, 1, 1, 1));
         TweenShader("dist1", 1f);
-        TweenShader("outer_ring_dist",0.43f);
-        TweenShader("triangle_dist",0.45f);
+        TweenShader("outer_ring_dist", 0.43f);
+        TweenShader("triangle_dist", 0.45f);
     }
 
     public void mouse_right_entered()

@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://bvnftwrftpkc7"]
+[gd_scene load_steps=19 format=3 uid="uid://bvnftwrftpkc7"]
 
 [ext_resource type="Script" uid="uid://bhf4wionnrjlp" path="res://battle/UIScene/SkillButton.cs" id="1_gvdwr"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_etfs1"]
@@ -31,14 +31,11 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_fla6k"]
 shader = SubResource("Shader_tjicg")
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_tgstj"]
-size = Vector2(89.5, 18.5)
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_h1nnv"]
 resource_local_to_scene = true
 shader = ExtResource("3_77nt8")
 shader_parameter/speed = 1.0
-shader_parameter/ring_color = Color(0.7675111, 0.99999994, 0.9956437, 1)
+shader_parameter/ring_color = Color(1, 1, 1, 1)
 shader_parameter/inner_radius = 25.0
 shader_parameter/outer_radius = 30.0
 shader_parameter/glow_intensity = 0.5000000074506
@@ -52,20 +49,21 @@ shader_parameter/EXcolor = Color(1, 1, 1, 1)
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_epdhb"]
 resource_local_to_scene = true
 shader = ExtResource("5_c13mg")
-shader_parameter/sword_color = Color(1, 1, 1, 0.78431374)
-shader_parameter/blade_color = Color(1, 1, 1, 0.78431374)
-shader_parameter/handle_color = Color(1, 1, 1, 0.78431374)
+shader_parameter/sword_color = Color(1, 1, 1, 1)
+shader_parameter/blade_color = Color(1, 1, 1, 1)
+shader_parameter/handle_color = Color(1, 1, 1, 1)
 shader_parameter/glow_intensity = 0.5
 shader_parameter/angle = 0.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jup60"]
 resource_local_to_scene = true
 shader = ExtResource("6_codvk")
-shader_parameter/color = Color(1, 1, 1, 1)
+shader_parameter/color = Color(1.1801987, 1.1801987, 1.1801987, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gvdwr"]
+resource_local_to_scene = true
 shader = ExtResource("9_etfs1")
-shader_parameter/symbol_color = Color(0.62967473, 0.62967473, 0.6296747, 1)
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
 shader_parameter/thickness = 0.00499999988824
 shader_parameter/main_length = 1.4
 shader_parameter/main_width = 1.1
@@ -95,7 +93,7 @@ shader_parameter/glow_intensity = 25.0
 shader_parameter/ray_count = 15.0
 
 [node name="skill1" type="Button"]
-modulate = Color(0.8217884, 0.8217889, 0.82178843, 1)
+modulate = Color(0.82, 0.82, 0.82, 1)
 material = SubResource("ShaderMaterial_fla6k")
 custom_minimum_size = Vector2(60, 60)
 offset_left = 254.0
@@ -123,14 +121,6 @@ theme_override_colors/font_outline_color = Color(0.317647, 0.329412, 0.341176, 0
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 35
 text = "11"
-
-[node name="Detector" type="Area2D" parent="."]
-visible = false
-collision_mask = 0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Detector"]
-position = Vector2(49.5, 12.75)
-shape = SubResource("RectangleShape2D_tgstj")
 
 [node name="AbleRing" type="ColorRect" parent="."]
 material = SubResource("ShaderMaterial_h1nnv")
