@@ -9,7 +9,7 @@ public partial class Determination : Skill
     public Determination()
         : base(SkillTypes.Attack)
     {
-        Description = "发动强力攻击，造成6倍基础伤害+战斗力的伤害，并获得1次伤害免疫。";
+        Description = "发动强力攻击，造成6+战斗力的伤害，并获得2层伤害免疫。";
     }
 
     public override string SkillName { get; set; } = "剑意已决";
@@ -27,7 +27,7 @@ public partial class Smite : Skill
     public Smite(Character owner)
         : base(Skill.SkillTypes.Attack)
     {
-        Description = "降低目标2点生存能力，然后发动攻击，造成3倍基础伤害+战斗力的伤害。";
+        Description = "降低目标2点战斗生存能力，然后发动攻击，造成3+战斗力的伤害。";
     }
 
     public override string SkillName { get; set; } = "绝域剑杀";
@@ -49,7 +49,7 @@ public partial class Cast : Skill
     public Cast(Character owner)
         : base(Skill.SkillTypes.Attack)
     {
-        Description = "获得等于攻击伤害的格挡";
+        Description = "发动攻击，造成10+战斗力的伤害，然后获得等于攻击伤害值的格挡。";
     }
 
     public override string SkillName { get; set; } = "投射";

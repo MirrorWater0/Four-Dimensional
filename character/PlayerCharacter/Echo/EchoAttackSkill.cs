@@ -7,7 +7,7 @@ public partial class SacredOnslaught : Skill
     public SacredOnslaught()
         : base(SkillTypes.Special)
     {
-        Description = "对最多4个目标发动攻击，每个目标受到2次基础伤害（40%+战斗力）的打击。";
+        Description = "对最多4个目标发动攻击，每个目标受到2次攻击，每次造成0.4+战斗力的伤害。";
     }
 
     public override string SkillName { get; set; } = "圣域冲击";

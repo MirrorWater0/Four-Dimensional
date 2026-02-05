@@ -7,7 +7,7 @@ public partial class FollowingLight : Skill
 {
     public FollowingLight(Character owner):base(Skill.SkillTypes.Attack)
     {
-        Description = "对最前方的敌人发动攻击，造成基础伤害+战斗力的伤害。";
+        Description = "对位置索引最大的敌人发动攻击，造成10+战斗力的伤害。";
     }
     public override string SkillName { set; get; } = "流光日影";
 

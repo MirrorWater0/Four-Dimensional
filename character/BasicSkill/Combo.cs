@@ -8,7 +8,7 @@ public partial class Combo : Skill
     public Combo()
         : base(Skill.SkillTypes.Attack)
     {
-        Description = "发动连续攻击，每消耗1点能量可额外发动一次攻击，每次攻击伤害递增。";
+        Description = "发动连续攻击，每消耗1点能量可额外发动一次攻击，每次攻击造成i+战斗力的伤害（i为攻击次数，从0开始递增）。";
     }
 
     public override string SkillName { set; get; } = "回响时刻";

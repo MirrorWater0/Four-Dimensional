@@ -6,7 +6,7 @@ public partial class Defense : Skill
 {
     public Defense():base(Skill.SkillTypes.Defence)
     {
-        Description = "获得护盾，护盾值为2倍战斗生存能力。";
+        Description = "获得护盾，护盾值为30+战斗生存能力。";
     }
     public override string SkillName { set; get; } = "坚不可摧";
 
