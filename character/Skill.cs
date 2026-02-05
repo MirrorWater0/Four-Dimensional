@@ -79,14 +79,9 @@ public partial class Skill
         if (targets.Length == 0)
             return;
 
-        AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
-        OwnerCharater.AddChild(attack);
-        OwnerCharater.CAplayer.Play("release");
-        attack.AnimationPlayer0.Play("Attack1");
-        attack.Sprite1.GlobalPosition = targets[0].GlobalPosition;
+        await AttackAnimation(targets[0]);
 
-        await Task.Delay(700);
-        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         await Task.Delay(200);
     }
 
@@ -95,21 +90,18 @@ public partial class Skill
         Character[] targets = Chosetarget1();
         if (targets.Length == 0)
             return;
-
-        AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
-        OwnerCharater.AddChild(attack);
-        OwnerCharater.CAplayer.Play("release");
-        attack.AnimationPlayer0.Play("Attack1");
-        attack.Sprite1.GlobalPosition = targets[0].GlobalPosition;
-
-        await Task.Delay(700);
-        targets[0].GetHurt(basis + OwnerCharater.BattlePower);
-        await Task.Delay(200);
+        await AttackAnimation(targets[0]);
+        await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        await Task.Delay(100);
 
         // Only apply second hit if target is still alive
         if (targets[0].State == Character.CharacterState.Normal)
         {
-            targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+            var attack2 = AttackScene.Instantiate() as AttackEffect;
+            targets[0].AddChild(attack2);
+            attack2.AnimationPlayer0.Play("Attack1");
+            attack2.GlobalPosition = targets[0].GlobalPosition;
+            await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
         }
     }
 
@@ -118,22 +110,32 @@ public partial class Skill
         if (target == null)
             return;
 
-        AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
-        OwnerCharater.AddChild(attack);
-        OwnerCharater.CAplayer.Play("release");
-        attack.AnimationPlayer0.Play("Attack1");
-        attack.Sprite1.GlobalPosition = target.GlobalPosition;
+        await AttackAnimation(target);
 
-        await Task.Delay(600);
         for (int i = 0; i < num; i++)
         {
             // Stop attacking if target has died
             if (target.State != Character.CharacterState.Normal)
                 break;
-
-            target.GetHurt(basis + OwnerCharater.BattlePower);
+            var attack = AttackScene.Instantiate() as AttackEffect;
+            target.AddChild(attack);
+            attack.AnimationPlayer0.Play("Attack1");
+            attack.GlobalPosition = target.GlobalPosition;
+            await target.GetHurt(basis + OwnerCharater.BattlePower);
             await Task.Delay(150);
         }
+    }
+
+    public async Task AttackAnimation(Character target)
+    {
+        AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
+        OwnerCharater.AddChild(attack);
+        var effect = OwnerCharater.CharacterEffectScene.Instantiate() as CharacterEffect;
+        OwnerCharater.AddChild(effect);
+        effect.Animation.Play("explode");
+        await effect.ToSignal(effect.Animation, "animation_finished");
+        attack.AnimationPlayer0.Play("Attack1");
+        attack.GlobalPosition = target.GlobalPosition;
     }
 
     public async Task DescendingProperties(Character target, PropertyType type, int num)
@@ -190,17 +192,7 @@ public partial class Skill
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
-        Buff.GhostExplode(icon,new Vector2(1.8f, 1.8f));
-        // if (icon.PivotOffset == Vector2.Zero)
-        //     icon.PivotOffset = icon.Size / 2;
-        // icon.Scale = new Vector2(1.8f, 1.8f);
-        // icon.Modulate = 5 * new Color(1, 1, 1, 0.1f);
-        // icon.CreateTween()
-        //     .TweenProperty(icon, "modulate", new Color(1, 1, 1, 1), 0.5f)
-        //     .SetEase(Tween.EaseType.Out);
-        // icon.CreateTween()
-        //     .TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f)
-        //     .SetEase(Tween.EaseType.Out);
+        Buff.GhostExplode(icon, new Vector2(2f, 2f));
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }

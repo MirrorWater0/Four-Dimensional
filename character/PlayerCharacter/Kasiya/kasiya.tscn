@@ -1,9 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://x33qtsalo03x"]
+[gd_scene load_steps=8 format=3 uid="uid://x33qtsalo03x"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_qhjne"]
 [ext_resource type="Script" uid="uid://1wyntidcg13k" path="res://character/PlayerCharacter/Kasiya/Kasiya.cs" id="2_q5rnf"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_57vc2"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://bttb6ahtgolgm" path="res://asset/Spine/kasiya_skeleton_data_resource.tres" id="5_hk3p4"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="5_qnjc5"]
+[ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="6_hk3p4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_mwp8k"]
 resource_local_to_scene = true
@@ -20,4 +22,14 @@ script = ExtResource("2_q5rnf")
 Portrait = ExtResource("5_qnjc5")
 
 [node name="Sprite" parent="." index="9"]
+visible = false
 material = SubResource("ShaderMaterial_mwp8k")
+
+[node name="SpineSprite" type="SpineSprite" parent="." index="12"]
+skeleton_data_res = ExtResource("5_hk3p4")
+preview_skin = "default"
+preview_animation = "newAnimation"
+preview_frame = false
+preview_time = 0.0
+scale = Vector2(0.27, 0.27)
+script = ExtResource("6_hk3p4")

@@ -13,49 +13,64 @@ float line(float value, float target, float thickness, float softness) {
 }
 
 void fragment() {
+	vec4 modulate = COLOR;
 	// 1. 坐标标准化：将 UV 映射到 0.0 到 0.5 之间，实现四个角对称
 	vec2 uv = abs(UV - 0.5);
 	float x = uv.x;
 	float y = uv.y;
 
-	// 基础背景色
-	vec3 final_color = bg_color.rgb;
-	float alpha = bg_color.a;
+	// --- 2. 线条位置定义 ---
+	float inner_frame_pos = 0.44;  // 最内层完整方框的位置
+	float outer_frame_pos = 0.46;  // 第二层方框的位置
+	float decoration_pos = 0.485; // 最外层角落装饰线的位置
 
-	// --- 2. 绘制双层主边框 ---
-	// 外框位置 0.45，内框位置 0.42
-	float frame = line(x, 0.46, border_thickness, 0.002) * step(y, 0.46);
-	frame += line(y, 0.46, border_thickness, 0.002) * step(x, 0.46);
+	// --- 3. 绘制线条 Mask ---
+	float frame_mask = 0.0;
 
-	frame += line(x, 0.44, border_thickness, 0.002) * step(y, 0.44);
-	frame += line(y, 0.44, border_thickness, 0.002) * step(x, 0.44);
+	// 内层主边框 (0.44)
+	frame_mask += line(x, inner_frame_pos, border_thickness, 0.002) * step(y, inner_frame_pos);
+	frame_mask += line(y, inner_frame_pos, border_thickness, 0.002) * step(x, inner_frame_pos);
 
-	// --- 3. 绘制角落装饰 (L型结构) ---
-	// 定义角落激活区域
+	// 外层主边框 (0.46)
+	frame_mask += line(x, outer_frame_pos, border_thickness, 0.002) * step(y, outer_frame_pos);
+	frame_mask += line(y, outer_frame_pos, border_thickness, 0.002) * step(x, outer_frame_pos);
+
+	// 角落装饰
 	if (x > 0.5 - corner_size && y > 0.5 - corner_size) {
-		// 角落里的小方块或短线
-		float corner_pattern = 0.0;
+		// 最外层 L 线
+		frame_mask += line(x, decoration_pos, border_thickness, 0.002) * step(y, decoration_pos) * step(outer_frame_pos - 0.04, y);
+		frame_mask += line(y, decoration_pos, border_thickness, 0.002) * step(x, decoration_pos) * step(outer_frame_pos - 0.04, x);
 
-		// 外部装饰 L 线
-		corner_pattern += line(x, 0.485, border_thickness, 0.002) * step(y, 0.485) * step(0.42, y);
-		corner_pattern += line(y, 0.485, border_thickness, 0.002) * step(x, 0.485) * step(0.42, x);
-
-		// 内部装饰小 L
+		// 内部装饰 L (更靠近中心)
 		float inner_l_pos = 0.38;
-		corner_pattern += line(x, inner_l_pos, border_thickness, 0.002) * step(y, inner_l_pos) * step(inner_l_pos - 0.05, y);
-		corner_pattern += line(y, inner_l_pos, border_thickness, 0.002) * step(x, inner_l_pos) * step(inner_l_pos - 0.05, x);
+		frame_mask += line(x, inner_l_pos, border_thickness, 0.002) * step(y, inner_l_pos) * step(inner_l_pos - 0.05, y);
+		frame_mask += line(y, inner_l_pos, border_thickness, 0.002) * step(x, inner_l_pos) * step(inner_l_pos - 0.05, x);
 
-		// 角落的连接点（模拟图中的短点）
-		corner_pattern += step(0.47, x) * step(0.47, y) * (1.0 - step(0.49, x)) * (1.0 - step(0.49, y));
-
-		frame += corner_pattern;
+		// 角落的小方点
+		frame_mask += step(0.47, x) * step(0.47, y) * (1.0 - step(0.49, x)) * (1.0 - step(0.49, y));
 	}
 
-	// 限制边框不要超出中心
-	frame = clamp(frame, 0.0, 1.0);
+	frame_mask = clamp(frame_mask, 0.0, 1.0);
 
-	// 混合颜色
-	final_color = mix(final_color, line_color.rgb, frame);
+	// --- 4. 背景裁剪逻辑 ---
 
-	COLOR = vec4(final_color, alpha);
+	// 关键修改：背景只存在于比最内层边框（inner_frame_pos）更靠内的区域
+	// 减去 border_thickness 是为了让背景刚好贴合在内线的内侧
+	float bg_limit = inner_frame_pos - border_thickness;
+	float bg_mask = step(x, bg_limit) * step(y, bg_limit);
+
+	// --- 5. 颜色与透明度合成 ---
+
+	// 分别计算背景和线条的 Alpha
+	float final_bg_alpha = bg_mask * bg_color.a;
+	float final_line_alpha = frame_mask * line_color.a;
+
+	// 颜色混合：如果有线条，则显示线条颜色，否则显示背景色
+	// 注意：这里的 mix 逻辑在没有背景的区域（bg_mask=0）依然能通过 final_line_alpha 渲染线条
+	vec3 final_rgb = mix(bg_color.rgb, line_color.rgb, final_line_alpha);
+
+	// 最终透明度：背景区域或线条区域
+	float final_alpha = max(final_bg_alpha, final_line_alpha);
+
+	COLOR = vec4(final_rgb, final_alpha)*modulate;
 }

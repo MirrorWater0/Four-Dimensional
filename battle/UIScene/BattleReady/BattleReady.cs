@@ -15,7 +15,7 @@ public partial class BattleReady : Control
     );
     private List<SkillButton> readyChange = new List<SkillButton>();
     Control FrameContainer => field ??= GetNode("frame") as Control;
-    public GridContainer Grid => field ??= GetNode("GridContainer") as GridContainer;
+    public Control Grid => field ??= GetNode("GridContainer") as Control;
     HBoxContainer SkillContainer => field ??= GetNode("SkillContainer") as HBoxContainer;
 
     PackedScene SekectButtonScene = GD.Load<PackedScene>(
@@ -23,6 +23,7 @@ public partial class BattleReady : Control
     );
     private PortaitFrame _dragTarget;
     ShaderMaterial BGmaterial;
+
     public override void _Ready()
     {
         Modulate = new Color(1, 1, 1, 0);
@@ -31,17 +32,41 @@ public partial class BattleReady : Control
         Initialize();
     }
 
-    public void StartAnimation()
+    public async void StartAnimation()
     {
+        for (int i = 0; i < Grid.GetChildCount(); i++)
+        {
+            await ToSignal(GetTree().CreateTimer(0.0001f), "timeout");
+            var child = Grid.GetChild<ColorRect>(i);
+            Vector2 offset = new Vector2(50 + i * 10, 0);
+            child.Position -= offset;
+            CreateTween()
+                .TweenProperty(child, "position", child.Position + offset, 0.2f + 0.01f * (i+1) % 3)
+                .SetEase(Tween.EaseType.Out);
+        }
+
         Tween tween = CreateTween();
+        tween.SetParallel(true);
         tween.TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.3f);
-        tween.TweenMethod(
-            Callable.From(() => BGmaterial.SetShaderParameter("appearance", 1f)),
-            0.0f,
-            1f,
-            0.4
-        );
+        tween
+            .TweenMethod(
+                Callable.From<float>(value => BGmaterial.SetShaderParameter("appearance", value)),
+                0.0f,
+                1f,
+                0.4f
+            )
+            .SetEase(Tween.EaseType.Out);
+        FrameContainer.Position += new Vector2(0, 200);
+        tween
+            .TweenProperty(
+                FrameContainer,
+                "position",
+                FrameContainer.Position - new Vector2(0, 200),
+                0.3f
+            )
+            .SetEase(Tween.EaseType.Out);
     }
+
     public override async void _Process(double delta)
     {
         if (_dragTarget != null)
@@ -54,7 +79,7 @@ public partial class BattleReady : Control
         var mousePos = GetViewport().GetMousePosition();
         for (int i = 0; i < Grid.GetChildCount(); i++)
         {
-            var tex = Grid.GetChild<TextureRect>(i);
+            var tex = Grid.GetChild<ColorRect>(i);
             bool isOver = tex.GetGlobalRect().HasPoint(mousePos);
 
             Color accent_color = new Color(0.69f, 0.75f, 0.80f);
@@ -156,7 +181,7 @@ public partial class BattleReady : Control
         for (int i = 0; i < Grid.GetChildCount(); i++)
         {
             Color accent_color = new Color(0.69f, 0.75f, 0.80f);
-            var tex = Grid.GetChild<TextureRect>(i);
+            var tex = Grid.GetChild<ColorRect>(i);
             tex.Material.ResourceLocalToScene = true;
             tex.Material = tex.Material.Duplicate() as ShaderMaterial;
             ((ShaderMaterial)(tex.Material)).SetShaderParameter("line_color", accent_color);
@@ -177,10 +202,9 @@ public partial class BattleReady : Control
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var portrait = PortaitScene.Instantiate() as PortaitFrame;
-            portrait.PortaitRect.Texture = GameInfo
-                .PlayerCharacters[i]
-                .CharacterScene.Instantiate<PlayerCharacter>()
-                .Portrait;
+            portrait.PortaitRect.Texture = GD.Load<Texture2D>(
+                GameInfo.PlayerCharacters[i].PortaitPath
+            );
             portrait.PortaitIndex = i;
             var positionindex = GameInfo.PlayerCharacters[i].PositionIndex;
 
@@ -203,7 +227,7 @@ public partial class BattleReady : Control
                 _dragTarget = null;
                 var olderParent = portrait.GetParent();
                 var newParent = Grid.GetChildren()
-                    .OfType<TextureRect>()
+                    .OfType<ColorRect>()
                     .FirstOrDefault(x =>
                         x.GetGlobalRect().HasPoint(GetViewport().GetMousePosition())
                     );
@@ -255,7 +279,7 @@ public partial class BattleReady : Control
                 cumulativeIndex++;
             }
         }
-        await ToSignal(GetTree().CreateTimer(0.2f + 0.05f * (buttonsCount-1)), "timeout");
+        await ToSignal(GetTree().CreateTimer(0.2f + 0.05f * (buttonsCount - 1)), "timeout");
         for (int i = 0; i < SkillContainer.GetChildCount(); i++)
         {
             for (int j = 0; j < SkillContainer.GetChild<VBoxContainer>(i).GetChildCount(); j++)
@@ -283,7 +307,7 @@ public partial class BattleReady : Control
             };
         for (int i = 0; i < Grid.GetChildCount(); i++)
         {
-            var texture = Grid.GetChild<TextureRect>(i);
+            var texture = Grid.GetChild<ColorRect>(i);
             if (texture.GetChildCount() > 0)
             {
                 int gridIndex = i + 1;

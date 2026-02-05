@@ -9,7 +9,7 @@ shader = ExtResource("1_w33ss")
 
 [sub_resource type="Animation" id="Animation_y8att"]
 resource_name = "Attack1"
-length = 1.4
+length = 0.5
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -17,7 +17,7 @@ tracks/0/path = NodePath("Effect1:frame")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0.766667, 1.4),
+"times": PackedFloat32Array(0, 0.46666667),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
 "values": [0, 14]
@@ -29,10 +29,10 @@ tracks/1/path = NodePath("Effect1:self_modulate")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.766667, 0.866667, 1.2, 1.4),
-"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"times": PackedFloat32Array(0, 0.1, 0.4, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
 }
 
 [sub_resource type="Animation" id="Animation_tormu"]
@@ -69,11 +69,12 @@ _data = {
 }
 
 [node name="AttactEffect" type="Node2D"]
+z_index = 10
 script = ExtResource("1_nymrw")
 
 [node name="Effect1" type="AnimatedSprite2D" parent="."]
 self_modulate = Color(1, 1, 1, 0)
-top_level = true
+z_index = 10
 material = SubResource("ShaderMaterial_agumj")
 scale = Vector2(1.5, 1.5)
 sprite_frames = ExtResource("2_elpvn")
@@ -82,5 +83,5 @@ flip_h = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
-"": SubResource("AnimationLibrary_sp06p")
+&"": SubResource("AnimationLibrary_sp06p")
 }

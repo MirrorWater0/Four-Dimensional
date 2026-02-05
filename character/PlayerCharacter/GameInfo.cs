@@ -21,4 +21,5 @@ public struct PlayerInfoStructure
     public List<Skill> GainedSkills = new List<Skill>();
     public Skill[] TakenSkills = new Skill[3];
     public int PositionIndex;
+    public string PortaitPath;
 }

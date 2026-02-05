@@ -9,6 +9,7 @@ shader_type canvas_item;
 uniform float intense;
 uniform vec4 efcolor : source_color ;
 uniform vec4 mapcolor : source_color = vec4(1.);
+varying vec4 modulate;
 // HSV to RGB conversion
 vec3 hsv(float h, float s, float v) {
   vec4 t = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
@@ -31,6 +32,9 @@ mat3 rotate3D(float angle, vec3 axis) {
   );
 }
 
+void vertex(){
+	modulate = COLOR;
+}
 // Main part
 void fragment() {
   vec2 r = iResolution.xy;
@@ -78,5 +82,6 @@ void fragment() {
 	COLOR.a = (COLOR.r +COLOR.b+COLOR.g)/3.;
 	vec4 tex = texture(TEXTURE,UV);
 	fragColor = efcolor*fragColor/300. + mapcolor*tex;
+	fragColor *= modulate;
 	fragColor.a = tex.a;
 }

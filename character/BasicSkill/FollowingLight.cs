@@ -23,6 +23,5 @@ public partial class FollowingLight : Skill
         var target = targets.Where(x => x.PositionIndex == MaxNum).ToArray();
 
         await Task.Delay(1000);
-        OwnerCharater.EndAction();
     }
 }

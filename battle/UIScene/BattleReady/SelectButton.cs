@@ -56,7 +56,6 @@ public partial class SelectButton : Control
 
     public async void FadeAnimation(float delay)
     {
-        GD.Print("FadeAnimation", delay);
         await ToSignal(GetTree().CreateTimer(delay), "timeout");
         CreateTween().TweenProperty(Control,"position", new Vector2(50,0), 0.2f);
         CreateTween().TweenProperty(this, "modulate:a", 0f, 0.2f);

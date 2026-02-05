@@ -16,16 +16,21 @@ public partial class Character : Node2D
         Dying,
     }
 
-    
     public virtual PackedScene CharaterScene { set; get; }
-    
+
     private CharacterState _state = CharacterState.Normal;
-    public CharacterState State { get => _state; set
+    public CharacterState State
+    {
+        get => _state;
+        set
         {
             _state = value;
-            if(IsPlayer) BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
-            else BattleNode.EnemySpeed = BattleNode.EnemySpeed;
-        ;}
+            if (IsPlayer)
+                BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
+            else
+                BattleNode.EnemySpeed = BattleNode.EnemySpeed;
+            ;
+        }
     }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
 
@@ -39,7 +44,8 @@ public partial class Character : Node2D
     public int BattleSurvivability;
     public int Speed;
     public int Block { get; protected set; }
-    public int Energe { get; protected set; } = 1;
+    public int Energy { get; protected set; } = 1;
+
     //properties label
     public Label LifeLabel => field ??= GetNode("Life") as Label;
     public Label PowerLabel;
@@ -110,7 +116,7 @@ public partial class Character : Node2D
         LifeBar2.Value = Life;
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-        EnergeIconLabel.Text = Energe.ToString();
+        EnergeIconLabel.Text = Energy.ToString();
         SpeedIconLabel.Text = Speed.ToString();
 
         Block = 0;
@@ -135,7 +141,7 @@ public partial class Character : Node2D
     {
         Block = 0;
         UpdataBlock(0);
-        UpdataEnerge(1);
+        UpdataEnergy(1);
         TrailAnimation.Play("trail");
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
     }
@@ -150,7 +156,7 @@ public partial class Character : Node2D
 
     public virtual async Task GetHurt(float damage)
     {
-        Sprite.Modulate = 5 * new Color(1, 1, 1, 1);
+        Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
         HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
         AddChild(hitParticle);
         if (HurtBuffs != null)
@@ -178,7 +184,7 @@ public partial class Character : Node2D
         {
             Dying();
         }
-        await ToSignal(GetTree().CreateTimer(0.15f), "timeout");
+        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         Sprite.Modulate = new Color(1, 1, 1, 1);
     }
 
@@ -212,10 +218,17 @@ public partial class Character : Node2D
 
     public virtual void DisableSkill() { }
 
-    public virtual void UpdataEnerge(int num)
+    public virtual void UpdataEnergy(int num)
     {
-        Energe += num;
-        EnergeIconLabel.Text = Energe.ToString();
+        Energy += num;
+        EnergeIconLabel.Text = Energy.ToString();
+        var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        Effect.Position = new Vector2(0, -50);
+        AddChild(Effect);
+        Effect.Animation.Play("energe");
+        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
+        hint.Text = $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}";
+        AddChild(hint);
     }
 
     public void UpdataBlock(int num)
@@ -257,21 +270,6 @@ public partial class Character : Node2D
             .TweenProperty(Hoverframe, "scale", new Vector2(1f, 1f), 0.2f)
             .SetTrans(Tween.TransitionType.Back)
             .SetEase(Tween.EaseType.Out);
-
-        // SkillControl.Visible = true;
-        // for(int i = 0; i < SkillControl.GetChildCount(); i++)
-        // {
-        // 	Control skillbutton = SkillControl.GetChild<Control>(i);
-        // 	//skillbutton.Scale = Vector2.Zero;
-        // 	skillbutton.Position = Vector2.Zero;
-
-        // 	Tween skilltween = CreateTween();
-        // 	float r = 75f;
-        // 	skilltween.TweenProperty(skillbutton, "position", r*new Vector2((float)Math.Cos(Math.PI*2/3 * i), (float)Math.Sin(Math.PI*2/3 * i)), 0.3f)
-        // 		.SetDelay(0.1f * i)
-        // 		.SetTrans(Tween.TransitionType.Sine)
-        // 		.SetEase(Tween.EaseType.Out);
-        // }
     }
 
     public async void PlayAnimatedSprite(AnimatedSprite2D animation)

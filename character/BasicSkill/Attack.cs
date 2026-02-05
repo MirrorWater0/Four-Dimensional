@@ -18,8 +18,6 @@ public partial class Attack : Skill
     public async override Task Effect()
     {
         await base.Effect();
-        
         await Attack2(5);
-        OwnerCharater.EndAction();
     }
 }

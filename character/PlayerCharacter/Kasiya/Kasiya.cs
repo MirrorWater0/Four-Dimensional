@@ -25,4 +25,5 @@ public partial class Kasiya : PlayerCharacter
             Recovery(20);
         }
     }
+
 }

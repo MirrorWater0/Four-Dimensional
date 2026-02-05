@@ -19,7 +19,6 @@ public partial class Determination : Skill
         await base.Effect();
         await Attack1(6);
         HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, 2);
-        OwnerCharater.EndAction();
     }
 }
 
@@ -42,7 +41,6 @@ public partial class Smite : Skill
             await DescendingProperties(targets[0], PropertyType.Survivalibility, 2);
             await Attack1(3);
         }
-        OwnerCharater.EndAction();
     }
 }
 
@@ -61,6 +59,5 @@ public partial class Cast : Skill
         await base.Effect();
         await Attack1(10);
         OwnerCharater.UpdataBlock(10 + OwnerCharater.BattlePower);
-        OwnerCharater.EndAction();
     }
 }

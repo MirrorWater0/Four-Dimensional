@@ -21,6 +21,5 @@ public partial class ReNewedSpirit : Skill
         IncreaseProperties(OwnerCharater,PropertyType.Power,5);
         IncreaseProperties(OwnerCharater,PropertyType.Survivalibility,5);
         OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
-        OwnerCharater.EndAction();
     }
 }

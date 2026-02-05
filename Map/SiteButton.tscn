@@ -1,11 +1,46 @@
-[gd_scene load_steps=2 format=3 uid="uid://dmqc0oaqsktsg"]
+[gd_scene load_steps=5 format=3 uid="uid://dmqc0oaqsktsg"]
 
 [ext_resource type="Script" uid="uid://cui3xil6fvrba" path="res://Map/SiteButton.cs" id="1_wilnw"]
+[ext_resource type="Shader" uid="uid://xydd6c6v2khs" path="res://shader/UI/Button/SiteButton.gdshader" id="2_ftfua"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_p7pbm"]
+shader = ExtResource("2_ftfua")
+shader_parameter/main_color = Color(0.7921569, 1, 1, 1)
+shader_parameter/smoothness = 0.005
+shader_parameter/rotation_speed = 1.0
+shader_parameter/center_dot = 0.03
+shader_parameter/inner_ring_radius = 0.08
+shader_parameter/inner_ring_width = 0.01
+shader_parameter/broken_ring_radius = 0.14
+shader_parameter/broken_ring_width = 0.015
+shader_parameter/broken_ring_gap = 0.8
+shader_parameter/p1 = Vector2(0, 0)
+shader_parameter/p2 = Vector2(0.25, 0.05)
+shader_parameter/p3 = Vector2(0.4, 0.2)
+
+[sub_resource type="Environment" id="Environment_ftfua"]
+background_mode = 3
+glow_enabled = true
+glow_normalized = true
+glow_strength = 1.42
+glow_blend_mode = 1
+glow_hdr_threshold = 0.95
 
 [node name="Button" type="Button"]
-offset_left = 1472.0
-offset_top = 1064.0
-offset_right = 1672.0
-offset_bottom = 1264.0
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(100, 100)
+offset_right = 100.0
+offset_bottom = 100.0
 toggle_mode = true
 script = ExtResource("1_wilnw")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_p7pbm")
+layout_mode = 0
+offset_right = 100.0
+offset_bottom = 100.0
+mouse_filter = 1
+color = Color(18.892157, 18.892157, 18.892157, 1)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_ftfua")

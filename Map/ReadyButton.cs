@@ -8,8 +8,11 @@ public partial class ReadyButton : Button
     PackedScene _readyScene =
         GD.Load("res://battle/UIScene/BattleReady/battle_ready.tscn") as PackedScene;
     private BattleReady ThisBattleReady;
-    public CanvasLayer Layer => field ??= GetNode("/root/Map/BattleReadyLayer") as CanvasLayer;
+    [Export]
+    public CanvasLayer Layer;
     private Color _originalColor;
+    ColorRect ChangeEffect => field ??= GetNode("/root/Map/UI/ChangeEffect") as ColorRect;
+
 
     public override async void _Ready()
     {
@@ -17,6 +20,7 @@ public partial class ReadyButton : Button
         MouseEntered += mouse_entered;
         MouseExited += mouse_right_entered;
         _originalColor = (Color)((ShaderMaterial)Material).GetShaderParameter("color");
+        ChangeEffect.Visible = false;
     }
 
     public void Click()
@@ -26,6 +30,29 @@ public partial class ReadyButton : Button
             ThisBattleReady = _readyScene.Instantiate() as BattleReady;
             Layer.AddChild(ThisBattleReady);
             ThisBattleReady.StartAnimation();
+            ChangeEffect.Visible = true;
+            Tween tween = CreateTween();
+            tween
+                .TweenMethod(
+                    Callable.From<float>(value =>
+                        ((ShaderMaterial)ChangeEffect.Material).SetShaderParameter(
+                            "progress",
+                            value
+                        )
+                    ),
+                    1f,
+                    0.1f,
+                    0.4f
+                )
+                .SetEase(Tween.EaseType.Out);
+            tween
+                .Chain()
+                .TweenCallback(
+                    Callable.From(() =>
+                    {
+                        ChangeEffect.Visible = false;
+                    })
+                );
         }
         else
         {

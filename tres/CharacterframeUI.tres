@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3 uid="uid://b1g45kprmf3iy"]
+
+[ext_resource type="Shader" uid="uid://di7ru54m302v" path="res://shader/UI/CharacterframeUI.gdshader" id="1_c56hr"]
+[ext_resource type="Texture2D" uid="uid://xt2qlq4i1viq" path="res://asset/PlayerCharater/Echo/76843029_p0.jpg" id="2_whsdt"]
+
+[resource]
+shader = ExtResource("1_c56hr")
+shader_parameter/avatar_tex = ExtResource("2_whsdt")
+shader_parameter/theme_color = Color(1, 1, 1, 1)
+shader_parameter/u_rotation_time = 0.0
+shader_parameter/hover_progress = 0.0
+shader_parameter/global_thickness = 2.00000009174012
+shader_parameter/bg_ring_radius = 0.73000002163546
+shader_parameter/bg_ring_opacity = 0.2
+shader_parameter/heavy_arc_len = 0.20000000787006

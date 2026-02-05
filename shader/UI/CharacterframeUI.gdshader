@@ -3,7 +3,7 @@ shader_type canvas_item;
 uniform sampler2D avatar_tex;
 uniform vec4 theme_color : source_color = vec4(0.2, 0.7, 1.0, 1.0);
 uniform float u_rotation_time;
-uniform float hover_progress : hint_range(0.0, 1.0) = 0.0;
+uniform float hover_progress : hint_range(0.0, 1.1) = 0.0;
 uniform float global_thickness : hint_range(0.1, 3.0) = 1.0;
 
 // --- 基础参数 ---
@@ -24,6 +24,7 @@ float sdTriangle(in vec2 p, in float r) {
 }
 
 void fragment() {
+	vec4 modulate = COLOR;
     float margin_scale = 2.7; // 调大余量，保证对称弧弹出不被切
     vec2 p = (UV - vec2(0.5)) * margin_scale;
     float dist = length(p);
@@ -33,7 +34,7 @@ void fragment() {
     vec4 final_output = vec4(0.0);
 
     // --- 1. 头像层 (0.72) ---
-    float avatar_r = 0.68;
+    float avatar_r = 0.64;
     float avatar_mask = smoothstep(avatar_r, avatar_r - pixel_size, dist);
     vec2 avatar_uv = p / margin_scale + vec2(0.5);
     vec4 tex = texture(avatar_tex, avatar_uv);
@@ -51,7 +52,7 @@ void fragment() {
     // --- 3. 虚线圆周 (画在黑环上方) ---
     float dash_width = 0.007 * global_thickness;
     float dash_circle_mask = smoothstep(dash_width, dash_width - pixel_size, abs(dist - dash_r));
-    float dash_pattern = step(0.4, fract(angle * 18.0 + u_rotation_time * 0.2));
+    float dash_pattern = step(0.5, fract(angle * 10.0 + u_rotation_time * 0.2));
     final_output = mix(final_output, vec4(theme_color.rgb, 0.8), dash_circle_mask * dash_pattern);
 
     // --- 4. 内轨道白点 ---
@@ -100,5 +101,5 @@ void fragment() {
     float glow = exp(-pow(dist - bg_ring_radius, 2.0) / glow_range);
     final_output.rgb += theme_color.rgb * glow * mix(0.1, 0.4, hover_progress);
 
-    COLOR = final_output;
+    COLOR = final_output*modulate;
 }

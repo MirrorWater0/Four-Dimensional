@@ -14,6 +14,5 @@ public partial class Defense : Skill
     {
         await base.Effect();
         OwnerCharater.UpdataBlock(30 + OwnerCharater.BattleSurvivability);
-        OwnerCharater.EndAction();
     }
 }

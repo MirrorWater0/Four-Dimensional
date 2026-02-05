@@ -37,12 +37,13 @@ public partial class PlayerCharacter : Character
                 1f
             );
         }
-
+        SelfFrame.Selected.Visible = true;
         BattleNode.RetreatButton.Disabled = false;
     }
 
     public override void EndAction()
     {
+        SelfFrame.Selected.Visible = false;
         BattleNode.PlayerSpeed += BattleNode
             .PlayersList.Where(x => x.State != CharacterState.Dying)
             .Sum(x => x.Speed);

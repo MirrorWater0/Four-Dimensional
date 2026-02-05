@@ -1,18 +1,24 @@
-[gd_scene load_steps=41 format=3 uid="uid://cnapr4f8u0e1k"]
+[gd_scene load_steps=35 format=3 uid="uid://cnapr4f8u0e1k"]
 
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharaterControl.cs" id="3_3vtlu"]
 [ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="4_eoytn"]
 [ext_resource type="Texture2D" uid="uid://dfgi24opauw8h" path="res://asset/0.jpg" id="4_r4boa"]
-[ext_resource type="Shader" uid="uid://di7ru54m302v" path="res://shader/UI/CharacterframeUI.gdshader" id="5_4km6a"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
-[ext_resource type="Texture2D" uid="uid://xt2qlq4i1viq" path="res://asset/PlayerCharater/Echo/76843029_p0.jpg" id="6_ttuon"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
 [ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
+
+[sub_resource type="Environment" id="Environment_ttuon"]
+background_mode = 3
+glow_enabled = true
+glow_normalized = true
+glow_strength = 1.42
+glow_blend_mode = 1
+glow_hdr_threshold = 0.95
 
 [sub_resource type="Shader" id="Shader_vj222"]
 code = "shader_type canvas_item;
@@ -322,54 +328,6 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uifq5"]
 shader = SubResource("Shader_1euq2")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ttuon"]
-resource_local_to_scene = true
-shader = ExtResource("5_4km6a")
-shader_parameter/avatar_tex = ExtResource("6_ttuon")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 32.43568
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.7880000243904599
-shader_parameter/bg_ring_opacity = 0.2
-shader_parameter/heavy_arc_len = 0.05000000074506
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_boaws"]
-resource_local_to_scene = true
-shader = ExtResource("5_4km6a")
-shader_parameter/avatar_tex = ExtResource("6_ttuon")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 32.43568
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.7880000243904599
-shader_parameter/bg_ring_opacity = 0.2
-shader_parameter/heavy_arc_len = 0.05000000074506
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_sc7kr"]
-resource_local_to_scene = true
-shader = ExtResource("5_4km6a")
-shader_parameter/avatar_tex = ExtResource("6_ttuon")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 32.43568
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.7880000243904599
-shader_parameter/bg_ring_opacity = 0.2
-shader_parameter/heavy_arc_len = 0.05000000074506
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_rpkvx"]
-resource_local_to_scene = true
-shader = ExtResource("5_4km6a")
-shader_parameter/avatar_tex = ExtResource("6_ttuon")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 32.43568
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.7880000243904599
-shader_parameter/bg_ring_opacity = 0.2
-shader_parameter/heavy_arc_len = 0.05000000074506
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jhxqk"]
 resource_local_to_scene = true
 shader = ExtResource("7_r8nfv")
@@ -393,11 +351,6 @@ gradient = SubResource("Gradient_c6e3k")
 fill = 2
 fill_from = Vector2(0.490826, 0.5)
 fill_to = Vector2(0, 0.00458716)
-
-[sub_resource type="Environment" id="Environment_4km6a"]
-glow_enabled = true
-glow_intensity = 7.5
-glow_map_strength = 0.81
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2bopn"]
 shader = ExtResource("11_ttuon")
@@ -455,6 +408,9 @@ ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
 [node name="Battle" type="Node2D"]
 script = ExtResource("1_n3ui2")
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_ttuon")
+
 [node name="bg" type="TextureRect" parent="."]
 material = SubResource("ShaderMaterial_ts8fe")
 offset_left = -257.0
@@ -492,19 +448,15 @@ theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
 
 [node name="frame1" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-material = SubResource("ShaderMaterial_ttuon")
 layout_mode = 2
 
 [node name="frame2" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-material = SubResource("ShaderMaterial_boaws")
 layout_mode = 2
 
 [node name="frame3" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-material = SubResource("ShaderMaterial_sc7kr")
 layout_mode = 2
 
 [node name="frame4" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
-material = SubResource("ShaderMaterial_rpkvx")
 layout_mode = 2
 
 [node name="Camera2D" type="Camera2D" parent="."]
@@ -582,9 +534,6 @@ offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_4km6a")
-
 [node name="GPUParticles2D" type="GPUParticles2D" parent="."]
 z_index = 2
 material = SubResource("ShaderMaterial_2bopn")
@@ -597,10 +546,10 @@ visibility_rect = Rect2(-2300, -1200, 2000, 1100)
 process_material = SubResource("ParticleProcessMaterial_4km6a")
 
 [node name="SpeedBox" type="HBoxContainer" parent="."]
-offset_left = 560.0
-offset_top = 8.0
-offset_right = 1420.0
-offset_bottom = 48.0
+offset_left = 563.0
+offset_top = 28.0
+offset_right = 1423.0
+offset_bottom = 39.0
 theme_override_constants/separation = 60
 
 [node name="PlayerSpeed" type="ProgressBar" parent="SpeedBox"]
@@ -613,10 +562,11 @@ show_percentage = false
 [node name="Label" type="Label" parent="SpeedBox/PlayerSpeed"]
 layout_direction = 3
 layout_mode = 0
-offset_left = 405.0
-offset_top = -8.0
-offset_right = 445.0
-offset_bottom = 15.0
+offset_left = 400.0
+offset_top = -12.0
+offset_right = 451.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 25
 text = "(40) "
 script = ExtResource("11_d0b6a")
 
@@ -628,9 +578,10 @@ show_percentage = false
 
 [node name="Label" type="Label" parent="SpeedBox/EnemySpeed"]
 layout_mode = 0
-offset_left = 410.0
-offset_top = -8.0
-offset_right = 439.0
-offset_bottom = 15.0
+offset_left = 415.0
+offset_top = -12.0
+offset_right = 459.0
+offset_bottom = 23.0
+theme_override_font_sizes/font_size = 25
 text = "(40)"
 script = ExtResource("11_d0b6a")

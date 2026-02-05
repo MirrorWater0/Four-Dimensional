@@ -28,6 +28,7 @@ public partial class EnemyCharacter : Character
     {
         base.StartAction();
         await Skills[IntentionIndex].Effect();
+        EndAction();
     }
 
     public override void EndAction()

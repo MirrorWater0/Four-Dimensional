@@ -1,0 +1,69 @@
+
+kasiya_tex.png
+size: 1024,2048
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+behaindclothes
+  rotate: false
+  xy: 478,1619
+  size: 252,144
+  orig: 252,144
+  offset:0,0
+  index: -1
+behindhair
+  rotate: false
+  xy: 478,1177
+  size: 344,440
+  orig: 344,440
+  offset:0,0
+  index: -1
+lefthand
+  rotate: false
+  xy: 1,1943
+  size: 458,83
+  orig: 458,83
+  offset:0,0
+  index: -1
+body
+  rotate: false
+  xy: 1,1
+  size: 415,1298
+  orig: 415,1298
+  offset:0,0
+  index: -1
+clothes
+  rotate: false
+  xy: 1,1301
+  size: 475,640
+  orig: 475,640
+  offset:0,0
+  index: -1
+righthand
+  rotate: false
+  xy: 824,957
+  size: 166,421
+  orig: 166,421
+  offset:0,0
+  index: -1
+hair
+  rotate: false
+  xy: 418,1
+  size: 453,498
+  orig: 453,498
+  offset:0,0
+  index: -1
+amor
+  rotate: false
+  xy: 696,501
+  size: 294,454
+  orig: 294,454
+  offset:0,0
+  index: -1
+sword
+  rotate: false
+  xy: 418,501
+  size: 276,674
+  orig: 276,674
+  offset:0,0
+  index: -1

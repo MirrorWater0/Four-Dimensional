@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class CharaterControl : Control
@@ -36,9 +37,10 @@ public partial class CharaterControl : Control
                 skillButton.SelfSkill = skill;
 
                 // Create a synchronous wrapper for the async Effect method
-                void OnSkillButtonPressed()
+                async void OnSkillButtonPressed()
                 {
-                    _ = skillButton.SelfSkill.Effect();
+                    await skillButton.SelfSkill.Effect();
+                    skillButton.SelfSkill.OwnerCharater.EndAction();
                 }
                 skillButton.Connect(Button.SignalName.Pressed, Callable.From(OnSkillButtonPressed));
             }

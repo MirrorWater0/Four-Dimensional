@@ -25,6 +25,7 @@ public partial class ChoseCharater : CanvasLayer
             kasiyaStructure.Survivability = 10;
             kasiyaStructure.Speed = 10;
             GameInfo.PlayerCharacters[i] = kasiyaStructure;
+            GameInfo.PlayerCharacters[i].PortaitPath = "res://asset/PlayerCharater/Kasiya/Kasiya.png";
         }
 
         // Initialize Echo characters (indices 2 and 3)
@@ -37,6 +38,7 @@ public partial class ChoseCharater : CanvasLayer
             echoStructure.Survivability = 10;
             echoStructure.Speed = 10;
             GameInfo.PlayerCharacters[i] = echoStructure;
+            GameInfo.PlayerCharacters[i].PortaitPath = "res://asset/PlayerCharater/Echo/Echo.png";
         }
 
         for (int i = 0; i < 4; i++)

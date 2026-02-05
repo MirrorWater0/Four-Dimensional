@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.json"
+type="SpineSkeletonFileResource"
+uid="uid://c5cc03wvy4hr5"
+path="res://.godot/imported/kasiya_ske.spine-json-39f48e7803186b3aa379ccaa884306f3.spjson"
+
+[deps]
+
+source_file="res://asset/Spine/kasiya_ske.spine-json"
+dest_files=["res://.godot/imported/kasiya_ske.spine-json-39f48e7803186b3aa379ccaa884306f3.spjson"]
+
+[params]
+

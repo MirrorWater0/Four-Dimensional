@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://bcvv22wo5dpc5"
+path="res://.godot/imported/test1_tex.atlas-afc9f6cb5d39de585c6e94fcae801e44.spatlas"
+
+[deps]
+
+source_file="res://asset/RingLight/test1_tex.atlas"
+dest_files=["res://.godot/imported/test1_tex.atlas-afc9f6cb5d39de585c6e94fcae801e44.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

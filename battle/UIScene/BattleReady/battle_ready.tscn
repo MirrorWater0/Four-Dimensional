@@ -1,14 +1,10 @@
-[gd_scene load_steps=23 format=3 uid="uid://d2k684qebwu0s"]
+[gd_scene load_steps=17 format=3 uid="uid://d2k684qebwu0s"]
 
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="1_53jkx"]
 [ext_resource type="Shader" uid="uid://dooc06jwt4ft2" path="res://shader/Crystal.gdshader" id="1_jyqaa"]
 [ext_resource type="Texture2D" uid="uid://deraktmr5w000" path="res://asset/UI/轨迹素材_093.png" id="3_0x5cs"]
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_hhmim"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="3_x8w3b"]
-[ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="4_ekwrc"]
-[ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="5_wwb3n"]
-[ext_resource type="Shader" uid="uid://di7ru54m302v" path="res://shader/UI/CharacterframeUI.gdshader" id="8_dbxj7"]
-[ext_resource type="Texture2D" uid="uid://xt2qlq4i1viq" path="res://asset/PlayerCharater/Echo/76843029_p0.jpg" id="8_e2bq2"]
 [ext_resource type="PackedScene" uid="uid://b6yv4na1485yt" path="res://battle/UIScene/BattleReady/SelectButton.tscn" id="10_5w4iu"]
 [ext_resource type="Material" uid="uid://1r2tn2d685o8" path="res://battle/UIScene/BattleReady/PosChange.tres" id="10_ynypl"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="11_5w4iu"]
@@ -26,68 +22,27 @@ shader_parameter/edge_blur = 0.003
 shader_parameter/hue_variation = -0.08000000566247
 shader_parameter/appearance = 0.999999977648
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_kjvqh"]
-shader = ExtResource("4_ekwrc")
-shader_parameter/intense = 1000.0
-shader_parameter/efcolor = Color(1, 1, 1, 1)
-shader_parameter/mapcolor = Color(0.8560673, 0.8560673, 0.85606724, 1)
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_e2bq2"]
+blend_mode = 1
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ynypl"]
-resource_local_to_scene = true
-shader = ExtResource("8_dbxj7")
-shader_parameter/avatar_tex = ExtResource("8_e2bq2")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 38.092728
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.80200002505546
-shader_parameter/bg_ring_opacity = 0.418000019855
-shader_parameter/heavy_arc_len = 0.30900001304756003
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_h6ig6"]
-resource_local_to_scene = true
-shader = ExtResource("8_dbxj7")
-shader_parameter/avatar_tex = ExtResource("8_e2bq2")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 38.092728
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.80200002505546
-shader_parameter/bg_ring_opacity = 0.418000019855
-shader_parameter/heavy_arc_len = 0.30900001304756003
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_uwaj7"]
-resource_local_to_scene = true
-shader = ExtResource("8_dbxj7")
-shader_parameter/avatar_tex = ExtResource("8_e2bq2")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 38.092728
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.80200002505546
-shader_parameter/bg_ring_opacity = 0.418000019855
-shader_parameter/heavy_arc_len = 0.30900001304756003
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_qtj4k"]
-resource_local_to_scene = true
-shader = ExtResource("8_dbxj7")
-shader_parameter/avatar_tex = ExtResource("8_e2bq2")
-shader_parameter/theme_color = Color(1, 1, 1, 1)
-shader_parameter/u_rotation_time = 38.092728
-shader_parameter/hover_progress = 0.0
-shader_parameter/global_thickness = 2.00000009174012
-shader_parameter/bg_ring_radius = 0.80200002505546
-shader_parameter/bg_ring_opacity = 0.418000019855
-shader_parameter/heavy_arc_len = 0.30900001304756003
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_7qnj3"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l6ljx"]
 resource_local_to_scene = true
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_yhco0"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hhmim"]
 resource_local_to_scene = true
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_4n5jk"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5w4iu"]
 resource_local_to_scene = true
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5w4iu"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_dbxj7"]
+Panel/styles/panel = SubResource("StyleBoxFlat_5w4iu")
 
 [node name="BattleReady" type="Control"]
 material = SubResource("ShaderMaterial_ejwt2")
@@ -105,8 +60,7 @@ mouse_filter = 2
 metadata/_edit_lock_ = true
 
 [node name="TextureRect" type="TextureRect" parent="."]
-visible = false
-material = SubResource("ShaderMaterial_kjvqh")
+material = SubResource("CanvasItemMaterial_e2bq2")
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
@@ -126,19 +80,16 @@ theme_override_constants/separation = 200
 metadata/_edit_lock_ = true
 
 [node name="frame" parent="frame" instance=ExtResource("3_x8w3b")]
-material = SubResource("ShaderMaterial_ynypl")
 layout_mode = 2
+metadata/_edit_lock_ = true
 
 [node name="frame2" parent="frame" instance=ExtResource("3_x8w3b")]
-material = SubResource("ShaderMaterial_h6ig6")
 layout_mode = 2
 
 [node name="frame3" parent="frame" instance=ExtResource("3_x8w3b")]
-material = SubResource("ShaderMaterial_uwaj7")
 layout_mode = 2
 
 [node name="frame4" parent="frame" instance=ExtResource("3_x8w3b")]
-material = SubResource("ShaderMaterial_qtj4k")
 layout_mode = 2
 
 [node name="GridContainer" type="GridContainer" parent="."]
@@ -146,75 +97,63 @@ z_index = 2
 layout_mode = 0
 offset_left = 187.0
 offset_top = 107.0
-offset_right = 477.0
-offset_bottom = 397.0
+offset_right = 485.0
+offset_bottom = 405.0
 scale = Vector2(1.7, 1.7)
 mouse_filter = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
 columns = 3
 
-[node name="7" type="TextureRect" parent="GridContainer"]
+[node name="7" type="ColorRect" parent="GridContainer"]
+material = ExtResource("10_ynypl")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="4" type="ColorRect" parent="GridContainer"]
+material = ExtResource("10_ynypl")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="1" type="ColorRect" parent="GridContainer"]
+material = ExtResource("10_ynypl")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="8" type="ColorRect" parent="GridContainer"]
+material = ExtResource("10_ynypl")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="5" type="ColorRect" parent="GridContainer"]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
 
-[node name="4" type="TextureRect" parent="GridContainer"]
+[node name="2" type="ColorRect" parent="GridContainer"]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
 
-[node name="1" type="TextureRect" parent="GridContainer"]
+[node name="9" type="ColorRect" parent="GridContainer"]
+material = ExtResource("10_ynypl")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="6" type="ColorRect" parent="GridContainer"]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
 
-[node name="8" type="TextureRect" parent="GridContainer"]
+[node name="3" type="ColorRect" parent="GridContainer"]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="5" type="TextureRect" parent="GridContainer"]
-material = ExtResource("10_ynypl")
-layout_mode = 2
-mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="2" type="TextureRect" parent="GridContainer"]
-material = ExtResource("10_ynypl")
-layout_mode = 2
-mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="9" type="TextureRect" parent="GridContainer"]
-material = ExtResource("10_ynypl")
-layout_mode = 2
-mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="6" type="TextureRect" parent="GridContainer"]
-material = ExtResource("10_ynypl")
-layout_mode = 2
-mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="3" type="TextureRect" parent="GridContainer"]
-material = ExtResource("10_ynypl")
-layout_mode = 2
-mouse_behavior_recursive = 2
-texture = ExtResource("5_wwb3n")
-
-[node name="Button" type="Button" parent="."]
-visible = false
-layout_mode = 0
-offset_left = 869.0
-offset_top = 952.0
-offset_right = 1019.0
-offset_bottom = 1029.0
-theme_override_font_sizes/font_size = 50
-text = "battle"
 
 [node name="SkillContainer" type="HBoxContainer" parent="."]
 layout_mode = 0
@@ -230,7 +169,7 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="SelectButton" parent="SkillContainer/AttackFence" instance=ExtResource("10_5w4iu")]
-material = SubResource("ShaderMaterial_7qnj3")
+material = SubResource("ShaderMaterial_l6ljx")
 layout_mode = 2
 
 [node name="DefenseFence" type="VBoxContainer" parent="SkillContainer"]
@@ -239,7 +178,7 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="SelectButton2" parent="SkillContainer/DefenseFence" instance=ExtResource("10_5w4iu")]
-material = SubResource("ShaderMaterial_yhco0")
+material = SubResource("ShaderMaterial_hhmim")
 layout_mode = 2
 
 [node name="SpecialFence" type="VBoxContainer" parent="SkillContainer"]
@@ -248,7 +187,7 @@ layout_mode = 2
 theme_override_constants/separation = 14
 
 [node name="SelectButton3" parent="SkillContainer/SpecialFence" instance=ExtResource("10_5w4iu")]
-material = SubResource("ShaderMaterial_4n5jk")
+material = SubResource("ShaderMaterial_5w4iu")
 layout_mode = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
@@ -271,4 +210,26 @@ MySkillType = 1
 layout_mode = 2
 MySkillType = 2
 
-[connection signal="pressed" from="Button" to="." method="ComfirmTactics"]
+[node name="HBoxContainer2" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 798.0
+offset_top = 67.0
+offset_right = 1507.0
+offset_bottom = 636.0
+mouse_filter = 2
+theme_override_constants/separation = 342
+
+[node name="Panel" type="Panel" parent="HBoxContainer2"]
+custom_minimum_size = Vector2(3, 20)
+layout_mode = 2
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel2" type="Panel" parent="HBoxContainer2"]
+custom_minimum_size = Vector2(3, 20)
+layout_mode = 2
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel3" type="Panel" parent="HBoxContainer2"]
+custom_minimum_size = Vector2(3, 20)
+layout_mode = 2
+theme = SubResource("Theme_dbxj7")

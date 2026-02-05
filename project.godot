@@ -54,6 +54,7 @@ texture={
 "roughness/mode": 0,
 "roughness/src_normal": ""
 }
+spine.skel={}
 
 [input]
 

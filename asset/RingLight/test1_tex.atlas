@@ -1,0 +1,55 @@
+
+test1_tex.png
+size: 2048,2048
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+behindhair
+  rotate: false
+  xy: 730,1226
+  size: 344,426
+  orig: 344,426
+  offset:0,0
+  index: -1
+body
+  rotate: false
+  xy: 753,1
+  size: 339,1223
+  orig: 339,1223
+  offset:0,0
+  index: -1
+clothes
+  rotate: false
+  xy: 1,1
+  size: 750,1152
+  orig: 750,1152
+  offset:0,0
+  index: -1
+eyes
+  rotate: false
+  xy: 730,1654
+  size: 105,85
+  orig: 105,85
+  offset:0,0
+  index: -1
+hair
+  rotate: false
+  xy: 1,1155
+  size: 453,515
+  orig: 453,515
+  offset:0,0
+  index: -1
+amor
+  rotate: false
+  xy: 1076,1226
+  size: 284,454
+  orig: 284,454
+  offset:0,0
+  index: -1
+sword
+  rotate: false
+  xy: 456,1155
+  size: 272,677
+  orig: 272,677
+  offset:0,0
+  index: -1

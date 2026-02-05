@@ -20,6 +20,5 @@ public class TerminateLight : Skill
     {
         await base.Effect();
         await Attack1(10 + OwnerCharater.BattlePower);
-        OwnerCharater.EndAction();
     }
 }

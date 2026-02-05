@@ -2,7 +2,7 @@ using System;
 using Godot;
 
 
-public partial class Frame : TextureRect
+public partial class Frame : ColorRect
 {
     public Label NameLabel => field ??= GetNode<Label>("Name");
     public int IDindex;
@@ -29,7 +29,9 @@ public partial class Frame : TextureRect
     {
         PivotOffset = Size / 2;
         // _mat = Material as ShaderMaterial;
+        _mat = Material.Duplicate() as ShaderMaterial;
         _mat.ResourceLocalToScene = true;
+        Material = _mat;
         // ClickButton.Visible = false;
         Selected.Visible = false;
         // Set pivot offset for all buttons
@@ -116,7 +118,7 @@ public partial class Frame : TextureRect
         _targetSpeed = 1.5f;
     }
 
-    private ShaderMaterial _mat => Material as ShaderMaterial;
+    private ShaderMaterial _mat;
     private float _currentRotationTime = 0f;
     private float _hoverProgress = 0f;
 

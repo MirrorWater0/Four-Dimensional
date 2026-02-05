@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://rq614l6prgll"
+path="res://.godot/imported/kasiya_tex.atlas-9e218960ee9ee35cd6f7e519b18bf006.spatlas"
+
+[deps]
+
+source_file="res://asset/Spine/kasiya_tex.atlas"
+dest_files=["res://.godot/imported/kasiya_tex.atlas-9e218960ee9ee35cd6f7e519b18bf006.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

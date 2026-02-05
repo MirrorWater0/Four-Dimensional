@@ -5,7 +5,7 @@
 [resource]
 resource_local_to_scene = true
 shader = ExtResource("1_mj2cx")
-shader_parameter/bg_color = Color(0.08, 0.13, 0.22, 1)
+shader_parameter/bg_color = Color(0.061972275, 0.106753655, 0.18598887, 0.5882353)
 shader_parameter/line_color = Color(0.7, 0.75, 0.8, 1)
 shader_parameter/border_thickness = 0.005
 shader_parameter/corner_size = 0.2

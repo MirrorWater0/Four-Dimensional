@@ -1,0 +1,8 @@
+[gd_resource type="SpineSkeletonDataResource" load_steps=3 format=3 uid="uid://bttb6ahtgolgm"]
+
+[ext_resource type="SpineAtlasResource" uid="uid://rq614l6prgll" path="res://asset/Spine/kasiya_tex.atlas" id="1_byfuj"]
+[ext_resource type="SpineSkeletonFileResource" uid="uid://c5cc03wvy4hr5" path="res://asset/Spine/kasiya_ske.spine-json" id="2_uknp5"]
+
+[resource]
+atlas_res = ExtResource("1_byfuj")
+skeleton_file_res = ExtResource("2_uknp5")

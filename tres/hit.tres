@@ -1,19 +1,13 @@
-[gd_resource type="ParticleProcessMaterial" load_steps=11 format=3 uid="uid://cxcwh7k21rmok"]
+[gd_resource type="ParticleProcessMaterial" load_steps=10 format=3 uid="uid://cxcwh7k21rmok"]
 
 [sub_resource type="Curve" id="Curve_ahx00"]
-_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
-point_count = 2
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.7087912, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
 
 [sub_resource type="CurveTexture" id="CurveTexture_0a6kk"]
 curve = SubResource("Curve_ahx00")
 
-[sub_resource type="Curve" id="Curve_w7qek"]
-_limits = [-10.0, 1.0, 0.0, 1.0]
-_data = [Vector2(0, -7.46154), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
-point_count = 2
-
 [sub_resource type="CurveXYZTexture" id="CurveXYZTexture_pf0lj"]
-curve_y = SubResource("Curve_w7qek")
 
 [sub_resource type="Curve" id="Curve_p1s2n"]
 _limits = [0.0, 1.5, 0.0, 1.0]
@@ -24,21 +18,21 @@ point_count = 3
 curve = SubResource("Curve_p1s2n")
 
 [sub_resource type="Curve" id="Curve_6q4r3"]
-_data = [Vector2(0, 0.48314613), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
-point_count = 2
+_data = [Vector2(0, 0.3033709), 0.0, 0.0, 0, 0, Vector2(0.510989, 0.13483155), 0.0, 0.0, 0, 0, Vector2(1, 0.38202256), 0.0, 0.0, 0, 0]
+point_count = 3
 
 [sub_resource type="Curve" id="Curve_8ws1s"]
 _data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
 point_count = 2
 
-[sub_resource type="Curve" id="Curve_a1kgq"]
-_data = [Vector2(0, 0.32584274), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+[sub_resource type="Curve" id="Curve_vm7qs"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
 point_count = 2
 
 [sub_resource type="CurveXYZTexture" id="CurveXYZTexture_hmaty"]
 curve_x = SubResource("Curve_6q4r3")
 curve_y = SubResource("Curve_8ws1s")
-curve_z = SubResource("Curve_a1kgq")
+curve_z = SubResource("Curve_vm7qs")
 
 [resource]
 particle_flag_align_y = true
@@ -55,8 +49,12 @@ radial_velocity_min = 355.17996
 radial_velocity_max = 941.17993
 radial_velocity_curve = SubResource("CurveTexture_fbo3g")
 gravity = Vector3(0, 0, 0)
-scale_min = 0.099999994
-scale_max = 0.29999998
+radial_accel_min = -16.360003
+radial_accel_max = -4.550002
+scale_min = 0.19999999
+scale_max = 0.5
 scale_curve = SubResource("CurveXYZTexture_hmaty")
 scale_over_velocity_max = 50.0
 alpha_curve = SubResource("CurveTexture_0a6kk")
+hue_variation_min = -0.24000002
+hue_variation_max = 0.12999998

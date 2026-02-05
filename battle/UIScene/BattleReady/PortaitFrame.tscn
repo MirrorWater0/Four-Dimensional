@@ -14,6 +14,33 @@ border_color = Color(1, 1, 1, 1)
 [sub_resource type="Theme" id="Theme_b43d5"]
 Panel/styles/panel = SubResource("StyleBoxFlat_6ryha")
 
+[sub_resource type="Animation" id="Animation_6qsl3"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Panel2:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Panel2:modulate")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 0)]
+}
+
 [sub_resource type="Animation" id="Animation_b43d5"]
 resource_name = "explode"
 length = 0.4
@@ -42,33 +69,6 @@ tracks/1/keys = {
 "values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
 }
 
-[sub_resource type="Animation" id="Animation_6qsl3"]
-length = 0.001
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Panel2:scale")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector2(1, 1)]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Panel2:modulate")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_igjmd"]
 _data = {
 &"RESET": SubResource("Animation_6qsl3"),
@@ -85,9 +85,9 @@ script = ExtResource("1_ufud0")
 [node name="Panel2" type="Panel" parent="."]
 modulate = Color(1, 1, 1, 0)
 layout_mode = 0
-offset_left = 2.0
+offset_left = 3.0
 offset_top = 2.765
-offset_right = 89.99999
+offset_right = 90.99999
 offset_bottom = 90.765
 pivot_offset = Vector2(44, 44)
 mouse_filter = 2
@@ -97,9 +97,9 @@ theme = SubResource("Theme_b43d5")
 self_modulate = Color(1, 1, 1, 0.211)
 z_index = -2
 layout_mode = 0
-offset_left = 2.0
+offset_left = 3.0
 offset_top = 2.765
-offset_right = 89.99999
+offset_right = 90.99999
 offset_bottom = 90.765
 mouse_filter = 1
 mouse_behavior_recursive = 2
@@ -107,9 +107,9 @@ keep_pressed_outside = true
 
 [node name="TextureRect" type="TextureRect" parent="."]
 layout_mode = 0
-offset_left = 2.0
+offset_left = 3.0
 offset_top = 2.765
-offset_right = 89.99999
+offset_right = 90.99999
 offset_bottom = 90.765
 mouse_filter = 2
 texture = ExtResource("2_b43d5")
@@ -118,9 +118,9 @@ expand_mode = 1
 [node name="Panel" type="Panel" parent="."]
 modulate = Color(1, 1, 1, 0.90000004)
 layout_mode = 0
-offset_left = 2.0
+offset_left = 3.0
 offset_top = 2.765
-offset_right = 89.99999
+offset_right = 90.99999
 offset_bottom = 90.765
 mouse_filter = 2
 theme = SubResource("Theme_b43d5")

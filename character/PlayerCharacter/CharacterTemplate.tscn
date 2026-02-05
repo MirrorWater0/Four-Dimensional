@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3 uid="uid://dcivwl06q4oiv"]
+[gd_scene load_steps=41 format=3 uid="uid://dcivwl06q4oiv"]
 
 [ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Character.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
@@ -9,7 +9,6 @@
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="7_5ewuv"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="7_lyi1f"]
 [ext_resource type="Material" uid="uid://cxcwh7k21rmok" path="res://tres/hit.tres" id="8_ek3d4"]
-[ext_resource type="PackedScene" uid="uid://bnjw5ps0hx1tk" path="res://battle/Effect/CharacterEffect.tscn" id="8_yic7g"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="14_lucsw"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
@@ -153,134 +152,26 @@ tracks/2/keys = {
 tracks/3/type = "value"
 tracks/3/imported = false
 tracks/3/enabled = true
-tracks/3/path = NodePath("Effect/Effect2:animation")
+tracks/3/path = NodePath("Sprite:material:shader_parameter/motion_blur")
 tracks/3/interp = 1
 tracks/3/loop_wrap = true
 tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 1,
-"values": [&"attack"]
+"values": [false]
 }
 tracks/4/type = "value"
 tracks/4/imported = false
 tracks/4/enabled = true
-tracks/4/path = NodePath("Effect/Effect2:frame")
+tracks/4/path = NodePath("Sprite:material:shader_parameter/blur_amount")
 tracks/4/interp = 1
 tracks/4/loop_wrap = true
 tracks/4/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [2]
-}
-tracks/5/type = "value"
-tracks/5/imported = false
-tracks/5/enabled = true
-tracks/5/path = NodePath("Effect/Effect2:self_modulate")
-tracks/5/interp = 1
-tracks/5/loop_wrap = true
-tracks/5/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-tracks/6/type = "value"
-tracks/6/imported = false
-tracks/6/enabled = true
-tracks/6/path = NodePath("Sprite:material:shader_parameter/motion_blur")
-tracks/6/interp = 1
-tracks/6/loop_wrap = true
-tracks/6/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [false]
-}
-tracks/7/type = "value"
-tracks/7/imported = false
-tracks/7/enabled = true
-tracks/7/path = NodePath("Sprite:material:shader_parameter/blur_amount")
-tracks/7/interp = 1
-tracks/7/loop_wrap = true
-tracks/7/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
 "update": 0,
 "values": [1.0]
-}
-tracks/8/type = "value"
-tracks/8/imported = false
-tracks/8/enabled = true
-tracks/8/path = NodePath("Effect/explode:frame")
-tracks/8/interp = 1
-tracks/8/loop_wrap = true
-tracks/8/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [0]
-}
-tracks/9/type = "value"
-tracks/9/imported = false
-tracks/9/enabled = true
-tracks/9/path = NodePath("Effect/explode:modulate")
-tracks/9/interp = 1
-tracks/9/loop_wrap = true
-tracks/9/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-tracks/10/type = "value"
-tracks/10/imported = false
-tracks/10/enabled = true
-tracks/10/path = NodePath("Effect/absorb:frame")
-tracks/10/interp = 1
-tracks/10/loop_wrap = true
-tracks/10/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [0]
-}
-tracks/11/type = "value"
-tracks/11/imported = false
-tracks/11/enabled = true
-tracks/11/path = NodePath("Effect/absorb:modulate")
-tracks/11/interp = 1
-tracks/11/loop_wrap = true
-tracks/11/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-tracks/12/type = "value"
-tracks/12/imported = false
-tracks/12/enabled = true
-tracks/12/path = NodePath("Effect/shield:frame")
-tracks/12/interp = 1
-tracks/12/loop_wrap = true
-tracks/12/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [0]
-}
-tracks/13/type = "value"
-tracks/13/imported = false
-tracks/13/enabled = true
-tracks/13/path = NodePath("Effect/shield:modulate")
-tracks/13/interp = 1
-tracks/13/loop_wrap = true
-tracks/13/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
 }
 
 [sub_resource type="Animation" id="Animation_c66ar"]
@@ -298,66 +189,6 @@ tracks/0/keys = {
 "update": 0,
 "values": [Vector2(0.16, 0.16), Vector2(0.165, 0.165), Vector2(0.16, 0.16)]
 }
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Effect/Effect2:animation")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 1,
-"values": [&"attack"]
-}
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("Effect/Effect2:frame")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.4),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0, 9]
-}
-tracks/3/type = "value"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("Effect/Effect2:self_modulate")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
-"times": PackedFloat32Array(0, 0.36666667, 0.43333334),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
-}
-tracks/4/type = "value"
-tracks/4/imported = false
-tracks/4/enabled = true
-tracks/4/path = NodePath("Effect/explode:frame")
-tracks/4/interp = 2
-tracks/4/loop_wrap = true
-tracks/4/keys = {
-"times": PackedFloat32Array(0, 0.5),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0, 14]
-}
-tracks/5/type = "value"
-tracks/5/imported = false
-tracks/5/enabled = true
-tracks/5/path = NodePath("Effect/explode:modulate")
-tracks/5/interp = 1
-tracks/5/loop_wrap = true
-tracks/5/keys = {
-"times": PackedFloat32Array(0.033333335, 0.16666667, 0.4, 0.53333336),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"update": 0,
-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
-}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_jeiix"]
 _data = {
@@ -373,6 +204,8 @@ colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0, 0.78431374, 1, 1, 1)
 gradient = SubResource("Gradient_kvlfx")
 fill = 2
 fill_from = Vector2(0.49532712, 0.5)
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_yic7g"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_eq06d"]
 shader = ExtResource("14_lucsw")
@@ -479,6 +312,44 @@ shader_parameter/handle_color = Color(0.3, 0.1, 0.1, 1)
 shader_parameter/glow_intensity = 0.5
 shader_parameter/angle = 0.60000000894072
 
+[sub_resource type="Animation" id="Animation_faub5"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Intention:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(-19.999998, -308.74997)]
+}
+
+[sub_resource type="Animation" id="Animation_yic7g"]
+resource_name = "intention"
+length = 2.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Intention:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1, 2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(-19.999998, -308.74997), Vector2(-20, -338.75), Vector2(-19.999998, -308.74997)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_faub5"]
+_data = {
+&"RESET": SubResource("Animation_faub5"),
+&"intention": SubResource("Animation_yic7g")
+}
+
 [node name="CharacterTemplate" type="Node2D"]
 z_index = 1
 scale = Vector2(0.8, 0.8)
@@ -568,8 +439,6 @@ libraries = {
 }
 autoplay = "RESET"
 
-[node name="Effect" parent="." instance=ExtResource("8_yic7g")]
-
 [node name="Hoverframe" type="TextureRect" parent="."]
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(200, 400)
@@ -582,6 +451,7 @@ metadata/_edit_lock_ = true
 
 [node name="State" type="HBoxContainer" parent="."]
 z_index = 2
+material = SubResource("CanvasItemMaterial_yic7g")
 offset_left = -105.0
 offset_top = -263.75
 offset_right = 67.0
@@ -691,14 +561,19 @@ libraries = {
 visible = false
 layout_mode = 3
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = -19.999998
+offset_top = -308.74997
+offset_right = 20.000002
+offset_bottom = -268.74997
 
 [node name="Attack" type="ColorRect" parent="Intention"]
-visible = false
 material = SubResource("ShaderMaterial_faub5")
 layout_mode = 0
-offset_left = -20.0
-offset_top = -315.0
-offset_right = 22.499996
-offset_bottom = -272.5
+offset_right = 60.0
+offset_bottom = 60.0
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_faub5")
+}
+autoplay = "intention"

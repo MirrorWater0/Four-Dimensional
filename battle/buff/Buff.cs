@@ -15,15 +15,66 @@ public partial class Buff
 
     public static void GhostExplode(Control node, Vector2 scale)
     {
+        // 1. 克隆节点
         var ghost = node.Duplicate() as Control;
+        if (ghost == null)
+            return;
+
+        // 2. 处理 Shader，将其变为 Add 模式
+        // 注意：哪怕是普通的 Control，只要带 ShaderMaterial 就可以处理
+        if (ghost.Material is ShaderMaterial originalMat)
+        {
+            // 必须 Duplicate 材质和 Shader 资源，否则会修改到原始节点
+            var newMat = (ShaderMaterial)originalMat.Duplicate();
+            newMat.Shader = (Shader)newMat.Shader.Duplicate();
+
+            string code = newMat.Shader.Code;
+            // 注入混合模式：blend_add
+            if (code.Contains("render_mode"))
+            {
+                if (!code.Contains("blend_add"))
+                    code = code.Replace("render_mode ", "render_mode blend_add, ");
+            }
+            else
+            {
+                code = code.Replace(
+                    "shader_type canvas_item;",
+                    "shader_type canvas_item;\nrender_mode blend_add;"
+                );
+            }
+
+            newMat.Shader.Code = code;
+            ghost.Material = newMat;
+        }
+
+        // 3. 设置层级与位置
+        // 建议加到父节点，防止 ghost 随着 node 一起移动或被 node 的 Clip 裁剪
         node.AddChild(ghost);
-        ghost.Position = Vector2.Zero;
+        ghost.PivotOffset = Vector2.Zero;
+        ghost.GlobalPosition = node.GlobalPosition;
+
+        // 设置缩放中心
         ghost.PivotOffset = ghost.Size / 2;
-        var tween = node.CreateTween();
-        tween.TweenProperty(ghost, "scale", scale, 0.3f);
+        ghost.Scale = Vector2.One;
+
+        // 4. 动画效果
+        var tween = ghost.CreateTween(); // 建议直接由 ghost 创建
+
+        // 并行执行：缩放变大 + 变透明
+        tween.SetParallel(true);
         tween
-            .TweenProperty(ghost, "modulate", new Godot.Color(1, 1, 1, 0), 0.3f)
+            .TweenProperty(ghost, "scale", scale, 0.7f)
+            .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
+
+        // 注意：Add 模式下，Alpha 也会参与叠加，modulate 依然有效
+        tween
+            .TweenProperty(ghost, "modulate:a", 0.0f, 0.7f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+
+        // 5. 结束后自动销毁
+        tween.SetParallel(false);
         tween.Chain().TweenCallback(Callable.From(ghost.QueueFree));
     }
 

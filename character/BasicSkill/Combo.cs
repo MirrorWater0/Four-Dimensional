@@ -21,10 +21,9 @@ public partial class Combo : Skill
         do
         {
             await Attack1(i);
-            if (OwnerCharater.Energe > 0)
-                OwnerCharater.UpdataEnerge(-1);
-        } while (OwnerCharater.Energe > 0);
+            if (OwnerCharater.Energy > 0)
+                OwnerCharater.UpdataEnergy(-1);
+        } while (OwnerCharater.Energy > 0);
 
-        OwnerCharater.EndAction();
     }
 }
