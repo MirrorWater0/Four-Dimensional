@@ -1,35 +1,15 @@
-[gd_scene load_steps=7 format=3 uid="uid://de0vuounbh3nm"]
+[gd_scene format=3 uid="uid://de0vuounbh3nm"]
 
 [ext_resource type="Material" uid="uid://b1g45kprmf3iy" path="res://tres/CharacterframeUI.tres" id="1_2xsw3"]
 [ext_resource type="Script" uid="uid://b0dpufjdj1b0s" path="res://battle/UIScene/Frame.cs" id="2_mrq4a"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="4_cihc2"]
+[ext_resource type="Shader" uid="uid://cvtsat7asaqjy" path="res://shader/Ring.gdshader" id="4_vk7j0"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="5_k0umg"]
 
-[sub_resource type="Shader" id="Shader_uuwda"]
-code = "shader_type canvas_item;
-
-
-void vertex() {
-
-	// Called for every vertex the material is visible on.
-}
-float circleSDF(vec2 uv,float r){
-	return length(uv) - r;
-}
-
-void fragment() {
-	vec4 modulate = COLOR;
-	// Called for every pixel the material is visible on.
-	vec2 uv =UV -0.5;
-	float circle = smoothstep(0.02,0.,circleSDF(uv,0.43))-smoothstep(0.02,0.,circleSDF(uv,0.40));
-	COLOR = vec4(vec3(1.),1.)*circle*modulate;
-}
-"
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_fegvg"]
-shader = SubResource("Shader_uuwda")
+shader = ExtResource("4_vk7j0")
 
-[node name="frame" type="ColorRect"]
+[node name="frame" type="ColorRect" unique_id=991267108]
 material = ExtResource("1_2xsw3")
 custom_minimum_size = Vector2(340, 340)
 offset_left = 80.0
@@ -39,7 +19,7 @@ offset_bottom = 359.0
 pivot_offset = Vector2(170, 170)
 script = ExtResource("2_mrq4a")
 
-[node name="Name" type="Label" parent="."]
+[node name="Name" type="Label" parent="." unique_id=649941]
 layout_mode = 0
 offset_left = 67.0
 offset_top = 152.0
@@ -48,7 +28,7 @@ offset_bottom = 201.0
 theme = ExtResource("5_k0umg")
 text = "echo"
 
-[node name="Selected" type="ColorRect" parent="."]
+[node name="Selected" type="ColorRect" parent="." unique_id=37333785]
 visible = false
 modulate = Color(0.7294118, 1, 1, 1)
 material = SubResource("ShaderMaterial_fegvg")
@@ -59,7 +39,7 @@ offset_right = 285.0
 offset_bottom = 285.0
 mouse_filter = 1
 
-[node name="ClickButton" type="Button" parent="."]
+[node name="ClickButton" type="Button" parent="." unique_id=901721089]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
 offset_left = 70.0
@@ -69,7 +49,7 @@ offset_bottom = 270.0
 pivot_offset = Vector2(100, 100)
 mouse_filter = 1
 
-[node name="SkillControl" type="Control" parent="."]
+[node name="SkillControl" type="Control" parent="." unique_id=541504348]
 anchors_preset = 0
 offset_left = 170.0
 offset_top = 170.0
@@ -78,7 +58,7 @@ offset_bottom = 170.0
 scale = Vector2(0.8, 0.8)
 mouse_filter = 2
 
-[node name="skill1" parent="SkillControl" instance=ExtResource("4_cihc2")]
+[node name="skill1" parent="SkillControl" unique_id=756911836 instance=ExtResource("4_cihc2")]
 layout_mode = 0
 offset_left = -46.249996
 offset_top = -207.49998
@@ -86,7 +66,7 @@ offset_right = 13.750004
 offset_bottom = -147.49998
 scale = Vector2(1.5, 1.5)
 
-[node name="skill2" parent="SkillControl" instance=ExtResource("4_cihc2")]
+[node name="skill2" parent="SkillControl" unique_id=503670706 instance=ExtResource("4_cihc2")]
 layout_mode = 0
 offset_left = 83.75001
 offset_top = 52.499996
@@ -95,7 +75,7 @@ offset_bottom = 112.5
 scale = Vector2(1.5, 1.5)
 MySkillType = 1
 
-[node name="skill3" parent="SkillControl" instance=ExtResource("4_cihc2")]
+[node name="skill3" parent="SkillControl" unique_id=2115294286 instance=ExtResource("4_cihc2")]
 layout_mode = 0
 offset_left = -188.74997
 offset_top = 32.499996

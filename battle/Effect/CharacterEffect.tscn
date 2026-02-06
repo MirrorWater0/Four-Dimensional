@@ -1,4 +1,4 @@
-[gd_scene load_steps=128 format=3 uid="uid://bnjw5ps0hx1tk"]
+[gd_scene format=3 uid="uid://bnjw5ps0hx1tk"]
 
 [ext_resource type="Script" uid="uid://ltm8w7kg8in6" path="res://battle/Effect/CharacterEffect.cs" id="1_abwmn"]
 [ext_resource type="SpriteFrames" uid="uid://qwycwl38jps7" path="res://character/LightEffect.tres" id="3_irhrj"]
@@ -6,7 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://4fc0s7d6crbq" path="res://asset/Effect/Increase.png" id="6_t8jtt"]
 [ext_resource type="Shader" uid="uid://d4d3s8qbb1g2l" path="res://shader/Effect/TexGlow2.gdshader" id="7_15k27"]
 [ext_resource type="Texture2D" uid="uid://crc0gqw5o21cw" path="res://asset/Effect/Shield.png" id="7_sosed"]
-[ext_resource type="Texture2D" uid="uid://dfgi24opauw8h" path="res://asset/0.jpg" id="8_15k27"]
 [ext_resource type="Texture2D" uid="uid://d0sjvr1k4334e" path="res://asset/Effect/merged-images (1).png" id="8_rn6x8"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0x52p"]
@@ -917,6 +916,33 @@ tracks/1/keys = {
 resource_name = "attack1"
 length = 0.6
 
+[sub_resource type="Animation" id="Animation_rn6x8"]
+resource_name = "energe"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Energe:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [0, 61]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Energe:modulate")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.1, 0.9, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
+
 [sub_resource type="Animation" id="Animation_gkvpw"]
 resource_name = "explode"
 length = 0.55
@@ -973,33 +999,6 @@ tracks/1/keys = {
 "values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
 }
 
-[sub_resource type="Animation" id="Animation_rn6x8"]
-resource_name = "energe"
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("Energe:frame")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 1),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [0, 61]
-}
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("Energe:modulate")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.9, 1),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"update": 0,
-"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
-}
-
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_abwmn"]
 _data = {
 &"RESET": SubResource("Animation_abwmn"),
@@ -1014,15 +1013,16 @@ _data = {
 background_mode = 3
 glow_enabled = true
 glow_normalized = true
+glow_intensity = 3.97
 glow_strength = 1.2
-glow_blend_mode = 1
-glow_map = ExtResource("8_15k27")
+glow_hdr_threshold = 0.81
+glow_hdr_scale = 1.92
 
-[node name="Effect" type="Node2D"]
+[node name="Effect" type="Node2D" unique_id=1026399416]
 z_index = 1
 script = ExtResource("1_abwmn")
 
-[node name="Effect2" type="AnimatedSprite2D" parent="."]
+[node name="Effect2" type="AnimatedSprite2D" parent="." unique_id=1443413108]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(7.4999995, -68.75)
 scale = Vector2(2, 2)
@@ -1031,7 +1031,7 @@ animation = &"attack"
 frame = 9
 metadata/_edit_lock_ = true
 
-[node name="explode" type="AnimatedSprite2D" parent="."]
+[node name="explode" type="AnimatedSprite2D" parent="." unique_id=1448084439]
 modulate = Color(1, 1, 1, 0)
 material = SubResource("ShaderMaterial_0x52p")
 position = Vector2(1.1920929e-07, -58.75)
@@ -1039,30 +1039,28 @@ scale = Vector2(0.7, 0.7)
 sprite_frames = SubResource("SpriteFrames_faub5")
 metadata/_edit_lock_ = true
 
-[node name="absorb" type="AnimatedSprite2D" parent="."]
+[node name="absorb" type="AnimatedSprite2D" parent="." unique_id=1026625188]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(0, -31.249996)
 sprite_frames = SubResource("SpriteFrames_114sw")
 metadata/_edit_lock_ = true
 
-[node name="shield" type="AnimatedSprite2D" parent="."]
+[node name="shield" type="AnimatedSprite2D" parent="." unique_id=1927964274]
 modulate = Color(1, 1, 1, 0)
 position = Vector2(0, -25)
 scale = Vector2(0.8, 0.8)
 sprite_frames = SubResource("SpriteFrames_ek3d4")
 metadata/_edit_lock_ = true
 
-[node name="Energe" type="AnimatedSprite2D" parent="."]
+[node name="Energe" type="AnimatedSprite2D" parent="." unique_id=1885691718]
 modulate = Color(1, 1, 1, 0)
 material = SubResource("ShaderMaterial_rn6x8")
 scale = Vector2(1.2, 1.2)
 sprite_frames = SubResource("SpriteFrames_uegvv")
 metadata/_edit_lock_ = true
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_abwmn")
-}
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=25985899]
+libraries/ = SubResource("AnimationLibrary_abwmn")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1830774424]
 environment = SubResource("Environment_0x52p")

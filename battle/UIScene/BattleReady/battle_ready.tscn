@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3 uid="uid://d2k684qebwu0s"]
+[gd_scene format=3 uid="uid://d2k684qebwu0s"]
 
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="1_53jkx"]
 [ext_resource type="Shader" uid="uid://dooc06jwt4ft2" path="res://shader/Crystal.gdshader" id="1_jyqaa"]
@@ -44,13 +44,13 @@ corner_radius_bottom_left = 4
 [sub_resource type="Theme" id="Theme_dbxj7"]
 Panel/styles/panel = SubResource("StyleBoxFlat_5w4iu")
 
-[node name="BattleReady" type="Control"]
+[node name="BattleReady" type="Control" unique_id=342118046]
 material = SubResource("ShaderMaterial_ejwt2")
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_53jkx")
 
-[node name="BG" type="ColorRect" parent="."]
+[node name="BG" type="ColorRect" parent="." unique_id=335133166]
 material = SubResource("ShaderMaterial_e2bq2")
 layout_mode = 0
 offset_top = -600.0
@@ -59,7 +59,7 @@ offset_bottom = 1320.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
-[node name="TextureRect" type="TextureRect" parent="."]
+[node name="TextureRect" type="TextureRect" parent="." unique_id=619797561]
 material = SubResource("CanvasItemMaterial_e2bq2")
 layout_mode = 0
 offset_right = 1920.0
@@ -68,7 +68,7 @@ texture = ExtResource("3_0x5cs")
 expand_mode = 1
 metadata/_edit_lock_ = true
 
-[node name="frame" type="HBoxContainer" parent="."]
+[node name="frame" type="HBoxContainer" parent="." unique_id=855737133]
 layout_mode = 0
 offset_left = 55.000008
 offset_top = 700.0
@@ -79,20 +79,20 @@ mouse_filter = 2
 theme_override_constants/separation = 200
 metadata/_edit_lock_ = true
 
-[node name="frame" parent="frame" instance=ExtResource("3_x8w3b")]
+[node name="frame" parent="frame" unique_id=1469862371 instance=ExtResource("3_x8w3b")]
 layout_mode = 2
 metadata/_edit_lock_ = true
 
-[node name="frame2" parent="frame" instance=ExtResource("3_x8w3b")]
+[node name="frame2" parent="frame" unique_id=961458500 instance=ExtResource("3_x8w3b")]
 layout_mode = 2
 
-[node name="frame3" parent="frame" instance=ExtResource("3_x8w3b")]
+[node name="frame3" parent="frame" unique_id=1631348294 instance=ExtResource("3_x8w3b")]
 layout_mode = 2
 
-[node name="frame4" parent="frame" instance=ExtResource("3_x8w3b")]
+[node name="frame4" parent="frame" unique_id=1331880922 instance=ExtResource("3_x8w3b")]
 layout_mode = 2
 
-[node name="GridContainer" type="GridContainer" parent="."]
+[node name="GridContainer" type="GridContainer" parent="." unique_id=1216591860]
 z_index = 2
 layout_mode = 0
 offset_left = 187.0
@@ -105,57 +105,57 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 3
 
-[node name="7" type="ColorRect" parent="GridContainer"]
+[node name="7" type="ColorRect" parent="GridContainer" unique_id=670262986]
 material = ExtResource("10_ynypl")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="4" type="ColorRect" parent="GridContainer"]
+[node name="4" type="ColorRect" parent="GridContainer" unique_id=507973548]
 material = ExtResource("10_ynypl")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="1" type="ColorRect" parent="GridContainer"]
+[node name="1" type="ColorRect" parent="GridContainer" unique_id=462326292]
 material = ExtResource("10_ynypl")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="8" type="ColorRect" parent="GridContainer"]
+[node name="8" type="ColorRect" parent="GridContainer" unique_id=408727890]
 material = ExtResource("10_ynypl")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="5" type="ColorRect" parent="GridContainer"]
+[node name="5" type="ColorRect" parent="GridContainer" unique_id=1707540503]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="2" type="ColorRect" parent="GridContainer"]
+[node name="2" type="ColorRect" parent="GridContainer" unique_id=1955521935]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="9" type="ColorRect" parent="GridContainer"]
+[node name="9" type="ColorRect" parent="GridContainer" unique_id=1976518645]
 material = ExtResource("10_ynypl")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="6" type="ColorRect" parent="GridContainer"]
+[node name="6" type="ColorRect" parent="GridContainer" unique_id=242345855]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="3" type="ColorRect" parent="GridContainer"]
+[node name="3" type="ColorRect" parent="GridContainer" unique_id=1927236506]
 material = ExtResource("10_ynypl")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="SkillContainer" type="HBoxContainer" parent="."]
+[node name="SkillContainer" type="HBoxContainer" parent="." unique_id=972831189]
 layout_mode = 0
 offset_left = 830.0
 offset_top = 220.0
@@ -163,34 +163,34 @@ offset_right = 1290.0
 offset_bottom = 422.5
 theme_override_constants/separation = 130
 
-[node name="AttackFence" type="VBoxContainer" parent="SkillContainer"]
+[node name="AttackFence" type="VBoxContainer" parent="SkillContainer" unique_id=1604114826]
 custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="SelectButton" parent="SkillContainer/AttackFence" instance=ExtResource("10_5w4iu")]
+[node name="SelectButton" parent="SkillContainer/AttackFence" unique_id=1450109948 instance=ExtResource("10_5w4iu")]
 material = SubResource("ShaderMaterial_l6ljx")
 layout_mode = 2
 
-[node name="DefenseFence" type="VBoxContainer" parent="SkillContainer"]
+[node name="DefenseFence" type="VBoxContainer" parent="SkillContainer" unique_id=1963456351]
 custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="SelectButton2" parent="SkillContainer/DefenseFence" instance=ExtResource("10_5w4iu")]
+[node name="SelectButton2" parent="SkillContainer/DefenseFence" unique_id=1897864501 instance=ExtResource("10_5w4iu")]
 material = SubResource("ShaderMaterial_hhmim")
 layout_mode = 2
 
-[node name="SpecialFence" type="VBoxContainer" parent="SkillContainer"]
+[node name="SpecialFence" type="VBoxContainer" parent="SkillContainer" unique_id=1109577460]
 custom_minimum_size = Vector2(210, 0)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="SelectButton3" parent="SkillContainer/SpecialFence" instance=ExtResource("10_5w4iu")]
+[node name="SelectButton3" parent="SkillContainer/SpecialFence" unique_id=21379451 instance=ExtResource("10_5w4iu")]
 material = SubResource("ShaderMaterial_5w4iu")
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1313883033]
 layout_mode = 0
 offset_left = 875.0
 offset_top = 72.0
@@ -199,18 +199,18 @@ offset_bottom = 132.0
 scale = Vector2(2, 2)
 theme_override_constants/separation = 110
 
-[node name="skill1" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
+[node name="skill1" parent="HBoxContainer" unique_id=731445257 instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 
-[node name="skill2" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
+[node name="skill2" parent="HBoxContainer" unique_id=1682797457 instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 MySkillType = 1
 
-[node name="skill3" parent="HBoxContainer" instance=ExtResource("11_5w4iu")]
+[node name="skill3" parent="HBoxContainer" unique_id=1902815261 instance=ExtResource("11_5w4iu")]
 layout_mode = 2
 MySkillType = 2
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="."]
+[node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=1055536850]
 layout_mode = 0
 offset_left = 798.0
 offset_top = 67.0
@@ -219,17 +219,17 @@ offset_bottom = 636.0
 mouse_filter = 2
 theme_override_constants/separation = 342
 
-[node name="Panel" type="Panel" parent="HBoxContainer2"]
+[node name="Panel" type="Panel" parent="HBoxContainer2" unique_id=1958467348]
 custom_minimum_size = Vector2(3, 20)
 layout_mode = 2
 theme = SubResource("Theme_dbxj7")
 
-[node name="Panel2" type="Panel" parent="HBoxContainer2"]
+[node name="Panel2" type="Panel" parent="HBoxContainer2" unique_id=1589845525]
 custom_minimum_size = Vector2(3, 20)
 layout_mode = 2
 theme = SubResource("Theme_dbxj7")
 
-[node name="Panel3" type="Panel" parent="HBoxContainer2"]
+[node name="Panel3" type="Panel" parent="HBoxContainer2" unique_id=973292487]
 custom_minimum_size = Vector2(3, 20)
 layout_mode = 2
 theme = SubResource("Theme_dbxj7")

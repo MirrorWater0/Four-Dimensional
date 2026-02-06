@@ -119,7 +119,7 @@ public partial class Battle : Node2D
         // PlayerSpeedLabel.Text = "(" + PlayersList.Sum(x => x.Speed) + ")";
         // EnemySpeedLabel.Text = "(" + EnemiesList.Sum(x => x.Speed) + ")";
 
-        BattleBegin1();
+        await BattleBegin1();
     }
 
     public void RandomPosition<T>(List<T> list) where T : Character
@@ -155,7 +155,7 @@ public partial class Battle : Node2D
     public void SetCharaterPostion()
     {
         // 你的核心基准参数
-        float bGapY = 200f; // 纵向行距
+        float bGapY = 180f; // 纵向行距
         float bGapX = 280f; // 横向列距
         float bSkew = 50f; // 每一行的水平偏移 (xoffset)
 

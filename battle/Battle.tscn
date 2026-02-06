@@ -1,4 +1,4 @@
-[gd_scene load_steps=35 format=3 uid="uid://cnapr4f8u0e1k"]
+[gd_scene format=3 uid="uid://cnapr4f8u0e1k"]
 
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
@@ -16,9 +16,10 @@
 background_mode = 3
 glow_enabled = true
 glow_normalized = true
+glow_intensity = 1.0
 glow_strength = 1.42
-glow_blend_mode = 1
-glow_hdr_threshold = 0.95
+glow_hdr_threshold = 0.9
+glow_hdr_scale = 1.8
 
 [sub_resource type="Shader" id="Shader_vj222"]
 code = "shader_type canvas_item;
@@ -405,13 +406,13 @@ ProgressBar/colors/font_color = Color(1, 1, 1, 1)
 ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
 
-[node name="Battle" type="Node2D"]
+[node name="Battle" type="Node2D" unique_id=167871935]
 script = ExtResource("1_n3ui2")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1636278870]
 environment = SubResource("Environment_ttuon")
 
-[node name="bg" type="TextureRect" parent="."]
+[node name="bg" type="TextureRect" parent="." unique_id=1303530490]
 material = SubResource("ShaderMaterial_ts8fe")
 offset_left = -257.0
 offset_top = -225.0
@@ -420,21 +421,19 @@ offset_bottom = 1215.0
 texture = ExtResource("4_r4boa")
 metadata/_edit_lock_ = true
 
-[node name="Right" type="Node2D" parent="."]
+[node name="Right" type="Node2D" parent="." unique_id=489797672]
 y_sort_enabled = true
-position = Vector2(1168, 280)
+position = Vector2(1168, 296)
 
-[node name="Left" type="Node2D" parent="."]
+[node name="Left" type="Node2D" parent="." unique_id=399900633]
 y_sort_enabled = true
-position = Vector2(808, 280)
+position = Vector2(808, 296)
 
-[node name="BattlePlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_od72c")
-}
-autoplay = "start"
+[node name="BattlePlayer" type="AnimationPlayer" parent="." unique_id=1504309812]
+libraries/ = SubResource("AnimationLibrary_od72c")
+autoplay = &"start"
 
-[node name="CharaterControl" type="HBoxContainer" parent="."]
+[node name="CharaterControl" type="HBoxContainer" parent="." unique_id=1407403704]
 modulate = Color(0.92, 0.92, 0.92, 1)
 z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
@@ -447,24 +446,24 @@ mouse_filter = 2
 theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
 
-[node name="frame1" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
+[node name="frame1" parent="CharaterControl" unique_id=2093805624 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame2" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
+[node name="frame2" parent="CharaterControl" unique_id=370836206 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame3" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
+[node name="frame3" parent="CharaterControl" unique_id=1254669040 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame4" parent="CharaterControl" instance=ExtResource("6_n0cwx")]
+[node name="frame4" parent="CharaterControl" unique_id=1397365255 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]
 position = Vector2(960, 540)
 position_smoothing_enabled = true
 metadata/_edit_lock_ = true
 
-[node name="ColorRect2" type="ColorRect" parent="."]
+[node name="ColorRect2" type="ColorRect" parent="." unique_id=1212388883]
 z_index = 5
 offset_right = 1920.0
 offset_bottom = 1080.0
@@ -472,7 +471,7 @@ mouse_filter = 2
 color = Color(0, 0, 0, 0)
 metadata/_edit_lock_ = true
 
-[node name="Retreat" type="Button" parent="."]
+[node name="Retreat" type="Button" parent="." unique_id=1228269267]
 material = SubResource("ShaderMaterial_jhxqk")
 offset_left = 1824.0
 offset_right = 1923.0
@@ -481,7 +480,7 @@ theme = ExtResource("4_eoytn")
 text = "撤退
 "
 
-[node name="Label" type="Label" parent="Retreat"]
+[node name="Label" type="Label" parent="Retreat" unique_id=160334765]
 layout_mode = 0
 offset_left = 17.0
 offset_top = 23.0
@@ -490,9 +489,9 @@ offset_bottom = 72.0
 theme = ExtResource("7_wuq8c")
 text = "撤退"
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1029581787]
 
-[node name="start" type="Label" parent="CanvasLayer"]
+[node name="start" type="Label" parent="CanvasLayer" unique_id=315968776]
 offset_left = 609.0
 offset_top = 478.0
 offset_right = 1302.0
@@ -505,7 +504,7 @@ theme_override_font_sizes/font_size = 100
 text = "BATTLE START"
 metadata/_edit_lock_ = true
 
-[node name="Incapacitate" type="Label" parent="CanvasLayer"]
+[node name="Incapacitate" type="Label" parent="CanvasLayer" unique_id=802594690]
 self_modulate = Color(1, 1, 1, 0)
 z_index = 2
 offset_left = 609.0
@@ -520,21 +519,21 @@ theme_override_font_sizes/font_size = 100
 text = "Incapacitate"
 metadata/_edit_lock_ = true
 
-[node name="ColorRect" type="NinePatchRect" parent="CanvasLayer"]
+[node name="ColorRect" type="NinePatchRect" parent="CanvasLayer" unique_id=561768639]
 self_modulate = Color(1, 1, 1, 0)
 offset_right = 1920.0
 offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_ttuon")
 metadata/_edit_lock_ = true
 
-[node name="ColorRect3" type="NinePatchRect" parent="CanvasLayer"]
+[node name="ColorRect3" type="NinePatchRect" parent="CanvasLayer" unique_id=1424122248]
 self_modulate = Color(1, 1, 1, 0)
 offset_right = 1920.0
 offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
-[node name="GPUParticles2D" type="GPUParticles2D" parent="."]
+[node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
 z_index = 2
 material = SubResource("ShaderMaterial_2bopn")
 position = Vector2(2218, 1339)
@@ -545,21 +544,21 @@ preprocess = 10.0
 visibility_rect = Rect2(-2300, -1200, 2000, 1100)
 process_material = SubResource("ParticleProcessMaterial_4km6a")
 
-[node name="SpeedBox" type="HBoxContainer" parent="."]
+[node name="SpeedBox" type="HBoxContainer" parent="." unique_id=209606245]
 offset_left = 563.0
 offset_top = 28.0
 offset_right = 1423.0
 offset_bottom = 39.0
 theme_override_constants/separation = 60
 
-[node name="PlayerSpeed" type="ProgressBar" parent="SpeedBox"]
+[node name="PlayerSpeed" type="ProgressBar" parent="SpeedBox" unique_id=1651593436]
 material = SubResource("ShaderMaterial_bim3i")
 custom_minimum_size = Vector2(400, 11)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
 
-[node name="Label" type="Label" parent="SpeedBox/PlayerSpeed"]
+[node name="Label" type="Label" parent="SpeedBox/PlayerSpeed" unique_id=803391610]
 layout_direction = 3
 layout_mode = 0
 offset_left = 400.0
@@ -570,13 +569,13 @@ theme_override_font_sizes/font_size = 25
 text = "(40) "
 script = ExtResource("11_d0b6a")
 
-[node name="EnemySpeed" type="ProgressBar" parent="SpeedBox"]
+[node name="EnemySpeed" type="ProgressBar" parent="SpeedBox" unique_id=1896319079]
 custom_minimum_size = Vector2(400, 11)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
 
-[node name="Label" type="Label" parent="SpeedBox/EnemySpeed"]
+[node name="Label" type="Label" parent="SpeedBox/EnemySpeed" unique_id=1185441765]
 layout_mode = 0
 offset_left = 415.0
 offset_top = -12.0
