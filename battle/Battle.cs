@@ -11,13 +11,14 @@ public partial class Battle : Node2D
 {
     public static bool Istest = true;
     public Random BattleIntentionRandom = new Random(GameInfo.IntentionRandom.Next());
+
     [Signal]
     public delegate void NextEventHandler();
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
     public List<PlayerCharacter> PlayersList = new();
-    public List<EnemyCharacter> EnemiesList = new();
+    public List<EnemyCharacter> EnemiesList;
     public Node2D Right => field ??= GetNode("Right") as Node2D;
     public Node2D Left => field ??= GetNode("Left") as Node2D;
 
@@ -92,12 +93,17 @@ public partial class Battle : Node2D
             character.Initialize();
             PlayersList.Add(character);
         }
-
-        EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
-        EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
-        EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
-        EnemiesList = new() { test1, test2, test4 };
-        RandomPosition(EnemiesList);
+        for (int i = 0; i < EnemiesList.Count; i++)
+        {
+            EnemiesList[i].BattleNode = this;
+        }
+        if (EnemiesList == null)
+        {
+            EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
+            EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
+            EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
+            EnemiesList = new() { test1, test2, test4 };
+        }
 
         PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
         EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
@@ -122,36 +128,6 @@ public partial class Battle : Node2D
         // EnemySpeedLabel.Text = "(" + EnemiesList.Sum(x => x.Speed) + ")";
 
         await BattleBegin1();
-    }
-
-    public void RandomPosition<T>(List<T> list) where T : Character
-    {
-        Random random = new Random(GameInfo.Seed);
-
-        // 1. 准备所有可能的位置 (1 到 9)
-        List<int> possiblePositions = Enumerable.Range(1, 9).ToList();
-
-        // 2. 洗牌算法：打乱这个列表
-        for (int i = possiblePositions.Count - 1; i > 0; i--)
-        {
-            int k = random.Next(i + 1); // 随机选一个索引
-            // 交换位置
-            int value = possiblePositions[k];
-            possiblePositions[k] = possiblePositions[i];
-            possiblePositions[i] = value;
-        }
-
-        // 3. 按顺序分配给敌人
-        for (int i = 0; i < list.Count; i++)
-        {
-            // 注意：如果敌人数量超过9个，这里会溢出，需要加判断
-            if (i < possiblePositions.Count)
-            {
-                list[i].PositionIndex = possiblePositions[i];
-                list[i].BattleNode = this;
-                list[i].Initialize();
-            }
-        }
     }
 
     public void SetCharaterPostion()
@@ -180,7 +156,7 @@ public partial class Battle : Node2D
 
                 // 3. 基础位置计算 (平行四边形逻辑)
                 // x = (列间距 + 行偏移) * 阵营系数
-                float xPos = col * bGapX  * side - (row * bSkew - 100 * (row - 1));
+                float xPos = col * bGapX * side - (row * bSkew - 100 * (row - 1));
                 float yPos = row * bGapY;
 
                 c.Position = new Vector2(xPos, yPos);

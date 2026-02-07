@@ -10,7 +10,7 @@ public partial class SiteButton : Button
     public ColorRect Appearance => field ??= GetNode("Appearance") as ColorRect;
     public CanvasLayer SiteUILayer => field ??= GetNode("/root/Map/SiteUI") as CanvasLayer;
     private ShaderMaterial mat;
-    
+
     public override void _Ready()
     {
         mat = Appearance.Material.Duplicate() as ShaderMaterial;

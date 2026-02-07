@@ -1,9 +1,15 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using Godot;
 
+[Tool]
 public partial class LevelNode : ColorRect
 {
+    [Export]
+    bool BarVisible = true;
+
     public enum LevelState
     {
         Locked,
@@ -13,18 +19,21 @@ public partial class LevelNode : ColorRect
 
     public enum LevelType
     {
-        Battle,
+        Normal,
         Event,
         Elite,
+        Boss,
     }
 
+    public List<EnemyCharacter> EnemiesList;
     public LevelState State { get; set; }
-    public LevelType Type { get; set; }
+    public LevelType Type { get; set; } = LevelType.Normal;
 
     public Button Button => field ??= GetNode("Button") as Button;
     public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
     public ShaderMaterial mat;
-    public Color LockColor = new Color(0.9f, 0.9f, 0.9f, 1);
+    public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
+    public LevelNode NextNode;
 
     public override void _Ready()
     {
@@ -38,22 +47,61 @@ public partial class LevelNode : ColorRect
         ProgressBar.Value = 0;
         Button.Disabled = State == LevelState.Locked;
         StartAnimation();
+
+        Button.Pressed += CompletedAnimation;
+        
+    }
+
+    public override void _Process(double delta)
+    {
+        if (BarVisible == false)
+        {
+            ProgressBar.Visible = false;
+        }
+    }
+
+    public List<EnemyCharacter> ProduceEnemies()
+    {
+        PackedScene _test1 = (PackedScene)
+            ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
+        EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
+        EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
+        EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
+        EnemiesList = new() { test1, test2, test4 };
+        RandomPosition(EnemiesList);
+        return EnemiesList;
     }
 
     public void Unlock()
     {
         Color = 2 * new Color(1, 1, 1, 1);
-        mat.SetShaderParameter("ring_color", new Color(1, 1f, 1, 1));
+        Color ringColor = new Color(1, 1, 1, 1);
+
+        switch (Type)
+        {
+            case LevelType.Boss:
+                ringColor = new Color(0.6f, 0, 0.9f, 1);
+                break;
+            case LevelType.Elite:
+                ringColor = new Color(1, 0.1f, 0.1f, 1);
+                break;
+            case LevelType.Event:
+                ringColor = new Color(0, 0.6f, 1, 1);
+                break;
+        }
+
+        mat.SetShaderParameter("ring_color", ringColor);
         State = LevelState.Unlocked;
         Button.Disabled = false;
     }
 
     public void CompletedAnimation()
     {
+        NextNode?.Unlock();
         State = LevelState.Completed;
         Button.Disabled = true;
         mat.SetShaderParameter("show_inner", true);
-        mat.SetShaderParameter("ring_color", new Color(1, 0.8f, 0, 1));
+        mat.SetShaderParameter("show_inner_color", new Color(1, 0.8f, 0, 1));
         Tween tween = CreateTween();
         tween.TweenProperty(ProgressBar, "value", 100, 0.5f);
     }
@@ -63,5 +111,55 @@ public partial class LevelNode : ColorRect
         ProgressBar.Scale = new Vector2(0, 1);
         Tween tween = CreateTween();
         tween.TweenProperty(ProgressBar, "scale", new Vector2(1, 1), 0.5f);
+    }
+
+    public void ColorChose()
+    {
+        Color ringColor = new Color(1, 1, 1, 1);
+
+        switch (Type)
+        {
+            case LevelType.Boss:
+                ringColor = new Color(0.6f, 0, 0.9f, 1);
+                break;
+            case LevelType.Elite:
+                ringColor = new Color(1, 0.1f, 0.1f, 1);
+                break;
+            case LevelType.Event:
+                ringColor = new Color(0, 0.6f, 1, 1);
+                break;
+        }
+
+        mat.SetShaderParameter("ring_color", ringColor);
+    }
+
+    public static void RandomPosition<T>(List<T> list)
+        where T : Character
+    {
+        Random random = new Random(GameInfo.Seed);
+
+        // 1. 准备所有可能的位置 (1 到 9)
+        List<int> possiblePositions = Enumerable.Range(1, 9).ToList();
+
+        // 2. 洗牌算法：打乱这个列表
+        for (int i = possiblePositions.Count - 1; i > 0; i--)
+        {
+            int k = random.Next(i + 1); // 随机选一个索引
+            // 交换位置
+            int value = possiblePositions[k];
+            possiblePositions[k] = possiblePositions[i];
+            possiblePositions[i] = value;
+        }
+
+        // 3. 按顺序分配给敌人
+        for (int i = 0; i < list.Count; i++)
+        {
+            // 注意：如果敌人数量超过9个，这里会溢出，需要加判断
+            if (i < possiblePositions.Count)
+            {
+                list[i].PositionIndex = possiblePositions[i];
+                list[i].Initialize();
+            }
+        }
     }
 }

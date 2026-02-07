@@ -1,0 +1,146 @@
+[gd_scene format=3 uid="uid://c8pd3dyyxenqy"]
+
+[ext_resource type="Shader" uid="uid://dt5olcfi6tvjs" path="res://shader/UI/ChangePosFrame.gdshader" id="1_jwyif"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tp1km"]
+resource_local_to_scene = true
+shader = ExtResource("1_jwyif")
+shader_parameter/bg_color = Color(0.061972275, 0.106753655, 0.18598887, 0.5882353)
+shader_parameter/line_color = Color(0.7, 0.75, 0.8, 1)
+shader_parameter/border_thickness = 0.005
+shader_parameter/corner_size = 0.2
+
+[node name="BattlePreview" type="Control" unique_id=1580075193]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_lock_ = true
+
+[node name="PlayerFormation" type="GridContainer" parent="." unique_id=2124180379]
+z_index = 2
+layout_mode = 0
+offset_left = 187.0
+offset_top = 107.0
+offset_right = 485.0
+offset_bottom = 405.0
+scale = Vector2(1.7, 1.7)
+mouse_filter = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 3
+
+[node name="7" type="ColorRect" parent="PlayerFormation" unique_id=98151067]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="4" type="ColorRect" parent="PlayerFormation" unique_id=2044671046]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="1" type="ColorRect" parent="PlayerFormation" unique_id=773819938]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="8" type="ColorRect" parent="PlayerFormation" unique_id=1363508382]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="5" type="ColorRect" parent="PlayerFormation" unique_id=1784676769]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="2" type="ColorRect" parent="PlayerFormation" unique_id=814884899]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="9" type="ColorRect" parent="PlayerFormation" unique_id=1386725830]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="6" type="ColorRect" parent="PlayerFormation" unique_id=2076175128]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="3" type="ColorRect" parent="PlayerFormation" unique_id=2019319218]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="EnemyFormation" type="GridContainer" parent="." unique_id=1832024384]
+z_index = 2
+layout_mode = 0
+offset_left = 1229.0001
+offset_top = 132.0
+offset_right = 1527.0001
+offset_bottom = 430.0
+scale = Vector2(1.7, 1.7)
+mouse_filter = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 3
+
+[node name="7" type="ColorRect" parent="EnemyFormation" unique_id=1147900599]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="4" type="ColorRect" parent="EnemyFormation" unique_id=1380981325]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="1" type="ColorRect" parent="EnemyFormation" unique_id=231935942]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="8" type="ColorRect" parent="EnemyFormation" unique_id=127987111]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="5" type="ColorRect" parent="EnemyFormation" unique_id=2056950068]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="2" type="ColorRect" parent="EnemyFormation" unique_id=1583071653]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="9" type="ColorRect" parent="EnemyFormation" unique_id=1725117990]
+material = SubResource("ShaderMaterial_tp1km")
+custom_minimum_size = Vector2(94, 94)
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="6" type="ColorRect" parent="EnemyFormation" unique_id=1640519003]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
+
+[node name="3" type="ColorRect" parent="EnemyFormation" unique_id=1021640308]
+material = SubResource("ShaderMaterial_tp1km")
+layout_mode = 2
+mouse_behavior_recursive = 2
