@@ -58,6 +58,7 @@ public partial class ChoseCharater : CanvasLayer
     public void Start()
     {
         Battle.Istest = false;
+        GameInfo.InitNewGame();
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
 
@@ -67,4 +68,5 @@ public partial class ChoseCharater : CanvasLayer
         GameInfo.PlayerCharacters[0].GainedSkills.Add(new Determination());
         GameInfo.PlayerCharacters[0].GainedSkills.Add(new TerminateLight());
     }
+
 }

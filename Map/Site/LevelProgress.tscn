@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://d3pac0pvnljwf"]
+
+[ext_resource type="PackedScene" uid="uid://dit8yqrejpodi" path="res://Map/Site/LevelNode.tscn" id="1_8oxmn"]
+[ext_resource type="Script" uid="uid://bjxr7y4jjo7re" path="res://Map/Site/LevelProgress.cs" id="1_pkhks"]
+
+[node name="LevelProgress" type="Control" unique_id=102309754]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_pkhks")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=52246002]
+layout_mode = 0
+offset_left = 249.0
+offset_top = 427.0
+offset_right = 1229.0
+offset_bottom = 697.0
+theme_override_constants/separation = 15
+
+[node name="NodeBox1" type="HBoxContainer" parent="VBoxContainer" unique_id=1623640681]
+layout_mode = 2
+theme_override_constants/separation = 100
+
+[node name="LevelNode" parent="VBoxContainer/NodeBox1" unique_id=798467932 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode2" parent="VBoxContainer/NodeBox1" unique_id=130587366 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode3" parent="VBoxContainer/NodeBox1" unique_id=1594128815 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode4" parent="VBoxContainer/NodeBox1" unique_id=658037631 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode5" parent="VBoxContainer/NodeBox1" unique_id=983484163 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode6" parent="VBoxContainer/NodeBox1" unique_id=2102102942 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="NodeBox2" type="HBoxContainer" parent="VBoxContainer" unique_id=976592061]
+layout_mode = 2
+theme_override_constants/separation = 100
+
+[node name="LevelNode" parent="VBoxContainer/NodeBox2" unique_id=438733462 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode2" parent="VBoxContainer/NodeBox2" unique_id=316600092 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode3" parent="VBoxContainer/NodeBox2" unique_id=962490098 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode4" parent="VBoxContainer/NodeBox2" unique_id=1345699362 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode5" parent="VBoxContainer/NodeBox2" unique_id=778526883 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode6" parent="VBoxContainer/NodeBox2" unique_id=367280824 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="NodeBox3" type="HBoxContainer" parent="VBoxContainer" unique_id=114921424]
+layout_mode = 2
+theme_override_constants/separation = 100
+
+[node name="LevelNode" parent="VBoxContainer/NodeBox3" unique_id=810738629 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode2" parent="VBoxContainer/NodeBox3" unique_id=303420565 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode3" parent="VBoxContainer/NodeBox3" unique_id=1701941862 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode4" parent="VBoxContainer/NodeBox3" unique_id=975210121 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode5" parent="VBoxContainer/NodeBox3" unique_id=1231303225 instance=ExtResource("1_8oxmn")]
+layout_mode = 2
+
+[node name="LevelNode6" parent="VBoxContainer/NodeBox3" unique_id=32157619 instance=ExtResource("1_8oxmn")]
+layout_mode = 2

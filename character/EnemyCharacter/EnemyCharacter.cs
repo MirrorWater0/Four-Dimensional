@@ -8,6 +8,8 @@ public partial class EnemyCharacter : Character
 {
     public Control IntentionContorl => field ??= GetNode<Control>("Intention");
     public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
+    public ColorRect SurviveIntention => field ??= GetNode<ColorRect>("Intention/Survive");
+    public ColorRect SpecialIntention => field ??= GetNode<ColorRect>("Intention/Special");
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
@@ -15,7 +17,6 @@ public partial class EnemyCharacter : Character
     public override void _Ready()
     {
         base._Ready();
-        IntentionContorl.Visible = true;
         IsPlayer = false;
     }
 
@@ -27,6 +28,7 @@ public partial class EnemyCharacter : Character
     public override async void StartAction()
     {
         base.StartAction();
+        DisappearIntention();
         await Skills[IntentionIndex].Effect();
         EndAction();
     }
@@ -56,6 +58,14 @@ public partial class EnemyCharacter : Character
         base.Dying();
     }
 
+    public async Task DisappearIntention()
+    {
+        Buff.GhostExplode(IntentionContorl,new Vector2(2, 2));
+        await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
+        AttackIntention.Visible = false;
+        SurviveIntention.Visible = false;
+        SpecialIntention.Visible = false;
+    }
     public void DisplayIntention()
     {
         var skill = Skills[IntentionIndex];
@@ -65,8 +75,10 @@ public partial class EnemyCharacter : Character
                 AttackIntention.Visible = true;
                 break;
             case Skill.SkillTypes.Defence:
+                SurviveIntention.Visible = true;
                 break;
             case Skill.SkillTypes.Special:
+                SpecialIntention.Visible = true;
                 break;
         }
     }

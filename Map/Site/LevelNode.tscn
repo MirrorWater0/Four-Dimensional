@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://dit8yqrejpodi"]
+
+[ext_resource type="Shader" uid="uid://camrj1gsvxoe6" path="res://Map/LevelNode.gdshader" id="1_br0dh"]
+[ext_resource type="Script" uid="uid://d3ftnc85yn4ch" path="res://Map/Site/LevelNode.cs" id="2_40022"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
+shader = ExtResource("1_br0dh")
+shader_parameter/ring_color = Color(1, 1, 1, 1)
+shader_parameter/inner_color = Color(1, 1, 1, 1)
+shader_parameter/ring_size = 0.80400003493012
+shader_parameter/ring_thickness = 0.22500000998898
+shader_parameter/inner_square_size = 0.4
+shader_parameter/show_inner = true
+shader_parameter/smoothness_offset = 1.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qox0s"]
+bg_color = Color(1, 1, 1, 0.05882353)
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8oxmn"]
+bg_color = Color(1, 1, 1, 1)
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 0)
+
+[sub_resource type="Theme" id="Theme_8oxmn"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_qox0s")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_8oxmn")
+
+[node name="LevelNode" type="ColorRect" unique_id=798467932]
+material = SubResource("ShaderMaterial_ehio4")
+custom_minimum_size = Vector2(80, 80)
+script = ExtResource("2_40022")
+
+[node name="ProgressBar" type="ProgressBar" parent="." unique_id=1936931136]
+show_behind_parent = true
+layout_mode = 0
+offset_left = 65.0
+offset_top = 34.0
+offset_right = 195.0
+offset_bottom = 46.0
+theme = SubResource("Theme_8oxmn")
+value = 20.0
+show_percentage = false
+
+[node name="Button" type="Button" parent="." unique_id=1781697508]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 0
+offset_right = 80.0
+offset_bottom = 80.0

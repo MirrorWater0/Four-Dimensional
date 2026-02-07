@@ -102,7 +102,7 @@ offset_bottom = 100.0
 pivot_offset = Vector2(50, 50)
 mouse_filter = 2
 
-[node name="ColorRect" type="ColorRect" parent="." unique_id=186143608]
+[node name="Appearance" type="ColorRect" parent="." unique_id=186143608]
 material = SubResource("ShaderMaterial_p7pbm")
 layout_mode = 0
 offset_right = 100.0

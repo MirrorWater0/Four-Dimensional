@@ -1,4 +1,4 @@
-[gd_scene load_steps=41 format=3 uid="uid://dcivwl06q4oiv"]
+[gd_scene format=3 uid="uid://dcivwl06q4oiv"]
 
 [ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Character.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
@@ -12,6 +12,7 @@
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="14_lucsw"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
@@ -310,7 +311,26 @@ shader_parameter/sword_color = Color(1, 0, 0, 1)
 shader_parameter/blade_color = Color(1, 0.2, 0.2, 1)
 shader_parameter/handle_color = Color(0.3, 0.1, 0.1, 1)
 shader_parameter/glow_intensity = 0.5
-shader_parameter/angle = 0.60000000894072
+shader_parameter/angle = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ek3d4"]
+resource_local_to_scene = true
+shader = ExtResource("16_yic7g")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 1.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lyi1f"]
+shader = ExtResource("15_eq06d")
+shader_parameter/color = Color(0.6, 1, 1, 1)
 
 [sub_resource type="Animation" id="Animation_faub5"]
 length = 0.001
@@ -324,12 +344,12 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector2(-19.999998, -308.74997)]
+"values": [Vector2(0, -290)]
 }
 
 [sub_resource type="Animation" id="Animation_yic7g"]
 resource_name = "intention"
-length = 2.0
+length = 3.0
 loop_mode = 1
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -338,10 +358,10 @@ tracks/0/path = NodePath("Intention:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 1, 2),
+"times": PackedFloat32Array(0, 1.5, 3),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector2(-19.999998, -308.74997), Vector2(-20, -338.75), Vector2(-19.999998, -308.74997)]
+"values": [Vector2(0, -290), Vector2(0, -318.75), Vector2(0, -290)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_faub5"]
@@ -350,12 +370,12 @@ _data = {
 &"intention": SubResource("Animation_yic7g")
 }
 
-[node name="CharacterTemplate" type="Node2D"]
+[node name="CharacterTemplate" type="Node2D" unique_id=1123852147]
 z_index = 1
 scale = Vector2(0.8, 0.8)
 script = ExtResource("1_4ikhs")
 
-[node name="Block" type="Label" parent="."]
+[node name="Block" type="Label" parent="." unique_id=1125559359]
 z_index = 2
 offset_left = -144.0
 offset_top = -234.0
@@ -366,7 +386,7 @@ theme = ExtResource("1_kvlfx")
 text = "120"
 horizontal_alignment = 2
 
-[node name="BlockBar" type="TextureProgressBar" parent="Block"]
+[node name="BlockBar" type="TextureProgressBar" parent="Block" unique_id=91266274]
 material = SubResource("ShaderMaterial_evd82")
 layout_mode = 0
 offset_left = 79.999985
@@ -376,7 +396,7 @@ offset_bottom = 40.142868
 value = 60.0
 texture_progress = ExtResource("2_4ikhs")
 
-[node name="Life" type="Label" parent="."]
+[node name="Life" type="Label" parent="." unique_id=1787646224]
 z_index = 2
 offset_left = -20.0
 offset_top = -237.0
@@ -389,7 +409,7 @@ theme_override_fonts/font = ExtResource("3_lucsw")
 theme_override_font_sizes/font_size = 50
 text = "100"
 
-[node name="LifeBar2" type="TextureProgressBar" parent="Life"]
+[node name="LifeBar2" type="TextureProgressBar" parent="Life" unique_id=646485138]
 z_as_relative = false
 layout_mode = 0
 offset_left = -96.0
@@ -399,7 +419,7 @@ offset_bottom = 61.0
 value = 100.0
 texture_progress = ExtResource("2_4ikhs")
 
-[node name="LifeBar" type="TextureProgressBar" parent="Life"]
+[node name="LifeBar" type="TextureProgressBar" parent="Life" unique_id=485287208]
 show_behind_parent = true
 z_index = 1
 z_as_relative = false
@@ -414,7 +434,7 @@ value = 100.0
 texture_under = ExtResource("2_4ikhs")
 texture_progress = ExtResource("4_eq06d")
 
-[node name="Hit" type="GPUParticles2D" parent="."]
+[node name="Hit" type="GPUParticles2D" parent="." unique_id=397376148]
 self_modulate = Color(25.946, 45.946, 64.324, 1)
 scale = Vector2(0.15, 0.15)
 emitting = false
@@ -424,7 +444,7 @@ lifetime = 0.5
 explosiveness = 0.93
 process_material = ExtResource("8_ek3d4")
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=225863741]
 visible = false
 offset_left = 69.0
 offset_top = -1.0
@@ -433,13 +453,11 @@ offset_bottom = 54.0
 theme_override_font_sizes/font_size = 40
 text = "23"
 
-[node name="Player" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_jeiix")
-}
-autoplay = "RESET"
+[node name="Player" type="AnimationPlayer" parent="." unique_id=371145037]
+libraries/ = SubResource("AnimationLibrary_jeiix")
+autoplay = &"RESET"
 
-[node name="Hoverframe" type="TextureRect" parent="."]
+[node name="Hoverframe" type="TextureRect" parent="." unique_id=777161530]
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(200, 400)
 offset_left = -100.0
@@ -449,7 +467,7 @@ offset_bottom = 200.0
 texture = SubResource("GradientTexture2D_4ikhs")
 metadata/_edit_lock_ = true
 
-[node name="State" type="HBoxContainer" parent="."]
+[node name="State" type="HBoxContainer" parent="." unique_id=134619418]
 z_index = 2
 material = SubResource("CanvasItemMaterial_yic7g")
 offset_left = -105.0
@@ -458,13 +476,13 @@ offset_right = 67.0
 offset_bottom = -223.75
 pivot_offset = Vector2(20, 20)
 
-[node name="PowerIcon" type="ColorRect" parent="State"]
+[node name="PowerIcon" type="ColorRect" parent="State" unique_id=1018149272]
 material = SubResource("ShaderMaterial_eq06d")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/PowerIcon"]
+[node name="Label" type="Label" parent="State/PowerIcon" unique_id=789674090]
 layout_mode = 0
 offset_left = 23.0
 offset_top = 14.0
@@ -476,12 +494,12 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="SurvivabilityIcon" type="ColorRect" parent="State"]
+[node name="SurvivabilityIcon" type="ColorRect" parent="State" unique_id=1682998539]
 material = SubResource("ShaderMaterial_yic7g")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="State/SurvivabilityIcon"]
+[node name="Label" type="Label" parent="State/SurvivabilityIcon" unique_id=1311386747]
 layout_mode = 0
 offset_left = 26.0
 offset_top = 13.0
@@ -492,12 +510,12 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="EnergeIcon" type="ColorRect" parent="State"]
+[node name="EnergeIcon" type="ColorRect" parent="State" unique_id=80950031]
 material = SubResource("ShaderMaterial_5ewuv")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="State/EnergeIcon"]
+[node name="Label" type="Label" parent="State/EnergeIcon" unique_id=461634196]
 layout_mode = 0
 offset_left = 26.0
 offset_top = 13.0
@@ -508,13 +526,13 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="SpeedIcon" type="ColorRect" parent="State"]
+[node name="SpeedIcon" type="ColorRect" parent="State" unique_id=1205133209]
 material = SubResource("ShaderMaterial_oexsw")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/SpeedIcon"]
+[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1209104342]
 layout_mode = 0
 offset_left = 23.0
 offset_top = 14.0
@@ -525,14 +543,14 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 20
 text = "10"
 
-[node name="Path2D" type="Path2D" parent="."]
+[node name="Path2D" type="Path2D" parent="." unique_id=1145431090]
 modulate = Color(1, 0, 0, 1)
 position = Vector2(-101.50002, 130.74997)
 scale = Vector2(0.753626, 0.753626)
 curve = SubResource("Curve2D_gvqk1")
 script = ExtResource("19_oexsw")
 
-[node name="Line2D" type="Line2D" parent="Path2D" node_paths=PackedStringArray("Target")]
+[node name="Line2D" type="Line2D" parent="Path2D" unique_id=1938205251 node_paths=PackedStringArray("Target")]
 modulate = Color(1.8916494, 1.8916494, 1.8916494, 1)
 position = Vector2(134.68222, 10.6154785)
 scale = Vector2(1.3269181, 1.3269181)
@@ -541,39 +559,51 @@ gradient = SubResource("Gradient_5tqd2")
 script = ExtResource("21_oexsw")
 Target = NodePath("../PathFollow2D/Sprite2D")
 
-[node name="PathFollow2D" type="PathFollow2D" parent="Path2D"]
+[node name="PathFollow2D" type="PathFollow2D" parent="Path2D" unique_id=869079515]
 position = Vector2(134.68222, 10.615387)
 rotation = -0.0051309876
 
-[node name="Sprite2D" type="Sprite2D" parent="Path2D/PathFollow2D"]
+[node name="Sprite2D" type="Sprite2D" parent="Path2D/PathFollow2D" unique_id=1211337423]
 
-[node name="Sprite" type="Sprite2D" parent="."]
+[node name="Sprite" type="Sprite2D" parent="." unique_id=968479023]
 material = SubResource("ShaderMaterial_37ane")
 scale = Vector2(0.16, 0.16)
 texture = ExtResource("7_lyi1f")
 
-[node name="TrailAnimation" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_oexsw")
-}
+[node name="TrailAnimation" type="AnimationPlayer" parent="." unique_id=877706381]
+libraries/ = SubResource("AnimationLibrary_oexsw")
 
-[node name="Intention" type="Control" parent="."]
+[node name="Intention" type="Control" parent="." unique_id=1751708892]
 visible = false
 layout_mode = 3
 anchors_preset = 0
-offset_left = -19.999998
-offset_top = -308.74997
-offset_right = 20.000002
-offset_bottom = -268.74997
+offset_top = -290.0
+offset_bottom = -290.0
 
-[node name="Attack" type="ColorRect" parent="Intention"]
+[node name="Attack" type="ColorRect" parent="Intention" unique_id=1679048802]
 material = SubResource("ShaderMaterial_faub5")
 layout_mode = 0
-offset_right = 60.0
-offset_bottom = 60.0
+offset_left = -30.0
+offset_top = -29.999996
+offset_right = 30.0
+offset_bottom = 30.000004
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_faub5")
-}
-autoplay = "intention"
+[node name="Special" type="ColorRect" parent="Intention" unique_id=1589759617]
+material = SubResource("ShaderMaterial_ek3d4")
+layout_mode = 0
+offset_left = -30.0
+offset_top = -29.999996
+offset_right = 30.0
+offset_bottom = 30.000004
+
+[node name="Survive" type="ColorRect" parent="Intention" unique_id=1755311360]
+material = SubResource("ShaderMaterial_lyi1f")
+layout_mode = 0
+offset_left = -30.0
+offset_top = -29.999996
+offset_right = 30.0
+offset_bottom = 30.000004
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=605015123]
+libraries/ = SubResource("AnimationLibrary_faub5")
+autoplay = &"intention"

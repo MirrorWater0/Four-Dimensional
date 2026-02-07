@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://bvnftwrftpkc7"]
+[gd_scene format=3 uid="uid://bvnftwrftpkc7"]
 
 [ext_resource type="Script" uid="uid://bhf4wionnrjlp" path="res://battle/UIScene/SkillButton.cs" id="1_gvdwr"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_etfs1"]
@@ -69,10 +69,10 @@ shader_parameter/main_length = 1.4
 shader_parameter/main_width = 1.1
 shader_parameter/small_length = 0.5
 shader_parameter/small_width = 0.7
-shader_parameter/petal_overall_size = 0.49600002193006
-shader_parameter/petal_pinch = 0.60900002240773
-shader_parameter/ring_radius = 0.74600003310593
-shader_parameter/glow_intensity = 0.0
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tjicg"]
 resource_local_to_scene = true
@@ -92,14 +92,12 @@ shader_parameter/progress = 1.0
 shader_parameter/glow_intensity = 25.0
 shader_parameter/ray_count = 15.0
 
-[node name="skill1" type="Button"]
+[node name="skill1" type="Button" unique_id=429305689]
 modulate = Color(0.82, 0.82, 0.82, 1)
 material = SubResource("ShaderMaterial_fla6k")
 custom_minimum_size = Vector2(60, 60)
-offset_left = 254.0
-offset_top = 102.0
-offset_right = 314.0
-offset_bottom = 162.0
+offset_right = 60.0
+offset_bottom = 60.0
 focus_mode = 0
 mouse_filter = 1
 theme_override_colors/font_outline_color = Color(1, 0, 0, 1)
@@ -107,7 +105,7 @@ theme_override_constants/outline_size = 0
 keep_pressed_outside = true
 script = ExtResource("1_gvdwr")
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=1535467498]
 visible = false
 layout_mode = 0
 offset_left = 20.000002
@@ -122,7 +120,7 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 35
 text = "11"
 
-[node name="AbleRing" type="ColorRect" parent="."]
+[node name="AbleRing" type="ColorRect" parent="." unique_id=423852926]
 material = SubResource("ShaderMaterial_h1nnv")
 layout_mode = 1
 anchors_preset = -1
@@ -134,7 +132,7 @@ offset_bottom = 71.0
 mouse_filter = 1
 metadata/_edit_lock_ = true
 
-[node name="ColorRect2" type="ColorRect" parent="."]
+[node name="ColorRect2" type="ColorRect" parent="." unique_id=1267468745]
 material = SubResource("ShaderMaterial_76cfv")
 layout_mode = 0
 offset_left = -1.0
@@ -143,7 +141,7 @@ offset_right = 61.0
 offset_bottom = 61.0
 mouse_filter = 1
 
-[node name="SwordIcon" type="ColorRect" parent="."]
+[node name="SwordIcon" type="ColorRect" parent="." unique_id=1278232838]
 material = SubResource("ShaderMaterial_epdhb")
 layout_mode = 0
 offset_left = 10.0
@@ -152,7 +150,7 @@ offset_right = 49.0
 offset_bottom = 49.0
 mouse_filter = 1
 
-[node name="RhomboidIcon" type="ColorRect" parent="."]
+[node name="RhomboidIcon" type="ColorRect" parent="." unique_id=1011236504]
 material = SubResource("ShaderMaterial_jup60")
 layout_mode = 0
 offset_left = 10.0
@@ -161,7 +159,7 @@ offset_right = 50.0
 offset_bottom = 50.0
 mouse_filter = 1
 
-[node name="TerminateSkillIcon" type="ColorRect" parent="."]
+[node name="TerminateSkillIcon" type="ColorRect" parent="." unique_id=1065074037]
 material = SubResource("ShaderMaterial_gvdwr")
 layout_mode = 0
 offset_left = 12.0
@@ -170,7 +168,7 @@ offset_right = 49.0
 offset_bottom = 48.0
 mouse_filter = 1
 
-[node name="ShockWave" type="ColorRect" parent="."]
+[node name="ShockWave" type="ColorRect" parent="." unique_id=342777392]
 material = SubResource("ShaderMaterial_tjicg")
 layout_mode = 0
 offset_left = -112.0
@@ -180,7 +178,7 @@ offset_bottom = 171.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
-[node name="SparkLight" type="ColorRect" parent="."]
+[node name="SparkLight" type="ColorRect" parent="." unique_id=1133246718]
 material = SubResource("ShaderMaterial_d3be8")
 layout_mode = 0
 offset_left = -70.0

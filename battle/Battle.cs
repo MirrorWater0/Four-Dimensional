@@ -110,6 +110,8 @@ public partial class Battle : Node2D
         {
             var enemy = EnemiesList[i];
             enemy.IntentionIndex = BattleIntentionRandom.Next(0, enemy.Skills.Length);
+            await enemy.DisappearIntention();
+            enemy.IntentionContorl.Visible = true;
             enemy.DisplayIntention();
         }
 
@@ -157,7 +159,7 @@ public partial class Battle : Node2D
         // 你的核心基准参数
         float bGapY = 180f; // 纵向行距
         float bGapX = 280f; // 横向列距
-        float bSkew = 50f; // 每一行的水平偏移 (xoffset)
+        float bSkew = 10f; // 每一行的水平偏移 (xoffset)
 
         void ProcessList<T>(List<T> list, Node container, int side)
             where T : Character

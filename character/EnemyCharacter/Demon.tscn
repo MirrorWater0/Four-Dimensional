@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://s730qn6ddxgg"]
+[gd_scene format=3 uid="uid://s730qn6ddxgg"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_heyqv"]
 [ext_resource type="Script" uid="uid://qef81iti4rkt" path="res://character/EnemyCharacter/Demon.cs" id="2_se7fp"]
@@ -15,10 +15,10 @@ shader_parameter/center = Vector2(0.5, 0.5)
 shader_parameter/radial_blur = true
 shader_parameter/motion_blur = false
 
-[node name="Demon" instance=ExtResource("1_heyqv")]
+[node name="Demon" unique_id=47154144 instance=ExtResource("1_heyqv")]
 script = ExtResource("2_se7fp")
 Portrait = ExtResource("4_n6o37")
 
-[node name="Sprite" parent="." index="9"]
+[node name="Sprite" parent="." index="8" unique_id=968479023]
 material = SubResource("ShaderMaterial_heyqv")
 texture = ExtResource("4_n6o37")
