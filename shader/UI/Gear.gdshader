@@ -33,5 +33,5 @@ void fragment() {
     float ring = (1.0 - smoothstep(ring_r + ring_w, ring_r + ring_w + 0.005, dist)) * 
                  smoothstep(ring_r, ring_r + 0.005, dist);
     
-    COLOR = color * max(shape, ring);
+    COLOR *= color * max(shape, ring);
 }

@@ -46,9 +46,35 @@ public partial class LevelProgress : Control
                 eventCandidates.RemoveAt(randIndex);
             }
 
-            for (int j = 0; j < VBoxContainer.GetChild(i).GetChildCount(); j++)
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
             {
-                var levelNode = VBoxContainer.GetChild(i).GetChild<LevelNode>(j);
+                var child = row.GetChild(j);
+                LevelNode levelNode = child as LevelNode;
+
+                if (levelNode != null)
+                {
+                    // Wrap existing LevelNode in a Control to isolate it from layout during animation
+                    Control wrapper = new Control();
+                    wrapper.CustomMinimumSize = levelNode.CustomMinimumSize;
+                    wrapper.SizeFlagsHorizontal = levelNode.SizeFlagsHorizontal;
+                    wrapper.SizeFlagsVertical = levelNode.SizeFlagsVertical;
+                    wrapper.Name = levelNode.Name + "_Wrapper";
+
+                    row.AddChild(wrapper);
+                    row.MoveChild(wrapper, j);
+
+                    child.GetParent().RemoveChild(child);
+                    wrapper.AddChild(child);
+                    levelNode.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+                }
+                else
+                {
+                    levelNode = GetLevelNode(child);
+                }
+
+                if (levelNode == null)
+                    continue;
 
                 // Assign generated type
                 if (j < 7)
@@ -57,11 +83,17 @@ public partial class LevelProgress : Control
                 }
                 levelNode.ColorChose();
                 levelNode.State = GameInfo.FirstLevelState[new Vector2I(j, i)];
-                if (j != VBoxContainer.GetChild(i).GetChildCount() - 1)
+
+                // Logic for NextNode connecting
+                if (j != row.GetChildCount() - 1)
                 {
-                    levelNode.NextNode = VBoxContainer.GetChild(i).GetChild<LevelNode>(j + 1);
+                    // Next sibling might be LevelNode (not wrapped yet) or Wrapper
+                    // Since we loop forward, j+1 is not wrapped yet, so it is LevelNode.
+                    var nextChild = row.GetChild(j + 1);
+                    levelNode.NextNode = nextChild as LevelNode;
                     levelNode.Button.Pressed += () => lockOther(levelNode.NextNode);
                 }
+
                 if (levelNode.State == LevelNode.LevelState.Unlocked)
                 {
                     levelNode.Unlock();
@@ -71,16 +103,27 @@ public partial class LevelProgress : Control
                     levelNode.CompletedAnimation();
             }
         }
+        CallDeferred("StartAnimation");
+    }
+
+    private LevelNode GetLevelNode(Node node)
+    {
+        if (node is LevelNode ln)
+            return ln;
+        if (node.GetChildCount() > 0 && node.GetChild(0) is LevelNode lnChild)
+            return lnChild;
+        return null;
     }
 
     public void lockOther(LevelNode currentNode)
     {
         for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
         {
-            for (int j = 0; j < VBoxContainer.GetChild(i).GetChildCount(); j++)
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
             {
-                var levelNode = VBoxContainer.GetChild(i).GetChild<LevelNode>(j);
-                if (levelNode != currentNode)
+                var levelNode = GetLevelNode(row.GetChild(j));
+                if (levelNode != null && levelNode != currentNode)
                 {
                     levelNode.Color = levelNode.LockColor;
                     levelNode.Button.Disabled = true;
@@ -100,9 +143,16 @@ public partial class LevelProgress : Control
     {
         for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
         {
-            for (int j = 0; j < VBoxContainer.GetChild(i).GetChildCount(); j++)
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
             {
-                
+                var levelNode = GetLevelNode(row.GetChild(j));
+                if (levelNode != null)
+                {
+                    Vector2 offset = new Vector2(100, (i - 1)*50);
+                    float delay = (i + j) * 0.05f;
+                    levelNode.ApplyEntranceMove(offset, 0.5f, delay);
+                }
             }
         }
     }

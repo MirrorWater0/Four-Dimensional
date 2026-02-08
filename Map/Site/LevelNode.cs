@@ -25,7 +25,7 @@ public partial class LevelNode : ColorRect
         Boss,
     }
 
-    static public List<EnemyRegedit> EnemiesRegeditList;
+    public static List<EnemyRegedit> EnemiesRegeditList;
     public LevelState State { get; set; }
     public LevelType Type { get; set; } = LevelType.Normal;
 
@@ -35,6 +35,7 @@ public partial class LevelNode : ColorRect
     public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
     public LevelNode NextNode;
     public PackedScene BattlePreviewScene = GD.Load<PackedScene>("res://battle/BattlePreview.tscn");
+
     public override void _Ready()
     {
         mat = Material.Duplicate() as ShaderMaterial;
@@ -108,6 +109,20 @@ public partial class LevelNode : ColorRect
         tween.TweenProperty(ProgressBar, "scale", new Vector2(1, 1), 0.5f);
     }
 
+    public void ApplyEntranceMove(Vector2 offset, float duration, float delay)
+    {
+        Vector2 targetPos = Position;
+        Position += offset;
+
+        Tween tween = CreateTween();
+        tween.SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+
+        if (delay > 0)
+            tween.TweenInterval(delay);
+
+        tween.TweenProperty(this, "position", targetPos, duration);
+    }
+
     public void ColorChose()
     {
         Color ringColor = new Color(1, 1, 1, 1);
@@ -134,6 +149,7 @@ public partial class LevelNode : ColorRect
         var preview = BattlePreviewScene.Instantiate();
         GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
     }
+
     public static void RandomPosition<T>(List<T> list)
         where T : EnemyRegedit
     {

@@ -70,7 +70,7 @@ grow_vertical = 2
 script = ExtResource("1_tp1km")
 metadata/_edit_lock_ = true
 
-[node name="Panel" type="Panel" parent="." unique_id=1789139457]
+[node name="Panel" type="ColorRect" parent="." unique_id=2126549914]
 material = SubResource("ShaderMaterial_starbg")
 layout_mode = 0
 offset_right = 1925.0

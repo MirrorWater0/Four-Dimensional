@@ -77,5 +77,5 @@ void fragment() {
         color = mix(color, shard_col, alpha * opacity);
     }
     
-    COLOR = color;
+    COLOR *= color;
 }
