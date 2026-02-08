@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
-[ext_resource type="Shader" uid="uid://d0bejj7eeteds" path="res://shader/geometric.gdshader" id="8_wihts"]
+[ext_resource type="Shader" uid="uid://cati2qktvwrxc" path="res://shader/Map/TechMap.gdshader" id="8_wihts"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
@@ -14,22 +14,20 @@
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
 glow_enabled = true
-glow_intensity = 2.0
-glow_strength = 1.42
-glow_hdr_threshold = 0.95
-glow_hdr_scale = 1.5
+glow_intensity = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vkbln"]
 shader = ExtResource("8_wihts")
-shader_parameter/intense = 1.0
-shader_parameter/efcolor = Color(0.30588236, 0.44313726, 0.9098039, 1)
-shader_parameter/mapcolor = Color(1, 1, 1, 1)
+shader_parameter/land_color = Color(0.74, 0.6993, 0.6586, 1)
+shader_parameter/ocean_color = Color(0.2829, 0.34645, 0.41, 1)
+shader_parameter/threshold = 0.57600002736
+shader_parameter/softness = 0.01
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
 shader_parameter/rotation_speed = 3.0
 shader_parameter/scale = 1.90000002086168
-shader_parameter/color = Color(6.7383053e-06, 0.93292904, 0.9329293, 1)
+shader_parameter/color = Color(0.68235296, 0.8862745, 0.9098039, 1)
 shader_parameter/thickness = 0.01999999950874
 shader_parameter/dist2 = 0.5000000074506
 shader_parameter/dist1 = 0.70000001043084

@@ -28,7 +28,7 @@ public partial class EnemyCharacter : Character
     public override async void StartAction()
     {
         base.StartAction();
-        DisappearIntention();
+        _= DisappearIntention();
         await Skills[IntentionIndex].Effect();
         EndAction();
     }

@@ -4,6 +4,8 @@
 [ext_resource type="Script" uid="uid://lva3dyk4ld2c" path="res://battle/BattlePreview.cs" id="1_tp1km"]
 [ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_starbg"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="3_gear"]
+[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="4_jlbtd"]
+[ext_resource type="Shader" uid="uid://tidlfiqqjox0" path="res://shader/UI/BrushButton.gdshader" id="5_brshbtn"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_starbg"]
 shader = ExtResource("2_starbg")
@@ -38,6 +40,10 @@ shader_parameter/tooth_length = 0.1
 shader_parameter/radius_percent = 0.35
 shader_parameter/hole_percent = 0.15
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_px4cb"]
+shader = ExtResource("4_jlbtd")
+shader_parameter/icon_color = Color(1, 1, 1, 1)
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tp1km"]
 resource_local_to_scene = true
 shader = ExtResource("1_jwyif")
@@ -45,6 +51,14 @@ shader_parameter/bg_color = Color(0.061972275, 0.106753655, 0.18598887, 0.588235
 shader_parameter/line_color = Color(0.7, 0.75, 0.8, 1)
 shader_parameter/border_thickness = 0.005
 shader_parameter/corner_size = 0.2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_brushbtn"]
+shader = ExtResource("5_brshbtn")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/thickness_px = 15.0
+shader_parameter/cut_x_px = 149.24400708909
+shader_parameter/cut_y_px = 172.8570082107075
+shader_parameter/bevel_px = 18.206000817285
 
 [node name="BattlePreview" type="Control" unique_id=1580075193]
 layout_mode = 3
@@ -61,6 +75,7 @@ material = SubResource("ShaderMaterial_starbg")
 layout_mode = 0
 offset_right = 1925.0
 offset_bottom = 1083.0
+metadata/_edit_lock_ = true
 
 [node name="Gear1" type="ColorRect" parent="." unique_id=238123112]
 material = SubResource("ShaderMaterial_gear1")
@@ -86,12 +101,13 @@ offset_top = 100.0
 offset_right = 1800.0
 offset_bottom = 300.0
 
-[node name="Button" type="Button" parent="." unique_id=361051813]
+[node name="Close" type="Button" parent="." unique_id=361051813]
+material = SubResource("ShaderMaterial_px4cb")
 layout_mode = 0
-offset_left = 1578.0
-offset_top = 28.0
-offset_right = 1726.0
-offset_bottom = 102.0
+offset_left = 3.0
+offset_top = 55.0
+offset_right = 99.0
+offset_bottom = 129.0
 theme_override_font_sizes/font_size = 40
 text = "x"
 
@@ -220,12 +236,30 @@ material = SubResource("ShaderMaterial_tp1km")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="Button2" type="Button" parent="." unique_id=505797795]
+[node name="StartBattle" type="Button" parent="." unique_id=505797795]
 layout_mode = 0
-offset_left = 871.0
-offset_top = 898.0
-offset_right = 963.0
-offset_bottom = 929.0
-text = "StartBattle"
+offset_left = 830.0
+offset_top = 950.0
+offset_right = 1090.0
+offset_bottom = 1020.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(1, 1, 1, 0.3)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 32
+text = "BATTLE START"
+flat = true
 
-[connection signal="pressed" from="Button" to="." method="Close"]
+[node name="BG" type="ColorRect" parent="StartBattle" unique_id=1888490217]
+show_behind_parent = true
+material = SubResource("ShaderMaterial_brushbtn")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -12.0
+offset_right = 14.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[connection signal="pressed" from="Close" to="." method="Close"]

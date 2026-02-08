@@ -5,10 +5,11 @@ public partial class BattlePreview : Control
 {
     public GridContainer PlayerFormation => field ??= GetNode<GridContainer>("HBoxContainer/PlayerFormation");
     public GridContainer EnemyFormation => field ??= GetNode<GridContainer>("HBoxContainer/EnemyFormation");
-
+    public Button StartBattleButton => field ??= GetNode<Button>("StartBattle");
     public override void _Ready()
     {
         SetPortraitPostion();
+        StartBattleButton.Pressed += StartBattle;
     }
 
     public void SetPortraitPostion()
@@ -62,5 +63,11 @@ public partial class BattlePreview : Control
                 child.QueueFree();
             }
         }
+    }
+
+    public void StartBattle()
+    {
+        var battle = GD.Load<PackedScene>("res://battle/Battle.tscn");
+        GetTree().ChangeSceneToPacked(battle);
     }
 }

@@ -95,4 +95,15 @@ public partial class LevelProgress : Control
         tween.TweenProperty(this, "modulate:a", 0, 0.3f);
         tween.TweenCallback(Callable.From(() => QueueFree()));
     }
+
+    public void StartAnimation()
+    {
+        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
+        {
+            for (int j = 0; j < VBoxContainer.GetChild(i).GetChildCount(); j++)
+            {
+                
+            }
+        }
+    }
 }

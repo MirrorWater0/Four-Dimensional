@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://bjxr7y4jjo7re" path="res://Map/Site/LevelProgress.cs" id="1_pkhks"]
 [ext_resource type="Shader" uid="uid://camrj1gsvxoe6" path="res://Map/LevelNode.gdshader" id="1_qox0s"]
 [ext_resource type="Shader" uid="uid://c4yqg7hvqt0v7" path="res://shader/LevelBG.gdshader" id="2_pkhks"]
+[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="5_63srp"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w4thg"]
 shader = ExtResource("2_pkhks")
@@ -87,17 +88,6 @@ shader_parameter/inner_square_size = 0.4
 shader_parameter/show_inner = false
 shader_parameter/smoothness_offset = 1.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_u0wmi"]
-resource_local_to_scene = true
-shader = ExtResource("1_qox0s")
-shader_parameter/ring_color = Color(1, 1, 1, 1)
-shader_parameter/inner_color = Color(1, 1, 1, 1)
-shader_parameter/ring_size = 0.80400003493012
-shader_parameter/ring_thickness = 0.22500000998898
-shader_parameter/inner_square_size = 0.4
-shader_parameter/show_inner = false
-shader_parameter/smoothness_offset = 1.0
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_d6grb"]
 resource_local_to_scene = true
 shader = ExtResource("1_qox0s")
@@ -154,17 +144,6 @@ shader_parameter/show_inner = false
 shader_parameter/smoothness_offset = 1.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2y22m"]
-resource_local_to_scene = true
-shader = ExtResource("1_qox0s")
-shader_parameter/ring_color = Color(1, 1, 1, 1)
-shader_parameter/inner_color = Color(1, 1, 1, 1)
-shader_parameter/ring_size = 0.80400003493012
-shader_parameter/ring_thickness = 0.22500000998898
-shader_parameter/inner_square_size = 0.4
-shader_parameter/show_inner = false
-shader_parameter/smoothness_offset = 1.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_sdnse"]
 resource_local_to_scene = true
 shader = ExtResource("1_qox0s")
 shader_parameter/ring_color = Color(1, 1, 1, 1)
@@ -241,6 +220,28 @@ shader_parameter/inner_square_size = 0.4
 shader_parameter/show_inner = false
 shader_parameter/smoothness_offset = 1.0
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u0wmi"]
+resource_local_to_scene = true
+shader = ExtResource("1_qox0s")
+shader_parameter/ring_color = Color(1, 1, 1, 1)
+shader_parameter/inner_color = Color(1, 1, 1, 1)
+shader_parameter/ring_size = 0.80400003493012
+shader_parameter/ring_thickness = 0.22500000998898
+shader_parameter/inner_square_size = 0.4
+shader_parameter/show_inner = false
+shader_parameter/smoothness_offset = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sdnse"]
+resource_local_to_scene = true
+shader = ExtResource("1_qox0s")
+shader_parameter/ring_color = Color(1, 1, 1, 1)
+shader_parameter/inner_color = Color(1, 1, 1, 1)
+shader_parameter/ring_size = 0.80400003493012
+shader_parameter/ring_thickness = 0.22500000998898
+shader_parameter/inner_square_size = 0.4
+shader_parameter/show_inner = false
+shader_parameter/smoothness_offset = 1.0
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i6niu"]
 resource_local_to_scene = true
 shader = ExtResource("1_qox0s")
@@ -251,6 +252,10 @@ shader_parameter/ring_thickness = 0.22500000998898
 shader_parameter/inner_square_size = 0.4
 shader_parameter/show_inner = false
 shader_parameter/smoothness_offset = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jyyh3"]
+shader = ExtResource("5_63srp")
+shader_parameter/icon_color = Color(1, 1, 1, 1)
 
 [node name="LevelProgress" type="Control" unique_id=102309754]
 layout_mode = 3
@@ -267,10 +272,10 @@ metadata/_edit_lock_ = true
 
 [node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=52246002]
 layout_mode = 0
-offset_left = 256.0
-offset_top = 320.0
-offset_right = 1236.0
-offset_bottom = 760.0
+offset_left = 391.0
+offset_top = 330.0
+offset_right = 1551.0
+offset_bottom = 770.0
 theme_override_constants/separation = 100
 
 [node name="NodeBox1" type="HBoxContainer" parent="VBoxContainer" unique_id=1623640681]
@@ -280,37 +285,37 @@ theme_override_constants/separation = 100
 [node name="LevelNode" parent="VBoxContainer/NodeBox1" unique_id=798467932 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_63srp")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="LevelNode2" parent="VBoxContainer/NodeBox1" unique_id=130587366 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_m74m5")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="LevelNode3" parent="VBoxContainer/NodeBox1" unique_id=1594128815 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_kqy86")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="LevelNode4" parent="VBoxContainer/NodeBox1" unique_id=658037631 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_8j5ha")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="LevelNode5" parent="VBoxContainer/NodeBox1" unique_id=983484163 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_armni")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="LevelNode6" parent="VBoxContainer/NodeBox1" unique_id=2102102942 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_leumd")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="BossNode" parent="VBoxContainer/NodeBox1" unique_id=243166974 instance=ExtResource("1_8oxmn")]
-material = SubResource("ShaderMaterial_u0wmi")
+material = SubResource("ShaderMaterial_d6grb")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 BarVisible = false
 
 [node name="NodeBox2" type="HBoxContainer" parent="VBoxContainer" unique_id=976592061]
@@ -318,39 +323,39 @@ layout_mode = 2
 theme_override_constants/separation = 100
 
 [node name="LevelNode" parent="VBoxContainer/NodeBox2" unique_id=438733462 instance=ExtResource("1_8oxmn")]
-material = SubResource("ShaderMaterial_d6grb")
-layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
-
-[node name="LevelNode2" parent="VBoxContainer/NodeBox2" unique_id=316600092 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_w8ii4")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode3" parent="VBoxContainer/NodeBox2" unique_id=962490098 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode2" parent="VBoxContainer/NodeBox2" unique_id=316600092 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_ml5do")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode4" parent="VBoxContainer/NodeBox2" unique_id=1345699362 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode3" parent="VBoxContainer/NodeBox2" unique_id=962490098 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_alx26")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode5" parent="VBoxContainer/NodeBox2" unique_id=778526883 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode4" parent="VBoxContainer/NodeBox2" unique_id=1345699362 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_u526g")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode6" parent="VBoxContainer/NodeBox2" unique_id=367280824 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode5" parent="VBoxContainer/NodeBox2" unique_id=778526883 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_2y22m")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
+
+[node name="LevelNode6" parent="VBoxContainer/NodeBox2" unique_id=367280824 instance=ExtResource("1_8oxmn")]
+material = SubResource("ShaderMaterial_kcq5p")
+layout_mode = 2
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="BossNode" parent="VBoxContainer/NodeBox2" unique_id=138609094 instance=ExtResource("1_8oxmn")]
-material = SubResource("ShaderMaterial_sdnse")
+material = SubResource("ShaderMaterial_w26ek")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 BarVisible = false
 
 [node name="NodeBox3" type="HBoxContainer" parent="VBoxContainer" unique_id=114921424]
@@ -358,47 +363,48 @@ layout_mode = 2
 theme_override_constants/separation = 100
 
 [node name="LevelNode" parent="VBoxContainer/NodeBox3" unique_id=810738629 instance=ExtResource("1_8oxmn")]
-material = SubResource("ShaderMaterial_kcq5p")
-layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
-
-[node name="LevelNode2" parent="VBoxContainer/NodeBox3" unique_id=303420565 instance=ExtResource("1_8oxmn")]
-material = SubResource("ShaderMaterial_w26ek")
-layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
-
-[node name="LevelNode3" parent="VBoxContainer/NodeBox3" unique_id=1701941862 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_frbh5")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode4" parent="VBoxContainer/NodeBox3" unique_id=975210121 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode2" parent="VBoxContainer/NodeBox3" unique_id=303420565 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_rvy5q")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode5" parent="VBoxContainer/NodeBox3" unique_id=1231303225 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode3" parent="VBoxContainer/NodeBox3" unique_id=1701941862 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_hogys")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 
-[node name="LevelNode6" parent="VBoxContainer/NodeBox3" unique_id=32157619 instance=ExtResource("1_8oxmn")]
+[node name="LevelNode4" parent="VBoxContainer/NodeBox3" unique_id=975210121 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_xgds5")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
+
+[node name="LevelNode5" parent="VBoxContainer/NodeBox3" unique_id=1231303225 instance=ExtResource("1_8oxmn")]
+material = SubResource("ShaderMaterial_u0wmi")
+layout_mode = 2
+color = Color(0.7, 0.7, 0.7, 0.9)
+
+[node name="LevelNode6" parent="VBoxContainer/NodeBox3" unique_id=32157619 instance=ExtResource("1_8oxmn")]
+material = SubResource("ShaderMaterial_sdnse")
+layout_mode = 2
+color = Color(0.7, 0.7, 0.7, 0.9)
 
 [node name="BossNode" parent="VBoxContainer/NodeBox3" unique_id=2080951719 instance=ExtResource("1_8oxmn")]
 material = SubResource("ShaderMaterial_i6niu")
 layout_mode = 2
-color = Color(0.9, 0.9, 0.9, 1)
+color = Color(0.7, 0.7, 0.7, 0.9)
 BarVisible = false
 
 [node name="Button" type="Button" parent="." unique_id=1861317500]
+material = SubResource("ShaderMaterial_jyyh3")
 layout_mode = 0
-offset_left = 1578.0
-offset_top = 28.0
-offset_right = 1726.0
-offset_bottom = 102.0
+offset_left = 1.0
+offset_top = 50.0
+offset_right = 99.0
+offset_bottom = 124.0
 theme_override_font_sizes/font_size = 40
 text = "x"
 

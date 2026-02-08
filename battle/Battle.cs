@@ -16,9 +16,9 @@ public partial class Battle : Node2D
     public delegate void NextEventHandler();
 
     PackedScene _test1 = (PackedScene)
-        ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
+        ResourceLoader.Load("res://character/EnemyCharacter/Evil.tscn");
     public List<PlayerCharacter> PlayersList = new();
-    public List<EnemyCharacter> EnemiesList;
+    public List<EnemyCharacter> EnemiesList = new();
     public Node2D Right => field ??= GetNode("Right") as Node2D;
     public Node2D Left => field ??= GetNode("Left") as Node2D;
 
@@ -98,6 +98,8 @@ public partial class Battle : Node2D
         {
             EnemyCharacter enemy = LevelNode.EnemiesRegeditList[i].CharacterScene.Instantiate<EnemyCharacter>();
             enemy.PositionIndex = LevelNode.EnemiesRegeditList[i].PositionIndex;
+            enemy.BattleNode = this;
+            enemy.Initialize();
             EnemiesList.Add(enemy);
         }
 
