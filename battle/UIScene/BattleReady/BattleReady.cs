@@ -10,7 +10,7 @@ public partial class BattleReady : Control
     public PackedScene SkillButtonScene = GD.Load<PackedScene>(
         "res://battle/UIScene/SkillButton.tscn"
     );
-    public PackedScene PortaitScene = GD.Load<PackedScene>(
+    public static PackedScene PortaitScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/PortaitFrame.tscn"
     );
     private List<SkillButton> readyChange = new List<SkillButton>();
@@ -41,7 +41,12 @@ public partial class BattleReady : Control
             Vector2 offset = new Vector2(50 + i * 10, 0);
             child.Position -= offset;
             CreateTween()
-                .TweenProperty(child, "position", child.Position + offset, 0.2f + 0.01f * (i+1) % 3)
+                .TweenProperty(
+                    child,
+                    "position",
+                    child.Position + offset,
+                    0.2f + 0.01f * (i + 1) % 3
+                )
                 .SetEase(Tween.EaseType.Out);
         }
 
@@ -176,6 +181,20 @@ public partial class BattleReady : Control
         }
     }
 
+    public static System.Collections.Generic.Dictionary<int, int> remap { get; } =
+        new System.Collections.Generic.Dictionary<int, int>()
+        {
+            [7] = 1,
+            [4] = 2,
+            [1] = 3,
+            [8] = 4,
+            [5] = 5,
+            [2] = 6,
+            [9] = 7,
+            [6] = 8,
+            [3] = 9,
+        };
+
     public void InitializePostion()
     {
         for (int i = 0; i < Grid.GetChildCount(); i++)
@@ -186,19 +205,7 @@ public partial class BattleReady : Control
             tex.Material = tex.Material.Duplicate() as ShaderMaterial;
             ((ShaderMaterial)(tex.Material)).SetShaderParameter("line_color", accent_color);
         }
-        System.Collections.Generic.Dictionary<int, int> remap =
-            new System.Collections.Generic.Dictionary<int, int>()
-            {
-                [7] = 1,
-                [4] = 2,
-                [1] = 3,
-                [8] = 4,
-                [5] = 5,
-                [2] = 6,
-                [9] = 7,
-                [6] = 8,
-                [3] = 9,
-            };
+
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var portrait = PortaitScene.Instantiate() as PortaitFrame;
@@ -292,7 +299,7 @@ public partial class BattleReady : Control
 
     public void ComfirmTactics()
     {
-        System.Collections.Generic.Dictionary<int, int> remap =
+        System.Collections.Generic.Dictionary<int, int> map =
             new System.Collections.Generic.Dictionary<int, int>()
             {
                 [1] = 7,
@@ -311,13 +318,13 @@ public partial class BattleReady : Control
             if (texture.GetChildCount() > 0)
             {
                 int gridIndex = i + 1;
-                if (remap.ContainsKey(gridIndex))
+                if (map.ContainsKey(gridIndex))
                 {
                     var portrait = texture.GetChild<PortaitFrame>(0);
                     if (portrait != null)
                     {
                         // Update both the data structure and the character instance
-                        GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = remap[
+                        GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = map[
                             gridIndex
                         ];
                     }
@@ -326,12 +333,13 @@ public partial class BattleReady : Control
                         GD.PrintErr($"Portrait or Charater is null at grid index {gridIndex}");
                     }
                 }
-                else
-                {
-                    GD.PrintErr($"Invalid grid index: {gridIndex}. Valid values are 1-9.");
-                }
             }
         }
-        // GetTree().ChangeSceneToFile("res://battle/Battle.tscn");
+
+        var preview = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
+        if (preview != null)
+        {
+            preview.SetPortraitPostion();
+        }
     }
 }

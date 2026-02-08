@@ -93,10 +93,14 @@ public partial class Battle : Node2D
             character.Initialize();
             PlayersList.Add(character);
         }
-        for (int i = 0; i < EnemiesList.Count; i++)
+
+        for (int i = 0; i < LevelNode.EnemiesRegeditList.Count; i++)
         {
-            EnemiesList[i].BattleNode = this;
+            EnemyCharacter enemy = LevelNode.EnemiesRegeditList[i].CharacterScene.Instantiate<EnemyCharacter>();
+            enemy.PositionIndex = LevelNode.EnemiesRegeditList[i].PositionIndex;
+            EnemiesList.Add(enemy);
         }
+
         if (EnemiesList == null)
         {
             EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();

@@ -25,7 +25,7 @@ public partial class LevelNode : ColorRect
         Boss,
     }
 
-    public List<EnemyCharacter> EnemiesList;
+    static public List<EnemyRegedit> EnemiesRegeditList;
     public LevelState State { get; set; }
     public LevelType Type { get; set; } = LevelType.Normal;
 
@@ -34,7 +34,7 @@ public partial class LevelNode : ColorRect
     public ShaderMaterial mat;
     public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
     public LevelNode NextNode;
-
+    public PackedScene BattlePreviewScene = GD.Load<PackedScene>("res://battle/BattlePreview.tscn");
     public override void _Ready()
     {
         mat = Material.Duplicate() as ShaderMaterial;
@@ -49,7 +49,7 @@ public partial class LevelNode : ColorRect
         StartAnimation();
 
         Button.Pressed += CompletedAnimation;
-        
+        Button.Pressed += PressButton;
     }
 
     public override void _Process(double delta)
@@ -60,16 +60,11 @@ public partial class LevelNode : ColorRect
         }
     }
 
-    public List<EnemyCharacter> ProduceEnemies()
+    public List<EnemyRegedit> ProduceEnemies()
     {
-        PackedScene _test1 = (PackedScene)
-            ResourceLoader.Load("res://character/EnemyCharacter/Demon.tscn");
-        EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
-        EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
-        EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
-        EnemiesList = new() { test1, test2, test4 };
-        RandomPosition(EnemiesList);
-        return EnemiesList;
+        List<EnemyRegedit> list = new() { new EvilRegedit(), new EvilRegedit(), new EvilRegedit() };
+        RandomPosition(list);
+        return list;
     }
 
     public void Unlock()
@@ -133,8 +128,14 @@ public partial class LevelNode : ColorRect
         mat.SetShaderParameter("ring_color", ringColor);
     }
 
+    public void PressButton()
+    {
+        EnemiesRegeditList = ProduceEnemies();
+        var preview = BattlePreviewScene.Instantiate();
+        GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
+    }
     public static void RandomPosition<T>(List<T> list)
-        where T : Character
+        where T : EnemyRegedit
     {
         Random random = new Random(GameInfo.Seed);
 
@@ -158,7 +159,6 @@ public partial class LevelNode : ColorRect
             if (i < possiblePositions.Count)
             {
                 list[i].PositionIndex = possiblePositions[i];
-                list[i].Initialize();
             }
         }
     }
