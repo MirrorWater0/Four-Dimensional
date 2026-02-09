@@ -6,8 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
-[ext_resource type="Shader" uid="uid://cati2qktvwrxc" path="res://shader/Map/TechMap.gdshader" id="8_wihts"]
+[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="10_nlecm"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
+[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/ExitButton.cs" id="11_cccvd"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
 
@@ -17,11 +18,10 @@ glow_enabled = true
 glow_intensity = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vkbln"]
-shader = ExtResource("8_wihts")
-shader_parameter/land_color = Color(0.74, 0.6993, 0.6586, 1)
-shader_parameter/ocean_color = Color(0.2829, 0.34645, 0.41, 1)
-shader_parameter/threshold = 0.57600002736
-shader_parameter/softness = 0.01
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vk5l4"]
+shader = ExtResource("10_nlecm")
+shader_parameter/icon_color = Color(1, 1, 1, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
@@ -117,7 +117,28 @@ Where = ExtResource("11_vk5l4")
 [node name="UI" type="CanvasLayer" parent="." unique_id=1220601355]
 layer = 3
 
+[node name="ExitButton" type="Button" parent="UI" unique_id=374258170]
+material = SubResource("ShaderMaterial_vk5l4")
+offset_left = -15.0
+offset_top = 50.0
+offset_right = 96.0
+offset_bottom = 124.0
+theme_override_font_sizes/font_size = 40
+text = "x"
+script = ExtResource("11_cccvd")
+
+[node name="ColorRect" type="ColorRect" parent="UI/ExitButton" unique_id=1584509521]
+show_behind_parent = true
+layout_mode = 0
+offset_left = -66.0
+offset_top = 9.0
+offset_right = 104.0
+offset_bottom = 69.0
+mouse_filter = 2
+color = Color(0.68235296, 0, 0, 1)
+
 [node name="ReadyButton" type="Button" parent="UI" unique_id=870573151 node_paths=PackedStringArray("Layer")]
+top_level = true
 z_index = 4
 material = SubResource("ShaderMaterial_cccvd")
 offset_left = 1706.0
@@ -138,14 +159,6 @@ offset_bottom = 129.0
 theme = ExtResource("10_svc60")
 text = "战术"
 
-[node name="ColorRect" type="ColorRect" parent="UI" unique_id=1877623308]
-z_index = 10
-offset_right = 1920.0
-offset_bottom = 1080.0
-mouse_filter = 2
-color = Color(1, 1, 1, 0)
-metadata/_edit_lock_ = true
-
 [node name="Button" type="Button" parent="UI" unique_id=942776571]
 offset_left = 1839.0
 offset_top = 31.0
@@ -153,7 +166,17 @@ offset_right = 1901.0
 offset_bottom = 62.0
 text = "x"
 
+[node name="Mask" type="ColorRect" parent="UI" unique_id=1877623308]
+visible = false
+top_level = true
+z_index = 10
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 0)
+metadata/_edit_lock_ = true
+
 [node name="ChangeEffect" type="ColorRect" parent="UI" unique_id=1293778974]
+top_level = true
 z_index = 3
 material = SubResource("ShaderMaterial_jq5q4")
 offset_right = 1924.0

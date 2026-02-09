@@ -4,7 +4,7 @@ using Godot;
 
 public partial class CharaterControl : Control
 {
-    public Battle BattleNode => field ??= GetNode<Battle>("/root/Battle");
+    public Battle BattleNode => field ??= GetParent<Battle>();
     public Frame CharaterFrame1 => field ??= GetNode<Frame>("frame1");
     public Frame CharaterFrame2 => field ??= GetNode<Frame>("frame2");
     public Frame CharaterFrame3 => field ??= GetNode<Frame>("frame3");

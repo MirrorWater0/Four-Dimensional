@@ -8,8 +8,81 @@ public partial class LevelProgress : Control
 
     public override void _Ready()
     {
-        Random rng = new Random(GameInfo.Seed);
+        GetNode<ExitButton>("/root/Map/UI/ExitButton").PressedActions.Add(Close);
+        InitializeLevelNodes();
+        CallDeferred("StartAnimation");
+    }
 
+    private LevelNode GetLevelNode(Node node)
+    {
+        if (node is LevelNode ln)
+            return ln;
+        if (node.GetChildCount() > 0 && node.GetChild(0) is LevelNode lnChild)
+            return lnChild;
+        return null;
+    }
+
+    public void lockOther(LevelNode currentNode)
+    {
+        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
+        {
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
+            {
+                var levelNode = GetLevelNode(row.GetChild(j));
+                if (levelNode.State == LevelNode.LevelState.Unlocked && levelNode != currentNode)
+                {
+                    levelNode.Color = levelNode.LockColor;
+                    levelNode.State = LevelNode.LevelState.Locked;
+                    GameInfo.FirstLevelState[levelNode.SelfCoordinate] = LevelNode.LevelState.Locked;
+                    levelNode.Button.Disabled = true;
+                }
+            }
+        }
+    }
+
+    public void Close()
+    {
+        Tween tween = CreateTween();
+        tween.TweenProperty(this, "modulate:a", 0, 0.3f);
+        tween.TweenCallback(Callable.From(() => QueueFree()));
+    }
+
+    public void StartAnimation()
+    {
+        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
+        {
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
+            {
+                var levelNode = GetLevelNode(row.GetChild(j));
+                if (levelNode != null)
+                {
+                    Vector2 offset = new Vector2(100, (i - 1) * 50);
+                    float delay = (i + j) * 0.05f;
+                    levelNode.ApplyEntranceMove(offset, 0.5f, delay);
+                }
+            }
+        }
+    }
+
+    public void InitializeLevelNodes()
+    {
+        // Pass 1: Initialize coordinates for all nodes first
+        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
+        {
+            var row = VBoxContainer.GetChild(i);
+            for (int j = 0; j < row.GetChildCount(); j++)
+            {
+                var ln = GetLevelNode(row.GetChild(j));
+                if (ln != null)
+                {
+                    ln.SelfCoordinate = new Vector2I(j, i);
+                }
+            }
+        }
+
+        Random rng = new Random(GameInfo.Seed);
         for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
         {
             // Initialize all as Normal
@@ -97,62 +170,9 @@ public partial class LevelProgress : Control
                 if (levelNode.State == LevelNode.LevelState.Unlocked)
                 {
                     levelNode.Unlock();
-                    GD.Print($"Unlock level {i}, {j}");
                 }
                 else if (levelNode.State == LevelNode.LevelState.Completed)
                     levelNode.CompletedAnimation();
-            }
-        }
-        CallDeferred("StartAnimation");
-    }
-
-    private LevelNode GetLevelNode(Node node)
-    {
-        if (node is LevelNode ln)
-            return ln;
-        if (node.GetChildCount() > 0 && node.GetChild(0) is LevelNode lnChild)
-            return lnChild;
-        return null;
-    }
-
-    public void lockOther(LevelNode currentNode)
-    {
-        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
-        {
-            var row = VBoxContainer.GetChild(i);
-            for (int j = 0; j < row.GetChildCount(); j++)
-            {
-                var levelNode = GetLevelNode(row.GetChild(j));
-                if (levelNode != null && levelNode != currentNode)
-                {
-                    levelNode.Color = levelNode.LockColor;
-                    levelNode.Button.Disabled = true;
-                }
-            }
-        }
-    }
-
-    public void Close()
-    {
-        Tween tween = CreateTween();
-        tween.TweenProperty(this, "modulate:a", 0, 0.3f);
-        tween.TweenCallback(Callable.From(() => QueueFree()));
-    }
-
-    public void StartAnimation()
-    {
-        for (int i = 0; i < VBoxContainer.GetChildCount(); i++)
-        {
-            var row = VBoxContainer.GetChild(i);
-            for (int j = 0; j < row.GetChildCount(); j++)
-            {
-                var levelNode = GetLevelNode(row.GetChild(j));
-                if (levelNode != null)
-                {
-                    Vector2 offset = new Vector2(100, (i - 1)*50);
-                    float delay = (i + j) * 0.05f;
-                    levelNode.ApplyEntranceMove(offset, 0.5f, delay);
-                }
             }
         }
     }

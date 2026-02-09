@@ -4,7 +4,6 @@
 [ext_resource type="Script" uid="uid://bjxr7y4jjo7re" path="res://Map/Site/LevelProgress.cs" id="1_pkhks"]
 [ext_resource type="Shader" uid="uid://camrj1gsvxoe6" path="res://Map/LevelNode.gdshader" id="1_qox0s"]
 [ext_resource type="Shader" uid="uid://c4yqg7hvqt0v7" path="res://shader/LevelBG.gdshader" id="2_pkhks"]
-[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="5_63srp"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w4thg"]
 shader = ExtResource("2_pkhks")
@@ -249,10 +248,6 @@ shader_parameter/inner_square_size = 0.4
 shader_parameter/show_inner = false
 shader_parameter/smoothness_offset = 1.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_jyyh3"]
-shader = ExtResource("5_63srp")
-shader_parameter/icon_color = Color(1, 1, 1, 1)
-
 [node name="LevelProgress" type="Control" unique_id=102309754]
 layout_mode = 3
 anchors_preset = 0
@@ -392,15 +387,3 @@ material = SubResource("ShaderMaterial_i6niu")
 layout_mode = 2
 color = Color(0.7, 0.7, 0.7, 0.9)
 BarVisible = false
-
-[node name="Button" type="Button" parent="." unique_id=1861317500]
-material = SubResource("ShaderMaterial_jyyh3")
-layout_mode = 0
-offset_left = 1.0
-offset_top = 50.0
-offset_right = 99.0
-offset_bottom = 124.0
-theme_override_font_sizes/font_size = 40
-text = "x"
-
-[connection signal="pressed" from="Button" to="." method="Close"]

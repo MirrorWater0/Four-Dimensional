@@ -8,11 +8,11 @@ public partial class ReadyButton : Button
     PackedScene _readyScene =
         GD.Load("res://battle/UIScene/BattleReady/battle_ready.tscn") as PackedScene;
     private BattleReady ThisBattleReady;
+
     [Export]
     public CanvasLayer Layer;
     private Color _originalColor;
     ColorRect ChangeEffect => field ??= GetNode("/root/Map/UI/ChangeEffect") as ColorRect;
-
 
     public override async void _Ready()
     {
@@ -75,35 +75,22 @@ public partial class ReadyButton : Button
     public void mouse_entered()
     {
         ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
-        TweenShader("dist2", 1f);
+        GlobalFunction.TweenShader(this, "dist2", 1f, 0.2f);
         ((ShaderMaterial)Material).SetShaderParameter("color", new Color(1, 1, 1, 1));
-        TweenShader("dist1", 1f);
-        TweenShader("outer_ring_dist", 0.43f);
-        TweenShader("triangle_dist", 0.45f);
+        GlobalFunction.TweenShader(this, "dist1", 1f, 0.2f);
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.43f, 0.2f);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.45f, 0.2f);
     }
 
     public void mouse_right_entered()
     {
         ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
-        TweenShader("dist2", 0.5f);
+        GlobalFunction.TweenShader(this, "dist2", 0.5f, 0.2f);
 
         ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
-        TweenShader("dist1", 0.7f);
+        GlobalFunction.TweenShader(this, "dist1", 0.7f, 0.2f);
 
-        TweenShader("outer_ring_dist", 0.27f);
-        TweenShader("triangle_dist", 0.28f);
-    }
-
-    public void TweenShader(string var, float val)
-    {
-        CreateTween()
-            .TweenMethod(
-                Callable.From<float>(value =>
-                    ((ShaderMaterial)Material).SetShaderParameter(var, value)
-                ),
-                ((ShaderMaterial)Material).GetShaderParameter(var),
-                val,
-                0.2f
-            );
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.27f, 0.2f);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.28f, 0.2f);
     }
 }

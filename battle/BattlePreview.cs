@@ -3,13 +3,40 @@ using Godot;
 
 public partial class BattlePreview : Control
 {
-    public GridContainer PlayerFormation => field ??= GetNode<GridContainer>("HBoxContainer/PlayerFormation");
-    public GridContainer EnemyFormation => field ??= GetNode<GridContainer>("HBoxContainer/EnemyFormation");
+    public GridContainer PlayerFormation =>
+        field ??= GetNode<GridContainer>("HBoxContainer/PlayerFormation");
+    public GridContainer EnemyFormation =>
+        field ??= GetNode<GridContainer>("HBoxContainer/EnemyFormation");
     public Button StartBattleButton => field ??= GetNode<Button>("StartBattle");
+    ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
+    ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
+
     public override void _Ready()
     {
+        exitButton.PressedActions.Add(Close);
+        Modulate = new Color(1, 1, 1, 0);
+        CreateTween().TweenProperty(this, "modulate:a", 1, 0.3f);
         SetPortraitPostion();
         StartBattleButton.Pressed += StartBattle;
+        StartBattleButton.MouseEntered += () =>
+        {
+            StartBattleButton.Modulate = 2 * new Color(1, 1, 1, 1);
+
+            tex.PivotOffset = tex.Size / 2;
+            Tween tween = CreateTween();
+            tween.TweenProperty(tex, "scale", new Vector2(1.2f, 1.2f), 0.2f);
+            GlobalFunction.TweenShader(tex, "cut_x", 0.4f, 0.2f);
+            GlobalFunction.TweenShader(tex, "cut_y", 0.4f, 0.2f);
+        };
+        StartBattleButton.MouseExited += () =>
+        {
+            StartBattleButton.Modulate = new Color(1, 1, 1, 1);
+            tex.PivotOffset = tex.Size / 2;
+            Tween tween = CreateTween();
+            tween.TweenProperty(tex, "scale", new Vector2(1f, 1f), 0.2f);
+            GlobalFunction.TweenShader(tex, "cut_x", 0.6f, 0.2f);
+            GlobalFunction.TweenShader(tex, "cut_y", 0.6f, 0.2f);
+        };
     }
 
     public void SetPortraitPostion()
@@ -67,7 +94,29 @@ public partial class BattlePreview : Control
 
     public void StartBattle()
     {
-        var battle = GD.Load<PackedScene>("res://battle/Battle.tscn");
-        GetTree().ChangeSceneToPacked(battle);
+        var mask = GetNode<ColorRect>("/root/Map/UI/Mask");
+        mask.Visible = true;
+        mask.Modulate = new Color(0, 0, 0, 0);
+        Tween tween = CreateTween();
+        tween.TweenProperty(mask, "modulate:a", 1, 0.4f);
+
+        GlobalFunction.TweenShader(tex, "cut_x", 1f, 0.3f);
+        GlobalFunction.TweenShader(tex, "cut_y", 1f, 0.3f);
+        tween
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    Close();
+                    exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
+                    var battle =
+                        GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
+                    var layer = new CanvasLayer();
+                    layer.Layer = 10;
+                    GetTree().Root.AddChild(layer);
+                    layer.AddChild(battle);
+                    mask.Visible = false;
+                })
+            );
     }
 }

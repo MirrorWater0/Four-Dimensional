@@ -320,31 +320,8 @@ public partial class Battle : Node2D
         // Change scene - check if Battle instance is still valid
         if (IsInstanceValid(this))
         {
-            var tree = GetTree();
-            if (tree != null)
-            {
-                tree.ChangeSceneToFile("res://Map/Map.tscn");
-            }
+            GetParent().QueueFree();
         }
     }
 
-    public class ObservableList<T> : List<T>
-    {
-        public event Action<T> ItemAdded; // 新增元素事件
-        public event Action<T> ItemRemoved; // 移除元素事件
-
-        public new void Add(T item)
-        {
-            base.Add(item);
-            ItemAdded?.Invoke(item); // 触发新增回调
-        }
-
-        public new void Remove(T item)
-        {
-            base.Remove(item);
-            ItemRemoved?.Invoke(item); // 触发移除回调
-        }
-
-        // 可扩展其他方法（如 Insert、Clear 等）
-    }
 }

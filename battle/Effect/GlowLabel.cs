@@ -33,7 +33,6 @@ public partial class GlowLabel : Label
 
     private void TriggerAnimation()
     {
-        GD.Print("Trigger Animation");
         // Check if the node is inside the scene tree
         if (!IsInsideTree())
         {
@@ -66,6 +65,7 @@ public partial class GlowLabel : Label
         t2.Chain().TweenProperty(this, "scale", OriginalScale, 0.2f);
 
         // 3. Delete ghost after animation ends
-        t1.Chain().TweenCallback(Callable.From(ghost.QueueFree));
+        if (IsInstanceValid(ghost))
+            t1.Chain().TweenCallback(Callable.From(ghost.QueueFree));
     }
 }

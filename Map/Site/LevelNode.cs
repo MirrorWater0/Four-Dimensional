@@ -35,6 +35,7 @@ public partial class LevelNode : ColorRect
     public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
     public LevelNode NextNode;
     public PackedScene BattlePreviewScene = GD.Load<PackedScene>("res://battle/BattlePreview.tscn");
+    public Vector2I SelfCoordinate;
 
     public override void _Ready()
     {
@@ -85,7 +86,7 @@ public partial class LevelNode : ColorRect
                 ringColor = new Color(0, 0.6f, 1, 1);
                 break;
         }
-
+        GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Unlocked;
         mat.SetShaderParameter("ring_color", ringColor);
         State = LevelState.Unlocked;
         Button.Disabled = false;
@@ -93,8 +94,10 @@ public partial class LevelNode : ColorRect
 
     public void CompletedAnimation()
     {
-        NextNode?.Unlock();
+        if (NextNode.State == LevelState.Locked)
+            NextNode?.Unlock();
         State = LevelState.Completed;
+        GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;
         mat.SetShaderParameter("show_inner", true);
         mat.SetShaderParameter("show_inner_color", new Color(1, 0.8f, 0, 1));

@@ -38,6 +38,5 @@ public partial class EllipsePathGenerator : Path2D
         curve.AddPoint(new Vector2(Radius.X, 0));
 
         this.Curve = curve;
-        GD.Print("椭圆路径已生成！");
     }
 }
