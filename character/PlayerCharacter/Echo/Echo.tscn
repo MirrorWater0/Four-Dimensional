@@ -1,11 +1,12 @@
-[gd_scene load_steps=6 format=3 uid="uid://bu7e2ppfhmetu"]
+[gd_scene format=3 uid="uid://bu7e2ppfhmetu"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_ivrln"]
 [ext_resource type="Script" uid="uid://c5xtioxeamb0m" path="res://character/PlayerCharacter/Echo/Echo.cs" id="1_p8ruw"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_dsw3a"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="5_hb044"]
 [ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="5_jxkbc"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_uu75k"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5s0qr"]
 resource_local_to_scene = true
 shader = ExtResource("4_dsw3a")
 shader_parameter/blur_amount = 1.0
@@ -15,10 +16,29 @@ shader_parameter/center = Vector2(0.5, 0.5)
 shader_parameter/radial_blur = true
 shader_parameter/motion_blur = false
 
-[node name="Echo" instance=ExtResource("1_ivrln")]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1vdpg"]
+resource_local_to_scene = true
+shader = ExtResource("5_hb044")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 1.5
+
+[node name="Echo" unique_id=1250296043 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_ivrln")]
 script = ExtResource("1_p8ruw")
 Portrait = ExtResource("5_jxkbc")
+Sprite = NodePath("Sprite")
 
-[node name="Sprite" parent="." index="9"]
-material = SubResource("ShaderMaterial_uu75k")
+[node name="Sprite" parent="." index="8" unique_id=968479023]
+material = SubResource("ShaderMaterial_5s0qr")
 texture = ExtResource("5_jxkbc")
+
+[node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
+material = SubResource("ShaderMaterial_1vdpg")

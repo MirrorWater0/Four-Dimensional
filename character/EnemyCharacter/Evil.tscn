@@ -4,8 +4,9 @@
 [ext_resource type="Script" uid="uid://qef81iti4rkt" path="res://character/EnemyCharacter/Evil.cs" id="2_se7fp"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="3_w73r8"]
 [ext_resource type="Texture2D" uid="uid://cyxqg6nucggy5" path="res://asset/EnemyCharater/Evil.png" id="4_n6o37"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="5_2vsxy"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_heyqv"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_73ckh"]
 resource_local_to_scene = true
 shader = ExtResource("3_w73r8")
 shader_parameter/blur_amount = 1.0
@@ -15,10 +16,29 @@ shader_parameter/center = Vector2(0.5, 0.5)
 shader_parameter/radial_blur = true
 shader_parameter/motion_blur = false
 
-[node name="Demon" unique_id=47154144 instance=ExtResource("1_heyqv")]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jcsx0"]
+resource_local_to_scene = true
+shader = ExtResource("5_2vsxy")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 1.5
+
+[node name="Demon" unique_id=47154144 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_heyqv")]
 script = ExtResource("2_se7fp")
 Portrait = ExtResource("4_n6o37")
+Sprite = NodePath("Sprite")
 
 [node name="Sprite" parent="." index="8" unique_id=968479023]
-material = SubResource("ShaderMaterial_heyqv")
+material = SubResource("ShaderMaterial_73ckh")
 texture = ExtResource("4_n6o37")
+
+[node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
+material = SubResource("ShaderMaterial_jcsx0")

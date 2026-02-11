@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://do4kqopiopxg0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qox0s"]
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+anti_aliasing_size = 2.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8oxmn"]
+bg_color = Color(1, 1, 1, 1)
+border_width_top = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.8, 0.8, 0)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+anti_aliasing_size = 1.801
+
+[sub_resource type="Theme" id="Theme_8oxmn"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_qox0s")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_8oxmn")
+
+[node name="ProgressBar" type="ProgressBar" unique_id=1396186681]
+modulate = Color(1, 1, 1, 0.78431374)
+show_behind_parent = true
+offset_left = 65.0
+offset_top = 34.0
+offset_right = 195.0
+offset_bottom = 44.0
+theme = SubResource("Theme_8oxmn")
+value = 10.0
+show_percentage = false

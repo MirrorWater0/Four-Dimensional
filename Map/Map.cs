@@ -56,6 +56,7 @@ public partial class Map : Control
 
     public override void _Ready()
     {
+        DragButton.Disabled = false;
         _targetPos = Camera.Position;
         DragButton.ButtonDown += () =>
         {

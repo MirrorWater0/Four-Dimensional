@@ -63,7 +63,8 @@ public partial class Character : Node2D
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
-    public Node2D Sprite => field ??= GetNode<Node2D>("Sprite");
+    [Export]
+    public Node2D Sprite;
     public AnimationPlayer TrailAnimation => field ??= GetNode<AnimationPlayer>("TrailAnimation");
     public Node2D trail => field ??= GetNode<Node2D>("Path2D");
 

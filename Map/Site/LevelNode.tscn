@@ -3,50 +3,108 @@
 [ext_resource type="Shader" uid="uid://camrj1gsvxoe6" path="res://Map/LevelNode.gdshader" id="1_br0dh"]
 [ext_resource type="Script" uid="uid://d3ftnc85yn4ch" path="res://Map/Site/LevelNode.cs" id="2_40022"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_40022"]
+resource_local_to_scene = true
 shader = ExtResource("1_br0dh")
 shader_parameter/ring_color = Color(1, 1, 1, 1)
 shader_parameter/inner_color = Color(1, 1, 1, 1)
 shader_parameter/ring_size = 0.80400003493012
 shader_parameter/ring_thickness = 0.22500000998898
 shader_parameter/inner_square_size = 0.4
+shader_parameter/show_inner = false
+shader_parameter/smoothness_offset = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pq4kd"]
+shader = ExtResource("1_br0dh")
+shader_parameter/ring_color = Color(1, 1, 1, 1)
+shader_parameter/inner_color = Color(1, 1, 1, 0.6)
+shader_parameter/ring_size = 0.8
+shader_parameter/ring_thickness = 0.05
+shader_parameter/inner_square_size = 0.4
 shader_parameter/show_inner = true
 shader_parameter/smoothness_offset = 1.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qox0s"]
-bg_color = Color(1, 1, 1, 0.05882353)
-border_width_top = 2
-border_width_bottom = 2
-border_color = Color(1, 1, 1, 1)
+[sub_resource type="Animation" id="Animation_40022"]
+resource_name = "Explode"
+length = 0.4
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ghost:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.4),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ghost:scale")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.4),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(2, 2)]
+}
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8oxmn"]
-bg_color = Color(1, 1, 1, 1)
-border_width_top = 2
-border_width_bottom = 2
-border_color = Color(0.8, 0.8, 0.8, 0)
+[sub_resource type="Animation" id="Animation_pq4kd"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("ghost:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("ghost:scale")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
 
-[sub_resource type="Theme" id="Theme_8oxmn"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_qox0s")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_8oxmn")
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_pq4kd"]
+_data = {
+&"Explode": SubResource("Animation_40022"),
+&"RESET": SubResource("Animation_pq4kd")
+}
 
 [node name="LevelNode" type="ColorRect" unique_id=798467932]
-material = SubResource("ShaderMaterial_ehio4")
+material = SubResource("ShaderMaterial_40022")
 custom_minimum_size = Vector2(80, 80)
+color = Color(0.7, 0.7, 0.7, 0.9)
 script = ExtResource("2_40022")
-
-[node name="ProgressBar" type="ProgressBar" parent="." unique_id=1936931136]
-show_behind_parent = true
-layout_mode = 0
-offset_left = 65.0
-offset_top = 34.0
-offset_right = 195.0
-offset_bottom = 46.0
-theme = SubResource("Theme_8oxmn")
-value = 20.0
-show_percentage = false
 
 [node name="Button" type="Button" parent="." unique_id=1781697508]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
 offset_right = 80.0
 offset_bottom = 80.0
+disabled = true
+
+[node name="ghost" type="ColorRect" parent="." unique_id=543561013]
+modulate = Color(1, 1, 1, 0)
+material = SubResource("ShaderMaterial_pq4kd")
+layout_mode = 0
+offset_right = 80.0
+offset_bottom = 80.0
+mouse_filter = 2
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=173068664]
+libraries/ = SubResource("AnimationLibrary_pq4kd")

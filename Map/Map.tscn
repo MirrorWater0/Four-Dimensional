@@ -17,7 +17,7 @@ background_mode = 3
 glow_enabled = true
 glow_intensity = 3.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_vkbln"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_vk5l4"]
 shader = ExtResource("10_nlecm")
@@ -79,30 +79,32 @@ metadata/_edit_lock_ = true
 environment = SubResource("Environment_cccvd")
 
 [node name="GameMap" type="TextureRect" parent="." unique_id=394882337]
-material = SubResource("ShaderMaterial_vkbln")
+visible = false
+material = SubResource("ShaderMaterial_ehio4")
 layout_mode = 0
 offset_right = 1956.0
 offset_bottom = 1095.0
 texture = ExtResource("1_we4l4")
 metadata/_edit_lock_ = true
 
-[node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
-position = Vector2(1372, 907)
-limit_left = 0
-limit_top = 0
-limit_right = 3235
-limit_bottom = 1970
-position_smoothing_enabled = true
-position_smoothing_speed = 3.0
-
 [node name="DragButton" type="Button" parent="." unique_id=121878651]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
 offset_right = 3235.0
 offset_bottom = 1970.0
+disabled = true
 metadata/_edit_lock_ = true
 
+[node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
+limit_left = 0
+limit_top = 0
+limit_right = 3235
+limit_bottom = 1080
+position_smoothing_enabled = true
+position_smoothing_speed = 3.0
+
 [node name="SiteManagement" type="Control" parent="." unique_id=511334120]
+visible = false
 anchors_preset = 0
 
 [node name="Button" parent="SiteManagement" unique_id=302682044 instance=ExtResource("5_soa74")]
@@ -134,7 +136,7 @@ offset_left = -66.0
 offset_top = 9.0
 offset_right = 104.0
 offset_bottom = 69.0
-mouse_filter = 2
+mouse_filter = 1
 color = Color(0.68235296, 0, 0, 1)
 
 [node name="ReadyButton" type="Button" parent="UI" unique_id=870573151 node_paths=PackedStringArray("Layer")]
@@ -188,5 +190,9 @@ metadata/_edit_lock_ = true
 layer = 2
 
 [node name="SiteUI" type="CanvasLayer" parent="." unique_id=1303699608]
+
+[node name="LevelProgress" parent="." unique_id=102309754 instance=ExtResource("11_vk5l4")]
+layout_mode = 0
+mouse_filter = 1
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

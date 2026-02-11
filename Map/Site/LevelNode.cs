@@ -30,12 +30,17 @@ public partial class LevelNode : ColorRect
     public LevelType Type { get; set; } = LevelType.Normal;
 
     public Button Button => field ??= GetNode("Button") as Button;
-    public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
+
+    // public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
     public ShaderMaterial mat;
     public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
-    public LevelNode NextNode;
+    public List<LevelNode> NextNodes = new List<LevelNode>();
+    public List<LevelNode> ParentNodes = new List<LevelNode>();
     public PackedScene BattlePreviewScene = GD.Load<PackedScene>("res://battle/BattlePreview.tscn");
     public Vector2I SelfCoordinate;
+    public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;
+    public AnimationPlayer AnimationPlayer =>
+        field ??= GetNode("AnimationPlayer") as AnimationPlayer;
 
     public override void _Ready()
     {
@@ -46,21 +51,34 @@ public partial class LevelNode : ColorRect
 
         Color = LockColor;
         Button.Disabled = true;
-        ProgressBar.Value = 0;
         Button.Disabled = State == LevelState.Locked;
         StartAnimation();
-
+        PivotOffset = Size / 2;
+        Ghost.PivotOffset = Ghost.Size / 2;
+        Button.MouseEntered += () =>
+        {
+            Ghost.Modulate = new Color(1, 1, 1, 1);
+            Ghost.Scale = new Vector2(1f, 1f);
+            CreateTween().TweenProperty(this, "scale", new Vector2(1.2f, 1.2f), 0.2f);
+        };
+        Button.MouseExited += () =>
+        {
+            if (IsAnimate == true)
+                return;
+            Ghost.Modulate = new Color(1, 1, 1, 0);
+            CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
+        };
         Button.Pressed += CompletedAnimation;
         Button.Pressed += PressButton;
     }
 
-    public override void _Process(double delta)
-    {
-        if (BarVisible == false)
-        {
-            ProgressBar.Visible = false;
-        }
-    }
+    // public override void _Process(double delta)
+    // {
+    //     if (BarVisible == false)
+    //     {
+    //         ProgressBar.Visible = false;
+    //     }
+    // }
 
     public List<EnemyRegedit> ProduceEnemies()
     {
@@ -71,6 +89,9 @@ public partial class LevelNode : ColorRect
 
     public void Unlock()
     {
+        if (State == LevelState.Completed)
+            return;
+
         Color = 2 * new Color(1, 1, 1, 1);
         Color ringColor = new Color(1, 1, 1, 1);
 
@@ -94,22 +115,26 @@ public partial class LevelNode : ColorRect
 
     public void CompletedAnimation()
     {
-        if (NextNode.State == LevelState.Locked)
-            NextNode?.Unlock();
+        if (Type != LevelType.Boss)
+        {
+            foreach (var node in NextNodes)
+            {
+                if (node.State == LevelState.Locked)
+                    node.Unlock();
+            }
+        }
         State = LevelState.Completed;
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;
         mat.SetShaderParameter("show_inner", true);
         mat.SetShaderParameter("show_inner_color", new Color(1, 0.8f, 0, 1));
-        Tween tween = CreateTween();
-        tween.TweenProperty(ProgressBar, "value", 100, 0.5f);
     }
 
     public void StartAnimation()
     {
-        ProgressBar.Scale = new Vector2(0, 1);
-        Tween tween = CreateTween();
-        tween.TweenProperty(ProgressBar, "scale", new Vector2(1, 1), 0.5f);
+        // ProgressBar.Scale = new Vector2(0, 1);
+        // Tween tween = CreateTween();
+        // tween.TweenProperty(ProgressBar, "scale", new Vector2(1, 1), 0.5f);
     }
 
     public void ApplyEntranceMove(Vector2 offset, float duration, float delay)
@@ -146,11 +171,32 @@ public partial class LevelNode : ColorRect
         mat.SetShaderParameter("ring_color", ringColor);
     }
 
+    public bool IsAnimate = false;
+
     public void PressButton()
     {
+        IsAnimate = true;
+        Tween tween = CreateTween();
+        tween.TweenProperty(Ghost, "scale", new Vector2(2.2f, 2.2f), 0.3f);
+        tween
+            .Parallel()
+            .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .Parallel()
+            .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
+            .SetEase(Tween.EaseType.Out);
         EnemiesRegeditList = ProduceEnemies();
         var preview = BattlePreviewScene.Instantiate();
-        GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
+        tween
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
+                    IsAnimate = false;
+                })
+            );
     }
 
     public static void RandomPosition<T>(List<T> list)
