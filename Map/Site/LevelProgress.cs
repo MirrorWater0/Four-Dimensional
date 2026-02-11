@@ -8,7 +8,19 @@ public partial class LevelProgress : Control
     private const int MapHeight = 4; // Nodes per stage (Fixed to 4 vertical slots)
     private const float NodeSpacingX = 250f; // Distance between stages
     private const float NodeSpacingY = 250f; // Increased vertical spacing for 4 nodes
-    private const float MapLeftMargin = 100f;
+    private const float MapLeftMargin = 200f;
+
+    [Export]
+    public float JitterAmount = 100f;
+
+    // Branch control parameters (percentage of nodes per stage)
+    [Export]
+    public int TwoBranchPercentage = 30; // % of nodes with 2 branches
+
+    [Export]
+    public int ThreeBranchPercentage = 10; // % of nodes with 3 branches
+
+    // Remaining nodes will have 1 branch
     private PackedScene _nodeScene;
     private PackedScene _accessWayScene;
     private List<List<LevelNode>> _mapNodes = new List<List<LevelNode>>();
@@ -84,7 +96,7 @@ public partial class LevelProgress : Control
                 // Create exactly 4 nodes at y=0,1,2,3
                 for (int y = 0; y < MapHeight; y++)
                 {
-                    float jitter = rng.Next(-15, 15);
+                    float jitter = (float)(rng.NextDouble() * 2 - 1) * JitterAmount;
                     layerNodes[y] = CreateNode(x, y, jitter);
                 }
             }
@@ -115,31 +127,63 @@ public partial class LevelProgress : Control
                     gaps[i] = -1; // Up
             }
 
-            // Create connections based on gaps + straights
-            // Also ensure connectivity (no stranded nodes)
-
-            // Step A: Add mandatory straight connections (can be pruned later)
+            // Determine max branches for each node based on percentages
+            int[] maxBranches = new int[MapHeight];
             for (int y = 0; y < MapHeight; y++)
             {
-                if (currentLayer[y] != null && nextLayer[y] != null)
+                if (currentLayer[y] == null)
                 {
-                    ConnectNodes(currentLayer[y], nextLayer[y]);
+                    maxBranches[y] = 0;
+                    continue;
                 }
+
+                int roll = rng.Next(100);
+                if (roll < ThreeBranchPercentage)
+                    maxBranches[y] = 3; // 3 branches
+                else if (roll < ThreeBranchPercentage + TwoBranchPercentage)
+                    maxBranches[y] = 2; // 2 branches
+                else
+                    maxBranches[y] = 1; // 1 branch
             }
 
-            // Step B: Add cross connections based on gaps
-            for (int y = 0; y < MapHeight - 1; y++)
+            // Step A & B: Create connections with variable max branches
+            for (int y = 0; y < MapHeight; y++)
             {
-                // Gap between y and y+1
-                if (gaps[y] == 1) // Down: y -> y+1
+                var node = currentLayer[y];
+                if (node == null)
+                    continue;
+
+                List<LevelNode> candidates = new List<LevelNode>();
+
+                // 1. Straight
+                if (nextLayer[y] != null)
+                    candidates.Add(nextLayer[y]);
+
+                // 2. Cross Down (y -> y+1) if gap says so
+                if (y < MapHeight - 1 && gaps[y] == 1 && nextLayer[y + 1] != null)
+                    candidates.Add(nextLayer[y + 1]);
+
+                // 3. Cross Up (y -> y-1) if gap says so (gaps[y-1] == -1 means y -> y-1)
+                if (y > 0 && gaps[y - 1] == -1 && nextLayer[y - 1] != null)
+                    candidates.Add(nextLayer[y - 1]);
+
+                // Enforce max branches for this specific node
+                while (candidates.Count > maxBranches[y])
                 {
-                    if (currentLayer[y] != null && nextLayer[y + 1] != null)
-                        ConnectNodes(currentLayer[y], nextLayer[y + 1]);
+                    // If we have 3 (Straight, Down, Up) and need to reduce, remove Straight to favor crossing
+                    if (
+                        candidates.Count == 3
+                        && maxBranches[y] < 3
+                        && candidates.Contains(nextLayer[y])
+                    )
+                        candidates.Remove(nextLayer[y]);
+                    else
+                        candidates.RemoveAt(candidates.Count - 1);
                 }
-                else if (gaps[y] == -1) // Up: y+1 -> y
+
+                foreach (var next in candidates)
                 {
-                    if (currentLayer[y + 1] != null && nextLayer[y] != null)
-                        ConnectNodes(currentLayer[y + 1], nextLayer[y]);
+                    ConnectNodes(node, next);
                 }
             }
 
@@ -199,28 +243,41 @@ public partial class LevelProgress : Control
                     var node = nextLayer[y];
                     if (node != null && node.ParentNodes.Count == 0)
                     {
-                        // Needs a parent. Try Straight.
+                        // Attempt to find a parent with available slots (< 2)
+                        bool connected = false;
+
+                        // Candidates: Straight, Above (Down), Below (Up)
+                        var candidates = new List<(LevelNode parent, int gapIdx, int gapVal)>();
+
                         if (currentLayer[y] != null)
+                            candidates.Add((currentLayer[y], -1, 0)); // Straight
+
+                        if (y > 0 && gaps[y - 1] != -1 && currentLayer[y - 1] != null)
+                            candidates.Add((currentLayer[y - 1], y - 1, 1)); // Down
+
+                        if (y < MapHeight - 1 && gaps[y] != 1 && currentLayer[y + 1] != null)
+                            candidates.Add((currentLayer[y + 1], y, -1)); // Up
+
+                        // Try to find one with space
+                        foreach (var cand in candidates)
                         {
-                            ConnectNodes(currentLayer[y], node);
+                            if (cand.parent.NextNodes.Count < 2)
+                            {
+                                ConnectNodes(cand.parent, node);
+                                if (cand.gapIdx != -1)
+                                    gaps[cand.gapIdx] = cand.gapVal;
+                                connected = true;
+                                break;
+                            }
                         }
-                        else
+
+                        // If still not connected (all full), force connect to first candidate
+                        if (!connected && candidates.Count > 0)
                         {
-                            // Try neighbors respecting gaps
-                            if (y > 0 && gaps[y - 1] != -1 && currentLayer[y - 1] != null) // Parent from above (Down)
-                            {
-                                ConnectNodes(currentLayer[y - 1], node);
-                                gaps[y - 1] = 1;
-                            }
-                            else if (
-                                y < MapHeight - 1
-                                && gaps[y] != 1
-                                && currentLayer[y + 1] != null
-                            ) // Parent from below (Up)
-                            {
-                                ConnectNodes(currentLayer[y + 1], node);
-                                gaps[y] = -1;
-                            }
+                            var cand = candidates[0];
+                            ConnectNodes(cand.parent, node);
+                            if (cand.gapIdx != -1)
+                                gaps[cand.gapIdx] = cand.gapVal;
                         }
                     }
                 }
@@ -371,7 +428,7 @@ public partial class LevelProgress : Control
                     node.Type = LevelNode.LevelType.Normal;
                 else if (x == MapLength - 1)
                     node.Type = LevelNode.LevelType.Boss;
-                else if (x == MapLength / 2)
+                else if (x == MapLength / 2 && x > 2) // Elite only after first 3 stages
                     node.Type = LevelNode.LevelType.Elite;
                 else
                 {
@@ -380,7 +437,7 @@ public partial class LevelProgress : Control
                         node.Type = LevelNode.LevelType.Normal;
                     else if (roll < 70)
                         node.Type = LevelNode.LevelType.Event;
-                    else if (roll < 90)
+                    else if (roll < 90 && x > 2) // Elite can only appear after first 3 stages
                         node.Type = LevelNode.LevelType.Elite;
                     else
                         node.Type = LevelNode.LevelType.Normal;

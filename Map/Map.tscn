@@ -11,6 +11,7 @@
 [ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/ExitButton.cs" id="11_cccvd"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
+[ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -65,6 +66,33 @@ shader_parameter/edge_color = Color(0.4, 0.69803923, 1, 0)
 shader_parameter/edge_thickness = 0.0090000004275
 shader_parameter/edge_softness = 0.014000000665
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
+shader = ExtResource("12_jq5q4")
+shader_parameter/icon_scale = 1.20000004768372
+shader_parameter/base_thickness = 0.01400000031574
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vk5l4"]
+bg_color = Color(0.8627451, 0.9019608, 1, 0)
+skew = Vector2(0.5, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8627451, 0.9019608, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cccvd"]
+bg_color = Color(0.36078432, 0.8392157, 1, 1)
+skew = Vector2(0.5, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.8627451, 0.9019608, 1, 0)
+
+[sub_resource type="Theme" id="Theme_cccvd"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_vk5l4")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_cccvd")
+
 [node name="Map" type="Control" unique_id=675286840]
 layout_mode = 3
 anchors_preset = 15
@@ -96,12 +124,13 @@ disabled = true
 metadata/_edit_lock_ = true
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
+position = Vector2(10, 0)
 limit_left = 0
 limit_top = 0
-limit_right = 3235
+limit_right = 3500
 limit_bottom = 1080
 position_smoothing_enabled = true
-position_smoothing_speed = 3.0
+metadata/_edit_lock_ = true
 
 [node name="SiteManagement" type="Control" parent="." unique_id=511334120]
 visible = false
@@ -186,6 +215,19 @@ offset_bottom = 1121.0724
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
+[node name="Button2" type="Button" parent="UI" unique_id=1573518701]
+self_modulate = Color(1, 1, 1, 0)
+offset_left = 346.0
+offset_top = 15.0
+offset_right = 386.0
+offset_bottom = 55.0
+
+[node name="ColorRect" type="ColorRect" parent="UI/Button2" unique_id=1135027621]
+material = SubResource("ShaderMaterial_7a0j3")
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
 [node name="BattleReadyLayer" type="CanvasLayer" parent="." unique_id=1257121331]
 layer = 2
 
@@ -194,5 +236,64 @@ layer = 2
 [node name="LevelProgress" parent="." unique_id=102309754 instance=ExtResource("11_vk5l4")]
 layout_mode = 0
 mouse_filter = 1
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1054898308]
+layer = 10
+
+[node name="Label" type="Label" parent="CanvasLayer" unique_id=923755580]
+offset_left = 57.0
+offset_top = 6.0
+offset_right = 172.0
+offset_bottom = 55.0
+theme = ExtResource("10_svc60")
+text = "Energy"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer" unique_id=690674300]
+offset_left = 185.0
+offset_top = 13.0
+offset_right = 295.0
+offset_bottom = 53.0
+
+[node name="ProgressBar" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=1791351413]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
+
+[node name="ProgressBar2" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=564719088]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
+
+[node name="ProgressBar3" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=1180038305]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
+
+[node name="ProgressBar4" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=2113955780]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
+
+[node name="ProgressBar5" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=1223123243]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
+
+[node name="ProgressBar6" type="ProgressBar" parent="CanvasLayer/HBoxContainer" unique_id=226425797]
+custom_minimum_size = Vector2(20, 40)
+layout_mode = 2
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

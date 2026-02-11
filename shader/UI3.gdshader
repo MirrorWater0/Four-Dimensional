@@ -110,7 +110,7 @@ float circleUI(vec2 p) {
 	p = prevP;
 	animRot = Rot(-radians(TIME * speed) * 27.0);
 	p *= animRot;
-	d2_val = abs(length(p) - current_outer) - thickness * 0.3;
+	d2_val = abs(length(p) - current_outer) - thickness * 0.4;
 	d2_val = max(abs(p.x) - 0.3, d2_val);
 	d = min(d, d2_val);
 

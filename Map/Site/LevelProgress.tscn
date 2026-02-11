@@ -5,15 +5,15 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w4thg"]
 shader = ExtResource("2_pkhks")
-shader_parameter/size = Vector2(1000, 500)
+shader_parameter/size = Vector2(3500, 1080)
 shader_parameter/base_color = Color(0.05, 0.06, 0.08, 1)
 shader_parameter/accent_color = Color(0.1925, 0.21166667, 0.25, 1)
 shader_parameter/grid_color = Color(0.3, 0.40000007, 0.6, 0.56078434)
-shader_parameter/grid_spacing = 60.0
-shader_parameter/line_thickness = 1.0
-shader_parameter/star_speed = 0.3690000175275
-shader_parameter/star_density = 0.794000037715
-shader_parameter/star_size = 1.2
+shader_parameter/grid_spacing = 118.2770051431575
+shader_parameter/line_thickness = 0.5290000218676201
+shader_parameter/star_speed = 0.76400003629
+shader_parameter/star_density = 0.8990000427025
+shader_parameter/star_size = 2.0130000718675
 
 [node name="LevelProgress" type="Control" unique_id=102309754]
 layout_mode = 3
