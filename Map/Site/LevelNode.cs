@@ -202,7 +202,7 @@ public partial class LevelNode : ColorRect
     public static void RandomPosition<T>(List<T> list)
         where T : EnemyRegedit
     {
-        Random random = new Random(GameInfo.Seed);
+        Random random = new Random(GameInfo.PositionRandomNum);
 
         // 1. 准备所有可能的位置 (1 到 9)
         List<int> possiblePositions = Enumerable.Range(1, 9).ToList();

@@ -24,7 +24,7 @@ public partial class Determination : Skill
 
 public partial class Smite : Skill
 {
-    public Smite(Character owner)
+    public Smite()
         : base(Skill.SkillTypes.Attack)
     {
         Description = "降低目标2点战斗生存能力，然后发动攻击，造成3+战斗力的伤害。";
@@ -44,15 +44,15 @@ public partial class Smite : Skill
     }
 }
 
-public partial class Cast : Skill
+public partial class Charge : Skill
 {
-    public Cast(Character owner)
+    public Charge()
         : base(Skill.SkillTypes.Attack)
     {
         Description = "发动攻击，造成10+战斗力的伤害，然后获得等于攻击伤害值的格挡。";
     }
 
-    public override string SkillName { get; set; } = "投射";
+    public override string SkillName { get; set; } = "无畏冲锋";
 
     public override async Task Effect()
     {

@@ -10,7 +10,7 @@ using Godot;
 public partial class Battle : Node2D
 {
     public static bool Istest = true;
-    public Random BattleIntentionRandom = new Random(GameInfo.IntentionRandom.Next());
+    public Random BattleIntentionRandom = new Random(GameInfo.IntentionRandomNum);
 
     [Signal]
     public delegate void NextEventHandler();
@@ -85,9 +85,10 @@ public partial class Battle : Node2D
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
-            PlayerCharacter character = GameInfo
-                .PlayerCharacters[i]
-                .CharacterScene.Instantiate<PlayerCharacter>();
+            PlayerCharacter character = GD.Load<PackedScene>(
+                    GameInfo.PlayerCharacters[i].CharacterScenePath
+                )
+                .Instantiate<PlayerCharacter>();
             character.CharacterIndex = i;
             character.BattleNode = this;
             character.Initialize();
@@ -96,7 +97,9 @@ public partial class Battle : Node2D
 
         for (int i = 0; i < LevelNode.EnemiesRegeditList.Count; i++)
         {
-            EnemyCharacter enemy = LevelNode.EnemiesRegeditList[i].CharacterScene.Instantiate<EnemyCharacter>();
+            EnemyCharacter enemy = LevelNode
+                .EnemiesRegeditList[i]
+                .CharacterScene.Instantiate<EnemyCharacter>();
             enemy.PositionIndex = LevelNode.EnemiesRegeditList[i].PositionIndex;
             enemy.BattleNode = this;
             enemy.Initialize();
@@ -139,7 +142,7 @@ public partial class Battle : Node2D
     public void SetCharaterPostion()
     {
         // 你的核心基准参数
-        float bGapY = 180f; // 纵向行距
+        float bGapY = 160f; // 纵向行距
         float bGapX = 280f; // 横向列距
         float bSkew = 10f; // 每一行的水平偏移 (xoffset)
 
@@ -323,5 +326,4 @@ public partial class Battle : Node2D
             GetParent().QueueFree();
         }
     }
-
 }

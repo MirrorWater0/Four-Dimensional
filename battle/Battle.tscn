@@ -423,11 +423,11 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="." unique_id=489797672]
 y_sort_enabled = true
-position = Vector2(1168, 296)
+position = Vector2(1168, 320)
 
 [node name="Left" type="Node2D" parent="." unique_id=399900633]
 y_sort_enabled = true
-position = Vector2(808, 296)
+position = Vector2(808, 320)
 
 [node name="BattlePlayer" type="AnimationPlayer" parent="." unique_id=1504309812]
 libraries/ = SubResource("AnimationLibrary_od72c")

@@ -6,18 +6,18 @@ public partial class ExitButton : Button
 {
     public delegate void ExitButtonPressed();
     public ObservableList<Action> PressedActions = new (); // List of actions to be executed when the button is pressed>
-
+    public Vector2 OriginalPosition = new Vector2(-10, 130);
     public override void _Ready()
     {
         Visible = false;
-        Position = new Vector2(-10, 50);
+        Position = OriginalPosition;
         MouseEntered += () =>
         {
-            CreateTween().TweenProperty(this, "position", new Vector2(40, 50), 0.2f);
+            CreateTween().TweenProperty(this, "position", OriginalPosition + 50 * Vector2.Right, 0.2f);
         };
         MouseExited += () =>
         {
-            CreateTween().TweenProperty(this, "position", new Vector2(-10, 50), 0.2f);
+            CreateTween().TweenProperty(this, "position", OriginalPosition, 0.2f);
         };
 
         PressedActions.ItemAdded += item =>

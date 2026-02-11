@@ -34,7 +34,6 @@ public partial class Skill
     public Character OwnerCharater;
     public bool Enable;
     public string Description;
-
     public Skill(SkillTypes skillType)
     {
         SkillType = skillType;
@@ -196,4 +195,34 @@ public partial class Skill
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }
+
+    static public Skill GetSkill(SkillID skillID)
+    {
+        switch (skillID)
+        {
+            case SkillID.Determination:
+                return new Determination();
+            case SkillID.ReNewedSpirit:
+                return new ReNewedSpirit();
+            case SkillID.TerminateLight:
+                return new TerminateLight();
+            case SkillID.Smite:
+                return new Smite();
+            case SkillID.Charge:
+                return new Charge();
+            case SkillID.SacredOnslaught:
+                return new SacredOnslaught();
+        }
+        return null;
+    }
+}
+
+public enum SkillID
+{
+    Determination,
+    ReNewedSpirit,
+    TerminateLight,
+    Smite,
+    Charge,
+    SacredOnslaught,
 }

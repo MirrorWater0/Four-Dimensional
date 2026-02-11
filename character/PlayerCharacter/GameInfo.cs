@@ -6,14 +6,22 @@ public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
     public static int Seed = 1223;
-    public static Random IntentionRandom = new Random(Seed);
+    public static int IntentionRandomNum { get; private set; }
+    public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
 
     public static void InitNewGame()
     {
+        IntentionRandomNum = new Random(Seed).Next();
+        PositionRandomNum = new Random(Seed).Next();
         FirstLevelState.Clear();
         // Map generation logic in LevelProgress will populate this
         GD.Print("InitNewGame");
+    }
+
+    public static void RefreshRandomNum(ref int num)
+    {
+        num = new Random(num).Next();
     }
 }
 
@@ -21,7 +29,7 @@ public struct PlayerInfoStructure
 {
     public PlayerInfoStructure() { }
 
-    public PackedScene CharacterScene;
+    public String CharacterScenePath;
     public int LifeMax;
     public int Power;
     public int Survivability;
@@ -67,7 +75,8 @@ public class ObservableList<T> : List<T>
 
     public new void RemoveAt(int index)
     {
-        if (index < 0 || index >= Count) return;
+        if (index < 0 || index >= Count)
+            return;
         T item = this[index];
         base.RemoveAt(index);
         ItemRemoved?.Invoke(item);

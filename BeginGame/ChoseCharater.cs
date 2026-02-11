@@ -19,20 +19,22 @@ public partial class ChoseCharater : CanvasLayer
         for (int i = 0; i < 2; i++)
         {
             PlayerInfoStructure kasiyaStructure = new PlayerInfoStructure();
-            kasiyaStructure.CharacterScene = _Kasiya;
+            kasiyaStructure.CharacterScenePath =
+                "res://character/PlayerCharacter/Kasiya/kasiya.tscn";
             kasiyaStructure.LifeMax = 50;
             kasiyaStructure.Power = 10;
             kasiyaStructure.Survivability = 10;
             kasiyaStructure.Speed = 10;
             GameInfo.PlayerCharacters[i] = kasiyaStructure;
-            GameInfo.PlayerCharacters[i].PortaitPath = "res://asset/PlayerCharater/Kasiya/Kasiya.png";
+            GameInfo.PlayerCharacters[i].PortaitPath =
+                "res://asset/PlayerCharater/Kasiya/Kasiya.png";
         }
 
         // Initialize Echo characters (indices 2 and 3)
         for (int i = 2; i < 4; i++)
         {
             PlayerInfoStructure echoStructure = new PlayerInfoStructure();
-            echoStructure.CharacterScene = _Echo;
+            echoStructure.CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn";
             echoStructure.LifeMax = 50;
             echoStructure.Power = 10;
             echoStructure.Survivability = 10;
@@ -68,5 +70,4 @@ public partial class ChoseCharater : CanvasLayer
         GameInfo.PlayerCharacters[0].GainedSkills.Add(new Determination());
         GameInfo.PlayerCharacters[0].GainedSkills.Add(new TerminateLight());
     }
-
 }
