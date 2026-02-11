@@ -14,7 +14,12 @@ public partial class PlayerCharacter : Character
     public override void Initialize()
     {
         PositionIndex = GameInfo.PlayerCharacters[CharacterIndex].PositionIndex;
-        Skills = GameInfo.PlayerCharacters[CharacterIndex].TakenSkills.ToArray();
+        Skills =
+        [
+            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[0]),
+            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[1]),
+            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[2]),
+        ];
         BattleLifemax = GameInfo.PlayerCharacters[CharacterIndex].LifeMax;
         Life = BattleLifemax;
         BattlePower = GameInfo.PlayerCharacters[CharacterIndex].Power;

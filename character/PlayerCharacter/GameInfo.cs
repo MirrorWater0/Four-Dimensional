@@ -34,8 +34,8 @@ public struct PlayerInfoStructure
     public int Power;
     public int Survivability;
     public int Speed;
-    public List<Skill> GainedSkills = new List<Skill>();
-    public Skill[] TakenSkills = new Skill[3];
+    public List<SkillID> GainedSkills = new();
+    public SkillID[] TakenSkills = new SkillID[3];
     public int PositionIndex;
     public string PortaitPath;
 }

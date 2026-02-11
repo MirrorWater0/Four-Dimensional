@@ -45,9 +45,9 @@ public partial class ChoseCharater : CanvasLayer
 
         for (int i = 0; i < 4; i++)
         {
-            GameInfo.PlayerCharacters[i].TakenSkills[0] = new Attack();
-            GameInfo.PlayerCharacters[i].TakenSkills[1] = new Defense();
-            GameInfo.PlayerCharacters[i].TakenSkills[2] = new SacredOnslaught();
+            GameInfo.PlayerCharacters[i].TakenSkills[0] = SkillID.SacredOnslaught;
+            GameInfo.PlayerCharacters[i].TakenSkills[1] = SkillID.SoundBarrier;
+            GameInfo.PlayerCharacters[i].TakenSkills[2] = SkillID.EchonicResonance;
             GameInfo.PlayerCharacters[i].PositionIndex = i + 1;
 
             GameInfo
@@ -66,8 +66,8 @@ public partial class ChoseCharater : CanvasLayer
 
     public void test()
     {
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(new ReNewedSpirit());
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(new Determination());
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(new TerminateLight());
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ReNewedSpirit);
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.Determination);
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 }

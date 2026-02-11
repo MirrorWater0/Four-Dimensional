@@ -12,13 +12,13 @@ public partial class Skill
         Survivalibility,
     }
 
-    public PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
+    public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/AttackEffect.tscn"
     );
-    public PackedScene DescendingScene = ResourceLoader.Load<PackedScene>(
+    public static PackedScene DescendingScene = ResourceLoader.Load<PackedScene>(
         "res://battle/UIScene/Descending.tscn"
     );
-    public PackedScene BurnScene = ResourceLoader.Load<PackedScene>(
+    public static PackedScene BurnScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/burn.tscn"
     );
 
@@ -34,6 +34,7 @@ public partial class Skill
     public Character OwnerCharater;
     public bool Enable;
     public string Description;
+
     public Skill(SkillTypes skillType)
     {
         SkillType = skillType;
@@ -196,7 +197,7 @@ public partial class Skill
 
     public void BuffAdd(Buff.BuffName type, int stack) { }
 
-    static public Skill GetSkill(SkillID skillID)
+    public static Skill GetSkill(SkillID skillID)
     {
         switch (skillID)
         {
@@ -212,6 +213,10 @@ public partial class Skill
                 return new Charge();
             case SkillID.SacredOnslaught:
                 return new SacredOnslaught();
+            case SkillID.EchonicResonance:
+                return new EchonicResonance();
+            case SkillID.SoundBarrier:
+                return new SoundBarrier();
         }
         return null;
     }
@@ -225,4 +230,6 @@ public enum SkillID
     Smite,
     Charge,
     SacredOnslaught,
+    EchonicResonance,
+    SoundBarrier,
 }

@@ -7,7 +7,7 @@ using Godot.Collections;
 
 public partial class BattleReady : Control
 {
-    public PackedScene SkillButtonScene = GD.Load<PackedScene>(
+    public static PackedScene SkillButtonScene = GD.Load<PackedScene>(
         "res://battle/UIScene/SkillButton.tscn"
     );
     public static PackedScene PortaitScene = GD.Load<PackedScene>(
@@ -18,7 +18,7 @@ public partial class BattleReady : Control
     public Control Grid => field ??= GetNode("GridContainer") as Control;
     HBoxContainer SkillContainer => field ??= GetNode("SkillContainer") as HBoxContainer;
 
-    PackedScene SekectButtonScene = GD.Load<PackedScene>(
+    static PackedScene SekectButtonScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/SelectButton.tscn"
     );
     private PortaitFrame _dragTarget;
@@ -72,7 +72,7 @@ public partial class BattleReady : Control
             .SetEase(Tween.EaseType.Out);
     }
 
-    public override async void _Process(double delta)
+    public override void _Process(double delta)
     {
         if (_dragTarget != null)
         {
@@ -126,12 +126,12 @@ public partial class BattleReady : Control
                 for (int j = 0; j < character.GainedSkills.Count; j++)
                 {
                     var selectbutton = SekectButtonScene.Instantiate() as SelectButton;
-                    var skill = character.GainedSkills[j];
-                    selectbutton.MySkill = skill;
-                    selectbutton.ThisLabel.Text = skill.SkillName;
+                    var skillID = character.GainedSkills[j];
+                    selectbutton.MySkill = Skill.GetSkill(skillID);
+                    selectbutton.ThisLabel.Text = selectbutton.MySkill.SkillName;
 
                     int skillIndex = -1;
-                    switch (skill.SkillType)
+                    switch (selectbutton.MySkill.SkillType)
                     {
                         case Skill.SkillTypes.Attack:
                             skillIndex = 0;
@@ -148,7 +148,7 @@ public partial class BattleReady : Control
                     }
                     selectbutton.StartAnimation(0.05f * (j - 1));
                     // If the character has already taken this skill, mark the button as pressed
-                    if (character.TakenSkills.Contains(skill))
+                    if (character.TakenSkills.Contains(skillID))
                     {
                         selectbutton.Button.ButtonPressed = true;
                         selectbutton.animation.Play("explode");
@@ -156,7 +156,7 @@ public partial class BattleReady : Control
 
                     selectbutton.Button.Pressed += () =>
                     {
-                        GameInfo.PlayerCharacters[frame.IDindex].TakenSkills[skillIndex] = skill;
+                        GameInfo.PlayerCharacters[frame.IDindex].TakenSkills[skillIndex] = skillID;
                         selectbutton.Button.ButtonPressed = true;
                         for (int i = 0; i < selectbutton.GetParent().GetChildCount(); i++)
                         {
