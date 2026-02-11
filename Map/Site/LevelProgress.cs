@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 public partial class LevelProgress : Control
@@ -292,11 +293,17 @@ public partial class LevelProgress : Control
         // 3. Assign Types
         AssignNodeTypes(rng);
 
-        // 4. Unlock Start
-        foreach (var node in _mapNodes[0])
+        // 4. Unlock Start (only if this is a new game, not loading from save)
+        bool isNewGame = GameInfo.FirstLevelState.Count == 0 ||
+                         !GameInfo.FirstLevelState.Values.Any(state => state != LevelNode.LevelState.Locked);
+
+        if (isNewGame)
         {
-            if (node != null)
-                node.Unlock();
+            foreach (var node in _mapNodes[0])
+            {
+                if (node != null)
+                    node.Unlock();
+            }
         }
     }
 
@@ -403,6 +410,10 @@ public partial class LevelProgress : Control
         if (GameInfo.FirstLevelState.ContainsKey(node.SelfCoordinate))
         {
             node.State = GameInfo.FirstLevelState[node.SelfCoordinate];
+
+            // Apply the loaded state to the node's visual appearance
+            // This needs to be called deferred because the node's _Ready hasn't been called yet
+            node.CallDeferred("ApplyLoadedState");
         }
         else
         {

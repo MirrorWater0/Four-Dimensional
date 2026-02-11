@@ -13,7 +13,6 @@ public static class SaveSystem
     public static void SaveAll()
     {
         var config = new ConfigFile();
-        // 扫描 GameInfo 中的静态字段
         FieldInfo[] fields = typeof(GameInfo).GetFields(BindingFlags.Public | BindingFlags.Static);
 
         foreach (var field in fields)
@@ -22,24 +21,11 @@ public static class SaveSystem
             if (value == null)
                 continue;
 
-            // 如果是数组或 List (例如 PlayerCharacters)
-            if (field.FieldType.IsArray || (value is IList && field.FieldType.IsGenericType))
-            {
-                config.SetValue("Data", field.Name, SerializeCollection(value));
-            }
-            // 如果是 C# 字典 (例如 FirstLevelState)
-            else if (value is IDictionary)
-            {
-                config.SetValue("Data", field.Name, SerializeDictionary(value));
-            }
-            else
-            {
-                // 基础类型 (int, string, Vector2I, 枚举等)
-                config.SetValue("Data", field.Name, Variant.From(value));
-            }
+            // 统一使用 MapObjectToVariant 转换所有类型的静态变量
+            config.SetValue("Data", field.Name, MapObjectToVariant(value));
         }
         config.Save(SavePath);
-        GD.Print("存档已自动保存。");
+        GD.Print("存档成功。");
     }
 
     // --- 自动读取 ---
@@ -108,18 +94,75 @@ public static class SaveSystem
     {
         if (item == null)
             return new Variant();
-        Type t = item.GetType();
-        // 如果是基础类型、枚举或 Godot 原生类型
-        if (t.IsPrimitive || t == typeof(string) || t.IsEnum || t.Name.StartsWith("Vector2"))
-            return Variant.From(item);
 
-        // 如果是自定义 Struct (PlayerInfoStructure)
-        var dict = new Godot.Collections.Dictionary();
-        foreach (var f in t.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        Type t = item.GetType();
+
+        // 1. 处理基础类型（这些类型直接转，不经过 object 泛型）
+        if (item is string s)
+            return s;
+        if (item is bool b)
+            return b;
+        if (item is int i)
+            return i;
+        if (item is long l)
+            return l;
+        if (item is float f)
+            return f;
+        if (item is double d)
+            return d;
+        if (item is Vector2 v2)
+            return v2;
+        if (item is Vector2I v2i)
+            return v2i;
+        if (item is Rect2 r2)
+            return r2;
+        if (item is Rect2I r2i)
+            return r2i;
+        if (item is Color col)
+            return col;
+
+        // 2. 处理枚举 (枚举在 Godot 中存为 long)
+        if (t.IsEnum)
+            return Convert.ToInt64(item);
+
+        // 3. 处理字典 (Dictionary)
+        if (item is IDictionary iDict)
         {
-            dict[f.Name] = MapObjectToVariant(f.GetValue(item));
+            var gDict = new Godot.Collections.Dictionary();
+            foreach (DictionaryEntry entry in iDict)
+            {
+                gDict[MapObjectToVariant(entry.Key)] = MapObjectToVariant(entry.Value);
+            }
+            return gDict;
         }
-        return dict;
+
+        // 4. 处理集合 (数组或 List)
+        if (item is IList iList)
+        {
+            var gArray = new Godot.Collections.Array();
+            foreach (var element in iList)
+            {
+                gArray.Add(MapObjectToVariant(element));
+            }
+            return gArray;
+        }
+
+        // 5. 处理自定义结构体 (如 PlayerInfoStructure)
+        // 如果不是基础类型，我们将其视为对象，通过反射拆解字段
+        if (!t.IsPrimitive && t != typeof(string))
+        {
+            var dict = new Godot.Collections.Dictionary();
+            // 获取所有公开字段
+            FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var k in fields)
+            {
+                dict[k.Name] = MapObjectToVariant(k.GetValue(item));
+            }
+            return dict;
+        }
+
+        // 最后的兜底方案
+        return Variant.From((dynamic)item);
     }
 
     // --- 辅助方法：从 Variant 还原为 C# 类型 ---
@@ -163,6 +206,7 @@ public static class SaveSystem
 
     private static object MapVariantToObject(Variant v, Type targetType)
     {
+        // 1. 处理基础类型、枚举、Godot类型
         if (
             targetType.IsPrimitive
             || targetType == typeof(string)
@@ -171,7 +215,19 @@ public static class SaveSystem
         )
             return AssignVariant(v, targetType);
 
-        // 处理自定义 Struct
+        // 2. 处理数组和集合（必须在自定义结构体之前检查）
+        if (targetType.IsArray || typeof(IList).IsAssignableFrom(targetType))
+        {
+            return DeserializeCollection(v, targetType);
+        }
+
+        // 3. 处理字典
+        if (typeof(IDictionary).IsAssignableFrom(targetType))
+        {
+            return DeserializeDictionary(v, targetType);
+        }
+
+        // 4. 处理自定义 Struct
         object obj = Activator.CreateInstance(targetType);
         var gDict = v.AsGodotDictionary();
         foreach (var f in targetType.GetFields(BindingFlags.Public | BindingFlags.Instance))
@@ -213,15 +269,13 @@ public static class SaveSystem
 
         // 3. 处理 Godot 特有类型 (Vector2I, String, Rect2I 等)
         // 剩下的类型直接通过 v.Obj 提取对应的 C# 对象即可
-        // 如果你的 Godot 版本里 v.Obj 报错，请使用 v.As<object>()
-        try
-        {
-            return v.Obj;
-        }
-        catch
-        {
-            // 最后的兜底方案：如果上述都不行，尝试让 Godot 自己转
-            return v.As<object>();
-        }
+        if (targetType == typeof(Vector2I))
+            return v.AsVector2I();
+        if (targetType == typeof(Vector2))
+            return v.AsVector2();
+        if (targetType == typeof(string))
+            return v.AsString();
+
+        return v.Obj;
     }
 }

@@ -11,7 +11,7 @@ public partial class ChoseCharater : CanvasLayer
         "res://character/PlayerCharacter/Kasiya/kasiya.tscn"
     );
 
-    public override void _Ready()
+    public void NewStart()
     {
         GameInfo.PlayerCharacters = new PlayerInfoStructure[4];
 
@@ -59,6 +59,7 @@ public partial class ChoseCharater : CanvasLayer
 
     public void Start()
     {
+        NewStart();
         Battle.Istest = false;
         GameInfo.InitNewGame();
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
@@ -69,5 +70,15 @@ public partial class ChoseCharater : CanvasLayer
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ReNewedSpirit);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.Determination);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
+    }
+
+    public void continueGame()
+    {
+        SaveSystem.LoadAll();
+        foreach (var key in GameInfo.FirstLevelState.Keys)
+        {
+            GD.Print(GameInfo.FirstLevelState[key]);
+        }
+        GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
 }

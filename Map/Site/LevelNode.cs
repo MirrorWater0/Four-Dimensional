@@ -68,7 +68,7 @@ public partial class LevelNode : ColorRect
             Ghost.Modulate = new Color(1, 1, 1, 0);
             CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
         };
-        Button.Pressed += CompletedAnimation;
+        Button.Pressed += Completed;
         Button.Pressed += PressButton;
     }
 
@@ -91,29 +91,59 @@ public partial class LevelNode : ColorRect
     {
         if (State == LevelState.Completed)
             return;
-
         Color = 2 * new Color(1, 1, 1, 1);
-        Color ringColor = new Color(1, 1, 1, 1);
-
-        switch (Type)
-        {
-            case LevelType.Boss:
-                ringColor = new Color(0.6f, 0, 0.9f, 1);
-                break;
-            case LevelType.Elite:
-                ringColor = new Color(1, 0.1f, 0.1f, 1);
-                break;
-            case LevelType.Event:
-                ringColor = new Color(0, 0.6f, 1, 1);
-                break;
-        }
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Unlocked;
-        mat.SetShaderParameter("ring_color", ringColor);
         State = LevelState.Unlocked;
         Button.Disabled = false;
     }
 
-    public void CompletedAnimation()
+    public void ApplyLoadedState()
+    {
+        // Apply visual state based on the loaded State value
+        switch (State)
+        {
+            case LevelState.Locked:
+                Color = LockColor;
+                Button.Disabled = true;
+                break;
+
+            case LevelState.Unlocked:
+                Color = 2 * new Color(1, 1, 1, 1);
+                Button.Disabled = false;
+
+                Color ringColor = new Color(1, 1, 1, 1);
+                switch (Type)
+                {
+                    case LevelType.Boss:
+                        ringColor = new Color(0.6f, 0, 0.9f, 1);
+                        break;
+                    case LevelType.Elite:
+                        ringColor = new Color(1, 0.1f, 0.1f, 1);
+                        break;
+                    case LevelType.Event:
+                        ringColor = new Color(0, 0.6f, 1, 1);
+                        break;
+                }
+                mat.SetShaderParameter("ring_color", ringColor);
+                break;
+
+            case LevelState.Completed:
+                Color = LockColor;
+                Button.Disabled = true;
+                ApplyCompletedVisuals();
+                break;
+        }
+    }
+
+    public void ApplyCompletedVisuals()
+    {
+        // Only the visual effects, no state changes
+        Color = 2 * new Color(1, 1, 1, 1);
+        mat.SetShaderParameter("show_inner", true);
+        mat.SetShaderParameter("show_inner_color", new Color(1, 0.8f, 0, 1));
+    }
+
+    public void Completed()
     {
         if (Type != LevelType.Boss)
         {
@@ -126,8 +156,8 @@ public partial class LevelNode : ColorRect
         State = LevelState.Completed;
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;
-        mat.SetShaderParameter("show_inner", true);
-        mat.SetShaderParameter("show_inner_color", new Color(1, 0.8f, 0, 1));
+        ApplyCompletedVisuals();
+        SaveSystem.SaveAll();
     }
 
     public void StartAnimation()
