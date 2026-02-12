@@ -18,6 +18,10 @@ config/name="tower"
 run/main_scene="res://BeginGame/ChoseCharater.tscn"
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 
+[autoload]
+
+PreloadeScene="*uid://ctfp7tpcv8l2p"
+
 [display]
 
 window/size/viewport_width=1920

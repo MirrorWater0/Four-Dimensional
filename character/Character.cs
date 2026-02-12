@@ -240,7 +240,7 @@ public partial class Character : Node2D
             AddChild(characterEffect);
             characterEffect.Animation.Play("shield");
         }
-        Block += num;
+        Block = Math.Clamp(Block + num, 0, 999);
         BlockLabel.Text = Block.ToString();
         CreateTween().TweenProperty(BlockBar, "value", Block, 0.5f);
         if (num > 0)

@@ -6,12 +6,19 @@ public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
     public static int Seed = 1223;
+    public static int ElectricityCoin;
+    public static int TransitionEnergy;
+    public static int TransitionEnergyMax;
+    public static int CurrentLevel;
     public static int IntentionRandomNum { get; private set; }
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
 
     public static void InitNewGame()
     {
+        ElectricityCoin = 100;
+        TransitionEnergy = 6;
+        TransitionEnergyMax = 6;
         IntentionRandomNum = new Random(Seed).Next();
         PositionRandomNum = new Random(Seed).Next();
         FirstLevelState.Clear();
@@ -84,3 +91,4 @@ public class ObservableList<T> : List<T>
 
     // 可扩展其他方法（如 Insert、Clear 等）
 }
+

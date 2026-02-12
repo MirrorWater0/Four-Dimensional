@@ -294,8 +294,9 @@ public partial class LevelProgress : Control
         AssignNodeTypes(rng);
 
         // 4. Unlock Start (only if this is a new game, not loading from save)
-        bool isNewGame = GameInfo.FirstLevelState.Count == 0 ||
-                         !GameInfo.FirstLevelState.Values.Any(state => state != LevelNode.LevelState.Locked);
+        bool isNewGame =
+            GameInfo.FirstLevelState.Count == 0
+            || !GameInfo.FirstLevelState.Values.Any(state => state != LevelNode.LevelState.Locked);
 
         if (isNewGame)
         {
@@ -303,6 +304,26 @@ public partial class LevelProgress : Control
             {
                 if (node != null)
                     node.Unlock();
+            }
+        }
+        else
+        {
+            foreach (var kvp in _paths)
+            {
+                LevelNode from = kvp.Key.Item1;
+                LevelNode to = kvp.Key.Item2;
+                ProgressBar accessWay = kvp.Value;
+
+                // Only show paths originating from a Completed node (the path we took)
+                if (from.State == LevelNode.LevelState.Completed)
+                {
+                    // Case 1: Past history - Both nodes are completed
+                    // Case 2: Current options - From Completed to Unlocked (available next steps)
+                    if (to.State == LevelNode.LevelState.Completed)
+                    {
+                        accessWay.Value = 100;
+                    }
+                }
             }
         }
     }
@@ -347,7 +368,7 @@ public partial class LevelProgress : Control
         _paths[(from, to)] = accessWay;
     }
 
-    private void OnNodeSelected(LevelNode selectedNode)
+    public void OnNodeSelected(LevelNode selectedNode)
     {
         LockSiblings(selectedNode);
         AnimatePathTo(selectedNode);
@@ -421,7 +442,7 @@ public partial class LevelProgress : Control
             GameInfo.FirstLevelState[node.SelfCoordinate] = LevelNode.LevelState.Locked;
         }
 
-        node.Button.Pressed += () => OnNodeSelected(node);
+        // node.Button.Pressed += () => OnNodeSelected(node);
         return node;
     }
 

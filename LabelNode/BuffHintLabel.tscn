@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://7d0ebadqr3cd"]
+[gd_scene format=3 uid="uid://7d0ebadqr3cd"]
 
 [ext_resource type="Script" uid="uid://cbwa86f1lvhat" path="res://LabelNode/BuffHintLabel.cs" id="1_cpt8r"]
 
-[node name="BuffHintLabel" type="RichTextLabel"]
+[node name="BuffHintLabel" type="RichTextLabel" unique_id=1933578828]
 z_index = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -14,7 +14,7 @@ offset_bottom = -1009.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_outline_color = Color(18.892157, 18.892157, 18.892157, 1)
-theme_override_constants/outline_size = 5
+theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 50
 bbcode_enabled = true
 text = "sdsds"

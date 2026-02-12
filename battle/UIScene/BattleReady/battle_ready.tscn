@@ -50,6 +50,7 @@ mouse_filter = 2
 metadata/_edit_lock_ = true
 
 [node name="TextureRect" type="TextureRect" parent="." unique_id=619797561]
+visible = false
 material = SubResource("CanvasItemMaterial_e2bq2")
 layout_mode = 0
 offset_right = 1920.0

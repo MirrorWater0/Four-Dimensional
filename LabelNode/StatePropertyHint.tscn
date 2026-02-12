@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://f5qsbda42a2d"]
+
+[node name="StatePropertyHint" type="Label" unique_id=1632157333]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1696.0
+offset_bottom = -1026.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 40
+text = "sddsdsd"

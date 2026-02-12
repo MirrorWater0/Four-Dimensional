@@ -17,8 +17,9 @@ public partial class SoundBarrier : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Power, 3);
         IncreaseProperties(OwnerCharater, PropertyType.Survivalibility, 4);
-        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataBlock(10 + OwnerCharater.BattleSurvivability);
+        await Task.Delay(200);
+        await Carry(OwnerCharater.BattleNode.PlayersList[0], 0);
     }
 }

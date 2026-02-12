@@ -4,7 +4,6 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using Godot;
 
-[Tool]
 public partial class LevelNode : ColorRect
 {
     [Export]
@@ -153,6 +152,7 @@ public partial class LevelNode : ColorRect
                     node.Unlock();
             }
         }
+        GetParent().GetParent<LevelProgress>().OnNodeSelected(this);
         State = LevelState.Completed;
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://dj7fnam6xalld"]
+
+[ext_resource type="Script" uid="uid://ctfp7tpcv8l2p" path="res://PreloadeScene.cs" id="1_2o3yy"]
+
+[node name="PreloadeScene" type="Node2D" unique_id=2003656134]
+script = ExtResource("1_2o3yy")

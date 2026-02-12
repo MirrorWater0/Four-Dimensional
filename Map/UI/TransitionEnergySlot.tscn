@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://c6bqtraps7ax0"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vk5l4"]
+bg_color = Color(0.8627451, 0.9019608, 1, 0)
+skew = Vector2(0.5, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8627451, 0.9019608, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cccvd"]
+bg_color = Color(0.36078432, 0.8392157, 1, 1)
+skew = Vector2(0.5, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.8627451, 0.9019608, 1, 0)
+
+[sub_resource type="Theme" id="Theme_cccvd"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_vk5l4")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_cccvd")
+
+[node name="ProgressBar" type="ProgressBar" unique_id=849634312]
+custom_minimum_size = Vector2(20, 40)
+theme = SubResource("Theme_cccvd")
+value = 100.0
+show_percentage = false

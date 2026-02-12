@@ -8,10 +8,11 @@
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
 [ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="10_nlecm"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
-[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/ExitButton.cs" id="11_cccvd"]
+[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/UI/ExitButton.cs" id="11_cccvd"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
 [ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
+[ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
@@ -72,28 +73,6 @@ shader = ExtResource("12_jq5q4")
 shader_parameter/icon_scale = 1.20000004768372
 shader_parameter/base_thickness = 0.01400000031574
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vk5l4"]
-bg_color = Color(0.8627451, 0.9019608, 1, 0)
-skew = Vector2(0.5, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.8627451, 0.9019608, 1, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cccvd"]
-bg_color = Color(0.36078432, 0.8392157, 1, 1)
-skew = Vector2(0.5, 0)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0.8627451, 0.9019608, 1, 0)
-
-[sub_resource type="Theme" id="Theme_cccvd"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_vk5l4")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_cccvd")
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0g0qh"]
 shader = ExtResource("13_jq5q4")
 shader_parameter/icon_color = Color(1, 0.8862745, 0.5647059, 1)
@@ -133,11 +112,11 @@ disabled = true
 metadata/_edit_lock_ = true
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
-position = Vector2(10, 0)
+position = Vector2(10, 5)
 limit_left = 0
 limit_top = 0
 limit_right = 3500
-limit_bottom = 1080
+limit_bottom = 1082
 position_smoothing_enabled = true
 metadata/_edit_lock_ = true
 
@@ -246,65 +225,24 @@ layer = 2
 layout_mode = 0
 mouse_filter = 1
 
-[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1054898308]
+[node name="PlayerResourceState" type="CanvasLayer" parent="." unique_id=1054898308]
 layer = 10
+script = ExtResource("13_ehio4")
 
-[node name="Control" type="Control" parent="CanvasLayer" unique_id=1551756892]
+[node name="TransitionEnergyControl" type="Control" parent="PlayerResourceState" unique_id=1551756892]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/Control" unique_id=690674300]
+[node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
 layout_mode = 0
 offset_left = 150.0
 offset_top = 18.0
 offset_right = 290.0
 offset_bottom = 58.0
 
-[node name="ProgressBar" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=1791351413]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="ProgressBar2" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=564719088]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="ProgressBar3" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=1180038305]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="ProgressBar4" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=2113955780]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="ProgressBar5" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=1223123243]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="ProgressBar6" type="ProgressBar" parent="CanvasLayer/Control/HBoxContainer" unique_id=226425797]
-custom_minimum_size = Vector2(20, 40)
-layout_mode = 2
-theme = SubResource("Theme_cccvd")
-value = 100.0
-show_percentage = false
-
-[node name="Label" type="Label" parent="CanvasLayer/Control" unique_id=923755580]
+[node name="Label" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=923755580]
 layout_mode = 0
 offset_left = 22.0
 offset_top = 11.0
@@ -313,14 +251,14 @@ offset_bottom = 60.0
 theme = ExtResource("10_svc60")
 text = "Energy"
 
-[node name="ColorRect" type="ColorRect" parent="CanvasLayer" unique_id=360590376]
+[node name="ElectricityCoin" type="ColorRect" parent="PlayerResourceState" unique_id=360590376]
 material = SubResource("ShaderMaterial_0g0qh")
 offset_left = 51.0
 offset_top = 72.0
 offset_right = 96.0
 offset_bottom = 117.0
 
-[node name="Label" type="Label" parent="CanvasLayer/ColorRect" unique_id=150578415]
+[node name="Label" type="Label" parent="PlayerResourceState/ElectricityCoin" unique_id=150578415]
 layout_mode = 0
 offset_left = 64.0
 offset_top = -2.0

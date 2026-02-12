@@ -75,10 +75,6 @@ public partial class ChoseCharater : CanvasLayer
     public void continueGame()
     {
         SaveSystem.LoadAll();
-        foreach (var key in GameInfo.FirstLevelState.Keys)
-        {
-            GD.Print(GameInfo.FirstLevelState[key]);
-        }
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
 }

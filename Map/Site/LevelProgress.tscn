@@ -24,6 +24,6 @@ script = ExtResource("1_pkhks")
 material = SubResource("ShaderMaterial_w4thg")
 layout_mode = 0
 offset_right = 3500.0
-offset_bottom = 1080.0
+offset_bottom = 1090.0
 mouse_filter = 2
 metadata/_edit_lock_ = true

@@ -82,7 +82,7 @@ public partial class Skill
         await AttackAnimation(targets[0]);
 
         await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
-        await Task.Delay(200);
+        await Task.Delay(100);
     }
 
     public async Task Attack2(float basis) //顺位二段攻击
@@ -192,7 +192,18 @@ public partial class Skill
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
+        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
+        hint.Text = $"[color=red]{type}[/color] +{value}";
+        hint.TargetPosition = new Vector2(0, 150);
+        target.AddChild(hint);
         Buff.GhostExplode(icon, new Vector2(2f, 2f));
+    }
+
+    public async Task Carry(Character target, int skillIndex)
+    {
+        if (target.State == Character.CharacterState.Dying)
+            return;
+        await target.Skills[skillIndex].Effect();
     }
 
     public void BuffAdd(Buff.BuffName type, int stack) { }
