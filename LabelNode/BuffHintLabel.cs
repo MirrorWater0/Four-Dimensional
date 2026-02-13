@@ -3,6 +3,8 @@ using Godot;
 
 public partial class BuffHintLabel : RichTextLabel
 {
+    public bool RandomOffset = false;
+
     public enum Which
     {
         vanish,
@@ -26,23 +28,27 @@ public partial class BuffHintLabel : RichTextLabel
 
     public override async void _Ready()
     {
+        if (RandomOffset)
+        {
+            float randomX = (float)GD.RandRange(-100, 100);
+            float randomY = (float)GD.RandRange(-70, 70);
+            TargetPosition += new Vector2(randomX, randomY);
+        }
         // Wait for layout to be calculated
         await ToSignal(GetTree(), "process_frame");
-        Modulate *= 2f;
         // Center the label horizontally by offsetting by half the width
         float centeredX = -Size.X / 2;
         Position = TargetPosition + new Vector2(centeredX, -250);
 
         PivotOffset = Size / 2;
 
-        Random random = new Random();
         Scale = new Vector2(0.1f, 0.1f);
         Modulate = new Color(1, 1, 1, 0);
         CreateTween()
             .TweenProperty(this, "position", Position + new Vector2(0, -40), 0.2f)
             .SetEase(Tween.EaseType.Out);
         CreateTween()
-            .TweenProperty(this, "modulate", new Color(1, 1, 1, 0.8f), 0.2f)
+            .TweenProperty(this, "modulate", 1.5f * new Color(1, 1, 1, 1f), 0.2f)
             .SetEase(Tween.EaseType.Out);
         CreateTween()
             .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)

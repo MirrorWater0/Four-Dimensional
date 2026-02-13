@@ -10,7 +10,7 @@ using Godot;
 public partial class Battle : Node2D
 {
     public static bool Istest = true;
-    public Random BattleIntentionRandom = new Random(GameInfo.IntentionRandomNum);
+    public Random BattleIntentionRandom;
 
     [Signal]
     public delegate void NextEventHandler();
@@ -76,7 +76,6 @@ public partial class Battle : Node2D
     public GlowLabel EnemySpeedLabel => field ??= GetNode("SpeedBox/EnemySpeed/Label") as GlowLabel;
     public ProgressBar PlayerSpeedBar => field ??= GetNode("SpeedBox/PlayerSpeed") as ProgressBar;
     public ProgressBar EnemySpeedBar => field ??= GetNode("SpeedBox/EnemySpeed") as ProgressBar;
-
     public override async void _Ready()
     {
         RetreatButton = GetNode("Retreat") as Button;
@@ -130,11 +129,9 @@ public partial class Battle : Node2D
             enemy.DisplayIntention();
         }
 
-        await Task.Delay(1000);
+        await Task.Delay(800);
         PlayerSpeed = 0;
         EnemySpeed = 0;
-        // PlayerSpeedLabel.Text = "(" + PlayersList.Sum(x => x.Speed) + ")";
-        // EnemySpeedLabel.Text = "(" + EnemiesList.Sum(x => x.Speed) + ")";
 
         await BattleBegin1();
     }

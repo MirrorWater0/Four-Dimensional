@@ -10,6 +10,7 @@ public partial class BattlePreview : Control
     public Button StartBattleButton => field ??= GetNode<Button>("StartBattle");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
+    public int RandomNum;
 
     public override void _Ready()
     {
@@ -108,12 +109,14 @@ public partial class BattlePreview : Control
                 Callable.From(() =>
                 {
                     Close();
-                    exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
-                    var battle =
-                        GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
                     var layer = new CanvasLayer();
                     layer.Layer = 10;
                     GetTree().Root.AddChild(layer);
+                    exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
+
+                    var battle =
+                        GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
+                    battle.BattleIntentionRandom = new Random(RandomNum);
                     layer.AddChild(battle);
                     mask.Visible = false;
                 })

@@ -12,7 +12,7 @@ public partial class LevelProgress : Control
     private const float MapLeftMargin = 200f;
 
     [Export]
-    public float JitterAmount = 100f;
+    public float JitterAmount = 90f;
 
     // Branch control parameters (percentage of nodes per stage)
     [Export]
@@ -22,8 +22,8 @@ public partial class LevelProgress : Control
     public int ThreeBranchPercentage = 10; // % of nodes with 3 branches
 
     // Remaining nodes will have 1 branch
-    private PackedScene _nodeScene;
-    private PackedScene _accessWayScene;
+    private PackedScene _nodeScene => GD.Load<PackedScene>("res://Map/Site/LevelNode.tscn");
+    private PackedScene _accessWayScene => GD.Load<PackedScene>("res://Map/Site/AccessWay.tscn");
     private List<List<LevelNode>> _mapNodes = new List<List<LevelNode>>();
     private Dictionary<(LevelNode, LevelNode), ProgressBar> _paths =
         new Dictionary<(LevelNode, LevelNode), ProgressBar>();
@@ -31,21 +31,12 @@ public partial class LevelProgress : Control
     // Using a separate container for nodes to separate them from other potential children
     private Control _nodeContainer;
     private Control _connectionContainer;
+    private readonly Random rng = new Random(GameInfo.Seed);
 
     public override void _Ready()
     {
         // Allow mouse events to pass through empty space to the underlying Map DragButton
         MouseFilter = MouseFilterEnum.Ignore;
-
-        _nodeScene = GD.Load<PackedScene>("res://Map/Site/LevelNode.tscn");
-        _accessWayScene = GD.Load<PackedScene>("res://Map/Site/AccessWay.tscn");
-
-        // Remove existing static layout if any, or just ignore VBoxContainer
-        var existingVBox = GetNodeOrNull<VBoxContainer>("VBoxContainer");
-        if (existingVBox != null)
-        {
-            existingVBox.QueueFree();
-        }
 
         _connectionContainer = new Control();
         _connectionContainer.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -63,7 +54,6 @@ public partial class LevelProgress : Control
 
     private void GenerateMap()
     {
-        Random rng = new Random(GameInfo.Seed);
         _mapNodes.Clear();
 
         // 1. Generate Nodes (Left to Right)
@@ -417,6 +407,7 @@ public partial class LevelProgress : Control
     private LevelNode CreateNode(int x, int y, float jitterY = 0)
     {
         var node = _nodeScene.Instantiate<LevelNode>();
+        node.RandomNum = rng.Next();
         _nodeContainer.AddChild(node);
 
         float totalMapHeight = (MapHeight - 1) * NodeSpacingY;

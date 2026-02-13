@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Reflection;
 using Godot;
 
 public static partial class GameInfo
@@ -19,8 +21,6 @@ public static partial class GameInfo
         ElectricityCoin = 100;
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
-        IntentionRandomNum = new Random(Seed).Next();
-        PositionRandomNum = new Random(Seed).Next();
         FirstLevelState.Clear();
         // Map generation logic in LevelProgress will populate this
         GD.Print("InitNewGame");
@@ -92,3 +92,20 @@ public class ObservableList<T> : List<T>
     // 可扩展其他方法（如 Insert、Clear 等）
 }
 
+public static class EnumExtensions
+{
+    public static string GetDescription(this Enum value)
+    {
+        FieldInfo fi = value.GetType().GetField(value.ToString());
+        DescriptionAttribute[] attributes = (DescriptionAttribute[])
+            fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
+
+        // 获取特性中写的字符串（作为翻译 Key）
+        string key = attributes.Length > 0 ? attributes[0].Description : value.ToString();
+
+        // 【核心】：调用 Godot 的翻译函数 Tr()
+        // 如果翻译表中能找到这个 Key，它会返回当前语言的文字；找不到则返回 Key 本身。
+        return TranslationServer.Translate(key);
+        // 在 Godot 4.x 中，通常也可以直接用 GodotObject.Tr(key)
+    }
+}

@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,7 +9,10 @@ public partial class Skill
 {
     public enum PropertyType
     {
+        [Description("力量")]
         Power,
+
+        [Description("生存")]
         Survivalibility,
     }
 
@@ -193,8 +197,10 @@ public partial class Skill
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"[color=red]{type}[/color] +{value}";
+        hint.Text = $"[color=red]{type.GetDescription()}[/color] +{value}";
         hint.TargetPosition = new Vector2(0, 150);
+        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 100);
+        hint.RandomOffset = true;
         target.AddChild(hint);
         Buff.GhostExplode(icon, new Vector2(2f, 2f));
     }

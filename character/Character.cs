@@ -63,6 +63,7 @@ public partial class Character : Node2D
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
+    public Control LabelAddNode => field ??= GetNode<Control>("LabelAddNode");
     [Export]
     public Node2D Sprite;
     public AnimationPlayer TrailAnimation => field ??= GetNode<AnimationPlayer>("TrailAnimation");
@@ -229,6 +230,7 @@ public partial class Character : Node2D
         Effect.Animation.Play("energe");
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
         hint.Text = $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}";
+        hint.TargetPosition = GlobalPosition;
         AddChild(hint);
     }
 

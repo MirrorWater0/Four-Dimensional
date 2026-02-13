@@ -119,6 +119,7 @@ public partial class Buff
     public void Hint(BuffName name, BuffHintLabel.Which which)
     {
         BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
+        label.TargetPosition = Owner.GlobalPosition;
         label.Initialize(which, name.ToString());
         label.Position = Vector2.Zero;
         Owner.AddChild(label);

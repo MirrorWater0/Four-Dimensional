@@ -35,11 +35,14 @@ public partial class LevelNode : ColorRect
     public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
     public List<LevelNode> NextNodes = new List<LevelNode>();
     public List<LevelNode> ParentNodes = new List<LevelNode>();
-    public PackedScene BattlePreviewScene = GD.Load<PackedScene>("res://battle/BattlePreview.tscn");
+    public static PackedScene BattlePreviewScene = GD.Load<PackedScene>(
+        "res://battle/BattlePreview.tscn"
+    );
     public Vector2I SelfCoordinate;
     public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
+    public int RandomNum;
 
     public override void _Ready()
     {
@@ -73,16 +76,12 @@ public partial class LevelNode : ColorRect
 
     // public override void _Process(double delta)
     // {
-    //     if (BarVisible == false)
-    //     {
-    //         ProgressBar.Visible = false;
-    //     }
     // }
 
     public List<EnemyRegedit> ProduceEnemies()
     {
         List<EnemyRegedit> list = new() { new EvilRegedit(), new EvilRegedit(), new EvilRegedit() };
-        RandomPosition(list);
+        RandomPosition(list, RandomNum);
         return list;
     }
 
@@ -201,7 +200,7 @@ public partial class LevelNode : ColorRect
         mat.SetShaderParameter("ring_color", ringColor);
     }
 
-    public bool IsAnimate = false;
+    private bool IsAnimate = false;
 
     public void PressButton()
     {
@@ -217,7 +216,9 @@ public partial class LevelNode : ColorRect
             .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
             .SetEase(Tween.EaseType.Out);
         EnemiesRegeditList = ProduceEnemies();
-        var preview = BattlePreviewScene.Instantiate();
+
+        var preview = BattlePreviewScene.Instantiate() as BattlePreview;
+        preview.RandomNum = RandomNum;
         tween
             .Chain()
             .TweenCallback(
@@ -229,10 +230,10 @@ public partial class LevelNode : ColorRect
             );
     }
 
-    public static void RandomPosition<T>(List<T> list)
+    public static void RandomPosition<T>(List<T> list, int RandomNum)
         where T : EnemyRegedit
     {
-        Random random = new Random(GameInfo.PositionRandomNum);
+        Random random = new Random(RandomNum);
 
         // 1. 准备所有可能的位置 (1 到 9)
         List<int> possiblePositions = Enumerable.Range(1, 9).ToList();
