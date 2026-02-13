@@ -131,30 +131,17 @@ public class DyingBuff : Buff
     public DyingBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public async void Trigger()
+    public async Task Trigger()
     {
         switch (ThisBuffName)
         {
             case BuffName.Rebirth:
-                await Task.Delay(200);
-                Owner
-                    .CreateTween()
-                    .TweenProperty(Owner, "modulate", new Godot.Color(1, 1, 1, 1), 0.5f);
-                Owner.Recovery(Owner.BattleLifemax);
-                Owner.State = Character.CharacterState.Normal;
-
-                // Only tween the label if we still have stacks after this use
-                if (Stack > 1)
+                if (Stack >= 1)
                 {
+                    Owner.Recovery(Owner.BattleLifemax);
                     Stack--;
                     TweenLabel();
                 }
-                else
-                {
-                    Stack = 0;
-                }
-
-                GD.Print("Rebirth", Owner.Life, "array");
                 break;
         }
 

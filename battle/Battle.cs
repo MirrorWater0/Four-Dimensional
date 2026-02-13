@@ -28,9 +28,6 @@ public partial class Battle : Node2D
     public CharaterControl CharaterControl =>
         field ??= GetNode("CharaterControl") as CharaterControl;
 
-    public int PlayerDyingNum;
-    public int EnemiesDyingNum;
-
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
     public Button RetreatButton;
 

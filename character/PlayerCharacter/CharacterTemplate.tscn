@@ -2,9 +2,7 @@
 
 [ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Character.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
-[ext_resource type="Texture2D" uid="uid://d3dbbwbx5lfad" path="res://asset/CharaterState/lifebar.png" id="2_4ikhs"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="3_lucsw"]
-[ext_resource type="Texture2D" uid="uid://cff55km7arrr3" path="res://asset/CharaterState/life.png" id="4_eq06d"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="5_yic7g"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="7_5ewuv"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="7_lyi1f"]
@@ -16,6 +14,56 @@
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
+
+[sub_resource type="Shader" id="Shader_n42br"]
+code = "shader_type canvas_item;
+
+void vertex() {
+	// Called for every vertex the material is visible on.
+}
+
+void fragment() {
+	if(COLOR.r > 0.9){
+		COLOR.a = 0.;
+	}
+}
+
+//void light() {
+	// Called for every pixel for every light affecting the CanvasItem.
+	// Uncomment to replace the default light processing function with this one.
+//}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_igmo8"]
+shader = SubResource("Shader_n42br")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_eq06d"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.34, 0, 0, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_faub5"]
+bg_color = Color(0.88850313, 0, 0, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.7176471, 0.7176471, 0.7176471, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="Theme" id="Theme_eq06d"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_eq06d")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_faub5")
 
 [sub_resource type="Shader" id="Shader_vajdu"]
 code = "shader_type canvas_item;
@@ -88,29 +136,43 @@ float t = iTime + 19.0;
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_evd82"]
 shader = SubResource("Shader_vajdu")
 shader_parameter/isADDtex = true
-shader_parameter/light = Color(0.40236, 0.3906, 0.42, 0)
+shader_parameter/light = Color(0.3529412, 0.43137255, 0.47058824, 1)
 
-[sub_resource type="Shader" id="Shader_n42br"]
-code = "shader_type canvas_item;
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lucsw"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
 
-void vertex() {
-	// Called for every vertex the material is visible on.
-}
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5ewuv"]
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
-void fragment() {
-	if(COLOR.r > 0.9){
-		COLOR.a = 0.;
-	}
-}
+[sub_resource type="Theme" id="Theme_faub5"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_lucsw")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_5ewuv")
 
-//void light() {
-	// Called for every pixel for every light affecting the CanvasItem.
-	// Uncomment to replace the default light processing function with this one.
-//}
-"
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ek3d4"]
+bg_color = Color(0.6, 0.6, 0.6, 0.38039216)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_igmo8"]
-shader = SubResource("Shader_n42br")
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yic7g"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="Theme" id="Theme_yic7g"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_ek3d4")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_yic7g")
 
 [sub_resource type="Animation" id="Animation_ttcdc"]
 length = 0.001
@@ -216,6 +278,10 @@ shader_parameter/handle_color = Color(0.38417843, 0.13872549, 0.13861337, 1)
 shader_parameter/glow_intensity = 0.730000034675
 shader_parameter/angle = 0.0
 
+[sub_resource type="Theme" id="Theme_lucsw"]
+Label/constants/outline_size = 4
+Label/font_sizes/font_size = 25
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_yic7g"]
 shader = ExtResource("15_eq06d")
 shader_parameter/color = Color(0.6, 1, 1, 1)
@@ -257,15 +323,13 @@ point_count = 2
 [sub_resource type="Gradient" id="Gradient_5tqd2"]
 colors = PackedColorArray(10.811, 10.811, 10.811, 0.729, 1, 1, 1, 1)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_37ane"]
-resource_local_to_scene = true
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gvqk1"]
 shader = ExtResource("5_yic7g")
-shader_parameter/blur_amount = 1.0
-shader_parameter/time_scale = 1.943
-shader_parameter/pulse_speed = 3.36
-shader_parameter/center = Vector2(0.5, 0.5)
-shader_parameter/radial_blur = true
-shader_parameter/motion_blur = false
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 50.0
+shader_parameter/line_speed = 10.0
+shader_parameter/aberration_amount = 0.02
+shader_parameter/beam_color = Color(0, 0.8, 1, 1)
 
 [sub_resource type="Animation" id="Animation_oexsw"]
 length = 0.001
@@ -375,64 +439,78 @@ z_index = 1
 scale = Vector2(0.8, 0.8)
 script = ExtResource("1_4ikhs")
 
-[node name="Block" type="Label" parent="." unique_id=1125559359]
-z_index = 2
-offset_left = -144.0
-offset_top = -234.0
-offset_right = -64.0
-offset_bottom = -185.0
-scale = Vector2(0.7, 0.7)
-theme = ExtResource("1_kvlfx")
-text = "120"
-horizontal_alignment = 2
-
-[node name="BlockBar" type="TextureProgressBar" parent="Block" unique_id=91266274]
-material = SubResource("ShaderMaterial_evd82")
-layout_mode = 0
-offset_left = 79.999985
-offset_top = 17.142868
-offset_right = 336.0
-offset_bottom = 40.142868
-value = 60.0
-texture_progress = ExtResource("2_4ikhs")
-
-[node name="Life" type="Label" parent="." unique_id=1787646224]
-z_index = 2
-offset_left = -20.0
-offset_top = -237.0
-offset_right = 52.0
-offset_bottom = -175.0
-scale = Vector2(0.7, 0.7)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_fonts/font = ExtResource("3_lucsw")
-theme_override_font_sizes/font_size = 50
-text = "100"
-
-[node name="LifeBar2" type="TextureProgressBar" parent="Life" unique_id=646485138]
-z_as_relative = false
-layout_mode = 0
-offset_left = -96.0
-offset_top = 21.0
-offset_right = 160.0
-offset_bottom = 61.0
-value = 100.0
-texture_progress = ExtResource("2_4ikhs")
-
-[node name="LifeBar" type="TextureProgressBar" parent="Life" unique_id=485287208]
+[node name="LifeBar" type="ProgressBar" parent="." unique_id=843212991]
 show_behind_parent = true
 z_index = 1
 z_as_relative = false
 material = SubResource("ShaderMaterial_igmo8")
+offset_left = -87.2
+offset_top = -218.75
+offset_right = 87.499985
+offset_bottom = -205.00003
+theme = SubResource("Theme_eq06d")
+value = 30.0
+show_percentage = false
+
+[node name="BlockBar" type="ProgressBar" parent="LifeBar" unique_id=1512011168]
+material = SubResource("ShaderMaterial_evd82")
 layout_mode = 0
-offset_left = -96.0
-offset_top = 21.0
-offset_right = 160.0
-offset_bottom = 48.0
-max_value = 300.0
+offset_left = -0.049980164
+offset_top = 3.0517578e-05
+offset_right = 174.69998
+offset_bottom = 13.7500305
+theme = SubResource("Theme_faub5")
 value = 100.0
-texture_under = ExtResource("2_4ikhs")
-texture_progress = ExtResource("4_eq06d")
+show_percentage = false
+
+[node name="BufferBar" type="ProgressBar" parent="LifeBar" unique_id=2029478116]
+z_as_relative = false
+layout_mode = 0
+offset_left = 0.9500027
+offset_top = 2.5
+offset_right = 174.39998
+offset_bottom = 10.5
+theme = SubResource("Theme_yic7g")
+value = 50.0
+show_percentage = false
+
+[node name="Block" type="Label" parent="LifeBar" unique_id=1125559359]
+z_index = 2
+layout_mode = 0
+offset_left = -56.549988
+offset_top = -11.25
+offset_right = 23.450012
+offset_bottom = 37.75
+scale = Vector2(0.7, 0.7)
+theme = ExtResource("1_kvlfx")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 5
+text = "120"
+horizontal_alignment = 2
+
+[node name="Life" type="Label" parent="LifeBar" unique_id=1787646224]
+z_index = 2
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -36.399994
+offset_top = -24.374977
+offset_right = 35.600006
+offset_bottom = 37.625023
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.7, 0.7)
+pivot_offset_ratio = Vector2(0.5, 0)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("3_lucsw")
+theme_override_font_sizes/font_size = 50
+text = "100"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Hit" type="GPUParticles2D" parent="." unique_id=397376148]
 self_modulate = Color(25.946, 45.946, 64.324, 1)
@@ -470,11 +548,12 @@ metadata/_edit_lock_ = true
 [node name="State" type="HBoxContainer" parent="." unique_id=134619418]
 z_index = 2
 material = SubResource("CanvasItemMaterial_yic7g")
-offset_left = -105.0
-offset_top = -263.75
-offset_right = 67.0
-offset_bottom = -223.75
-pivot_offset = Vector2(20, 20)
+offset_left = -100.00001
+offset_top = -252.50002
+offset_right = 71.99999
+offset_bottom = -212.50002
+scale = Vector2(0.8, 0.8)
+theme_override_constants/separation = 3
 
 [node name="PowerIcon" type="ColorRect" parent="State" unique_id=1018149272]
 material = SubResource("ShaderMaterial_eq06d")
@@ -482,49 +561,75 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/PowerIcon" unique_id=789674090]
-layout_mode = 0
-offset_left = 23.0
-offset_top = 14.0
-offset_right = 37.0
-offset_bottom = 49.0
-theme_override_colors/font_color = Color(1, 0, 0, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
+[node name="Label" type="Label" parent="State/PowerIcon" unique_id=762613711]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme = SubResource("Theme_lucsw")
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
 text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="SurvivabilityIcon" type="ColorRect" parent="State" unique_id=1682998539]
 material = SubResource("ShaderMaterial_yic7g")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="State/SurvivabilityIcon" unique_id=1311386747]
-layout_mode = 0
-offset_left = 26.0
-offset_top = 13.0
-offset_right = 46.0
-offset_bottom = 48.0
-theme_override_colors/font_color = Color(0, 1, 1, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
+[node name="Label" type="Label" parent="State/SurvivabilityIcon" unique_id=971886203]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme = SubResource("Theme_lucsw")
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
 text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="EnergeIcon" type="ColorRect" parent="State" unique_id=80950031]
 material = SubResource("ShaderMaterial_5ewuv")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="State/EnergeIcon" unique_id=461634196]
-layout_mode = 0
-offset_left = 26.0
-offset_top = 13.0
-offset_right = 46.0
-offset_bottom = 48.0
+[node name="Label" type="Label" parent="State/EnergeIcon" unique_id=1936578214]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme = SubResource("Theme_lucsw")
 theme_override_colors/font_color = Color(0.8, 1, 1, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
 text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="SpeedIcon" type="ColorRect" parent="State" unique_id=1205133209]
 material = SubResource("ShaderMaterial_oexsw")
@@ -532,16 +637,25 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1209104342]
-layout_mode = 0
-offset_left = 23.0
-offset_top = 14.0
-offset_right = 37.0
-offset_bottom = 49.0
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
+[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1048405910]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme = SubResource("Theme_lucsw")
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
 text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Path2D" type="Path2D" parent="." unique_id=1145431090]
 modulate = Color(1, 0, 0, 1)
@@ -566,7 +680,7 @@ rotation = -0.0051309876
 [node name="Sprite2D" type="Sprite2D" parent="Path2D/PathFollow2D" unique_id=1211337423]
 
 [node name="Sprite" type="Sprite2D" parent="." unique_id=968479023]
-material = SubResource("ShaderMaterial_37ane")
+material = SubResource("ShaderMaterial_gvqk1")
 scale = Vector2(0.16, 0.16)
 texture = ExtResource("7_lyi1f")
 
@@ -607,8 +721,3 @@ offset_bottom = 30.000004
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=605015123]
 libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
-
-[node name="LabelAddNode" type="Control" parent="." unique_id=902646769]
-top_level = true
-layout_mode = 3
-anchors_preset = 0

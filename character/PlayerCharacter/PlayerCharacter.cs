@@ -80,10 +80,4 @@ public partial class PlayerCharacter : Character
             );
         }
     }
-
-    public override void Dying()
-    {
-        BattleNode.PlayerDyingNum++;
-        base.Dying();
-    }
 }

@@ -1,4 +1,4 @@
-shader_type canvas_item;
+ shader_type canvas_item;
 render_mode blend_add, unshaded;
 
 // --- 原有参数 ---

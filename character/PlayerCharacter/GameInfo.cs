@@ -61,6 +61,19 @@ public static class GlobalFunction
                 duration
             );
     }
+
+    public static void TweenShader(Node2D node, string var, float val, float duration)
+    {
+        node.CreateTween()
+            .TweenMethod(
+                Callable.From<float>(value =>
+                    ((ShaderMaterial)node.Material).SetShaderParameter(var, value)
+                ),
+                ((ShaderMaterial)node.Material).GetShaderParameter(var),
+                val,
+                duration
+            );
+    }
 }
 
 public class ObservableList<T> : List<T>

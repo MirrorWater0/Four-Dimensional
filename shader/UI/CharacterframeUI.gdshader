@@ -10,9 +10,11 @@ uniform float global_thickness : hint_range(0.1, 3.0) = 1.0;
 uniform float bg_ring_radius : hint_range(0.4, 1.0) = 0.74;
 uniform float bg_ring_opacity : hint_range(0.0, 1.0) = 0.2;
 
+
 // --- 【新增】圆弧长度控制参数 ---
 // 0.1 是极短的点，0.9 是接近半圆的长弧
 uniform float heavy_arc_len : hint_range(0.05, 0.95) = 0.35;
+
 
 float sdTriangle(in vec2 p, in float r) {
     const float k = sqrt(3.0);

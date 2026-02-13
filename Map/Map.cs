@@ -7,7 +7,7 @@ public partial class Map : Control
     public Button DragButton => field ??= GetNode("DragButton") as Button;
     public TextureRect GameMap => field ??= GetNode("GameMap") as TextureRect;
     public Camera2D Camera => field ??= GetNode("Camera") as Camera2D;
-
+    public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
     private Vector2 _targetPos;
     private bool _isDrag;
     Vector2 _velocity = Vector2.Zero;
@@ -56,6 +56,7 @@ public partial class Map : Control
 
     public override void _Ready()
     {
+        SeedLabel.Text = $"Seed: {GameInfo.Seed}";
         DragButton.Disabled = false;
         _targetPos = Camera.Position;
         DragButton.ButtonDown += () =>

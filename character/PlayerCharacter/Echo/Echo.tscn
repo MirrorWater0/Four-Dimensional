@@ -6,17 +6,16 @@
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="5_hb044"]
 [ext_resource type="Texture2D" uid="uid://ca61sahctc7lw" path="res://asset/PlayerCharater/Echo/Echo.png" id="5_jxkbc"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_5s0qr"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jxkbc"]
 resource_local_to_scene = true
 shader = ExtResource("4_dsw3a")
-shader_parameter/blur_amount = 1.0
-shader_parameter/time_scale = 1.943
-shader_parameter/pulse_speed = 3.36
-shader_parameter/center = Vector2(0.5, 0.5)
-shader_parameter/radial_blur = true
-shader_parameter/motion_blur = false
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/line_speed = 8.0
+shader_parameter/aberration_amount = 0.03
+shader_parameter/beam_color = Color(0, 1, 1, 1)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_1vdpg"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hb044"]
 resource_local_to_scene = true
 shader = ExtResource("5_hb044")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -37,8 +36,8 @@ Portrait = ExtResource("5_jxkbc")
 Sprite = NodePath("Sprite")
 
 [node name="Sprite" parent="." index="8" unique_id=968479023]
-material = SubResource("ShaderMaterial_5s0qr")
+material = SubResource("ShaderMaterial_jxkbc")
 texture = ExtResource("5_jxkbc")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_1vdpg")
+material = SubResource("ShaderMaterial_hb044")

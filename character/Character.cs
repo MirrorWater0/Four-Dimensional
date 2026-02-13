@@ -47,14 +47,14 @@ public partial class Character : Node2D
     public int Energy { get; protected set; } = 1;
 
     //properties label
-    public Label LifeLabel => field ??= GetNode("Life") as Label;
+    public Label LifeLabel => field ??= GetNode("LifeBar/Life") as Label;
     public Label PowerLabel;
     public Label DefenseLabel;
     public Label SpeedLabel;
-    public Label BlockLabel => field ??= GetNode<Label>("Block");
-    public TextureProgressBar BlockBar => field ??= GetNode<TextureProgressBar>("Block/BlockBar");
-    public TextureProgressBar LifeBar => field ??= GetNode<TextureProgressBar>("Life/LifeBar");
-    public TextureProgressBar LifeBar2 => field ??= GetNode<TextureProgressBar>("Life/LifeBar2");
+    public Label BlockLabel => field ??= GetNode<Label>("LifeBar/Block");
+    public ProgressBar BlockBar => field ??= GetNode<ProgressBar>("LifeBar/BlockBar");
+    public ProgressBar LifeBar => field ??= GetNode<ProgressBar>("LifeBar");
+    public ProgressBar BufferBar => field ??= GetNode<ProgressBar>("LifeBar/BufferBar");
     public Label PowerIconLabel => field ??= GetNode<Label>("State/PowerIcon/Label");
     public Label SurvivabilityIconLabel =>
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
@@ -63,7 +63,7 @@ public partial class Character : Node2D
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
-    public Control LabelAddNode => field ??= GetNode<Control>("LabelAddNode");
+
     [Export]
     public Node2D Sprite;
     public AnimationPlayer TrailAnimation => field ??= GetNode<AnimationPlayer>("TrailAnimation");
@@ -108,23 +108,21 @@ public partial class Character : Node2D
 
         BlockLabel.Text = Block.ToString();
         Life = BattleLifemax;
-        LifeLabel.Text = Life.ToString();
 
         LifeBar.MaxValue = BattleLifemax;
-        LifeBar2.MaxValue = BattleLifemax;
+        BufferBar.MaxValue = BattleLifemax;
         LifeBar.MinValue = 0;
-        LifeBar2.MinValue = 0;
+        BufferBar.MinValue = 0;
         LifeBar.Value = Life;
-        LifeBar2.Value = Life;
+        BufferBar.Value = Life;
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
         EnergeIconLabel.Text = Energy.ToString();
         SpeedIconLabel.Text = Speed.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
 
         Block = 0;
         BlockLabel.Text = Block.ToString();
-        BlockBar.MaxValue = BattleLifemax;
-        BlockBar.Value = 0;
 
         Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
         Hoverframe.PivotOffset = Hoverframe.Size / 2;
@@ -137,6 +135,24 @@ public partial class Character : Node2D
         {
             Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
         };
+
+        ShaderMaterial material = (ShaderMaterial)Sprite.Material.Duplicate();
+        material.ResourceLocalToScene = true;
+        Sprite.Material = material;
+        ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
+        GlobalFunction.TweenShader(Sprite, "progress", 0, 1f);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (Block > 0)
+        {
+            BlockBar.Visible = true;
+        }
+        else
+        {
+            BlockBar.Visible = false;
+        }
     }
 
     public virtual void StartAction()
@@ -178,13 +194,13 @@ public partial class Character : Node2D
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
         UpdataBlock(0);
 
-        CreateTween().TweenProperty(LifeBar2, "value", Life, 0.2f);
+        CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         LifeBar.Value = Life;
-        LifeLabel.Text = Life.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
 
-        if (Life <= 0)
+        if (Life == 0)
         {
-            Dying();
+            await Dying();
         }
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         Sprite.Modulate = new Color(1, 1, 1, 1);
@@ -193,26 +209,31 @@ public partial class Character : Node2D
     public virtual void Recovery(int num)
     {
         Life = Math.Clamp(Life + num, 0, BattleLifemax);
-        CreateTween().TweenProperty(LifeBar2, "value", Life, 0.2f);
+        CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
-        LifeLabel.Text = Life.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
         numlabel.NumberLabel.Text = "+" + num.ToString();
         numlabel.NumberLabel.AddThemeColorOverride("font_color", Colors.Green);
+
+        if (State == CharacterState.Dying)
+        {
+            State = CharacterState.Normal;
+            CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);
+        }
     }
 
-    public virtual void Dying()
+    public virtual async Task Dying()
     {
         State = CharacterState.Dying;
 
-        CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.5f);
-
+        CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.4f);
         if (DyingBuffs != null)
             for (int i = 0; i < DyingBuffs.Count; i++)
             {
                 GD.Print(DyingBuffs[i].ThisBuffName);
-                DyingBuffs[i].Trigger();
+                await DyingBuffs[i].Trigger();
                 if (DyingBuffs[i].Stack == 0)
                     DyingBuffs.RemoveAt(i);
             }
@@ -244,7 +265,7 @@ public partial class Character : Node2D
         }
         Block = Math.Clamp(Block + num, 0, 999);
         BlockLabel.Text = Block.ToString();
-        CreateTween().TweenProperty(BlockBar, "value", Block, 0.5f);
+
         if (num > 0)
         {
             Number number = Number.Instantiate<Number>();

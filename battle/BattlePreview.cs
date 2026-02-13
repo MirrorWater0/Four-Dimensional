@@ -11,6 +11,24 @@ public partial class BattlePreview : Control
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
     public int RandomNum;
+    public static System.Collections.Generic.Dictionary<int, int> remapEnemy { get; } =
+        new System.Collections.Generic.Dictionary<int, int>()
+        {
+            // 第一行 (子节点 0, 1, 2)
+            [7] = 3, // 对应子节点 0
+            [8] = 6, // 对应子节点 1
+            [9] = 9, // 对应子节点 2
+
+            // 第二行 (子节点 3, 4, 5)
+            [4] = 2, // 对应子节点 3
+            [5] = 5, // 对应子节点 4
+            [6] = 8, // 对应子节点 5
+
+            // 第三行 (子节点 6, 7, 8)
+            [1] = 1, // 对应子节点 6
+            [2] = 4, // 对应子节点 7
+            [3] = 7, // 对应子节点 8
+        };
 
     public override void _Ready()
     {
@@ -63,7 +81,7 @@ public partial class BattlePreview : Control
             );
             portrait.PortaitIndex = i;
             var positionindex = LevelNode.EnemiesRegeditList[i].PositionIndex;
-            EnemyFormation.GetChild(BattleReady.remap[positionindex] - 1).AddChild(portrait);
+            EnemyFormation.GetChild(remapEnemy[positionindex] - 1).AddChild(portrait);
         }
     }
 
@@ -95,7 +113,7 @@ public partial class BattlePreview : Control
 
     public void StartBattle()
     {
-        var mask = GetNode<ColorRect>("/root/Map/UI/Mask");
+        var mask = GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
         mask.Visible = true;
         mask.Modulate = new Color(0, 0, 0, 0);
         Tween tween = CreateTween();
@@ -110,7 +128,7 @@ public partial class BattlePreview : Control
                 {
                     Close();
                     var layer = new CanvasLayer();
-                    layer.Layer = 10;
+                    layer.Layer = 4;
                     GetTree().Root.AddChild(layer);
                     exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
 

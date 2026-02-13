@@ -7,18 +7,18 @@
 [ext_resource type="SpineSkeletonDataResource" uid="uid://bttb6ahtgolgm" path="res://asset/Spine/kasiya_skeleton_data_resource.tres" id="5_hk3p4"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="5_qnjc5"]
 [ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="6_hk3p4"]
+[ext_resource type="Shader" uid="uid://bymfuv7reqeku" path="res://shader/Effect/SpineCharacter.gdshader" id="7_q00pj"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_q00pj"]
 resource_local_to_scene = true
 shader = ExtResource("4_57vc2")
-shader_parameter/blur_amount = 1.0
-shader_parameter/time_scale = 2.011
-shader_parameter/pulse_speed = 1.0
-shader_parameter/center = Vector2(0.5, 0.5)
-shader_parameter/radial_blur = false
-shader_parameter/motion_blur = false
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/line_speed = 8.0
+shader_parameter/aberration_amount = 0.03
+shader_parameter/beam_color = Color(0, 1, 1, 1)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_7guyf"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0k6kc"]
 resource_local_to_scene = true
 shader = ExtResource("5_4wy8e")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -33,6 +33,21 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 1.5
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7guyf"]
+shader = ExtResource("7_q00pj")
+shader_parameter/character_height = 1500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_asyb8"]
+shader = ExtResource("4_57vc2")
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/line_speed = 8.0
+shader_parameter/aberration_amount = 0.03
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
 [node name="Kasiya" unique_id=1054388605 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_qhjne")]
 script = ExtResource("2_q5rnf")
 Portrait = ExtResource("5_qnjc5")
@@ -43,13 +58,15 @@ visible = false
 material = SubResource("ShaderMaterial_q00pj")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_7guyf")
+material = SubResource("ShaderMaterial_0k6kc")
 
 [node name="SpineSprite" type="SpineSprite" parent="." index="12" unique_id=683471657]
 skeleton_data_res = ExtResource("5_hk3p4")
+normal_material = SubResource("ShaderMaterial_7guyf")
 preview_skin = "default"
 preview_animation = "newAnimation"
 preview_frame = false
 preview_time = 0.0
+material = SubResource("ShaderMaterial_asyb8")
 scale = Vector2(0.27, 0.27)
 script = ExtResource("6_hk3p4")

@@ -12,7 +12,8 @@ public partial class ReadyButton : Button
     [Export]
     public CanvasLayer Layer;
     private Color _originalColor;
-    ColorRect ChangeEffect => field ??= GetNode("/root/Map/UI/ChangeEffect") as ColorRect;
+    [Export]
+    ColorRect ChangeEffect;
 
     public override async void _Ready()
     {

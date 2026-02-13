@@ -14,6 +14,7 @@ public partial class EnemyCharacter : Character
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex;
+
     public override void _Ready()
     {
         base._Ready();
@@ -53,20 +54,15 @@ public partial class EnemyCharacter : Character
         tween.TweenProperty(this, "position", OriginalPosition, 0.2f);
     }
 
-    public override void Dying()
-    {
-        BattleNode.EnemiesDyingNum++;
-        base.Dying();
-    }
-
     public async Task DisappearIntention()
     {
-        Buff.GhostExplode(IntentionContorl,new Vector2(2, 2));
+        Buff.GhostExplode(IntentionContorl, new Vector2(2, 2));
         await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
         AttackIntention.Visible = false;
         SurviveIntention.Visible = false;
         SpecialIntention.Visible = false;
     }
+
     public void DisplayIntention()
     {
         var skill = Skills[IntentionIndex];
