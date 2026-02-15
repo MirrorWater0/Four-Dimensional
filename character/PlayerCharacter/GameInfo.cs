@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using System.Text;
 using Godot;
 
 public static partial class GameInfo
@@ -83,10 +83,45 @@ public static class GlobalFunction
         if (string.IsNullOrEmpty(input))
             return input;
 
-        // 正则表达式说明：
-        // \d+ 匹配一个或多个数字
-        // [color={NumberColor}]$1[/color] 将匹配到的数字($1)包裹在颜色标签里
-        return Regex.Replace(input, @"(\d+)", $"[color={NumberColor}]$1[/color]");
+        // 仅高亮 BBCode 标签外的数字，避免破坏像 [color=#87CEEB] 这样的标签参数。
+        StringBuilder builder = new StringBuilder(input.Length * 2);
+        bool inTag = false;
+
+        for (int i = 0; i < input.Length; i++)
+        {
+            char ch = input[i];
+
+            if (ch == '[')
+            {
+                inTag = true;
+                builder.Append(ch);
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                builder.Append(ch);
+                continue;
+            }
+
+            if (!inTag && char.IsDigit(ch))
+            {
+                int start = i;
+                while (i < input.Length && char.IsDigit(input[i]))
+                    i++;
+
+                builder.Append($"[color={NumberColor}]");
+                builder.Append(input, start, i - start);
+                builder.Append("[/color]");
+                i--;
+                continue;
+            }
+
+            builder.Append(ch);
+        }
+
+        return builder.ToString();
     }
 }
 
@@ -121,18 +156,29 @@ public class ObservableList<T> : List<T>
 
 public static class EnumExtensions
 {
+    private const string BuffColor = "#87CEEB";
+
     public static string GetDescription(this Enum value)
     {
         FieldInfo fi = value.GetType().GetField(value.ToString());
-        DescriptionAttribute[] attributes = (DescriptionAttribute[])
-            fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
+        DescriptionAttribute[] attributes =
+            fi == null
+                ? Array.Empty<DescriptionAttribute>()
+                : (DescriptionAttribute[])
+                    fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
 
         // 获取特性中写的字符串（作为翻译 Key）
         string key = attributes.Length > 0 ? attributes[0].Description : value.ToString();
 
         // 【核心】：调用 Godot 的翻译函数 Tr()
         // 如果翻译表中能找到这个 Key，它会返回当前语言的文字；找不到则返回 Key 本身。
-        return TranslationServer.Translate(key);
+        string translated = TranslationServer.Translate(key);
+
+        // Buff 名称默认蓝色高亮，便于在技能描述和提示中快速识别。
+        if (value.GetType() == typeof(Buff.BuffName))
+            return $"[color={BuffColor}]{translated}[/color]";
+
+        return translated;
         // 在 Godot 4.x 中，通常也可以直接用 GodotObject.Tr(key)
     }
 }

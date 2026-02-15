@@ -6,17 +6,15 @@ public partial class KasiyaSpecialSkill : Node { }
 
 public class TerminateLight : Skill
 {
-    int BasisDamage = 10;
-    int UsedTimes = 1;
-    int EnergyCost = 2;
-    int addPower = 5;
+    private const int BaseDamage = 10;
+    private int UsedTimes = 1;
+    private const int EnergyCost = 2;
+    private const int PowerGain = 5;
 
     public TerminateLight()
         : base(SkillTypes.Special)
     {
-        Description =
-            $@"受到2倍力量加成{BasisDamage + OwnerCharater?.BattlePower}。
-        可用{UsedTimes}次：若能量值大于等于{EnergyCost},则增加{addPower}层力量,并消耗{EnergyCost}点能量。";
+        UpdateDescription();
     }
 
     public override string SkillName { get; set; } = "终末之光";
@@ -24,12 +22,23 @@ public class TerminateLight : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        await Attack1(BasisDamage + 2 * OwnerCharater.BattlePower);
+        await Attack1(BaseDamage + 2 * OwnerPower);
         if (UsedTimes > 0 && OwnerCharater.Energy >= EnergyCost)
         {
-            IncreaseProperties(OwnerCharater, PropertyType.Power, addPower);
+            IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
             OwnerCharater.UpdataEnergy(-EnergyCost);
             UsedTimes--;
         }
+    }
+
+    public override void UpdateDescription()
+    {
+        int damage = Math.Clamp(BaseDamage + 2 * OwnerPower, 0, 9999);
+        int thisCastPowerBonusTimes =
+            UsedTimes > 0 && (OwnerCharater?.Energy ?? 0) >= EnergyCost ? 1 : 0;
+        int thisCastPowerBonus = thisCastPowerBonusTimes * PowerGain;
+        SetDescriptionText(
+            $"造成{damage}点伤害。本次战斗力加成触发{thisCastPowerBonusTimes}次（+{thisCastPowerBonus}）；剩余强化机会{UsedTimes}次。触发条件：能量不少于{EnergyCost}。"
+        );
     }
 }

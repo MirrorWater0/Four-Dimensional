@@ -50,6 +50,14 @@ public partial class Skill
         OwnerCharater.BattleNode.UsedSkills.Add(this);
     }
 
+    protected int OwnerPower => OwnerCharater?.BattlePower ?? 0;
+    protected int OwnerSurvivability => OwnerCharater?.BattleSurvivability ?? 0;
+
+    protected void SetDescriptionText(string text)
+    {
+        Description = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
+    }
+
     public virtual void UpdateDescription() { }
     public Character[] Chosetarget1()
     {

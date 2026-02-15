@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 public partial class Attack : Skill
 {
-    
+    private const int HitDamage = 5;
+
     public Attack() : base(Skill.SkillTypes.Attack)
     {
-        Description = "对前方敌人发动二段连续攻击，每次造成基础伤害+战斗力的伤害。";
+        UpdateDescription();
     }
 
 
@@ -18,6 +19,11 @@ public partial class Attack : Skill
     public async override Task Effect()
     {
         await base.Effect();
-        await Attack2(5);
+        await Attack2(HitDamage);
+    }
+
+    public override void UpdateDescription()
+    {
+        SetDescriptionText($"对前方敌人发动二段连续攻击，每段造成{HitDamage}点伤害。");
     }
 }

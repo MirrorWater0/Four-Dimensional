@@ -64,6 +64,7 @@ public partial class SkillButton : Button
         // Show tooltip with skill description
         if (SelfSkill != null && globalTooltip != null)
         {
+            SelfSkill.UpdateDescription();
             globalTooltip.Description.Text = SelfSkill.Description;
             globalTooltip.Visible = true;
         }

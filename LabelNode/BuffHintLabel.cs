@@ -18,10 +18,10 @@ public partial class BuffHintLabel : RichTextLabel
         switch (which)
         {
             case Which.vanish:
-                Text = $"[color=yellow]{name}[/color]" + "结束";
+                Text = $"{name}[color=yellow]结束[/color]";
                 break;
             case Which.gain:
-                Text = $"[color=yellow]{name}[/color]" + "获得";
+                Text = $"{name}[color=yellow]获得[/color]";
                 break;
         }
     }

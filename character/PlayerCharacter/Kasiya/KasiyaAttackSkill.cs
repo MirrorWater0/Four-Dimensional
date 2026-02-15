@@ -6,8 +6,8 @@ public partial class KasiyaAttackSkill { }
 
 public partial class Determination : Skill
 {
-    int num = 2;
-    int BasisDamage = 6;
+    private const int DamageImmuneStacks = 2;
+    private const int BaseDamage = 6;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -20,22 +20,22 @@ public partial class Determination : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        await Attack1(6 + OwnerCharater.BattlePower);
-        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, 2);
+        await Attack1(BaseDamage + OwnerPower);
+        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, DamageImmuneStacks);
     }
 
     public override void UpdateDescription()
     {
         var text =
-            $"造成{Math.Clamp(BasisDamage + (OwnerCharater?.BattlePower ?? 0), 0, 9999)}点的伤害，并获得{num}层{Buff.BuffName.DamageImmune.GetDescription()}。";
-        Description = GlobalFunction.ColorizeNumbers(text);
+            $"对前方目标造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害，并获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。";
+        SetDescriptionText(text);
     }
 }
 
 public partial class Smite : Skill
 {
-    int num = 3;
-    int BasisDamage = 3;
+    private const int BaseDamage = 3;
+    private const int SurvivalDown = 2;
 
     public Smite()
         : base(Skill.SkillTypes.Attack)
@@ -51,21 +51,23 @@ public partial class Smite : Skill
         Character[] targets = Chosetarget1();
         if (targets.Length > 0)
         {
-            await DescendingProperties(targets[0], PropertyType.Survivalibility, 2);
-            await Attack1(BasisDamage + OwnerCharater.BattlePower);
+            await DescendingProperties(targets[0], PropertyType.Survivalibility, SurvivalDown);
+            await Attack1(BaseDamage + OwnerPower);
         }
     }
 
     public override void UpdateDescription()
     {
         var text =
-            $"降低目标{num}点战斗生存能力，然后发动攻击，造成{BasisDamage + (OwnerCharater?.BattlePower ?? 0)}的伤害。";
-        Description = GlobalFunction.ColorizeNumbers(text);
+            $"降低目标{SurvivalDown}点战斗生存能力，然后造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。";
+        SetDescriptionText(text);
     }
 }
 
 public partial class Charge : Skill
 {
+    private const int BaseDamage = 10;
+
     public Charge()
         : base(Skill.SkillTypes.Attack)
     {
@@ -77,12 +79,14 @@ public partial class Charge : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        await Attack1(10 + OwnerCharater.BattlePower);
-        OwnerCharater.UpdataBlock(10 + OwnerCharater.BattlePower);
+        int damage = BaseDamage + OwnerPower;
+        await Attack1(damage);
+        OwnerCharater.UpdataBlock(damage);
     }
 
     public override void UpdateDescription()
     {
-        Description = "发动攻击，造成10+战斗力的伤害，然后获得等于攻击伤害值的格挡。";
+        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
+        SetDescriptionText($"发动攻击，造成{damage}点伤害，并获得{damage}点格挡。");
     }
 }

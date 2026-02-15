@@ -5,11 +5,12 @@ using Godot;
 
 public partial class Combo : Skill
 {
+    private const int EnergyCostPerHit = 1;
+
     public Combo()
         : base(Skill.SkillTypes.Special)
     {
-        Description =
-            "发动连续攻击，每消耗1点能量可额外发动一次攻击，每次攻击造成i+战斗力的伤害（i为攻击次数，从0开始递增）。";
+        UpdateDescription();
     }
 
     public override string SkillName { set; get; } = "回响时刻";
@@ -22,7 +23,14 @@ public partial class Combo : Skill
         {
             await Attack1(OwnerCharater.BattlePower);
             if (OwnerCharater.Energy > 0)
-                OwnerCharater.UpdataEnergy(-1);
+                OwnerCharater.UpdataEnergy(-EnergyCostPerHit);
         } while (OwnerCharater.Energy > 0);
+    }
+
+    public override void UpdateDescription()
+    {
+        SetDescriptionText(
+            $"连续攻击，每次造成当前战斗力（{Math.Clamp(OwnerPower, 0, 9999)}）点伤害；每次攻击后消耗{EnergyCostPerHit}点能量，直到能量耗尽。"
+        );
     }
 }

@@ -7,20 +7,29 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音障防护";
-    int energy = 1;
+    private const int EnergyGain = 1;
+    private const int BaseBlock = 10;
 
     public SoundBarrier()
         : base(SkillTypes.Defence)
     {
-        Description = "创造音波屏障，提升自身3点战斗力和4点生存能力，并获得格挡。";
+        UpdateDescription();
     }
 
     public override async Task Effect()
     {
         await base.Effect();
-        OwnerCharater.UpdataEnergy(energy);
-        OwnerCharater.UpdataBlock(10 + OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataEnergy(EnergyGain);
+        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
         await Task.Delay(200);
         await Carry(OwnerCharater.BattleNode.PlayersList[0], 0);
+    }
+
+    public override void UpdateDescription()
+    {
+        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 9999);
+        SetDescriptionText(
+            $"恢复{EnergyGain}点能量，获得{block}点格挡，并令我方首位角色立刻释放攻击技能。"
+        );
     }
 }
