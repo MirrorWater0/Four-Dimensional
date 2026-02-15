@@ -87,8 +87,8 @@ public partial class Buff
 
     public enum BuffName
     {
-        [Description("重生")]
-        Rebirth,
+        [Description("重生I")]
+        RebirthI,
 
         [Description("免疫伤害")]
         DamageImmune,
@@ -139,10 +139,10 @@ public class DyingBuff : Buff
     {
         switch (ThisBuffName)
         {
-            case BuffName.Rebirth:
+            case BuffName.RebirthI:
                 if (Stack >= 1)
                 {
-                    Owner.Recovery(Owner.BattleLifemax);
+                    Owner.Recovery(Owner.BattleLifemax / 2);
                     Stack--;
                     TweenLabel();
                 }
@@ -166,8 +166,8 @@ public class DyingBuff : Buff
         ColorRect icon = null;
         switch (name)
         {
-            case BuffName.Rebirth:
-                buff = new DyingBuff(target, BuffName.Rebirth, stack);
+            case BuffName.RebirthI:
+                buff = new DyingBuff(target, BuffName.RebirthI, stack);
                 target.DyingBuffs.Add(buff);
                 icon =
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Rebirth.tscn").Instantiate()

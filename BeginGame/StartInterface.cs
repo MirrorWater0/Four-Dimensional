@@ -50,7 +50,7 @@ public partial class StartInterface : CanvasLayer
 
     public void test()
     {
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ReNewedSpirit);
+        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.Determination);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }

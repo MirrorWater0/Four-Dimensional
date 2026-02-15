@@ -26,9 +26,9 @@ public partial class Determination : Skill
 
     public override void UpdateDescription()
     {
-        var text =
-            $"对前方目标造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害，并获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。";
-        SetDescriptionText(text);
+        SetDescriptionLines(
+            $"对前方目标造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害，并获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+        );
     }
 }
 
@@ -58,9 +58,9 @@ public partial class Smite : Skill
 
     public override void UpdateDescription()
     {
-        var text =
-            $"降低目标{SurvivalDown}点战斗生存能力，然后造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。";
-        SetDescriptionText(text);
+        SetDescriptionLines(
+            $"降低目标{SurvivalDown}点生存，然后造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。"
+        );
     }
 }
 
@@ -87,6 +87,6 @@ public partial class Charge : Skill
     public override void UpdateDescription()
     {
         int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
-        SetDescriptionText($"发动攻击，造成{damage}点伤害，并获得{damage}点格挡。");
+        SetDescriptionLines($"发动攻击，造成{damage}点伤害，并获得{damage}点格挡。");
     }
 }

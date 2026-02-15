@@ -28,8 +28,8 @@ public partial class ReNewedSpirit : Skill
     public override void UpdateDescription()
     {
         int block = Math.Clamp(OwnerSurvivability + SurvivabilityGain, 0, 9999);
-        SetDescriptionText(
-            $"战斗力加成触发1次（+{PowerGain}），生存能力加成触发1次（+{SurvivabilityGain}），并获得{block}点格挡。"
+        SetDescriptionLines(
+            $"{}加成触发1次（+{PowerGain}），生存加成触发1次（+{SurvivabilityGain}），并获得{block}点格挡。"
         );
     }
 }

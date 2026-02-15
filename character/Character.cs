@@ -209,7 +209,7 @@ public partial class Character : Node2D
 
     public virtual void Recovery(int num)
     {
-        Life = Math.Clamp(Life + num, 0, BattleLifemax);
+        Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleLifemax);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
         LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();

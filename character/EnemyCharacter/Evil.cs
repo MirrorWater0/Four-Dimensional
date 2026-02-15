@@ -18,7 +18,7 @@ public partial class Evil : EnemyCharacter
         Skills = new Skill[] { new Attack(), new Combo() };
 
         base.Initialize();
-        DyingBuff.BuffAdd(Buff.BuffName.Rebirth, this, 1);
+        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
         UpdataEnergy(1);
     }
 }

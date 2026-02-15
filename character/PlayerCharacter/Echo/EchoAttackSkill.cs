@@ -36,8 +36,12 @@ public partial class SacredOnslaught : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionText(
-            $"最多攻击{MaxTargets}个目标，每个目标先受到1次{Math.Clamp(OwnerPower, 0, 9999)}点伤害；若能量大于0，则额外消耗{ExtraRoundCost}点能量再攻击1轮。"
+        int targetCount = OwnerCharater == null ? 0 : Math.Min(MaxTargets, Chosetarget1().Length);
+        int rounds = (OwnerCharater?.Energy ?? 0) > 0 ? 2 : 1;
+
+        SetDescriptionLines(
+            $"最多攻击{MaxTargets}个目标。当前预计命中{targetCount}个目标、共{rounds}轮，每次造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害。",
+            $"若能量大于0，则额外消耗{ExtraRoundCost}点能量再攻击1轮。"
         );
     }
 }

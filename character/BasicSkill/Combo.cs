@@ -29,8 +29,10 @@ public partial class Combo : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionText(
-            $"连续攻击，每次造成当前战斗力（{Math.Clamp(OwnerPower, 0, 9999)}）点伤害；每次攻击后消耗{EnergyCostPerHit}点能量，直到能量耗尽。"
+        int energy = Math.Max(OwnerCharater?.Energy ?? 0, 0);
+        int castTimes = Math.Max(1, energy);
+        SetDescriptionLines(
+            $"连续攻击：预计施放{castTimes}次，每次造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害；每次攻击后消耗{EnergyCostPerHit}点能量。"
         );
     }
 }

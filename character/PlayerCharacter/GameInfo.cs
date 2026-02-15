@@ -156,7 +156,7 @@ public class ObservableList<T> : List<T>
 
 public static class EnumExtensions
 {
-    private const string BuffColor = "#87CEEB";
+    private const string BuffColor = "#87eb91";
 
     public static string GetDescription(this Enum value)
     {

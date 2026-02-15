@@ -20,7 +20,7 @@ public partial class Defense : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionText(
+        SetDescriptionLines(
             $"获得格挡，数值为{Math.Clamp(BaseBlock + OwnerSurvivability, 0, 9999)}。"
         );
     }

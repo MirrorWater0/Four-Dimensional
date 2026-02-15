@@ -19,9 +19,6 @@ public partial class Skill
     public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/AttackEffect.tscn"
     );
-    public static PackedScene DescendingScene = ResourceLoader.Load<PackedScene>(
-        "res://battle/UIScene/Descending.tscn"
-    );
     public static PackedScene BurnScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/burn.tscn"
     );
@@ -56,6 +53,12 @@ public partial class Skill
     protected void SetDescriptionText(string text)
     {
         Description = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
+    }
+
+    protected void SetDescriptionLines(params string[] lines)
+    {
+        string text = string.Join("\n", lines.Where(x => !string.IsNullOrWhiteSpace(x)));
+        SetDescriptionText(text);
     }
 
     public virtual void UpdateDescription() { }
@@ -168,10 +171,6 @@ public partial class Skill
         }
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-
-        Node2D descending = DescendingScene.Instantiate() as Node2D;
-        OwnerCharater.BattleNode.AddChild(descending);
-        descending.GlobalPosition = target.GlobalPosition + new Vector2(0, -50);
 
         CharacterEffect characterEffect =
             target.CharacterEffectScene.Instantiate<CharacterEffect>();

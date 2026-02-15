@@ -24,6 +24,8 @@ public partial class Attack : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionText($"对前方敌人发动二段连续攻击，每段造成{HitDamage}点伤害。");
+        SetDescriptionLines(
+            $"对前方敌人发动二段连续攻击，每段造成{HitDamage}点伤害。"
+        );
     }
 }

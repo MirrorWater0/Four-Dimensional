@@ -786,6 +786,14 @@ animations = [{
 "speed": 5.0
 }]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_15k27"]
+shader = ExtResource("7_15k27")
+shader_parameter/glow_color = Color(0.3, 0.6, 1, 1)
+shader_parameter/glow_intensity = 5.0
+shader_parameter/glow_radius = 10.0
+shader_parameter/color_boost = 3.0
+shader_parameter/exposure_bias = 0.5
+
 [sub_resource type="AtlasTexture" id="AtlasTexture_uegvv"]
 atlas = ExtResource("8_15k27")
 region = Rect2(0, 0, 500, 500)
@@ -1263,7 +1271,9 @@ metadata/_edit_lock_ = true
 
 [node name="lighting" type="AnimatedSprite2D" parent="." unique_id=1631978393]
 modulate = Color(1, 1, 1, 0)
+material = SubResource("ShaderMaterial_15k27")
 sprite_frames = SubResource("SpriteFrames_4e5jn")
+metadata/_edit_lock_ = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=25985899]
 libraries/ = SubResource("AnimationLibrary_abwmn")

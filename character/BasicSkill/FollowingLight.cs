@@ -29,6 +29,6 @@ public partial class FollowingLight : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionText($"对目标发动攻击，造成{Damage}点伤害。");
+        SetDescriptionLines($"对目标发动攻击，造成{Damage}点伤害。");
     }
 }
