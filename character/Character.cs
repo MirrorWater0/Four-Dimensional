@@ -102,6 +102,7 @@ public partial class Character : Node2D
         for (int i = 0; i < Skills.Length; i++)
         {
             Skills[i].OwnerCharater = this;
+            Skills[i].UpdateDescription();
         }
         //初始化数值
         State = CharacterState.Normal;
@@ -194,7 +195,8 @@ public partial class Character : Node2D
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
         UpdataBlock(0);
 
-        CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
+        Tween tween = CreateTween();
+        tween.TweenProperty(BufferBar, "value", Life, 0.2f);
         LifeBar.Value = Life;
         LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
 
@@ -202,8 +204,7 @@ public partial class Character : Node2D
         {
             await Dying();
         }
-        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
-        Sprite.Modulate = new Color(1, 1, 1, 1);
+        tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
     }
 
     public virtual void Recovery(int num)
@@ -232,10 +233,7 @@ public partial class Character : Node2D
         if (DyingBuffs != null)
             for (int i = 0; i < DyingBuffs.Count; i++)
             {
-                GD.Print(DyingBuffs[i].ThisBuffName);
                 await DyingBuffs[i].Trigger();
-                if (DyingBuffs[i].Stack == 0)
-                    DyingBuffs.RemoveAt(i);
             }
     }
 

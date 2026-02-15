@@ -6,6 +6,9 @@ public partial class EchoSpecialSkill : Node { }
 
 public class EchonicResonance : Skill
 {
+    int cost = 1;
+    int power = 1;
+
     public EchonicResonance()
         : base(SkillTypes.Special)
     {
@@ -17,14 +20,13 @@ public class EchonicResonance : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        Character[] targets = Chosetarget1();
-        foreach (var target in targets)
+
+        do
         {
-            if (target.State == Character.CharacterState.Normal)
-            {
-                _ = Attack3(5, target, 1);
-            }
-        }
-        await Task.Delay(200);
+            await Attack1(OwnerCharater.BattlePower);
+            IncreaseProperties(OwnerCharater, PropertyType.Power, power);
+            if (OwnerCharater.Energy > 0)
+                OwnerCharater.UpdataEnergy(-cost);
+        } while (OwnerCharater.Energy > 0);
     }
 }

@@ -7,6 +7,7 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音障防护";
+    int energy = 1;
 
     public SoundBarrier()
         : base(SkillTypes.Defence)
@@ -17,7 +18,7 @@ public partial class SoundBarrier : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Survivalibility, 4);
+        OwnerCharater.UpdataEnergy(energy);
         OwnerCharater.UpdataBlock(10 + OwnerCharater.BattleSurvivability);
         await Task.Delay(200);
         await Carry(OwnerCharater.BattleNode.PlayersList[0], 0);

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -86,7 +87,10 @@ public partial class Buff
 
     public enum BuffName
     {
+        [Description("重生")]
         Rebirth,
+
+        [Description("免疫伤害")]
         DamageImmune,
     }
 
@@ -120,7 +124,7 @@ public partial class Buff
     {
         BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
         label.TargetPosition = Owner.GlobalPosition;
-        label.Initialize(which, name.ToString());
+        label.Initialize(which, name.GetDescription());
         label.Position = Vector2.Zero;
         Owner.AddChild(label);
     }

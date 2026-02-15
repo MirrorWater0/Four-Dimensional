@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Godot;
 
 public static partial class GameInfo
@@ -73,6 +74,19 @@ public static class GlobalFunction
                 val,
                 duration
             );
+    }
+
+    private const string NumberColor = "#ffff00";
+
+    public static string ColorizeNumbers(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // 正则表达式说明：
+        // \d+ 匹配一个或多个数字
+        // [color={NumberColor}]$1[/color] 将匹配到的数字($1)包裹在颜色标签里
+        return Regex.Replace(input, @"(\d+)", $"[color={NumberColor}]$1[/color]");
     }
 }
 

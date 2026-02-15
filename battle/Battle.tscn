@@ -477,6 +477,7 @@ offset_left = 1824.0
 offset_right = 1923.0
 offset_bottom = 96.0
 theme = ExtResource("4_eoytn")
+disabled = true
 text = "撤退
 "
 

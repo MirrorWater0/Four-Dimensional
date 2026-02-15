@@ -10,6 +10,7 @@ public partial class BattlePreview : Control
     public Button StartBattleButton => field ??= GetNode<Button>("StartBattle");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
+    Map MapNode => field ??= GetNode<Map>("/root/Map");
     public int RandomNum;
     public static System.Collections.Generic.Dictionary<int, int> remapEnemy { get; } =
         new System.Collections.Generic.Dictionary<int, int>()
@@ -113,12 +114,9 @@ public partial class BattlePreview : Control
 
     public void StartBattle()
     {
-        var mask = GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
-        mask.Visible = true;
-        mask.Modulate = new Color(0, 0, 0, 0);
         Tween tween = CreateTween();
-        tween.TweenProperty(mask, "modulate:a", 1, 0.4f);
-
+        tween.TweenProperty(tex, "scale", new Vector2(1f, 1f), 0.4f);
+        MapNode.BlackMaskAnimation(0.4f);
         GlobalFunction.TweenShader(tex, "cut_x", 1f, 0.3f);
         GlobalFunction.TweenShader(tex, "cut_y", 1f, 0.3f);
         tween
@@ -126,7 +124,6 @@ public partial class BattlePreview : Control
             .TweenCallback(
                 Callable.From(() =>
                 {
-                    Close();
                     var layer = new CanvasLayer();
                     layer.Layer = 4;
                     GetTree().Root.AddChild(layer);
@@ -136,7 +133,7 @@ public partial class BattlePreview : Control
                         GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
                     battle.BattleIntentionRandom = new Random(RandomNum);
                     layer.AddChild(battle);
-                    mask.Visible = false;
+                    Close();
                 })
             );
     }

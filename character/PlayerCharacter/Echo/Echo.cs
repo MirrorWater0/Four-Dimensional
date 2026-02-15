@@ -3,7 +3,7 @@ using Godot;
 
 public partial class Echo : PlayerCharacter
 {
-    public override PackedScene CharaterScene { get; set; } = ChoseCharater._Echo;
+    public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
     public override string CharaterName { get; set; } = "Echo";
 

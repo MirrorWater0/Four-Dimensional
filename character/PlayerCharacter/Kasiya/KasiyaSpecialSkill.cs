@@ -1,24 +1,35 @@
-using Godot;
 using System;
 using System.Threading.Tasks;
+using Godot;
 
-public partial class KasiyaSpecialSkill : Node
-{
-    
-}
+public partial class KasiyaSpecialSkill : Node { }
 
 public class TerminateLight : Skill
 {
-    public TerminateLight() : base(SkillTypes.Special)
+    int BasisDamage = 10;
+    int UsedTimes = 1;
+    int EnergyCost = 2;
+    int addPower = 5;
+
+    public TerminateLight()
+        : base(SkillTypes.Special)
     {
-        Description = "发动终极攻击，造成（10+战斗力）倍基础伤害的毁灭性打击。";
+        Description =
+            $@"受到2倍力量加成{BasisDamage + OwnerCharater?.BattlePower}。
+        可用{UsedTimes}次：若能量值大于等于{EnergyCost},则增加{addPower}层力量,并消耗{EnergyCost}点能量。";
     }
 
     public override string SkillName { get; set; } = "终末之光";
 
-    public async override Task Effect()
+    public override async Task Effect()
     {
         await base.Effect();
-        await Attack1(10 + OwnerCharater.BattlePower);
+        await Attack1(BasisDamage + 2 * OwnerCharater.BattlePower);
+        if (UsedTimes > 0 && OwnerCharater.Energy >= EnergyCost)
+        {
+            IncreaseProperties(OwnerCharater, PropertyType.Power, addPower);
+            OwnerCharater.UpdataEnergy(-EnergyCost);
+            UsedTimes--;
+        }
     }
 }

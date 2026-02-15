@@ -260,7 +260,7 @@ theme = ExtResource("10_svc60")
 text = "0"
 
 [node name="MaskLayer" type="CanvasLayer" parent="." unique_id=2006589008]
-layer = 6
+layer = 7
 
 [node name="ChangeEffect" type="ColorRect" parent="MaskLayer" unique_id=1293778974]
 top_level = true
@@ -274,11 +274,12 @@ metadata/_edit_lock_ = true
 
 [node name="Mask" type="ColorRect" parent="MaskLayer" unique_id=1877623308]
 visible = false
+modulate = Color(1, 1, 1, 0)
 top_level = true
 z_index = 10
 offset_right = 1920.0
 offset_bottom = 1080.0
-color = Color(0, 0, 0, 0)
+color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

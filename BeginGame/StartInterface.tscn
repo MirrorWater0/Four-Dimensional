@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://bxjt1bxews34d"]
 
-[ext_resource type="Script" uid="uid://dj55ag06dkgry" path="res://BeginGame/ChoseCharater.cs" id="1_mk751"]
+[ext_resource type="Script" uid="uid://dj55ag06dkgry" path="res://BeginGame/StartInterface.cs" id="1_ll4sb"]
 
-[node name="Node2D" type="CanvasLayer" unique_id=1376557935]
-script = ExtResource("1_mk751")
+[node name="StartInterface" type="CanvasLayer" unique_id=1376557935]
+script = ExtResource("1_ll4sb")
 
 [node name="Button" type="Button" parent="." unique_id=1860835836]
 offset_left = 957.0

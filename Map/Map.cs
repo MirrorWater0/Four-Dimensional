@@ -12,6 +12,7 @@ public partial class Map : Control
     private bool _isDrag;
     Vector2 _velocity = Vector2.Zero;
     private double _time;
+    ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
 
     [Export]
     public Vector2 MinBoundary = Vector2.Zero;
@@ -59,6 +60,7 @@ public partial class Map : Control
         SeedLabel.Text = $"Seed: {GameInfo.Seed}";
         DragButton.Disabled = false;
         _targetPos = Camera.Position;
+        BlackMask.Modulate = new Color(1, 1, 1, 0);
         DragButton.ButtonDown += () =>
         {
             _isDrag = true;
@@ -74,5 +76,15 @@ public partial class Map : Control
     public void CloseWindow()
     {
         GetTree().Quit();
+    }
+
+    public Tween BlackMaskAnimation(float duration)
+    {
+        BlackMask.Visible = true;
+        var tween = CreateTween();
+        tween.TweenProperty(BlackMask, "modulate:a", 1, duration);
+        tween.Chain().TweenProperty(BlackMask, "modulate:a", 0, duration);
+        tween.TweenCallback(Callable.From(() => BlackMask.Visible = false));
+        return tween;
     }
 }

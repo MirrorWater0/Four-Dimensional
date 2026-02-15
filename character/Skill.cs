@@ -50,6 +50,7 @@ public partial class Skill
         OwnerCharater.BattleNode.UsedSkills.Add(this);
     }
 
+    public virtual void UpdateDescription() { }
     public Character[] Chosetarget1()
     {
         int index = OwnerCharater.PositionIndex;
@@ -77,26 +78,27 @@ public partial class Skill
         return targets;
     }
 
-    public async Task Attack1(float basis) //顺位一段攻击
+    public async Task Attack1(int damage) //顺位一段攻击
     {
+        damage = Math.Clamp(damage, 0, 9999);
         Character[] targets = Chosetarget1();
         if (targets.Length == 0)
             return;
 
         await AttackAnimation(targets[0]);
 
-        await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+        await targets[0].GetHurt(damage);
         await Task.Delay(100);
     }
 
-    public async Task Attack2(float basis) //顺位二段攻击
+    public async Task Attack2(int damage) //顺位二段攻击
     {
+        damage = Math.Clamp(damage, 0, 9999);
         Character[] targets = Chosetarget1();
         if (targets.Length == 0)
             return;
         await AttackAnimation(targets[0]);
-        await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
-        await Task.Delay(100);
+        await targets[0].GetHurt(damage);
 
         // Only apply second hit if target is still alive
         if (targets[0].State == Character.CharacterState.Normal)
@@ -105,15 +107,16 @@ public partial class Skill
             targets[0].AddChild(attack2);
             attack2.AnimationPlayer0.Play("Attack1");
             attack2.GlobalPosition = targets[0].GlobalPosition;
-            await targets[0].GetHurt(basis + OwnerCharater.BattlePower);
+            await targets[0].GetHurt(damage);
         }
     }
 
-    public async Task Attack3(float basis, Character target, int num)
+    public async Task Attack3(int damage, Character target, int num)
     {
         if (target == null)
             return;
 
+        damage = Math.Clamp(damage, 0, 9999);
         await AttackAnimation(target);
 
         for (int i = 0; i < num; i++)
@@ -125,8 +128,7 @@ public partial class Skill
             target.AddChild(attack);
             attack.AnimationPlayer0.Play("Attack1");
             attack.GlobalPosition = target.GlobalPosition;
-            await target.GetHurt(basis + OwnerCharater.BattlePower);
-            await Task.Delay(150);
+            await target.GetHurt(damage);
         }
     }
 
@@ -163,14 +165,16 @@ public partial class Skill
         OwnerCharater.BattleNode.AddChild(descending);
         descending.GlobalPosition = target.GlobalPosition + new Vector2(0, -50);
 
-        if (icon.PivotOffset == Vector2.Zero)
-            icon.PivotOffset = icon.Size / 2;
-        icon.Scale = new Vector2(2, 2);
-        icon.Modulate = new Color(1, 1, 1, 0.3f);
-        icon.CreateTween()
-            .TweenProperty(target.PowerIconLabel, "modulate", new Color(1, 1, 1, 1), 0.5f);
-        icon.CreateTween().TweenProperty(icon, "scale", new Vector2(1, 1), 0.5f);
-        descending.QueueFree();
+        CharacterEffect characterEffect =
+            target.CharacterEffectScene.Instantiate<CharacterEffect>();
+        target.AddChild(characterEffect);
+        characterEffect.Animation.Play("lightning");
+
+        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
+        hint.Text = $"[color=red]{type.GetDescription()}[/color] -{num}";
+        hint.TargetPosition = new Vector2(0, 150);
+        hint.GlobalPosition = target.GlobalPosition;
+        OwnerCharater.BattleNode.AddChild(hint);
     }
 
     public void IncreaseProperties(Character target, PropertyType type, int value)
@@ -193,6 +197,7 @@ public partial class Skill
         target.AddChild(characterEffect);
         characterEffect.Animation.Play("absorb");
         target.BattleNode.BattleAnimationPlayer.Play("blue");
+
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 

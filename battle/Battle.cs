@@ -17,6 +17,7 @@ public partial class Battle : Node2D
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Evil.tscn");
+    Map MapNode => field ??= GetNode("/root/Map") as Map;
     public List<PlayerCharacter> PlayersList = new();
     public List<EnemyCharacter> EnemiesList = new();
     public Node2D Right => field ??= GetNode("Right") as Node2D;
@@ -29,7 +30,7 @@ public partial class Battle : Node2D
         field ??= GetNode("CharaterControl") as CharaterControl;
 
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
-    public Button RetreatButton;
+    public Button RetreatButton => field ??= GetNode("Retreat") as Button;
 
     private int _playerSpeed = 0;
     private int _enemySpeed = 0;
@@ -75,7 +76,6 @@ public partial class Battle : Node2D
     public ProgressBar EnemySpeedBar => field ??= GetNode("SpeedBox/EnemySpeed") as ProgressBar;
     public override async void _Ready()
     {
-        RetreatButton = GetNode("Retreat") as Button;
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
 
@@ -299,15 +299,12 @@ public partial class Battle : Node2D
         {
             return;
         }
-
-        BattleAnimationPlayer?.Play("end");
-
         // Disable retreat button to prevent multiple retreats
         if (RetreatButton != null)
         {
             RetreatButton.Disabled = true;
         }
-
+        MapNode.BlackMaskAnimation(0.8f);
         await Task.Delay(800);
 
         // Clear lists

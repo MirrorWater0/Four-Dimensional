@@ -20,7 +20,7 @@ public partial class SkillButton : Button
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
 
-    private static Tip globalTooltip;
+    public Tip globalTooltip => field ??= GetTree().Root.GetNode<Tip>("TipLayer/Tip");
 
     public override void _Ready()
     {
@@ -42,15 +42,6 @@ public partial class SkillButton : Button
                 RhomboidIcon.Visible = false;
                 SwordIcon.Visible = false;
                 break;
-        }
-
-        // Create global tooltip once
-        if (globalTooltip == null)
-        {
-            var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
-            globalTooltip = tipScene.Instantiate() as Tip;
-            globalTooltip.Visible = false;
-            GetTree().Root.AddChild(globalTooltip);
         }
     }
 

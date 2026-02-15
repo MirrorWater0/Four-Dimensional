@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="tower"
-run/main_scene="res://BeginGame/ChoseCharater.tscn"
+run/main_scene="res://BeginGame/StartInterface.tscn"
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 
 [autoload]

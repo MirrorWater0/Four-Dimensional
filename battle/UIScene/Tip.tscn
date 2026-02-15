@@ -1,10 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://cpwjjfhrrmpqk"]
+[gd_scene format=3 uid="uid://cpwjjfhrrmpqk"]
 
 [ext_resource type="Script" uid="uid://m44hfaa5v2ex" path="res://battle/UIScene/Tip.cs" id="1_mhy24"]
-[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_nfxvq"]
 
-[node name="Tip" type="Control"]
-z_index = 5
+[node name="Tip" type="Control" unique_id=376716572]
+z_index = 20
 layout_mode = 3
 anchors_preset = 0
 grow_horizontal = 2
@@ -12,16 +11,21 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_mhy24")
 
-[node name="bg" type="ColorRect" parent="."]
+[node name="bg" type="ColorRect" parent="." unique_id=1720827472]
 layout_mode = 0
 offset_right = 402.0
 offset_bottom = 222.0
 mouse_filter = 2
-color = Color(0.8980392, 1, 1, 0.45882353)
+color = Color(0.8980392, 1, 1, 0.5882353)
 
-[node name="Description" type="Label" parent="."]
+[node name="Description" type="RichTextLabel" parent="." unique_id=1080839497]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 23.0
-theme = ExtResource("2_nfxvq")
-text = "ewe"
+offset_right = 142.0
+offset_bottom = 98.0
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 35
+bbcode_enabled = true
+text = "ewesdsdsdsdsd"
+fit_content = true
+scroll_active = false

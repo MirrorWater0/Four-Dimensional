@@ -4,6 +4,8 @@ using Godot;
 
 public partial class SacredOnslaught : Skill
 {
+    int cost = 1;
+
     public SacredOnslaught()
         : base(SkillTypes.Attack)
     {
@@ -18,7 +20,15 @@ public partial class SacredOnslaught : Skill
         Character[] targets = Chosetarget1();
         for (int i = 0; i < Math.Min(4, targets.Length); i++)
         {
-            _ = Attack3(0.4f, targets[i], 2);
+            _ = Attack3(OwnerCharater.BattlePower, targets[i], 1);
+        }
+        if (OwnerCharater.Energy > 0)
+        {
+            OwnerCharater.UpdataEnergy(-cost);
+            for (int i = 0; i < Math.Min(4, targets.Length); i++)
+            {
+                _ = Attack3(OwnerCharater.BattlePower, targets[i], 1);
+            }
         }
         await Task.Delay(400);
     }
