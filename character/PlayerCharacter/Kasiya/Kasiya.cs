@@ -20,7 +20,7 @@ public partial class Kasiya : PlayerCharacter
 
     public override void Passive(Skill skill)
     {
-        if (skill.OwnerCharater == this & skill.SkillType == Skill.SkillTypes.Defence)
+        if (skill.OwnerCharater == this & skill.SkillType == Skill.SkillTypes.Survive)
         {
             Recovery(20);
         }

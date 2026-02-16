@@ -137,7 +137,7 @@ public partial class BattleReady : Control
                             skillIndex = 0;
                             SkillContainer.GetChild<VBoxContainer>(0).AddChild(selectbutton);
                             break;
-                        case Skill.SkillTypes.Defence:
+                        case Skill.SkillTypes.Survive:
                             skillIndex = 1;
                             SkillContainer.GetChild<VBoxContainer>(1).AddChild(selectbutton);
                             break;

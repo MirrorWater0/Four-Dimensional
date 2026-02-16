@@ -34,7 +34,7 @@ public partial class SkillButton : Button
                 RhomboidIcon.Visible = false;
                 TerminateSkillIcon.Visible = false;
                 break;
-            case Skill.SkillTypes.Defence:
+            case Skill.SkillTypes.Survive:
                 SwordIcon.Visible = false;
                 TerminateSkillIcon.Visible = false;
                 break;
@@ -64,6 +64,7 @@ public partial class SkillButton : Button
         // Show tooltip with skill description
         if (SelfSkill != null && globalTooltip != null)
         {
+            globalTooltip.FollowMouse = true;
             SelfSkill.UpdateDescription();
             globalTooltip.Description.Text = SelfSkill.Description;
             globalTooltip.Visible = true;

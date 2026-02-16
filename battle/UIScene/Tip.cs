@@ -3,13 +3,23 @@ using Godot;
 
 public partial class Tip : Control
 {
+    [Export]
+    public bool FollowMouse = true;
+
+    /// <summary>
+    /// Offset in pixels from the anchor point (mouse or manual position).
+    /// Negative X/Y means "place to the left/above" (edge-aligned).
+    /// </summary>
+    [Export]
+    public Vector2 AnchorOffset = new Vector2(20f, 20f);
+
+    private Vector2 _manualAnchorPosition = Vector2.Zero;
 
     public ColorRect bg => field ??= GetNode<ColorRect>("bg");
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("Description");
 
     public override void _Ready()
     {
-
         if (Description != null)
         {
             Description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -30,7 +40,7 @@ public partial class Tip : Control
         // Update background size when description size changes
         if (bg != null && Description != null)
         {
-            bg.Size = Description.Size;
+            bg.Size = Description.Size + new Vector2(20, 20);
         }
     }
 
@@ -47,12 +57,11 @@ public partial class Tip : Control
         if (viewport == null)
             return;
 
-        Vector2 mousePos = viewport.GetMousePosition();
+        Vector2 anchorPos = FollowMouse ? viewport.GetMousePosition() : _manualAnchorPosition;
         Vector2 tooltipSize = GetTooltipSize();
         Vector2 viewportSize = viewport.GetVisibleRect().Size;
 
-        // Calculate tooltip position based on quadrant to avoid going off-screen
-        Vector2 targetPosition = CalculateQuadrantPosition(mousePos, tooltipSize, viewportSize);
+        Vector2 targetPosition = CalculateAnchorPosition(anchorPos, tooltipSize, viewportSize);
 
         // Set the calculated position
         Position = targetPosition;
@@ -71,39 +80,33 @@ public partial class Tip : Control
     }
 
     /// <summary>
-    /// Calculate tooltip position to display in bottom-right corner of mouse,
-    /// clamping to viewport bounds if necessary
+    /// Calculate tooltip position relative to the anchor point, clamping to viewport bounds.
     /// </summary>
-    private Vector2 CalculateQuadrantPosition(
-        Vector2 mousePos,
+    private Vector2 CalculateAnchorPosition(
+        Vector2 anchorPos,
         Vector2 tooltipSize,
         Vector2 viewportSize
     )
     {
-        const float offset = 20f;
         const float margin = 10f;
 
-        // Default position: right and down from mouse
-        Vector2 targetPosition = new Vector2(mousePos.X + offset, mousePos.Y + offset);
+        float x = anchorPos.X + AnchorOffset.X;
+        float y = anchorPos.Y + AnchorOffset.Y;
 
-        // Clamp to viewport bounds if tooltip would go off-screen
-        // Clamp X position
-        if (targetPosition.X + tooltipSize.X > viewportSize.X - margin)
-        {
-            targetPosition.X = viewportSize.X - tooltipSize.X - margin;
-        }
+        if (AnchorOffset.X < 0)
+            x -= tooltipSize.X;
+        if (AnchorOffset.Y < 0)
+            y -= tooltipSize.Y;
 
-        // Clamp Y position
-        if (targetPosition.Y + tooltipSize.Y > viewportSize.Y - margin)
-        {
-            targetPosition.Y = viewportSize.Y - tooltipSize.Y - margin;
-        }
+        float minX = margin;
+        float maxX = viewportSize.X - tooltipSize.X - margin;
+        float minY = margin;
+        float maxY = viewportSize.Y - tooltipSize.Y - margin;
 
-        // Ensure minimum position to avoid going off left/top edges
-        targetPosition.X = Mathf.Max(targetPosition.X, margin);
-        targetPosition.Y = Mathf.Max(targetPosition.Y, margin);
-
-        return targetPosition;
+        // If the tooltip is larger than the viewport, avoid invalid Clamp(min > max).
+        x = maxX < minX ? minX : Mathf.Clamp(x, minX, maxX);
+        y = maxY < minY ? minY : Mathf.Clamp(y, minY, maxY);
+        return new Vector2(x, y);
     }
 
     /// <summary>
@@ -113,6 +116,7 @@ public partial class Tip : Control
     {
         if (Description != null)
         {
+            FollowMouse = true;
             Description.Text = text;
             Visible = true;
         }
@@ -135,27 +139,8 @@ public partial class Tip : Control
         {
             Description.Text = text;
 
-            // Force update the label size immediately
-            Description.ForceUpdateTransform();
-
-            // Calculate position based on quadrant to stay within screen bounds
-            Viewport viewport = GetViewport();
-            if (viewport != null)
-            {
-                Vector2 tooltipSize = GetTooltipSize();
-                Vector2 viewportSize = viewport.GetVisibleRect().Size;
-                Vector2 targetPosition = CalculateQuadrantPosition(
-                    position,
-                    tooltipSize,
-                    viewportSize
-                );
-                Position = targetPosition;
-            }
-            else
-            {
-                Position = position;
-            }
-
+            FollowMouse = false;
+            _manualAnchorPosition = position;
             Visible = true;
         }
     }

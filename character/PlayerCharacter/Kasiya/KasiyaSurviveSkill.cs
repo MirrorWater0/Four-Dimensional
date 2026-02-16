@@ -12,7 +12,7 @@ public partial class ReNewedSpirit : Skill
     public override string SkillName { get; set; } = "重振精神";
 
     public ReNewedSpirit()
-        : base(SkillTypes.Defence)
+        : base(SkillTypes.Survive)
     {
         UpdateDescription();
     }

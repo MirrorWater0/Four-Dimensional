@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Godot;
 
@@ -95,6 +96,9 @@ public partial class Character : Node2D
     public List<DyingBuff> DyingBuffs = new List<DyingBuff>();
     public List<HurtBuff> HurtBuffs = new List<HurtBuff>();
 
+    private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
+    private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
+
     public Vector2 OriginalPosition;
 
     public virtual void Initialize()
@@ -131,17 +135,122 @@ public partial class Character : Node2D
 
     public override void _Ready()
     {
-        Hoverframe.MouseEntered += Hover;
-        Hoverframe.MouseExited += () =>
-        {
-            Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
-        };
+        Hoverframe.MouseEntered += OnHoverEntered;
+        Hoverframe.MouseExited += OnHoverExited;
 
         ShaderMaterial material = (ShaderMaterial)Sprite.Material.Duplicate();
         material.ResourceLocalToScene = true;
         Sprite.Material = material;
         ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
         GlobalFunction.TweenShader(Sprite, "progress", 0, 1f);
+    }
+
+    private void OnHoverEntered()
+    {
+        Hover();
+        ShowHoverTooltips();
+    }
+
+    private void OnHoverExited()
+    {
+        Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+        HideHoverTooltips();
+    }
+
+    private void ShowHoverTooltips()
+    {
+        if (SkillTooltip != null)
+        {
+            SkillTooltip.FollowMouse = true;
+            SkillTooltip.Description.Text = BuildSkillTooltipText();
+            SkillTooltip.Visible = true;
+        }
+
+        if (BuffTooltip != null)
+        {
+            BuffTooltip.FollowMouse = true;
+            BuffTooltip.Description.Text = BuildBuffTooltipText();
+            BuffTooltip.Visible = true;
+        }
+    }
+
+    private void HideHoverTooltips()
+    {
+        if (SkillTooltip != null)
+            SkillTooltip.Visible = false;
+        if (BuffTooltip != null)
+            BuffTooltip.Visible = false;
+    }
+
+    private string BuildSkillTooltipText()
+    {
+        var sb = new StringBuilder(256);
+        string name = string.IsNullOrWhiteSpace(CharaterName) ? "Character" : CharaterName;
+        sb.Append($"[b]{name}[/b]\n");
+
+        if (Skills == null || Skills.Length == 0)
+            return sb.ToString().TrimEnd();
+
+        const string separator = "[color=#6b6b6b]────────────────────────[/color]\n";
+        const string skillNameColor = "#b56bff";
+        const int skillNameFontSize = 32;
+
+        var validSkills = Skills.Where(x => x != null).ToArray();
+        for (int i = 0; i < validSkills.Length; i++)
+        {
+            var skill = validSkills[i];
+
+            skill.UpdateDescription();
+
+            if (i > 0)
+                sb.Append('\n');
+
+            sb.Append(
+                $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
+            );
+            if (!string.IsNullOrWhiteSpace(skill.Description))
+                sb.Append(skill.Description);
+            else
+                sb.Append("-");
+            sb.Append('\n');
+
+            // One rule line as the gap between skills.
+            if (i < validSkills.Length - 1)
+                sb.Append(separator);
+        }
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private string BuildBuffTooltipText()
+    {
+        var sb = new StringBuilder(128);
+        sb.Append("[b]Buffs[/b]\n");
+
+        bool any = false;
+
+        if (HurtBuffs != null)
+        {
+            foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                any = true;
+            }
+        }
+
+        if (DyingBuffs != null)
+        {
+            foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                any = true;
+            }
+        }
+
+        if (!any)
+            sb.Append("None");
+
+        return GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd());
     }
 
     public override void _Process(double delta)

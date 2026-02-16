@@ -25,8 +25,13 @@ public partial class Skill
 
     public enum SkillTypes
     {
+        [Description("攻击")]
         Attack,
-        Defence,
+
+        [Description("生存")]
+        Survive,
+
+        [Description("特殊")]
         Special,
     }
 
@@ -79,6 +84,7 @@ public partial class Skill
     }
 
     public virtual void UpdateDescription() { }
+
     public Character[] Chosetarget1()
     {
         int index = OwnerCharater.PositionIndex;

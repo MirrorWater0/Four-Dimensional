@@ -73,7 +73,7 @@ public partial class EnemyCharacter : Character
             case Skill.SkillTypes.Attack:
                 AttackIntention.Visible = true;
                 break;
-            case Skill.SkillTypes.Defence:
+            case Skill.SkillTypes.Survive:
                 SurviveIntention.Visible = true;
                 break;
             case Skill.SkillTypes.Special:

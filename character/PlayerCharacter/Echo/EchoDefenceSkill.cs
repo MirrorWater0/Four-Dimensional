@@ -11,7 +11,7 @@ public partial class SoundBarrier : Skill
     private const int BaseBlock = 10;
 
     public SoundBarrier()
-        : base(SkillTypes.Defence)
+        : base(SkillTypes.Survive)
     {
         UpdateDescription();
     }
