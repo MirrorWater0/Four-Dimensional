@@ -35,7 +35,7 @@ public class TerminateLight : Skill
     {
         int damage = Math.Clamp(BaseDamage + 2 * OwnerPower, 0, 9999);
         int thisCastPowerBonusTimes =
-            UsedTimes > 0 && (OwnerCharater?.Energy ?? 0) >= EnergyCost ? 1 : 0;
+            UsedTimes > 0 && OwnerEnergy >= EnergyCost ? 1 : 0;
         int thisCastPowerBonus = thisCastPowerBonusTimes * PowerGain;
         SetDescriptionLines(
             $"造成{damage}点伤害（受到2倍{GetColoredPropertyLabel(PropertyType.Power)}加成）。",

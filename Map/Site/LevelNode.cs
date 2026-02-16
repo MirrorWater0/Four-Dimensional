@@ -24,10 +24,10 @@ public partial class LevelNode : ColorRect
         Boss,
     }
 
-    public static List<EnemyRegedit> EnemiesRegeditList;
+    // public List<EnemyRegedit> EnemiesRegeditList;
     public LevelState State { get; set; }
     public LevelType Type { get; set; } = LevelType.Normal;
-
+    public List<EnemyRegedit> EnemiesRegeditList;
     public Button Button => field ??= GetNode("Button") as Button;
 
     // public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
@@ -215,9 +215,10 @@ public partial class LevelNode : ColorRect
             .Parallel()
             .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
             .SetEase(Tween.EaseType.Out);
-        EnemiesRegeditList = ProduceEnemies();
 
+        EnemiesRegeditList = ProduceEnemies();
         var preview = BattlePreviewScene.Instantiate() as BattlePreview;
+        preview.WhichNode = this;
         preview.RandomNum = RandomNum;
         tween
             .Chain()

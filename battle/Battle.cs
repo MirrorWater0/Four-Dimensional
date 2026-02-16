@@ -9,7 +9,7 @@ using Godot;
 
 public partial class Battle : Node2D
 {
-    public static bool Istest = true;
+    public static bool Istest = false;
     public Random BattleIntentionRandom;
 
     [Signal]
@@ -74,8 +74,27 @@ public partial class Battle : Node2D
     public GlowLabel EnemySpeedLabel => field ??= GetNode("SpeedBox/EnemySpeed/Label") as GlowLabel;
     public ProgressBar PlayerSpeedBar => field ??= GetNode("SpeedBox/PlayerSpeed") as ProgressBar;
     public ProgressBar EnemySpeedBar => field ??= GetNode("SpeedBox/EnemySpeed") as ProgressBar;
+    public LevelNode WhichNode;
+
     public override async void _Ready()
     {
+        if (Istest)
+        {
+            TestBattle();
+        }
+        else
+        {
+            for (int i = 0; i < WhichNode.EnemiesRegeditList.Count; i++)
+            {
+                var regedit = WhichNode.EnemiesRegeditList[i];
+                EnemyCharacter enemy = regedit.CharacterScene.Instantiate<EnemyCharacter>();
+                enemy.Registry = regedit;
+                enemy.PositionIndex = regedit.PositionIndex;
+                enemy.BattleNode = this;
+                enemy.Initialize();
+                EnemiesList.Add(enemy);
+            }
+        }
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
 
@@ -89,17 +108,6 @@ public partial class Battle : Node2D
             character.BattleNode = this;
             character.Initialize();
             PlayersList.Add(character);
-        }
-
-        for (int i = 0; i < LevelNode.EnemiesRegeditList.Count; i++)
-        {
-            EnemyCharacter enemy = LevelNode
-                .EnemiesRegeditList[i]
-                .CharacterScene.Instantiate<EnemyCharacter>();
-            enemy.PositionIndex = LevelNode.EnemiesRegeditList[i].PositionIndex;
-            enemy.BattleNode = this;
-            enemy.Initialize();
-            EnemiesList.Add(enemy);
         }
 
         if (EnemiesList == null)
@@ -315,6 +323,23 @@ public partial class Battle : Node2D
         if (IsInstanceValid(this))
         {
             GetParent().QueueFree();
+        }
+    }
+
+    public void TestBattle()
+    {
+        EnemiesList =
+        [
+            _test1.Instantiate<EnemyCharacter>(),
+            _test1.Instantiate<EnemyCharacter>(),
+            _test1.Instantiate<EnemyCharacter>(),
+        ];
+
+        for (int i = 0; i < EnemiesList.Count; i++)
+        {
+            EnemiesList[i].PositionIndex = i + 1;
+            EnemiesList[i].BattleNode = this;
+            EnemiesList[i].Initialize();
         }
     }
 }

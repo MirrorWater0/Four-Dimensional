@@ -13,11 +13,14 @@ public partial class Evil : EnemyCharacter
 
     public override void Initialize()
     {
-        BattleLifemax = 50;
-        BattlePower = 15;
-        BattleSurvivability = 15;
-        Speed = 13;
-        Skills = [new EvilAttack(), new EvilSurvive(), new EvilTermin()];
+        if (Registry == null)
+        {
+            BattleLifemax = 50;
+            BattlePower = 15;
+            BattleSurvivability = 15;
+            Speed = 13;
+            Skills = [new EvilAttack(), new EvilSurvive(), new EvilTermin()];
+        }
 
         base.Initialize();
         DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
@@ -107,7 +110,7 @@ public partial class EvilTermin : Skill
 
     public override void UpdateDescription()
     {
-        int energy = Math.Max(OwnerCharater?.Energy ?? 0, 0);
+        int energy = Math.Max(OwnerEnergy, 0);
         int castTimes = Math.Max(1, energy + 1);
         SetDescriptionLines(
             $"施放{castTimes}次；每次造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害；每次消耗{EnergyCostPerHit}点能量。"

@@ -26,11 +26,13 @@ public partial class Character : Node2D
         set
         {
             _state = value;
+            if (BattleNode == null)
+                return;
+
             if (IsPlayer)
                 BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
             else
                 BattleNode.EnemySpeed = BattleNode.EnemySpeed;
-            ;
         }
     }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
@@ -148,6 +150,8 @@ public partial class Character : Node2D
     private void OnHoverEntered()
     {
         Hover();
+        if (State == CharacterState.Dying)
+            return;
         ShowHoverTooltips();
     }
 
@@ -159,6 +163,12 @@ public partial class Character : Node2D
 
     private void ShowHoverTooltips()
     {
+        if (State == CharacterState.Dying)
+        {
+            HideHoverTooltips();
+            return;
+        }
+
         if (SkillTooltip != null)
         {
             SkillTooltip.FollowMouse = true;
@@ -191,7 +201,7 @@ public partial class Character : Node2D
         if (Skills == null || Skills.Length == 0)
             return sb.ToString().TrimEnd();
 
-        const string separator = "[color=#6b6b6b]────────────────────────[/color]\n";
+        const string separator = "[color=#6b6b6b]──────────────[/color]\n";
         const string skillNameColor = "#b56bff";
         const int skillNameFontSize = 32;
 
@@ -220,6 +230,11 @@ public partial class Character : Node2D
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    public string GetSkillTooltipText()
+    {
+        return BuildSkillTooltipText();
     }
 
     private string BuildBuffTooltipText()

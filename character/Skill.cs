@@ -7,6 +7,10 @@ using Godot;
 
 public partial class Skill
 {
+    private int _previewPower;
+    private int _previewSurvivability;
+    private int _previewEnergy = 1;
+
     public enum PropertyType
     {
         [Description("力量")]
@@ -52,8 +56,20 @@ public partial class Skill
         OwnerCharater.BattleNode.UsedSkills.Add(this);
     }
 
-    protected int OwnerPower => OwnerCharater?.BattlePower ?? 0;
-    protected int OwnerSurvivability => OwnerCharater?.BattleSurvivability ?? 0;
+    /// <summary>
+    /// For non-battle usage (e.g. previews), set preview stats so UpdateDescription can work without a Character instance.
+    /// </summary>
+    public void SetPreviewStats(int power, int survivability, int energy = 1)
+    {
+        _previewPower = power;
+        _previewSurvivability = survivability;
+        _previewEnergy = energy;
+    }
+
+    protected int OwnerPower => OwnerCharater != null ? OwnerCharater.BattlePower : _previewPower;
+    protected int OwnerSurvivability =>
+        OwnerCharater != null ? OwnerCharater.BattleSurvivability : _previewSurvivability;
+    protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
 
     protected static string GetPropertyLabel(PropertyType type) => type.GetDescription();
 
@@ -74,7 +90,8 @@ public partial class Skill
 
     protected void SetDescriptionText(string text)
     {
-        Description = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
+        string output = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
+        Description = GlobalFunction.ColorizeKeywords(output);
     }
 
     protected void SetDescriptionLines(params string[] lines)
@@ -270,6 +287,12 @@ public partial class Skill
                 return new EchonicResonance();
             case SkillID.SoundBarrier:
                 return new SoundBarrier();
+            case SkillID.EvilAttack:
+                return new EvilAttack();
+            case SkillID.EvilSurvive:
+                return new EvilSurvive();
+            case SkillID.EvilTermin:
+                return new EvilTermin();
         }
         return null;
     }
@@ -285,4 +308,7 @@ public enum SkillID
     SacredOnslaught,
     EchonicResonance,
     SoundBarrier,
+    EvilAttack,
+    EvilSurvive,
+    EvilTermin,
 }

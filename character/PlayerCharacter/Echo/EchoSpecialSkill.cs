@@ -32,7 +32,7 @@ public class EchonicResonance : Skill
 
     public override void UpdateDescription()
     {
-        int energy = Math.Max(OwnerCharater?.Energy ?? 0, 0);
+        int energy = Math.Max(OwnerEnergy, 0);
         int castTimes = Math.Max(1, (int)Math.Ceiling((double)energy / CostPerCast));
         int totalPowerGain = castTimes * PowerGainPerCast;
         SetDescriptionLines(

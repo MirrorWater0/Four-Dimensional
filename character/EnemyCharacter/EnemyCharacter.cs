@@ -6,6 +6,7 @@ using Godot;
 
 public partial class EnemyCharacter : Character
 {
+    public EnemyRegedit Registry;
     public Control IntentionContorl => field ??= GetNode<Control>("Intention");
     public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
     public ColorRect SurviveIntention => field ??= GetNode<ColorRect>("Intention/Survive");
@@ -23,6 +24,21 @@ public partial class EnemyCharacter : Character
 
     public override void Initialize()
     {
+        if (Registry != null)
+        {
+            CharaterName = Registry.CharacterName;
+            BattleLifemax = Registry.MaxLife;
+            Life = BattleLifemax;
+            BattlePower = Registry.Power;
+            BattleSurvivability = Registry.Survivability;
+            Speed = Registry.Speed;
+            Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
+                .Select(Skill.GetSkill)
+                .Where(x => x != null)
+                .ToArray();
+            if (Skills.Length == 0)
+                Skills = new Skill[3];
+        }
         base.Initialize();
     }
 

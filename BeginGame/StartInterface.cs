@@ -75,7 +75,6 @@ public partial class StartInterface : CanvasLayer
     public void Start()
     {
         NewStart();
-        Battle.Istest = false;
         GameInfo.InitNewGame();
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
@@ -91,6 +90,14 @@ public partial class StartInterface : CanvasLayer
     {
         SaveSystem.LoadAll();
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+    }
+
+    public void TestBattle()
+    {
+        NewStart();
+        Battle.Istest = true;
+        GameInfo.InitNewGame();
+        GetTree().ChangeSceneToFile("res://battle/Battle.tscn");
     }
 }
 

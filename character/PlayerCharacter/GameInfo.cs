@@ -123,6 +123,68 @@ public static class GlobalFunction
 
         return builder.ToString();
     }
+
+    public static string ColorizeKeywords(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        // Only process outside BBCode tags to avoid corrupting things like [color=#87CEEB].
+        // "Cambridge Blue" is commonly represented as #A3C1AD.
+        const string red = "#ff0000";
+        const string cambridgeBlue = "#9cdacf";
+        const string darkBlue = "#4444ef";
+
+        StringBuilder builder = new StringBuilder(input.Length * 2);
+        bool inTag = false;
+
+        for (int i = 0; i < input.Length; i++)
+        {
+            char ch = input[i];
+
+            if (ch == '[')
+            {
+                inTag = true;
+                builder.Append(ch);
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                builder.Append(ch);
+                continue;
+            }
+
+            if (!inTag)
+            {
+                if (i + 2 <= input.Length)
+                {
+                    string two = input.Substring(i, 2);
+                    string color = two switch
+                    {
+                        "伤害" => red,
+                        "格挡" => cambridgeBlue,
+                        "能量" => darkBlue,
+                        _ => null,
+                    };
+
+                    if (color != null)
+                    {
+                        builder.Append($"[color={color}]");
+                        builder.Append(two);
+                        builder.Append("[/color]");
+                        i += 1;
+                        continue;
+                    }
+                }
+            }
+
+            builder.Append(ch);
+        }
+
+        return builder.ToString();
+    }
 }
 
 public class ObservableList<T> : List<T>
