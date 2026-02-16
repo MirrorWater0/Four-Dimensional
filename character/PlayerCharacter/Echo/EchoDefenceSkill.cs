@@ -29,7 +29,7 @@ public partial class SoundBarrier : Skill
     {
         int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 9999);
         SetDescriptionLines(
-            $"恢复{EnergyGain}点能量，获得{block}点格挡，并令我方首位角色立刻释放攻击技能。"
+            $"恢复{EnergyGain}点能量；获得{block}点格挡；我方首位角色立刻释放攻击技能。"
         );
     }
 }

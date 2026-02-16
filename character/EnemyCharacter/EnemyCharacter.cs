@@ -30,7 +30,7 @@ public partial class EnemyCharacter : Character
     {
         await ToSignal(GetTree().CreateTimer(0.1f), "timeout");
         base.StartAction();
-        _ = DisappearIntention();
+        await DisappearIntention();
         await Skills[IntentionIndex].Effect();
         EndAction();
     }
@@ -57,7 +57,7 @@ public partial class EnemyCharacter : Character
     public async Task DisappearIntention()
     {
         Buff.GhostExplode(IntentionContorl, new Vector2(2, 2));
-        await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
+        await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
         AttackIntention.Visible = false;
         SurviveIntention.Visible = false;
         SpecialIntention.Visible = false;
@@ -66,6 +66,8 @@ public partial class EnemyCharacter : Character
     public void DisplayIntention()
     {
         var skill = Skills[IntentionIndex];
+        IntentionContorl.Modulate = new Color(1, 1, 1, 0);
+        IntentionContorl.Scale = new Vector2(1.8f, 1.8f);
         switch (skill.SkillType)
         {
             case Skill.SkillTypes.Attack:
@@ -78,5 +80,12 @@ public partial class EnemyCharacter : Character
                 SpecialIntention.Visible = true;
                 break;
         }
+
+        Tween tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(IntentionContorl, "modulate", new Color(1, 1, 1, 1), 0.2f);
+        tween
+            .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
+            .SetEase(Tween.EaseType.Out);
     }
 }

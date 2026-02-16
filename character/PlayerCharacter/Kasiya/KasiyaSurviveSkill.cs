@@ -29,7 +29,7 @@ public partial class ReNewedSpirit : Skill
     {
         int block = Math.Clamp(OwnerSurvivability + SurvivabilityGain, 0, 9999);
         SetDescriptionLines(
-            $"{}加成触发1次（+{PowerGain}），生存加成触发1次（+{SurvivabilityGain}），并获得{block}点格挡。"
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}、+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}；获得{block}点格挡。"
         );
     }
 }

@@ -38,9 +38,8 @@ public class TerminateLight : Skill
             UsedTimes > 0 && (OwnerCharater?.Energy ?? 0) >= EnergyCost ? 1 : 0;
         int thisCastPowerBonus = thisCastPowerBonusTimes * PowerGain;
         SetDescriptionLines(
-            $"造成{damage}点伤害（受到2倍力量加成）。",
-            $"本次{PropertyType.Power}增益触发{thisCastPowerBonusTimes}次（+{thisCastPowerBonus}）；剩余强化机会{UsedTimes}次，触发条件：能量不少于{EnergyCost}。"
+            $"造成{damage}点伤害（受到2倍{GetColoredPropertyLabel(PropertyType.Power)}加成）。",
+            $"若剩余强化>0且能量>={EnergyCost}：本次获得+{thisCastPowerBonus}{GetColoredPropertyLabel(PropertyType.Power)}（触发{thisCastPowerBonusTimes}次）；剩余{UsedTimes}次。"
         );
     }
 }
-

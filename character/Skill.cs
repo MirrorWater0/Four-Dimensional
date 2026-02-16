@@ -50,6 +50,23 @@ public partial class Skill
     protected int OwnerPower => OwnerCharater?.BattlePower ?? 0;
     protected int OwnerSurvivability => OwnerCharater?.BattleSurvivability ?? 0;
 
+    protected static string GetPropertyLabel(PropertyType type) => type.GetDescription();
+
+    protected static string GetColoredPropertyLabel(PropertyType type)
+    {
+        return $"[color={GetPropertyColor(type)}]{GetPropertyLabel(type)}[/color]";
+    }
+
+    private static string GetPropertyColor(PropertyType type)
+    {
+        return type switch
+        {
+            PropertyType.Power => "#ff0000",
+            PropertyType.Survivalibility => "#89fffd",
+            _ => "white",
+        };
+    }
+
     protected void SetDescriptionText(string text)
     {
         Description = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
@@ -110,7 +127,7 @@ public partial class Skill
             return;
         await AttackAnimation(targets[0]);
         await targets[0].GetHurt(damage);
-
+        await Task.Delay(100);
         // Only apply second hit if target is still alive
         if (targets[0].State == Character.CharacterState.Normal)
         {
@@ -140,6 +157,7 @@ public partial class Skill
             attack.AnimationPlayer0.Play("Attack1");
             attack.GlobalPosition = target.GlobalPosition;
             await target.GetHurt(damage);
+            await Task.Delay(100);
         }
     }
 
@@ -155,7 +173,7 @@ public partial class Skill
         attack.GlobalPosition = target.GlobalPosition;
     }
 
-    public async Task DescendingProperties(Character target, PropertyType type, int num)
+    public void DescendingProperties(Character target, PropertyType type, int num)
     {
         ColorRect icon = null;
         switch (type)
@@ -178,7 +196,7 @@ public partial class Skill
         characterEffect.Animation.Play("lightning");
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"[color=red]{type.GetDescription()}[/color] -{num}";
+        hint.Text = $"{GetColoredPropertyLabel(type)} -{num}";
         hint.TargetPosition = new Vector2(0, 150);
         hint.GlobalPosition = target.GlobalPosition;
         OwnerCharater.BattleNode.AddChild(hint);
@@ -209,7 +227,7 @@ public partial class Skill
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"[color=red]{type.GetDescription()}[/color] +{value}";
+        hint.Text = $"{GetColoredPropertyLabel(type)} +{value}";
         hint.TargetPosition = new Vector2(0, 150);
         hint.TargetPosition = target.GlobalPosition + new Vector2(0, 100);
         hint.RandomOffset = true;

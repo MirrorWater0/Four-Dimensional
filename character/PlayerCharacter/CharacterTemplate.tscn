@@ -477,9 +477,9 @@ show_percentage = false
 [node name="Block" type="Label" parent="LifeBar" unique_id=1125559359]
 z_index = 2
 layout_mode = 0
-offset_left = -56.549988
+offset_left = -57.799988
 offset_top = -11.25
-offset_right = 23.450012
+offset_right = 22.200012
 offset_bottom = 37.75
 scale = Vector2(0.7, 0.7)
 theme = ExtResource("1_kvlfx")

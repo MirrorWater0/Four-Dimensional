@@ -27,7 +27,7 @@ public partial class Determination : Skill
     public override void UpdateDescription()
     {
         SetDescriptionLines(
-            $"对前方目标造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害，并获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+            $"造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害；获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
         );
     }
 }
@@ -51,7 +51,7 @@ public partial class Smite : Skill
         Character[] targets = Chosetarget1();
         if (targets.Length > 0)
         {
-            await DescendingProperties(targets[0], PropertyType.Survivalibility, SurvivalDown);
+            DescendingProperties(targets[0], PropertyType.Survivalibility, SurvivalDown);
             await Attack1(BaseDamage + OwnerPower);
         }
     }
@@ -59,7 +59,7 @@ public partial class Smite : Skill
     public override void UpdateDescription()
     {
         SetDescriptionLines(
-            $"降低目标{SurvivalDown}点生存，然后造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。"
+            $"降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivalibility)}；造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。"
         );
     }
 }
@@ -87,6 +87,6 @@ public partial class Charge : Skill
     public override void UpdateDescription()
     {
         int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
-        SetDescriptionLines($"发动攻击，造成{damage}点伤害，并获得{damage}点格挡。");
+        SetDescriptionLines($"造成{damage}点伤害；获得{damage}点格挡。");
     }
 }

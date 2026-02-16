@@ -27,6 +27,8 @@ public partial class PlayerCharacter : Character
         Speed = GameInfo.PlayerCharacters[CharacterIndex].Speed;
         base.Initialize();
         IsPlayer = true;
+        BlockLabel.Position += new Vector2(230, 0);
+        BlockLabel.HorizontalAlignment = HorizontalAlignment.Left;
     }
 
     public override void StartAction()
