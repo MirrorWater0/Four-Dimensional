@@ -26,7 +26,7 @@ public partial class EnemyCharacter : Character
     {
         if (Registry != null)
         {
-            CharaterName = Registry.CharacterName;
+            CharacterName = Registry.CharacterName;
             BattleLifemax = Registry.MaxLife;
             Life = BattleLifemax;
             BattlePower = Registry.Power;

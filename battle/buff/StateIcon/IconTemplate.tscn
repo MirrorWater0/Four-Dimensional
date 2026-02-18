@@ -1,26 +1,29 @@
-[gd_scene load_steps=4 format=3 uid="uid://dmi0svevasppy"]
+[gd_scene format=3 uid="uid://dmi0svevasppy"]
 
-[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="1_kq8gk"]
-[ext_resource type="Theme" uid="uid://8fh7uawwnl5m" path="res://battle/buff/StateIcon/IconLabel.tres" id="2_rojt6"]
+[sub_resource type="Theme" id="Theme_vlyii"]
+Label/constants/outline_size = 4
+Label/font_sizes/font_size = 25
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_eq06d"]
-shader = ExtResource("1_kq8gk")
-shader_parameter/sword_color = Color(1, 0, 0, 1)
-shader_parameter/blade_color = Color(1, 0.2, 0.2, 1)
-shader_parameter/handle_color = Color(0.38417843, 0.13872549, 0.13861337, 1)
-shader_parameter/glow_intensity = 0.730000034675
-shader_parameter/angle = 0.0
-
-[node name="PowerIcon" type="ColorRect"]
-material = SubResource("ShaderMaterial_eq06d")
+[node name="Icon" type="ColorRect" unique_id=1043864828]
 custom_minimum_size = Vector2(40, 40)
 metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="."]
-layout_mode = 0
-offset_left = 23.0
-offset_top = 14.0
-offset_right = 37.0
-offset_bottom = 49.0
-theme = ExtResource("2_rojt6")
+[node name="Label" type="Label" parent="." unique_id=1880918892]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+pivot_offset_ratio = Vector2(0.5, 0.5)
+theme = SubResource("Theme_vlyii")
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
 text = "10"
+horizontal_alignment = 1
+vertical_alignment = 1

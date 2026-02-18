@@ -40,7 +40,7 @@ public partial class Character : Node2D
     //charater basic properties
     [Export]
     public Texture2D Portrait;
-    public virtual string CharaterName { get; set; }
+    public virtual string CharacterName { get; set; }
     public int BattleLifemax;
     public int Life { get; protected set; }
     public int BattlePower;
@@ -195,13 +195,13 @@ public partial class Character : Node2D
     private string BuildSkillTooltipText()
     {
         var sb = new StringBuilder(256);
-        string name = string.IsNullOrWhiteSpace(CharaterName) ? "Character" : CharaterName;
+        string name = string.IsNullOrWhiteSpace(CharacterName) ? "Character" : CharacterName;
         sb.Append($"[b]{name}[/b]\n");
 
         if (Skills == null || Skills.Length == 0)
             return sb.ToString().TrimEnd();
 
-        const string separator = "[color=#6b6b6b]──────────────[/color]\n";
+        const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
         const int skillNameFontSize = 32;
 

@@ -10,7 +10,7 @@ public partial class CharaterControl : Control
     public Frame CharaterFrame3 => field ??= GetNode<Frame>("frame3");
     public Frame CharaterFrame4 => field ??= GetNode<Frame>("frame4");
 
-    public Frame[] CharatersControl =>
+    public Frame[] CharactersControl =>
         new[] { CharaterFrame1, CharaterFrame2, CharaterFrame3, CharaterFrame4 };
 
     public override async void _Ready()
@@ -19,14 +19,13 @@ public partial class CharaterControl : Control
         Connect();
     }
 
-    public override void _Process(double delta) { }
-
     public void Connect()
     {
-        for (int i = 0; i < CharatersControl.Length && i < BattleNode.PlayersList.Count; i++)
+        for (int i = 0; i < CharactersControl.Length && i < BattleNode.PlayersList.Count; i++)
         {
-            BattleNode.PlayersList[i].SelfFrame = CharatersControl[i];
-            var skillButtons = CharatersControl[i].SkillButtonContainer;
+            BattleNode.PlayersList[i].SelfFrame = CharactersControl[i];
+            var skillButtons = CharactersControl[i].SkillButtonContainer;
+            CharactersControl[i].NameLabel.Text = BattleNode.PlayersList[i].CharacterName;
             BattleNode.PlayersList[i].SkillButtonControl = skillButtons;
             for (int j = 0; j < skillButtons.GetChildCount(); j++)
             {
@@ -53,8 +52,8 @@ public partial class CharaterControl : Control
         {
             for (int j = 0; j < GetChild<Frame>(i).SkillButtonContainer.GetChildCount(); j++)
             {
-                CharatersControl[i].SkillButtonContainer.GetChild<Button>(j).Disabled = true;
-                CharatersControl[i]
+                CharactersControl[i].SkillButtonContainer.GetChild<Button>(j).Disabled = true;
+                CharactersControl[i]
                     .SkillButtonContainer.GetChild<Button>(j)
                     .GetChild<Label>(0)
                     .Modulate = new Color(1, 1, 1, 0.3f);

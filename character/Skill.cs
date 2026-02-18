@@ -196,17 +196,17 @@ public partial class Skill
         attack.GlobalPosition = target.GlobalPosition;
     }
 
-    public void DescendingProperties(Character target, PropertyType type, int num)
+    public void DescendingProperties(Character target, PropertyType type, int value)
     {
         ColorRect icon = null;
         switch (type)
         {
             case PropertyType.Power:
-                target.BattlePower -= num;
+                target.BattlePower -= value;
                 icon = target.PowerIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Survivalibility:
-                target.BattleSurvivability -= num;
+                target.BattleSurvivability -= value;
                 icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
         }
@@ -219,10 +219,11 @@ public partial class Skill
         characterEffect.Animation.Play("lightning");
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{GetColoredPropertyLabel(type)} -{num}";
-        hint.TargetPosition = new Vector2(0, 150);
-        hint.GlobalPosition = target.GlobalPosition;
-        OwnerCharater.BattleNode.AddChild(hint);
+        hint.Text = $"{GetColoredPropertyLabel(type)} -{value}";
+        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
+        hint.RandomOffset = true;
+        target.AddChild(hint);
+        Buff.GhostExplode(icon, new Vector2(2f, 2f));
     }
 
     public void IncreaseProperties(Character target, PropertyType type, int value)
@@ -251,8 +252,7 @@ public partial class Skill
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
         hint.Text = $"{GetColoredPropertyLabel(type)} +{value}";
-        hint.TargetPosition = new Vector2(0, 150);
-        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 100);
+        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         target.AddChild(hint);
         Buff.GhostExplode(icon, new Vector2(2f, 2f));

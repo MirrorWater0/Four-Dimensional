@@ -6,7 +6,7 @@ public partial class Kasiya : PlayerCharacter
 {
     Label label => field ??= GetNode<Label>("Label");
     public override PackedScene CharaterScene { get; set; } = StartInterface._Kasiya;
-    public override string CharaterName { get; set; } = "Kasiya";
+    public override string CharacterName { get; set; } = "Kasiya";
 
     public override void Initialize()
     {

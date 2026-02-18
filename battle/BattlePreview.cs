@@ -237,7 +237,7 @@ public partial class BattlePreview : Control
         if (skills == null || skills.Length == 0)
             return sb.ToString().TrimEnd();
 
-        const string separator = "[color=#6b6b6b]──────────────[/color]\n";
+        const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
         const int skillNameFontSize = 32;
 

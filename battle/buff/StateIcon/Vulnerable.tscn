@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dhn2heao7a3jv"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/StateIcon/IconTemplate.tscn" id="1_tw750"]
+[ext_resource type="Shader" uid="uid://dltfa87g7e04e" path="res://shader/Icon/Vulnerable.gdshader" id="2_vg021"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1yw3o"]
+shader = ExtResource("2_vg021")
+shader_parameter/heart_color = Color(0.75, 0.1, 0.15, 1)
+shader_parameter/cut_width = 0.1170000055575
+shader_parameter/cut_slope = 1.538000168055
+
+[node name="Vulnerable" unique_id=1043864828 instance=ExtResource("1_tw750")]
+material = SubResource("ShaderMaterial_1yw3o")

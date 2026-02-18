@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
-    public override string CharaterName { get; set; } = "Evil";
+    public override string CharacterName { get; set; } = "Evil";
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
     {

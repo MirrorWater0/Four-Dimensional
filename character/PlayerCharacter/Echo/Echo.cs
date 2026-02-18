@@ -5,7 +5,7 @@ public partial class Echo : PlayerCharacter
 {
     public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
-    public override string CharaterName { get; set; } = "Echo";
+    public override string CharacterName { get; set; } = "Echo";
 
     public override void _Ready()
     {
