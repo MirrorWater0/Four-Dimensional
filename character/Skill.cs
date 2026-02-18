@@ -269,32 +269,23 @@ public partial class Skill
 
     public static Skill GetSkill(SkillID skillID)
     {
-        switch (skillID)
+        return skillID switch
         {
-            case SkillID.Determination:
-                return new Determination();
-            case SkillID.ReNewedSpirit:
-                return new ReNewedSpirit();
-            case SkillID.TerminateLight:
-                return new TerminateLight();
-            case SkillID.Smite:
-                return new Smite();
-            case SkillID.Charge:
-                return new Charge();
-            case SkillID.SacredOnslaught:
-                return new SacredOnslaught();
-            case SkillID.EchonicResonance:
-                return new EchonicResonance();
-            case SkillID.SoundBarrier:
-                return new SoundBarrier();
-            case SkillID.EvilAttack:
-                return new EvilAttack();
-            case SkillID.EvilSurvive:
-                return new EvilSurvive();
-            case SkillID.EvilTermin:
-                return new EvilTermin();
-        }
-        return null;
+            SkillID.Determination => new Determination(),
+            SkillID.ReNewedSpirit => new ReNewedSpirit(),
+            SkillID.TerminateLight => new TerminateLight(),
+            SkillID.Smite => new Smite(),
+            SkillID.Charge => new Charge(),
+            SkillID.DeSurviveSkill => new ShockWave(),
+            SkillID.SacredOnslaught => new SacredOnslaught(),
+            SkillID.EchonicResonance => new EchonicResonance(),
+            SkillID.SoundBarrier => new SoundBarrier(),
+            SkillID.EvilAttack => new EvilAttack(),
+            SkillID.EvilSurvive => new EvilSurvive(),
+            SkillID.EvilTermin => new EvilTermin(),
+            SkillID.ShockWave => new ShockWave(),
+            _ => null,
+        };
     }
 }
 
@@ -311,4 +302,6 @@ public enum SkillID
     EvilAttack,
     EvilSurvive,
     EvilTermin,
+    DeSurviveSkill,
+    ShockWave
 }

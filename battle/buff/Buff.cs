@@ -14,10 +14,25 @@ public partial class Buff
         "res://LabelNode/BuffHintLabel.tscn"
     );
 
-    public static void GhostExplode(Control node, Vector2 scale)
+    public static string GetBuffEffectText(BuffName name)
+    {
+        string key = name switch
+        {
+            BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
+            BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
+            BuffName.Vulnerable => "受到伤害时，伤害提高25%，消耗1层。",
+            _ => string.Empty,
+        };
+
+        return string.IsNullOrWhiteSpace(key) ? string.Empty : TranslationServer.Translate(key);
+    }
+
+    public static void GhostExplode(Control node, Vector2 scale, Node parent = null)
     {
         // 1. 克隆节点
         var ghost = node.Duplicate() as Control;
+        ghost.GetChild(0).QueueFree();
+        ghost.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         if (ghost == null)
             return;
 
@@ -49,14 +64,15 @@ public partial class Buff
         }
 
         // 3. 设置层级与位置
-        // 建议加到父节点，防止 ghost 随着 node 一起移动或被 node 的 Clip 裁剪
-        node.AddChild(ghost);
-        ghost.PivotOffset = Vector2.Zero;
-        ghost.GlobalPosition = node.GlobalPosition;
+        if (parent != null)
+            parent.AddChild(ghost);
+        else
+            node.AddChild(ghost);
 
         // 设置缩放中心
         ghost.PivotOffset = ghost.Size / 2;
-        ghost.Scale = Vector2.One;
+
+        ghost.Position = -ghost.Size / 2 + new Vector2(0, -40);
 
         // 4. 动画效果
         var tween = ghost.CreateTween(); // 建议直接由 ghost 创建
@@ -92,6 +108,9 @@ public partial class Buff
 
         [Description("免疫伤害")]
         DamageImmune,
+
+        [Description("易伤")]
+        Vulnerable,
     }
 
     public Character Owner;
@@ -120,6 +139,14 @@ public partial class Buff
         tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(1f, 1f), 0.35f);
     }
 
+    public void BuffAddAnimation()
+    {
+        var depIcon = BuffIcon.Duplicate() as ColorRect;
+        depIcon.Size = new Vector2(200, 200);
+        GhostExplode(depIcon, new Vector2(2f, 2f), Owner);
+        depIcon.Free();
+    }
+
     public void Hint(BuffName name, BuffHintLabel.Which which)
     {
         BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
@@ -144,11 +171,10 @@ public class DyingBuff : Buff
                 {
                     Owner.Recovery(Owner.BattleLifemax / 2);
                     Stack--;
-                    TweenLabel();
                 }
                 break;
         }
-
+        TweenLabel();
         if (Stack == 0)
         {
             // Check if BuffIcon is still valid before queuing for deletion
@@ -162,6 +188,16 @@ public class DyingBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack)
     {
+        if (target.DyingBuffs.Any(x => x.ThisBuffName == name))
+        {
+            Buff buff0 = target.DyingBuffs.First(x => x.ThisBuffName == name);
+            buff0.Stack += stack;
+            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
+            buff0.TweenLabel();
+            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
+            buff0.BuffAddAnimation();
+            return;
+        }
         DyingBuff buff = null;
         ColorRect icon = null;
         switch (name)
@@ -178,8 +214,11 @@ public class DyingBuff : Buff
                 return;
         }
         buff.BuffIcon = icon;
+        buff.TweenLabel();
         buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
         target.StateIconContainer.AddChild(icon);
+
+        buff.BuffAddAnimation();
     }
 }
 
@@ -196,15 +235,16 @@ public partial class HurtBuff : Buff
                 damage = 0;
                 Stack--;
 
-                // Only update the label and tween if we still have stacks
-                if (Stack > 0)
-                {
-                    BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
-                    TweenLabel();
-                }
+                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                break;
+            case BuffName.Vulnerable:
+                damage *= 1.25f;
+                Stack--;
+
+                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
                 break;
         }
-
+        TweenLabel();
         if (Stack == 0)
         {
             // Check if BuffIcon is still valid before queuing for deletion
@@ -214,7 +254,7 @@ public partial class HurtBuff : Buff
             }
             BuffIcon = null;
             Owner.HurtBuffs.Remove(this);
-            Hint(BuffName.DamageImmune, BuffHintLabel.Which.vanish);
+            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
         }
     }
 
@@ -226,7 +266,8 @@ public partial class HurtBuff : Buff
             buff0.Stack += stack;
             buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
             buff0.TweenLabel();
-            buff0.Hint(BuffName.DamageImmune, BuffHintLabel.Which.gain);
+            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
+            buff0.BuffAddAnimation();
             return;
         }
         HurtBuff buff = null;
@@ -240,12 +281,22 @@ public partial class HurtBuff : Buff
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Buffer.tscn").Instantiate()
                     as ColorRect;
                 break;
+            case BuffName.Vulnerable:
+                buff = new HurtBuff(target, BuffName.Vulnerable, stack);
+                target.HurtBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Vulnerable.tscn")
+                        .Instantiate() as ColorRect;
+                break;
             default:
                 return;
         }
         buff.BuffIcon = icon;
+        buff.TweenLabel();
         buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
         buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
         target.StateIconContainer.AddChild(icon);
+
+        buff.BuffAddAnimation();
     }
 }

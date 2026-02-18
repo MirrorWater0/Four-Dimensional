@@ -44,6 +44,7 @@ public struct PlayerInfoStructure
     public int Speed;
     public List<SkillID> GainedSkills = new();
     public SkillID[] TakenSkills = new SkillID[3];
+    public SkillID[] AllSkills = new SkillID[3];
     public int PositionIndex;
     public string PortaitPath;
 }

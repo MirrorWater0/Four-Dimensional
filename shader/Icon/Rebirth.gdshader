@@ -28,5 +28,5 @@ void fragment() {
     // Combine them
     float shape = max(vertical_bar, horizontal_bar);
 
-    COLOR = vec4(color.rgb, shape * color.a);
+    COLOR *= vec4(color.rgb, shape * color.a);
 }

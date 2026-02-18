@@ -5,7 +5,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1yw3o"]
 shader = ExtResource("2_vg021")
-shader_parameter/heart_color = Color(0.75, 0.1, 0.15, 1)
+shader_parameter/heart_color = Color(0.8933147, 0.14556015, 0.13983071, 1)
 shader_parameter/cut_width = 0.1170000055575
 shader_parameter/cut_slope = 1.538000168055
 

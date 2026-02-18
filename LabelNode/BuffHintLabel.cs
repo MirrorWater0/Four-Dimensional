@@ -38,17 +38,17 @@ public partial class BuffHintLabel : RichTextLabel
         await ToSignal(GetTree(), "process_frame");
         // Center the label horizontally by offsetting by half the width
         float centeredX = -Size.X / 2;
-        Position = TargetPosition + new Vector2(centeredX, -250);
+        Position = TargetPosition + new Vector2(centeredX, -230);
 
         PivotOffset = Size / 2;
 
-        Scale = new Vector2(0.1f, 0.1f);
+        Scale = new Vector2(0.7f, 0.7f);
         Modulate = new Color(1, 1, 1, 0);
         CreateTween()
             .TweenProperty(this, "position", Position + new Vector2(0, -40), 0.2f)
             .SetEase(Tween.EaseType.Out);
         CreateTween()
-            .TweenProperty(this, "modulate", 1.5f * new Color(1, 1, 1, 1f), 0.2f)
+            .TweenProperty(this, "modulate", 1.5f * new Color(1, 1, 1, 1f), 0.3f)
             .SetEase(Tween.EaseType.Out);
         CreateTween()
             .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)

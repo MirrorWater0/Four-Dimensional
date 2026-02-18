@@ -249,6 +249,9 @@ public partial class Character : Node2D
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
             {
                 sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color=yellow]{effect}[/color]\n");
                 any = true;
             }
         }
@@ -257,7 +260,11 @@ public partial class Character : Node2D
         {
             foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0))
             {
+                var colord = "#ffffef";
                 sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color={colord}]{effect}[/color]\n");
                 any = true;
             }
         }

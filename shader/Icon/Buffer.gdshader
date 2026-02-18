@@ -49,5 +49,5 @@ void fragment() {
 	final_color = mix(final_color, color_front, box3);
 
 	// Apply to texture
-	COLOR = final_color;
+	COLOR *= final_color;
 }

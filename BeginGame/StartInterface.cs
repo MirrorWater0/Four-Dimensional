@@ -64,10 +64,11 @@ public partial class StartInterface : CanvasLayer
         ];
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
-            GameInfo.PlayerCharacters[i].PositionIndex = i + 1;
-            GameInfo
-                .PlayerCharacters[i]
-                .GainedSkills.AddRange(GameInfo.PlayerCharacters[i].TakenSkills);
+            var info = GameInfo.PlayerCharacters[i];
+            info.PositionIndex = i + 1;
+            info.GainedSkills.AddRange(info.TakenSkills);
+            info.GainedSkills = info.GainedSkills.Distinct().ToList();
+            GameInfo.PlayerCharacters[i] = info;
         }
         test();
     }
@@ -82,7 +83,7 @@ public partial class StartInterface : CanvasLayer
     public void test()
     {
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.Determination);
+        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.ShockWave);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 
