@@ -284,6 +284,7 @@ public partial class Skill
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
             SkillID.ShockWave => new ShockWave(),
+            SkillID.AbsouluteDefense => new AbsouluteDefense(),
             _ => null,
         };
     }
@@ -303,5 +304,6 @@ public enum SkillID
     EvilSurvive,
     EvilTermin,
     DeSurviveSkill,
-    ShockWave
+    ShockWave,
+    AbsouluteDefense,
 }

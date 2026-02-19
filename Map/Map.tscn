@@ -14,6 +14,7 @@
 [ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
 [ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
+[ext_resource type="PackedScene" uid="uid://cpj08hfffou4g" path="res://battle/UIScene/Reward/SkillReward.tscn" id="15_7a0j3"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -283,5 +284,12 @@ color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
 
 [node name="Reward" type="CanvasLayer" parent="." unique_id=1225160073]
+
+[node name="ColorRect" type="ColorRect" parent="Reward" unique_id=395429388]
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.16470589, 0.16470589, 0.16470589, 0.5686275)
+
+[node name="SkillReward" parent="Reward" unique_id=544462408 instance=ExtResource("15_7a0j3")]
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

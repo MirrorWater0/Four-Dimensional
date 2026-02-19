@@ -107,21 +107,36 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Echo = new PlayerInfoStructure()
     {
         LifeMax = 50,
-        Power = 10,
-        Survivability = 10,
-        Speed = 10,
+        Power = 9,
+        Survivability = 11,
+        Speed = 12,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/Echo.png",
         TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
+        AllSkills = [
+            SkillID.SacredOnslaught,
+            SkillID.SoundBarrier,
+            SkillID.EchonicResonance,
+        ]
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
         LifeMax = 50,
-        Power = 10,
-        Survivability = 10,
-        Speed = 10,
+        Power = 12,
+        Survivability = 12,
+        Speed = 9,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/Kasiya.png",
         TakenSkills = [SkillID.Determination, SkillID.ReNewedSpirit, SkillID.TerminateLight],
+        AllSkills =
+        [
+            SkillID.Determination,
+            SkillID.Charge,
+            SkillID.Smite,
+            SkillID.ReNewedSpirit,
+            SkillID.AbsouluteDefense,
+            SkillID.ShockWave,
+            SkillID.TerminateLight,
+        ],
     };
 }

@@ -335,7 +335,7 @@ public partial class BattleReady : Control
                 }
             }
         }
-
+        SaveSystem.SaveAll();
         var preview = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
         if (preview != null)
         {

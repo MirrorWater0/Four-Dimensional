@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://bvnftwrftpkc7"]
 
 [ext_resource type="Script" uid="uid://bhf4wionnrjlp" path="res://battle/UIScene/SkillButton.cs" id="1_gvdwr"]
-[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="2_etfs1"]
 [ext_resource type="Shader" uid="uid://bjwq3ux2tr1an" path="res://shader/UI4.gdshader" id="3_77nt8"]
 [ext_resource type="Shader" uid="uid://bfmj030vf135v" path="res://shader/UI/skillBgCircle.gdshader" id="4_qx430"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="5_c13mg"]
@@ -73,6 +72,7 @@ shader_parameter/petal_overall_size = 0.5
 shader_parameter/petal_pinch = 0.6
 shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 0.5
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tjicg"]
 resource_local_to_scene = true
@@ -104,21 +104,6 @@ theme_override_colors/font_outline_color = Color(1, 0, 0, 1)
 theme_override_constants/outline_size = 0
 keep_pressed_outside = true
 script = ExtResource("1_gvdwr")
-
-[node name="Label" type="Label" parent="." unique_id=1535467498]
-visible = false
-layout_mode = 0
-offset_left = 20.000002
-offset_top = 18.000002
-offset_right = 69.77778
-offset_bottom = 73.0
-scale = Vector2(0.45, 0.45)
-theme = ExtResource("2_etfs1")
-theme_override_colors/font_color = Color(0.898039, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0.317647, 0.329412, 0.341176, 0.454902)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 35
-text = "11"
 
 [node name="AbleRing" type="ColorRect" parent="." unique_id=423852926]
 material = SubResource("ShaderMaterial_h1nnv")

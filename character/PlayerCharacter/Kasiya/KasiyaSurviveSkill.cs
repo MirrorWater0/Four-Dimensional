@@ -80,3 +80,32 @@ public partial class ReNewedSpirit : Skill
         );
     }
 }
+
+public partial class AbsouluteDefense : Skill
+{
+    private int GainPower = 3;
+    public override string SkillName { get; set; } = "绝对防御";
+
+    public AbsouluteDefense()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override async Task Effect()
+    {
+        await base.Effect();
+        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
+        IncreaseProperties(OwnerCharater, PropertyType.Power, GainPower);
+    }
+
+    public override void UpdateDescription()
+    {
+        int block = Math.Clamp(OwnerSurvivability, 0, 9999);
+        SetDescriptionLines(
+            $"获得{block}点格挡{2}次。"
+                + $"获得+{GainPower}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        );
+    }
+}

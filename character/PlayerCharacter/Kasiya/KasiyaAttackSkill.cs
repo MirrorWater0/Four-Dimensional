@@ -34,8 +34,8 @@ public partial class Determination : Skill
 
 public partial class Smite : Skill
 {
-    private const int BaseDamage = 3;
-    private const int SurvivalDown = 2;
+    private const int BaseDamage = 15;
+    private const int SurvivalDown = 5;
 
     public Smite()
         : base(Skill.SkillTypes.Attack)

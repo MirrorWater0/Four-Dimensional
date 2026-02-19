@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c8pd3dyyxenqy"]
 
 [ext_resource type="Shader" uid="uid://dt5olcfi6tvjs" path="res://shader/UI/ChangePosFrame.gdshader" id="1_jwyif"]
-[ext_resource type="Script" uid="uid://lva3dyk4ld2c" path="res://battle/BattlePreview.cs" id="1_tp1km"]
+[ext_resource type="Script" uid="uid://lva3dyk4ld2c" path="res://battle/BattlePreview/BattlePreview.cs" id="1_tp1km"]
 [ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_starbg"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="3_gear"]
 [ext_resource type="Shader" uid="uid://tidlfiqqjox0" path="res://shader/UI/BrushButton.gdshader" id="5_brshbtn"]

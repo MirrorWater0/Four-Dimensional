@@ -7,7 +7,6 @@ public partial class SkillButton : Button
     public Skill.SkillTypes MySkillType;
     public Frame SelfFrame => field ??= GetParent().GetParent() as Frame;
     public VBoxContainer SelfContainer => field ??= GetParent() as VBoxContainer;
-    public Label NameLabel => field ??= GetChild(0) as Label;
 
     public Vector2 PositionIndex;
     public Skill SelfSkill;

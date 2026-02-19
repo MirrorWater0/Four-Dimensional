@@ -36,7 +36,7 @@ public partial class LevelNode : ColorRect
     public List<LevelNode> NextNodes = new List<LevelNode>();
     public List<LevelNode> ParentNodes = new List<LevelNode>();
     public static PackedScene BattlePreviewScene = GD.Load<PackedScene>(
-        "res://battle/BattlePreview.tscn"
+        "res://battle/BattlePreview/BattlePreview.tscn"
     );
     public Vector2I SelfCoordinate;
     public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;

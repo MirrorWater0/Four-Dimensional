@@ -1,0 +1,195 @@
+[gd_scene format=3 uid="uid://cpj08hfffou4g"]
+
+[ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillReward.cs" id="1_c2y0s"]
+[ext_resource type="StyleBox" uid="uid://bsks3e8p2c8iu" path="res://battle/UIScene/Reward/RewardPanel.tres" id="2_7ghnd"]
+[ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="3_fx7jw"]
+[ext_resource type="Shader" uid="uid://bjwq3ux2tr1an" path="res://shader/UI4.gdshader" id="4_bb6mt"]
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="5_aklni"]
+[ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="6_kvj5v"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="7_rdop1"]
+[ext_resource type="Shader" uid="uid://d2x4imm7580bq" path="res://shader/shockwave.gdshader" id="8_sb36s"]
+[ext_resource type="Shader" uid="uid://cca31j43kxjx3" path="res://shader/Effect/SparkLight.gdshader" id="9_0hwsb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7a0j3"]
+bg_color = Color(0.105882354, 0.105882354, 0.105882354, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[sub_resource type="Theme" id="Theme_ehio4"]
+Panel/styles/panel = SubResource("StyleBoxFlat_7a0j3")
+
+[sub_resource type="Theme" id="Theme_7a0j3"]
+Panel/styles/panel = ExtResource("2_7ghnd")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0g0qh"]
+content_margin_left = 10.0
+content_margin_top = 50.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.10524041, 0.10524041, 0.1052404, 0.827451)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[sub_resource type="Theme" id="Theme_0g0qh"]
+RichTextLabel/styles/normal = SubResource("StyleBoxFlat_0g0qh")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bb6mt"]
+resource_local_to_scene = true
+shader = ExtResource("4_bb6mt")
+shader_parameter/speed = 1.0
+shader_parameter/ring_color = Color(1, 1, 1, 1)
+shader_parameter/inner_radius = 25.0
+shader_parameter/outer_radius = 30.0
+shader_parameter/glow_intensity = 0.5000000074506
+shader_parameter/glow_radius = 8.0
+shader_parameter/disable = false
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_aklni"]
+resource_local_to_scene = true
+shader = ExtResource("5_aklni")
+shader_parameter/sword_color = Color(1, 1, 1, 1)
+shader_parameter/blade_color = Color(1, 1, 1, 1)
+shader_parameter/handle_color = Color(1, 1, 1, 1)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kvj5v"]
+resource_local_to_scene = true
+shader = ExtResource("6_kvj5v")
+shader_parameter/color = Color(1.1801987, 1.1801987, 1.1801987, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_rdop1"]
+resource_local_to_scene = true
+shader = ExtResource("7_rdop1")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sb36s"]
+resource_local_to_scene = true
+shader = ExtResource("8_sb36s")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/glow_color = Color(1, 1, 1, 1)
+shader_parameter/progress = 1.0
+shader_parameter/base_thickness = 0.0050000002375
+shader_parameter/max_thickness = 0.0
+shader_parameter/glow_intensity = 19.0010009025475
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0hwsb"]
+resource_local_to_scene = true
+shader = ExtResource("9_0hwsb")
+shader_parameter/main_color = Color(0.2, 0.6, 1, 1)
+shader_parameter/progress = 1.0
+shader_parameter/glow_intensity = 25.0
+shader_parameter/ray_count = 15.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t64y5"]
+bg_color = Color(0.68804306, 0.68804306, 0.688043, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b3jsu"]
+bg_color = Color(1, 1, 1, 1)
+
+[sub_resource type="Theme" id="Theme_t64y5"]
+/styles/panel = SubResource("StyleBoxFlat_t64y5")
+Label/colors/font_color = Color(0.33809972, 0.3380997, 0.33809966, 1)
+Label/colors/font_outline_color = Color(0, 0, 0, 1)
+Label/constants/outline_size = 3
+Label/styles/normal = SubResource("StyleBoxFlat_b3jsu")
+
+[node name="SkillReward" type="Panel" unique_id=544462408]
+custom_minimum_size = Vector2(250, 400)
+offset_left = 465.0
+offset_top = 260.0
+offset_right = 715.0
+offset_bottom = 660.0
+theme = SubResource("Theme_ehio4")
+script = ExtResource("1_c2y0s")
+
+[node name="HoverHint" type="Panel" parent="." unique_id=904079227]
+custom_minimum_size = Vector2(240, 390)
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 248.0
+offset_bottom = 398.0
+theme = SubResource("Theme_7a0j3")
+
+[node name="Description" type="RichTextLabel" parent="." unique_id=574232235]
+custom_minimum_size = Vector2(234, 384)
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 242.0
+offset_bottom = 392.0
+mouse_filter = 2
+theme = SubResource("Theme_0g0qh")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 25
+bbcode_enabled = true
+text = "ewesdsdsdsdsd"
+fit_content = true
+scroll_active = false
+
+[node name="SkillIcon" parent="." unique_id=429305689 instance=ExtResource("3_fx7jw")]
+layout_mode = 0
+offset_left = 93.0
+offset_top = 7.0
+offset_right = 153.0
+offset_bottom = 67.0
+
+[node name="AbleRing" parent="SkillIcon" index="0" unique_id=423852926]
+visible = false
+material = SubResource("ShaderMaterial_bb6mt")
+
+[node name="ColorRect2" parent="SkillIcon" index="1" unique_id=1267468745]
+visible = false
+
+[node name="SwordIcon" parent="SkillIcon" index="2" unique_id=1278232838]
+material = SubResource("ShaderMaterial_aklni")
+
+[node name="RhomboidIcon" parent="SkillIcon" index="3" unique_id=1011236504]
+material = SubResource("ShaderMaterial_kvj5v")
+
+[node name="TerminateSkillIcon" parent="SkillIcon" index="4" unique_id=1065074037]
+material = SubResource("ShaderMaterial_rdop1")
+
+[node name="ShockWave" parent="SkillIcon" index="5" unique_id=342777392]
+material = SubResource("ShaderMaterial_sb36s")
+
+[node name="SparkLight" parent="SkillIcon" index="6" unique_id=1133246718]
+material = SubResource("ShaderMaterial_0hwsb")
+
+[node name="NameLabel" type="Label" parent="." unique_id=359977757]
+custom_minimum_size = Vector2(220, 30)
+layout_mode = 0
+offset_left = 15.0
+offset_top = 350.0
+offset_right = 235.0
+offset_bottom = 380.0
+theme = SubResource("Theme_t64y5")
+theme_override_font_sizes/font_size = 20
+text = "name"
+horizontal_alignment = 1
+
+[node name="Button" type="Button" parent="." unique_id=1761752522]
+modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(250, 400)
+layout_mode = 0
+offset_top = 1.0
+offset_right = 250.0
+offset_bottom = 401.0
+
+[editable path="SkillIcon"]
