@@ -6,7 +6,7 @@ public partial class ReadyButton : Button
 {
     public Map ThisMap => field ??= GetNode("/root/Map") as Map;
     PackedScene _readyScene =
-        GD.Load("res://battle/UIScene/BattleReady/battle_ready.tscn") as PackedScene;
+        GD.Load("res://battle/UIScene/BattleReady/BattleReady.tscn") as PackedScene;
     private BattleReady ThisBattleReady;
 
     [Export]

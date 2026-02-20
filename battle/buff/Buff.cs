@@ -141,7 +141,15 @@ public partial class Buff
 
     public void BuffAddAnimation()
     {
+        if (BuffIcon == null || !GodotObject.IsInstanceValid(BuffIcon))
+            return;
+
         var depIcon = BuffIcon.Duplicate() as ColorRect;
+        if (depIcon == null)
+            return;
+
+        // Avoid Godot warning: setting Size on Controls with stretched anchors gets overridden after _Ready.
+        depIcon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         depIcon.Size = new Vector2(200, 200);
         GhostExplode(depIcon, new Vector2(2f, 2f), Owner);
         depIcon.Free();

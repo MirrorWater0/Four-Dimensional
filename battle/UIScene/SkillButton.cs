@@ -3,6 +3,10 @@ using Godot;
 
 public partial class SkillButton : Button
 {
+    public const float DisabledAlpha = 0.7f;
+    public static readonly Color EnabledModulate = new Color(1, 1, 1, 1f);
+    public static readonly Color DisabledModulate = new Color(1, 1, 1, DisabledAlpha);
+
     [Export]
     public Skill.SkillTypes MySkillType;
     public Frame SelfFrame => field ??= GetParent().GetParent() as Frame;
@@ -25,7 +29,25 @@ public partial class SkillButton : Button
     {
         MouseEntered += mouse_entered;
         MouseExited += mouse_exited;
-        Modulate = new Color(0.92f, 0.92f, 0.92f);
+        Modulate = new Color(0.9f, 0.9f, 0.9f);
+
+        ApplySkillTypeIcons();
+    }
+
+    public void SetSkillType(Skill.SkillTypes skillType)
+    {
+        MySkillType = skillType;
+        ApplySkillTypeIcons();
+    }
+
+    private void ApplySkillTypeIcons()
+    {
+        if (!IsInsideTree())
+            return;
+
+        SwordIcon.Visible = true;
+        RhomboidIcon.Visible = true;
+        TerminateSkillIcon.Visible = true;
 
         switch (MySkillType)
         {
@@ -56,9 +78,11 @@ public partial class SkillButton : Button
         }
     }
 
+    Color changeColor = 0.4f * new Color(0.5f, 0.5f, 0.5f, 0.4f);
+
     public void mouse_entered()
     {
-        Modulate = new Color(2.5f, 2.5f, 2.5f);
+        Modulate += changeColor;
 
         // Show tooltip with skill description
         if (SelfSkill != null && globalTooltip != null)
@@ -72,7 +96,8 @@ public partial class SkillButton : Button
 
     public void mouse_exited()
     {
-        Modulate = new Color(0.9f, 0.9f, 0.9f);
+
+        Modulate -= changeColor;
 
         // Hide tooltip
         if (globalTooltip != null)

@@ -14,7 +14,7 @@
 [ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
 [ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
-[ext_resource type="PackedScene" uid="uid://cpj08hfffou4g" path="res://battle/UIScene/Reward/SkillReward.tscn" id="15_7a0j3"]
+[ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -70,6 +70,16 @@ shader_parameter/ring_thickness = 0.04100000124898
 shader_parameter/ring_radius = 0.45
 shader_parameter/bolt_scale = 0.60400002543012
 shader_parameter/smoothness = 0.030000001425
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t64y5"]
+resource_local_to_scene = true
+shader = ExtResource("14_7a0j3")
+shader_parameter/color = Color(0.8027894, 0.8808041, 0.99999994, 1)
+shader_parameter/speed = 1.0
+shader_parameter/teeth = 8
+shader_parameter/tooth_length = 0.1
+shader_parameter/radius_percent = 0.35
+shader_parameter/hole_percent = 0.2
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jq5q4"]
 shader = ExtResource("12_cccvd")
@@ -189,10 +199,10 @@ theme = ExtResource("10_svc60")
 text = "战术"
 
 [node name="Button" type="Button" parent="UI" unique_id=942776571]
-offset_left = 1839.0
-offset_top = 31.0
-offset_right = 1901.0
-offset_bottom = 62.0
+offset_left = 1853.0
+offset_top = 60.0
+offset_right = 1915.0
+offset_bottom = 91.0
 text = "x"
 
 [node name="Button2" type="Button" parent="UI" unique_id=1573518701]
@@ -227,6 +237,7 @@ layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
+scale = Vector2(0.8, 0.8)
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
 layout_mode = 0
@@ -246,10 +257,10 @@ text = "Energy"
 
 [node name="ElectricityCoin" type="ColorRect" parent="PlayerResourceState" unique_id=360590376]
 material = SubResource("ShaderMaterial_0g0qh")
-offset_left = 51.0
-offset_top = 72.0
-offset_right = 96.0
-offset_bottom = 117.0
+offset_left = 18.0
+offset_top = 53.0
+offset_right = 63.0
+offset_bottom = 98.0
 
 [node name="Label" type="Label" parent="PlayerResourceState/ElectricityCoin" unique_id=150578415]
 layout_mode = 0
@@ -259,6 +270,21 @@ offset_right = 104.0
 offset_bottom = 47.0
 theme = ExtResource("10_svc60")
 text = "0"
+
+[node name="MenuButton" type="Button" parent="PlayerResourceState" unique_id=1744181871]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(50, 50)
+offset_left = 1867.0
+offset_top = 2.0
+offset_right = 1917.0
+offset_bottom = 52.0
+
+[node name="ColorRect" type="ColorRect" parent="PlayerResourceState/MenuButton" unique_id=668687700]
+material = SubResource("ShaderMaterial_t64y5")
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
 [node name="MaskLayer" type="CanvasLayer" parent="." unique_id=2006589008]
 layer = 7
@@ -282,14 +308,5 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
-
-[node name="Reward" type="CanvasLayer" parent="." unique_id=1225160073]
-
-[node name="ColorRect" type="ColorRect" parent="Reward" unique_id=395429388]
-offset_right = 1920.0
-offset_bottom = 1080.0
-color = Color(0.16470589, 0.16470589, 0.16470589, 0.5686275)
-
-[node name="SkillReward" parent="Reward" unique_id=544462408 instance=ExtResource("15_7a0j3")]
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

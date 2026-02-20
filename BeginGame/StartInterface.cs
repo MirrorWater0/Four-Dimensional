@@ -106,6 +106,7 @@ public partial class PlayerCharacterRegistry
 {
     public PlayerInfoStructure Echo = new PlayerInfoStructure()
     {
+        CharacterName = "Echo",
         LifeMax = 50,
         Power = 9,
         Survivability = 11,
@@ -121,6 +122,7 @@ public partial class PlayerCharacterRegistry
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
+        CharacterName = "Kasiya",
         LifeMax = 50,
         Power = 12,
         Survivability = 12,

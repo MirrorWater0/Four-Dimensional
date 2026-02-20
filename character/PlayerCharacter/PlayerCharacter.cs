@@ -36,13 +36,9 @@ public partial class PlayerCharacter : Character
         base.StartAction();
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {
-            SkillButtonControl.GetChild<SkillButton>(j).Enable();
-            SkillButtonControl.GetChild<Button>(j).GetChild<Label>(0).Modulate = new Color(
-                1,
-                1,
-                1,
-                1f
-            );
+            var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
+            skillButton.Enable();
+            skillButton.Modulate = SkillButton.EnabledModulate;
         }
         SelfFrame.Selected.Visible = true;
         BattleNode.RetreatButton.Disabled = false;
@@ -70,16 +66,11 @@ public partial class PlayerCharacter : Character
 
     public override void DisableSkill()
     {
-        GD.Print("ButtonNum:", SkillButtonControl.GetChildCount());
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {
-            SkillButtonControl.GetChild<Button>(j).Disabled = true;
-            SkillButtonControl.GetChild<Button>(j).GetChild<Label>(0).Modulate = new Color(
-                1,
-                1,
-                1,
-                0.3f
-            );
+            var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
+            skillButton.Disabled = true;
+            skillButton.Modulate = SkillButton.DisabledModulate;
         }
     }
 }

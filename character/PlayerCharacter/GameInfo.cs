@@ -37,7 +37,7 @@ public struct PlayerInfoStructure
 {
     public PlayerInfoStructure() { }
 
-    public String CharacterScenePath;
+    public string CharacterScenePath;
     public int LifeMax;
     public int Power;
     public int Survivability;
@@ -47,6 +47,7 @@ public struct PlayerInfoStructure
     public SkillID[] AllSkills = new SkillID[3];
     public int PositionIndex;
     public string PortaitPath;
+    public string CharacterName;
 }
 
 public static class GlobalFunction

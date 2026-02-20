@@ -17,7 +17,7 @@ public partial class Battle : Node2D
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Evil.tscn");
-    Map MapNode => field ??= GetNode("/root/Map") as Map;
+    Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
     public List<PlayerCharacter> PlayersList = new();
     public List<EnemyCharacter> EnemiesList = new();
     public Node2D Right => field ??= GetNode("Right") as Node2D;
@@ -307,13 +307,16 @@ public partial class Battle : Node2D
         {
             return;
         }
+
         // Disable retreat button to prevent multiple retreats
         if (RetreatButton != null)
         {
             RetreatButton.Disabled = true;
         }
-        MapNode.BlackMaskAnimation(0.8f);
+        MapNode?.BlackMaskAnimation(0.8f);
         await Task.Delay(800);
+
+        Reward.Show(this);
 
         // Clear lists
         PlayersList.Clear();

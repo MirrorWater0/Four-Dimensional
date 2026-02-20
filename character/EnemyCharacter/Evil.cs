@@ -4,7 +4,9 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
+    int Count = 0;
     public override string CharacterName { get; set; } = "Evil";
+
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()
     {
@@ -25,6 +27,22 @@ public partial class Evil : EnemyCharacter
         base.Initialize();
         DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
         UpdataEnergy(1);
+    }
+
+    public override void StartAction()
+    {
+        Count++;
+        Passive(null);
+        base.StartAction();
+    }
+
+    public override void Passive(Skill skill)
+    {
+        if (Count == 2)
+        {
+            Count = 0;
+            DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
+        }
     }
 }
 

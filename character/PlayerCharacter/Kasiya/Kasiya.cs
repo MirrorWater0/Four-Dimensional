@@ -12,10 +12,7 @@ public partial class Kasiya : PlayerCharacter
     {
         base.Initialize();
 
-        BattleNode.UsedSkills.ItemAdded += item =>
-        {
-            Passive(item);
-        };
+        BattleNode.UsedSkills.ItemAdded += Passive;
     }
 
     public override void Passive(Skill skill)

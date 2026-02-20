@@ -32,7 +32,6 @@ public partial class CharaterControl : Control
                 var skillButton = skillButtons.GetChild<SkillButton>(j);
                 var skill = BattleNode.PlayersList[i].Skills[j];
 
-                skillButton.NameLabel.Text = skill.SkillName;
                 skillButton.SelfSkill = skill;
 
                 // Create a synchronous wrapper for the async Effect method
@@ -52,11 +51,9 @@ public partial class CharaterControl : Control
         {
             for (int j = 0; j < GetChild<Frame>(i).SkillButtonContainer.GetChildCount(); j++)
             {
-                CharactersControl[i].SkillButtonContainer.GetChild<Button>(j).Disabled = true;
-                CharactersControl[i]
-                    .SkillButtonContainer.GetChild<Button>(j)
-                    .GetChild<Label>(0)
-                    .Modulate = new Color(1, 1, 1, 0.3f);
+                var skillButton = CharactersControl[i].SkillButtonContainer.GetChild<SkillButton>(j);
+                skillButton.Disabled = true;
+                skillButton.Modulate = SkillButton.DisabledModulate;
             }
         }
     }

@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://c1td3x2a04val"]
+
+[ext_resource type="Script" uid="uid://bibl21bxys62g" path="res://Map/Reward.cs" id="1_6w8bn"]
+[ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_f2bgc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_b3jsu"]
+shader = ExtResource("2_f2bgc")
+shader_parameter/bg_color_top = Color(0.08, 0.09, 0.16, 1)
+shader_parameter/bg_color_bottom = Color(0.02, 0.02, 0.05, 1)
+shader_parameter/triangle_color = Color(0.3, 0.4, 0.6, 0.3)
+
+[node name="Reward" type="CanvasLayer" unique_id=941172096]
+script = ExtResource("1_6w8bn")
+
+[node name="BG" type="ColorRect" parent="." unique_id=771452579]
+material = SubResource("ShaderMaterial_b3jsu")
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.98939866, 0.98939866, 0.98939854, 0.79607844)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1736903180]
+offset_left = 406.0
+offset_top = 333.0
+offset_right = 1586.0
+offset_bottom = 733.0
+theme_override_constants/separation = 60
