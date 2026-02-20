@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class CharaterControl : Control
+public partial class CharacterControl : Control
 {
     public Battle BattleNode => field ??= GetParent<Battle>();
     public Frame CharaterFrame1 => field ??= GetNode<Frame>("frame1");
@@ -15,8 +15,6 @@ public partial class CharaterControl : Control
 
     public override async void _Ready()
     {
-        await ToSignal(GetTree().CreateTimer(0.1f), "timeout"); //等待battle节点准备角色
-        Connect();
     }
 
     public void Connect()

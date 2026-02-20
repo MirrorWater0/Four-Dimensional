@@ -177,7 +177,7 @@ public class DyingBuff : Buff
             case BuffName.RebirthI:
                 if (Stack >= 1)
                 {
-                    Owner.Recovery(Owner.BattleLifemax / 2);
+                    Owner.Recover(Owner.BattleLifemax / 2, true);
                     Stack--;
                 }
                 break;
@@ -224,6 +224,7 @@ public class DyingBuff : Buff
         buff.BuffIcon = icon;
         buff.TweenLabel();
         buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
+        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();

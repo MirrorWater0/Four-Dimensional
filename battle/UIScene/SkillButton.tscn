@@ -106,6 +106,7 @@ keep_pressed_outside = true
 script = ExtResource("1_gvdwr")
 
 [node name="AbleRing" type="ColorRect" parent="." unique_id=423852926]
+visible = false
 material = SubResource("ShaderMaterial_h1nnv")
 layout_mode = 1
 anchors_preset = -1

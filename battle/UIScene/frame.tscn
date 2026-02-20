@@ -20,11 +20,12 @@ pivot_offset = Vector2(170, 170)
 script = ExtResource("2_mrq4a")
 
 [node name="Name" type="Label" parent="." unique_id=649941]
+z_index = 2
 layout_mode = 0
-offset_left = 67.0
-offset_top = 152.0
-offset_right = 148.0
-offset_bottom = 201.0
+offset_left = 162.0
+offset_top = 191.0
+offset_right = 243.0
+offset_bottom = 240.0
 theme = ExtResource("5_k0umg")
 text = "echo"
 

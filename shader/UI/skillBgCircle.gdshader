@@ -10,8 +10,8 @@ void fragment() {
 	vec2 uv = UV - 0.5;
 	float r1 = 0.4;
 	float r2 = 0.3;
-	float circle1 = smoothstep(0.01,0.,circleSDF(uv,r1)) - smoothstep(0.01,0.,circleSDF(uv,r1-0.03));
-	float circle2 = smoothstep(0.01 ,0.,circleSDF(uv,r2)) - smoothstep(0.01,0.,circleSDF(uv,r2-0.02));
+	float circle1 = smoothstep(0.02,0.,circleSDF(uv,r1)) - smoothstep(0.01,0.,circleSDF(uv,r1-0.03));
+	float circle2 = smoothstep(0.02 ,0.,circleSDF(uv,r2)) - smoothstep(0.01,0.,circleSDF(uv,r2-0.02));
 	COLOR = (circle1*EXcolor + circle2*vec4(0.9))*modulate;
 }
 

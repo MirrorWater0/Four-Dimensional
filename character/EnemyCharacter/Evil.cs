@@ -6,6 +6,9 @@ public partial class Evil : EnemyCharacter
 {
     int Count = 0;
     public override string CharacterName { get; set; } = "Evil";
+    public override string PassiveName => "重生律动";
+    public override string PassiveDescription =>
+        $"初始：获得1层{Buff.BuffName.RebirthI.GetDescription()}。\n每行动2次：获得1层{Buff.BuffName.RebirthI.GetDescription()}。\n{Buff.GetBuffEffectText(Buff.BuffName.RebirthI)}";
 
     // Called when the node enters the scene tree for the first time.
     public override void _Ready()

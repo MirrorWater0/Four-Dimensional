@@ -6,15 +6,19 @@ public partial class Echo : PlayerCharacter
     public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
     public override string CharacterName { get; set; } = "Echo";
+    public override string PassiveName => "余响";
+    public override string PassiveDescription => "使用生存技能时：获得1点能量。";
 
     public override void _Ready()
     {
         base._Ready();
         label.Text = PositionIndex.ToString();
-        SelfFrame.SkillButton2.Pressed += () =>
-        {
-            Passive(null);
-        };
+    }
+
+    public override void Initialize()
+    {
+        base.Initialize();
+        BattleNode.UsedSkills.ItemAdded += Passive;
     }
 
     public override void StartAction()
@@ -29,6 +33,12 @@ public partial class Echo : PlayerCharacter
 
     public override void Passive(Skill skill)
     {
+        if (skill.OwnerCharater != this)
+            return;
+
+        if (skill.SkillType != Skill.SkillTypes.Survive)
+            return;
+
         UpdataEnergy(1);
     }
 }

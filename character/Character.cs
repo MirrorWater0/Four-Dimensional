@@ -49,6 +49,9 @@ public partial class Character : Node2D
     public int Block { get; protected set; }
     public int Energy { get; protected set; } = 1;
 
+    public virtual string PassiveName => null;
+    public virtual string PassiveDescription => null;
+
     //properties label
     public Label LifeLabel => field ??= GetNode("LifeBar/Life") as Label;
     public Label PowerLabel;
@@ -198,6 +201,8 @@ public partial class Character : Node2D
         string name = string.IsNullOrWhiteSpace(CharacterName) ? "Character" : CharacterName;
         sb.Append($"[b]{name}[/b]\n");
 
+        AppendPassiveTooltip(sb);
+
         if (Skills == null || Skills.Length == 0)
             return sb.ToString().TrimEnd();
 
@@ -230,6 +235,29 @@ public partial class Character : Node2D
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private void AppendPassiveTooltip(StringBuilder sb)
+    {
+        string passiveName = PassiveName;
+        string passiveDesc = PassiveDescription;
+        if (string.IsNullOrWhiteSpace(passiveName) && string.IsNullOrWhiteSpace(passiveDesc))
+            return;
+
+        const string passiveColor = "#ffd36b";
+        const int titleFontSize = 30;
+
+        string title = string.IsNullOrWhiteSpace(passiveName) ? "Passive" : passiveName;
+        sb.Append(
+            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc](被动)[/color]\n"
+        );
+
+        if (!string.IsNullOrWhiteSpace(passiveDesc))
+            sb.Append(GlobalFunction.ColorizeKeywords(GlobalFunction.ColorizeNumbers(passiveDesc)));
+        else
+            sb.Append("-");
+
+        sb.Append("\n[hr]\n");
     }
 
     public string GetSkillTooltipText()
@@ -338,8 +366,10 @@ public partial class Character : Node2D
         tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
     }
 
-    public virtual void Recovery(int num)
+    public virtual void Recover(int num, bool rebirth = false)
     {
+        if (State == CharacterState.Dying && !rebirth)
+            return;
         Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleLifemax);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
@@ -349,6 +379,9 @@ public partial class Character : Node2D
         numlabel.NumberLabel.Text = "+" + num.ToString();
         numlabel.NumberLabel.AddThemeColorOverride("font_color", Colors.Green);
 
+        var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(effect);
+        effect.Animation.Play("recover");
         if (State == CharacterState.Dying)
         {
             State = CharacterState.Normal;

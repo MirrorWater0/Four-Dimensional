@@ -26,8 +26,8 @@ public partial class Battle : Node2D
     public AnimationPlayer BattleAnimationPlayer =>
         field ??= GetNode("BattlePlayer") as AnimationPlayer;
     private int _turn;
-    public CharaterControl CharaterControl =>
-        field ??= GetNode("CharaterControl") as CharaterControl;
+    public CharacterControl CharacterControl =>
+        field ??= GetNode("CharacterControl") as CharacterControl;
 
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
     public Button RetreatButton => field ??= GetNode("Retreat") as Button;
@@ -110,6 +110,7 @@ public partial class Battle : Node2D
             PlayersList.Add(character);
         }
 
+        CharacterControl.Connect();
         if (EnemiesList == null)
         {
             EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
@@ -124,7 +125,7 @@ public partial class Battle : Node2D
 
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
 
-        CharaterControl.DisableAll();
+        CharacterControl.DisableAll();
         for (int i = 0; i < EnemiesList.Count; i++)
         {
             var enemy = EnemiesList[i];

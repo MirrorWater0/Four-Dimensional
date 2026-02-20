@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
-[ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharaterControl.cs" id="3_3vtlu"]
+[ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
 [ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="4_eoytn"]
 [ext_resource type="Texture2D" uid="uid://dfgi24opauw8h" path="res://asset/0.jpg" id="4_r4boa"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
@@ -433,7 +433,7 @@ position = Vector2(808, 344)
 libraries/ = SubResource("AnimationLibrary_od72c")
 autoplay = &"start"
 
-[node name="CharaterControl" type="HBoxContainer" parent="." unique_id=1407403704]
+[node name="CharacterControl" type="HBoxContainer" parent="." unique_id=1407403704]
 modulate = Color(0.92, 0.92, 0.92, 1)
 z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
@@ -446,16 +446,16 @@ mouse_filter = 2
 theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
 
-[node name="frame1" parent="CharaterControl" unique_id=2093805624 instance=ExtResource("6_n0cwx")]
+[node name="frame1" parent="CharacterControl" unique_id=2093805624 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame2" parent="CharaterControl" unique_id=370836206 instance=ExtResource("6_n0cwx")]
+[node name="frame2" parent="CharacterControl" unique_id=370836206 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame3" parent="CharaterControl" unique_id=1254669040 instance=ExtResource("6_n0cwx")]
+[node name="frame3" parent="CharacterControl" unique_id=1254669040 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
-[node name="frame4" parent="CharaterControl" unique_id=1397365255 instance=ExtResource("6_n0cwx")]
+[node name="frame4" parent="CharacterControl" unique_id=1397365255 instance=ExtResource("6_n0cwx")]
 layout_mode = 2
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]

@@ -116,8 +116,14 @@ public partial class PlayerCharacterRegistry
         TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
         AllSkills = [
             SkillID.SacredOnslaught,
+            SkillID.ResonantSlash,
+            SkillID.EchoPuncture,
             SkillID.SoundBarrier,
+            SkillID.SonicDeflection,
+            SkillID.TuningStance,
             SkillID.EchonicResonance,
+            SkillID.SonicBoom,
+            SkillID.PhaseEcho,
         ]
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
