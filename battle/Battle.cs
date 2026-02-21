@@ -110,7 +110,6 @@ public partial class Battle : Node2D
             PlayersList.Add(character);
         }
 
-        CharacterControl.Connect();
         if (EnemiesList == null)
         {
             EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
@@ -122,7 +121,7 @@ public partial class Battle : Node2D
         PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
         EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
         SetCharaterPostion(); //加入节点树
-
+        CharacterControl.Connect();
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
 
         CharacterControl.DisableAll();

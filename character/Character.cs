@@ -138,7 +138,7 @@ public partial class Character : Node2D
         Hoverframe.PivotOffset = Hoverframe.Size / 2;
     }
 
-    public override void _Ready()
+    public override async void _Ready()
     {
         Hoverframe.MouseEntered += OnHoverEntered;
         Hoverframe.MouseExited += OnHoverExited;
@@ -147,7 +147,12 @@ public partial class Character : Node2D
         material.ResourceLocalToScene = true;
         Sprite.Material = material;
         ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
-        GlobalFunction.TweenShader(Sprite, "progress", 0, 1f);
+        Tween tween = CreateTween();
+        tween.TweenProperty(Sprite, "material:shader_parameter/progress", 0, 0.8f);
+        await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
+        var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(effect);
+        effect.Animation.Play("transition");
     }
 
     private void OnHoverEntered()

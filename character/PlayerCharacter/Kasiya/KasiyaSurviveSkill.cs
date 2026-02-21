@@ -85,6 +85,7 @@ public partial class AbsouluteDefense : Skill
 {
     private int GainPower = 3;
     public override string SkillName { get; set; } = "绝对防御";
+    int basisBlock = 4;
 
     public AbsouluteDefense()
         : base(SkillTypes.Survive)
@@ -95,14 +96,14 @@ public partial class AbsouluteDefense : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
-        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataBlock(basisBlock + OwnerCharater.BattleSurvivability);
+        OwnerCharater.UpdataBlock(basisBlock + OwnerCharater.BattleSurvivability);
         IncreaseProperties(OwnerCharater, PropertyType.Power, GainPower);
     }
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(OwnerSurvivability, 0, 9999);
+        int block = Math.Clamp(basisBlock + OwnerSurvivability, 0, 999);
         SetDescriptionLines(
             $"获得{block}点格挡{2}次。"
                 + $"获得+{GainPower}{GetColoredPropertyLabel(PropertyType.Power)}。"

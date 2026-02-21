@@ -8,7 +8,7 @@ public partial class EchoSpecialSkill : Node { }
 public class EchonicResonance : Skill
 {
     private const int CostPerCast = 1;
-    private const int PowerGainPerCast = 2;
+    private const int PowerGainPerCast = 1;
 
     public EchonicResonance()
         : base(SkillTypes.Special)
@@ -37,7 +37,7 @@ public class EchonicResonance : Skill
         int castTimes = Math.Max(1, (int)Math.Ceiling((double)energy / CostPerCast));
         int totalPowerGain = castTimes * PowerGainPerCast;
         SetDescriptionLines(
-            $"施放{castTimes}次；每次造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害；每次消耗{CostPerCast}点能量。",
+            $"施放{castTimes}次；每次造成{Math.Clamp(OwnerPower, 0, 999)}点伤害；每次消耗{CostPerCast}点能量。",
             $"每次获得{PowerGainPerCast}点{GetColoredPropertyLabel(PropertyType.Power)}（总计{totalPowerGain}点）。"
         );
     }
@@ -68,7 +68,11 @@ public class SonicBoom : Skill
             : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
 
         int damage = BaseDamage + OwnerPower;
-        foreach (var target in targets.Where(x => x != null && x.State == Character.CharacterState.Normal))
+        foreach (
+            var target in targets.Where(x =>
+                x != null && x.State == Character.CharacterState.Normal
+            )
+        )
         {
             _ = Attack3(damage, target, 1);
         }
@@ -76,7 +80,11 @@ public class SonicBoom : Skill
         if (OwnerCharater.Energy >= EnergyCost)
         {
             OwnerCharater.UpdataEnergy(-EnergyCost);
-            foreach (var target in targets.Where(x => x != null && x.State == Character.CharacterState.Normal))
+            foreach (
+                var target in targets.Where(x =>
+                    x != null && x.State == Character.CharacterState.Normal
+                )
+            )
             {
                 _ = Attack3(damage, target, 1);
             }

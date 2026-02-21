@@ -2,7 +2,7 @@ shader_type canvas_item;
 
 varying vec4 modulate;
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
-// 新增：中心消失进度
+// 中心消失进度
 uniform float center_vanish : hint_range(0.0, 1.0) = 0.0;
 
 uniform float line_density : hint_range(1.0, 200.0) = 80.0;
@@ -24,7 +24,6 @@ void fragment() {
     vec2 uv = UV;
     
     // 向中心收缩的扭曲效果：随着 center_vanish 增加，UV 向中心靠拢
-    // 这会产生一种物体被“吸入”中心点的视觉效果
     uv = mix(uv, center, center_vanish * center_vanish); 
     
     float p = progress;
@@ -36,10 +35,12 @@ void fragment() {
     float current_height = 1.0 - uv.y;
     float vertical_mask = smoothstep(mask_p, mask_p + 0.1, current_height);
     
-    // 新增：中心点圆形遮罩
-    // 计算当前像素到中心点的距离
-    float dist_to_center = distance(uv, center);
-    // 随着 cv 增加，可见半径从 0.8 缩小到 0
+    // 【修改点：从圆形改为方形】
+    // 计算当前像素到中心点的方形(切比雪夫)距离
+    vec2 dist_vec = abs(uv - center);
+    float dist_to_center = max(dist_vec.x, dist_vec.y);
+    
+    // 随着 cv 增加，可见边长从 0.8 缩小到 0
     float radius = 0.8 * (1.0 - cv);
     float center_mask = smoothstep(radius, radius - 0.1, dist_to_center);
     
@@ -76,7 +77,7 @@ void fragment() {
     // --- 5. 颜色合成 ---
     // 垂直消融亮边
     float edge_glow = smoothstep(0.15, 0.0, abs(current_height - (mask_p + 0.05))) * p;
-    // 中心收缩亮边
+    // 中心收缩亮边 (基于方形距离计算)
     float center_glow = smoothstep(0.1, 0.0, abs(dist_to_center - radius)) * cv;
     
     vec3 final_rgb = color.rgb;

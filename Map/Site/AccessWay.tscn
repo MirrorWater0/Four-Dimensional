@@ -1,8 +1,6 @@
 [gd_scene format=3 uid="uid://do4kqopiopxg0"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qox0s"]
-border_width_top = 2
-border_width_bottom = 2
 border_color = Color(1, 1, 1, 1)
 corner_radius_top_left = 2
 corner_radius_top_right = 2

@@ -66,7 +66,7 @@ offset_right = 2015.0
 offset_bottom = 1040.0
 scale = Vector2(0.9, 0.9)
 mouse_filter = 2
-theme_override_constants/separation = 200
+theme_override_constants/separation = 170
 metadata/_edit_lock_ = true
 
 [node name="frame" parent="frame" unique_id=1469862371 instance=ExtResource("5_ck3o7")]

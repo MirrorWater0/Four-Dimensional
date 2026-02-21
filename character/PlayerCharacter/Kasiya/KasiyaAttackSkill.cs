@@ -66,7 +66,7 @@ public partial class Smite : Skill
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 6;
 
     public Charge()
         : base(Skill.SkillTypes.Attack)

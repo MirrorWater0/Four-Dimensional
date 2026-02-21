@@ -13,9 +13,7 @@ public partial class CharacterControl : Control
     public Frame[] CharactersControl =>
         new[] { CharaterFrame1, CharaterFrame2, CharaterFrame3, CharaterFrame4 };
 
-    public override async void _Ready()
-    {
-    }
+    public override async void _Ready() { }
 
     public void Connect()
     {
@@ -49,7 +47,8 @@ public partial class CharacterControl : Control
         {
             for (int j = 0; j < GetChild<Frame>(i).SkillButtonContainer.GetChildCount(); j++)
             {
-                var skillButton = CharactersControl[i].SkillButtonContainer.GetChild<SkillButton>(j);
+                var skillButton = CharactersControl[i]
+                    .SkillButtonContainer.GetChild<SkillButton>(j);
                 skillButton.Disabled = true;
                 skillButton.Modulate = SkillButton.DisabledModulate;
             }
