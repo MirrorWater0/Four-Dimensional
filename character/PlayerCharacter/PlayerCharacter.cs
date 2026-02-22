@@ -33,6 +33,12 @@ public partial class PlayerCharacter : Character
 
     public override void StartAction()
     {
+        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
+        {
+            base.StartAction();
+            return;
+        }
+
         base.StartAction();
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {

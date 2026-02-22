@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dhn2heao7a3jv"]
 
-[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/StateIcon/IconTemplate.tscn" id="1_tw750"]
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tw750"]
 [ext_resource type="Shader" uid="uid://dltfa87g7e04e" path="res://shader/Icon/Vulnerable.gdshader" id="2_vg021"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_1yw3o"]

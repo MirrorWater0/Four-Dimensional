@@ -30,12 +30,22 @@ public partial class SacredOnslaught : Skill
 
     public override void UpdateDescription()
     {
-        int targetCount = OwnerCharater == null ? 0 : Math.Min(MaxTargets, Chosetarget1().Length);
-        int block = Math.Clamp(BlockPerTarget * targetCount, 0, 999);
+        int targetCount = IsInBattle ? Math.Min(MaxTargets, Chosetarget1().Length) : 0;
+        int totalBlock = IsInBattle ? (OwnerSurvivability + BlockPerTarget * targetCount) : 0;
+
+        string targetCountText = WithBattleTotal("目标数", targetCount);
+        string perTargetDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
+        string totalBlockText = WithBattleTotal(
+            $"{X(StatX.Survivability)}+目标数*{BlockPerTarget}",
+            totalBlock,
+            clampMax: 999
+        );
 
         SetDescriptionLines(
-            $"最多{MaxTargets}个目标；当前命中{targetCount}个；每个目标造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害。",
-            $"获得：生存+目标数*{BlockPerTarget}点格挡，共{block}点格挡。"
+            $"最多{MaxTargets}个目标。",
+            $"当前命中{targetCountText}个。",
+            $"每个目标造成{perTargetDamageText}点伤害。",
+            $"获得：{totalBlockText}点格挡。"
         );
     }
 }
@@ -60,8 +70,9 @@ public partial class ResonantSlash : Skill
 
     public override void UpdateDescription()
     {
-        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
-        SetDescriptionLines($"二段攻击；每段造成{damage}点伤害。");
+        int totalDamage = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
+        SetDescriptionLines($"二段攻击。", $"每段造成{damageText}点伤害。");
     }
 }
 
@@ -92,10 +103,11 @@ public partial class EchoPuncture : Skill
 
     public override void UpdateDescription()
     {
-        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
+        int totalDamage = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
         SetDescriptionLines(
-            $"造成{damage}点伤害。"
-                + $"给予目标{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}"
+            $"造成{damageText}点伤害。",
+            $"给予目标{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。"
         );
     }
 }

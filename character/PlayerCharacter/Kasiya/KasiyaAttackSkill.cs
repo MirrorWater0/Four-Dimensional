@@ -26,8 +26,10 @@ public partial class Determination : Skill
 
     public override void UpdateDescription()
     {
+        int totalDamage = BaseDamage + OwnerPower;
         SetDescriptionLines(
-            $"造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害；获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
+            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
         );
     }
 }
@@ -58,8 +60,10 @@ public partial class Smite : Skill
 
     public override void UpdateDescription()
     {
+        int totalDamage = BaseDamage + OwnerPower;
         SetDescriptionLines(
-            $"降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivalibility)}；造成{Math.Clamp(BaseDamage + OwnerPower, 0, 9999)}点伤害。"
+            $"降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivalibility)}。",
+            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。"
         );
     }
 }
@@ -86,7 +90,12 @@ public partial class Charge : Skill
 
     public override void UpdateDescription()
     {
-        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
-        SetDescriptionLines($"造成{damage}点伤害；获得{damage}点格挡。");
+        int total = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(
+            BaseDamage,
+            total,
+            StatX.Power
+        );
+        SetDescriptionLines($"造成{damageText}点伤害。", $"获得{damageText}点格挡。");
     }
 }

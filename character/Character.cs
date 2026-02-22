@@ -100,10 +100,9 @@ public partial class Character : Node2D
 
     public List<DyingBuff> DyingBuffs = new List<DyingBuff>();
     public List<HurtBuff> HurtBuffs = new List<HurtBuff>();
-
+    public List<StartActionBuff> StartActionBuffs = new List<StartActionBuff>();
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
-
     public Vector2 OriginalPosition;
 
     public virtual void Initialize()
@@ -278,6 +277,18 @@ public partial class Character : Node2D
         bool any = false;
         var colord = "#ffffef";
 
+        if (StartActionBuffs != null)
+        {
+            foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                any = true;
+            }
+        }
+
         if (HurtBuffs != null)
         {
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
@@ -327,6 +338,20 @@ public partial class Character : Node2D
         UpdataEnergy(1);
         TrailAnimation.Play("trail");
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
+
+        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
+        {
+            StartActionBuffs.First(x => x.ThisBuffName == Buff.BuffName.Stun).Trigger();
+            EndAction();
+            return;
+        }
+        if (StartActionBuffs != null)
+        {
+            for (int i = 0; i < StartActionBuffs.Count; i++)
+            {
+                StartActionBuffs[i].Trigger();
+            }
+        }
     }
 
     public virtual async void EndAction()

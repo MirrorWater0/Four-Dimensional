@@ -165,9 +165,9 @@ public static class GlobalFunction
                     string two = input.Substring(i, 2);
                     string color = two switch
                     {
-                        "伤害" => red,
+                        "伤害" => "#ffc9c9",
                         "格挡" => cambridgeBlue,
-                        "能量" => darkBlue,
+                        "能量" => "#c9cdff",
                         _ => null,
                     };
 

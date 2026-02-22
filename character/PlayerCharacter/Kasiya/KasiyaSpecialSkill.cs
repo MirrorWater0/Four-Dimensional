@@ -33,13 +33,73 @@ public class TerminateLight : Skill
 
     public override void UpdateDescription()
     {
-        int damage = Math.Clamp(BaseDamage + 2 * OwnerPower, 0, 9999);
-        int thisCastPowerBonusTimes =
-            UsedTimes > 0 && OwnerEnergy >= EnergyCost ? 1 : 0;
-        int thisCastPowerBonus = thisCastPowerBonusTimes * PowerGain;
+        int totalDamage = BaseDamage + 2 * OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(
+            BaseDamage,
+            totalDamage,
+            StatX.Power,
+            xMultiplier: 2,
+            clampMax: 999
+        );
+
+        int thisCastPowerBonusTimes = UsedTimes > 0 && OwnerEnergy >= EnergyCost ? 1 : 0;
+
         SetDescriptionLines(
-            $"造成{damage}点伤害（受到2倍{GetColoredPropertyLabel(PropertyType.Power)}加成）。",
-            $"若剩余强化>0且能量>={EnergyCost}：本次获得+{thisCastPowerBonus}{GetColoredPropertyLabel(PropertyType.Power)}（触发{thisCastPowerBonusTimes}次）；剩余{UsedTimes}次。"
+            $"造成{damageText}点伤害（受到2倍{GetColoredPropertyLabel(PropertyType.Power)}加成）。",
+            $"若剩余强化>0且能量>={EnergyCost}：消耗{EnergyCost}点能量。",
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
+            $"触发次数：{thisCastPowerBonusTimes}。",
+            $"剩余强化次数：{UsedTimes}。"
+        );
+    }
+}
+
+public class HolySeal : Skill
+{
+    private const int BaseDamage = 8;
+    private const int StunStacks = 1;
+    private const int EnergyCost = 2;
+
+    public HolySeal()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "圣光封印";
+
+    public override async Task Effect()
+    {
+        await base.Effect();
+
+        var targets = Chosetarget1();
+        if (targets.Length == 0)
+            return;
+
+        var target = targets[0];
+        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
+
+        await AttackAnimation(target);
+        await target.GetHurt(damage);
+        await Task.Delay(100);
+
+        if (OwnerCharater.Energy < EnergyCost)
+            return;
+
+        OwnerCharater.UpdataEnergy(-EnergyCost);
+        StartActionBuff.BuffAdd(Buff.BuffName.Stun, target, StunStacks);
+    }
+
+    public override void UpdateDescription()
+    {
+        int totalDamage = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
+        int thisCastStunTimes = OwnerEnergy >= EnergyCost ? 1 : 0;
+
+        SetDescriptionLines(
+            $"造成{damageText}点伤害。",
+            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量，使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()}。",
+            $"触发次数：{thisCastStunTimes}。"
         );
     }
 }

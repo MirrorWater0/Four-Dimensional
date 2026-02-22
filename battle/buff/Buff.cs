@@ -21,6 +21,8 @@ public partial class Buff
             BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到伤害时，伤害提高25%，消耗1层。",
+            BuffName.Taunt => "敌方攻击更倾向于选择该目标；受到伤害时消耗1层。",
+            BuffName.Stun => "无法行动；回合开始时消耗1层。",
             _ => string.Empty,
         };
 
@@ -101,6 +103,7 @@ public partial class Buff
         Hurt,
     }
 
+
     public enum BuffName
     {
         [Description("重生I")]
@@ -111,10 +114,17 @@ public partial class Buff
 
         [Description("易伤")]
         Vulnerable,
+
+        [Description("嘲讽")]
+        Taunt,
+
+        [Description("眩晕")]
+        Stun,
     }
 
     public Character Owner;
     public BuffName ThisBuffName;
+    public Nature BuffNature;
     public int Stack;
     public ColorRect BuffIcon;
 
@@ -252,6 +262,9 @@ public partial class HurtBuff : Buff
 
                 BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
                 break;
+            case BuffName.Taunt:
+                Stack--;
+                break;
         }
         TweenLabel();
         if (Stack == 0)
@@ -297,6 +310,13 @@ public partial class HurtBuff : Buff
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Vulnerable.tscn")
                         .Instantiate() as ColorRect;
                 break;
+            case BuffName.Taunt:
+                buff = new HurtBuff(target, BuffName.Taunt, stack);
+                target.HurtBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Aim.tscn").Instantiate()
+                    as ColorRect;
+                break;
             default:
                 return;
         }
@@ -308,4 +328,82 @@ public partial class HurtBuff : Buff
 
         buff.BuffAddAnimation();
     }
+}
+
+public partial class StartActionBuff : Buff
+{
+    public StartActionBuff(Character owner, BuffName name, int stack)
+        : base(owner, name, stack) { }
+
+    public void Trigger()
+    {
+        if (Stack <= 0)
+            return;
+
+        switch (ThisBuffName)
+        {
+            case BuffName.Stun:
+                Stack--;
+                if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
+                    BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                break;
+        }
+
+        TweenLabel();
+        if (Stack == 0)
+        {
+            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
+            {
+                BuffIcon.QueueFree();
+            }
+            BuffIcon = null;
+            Owner.StartActionBuffs.Remove(this);
+            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
+        }
+    }
+
+    public static void BuffAdd(BuffName name, Character target, int stack)
+    {
+        if (target.StartActionBuffs.Any(x => x.ThisBuffName == name))
+        {
+            Buff buff0 = target.StartActionBuffs.First(x => x.ThisBuffName == name);
+            buff0.Stack += stack;
+            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
+            buff0.TweenLabel();
+            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
+            buff0.BuffAddAnimation();
+            return;
+        }
+        StartActionBuff buff = null;
+        ColorRect icon = null;
+        switch (name)
+        {
+            case BuffName.Stun:
+                buff = new StartActionBuff(target, BuffName.Stun, stack);
+                target.StartActionBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Stun.tscn").Instantiate()
+                    as ColorRect;
+                break;
+            default:
+                return;
+        }
+
+        if (buff == null || icon == null)
+            return;
+
+        buff.BuffIcon = icon;
+        buff.TweenLabel();
+        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
+        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
+        target.StateIconContainer.AddChild(icon);
+
+        buff.BuffAddAnimation();
+    }
+}
+
+public enum Nature
+{
+    positive,
+    negative,
 }

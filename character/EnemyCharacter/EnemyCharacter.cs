@@ -45,6 +45,11 @@ public partial class EnemyCharacter : Character
     public override async void StartAction()
     {
         await ToSignal(GetTree().CreateTimer(0.1f), "timeout");
+        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
+        {
+            base.StartAction();
+            return;
+        }
         base.StartAction();
         await DisappearIntention();
         await Skills[IntentionIndex].Effect();

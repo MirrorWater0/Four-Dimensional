@@ -69,7 +69,9 @@ public partial class EvilAttack : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionLines($"二段攻击；每段造成{HitDamage + OwnerPower}点伤害。");
+        int totalDamage = HitDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(HitDamage, totalDamage, StatX.Power);
+        SetDescriptionLines($"二段攻击。", $"每段造成{damageText}点伤害。");
     }
 }
 
@@ -97,10 +99,11 @@ public partial class EvilSurvive : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
         SetDescriptionLines(
-            $"获得{block}点格挡。",
-            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}",
+            $"获得{blockText}点格挡。",
+            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}。",
             $"下降目标{DescendingNum}点{GetColoredPropertyLabel(PropertyType.Power)}。"
         );
     }
@@ -124,8 +127,8 @@ public partial class EvilTermin : Skill
         await Attack1(OwnerCharater.BattlePower);
         while (OwnerCharater.Energy > 0)
         {
-            await Attack1(OwnerCharater.BattlePower);
             OwnerCharater.UpdataEnergy(-EnergyCostPerHit);
+            await Attack1(OwnerCharater.BattlePower);
         }
     }
 
@@ -133,8 +136,12 @@ public partial class EvilTermin : Skill
     {
         int energy = Math.Max(OwnerEnergy, 0);
         int castTimes = Math.Max(1, energy + 1);
+        string castTimesText = BasePlusXWithBattleTotal(1, castTimes, StatX.Energy);
+        string perCastDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
         SetDescriptionLines(
-            $"施放{castTimes}次；每次造成{Math.Clamp(OwnerPower, 0, 9999)}点伤害；每次消耗{EnergyCostPerHit}点能量。"
+            $"施放{castTimesText}次。",
+            $"每次造成{perCastDamageText}点伤害。",
+            $"每次消耗{EnergyCostPerHit}点能量。"
         );
     }
 }

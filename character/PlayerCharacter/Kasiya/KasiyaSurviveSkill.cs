@@ -43,10 +43,16 @@ public partial class ShockWave : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(
+            BaseBlock,
+            totalBlock,
+            StatX.Survivability,
+            clampMax: 999
+        );
         SetDescriptionLines(
-            $"使所有敌人获得{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}；"
-                + $"获得{block}点格挡。"
+            $"使所有敌人获得{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。",
+            $"获得{blockText}点格挡。"
         );
     }
 }
@@ -74,9 +80,16 @@ public partial class ReNewedSpirit : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(OwnerSurvivability + SurvivabilityGain, 0, 9999);
+        int totalBlock = OwnerSurvivability + SurvivabilityGain;
+        string blockText = BasePlusXWithBattleTotal(
+            SurvivabilityGain,
+            totalBlock,
+            StatX.Survivability
+        );
         SetDescriptionLines(
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}、+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}；获得{block}点格挡。"
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
+            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}。",
+            $"获得{blockText}点格挡。"
         );
     }
 }
@@ -103,10 +116,53 @@ public partial class AbsouluteDefense : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(basisBlock + OwnerSurvivability, 0, 999);
+        int totalBlock = basisBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(
+            basisBlock,
+            totalBlock,
+            StatX.Survivability,
+            clampMax: 999
+        );
         SetDescriptionLines(
-            $"获得{block}点格挡{2}次。"
-                + $"获得+{GainPower}{GetColoredPropertyLabel(PropertyType.Power)}。"
+            $"获得{blockText}点格挡（共{2}次）。",
+            $"获得+{GainPower}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        );
+    }
+}
+
+public partial class TauntingGuard : Skill
+{
+    private const int TauntStacks = 2;
+    private const int BaseBlock = 6;
+
+    public override string SkillName { get; set; } = "嘲讽守势";
+
+    public TauntingGuard()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override async Task Effect()
+    {
+        await base.Effect();
+        HurtBuff.BuffAdd(Buff.BuffName.Taunt, OwnerCharater, TauntStacks);
+        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
+    }
+
+    public override void UpdateDescription()
+    {
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(
+            BaseBlock,
+            totalBlock,
+            StatX.Survivability,
+            clampMax: 999
+        );
+
+        SetDescriptionLines(
+            $"使自己获得{TauntStacks}层{Buff.BuffName.Taunt.GetDescription()}。",
+            $"获得{blockText}点格挡。"
         );
     }
 }

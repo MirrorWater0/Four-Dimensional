@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://btqsj2v8rjkew"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_mpj05"]
+[ext_resource type="Shader" uid="uid://b7uv0smqhsoib" path="res://shader/Icon/Stun.gdshader" id="2_tik60"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4rvno"]
+shader = ExtResource("2_tik60")
+shader_parameter/color = Color(0.94, 0.8726333, 0.13159999, 1)
+shader_parameter/line_width = 0.09100000362398
+shader_parameter/spacing = 0.28
+shader_parameter/turns = 2.8
+shader_parameter/clockwise = true
+shader_parameter/tail_taper_turns = 0.8
+shader_parameter/head_taper_turns = 0.0
+shader_parameter/rotation_offset = 0.0
+shader_parameter/spin_speed = 0.0
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_mpj05")]
+material = SubResource("ShaderMaterial_4rvno")

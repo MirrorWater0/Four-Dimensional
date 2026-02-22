@@ -11,6 +11,19 @@ public partial class Skill
     private int _previewSurvivability;
     private int _previewEnergy = 1;
 
+    protected const string UnfixedPlaceholder = "x";
+    protected const int TooltipTotalMax = 999;
+
+    protected enum StatX
+    {
+        Power,
+        Survivability,
+        Speed,
+        Energy,
+        Life,
+        MaxLife,
+    }
+
     public enum PropertyType
     {
         [Description("力量")]
@@ -70,6 +83,7 @@ public partial class Skill
     protected int OwnerSurvivability =>
         OwnerCharater != null ? OwnerCharater.BattleSurvivability : _previewSurvivability;
     protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
+    protected bool IsInBattle => OwnerCharater?.BattleNode != null;
 
     protected static string GetPropertyLabel(PropertyType type) => type.GetDescription();
 
@@ -88,6 +102,34 @@ public partial class Skill
         };
     }
 
+    private static string GetStatLabel(StatX stat)
+    {
+        return stat switch
+        {
+            StatX.Power => GetPropertyLabel(PropertyType.Power),
+            StatX.Survivability => GetPropertyLabel(PropertyType.Survivalibility),
+            StatX.Speed => "速度",
+            StatX.Energy => "能量",
+            StatX.Life => "生命",
+            StatX.MaxLife => "最大生命",
+            _ => string.Empty,
+        };
+    }
+
+    private static string GetStatColor(StatX stat)
+    {
+        return stat switch
+        {
+            StatX.Power => GetPropertyColor(PropertyType.Power),
+            StatX.Survivability => GetPropertyColor(PropertyType.Survivalibility),
+            StatX.Speed => "#b56bff",
+            StatX.Energy => "#5353ff",
+            StatX.Life => "#6bff6b",
+            StatX.MaxLife => "#6bff6b",
+            _ => "white",
+        };
+    }
+
     protected void SetDescriptionText(string text)
     {
         string output = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
@@ -96,9 +138,67 @@ public partial class Skill
 
     protected void SetDescriptionLines(params string[] lines)
     {
-        string text = string.Join("\n", lines.Where(x => !string.IsNullOrWhiteSpace(x)));
+        var filtered = lines.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        string text = string.Join("\n", filtered);
         SetDescriptionText(text);
     }
+
+    protected static string X(StatX stat)
+    {
+        string label = GetStatLabel(stat);
+        if (string.IsNullOrWhiteSpace(label))
+            return UnfixedPlaceholder;
+
+        string color = GetStatColor(stat);
+        return $"[color={color}]{UnfixedPlaceholder}({label})[/color]";
+    }
+
+    protected static string FormatBasePlusX(int baseValue, StatX stat, int xMultiplier = 1)
+    {
+        string x = X(stat);
+        string xPart = xMultiplier switch
+        {
+            1 => x,
+            -1 => $"-{x}",
+            _ => $"{xMultiplier}{x}",
+        };
+
+        if (baseValue == 0)
+            return xPart;
+
+        if (xPart.StartsWith("-", StringComparison.Ordinal))
+            return $"{baseValue}{xPart}";
+
+        return $"{baseValue}+{xPart}";
+    }
+
+    protected string WithBattleTotal(string basisText, int total, int clampMax = TooltipTotalMax)
+    {
+        if (!IsInBattle)
+            return basisText;
+
+        int clamped = Math.Clamp(total, 0, clampMax);
+        return $"{basisText}（总计：{clamped}）";
+    }
+
+    protected string WithBattleTotal(string basisText, string totalText)
+    {
+        if (!IsInBattle)
+            return basisText;
+
+        return $"{basisText}（总计：{totalText}）";
+    }
+
+    protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>
+        WithBattleTotal(X(stat), total, clampMax);
+
+    protected string BasePlusXWithBattleTotal(
+        int baseValue,
+        int total,
+        StatX stat,
+        int xMultiplier = 1,
+        int clampMax = TooltipTotalMax
+    ) => WithBattleTotal(FormatBasePlusX(baseValue, stat, xMultiplier), total, clampMax);
 
     public virtual void UpdateDescription() { }
 
@@ -126,6 +226,15 @@ public partial class Skill
             })
             .Where(x => x.State == Character.CharacterState.Normal)
             .ToArray();
+
+        if (targets.Any(x => x.HurtBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Taunt)))
+        {
+            targets = targets
+                .OrderByDescending(target =>
+                    target.HurtBuffs.Any(buff => buff.ThisBuffName == Buff.BuffName.Taunt)
+                )
+                .ToArray();
+        }
         return targets;
     }
 
@@ -291,6 +400,8 @@ public partial class Skill
             SkillID.EvilTermin => new EvilTermin(),
             SkillID.ShockWave => new ShockWave(),
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
+            SkillID.TauntingGuard => new TauntingGuard(),
+            SkillID.HolySeal => new HolySeal(),
             _ => null,
         };
     }
@@ -318,4 +429,6 @@ public enum SkillID
     DeSurviveSkill,
     ShockWave,
     AbsouluteDefense,
+    TauntingGuard,
+    HolySeal,
 }

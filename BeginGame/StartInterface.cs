@@ -84,6 +84,8 @@ public partial class StartInterface : CanvasLayer
     {
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.ShockWave);
+        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
+        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 
@@ -129,7 +131,7 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
         CharacterName = "Kasiya",
-        LifeMax = 50,
+        LifeMax = 60,
         Power = 12,
         Survivability = 12,
         Speed = 9,
@@ -144,7 +146,9 @@ public partial class PlayerCharacterRegistry
             SkillID.ReNewedSpirit,
             SkillID.AbsouluteDefense,
             SkillID.ShockWave,
+            SkillID.TauntingGuard,
             SkillID.TerminateLight,
+            SkillID.HolySeal,
         ],
     };
 }

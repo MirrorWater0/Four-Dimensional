@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://b1i8k6rg5vu0x"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_1huqc"]
+[ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="2_rpbkh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_puite"]
+resource_local_to_scene = true
+shader = ExtResource("2_rpbkh")
+shader_parameter/color = Color(1, 0.85, 0, 1)
+shader_parameter/speed = 0.0
+shader_parameter/teeth = 8
+shader_parameter/tooth_length = 0.1
+shader_parameter/radius_percent = 0.33
+shader_parameter/hole_percent = 0.2
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_1huqc")]
+material = SubResource("ShaderMaterial_puite")

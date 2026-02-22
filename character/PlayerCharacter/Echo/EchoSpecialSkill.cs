@@ -24,21 +24,32 @@ public class EchonicResonance : Skill
         await Attack1(OwnerPower);
         while (OwnerCharater.Energy > 0)
         {
+            OwnerCharater.UpdataEnergy(-CostPerCast);
             await Attack1(OwnerPower);
             IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGainPerCast);
-            if (OwnerCharater.Energy > 0)
-                OwnerCharater.UpdataEnergy(-CostPerCast);
         }
     }
 
     public override void UpdateDescription()
     {
-        int energy = Math.Max(OwnerEnergy, 0);
-        int castTimes = Math.Max(1, (int)Math.Ceiling((double)energy / CostPerCast));
-        int totalPowerGain = castTimes * PowerGainPerCast;
+        int energy = OwnerEnergy;
+        int bonusCasts = Math.Max(0, (int)Math.Ceiling((double)energy / CostPerCast));
+        int castTimes = 1 + bonusCasts;
+        int totalPowerGain = bonusCasts * PowerGainPerCast;
+
+        string energyX = X(StatX.Energy);
+        string castTimesBasis = CostPerCast == 1 ? $"1+{energyX}" : $"1+ceil({energyX}/{CostPerCast})";
+        string castTimesText = WithBattleTotal(castTimesBasis, castTimes);
+        string perCastDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
+        string totalPowerGainBasis = CostPerCast == 1 ? $"{PowerGainPerCast}*{energyX}" : $"{PowerGainPerCast}*ceil({energyX}/{CostPerCast})";
+        string totalPowerGainText = WithBattleTotal(totalPowerGainBasis, totalPowerGain);
+
         SetDescriptionLines(
-            $"施放{castTimes}次；每次造成{Math.Clamp(OwnerPower, 0, 999)}点伤害；每次消耗{CostPerCast}点能量。",
-            $"每次获得{PowerGainPerCast}点{GetColoredPropertyLabel(PropertyType.Power)}（总计{totalPowerGain}点）。"
+            $"施放次数：{castTimesText}。",
+            $"每次伤害：{perCastDamageText}。",
+            $"每次消耗：{CostPerCast}点能量。",
+            $"每次提升：{PowerGainPerCast}点{GetColoredPropertyLabel(PropertyType.Power)}。",
+            $"总力量提升：{totalPowerGainText}。"
         );
     }
 }
@@ -95,11 +106,15 @@ public class SonicBoom : Skill
 
     public override void UpdateDescription()
     {
-        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
         int waves = OwnerEnergy >= EnergyCost ? 2 : 1;
+        int totalDamage = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
+        string wavesText = WithBattleTotal("次数", waves);
         SetDescriptionLines(
-            $"对所有敌人造成{damage}点伤害；当前{waves}次。",
-            $"若能量>={EnergyCost}：额外消耗{EnergyCost}点能量并追加1次。"
+            $"对所有敌人造成{damageText}点伤害。",
+            $"当前{wavesText}次。",
+            $"若能量>={EnergyCost}：额外消耗{EnergyCost}点能量。",
+            $"并追加1次。"
         );
     }
 }
@@ -142,11 +157,21 @@ public class PhaseEcho : Skill
 
     public override void UpdateDescription()
     {
-        int fullBlock = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
-        int lowBlock = Math.Clamp(BaseBlock / 2 + OwnerSurvivability, 0, 999);
+        int fullBlock = BaseBlock + OwnerSurvivability;
+        int lowBlock = BaseBlock / 2 + OwnerSurvivability;
+
+        string fullBlockText = BasePlusXWithBattleTotal(BaseBlock, fullBlock, StatX.Survivability);
+        string lowBlockText = BasePlusXWithBattleTotal(
+            BaseBlock / 2,
+            lowBlock,
+            StatX.Survivability
+        );
         SetDescriptionLines(
-            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量；获得{fullBlock}点格挡；获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
-            $"否则：获得{lowBlock}点格挡；获得1层{Buff.BuffName.DamageImmune.GetDescription()}。"
+            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量。",
+            $"获得{fullBlockText}点格挡。",
+            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
+            $"否则：获得{lowBlockText}点格挡。",
+            $"获得1层{Buff.BuffName.DamageImmune.GetDescription()}。"
         );
     }
 }

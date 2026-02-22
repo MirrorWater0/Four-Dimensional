@@ -23,7 +23,7 @@ public partial class Tip : Control
         if (Description != null)
         {
             Description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            Description.CustomMinimumSize = new Vector2(300, 0);
+            Description.CustomMinimumSize = new Vector2(340, 0);
         }
 
         Visible = false;

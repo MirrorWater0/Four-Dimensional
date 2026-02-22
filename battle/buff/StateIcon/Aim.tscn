@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://daxwcjm3hib5b"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_utc48"]
+[ext_resource type="Shader" uid="uid://vnrtd04hgkwo" path="res://Aim.gdshader" id="2_i0r6n"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gj172"]
+shader = ExtResource("2_i0r6n")
+shader_parameter/target_color = Color(0.7607843, 0, 0, 1)
+shader_parameter/line_width = 0.04
+shader_parameter/inner_ring_radius = 0.18
+shader_parameter/outer_arc_radius = 0.65
+shader_parameter/outer_arc_length = 0.35
+shader_parameter/tri_inner_radius = 0.45
+shader_parameter/tri_outer_radius = 0.95
+shader_parameter/tri_width = 0.8
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_utc48")]
+material = SubResource("ShaderMaterial_gj172")

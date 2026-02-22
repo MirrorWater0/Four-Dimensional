@@ -27,8 +27,13 @@ public partial class SoundBarrier : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
-        SetDescriptionLines($"恢复{EnergyGain}点能量；获得{block}点格挡；连携下一位角色。");
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
+        SetDescriptionLines(
+            $"恢复{EnergyGain}点能量。",
+            $"获得{blockText}点格挡。",
+            $"连携下一位角色。"
+        );
     }
 }
 
@@ -54,9 +59,11 @@ public partial class SonicDeflection : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
         SetDescriptionLines(
-            $"获得{block}点格挡；获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+            $"获得{blockText}点格挡。",
+            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
         );
     }
 }
@@ -83,9 +90,11 @@ public partial class TuningStance : Skill
 
     public override void UpdateDescription()
     {
-        int block = Math.Clamp(BaseBlock + OwnerSurvivability, 0, 999);
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
         SetDescriptionLines(
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}；获得{block}点格挡。"
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
+            $"获得{blockText}点格挡。"
         );
     }
 }
