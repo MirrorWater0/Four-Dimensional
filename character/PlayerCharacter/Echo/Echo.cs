@@ -6,9 +6,6 @@ public partial class Echo : PlayerCharacter
     public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
     public override string CharacterName { get; set; } = "Echo";
-    public override string PassiveName => "余响";
-    public override string PassiveDescription =>
-        $"使用生存技能时：获得{1}点能量。" + $"使用非生存技能时：获得{2}点力量。";
 
     public override void _Ready()
     {

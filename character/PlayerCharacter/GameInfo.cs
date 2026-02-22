@@ -48,6 +48,8 @@ public struct PlayerInfoStructure
     public int PositionIndex;
     public string PortaitPath;
     public string CharacterName;
+    public string PassiveName;
+    public string PassiveDescription;
 }
 
 public static class GlobalFunction

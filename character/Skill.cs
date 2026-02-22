@@ -271,7 +271,7 @@ public partial class Skill
         }
     }
 
-    public async Task Attack3(int damage, Character target, int num)
+    public async Task Attack3(int damage, Character target, int times)
     {
         if (target == null)
             return;
@@ -279,7 +279,7 @@ public partial class Skill
         damage = Math.Clamp(damage, 0, 9999);
         await AttackAnimation(target);
 
-        for (int i = 0; i < num; i++)
+        for (int i = 0; i < times; i++)
         {
             // Stop attacking if target has died
             if (target.State != Character.CharacterState.Normal)
@@ -307,6 +307,20 @@ public partial class Skill
 
     public void DescendingProperties(Character target, PropertyType type, int value)
     {
+        if (target == null)
+            return;
+
+        if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(target))
+        {
+            var immunityHint = Buff.HintScene.Instantiate<BuffHintLabel>();
+            immunityHint.Text =
+                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]";
+            immunityHint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
+            immunityHint.RandomOffset = true;
+            target.AddChild(immunityHint);
+            return;
+        }
+
         ColorRect icon = null;
         switch (type)
         {
@@ -395,6 +409,7 @@ public partial class Skill
             SkillID.SoundBarrier => new SoundBarrier(),
             SkillID.SonicDeflection => new SonicDeflection(),
             SkillID.TuningStance => new TuningStance(),
+            SkillID.ResonantWard => new ResonantWard(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
@@ -402,6 +417,9 @@ public partial class Skill
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
             SkillID.HolySeal => new HolySeal(),
+            SkillID.FearWormAttack => new FearWormAttack(),
+            SkillID.FearWormSurvive => new FearWormSurvive(),
+            SkillID.FearWormTermin => new FearWormTermin(),
             _ => null,
         };
     }
@@ -423,6 +441,7 @@ public enum SkillID
     SoundBarrier,
     SonicDeflection,
     TuningStance,
+    ResonantWard,
     EvilAttack,
     EvilSurvive,
     EvilTermin,
@@ -431,4 +450,7 @@ public enum SkillID
     AbsouluteDefense,
     TauntingGuard,
     HolySeal,
+    FearWormAttack,
+    FearWormSurvive,
+    FearWormTermin,
 }

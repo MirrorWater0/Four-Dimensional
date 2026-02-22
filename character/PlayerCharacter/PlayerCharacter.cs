@@ -13,18 +13,22 @@ public partial class PlayerCharacter : Character
 
     public override void Initialize()
     {
-        PositionIndex = GameInfo.PlayerCharacters[CharacterIndex].PositionIndex;
+        var info = GameInfo.PlayerCharacters[CharacterIndex];
+
+        PositionIndex = info.PositionIndex;
+        PassiveName = info.PassiveName;
+        PassiveDescription = info.PassiveDescription;
         Skills =
         [
-            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[0]),
-            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[1]),
-            Skill.GetSkill(GameInfo.PlayerCharacters[CharacterIndex].TakenSkills[2]),
+            Skill.GetSkill(info.TakenSkills[0]),
+            Skill.GetSkill(info.TakenSkills[1]),
+            Skill.GetSkill(info.TakenSkills[2]),
         ];
-        BattleLifemax = GameInfo.PlayerCharacters[CharacterIndex].LifeMax;
+        BattleLifemax = info.LifeMax;
         Life = BattleLifemax;
-        BattlePower = GameInfo.PlayerCharacters[CharacterIndex].Power;
-        BattleSurvivability = GameInfo.PlayerCharacters[CharacterIndex].Survivability;
-        Speed = GameInfo.PlayerCharacters[CharacterIndex].Speed;
+        BattlePower = info.Power;
+        BattleSurvivability = info.Survivability;
+        Speed = info.Speed;
         base.Initialize();
         IsPlayer = true;
         BlockLabel.Position += new Vector2(230, 0);

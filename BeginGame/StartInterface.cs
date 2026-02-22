@@ -86,6 +86,7 @@ public partial class StartInterface : CanvasLayer
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.ShockWave);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 
@@ -109,6 +110,8 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Echo = new PlayerInfoStructure()
     {
         CharacterName = "Echo",
+        PassiveName = "余响",
+        PassiveDescription = "使用生存技能时：获得1点能量。\n使用非生存技能时：获得2点力量。",
         LifeMax = 50,
         Power = 9,
         Survivability = 11,
@@ -116,21 +119,27 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/Echo.png",
         TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
-        AllSkills = [
+        AllSkills =
+        [
             SkillID.SacredOnslaught,
             SkillID.ResonantSlash,
             SkillID.EchoPuncture,
             SkillID.SoundBarrier,
             SkillID.SonicDeflection,
             SkillID.TuningStance,
+            SkillID.ResonantWard,
             SkillID.EchonicResonance,
             SkillID.SonicBoom,
             SkillID.PhaseEcho,
-        ]
+            SkillID.ResonantSlash,
+            SkillID.ResonantWard,
+        ],
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
         CharacterName = "Kasiya",
+        PassiveName = "回生",
+        PassiveDescription = "当其他队友使用攻击技能：回复生存点生命。",
         LifeMax = 60,
         Power = 12,
         Survivability = 12,

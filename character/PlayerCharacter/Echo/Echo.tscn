@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bu7e2ppfhmetu"]
 
-[ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_ivrln"]
+[ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="1_ivrln"]
 [ext_resource type="Script" uid="uid://c5xtioxeamb0m" path="res://character/PlayerCharacter/Echo/Echo.cs" id="1_p8ruw"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="4_dsw3a"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="5_hb044"]

@@ -1833,6 +1833,10 @@ tracks/1/keys = {
 "values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
 }
 
+[sub_resource type="Animation" id="Animation_k30rd"]
+resource_name = "stun"
+length = 0.5
+
 [sub_resource type="Animation" id="Animation_dhbpx"]
 resource_name = "transition"
 tracks/0/type = "value"
@@ -1870,6 +1874,7 @@ _data = {
 &"lightning": SubResource("Animation_ivyoc"),
 &"recover": SubResource("Animation_15k27"),
 &"shield": SubResource("Animation_irhrj"),
+&"stun": SubResource("Animation_k30rd"),
 &"transition": SubResource("Animation_dhbpx")
 }
 

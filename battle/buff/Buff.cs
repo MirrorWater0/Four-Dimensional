@@ -23,6 +23,7 @@ public partial class Buff
             BuffName.Vulnerable => "受到伤害时，伤害提高25%，消耗1层。",
             BuffName.Taunt => "敌方攻击更倾向于选择该目标；受到伤害时消耗1层。",
             BuffName.Stun => "无法行动；回合开始时消耗1层。",
+            BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             _ => string.Empty,
         };
 
@@ -120,6 +121,9 @@ public partial class Buff
 
         [Description("眩晕")]
         Stun,
+
+        [Description("减益免疫")]
+        DebuffImmunity,
     }
 
     public Character Owner;
@@ -132,8 +136,25 @@ public partial class Buff
     {
         Owner = owner;
         ThisBuffName = name;
+        BuffNature = GetNature(name);
         Stack = stack;
     }
+
+    public static Nature GetNature(BuffName name)
+    {
+        return name switch
+        {
+            BuffName.RebirthI => Nature.positive,
+            BuffName.DamageImmune => Nature.positive,
+            BuffName.Vulnerable => Nature.negative,
+            BuffName.Taunt => Nature.positive,
+            BuffName.Stun => Nature.negative,
+            BuffName.DebuffImmunity => Nature.positive,
+            _ => Nature.positive,
+        };
+    }
+
+    public static bool IsDebuff(BuffName name) => GetNature(name) == Nature.negative;
 
     public void TweenLabel()
     {
@@ -282,6 +303,9 @@ public partial class HurtBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack)
     {
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+            return;
+
         if (target.HurtBuffs.Any(x => x.ThisBuffName == name))
         {
             Buff buff0 = target.HurtBuffs.First(x => x.ThisBuffName == name);
@@ -364,6 +388,9 @@ public partial class StartActionBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack)
     {
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+            return;
+
         if (target.StartActionBuffs.Any(x => x.ThisBuffName == name))
         {
             Buff buff0 = target.StartActionBuffs.First(x => x.ThisBuffName == name);
@@ -402,6 +429,84 @@ public partial class StartActionBuff : Buff
     }
 }
 
+public partial class SpecialBuff : Buff
+{
+    public SpecialBuff(Character owner, BuffName name, int stack)
+        : base(owner, name, stack) { }
+
+    public static bool TryConsumeDebuffImmunity(Character target)
+    {
+        if (target?.SpecialBuffs == null)
+            return false;
+
+        var immunity = target.SpecialBuffs.FirstOrDefault(x =>
+            x != null && x.ThisBuffName == BuffName.DebuffImmunity && x.Stack > 0
+        );
+        if (immunity == null)
+            return false;
+
+        immunity.Stack--;
+        if (immunity.BuffIcon != null && GodotObject.IsInstanceValid(immunity.BuffIcon))
+            immunity.BuffIcon.GetChild<Label>(0).Text = immunity.Stack.ToString();
+
+        immunity.TweenLabel();
+        if (immunity.Stack == 0)
+        {
+            if (immunity.BuffIcon != null && GodotObject.IsInstanceValid(immunity.BuffIcon))
+            {
+                immunity.BuffIcon.QueueFree();
+            }
+            immunity.BuffIcon = null;
+            target.SpecialBuffs.Remove(immunity);
+            immunity.Hint(immunity.ThisBuffName, BuffHintLabel.Which.vanish);
+        }
+
+        return true;
+    }
+
+    public static void BuffAdd(BuffName name, Character target, int stack)
+    {
+        if (target?.SpecialBuffs == null)
+            return;
+
+        if (target.SpecialBuffs.Any(x => x.ThisBuffName == name))
+        {
+            Buff buff0 = target.SpecialBuffs.First(x => x.ThisBuffName == name);
+            buff0.Stack += stack;
+            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
+            buff0.TweenLabel();
+            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
+            buff0.BuffAddAnimation();
+            return;
+        }
+
+        SpecialBuff buff = null;
+        ColorRect icon = null;
+        switch (name)
+        {
+            case BuffName.DebuffImmunity:
+                buff = new SpecialBuff(target, BuffName.DebuffImmunity, stack);
+                target.SpecialBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/DebuffImmunity.tscn")
+                        .Instantiate() as ColorRect;
+                break;
+            default:
+                return;
+        }
+
+        if (buff == null || icon == null)
+            return;
+
+        buff.BuffIcon = icon;
+        buff.TweenLabel();
+        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
+        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
+        target.StateIconContainer.AddChild(icon);
+
+        buff.BuffAddAnimation();
+    }
+}
 public enum Nature
 {
     positive,

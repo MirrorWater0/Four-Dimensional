@@ -7,7 +7,7 @@ public partial class KasiyaSpecialSkill : Node { }
 public class TerminateLight : Skill
 {
     private const int BaseDamage = 10;
-    private int UsedTimes = 1;
+    private int UsedTimes = 2;
     private const int EnergyCost = 2;
     private const int PowerGain = 5;
 

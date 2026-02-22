@@ -49,8 +49,8 @@ public partial class Character : Node2D
     public int Block { get; protected set; }
     public int Energy { get; protected set; } = 1;
 
-    public virtual string PassiveName => null;
-    public virtual string PassiveDescription => null;
+    public virtual string PassiveName { get; set; }
+    public virtual string PassiveDescription { get; set; }
 
     //properties label
     public Label LifeLabel => field ??= GetNode("LifeBar/Life") as Label;
@@ -101,6 +101,7 @@ public partial class Character : Node2D
     public List<DyingBuff> DyingBuffs = new List<DyingBuff>();
     public List<HurtBuff> HurtBuffs = new List<HurtBuff>();
     public List<StartActionBuff> StartActionBuffs = new List<StartActionBuff>();
+    public List<SpecialBuff> SpecialBuffs = new List<SpecialBuff>();
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     public Vector2 OriginalPosition;
@@ -289,6 +290,18 @@ public partial class Character : Node2D
             }
         }
 
+        if (SpecialBuffs != null)
+        {
+            foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                any = true;
+            }
+        }
+
         if (HurtBuffs != null)
         {
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
@@ -331,7 +344,7 @@ public partial class Character : Node2D
         }
     }
 
-    public virtual void StartAction()
+    public virtual async void StartAction()
     {
         Block = 0;
         UpdataBlock(0);
@@ -342,6 +355,10 @@ public partial class Character : Node2D
         if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
         {
             StartActionBuffs.First(x => x.ThisBuffName == Buff.BuffName.Stun).Trigger();
+            var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+            AddChild(effect);
+            effect.Animation.Play("stun");
+            await ToSignal(effect.Animation, "animation_finished");
             EndAction();
             return;
         }

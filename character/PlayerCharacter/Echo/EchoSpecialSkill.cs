@@ -121,10 +121,10 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    private const int EnergyCost = 1;
+    private const int EnergyCost = 2;
     private const int DamageImmuneStacks = 2;
     private const int BaseBlock = 12;
-
+    int PowerGain = 4;
     public PhaseEcho()
         : base(SkillTypes.Special)
     {
@@ -136,9 +136,7 @@ public class PhaseEcho : Skill
     public override async Task Effect()
     {
         await base.Effect();
-
-        if (OwnerCharater == null)
-            return;
+        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
 
         if (OwnerCharater.Energy >= EnergyCost)
         {
@@ -167,6 +165,7 @@ public class PhaseEcho : Skill
             StatX.Survivability
         );
         SetDescriptionLines(
+            $"获得{PowerGain}点{GetColoredPropertyLabel(PropertyType.Power)}。",
             $"若能量>={EnergyCost}：消耗{EnergyCost}点能量。",
             $"获得{fullBlockText}点格挡。",
             $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",

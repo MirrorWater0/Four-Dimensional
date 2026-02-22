@@ -209,7 +209,7 @@ public partial class BattlePreview : Control
             skill.UpdateDescription();
         }
 
-        return BuildSkillTooltipText(name, skills);
+        return BuildSkillTooltipText(name, info.PassiveName, info.PassiveDescription, skills);
     }
 
     private static string BuildEnemySkillText(EnemyRegedit regedit)
@@ -226,13 +226,20 @@ public partial class BattlePreview : Control
             skill.UpdateDescription();
         }
 
-        return BuildSkillTooltipText(name, skills);
+        return BuildSkillTooltipText(name, regedit.PassiveName, regedit.PassiveDescription, skills);
     }
 
-    private static string BuildSkillTooltipText(string characterName, Skill[] skills)
+    private static string BuildSkillTooltipText(
+        string characterName,
+        string passiveName,
+        string passiveDesc,
+        Skill[] skills
+    )
     {
         var sb = new StringBuilder(256);
         sb.Append($"[b]{characterName}[/b]\n");
+
+        AppendPassiveTooltip(sb, passiveName, passiveDesc);
 
         if (skills == null || skills.Length == 0)
             return sb.ToString().TrimEnd();
@@ -265,6 +272,33 @@ public partial class BattlePreview : Control
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendPassiveTooltip(StringBuilder sb, string passiveName, string passiveDesc)
+    {
+        if (string.IsNullOrWhiteSpace(passiveName) && string.IsNullOrWhiteSpace(passiveDesc))
+            return;
+
+        const string passiveColor = "#ffd36b";
+        const int titleFontSize = 30;
+
+        string title = string.IsNullOrWhiteSpace(passiveName) ? "Passive" : passiveName;
+        sb.Append(
+            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc](被动)[/color]\n"
+        );
+
+        if (!string.IsNullOrWhiteSpace(passiveDesc))
+        {
+            string text = GlobalFunction.ColorizeNumbers(passiveDesc);
+            text = GlobalFunction.ColorizeKeywords(text);
+            sb.Append(text);
+        }
+        else
+        {
+            sb.Append("-");
+        }
+
+        sb.Append("\n[hr]\n");
     }
 
     private static string GuessNameFromScenePath(string scenePath)

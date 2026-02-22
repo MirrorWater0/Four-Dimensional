@@ -80,7 +80,12 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> ProduceEnemies()
     {
-        List<EnemyRegedit> list = new() { new EvilRegedit(), new EvilRegedit(), new EvilRegedit() };
+        List<EnemyRegedit> list = new()
+        {
+            new EvilRegedit(),
+            new FearWormRegedit(),
+            new EvilRegedit(),
+        };
         RandomPosition(list, RandomNum);
         return list;
     }
@@ -236,27 +241,52 @@ public partial class LevelNode : ColorRect
     {
         Random random = new Random(RandomNum);
 
-        // 1. 准备所有可能的位置 (1 到 9)
-        List<int> possiblePositions = Enumerable.Range(1, 9).ToList();
+        // Chosetarget1 prefers positions within the same row in front->mid->back order:
+        // (1,4,7), (2,5,8), (3,6,9). So we map "front row" to col0 (1-3) and "back row"
+        // to col2 (7-9) to match that priority.
+        var front = new List<int> { 1, 2, 3 };
+        var middle = new List<int> { 4, 5, 6 };
+        var back = new List<int> { 7, 8, 9 };
 
-        // 2. 洗牌算法：打乱这个列表
-        for (int i = possiblePositions.Count - 1; i > 0; i--)
+        static void Shuffle(List<int> arr, Random rng)
         {
-            int k = random.Next(i + 1); // 随机选一个索引
-            // 交换位置
-            int value = possiblePositions[k];
-            possiblePositions[k] = possiblePositions[i];
-            possiblePositions[i] = value;
+            for (int i = arr.Count - 1; i > 0; i--)
+            {
+                int k = rng.Next(i + 1);
+                (arr[i], arr[k]) = (arr[k], arr[i]);
+            }
         }
 
-        // 3. 按顺序分配给敌人
-        for (int i = 0; i < list.Count; i++)
+        Shuffle(front, random);
+        Shuffle(middle, random);
+        Shuffle(back, random);
+
+        static int? TakeOne(List<int> pool)
         {
-            // 注意：如果敌人数量超过9个，这里会溢出，需要加判断
-            if (i < possiblePositions.Count)
+            if (pool.Count == 0)
+                return null;
+            int idx = pool.Count - 1;
+            int val = pool[idx];
+            pool.RemoveAt(idx);
+            return val;
+        }
+
+        foreach (var enemy in list)
+        {
+            if (enemy == null)
+                continue;
+
+            int? pos = enemy.PType switch
             {
-                list[i].PositionIndex = possiblePositions[i];
-            }
+                EnemyRegedit.EnemyPositionType.FrontRow =>
+                    TakeOne(front) ?? TakeOne(middle) ?? TakeOne(back),
+                EnemyRegedit.EnemyPositionType.BackRow =>
+                    TakeOne(back) ?? TakeOne(middle) ?? TakeOne(front),
+                _ => TakeOne(front) ?? TakeOne(middle) ?? TakeOne(back),
+            };
+
+            if (pos.HasValue)
+                enemy.PositionIndex = pos.Value;
         }
     }
 }
