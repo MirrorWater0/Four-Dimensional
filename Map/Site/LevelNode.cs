@@ -70,13 +70,8 @@ public partial class LevelNode : ColorRect
             Ghost.Modulate = new Color(1, 1, 1, 0);
             CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
         };
-        Button.Pressed += Completed;
         Button.Pressed += PressButton;
     }
-
-    // public override void _Process(double delta)
-    // {
-    // }
 
     public List<EnemyRegedit> ProduceEnemies()
     {
@@ -156,6 +151,7 @@ public partial class LevelNode : ColorRect
                     node.Unlock();
             }
         }
+        ExplodeAnimation();
         GetParent().GetParent<LevelProgress>().OnNodeSelected(this);
         State = LevelState.Completed;
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
@@ -209,17 +205,7 @@ public partial class LevelNode : ColorRect
 
     public void PressButton()
     {
-        IsAnimate = true;
-        Tween tween = CreateTween();
-        tween.TweenProperty(Ghost, "scale", new Vector2(2.2f, 2.2f), 0.3f);
-        tween
-            .Parallel()
-            .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)
-            .SetEase(Tween.EaseType.Out);
-        tween
-            .Parallel()
-            .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
-            .SetEase(Tween.EaseType.Out);
+        var tween = ExplodeAnimation();
 
         EnemiesRegeditList = ProduceEnemies();
         var preview = BattlePreviewScene.Instantiate() as BattlePreview;
@@ -231,9 +217,25 @@ public partial class LevelNode : ColorRect
                 Callable.From(() =>
                 {
                     GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
-                    IsAnimate = false;
                 })
             );
+    }
+
+    public Tween ExplodeAnimation()
+    {
+        IsAnimate = true;
+        Tween tween = CreateTween();
+        tween.TweenProperty(Ghost, "scale", new Vector2(2.2f, 2.2f), 0.3f);
+        tween
+            .Parallel()
+            .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .Parallel()
+            .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
+            .SetEase(Tween.EaseType.Out);
+        IsAnimate = false;
+        return tween;
     }
 
     public static void RandomPosition<T>(List<T> list, int RandomNum)

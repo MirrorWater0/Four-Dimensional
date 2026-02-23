@@ -420,6 +420,9 @@ public partial class Skill
             SkillID.FearWormAttack => new FearWormAttack(),
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
+            SkillID.MendSlash => new MendSlash(),
+            SkillID.FinalGuard => new FinalGuard(),
+            SkillID.RebirthPrayer => new RebirthPrayer(),
             _ => null,
         };
     }
@@ -453,4 +456,7 @@ public enum SkillID
     FearWormAttack,
     FearWormSurvive,
     FearWormTermin,
+    MendSlash,
+    FinalGuard,
+    RebirthPrayer,
 }

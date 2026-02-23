@@ -45,12 +45,18 @@ public partial class Reward : CanvasLayer
     private SkillID?[] _offeredSkillIds = Array.Empty<SkillID?>();
     private int[] _offeredPlayerIndexes = Array.Empty<int>();
     private bool _picked;
+    private LevelNode _completeNodeOnClose;
 
     public override void _Ready()
     {
         CacheRewardSlots();
         WireSlotButtons();
         Visible = false;
+    }
+
+    public void SetCompleteNodeOnClose(LevelNode node)
+    {
+        _completeNodeOnClose = node;
     }
 
     /// <summary>Show reward UI and (re)roll offers for each player.</summary>
@@ -204,7 +210,23 @@ public partial class Reward : CanvasLayer
             {
                 BG.Modulate = new Color(1, 1, 1, 1);
                 Visible = false;
+                TryCompleteNodeOnClose();
             })
         );
+    }
+
+    private void TryCompleteNodeOnClose()
+    {
+        var node = _completeNodeOnClose;
+        _completeNodeOnClose = null;
+
+        if (node == null || !GodotObject.IsInstanceValid(node))
+            return;
+        if (!node.IsInsideTree())
+            return;
+        if (node.State == LevelNode.LevelState.Completed)
+            return;
+
+        node.Completed();
     }
 }

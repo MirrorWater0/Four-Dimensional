@@ -9,9 +9,8 @@ using Godot;
 
 public partial class Battle : Node2D
 {
-    public static bool Istest = false;
+    public static bool Istest = true;
     public Random BattleIntentionRandom;
-
     private readonly CancellationTokenSource _lifetimeCts = new();
     private ulong _battleInstanceId;
     private bool _retreating;
@@ -149,7 +148,7 @@ public partial class Battle : Node2D
             return _enemySpeedBar;
         }
     }
-    public LevelNode WhichNode;
+    public LevelNode CurrentLevelNode;
 
     public override void _EnterTree()
     {
@@ -166,23 +165,17 @@ public partial class Battle : Node2D
     {
         var token = _lifetimeCts.Token;
 
-        if (Istest)
+        for (int i = 0; i < CurrentLevelNode.EnemiesRegeditList.Count; i++)
         {
-            TestBattle();
+            var regedit = CurrentLevelNode.EnemiesRegeditList[i];
+            EnemyCharacter enemy = regedit.CharacterScene.Instantiate<EnemyCharacter>();
+            enemy.Registry = regedit;
+            enemy.PositionIndex = regedit.PositionIndex;
+            enemy.BattleNode = this;
+            enemy.Initialize();
+            EnemiesList.Add(enemy);
         }
-        else
-        {
-            for (int i = 0; i < WhichNode.EnemiesRegeditList.Count; i++)
-            {
-                var regedit = WhichNode.EnemiesRegeditList[i];
-                EnemyCharacter enemy = regedit.CharacterScene.Instantiate<EnemyCharacter>();
-                enemy.Registry = regedit;
-                enemy.PositionIndex = regedit.PositionIndex;
-                enemy.BattleNode = this;
-                enemy.Initialize();
-                EnemiesList.Add(enemy);
-            }
-        }
+
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
 
@@ -450,7 +443,25 @@ public partial class Battle : Node2D
             return;
         }
 
-        Reward.Show(this);
+        bool enemyAllDead =
+            EnemiesList != null
+            && EnemiesList.Count > 0
+            && EnemiesList.All(x => x != null && x.State == Character.CharacterState.Dying);
+
+        bool playerHasSurvivor =
+            PlayersList != null
+            && PlayersList.Count > 0
+            && PlayersList.Any(x => x != null && x.State == Character.CharacterState.Normal);
+
+        bool isWin = enemyAllDead && playerHasSurvivor;
+        if (isWin || Istest)
+        {
+            var reward = Reward.Show(this);
+            if ((isWin || Istest) && CurrentLevelNode != null)
+            {
+                reward.SetCompleteNodeOnClose(CurrentLevelNode);
+            }
+        }
 
         // Clear lists
         PlayersList.Clear();
@@ -525,5 +536,4 @@ public partial class Battle : Node2D
             return false;
         }
     }
-
 }

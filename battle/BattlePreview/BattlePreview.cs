@@ -396,7 +396,7 @@ public partial class BattlePreview : Control
                     var battle =
                         GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
                     battle.BattleIntentionRandom = new Random(RandomNum);
-                    battle.WhichNode = WhichNode;
+                    battle.CurrentLevelNode = WhichNode;
                     layer.AddChild(battle);
                     Close();
                 })

@@ -11,6 +11,9 @@ public partial class StartInterface : CanvasLayer
     public static PackedScene _Kasiya = ResourceLoader.Load<PackedScene>(
         "res://character/PlayerCharacter/Kasiya/kasiya.tscn"
     );
+    public static PackedScene _Mariya = ResourceLoader.Load<PackedScene>(
+        "res://character/PlayerCharacter/Mariya/Mariya.tscn"
+    );
 
     public override void _Ready()
     {
@@ -59,8 +62,8 @@ public partial class StartInterface : CanvasLayer
         [
             new PlayerCharacterRegistry().Echo,
             new PlayerCharacterRegistry().Kasiya,
+            new PlayerCharacterRegistry().Mariya,
             new PlayerCharacterRegistry().Echo,
-            new PlayerCharacterRegistry().Kasiya,
         ];
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
@@ -171,6 +174,7 @@ public partial class PlayerCharacterRegistry
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/Mariya.png",
-        TakenSkills = []
+        TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
+        AllSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
     };
 }
