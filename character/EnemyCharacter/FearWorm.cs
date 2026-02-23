@@ -39,14 +39,12 @@ public partial class FearWormAttack : Skill
         {
             var target = targets[i];
             _ = Attack3(damage, target, 1);
-            await Task.Delay(80);
         }
         await Task.Delay(400);
         for (int i = 0; i < count; i++)
         {
             var target = targets[i];
             HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, VulnerableStacks);
-            await Task.Delay(80);
         }
     }
 
@@ -97,7 +95,7 @@ public partial class FearWormSurvive : Skill
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 8;
     private const int PowerDown = 3;
     private const int StunStacks = 1;
     int cost = 2;

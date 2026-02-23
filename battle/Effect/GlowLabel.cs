@@ -5,6 +5,12 @@ public partial class GlowLabel : Label
 {
     private string _text = "";
     Vector2 OriginalScale;
+    private ulong _instanceId;
+
+    public override void _EnterTree()
+    {
+        _instanceId = GetInstanceId();
+    }
 
     public override void _Ready()
     {
@@ -20,6 +26,10 @@ public partial class GlowLabel : Label
             if (_text != value)
             {
                 _text = value;
+                if (_instanceId != 0 && !GodotObject.IsInstanceIdValid(_instanceId))
+                {
+                    return;
+                }
                 base.Text = _text;
                 TriggerAnimation();
             }

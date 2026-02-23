@@ -12,6 +12,10 @@ public partial class Battle : Node2D
     public static bool Istest = false;
     public Random BattleIntentionRandom;
 
+    private readonly CancellationTokenSource _lifetimeCts = new();
+    private ulong _battleInstanceId;
+    private bool _retreating;
+
     [Signal]
     public delegate void NextEventHandler();
 
@@ -41,14 +45,26 @@ public partial class Battle : Node2D
         set
         {
             _playerSpeed = Math.Clamp(value, 0, 100);
-            PlayerSpeedLabel.Text =
-                _playerSpeed.ToString()
-                + "("
-                + PlayersList
-                    .Where(x => x.State != Character.CharacterState.Dying)
-                    .Sum(x => x.Speed)
-                + ")";
-            CreateTween().TweenProperty(PlayerSpeedBar, "value", _playerSpeed, 0.3f);
+            if (!IsBattleAlive())
+            {
+                return;
+            }
+
+            var label = PlayerSpeedLabel;
+            if (GodotObject.IsInstanceValid(label))
+            {
+                int speedSum =
+                    PlayersList
+                        ?.Where(x => x.State != Character.CharacterState.Dying)
+                        .Sum(x => x.Speed) ?? 0;
+                label.Text = _playerSpeed + "(" + speedSum + ")";
+            }
+
+            var bar = PlayerSpeedBar;
+            if (GodotObject.IsInstanceValid(bar))
+            {
+                CreateTween().TweenProperty(bar, "value", _playerSpeed, 0.3f);
+            }
         }
     }
 
@@ -58,26 +74,98 @@ public partial class Battle : Node2D
         set
         {
             _enemySpeed = Math.Clamp(value, 0, 100);
-            EnemySpeedLabel.Text =
-                _enemySpeed.ToString()
-                + "("
-                + EnemiesList
-                    .Where(x => x.State != Character.CharacterState.Dying)
-                    .Sum(x => x.Speed)
-                + ")";
-            CreateTween().TweenProperty(EnemySpeedBar, "value", _enemySpeed, 0.3f);
+            if (!IsBattleAlive())
+            {
+                return;
+            }
+
+            var label = EnemySpeedLabel;
+            if (GodotObject.IsInstanceValid(label))
+            {
+                int speedSum =
+                    EnemiesList
+                        ?.Where(x => x.State != Character.CharacterState.Dying)
+                        .Sum(x => x.Speed) ?? 0;
+                label.Text = _enemySpeed + "(" + speedSum + ")";
+            }
+
+            var bar = EnemySpeedBar;
+            if (GodotObject.IsInstanceValid(bar))
+            {
+                CreateTween().TweenProperty(bar, "value", _enemySpeed, 0.3f);
+            }
         }
     }
 
-    public GlowLabel PlayerSpeedLabel =>
-        field ??= GetNode("SpeedBox/PlayerSpeed/Label") as GlowLabel;
-    public GlowLabel EnemySpeedLabel => field ??= GetNode("SpeedBox/EnemySpeed/Label") as GlowLabel;
-    public ProgressBar PlayerSpeedBar => field ??= GetNode("SpeedBox/PlayerSpeed") as ProgressBar;
-    public ProgressBar EnemySpeedBar => field ??= GetNode("SpeedBox/EnemySpeed") as ProgressBar;
+    private GlowLabel _playerSpeedLabel;
+    private GlowLabel _enemySpeedLabel;
+    private ProgressBar _playerSpeedBar;
+    private ProgressBar _enemySpeedBar;
+
+    public GlowLabel PlayerSpeedLabel
+    {
+        get
+        {
+            if (_playerSpeedLabel == null || !GodotObject.IsInstanceValid(_playerSpeedLabel))
+            {
+                _playerSpeedLabel = GetNodeOrNull<GlowLabel>("SpeedBox/PlayerSpeed/Label");
+            }
+            return _playerSpeedLabel;
+        }
+    }
+
+    public GlowLabel EnemySpeedLabel
+    {
+        get
+        {
+            if (_enemySpeedLabel == null || !GodotObject.IsInstanceValid(_enemySpeedLabel))
+            {
+                _enemySpeedLabel = GetNodeOrNull<GlowLabel>("SpeedBox/EnemySpeed/Label");
+            }
+            return _enemySpeedLabel;
+        }
+    }
+
+    public ProgressBar PlayerSpeedBar
+    {
+        get
+        {
+            if (_playerSpeedBar == null || !GodotObject.IsInstanceValid(_playerSpeedBar))
+            {
+                _playerSpeedBar = GetNodeOrNull<ProgressBar>("SpeedBox/PlayerSpeed");
+            }
+            return _playerSpeedBar;
+        }
+    }
+
+    public ProgressBar EnemySpeedBar
+    {
+        get
+        {
+            if (_enemySpeedBar == null || !GodotObject.IsInstanceValid(_enemySpeedBar))
+            {
+                _enemySpeedBar = GetNodeOrNull<ProgressBar>("SpeedBox/EnemySpeed");
+            }
+            return _enemySpeedBar;
+        }
+    }
     public LevelNode WhichNode;
+
+    public override void _EnterTree()
+    {
+        _battleInstanceId = GetInstanceId();
+    }
+
+    public override void _ExitTree()
+    {
+        _retreating = true;
+        TryCancelLifetime();
+    }
 
     public override async void _Ready()
     {
+        var token = _lifetimeCts.Token;
+
         if (Istest)
         {
             TestBattle();
@@ -110,35 +198,43 @@ public partial class Battle : Node2D
             PlayersList.Add(character);
         }
 
-        if (EnemiesList == null)
-        {
-            EnemyCharacter test1 = _test1.Instantiate<EnemyCharacter>();
-            EnemyCharacter test2 = _test1.Instantiate<EnemyCharacter>();
-            EnemyCharacter test4 = _test1.Instantiate<EnemyCharacter>();
-            EnemiesList = new() { test1, test2, test4 };
-        }
-
         PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
         EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
         SetCharaterPostion(); //加入节点树
         CharacterControl.Connect();
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
+        if (token.IsCancellationRequested || !IsBattleAlive())
+        {
+            return;
+        }
 
         CharacterControl.DisableAll();
         for (int i = 0; i < EnemiesList.Count; i++)
         {
+            if (token.IsCancellationRequested || !IsBattleAlive())
+            {
+                return;
+            }
+
             var enemy = EnemiesList[i];
             enemy.IntentionIndex = BattleIntentionRandom.Next(0, enemy.Skills.Length);
             await enemy.DisappearIntention();
+            if (token.IsCancellationRequested || !IsBattleAlive())
+            {
+                return;
+            }
             enemy.IntentionContorl.Visible = true;
             enemy.DisplayIntention();
         }
 
-        await Task.Delay(800);
+        if (!await DelayOrCancel(800, token))
+        {
+            return;
+        }
         PlayerSpeed = 0;
         EnemySpeed = 0;
 
-        await BattleBegin1();
+        await BattleBegin1(token);
     }
 
     public void SetCharaterPostion()
@@ -185,23 +281,32 @@ public partial class Battle : Node2D
         EmitSignal(SignalName.Next);
     }
 
-    public async Task BattleBegin1()
+    public async Task BattleBegin1(CancellationToken token)
     {
         // Null checks for lists
-        if (PlayersList == null || EnemiesList == null)
+        if (token.IsCancellationRequested || !IsBattleAlive())
         {
             return;
         }
 
         if (PlayersList.Sum(x => x.Speed) < EnemiesList.Sum(x => x.Speed))
         {
-            await CharacterAction(EnemiesList);
+            await CharacterAction(EnemiesList, token);
         }
 
         for (int i = 0; i < 100; i++)
         {
-            await CharacterAction(PlayersList);
-            await CharacterAction(EnemiesList);
+            if (token.IsCancellationRequested || !IsBattleAlive())
+            {
+                return;
+            }
+
+            await CharacterAction(PlayersList, token);
+            if (token.IsCancellationRequested || !IsBattleAlive())
+            {
+                return;
+            }
+            await CharacterAction(EnemiesList, token);
         }
 
         // Battle completed after 100 turns - retreat
@@ -209,11 +314,16 @@ public partial class Battle : Node2D
         Retreat();
     }
 
-    public async Task CharacterAction<T>(List<T> characterlist)
+    public async Task CharacterAction<T>(List<T> characterlist, CancellationToken token)
         where T : Character
     {
         // Null check for characterlist
         if (characterlist == null || characterlist.Count == 0)
+        {
+            return;
+        }
+
+        if (token.IsCancellationRequested || !IsBattleAlive())
         {
             return;
         }
@@ -224,7 +334,14 @@ public partial class Battle : Node2D
         characterlist.Reverse(1, characterlist.Count - 1);
         characterlist.Reverse();
         await ToSignal(this, SignalName.Next);
-        await Task.Delay(800);
+        if (token.IsCancellationRequested || !IsBattleAlive())
+        {
+            return;
+        }
+        if (!await DelayOrCancel(800, token))
+        {
+            return;
+        }
 
         // Null checks for lists before accessing
         if (PlayersList != null && EnemiesList != null)
@@ -236,7 +353,10 @@ public partial class Battle : Node2D
             {
                 GD.Print("over");
                 Retreat();
-                await Task.Delay(5000);
+                if (!await DelayOrCancel(5000, token))
+                {
+                    return;
+                }
             }
         }
 
@@ -249,7 +369,7 @@ public partial class Battle : Node2D
             if (PlayersList != null && PlayersList.Count > 0)
             {
                 PlayersList[PlayersList.Count - 1].AddChild(label);
-                await CharacterAction(PlayersList);
+                await CharacterAction(PlayersList, token);
             }
         }
 
@@ -263,7 +383,7 @@ public partial class Battle : Node2D
             if (EnemiesList != null && EnemiesList.Count > 0)
             {
                 EnemiesList[EnemiesList.Count - 1].AddChild(label);
-                await CharacterAction(EnemiesList);
+                await CharacterAction(EnemiesList, token);
             }
         }
     }
@@ -296,8 +416,17 @@ public partial class Battle : Node2D
 
     public async void Retreat()
     {
+        if (_retreating)
+        {
+            return;
+        }
+
+        _retreating = true;
+        TryCancelLifetime();
+        TryEmitNextToUnblock();
+
         // Check if Battle instance is still valid before proceeding
-        if (!IsInstanceValid(this))
+        if (!IsBattleInstanceValid())
         {
             return;
         }
@@ -316,6 +445,11 @@ public partial class Battle : Node2D
         MapNode?.BlackMaskAnimation(0.8f);
         await Task.Delay(800);
 
+        if (!IsBattleInstanceValid())
+        {
+            return;
+        }
+
         Reward.Show(this);
 
         // Clear lists
@@ -323,9 +457,9 @@ public partial class Battle : Node2D
         EnemiesList.Clear();
 
         // Change scene - check if Battle instance is still valid
-        if (IsInstanceValid(this))
+        if (IsBattleInstanceValid())
         {
-            GetParent().QueueFree();
+            GetParent()?.QueueFree();
         }
     }
 
@@ -345,4 +479,51 @@ public partial class Battle : Node2D
             EnemiesList[i].Initialize();
         }
     }
+
+    private bool IsBattleInstanceValid()
+    {
+        return _battleInstanceId != 0 && GodotObject.IsInstanceIdValid(_battleInstanceId);
+    }
+
+    private bool IsBattleAlive()
+    {
+        return !_retreating && !_lifetimeCts.IsCancellationRequested && IsBattleInstanceValid();
+    }
+
+    private void TryCancelLifetime()
+    {
+        try
+        {
+            _lifetimeCts.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private void TryEmitNextToUnblock()
+    {
+        if (!IsBattleInstanceValid())
+        {
+            return;
+        }
+
+        try
+        {
+            EmitSignal(SignalName.Next);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task<bool> DelayOrCancel(int milliseconds, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(milliseconds, token);
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            return false;
+        }
+    }
+
 }

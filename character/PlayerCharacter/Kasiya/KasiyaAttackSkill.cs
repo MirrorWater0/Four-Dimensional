@@ -38,7 +38,7 @@ public partial class Smite : Skill
 {
     private const int BaseDamage = 15;
     private const int SurvivalDown = 5;
-
+    int times = 2;
     public Smite()
         : base(Skill.SkillTypes.Attack)
     {
@@ -56,6 +56,11 @@ public partial class Smite : Skill
             DescendingProperties(targets[0], PropertyType.Survivalibility, SurvivalDown);
             await Attack1(BaseDamage + OwnerPower);
         }
+        if (times > 0)
+        {
+            times--;
+            DescendingProperties(targets[0], PropertyType.Survivalibility, SurvivalDown);
+        }
     }
 
     public override void UpdateDescription()
@@ -63,7 +68,8 @@ public partial class Smite : Skill
         int totalDamage = BaseDamage + OwnerPower;
         SetDescriptionLines(
             $"降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivalibility)}。",
-            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。"
+            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
+            $"额外触发降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivalibility)}，触发次数：{times}。"
         );
     }
 }

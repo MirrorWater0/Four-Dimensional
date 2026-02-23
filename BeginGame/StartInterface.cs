@@ -160,4 +160,17 @@ public partial class PlayerCharacterRegistry
             SkillID.HolySeal,
         ],
     };
+    public PlayerInfoStructure Mariya = new PlayerInfoStructure()
+    {
+        CharacterName = "Mariya",
+        PassiveName = "治愈",
+        PassiveDescription = "自己回合结束时：回复最低生命队友10点。",
+        LifeMax = 45,
+        Power = 9,
+        Survivability = 10,
+        Speed = 11,
+        CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Mariya/Mariya.png",
+        TakenSkills = []
+    };
 }
