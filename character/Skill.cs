@@ -57,7 +57,7 @@ public partial class Skill
     public Character OwnerCharater;
     public bool Enable;
     public string Description;
-
+    public bool Upgraded;
     public Skill(SkillTypes skillType)
     {
         SkillType = skillType;

@@ -241,12 +241,17 @@ public partial class LevelNode : ColorRect
     {
         Random random = new Random(RandomNum);
 
-        // Chosetarget1 prefers positions within the same row in front->mid->back order:
-        // (1,4,7), (2,5,8), (3,6,9). So we map "front row" to col0 (1-3) and "back row"
-        // to col2 (7-9) to match that priority.
+        // Chosetarget1 prefers targets within a "lane" in front->mid->back order:
+        // (1,4,7), (2,5,8), (3,6,9).
+        //
+        // Placement rule:
+        // - FrontRow enemies: absolutely random among all free slots (1..9).
+        // - BackRow enemies: prefer back slots (7..9) if possible, then mid (4..6), then front (1..3).
         var front = new List<int> { 1, 2, 3 };
         var middle = new List<int> { 4, 5, 6 };
         var back = new List<int> { 7, 8, 9 };
+        var any = Enumerable.Range(1, 9).ToList();
+        var available = new HashSet<int>(any);
 
         static void Shuffle(List<int> arr, Random rng)
         {
@@ -260,30 +265,68 @@ public partial class LevelNode : ColorRect
         Shuffle(front, random);
         Shuffle(middle, random);
         Shuffle(back, random);
+        Shuffle(any, random);
 
-        static int? TakeOne(List<int> pool)
+        int? TakeOne(List<int> pool)
         {
-            if (pool.Count == 0)
-                return null;
-            int idx = pool.Count - 1;
-            int val = pool[idx];
-            pool.RemoveAt(idx);
-            return val;
+            while (pool.Count > 0)
+            {
+                int idx = pool.Count - 1;
+                int val = pool[idx];
+                pool.RemoveAt(idx);
+                if (available.Remove(val))
+                    return val;
+            }
+            return null;
         }
 
-        foreach (var enemy in list)
+        int? TakeAny()
         {
-            if (enemy == null)
-                continue;
-
-            int? pos = enemy.PType switch
+            while (any.Count > 0)
             {
-                EnemyRegedit.EnemyPositionType.FrontRow =>
-                    TakeOne(front) ?? TakeOne(middle) ?? TakeOne(back),
-                EnemyRegedit.EnemyPositionType.BackRow =>
-                    TakeOne(back) ?? TakeOne(middle) ?? TakeOne(front),
-                _ => TakeOne(front) ?? TakeOne(middle) ?? TakeOne(back),
-            };
+                int idx = any.Count - 1;
+                int val = any[idx];
+                any.RemoveAt(idx);
+                if (available.Remove(val))
+                    return val;
+            }
+            return null;
+        }
+
+        var frontEnemies = list.Where(x =>
+                x != null && x.PType == EnemyRegedit.EnemyPositionType.FrontRow
+            )
+            .ToList();
+        var backEnemies = list.Where(x =>
+                x != null && x.PType == EnemyRegedit.EnemyPositionType.BackRow
+            )
+            .ToList();
+        var otherEnemies = list.Where(x =>
+                x != null
+                && x.PType != EnemyRegedit.EnemyPositionType.FrontRow
+                && x.PType != EnemyRegedit.EnemyPositionType.BackRow
+            )
+            .ToList();
+
+        foreach (var enemy in frontEnemies)
+        {
+            int? pos = TakeAny();
+
+            if (pos.HasValue)
+                enemy.PositionIndex = pos.Value;
+        }
+
+        foreach (var enemy in backEnemies)
+        {
+            int? pos = TakeOne(back) ?? TakeOne(middle) ?? TakeOne(front) ?? TakeAny();
+
+            if (pos.HasValue)
+                enemy.PositionIndex = pos.Value;
+        }
+
+        foreach (var enemy in otherEnemies)
+        {
+            int? pos = TakeAny();
 
             if (pos.HasValue)
                 enemy.PositionIndex = pos.Value;

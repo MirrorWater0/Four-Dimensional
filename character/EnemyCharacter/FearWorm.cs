@@ -14,9 +14,10 @@ public partial class FearWorm : EnemyCharacter
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 2;
     private const int VulnerableStacks = 1;
     private const int MaxTargets = 3;
+    int energyGain = 1;
 
     public FearWormAttack()
         : base(SkillTypes.Attack)
@@ -29,7 +30,7 @@ public partial class FearWormAttack : Skill
     public override async Task Effect()
     {
         await base.Effect();
-
+        OwnerCharater.UpdataEnergy(energyGain);
         var targets = Chosetarget1();
 
         int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 999);
@@ -38,6 +39,12 @@ public partial class FearWormAttack : Skill
         {
             var target = targets[i];
             _ = Attack3(damage, target, 1);
+            await Task.Delay(80);
+        }
+        await Task.Delay(400);
+        for (int i = 0; i < count; i++)
+        {
+            var target = targets[i];
             HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, VulnerableStacks);
             await Task.Delay(80);
         }
@@ -48,6 +55,7 @@ public partial class FearWormAttack : Skill
         int totalDamage = BaseDamage + OwnerPower;
         string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
         SetDescriptionLines(
+            $"获得{energyGain}点能量。",
             $"对至多{MaxTargets}名目标造成{damageText}点伤害。",
             $"使其各获得{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。"
         );
@@ -57,7 +65,7 @@ public partial class FearWormAttack : Skill
 public partial class FearWormSurvive : Skill
 {
     private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 5;
 
     public FearWormSurvive()
         : base(SkillTypes.Survive)
@@ -92,6 +100,7 @@ public partial class FearWormTermin : Skill
     private const int BaseDamage = 5;
     private const int PowerDown = 3;
     private const int StunStacks = 1;
+    int cost = 2;
 
     public FearWormTermin()
         : base(SkillTypes.Special)
@@ -124,9 +133,10 @@ public partial class FearWormTermin : Skill
         int totalDamage = BaseDamage + OwnerPower;
         string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
         SetDescriptionLines(
+            $"造成{damageText}点伤害。",
             $"下降目标{PowerDown}点{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()}。",
-            $"造成{damageText}点伤害。"
+            $"消耗{cost}点能量:",
+            $"使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()}。"
         );
     }
 }

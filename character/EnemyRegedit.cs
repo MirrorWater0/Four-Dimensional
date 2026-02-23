@@ -57,15 +57,15 @@ public partial class FearWormRegedit : EnemyRegedit
 {
     public FearWormRegedit()
     {
-        CharacterName = "恐惧虫";
+        CharacterName = "FearWorm";
         PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 40;
-        Power = 15;
-        Survivability = 20;
+        MaxLife = 70;
+        Power = 18;
+        Survivability = 12;
         Speed = 16;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
