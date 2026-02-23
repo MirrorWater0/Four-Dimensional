@@ -16,7 +16,7 @@ public partial class Battle : Node2D
     private bool _retreating;
 
     [Signal]
-    public delegate void NextEventHandler();
+    public delegate void NextEventHandler(Character character);
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Evil.tscn");
@@ -269,9 +269,15 @@ public partial class Battle : Node2D
         ProcessList(EnemiesList, Right, 1);
     }
 
-    public void EmitS()
+    public List<Action<Character>> EmitList = new();
+
+    public void EmitS(Character character)
     {
-        EmitSignal(SignalName.Next);
+        for (int i = 0; i < EmitList.Count; i++)
+        {
+            EmitList[i](character);
+        }
+        EmitSignal(SignalName.Next, character);
     }
 
     public async Task BattleBegin1(CancellationToken token)

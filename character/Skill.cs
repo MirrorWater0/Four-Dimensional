@@ -58,6 +58,7 @@ public partial class Skill
     public bool Enable;
     public string Description;
     public bool Upgraded;
+
     public Skill(SkillTypes skillType)
     {
         SkillType = skillType;
@@ -225,6 +226,9 @@ public partial class Skill
                 return iindex;
             })
             .Where(x => x.State == Character.CharacterState.Normal)
+            .Where(x =>
+                x.StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Invisible) == false
+            )
             .ToArray();
 
         if (targets.Any(x => x.HurtBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Taunt)))

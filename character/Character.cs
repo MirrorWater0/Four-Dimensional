@@ -373,7 +373,7 @@ public partial class Character : Node2D
 
     public virtual async void EndAction()
     {
-        BattleNode.EmitS();
+        BattleNode.EmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         TrailAnimation.Stop();

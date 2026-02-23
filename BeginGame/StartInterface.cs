@@ -118,7 +118,7 @@ public partial class PlayerCharacterRegistry
         LifeMax = 50,
         Power = 9,
         Survivability = 11,
-        Speed = 12,
+        Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/Echo.png",
         TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
@@ -146,7 +146,7 @@ public partial class PlayerCharacterRegistry
         LifeMax = 60,
         Power = 12,
         Survivability = 12,
-        Speed = 9,
+        Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/Kasiya.png",
         TakenSkills = [SkillID.Determination, SkillID.ReNewedSpirit, SkillID.TerminateLight],
@@ -171,10 +171,23 @@ public partial class PlayerCharacterRegistry
         LifeMax = 45,
         Power = 9,
         Survivability = 10,
-        Speed = 11,
+        Speed = 9,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/Mariya.png",
         TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
         AllSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
+    };
+
+    public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
+    {
+        CharacterName = "Nightingale",
+        PassiveName = "夜光",
+        PassiveDescription = "队友结束回合时：追击一次。",
+        LifeMax = 50,
+        Power = 9,
+        Survivability = 11,
+        Speed = 11,
+        CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Nightingale/Nightingale.png",
     };
 }

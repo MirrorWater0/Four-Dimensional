@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://c3emfdyr5ojgg"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_6gboy"]
+[ext_resource type="Shader" uid="uid://b6p0rhap7u1p2" path="res://shader/Icon/Invisable.gdshader" id="2_ihmn7"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ixfb3"]
+shader = ExtResource("2_ihmn7")
+shader_parameter/ring_color = Color(0.780842, 0.39123192, 1, 1)
+shader_parameter/bar_color = Color(1, 0.2, 0.2, 1)
+shader_parameter/ring_radius = 0.26000001235
+shader_parameter/ring_width = 0.05
+shader_parameter/bar_width = 0.03600000101148
+shader_parameter/bar_length = 0.518000024605
+shader_parameter/bar_angle = 45.0
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_6gboy")]
+material = SubResource("ShaderMaterial_ixfb3")

@@ -224,6 +224,8 @@ public partial class LevelNode : ColorRect
     public Tween ExplodeAnimation()
     {
         IsAnimate = true;
+        Ghost.Modulate = new Color(1, 1, 1, 1);
+        Ghost.Scale = Vector2.One;
         Tween tween = CreateTween();
         tween.TweenProperty(Ghost, "scale", new Vector2(2.2f, 2.2f), 0.3f);
         tween
@@ -234,7 +236,14 @@ public partial class LevelNode : ColorRect
             .Parallel()
             .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
             .SetEase(Tween.EaseType.Out);
-        IsAnimate = false;
+        tween.TweenCallback(
+            Callable.From(() =>
+            {
+                IsAnimate = false;
+                Ghost.Scale = Vector2.One;
+                Ghost.Modulate = new Color(1, 1, 1, 0);
+            })
+        );
         return tween;
     }
 

@@ -104,7 +104,6 @@ public partial class Buff
         Hurt,
     }
 
-
     public enum BuffName
     {
         [Description("重生I")]
@@ -124,6 +123,9 @@ public partial class Buff
 
         [Description("减益免疫")]
         DebuffImmunity,
+
+        [Description("隐身")]
+        Invisible,
     }
 
     public Character Owner;
@@ -371,6 +373,10 @@ public partial class StartActionBuff : Buff
                 if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
                     BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
                 break;
+            case BuffName.Invisible:
+                Stack--;
+                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                break;
         }
 
         TweenLabel();
@@ -410,6 +416,13 @@ public partial class StartActionBuff : Buff
                 target.StartActionBuffs.Add(buff);
                 icon =
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Stun.tscn").Instantiate()
+                    as ColorRect;
+                break;
+            case BuffName.Invisible:
+                buff = new StartActionBuff(target, BuffName.Invisible, stack);
+                target.StartActionBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Invisible.tscn").Instantiate()
                     as ColorRect;
                 break;
             default:
@@ -507,6 +520,7 @@ public partial class SpecialBuff : Buff
         buff.BuffAddAnimation();
     }
 }
+
 public enum Nature
 {
     positive,

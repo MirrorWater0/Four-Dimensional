@@ -43,7 +43,7 @@ public partial class EvilRegedit : EnemyRegedit
         MaxLife = 50;
         Power = 13;
         Survivability = 13;
-        Speed = 13;
+        Speed = 9;
 
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
@@ -66,7 +66,7 @@ public partial class FearWormRegedit : EnemyRegedit
         MaxLife = 70;
         Power = 18;
         Survivability = 12;
-        Speed = 16;
+        Speed = 15;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
