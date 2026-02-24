@@ -269,13 +269,13 @@ public partial class Battle : Node2D
         ProcessList(EnemiesList, Right, 1);
     }
 
-    public List<Action<Character>> EmitList = new();
+    public List<Func<Character, Task>> EmitList = new();
 
-    public void EmitS(Character character)
+    public async Task EmitS(Character character)
     {
         for (int i = 0; i < EmitList.Count; i++)
         {
-            EmitList[i](character);
+            await EmitList[i](character);
         }
         EmitSignal(SignalName.Next, character);
     }
@@ -365,9 +365,10 @@ public partial class Battle : Node2D
             BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
             label.TargetPosition = Vector2.Zero;
             label.Text = "[color=yellow]超速触发[/color]";
+            await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
             if (PlayersList != null && PlayersList.Count > 0)
             {
-                PlayersList[PlayersList.Count - 1].AddChild(label);
+                PlayersList[0].AddChild(label);
                 await CharacterAction(PlayersList, token);
             }
         }
@@ -379,9 +380,10 @@ public partial class Battle : Node2D
             BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
             label.TargetPosition = Vector2.Zero;
             label.Text = "[color=yellow]超速触发[/color]";
+            await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
             if (EnemiesList != null && EnemiesList.Count > 0)
             {
-                EnemiesList[EnemiesList.Count - 1].AddChild(label);
+                EnemiesList[0].AddChild(label);
                 await CharacterAction(EnemiesList, token);
             }
         }

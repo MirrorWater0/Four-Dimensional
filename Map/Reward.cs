@@ -204,15 +204,16 @@ public partial class Reward : CanvasLayer
         tween.SetParallel(true);
         tween.TweenProperty(BG, "modulate", new Color(1, 1, 1, 0), 0.4f);
         tween.SetParallel(false);
-        tween.TweenInterval(0.3f);
-        tween.TweenCallback(
-            Callable.From(() =>
-            {
-                BG.Modulate = new Color(1, 1, 1, 1);
-                Visible = false;
-                TryCompleteNodeOnClose();
-            })
-        );
+        tween
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    BG.Modulate = new Color(1, 1, 1, 1);
+                    Visible = false;
+                    TryCompleteNodeOnClose();
+                })
+            );
     }
 
     private void TryCompleteNodeOnClose()

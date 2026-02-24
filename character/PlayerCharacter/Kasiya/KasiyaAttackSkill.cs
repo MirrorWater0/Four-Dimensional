@@ -39,6 +39,7 @@ public partial class Smite : Skill
     private const int BaseDamage = 15;
     private const int SurvivalDown = 5;
     int times = 2;
+
     public Smite()
         : base(Skill.SkillTypes.Attack)
     {
@@ -97,11 +98,43 @@ public partial class Charge : Skill
     public override void UpdateDescription()
     {
         int total = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(
-            BaseDamage,
-            total,
-            StatX.Power
-        );
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, total, StatX.Power);
         SetDescriptionLines($"造成{damageText}点伤害。", $"获得{damageText}点格挡。");
+    }
+}
+
+public partial class Vower : Skill
+{
+    private const int BaseDamage = 8;
+    int times = 2;
+
+    public Vower()
+        : base(Skill.SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "誓约者";
+
+    public override async Task Effect()
+    {
+        await base.Effect();
+        int damage = BaseDamage + OwnerPower;
+        await Attack1(damage);
+        if (times > 0)
+        {
+            times--;
+            await Carry(GetAllyByRelative(-1), 1);
+        }
+    }
+
+    public override void UpdateDescription()
+    {
+        int total = BaseDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(BaseDamage, total, StatX.Power);
+        SetDescriptionLines(
+            $"造成{damageText}点伤害。",
+            $"连携上一位队友(生存技能)，剩余触发次数：{times}。"
+        );
     }
 }

@@ -40,7 +40,12 @@ naming/scene_name_casing=1
 [file_customization]
 
 folder_colors={
-"res://battle/buff/StateIcon/": "green"
+"res://asset/": "pink",
+"res://battle/": "purple",
+"res://battle/buff/": "green",
+"res://battle/buff/StateIcon/": "green",
+"res://character/EnemyCharacter/": "red",
+"res://character/PlayerCharacter/": "red"
 }
 
 [global]

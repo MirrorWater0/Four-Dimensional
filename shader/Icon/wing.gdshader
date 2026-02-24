@@ -83,5 +83,5 @@ void fragment() {
 	float aa = fwidth(d) + edge_smoothness;
 	float mask = 1.0 - smoothstep(0.0, aa, d);
 
-	COLOR = vec4(wing_color.rgb, mask * wing_color.a);
+	COLOR *= vec4(wing_color.rgb, mask * wing_color.a);
 }

@@ -63,15 +63,16 @@ public partial class FearWormRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 70;
+        MaxLife = 65;
         Power = 18;
         Survivability = 12;
-        Speed = 15;
+        Speed = 13;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
-        PassiveName = "恐惧蜕皮";
+        PassiveName = "蜕皮";
         PassiveDescription =
-            $"初始：获得1层{Buff.BuffName.DebuffImmunity.GetDescription()}。\n{Buff.GetBuffEffectText(Buff.BuffName.DebuffImmunity)}";
+            $"初始：获得1层{Buff.BuffName.DebuffImmunity.GetDescription()}。"
+            + $"\n回合结束时：获得{2}点力量。";
     }
 }

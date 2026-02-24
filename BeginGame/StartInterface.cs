@@ -14,6 +14,9 @@ public partial class StartInterface : CanvasLayer
     public static PackedScene _Mariya = ResourceLoader.Load<PackedScene>(
         "res://character/PlayerCharacter/Mariya/Mariya.tscn"
     );
+    public static PackedScene _Nightingale = ResourceLoader.Load<PackedScene>(
+        "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
+    );
 
     public override void _Ready()
     {
@@ -63,7 +66,7 @@ public partial class StartInterface : CanvasLayer
             new PlayerCharacterRegistry().Echo,
             new PlayerCharacterRegistry().Kasiya,
             new PlayerCharacterRegistry().Mariya,
-            new PlayerCharacterRegistry().Echo,
+            new PlayerCharacterRegistry().Nightingale,
         ];
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
@@ -189,5 +192,7 @@ public partial class PlayerCharacterRegistry
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/Nightingale.png",
+        TakenSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
+        AllSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
     };
 }

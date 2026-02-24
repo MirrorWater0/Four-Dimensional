@@ -29,8 +29,8 @@ public partial class EnemyCharacter : Character
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
-            BattleLifemax = Registry.MaxLife;
-            Life = BattleLifemax;
+            BattleMaxLife = Registry.MaxLife;
+            Life = BattleMaxLife;
             BattlePower = Registry.Power;
             BattleSurvivability = Registry.Survivability;
             Speed = Registry.Speed;

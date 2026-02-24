@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -31,6 +32,12 @@ public partial class Skill
 
         [Description("生存")]
         Survivalibility,
+
+        [Description("速度")]
+        Speed,
+
+        [Description("生命上限")]
+        MaxLife,
     }
 
     public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
@@ -57,7 +64,7 @@ public partial class Skill
     public Character OwnerCharater;
     public bool Enable;
     public string Description;
-    public bool Upgraded;
+    public bool Upgraded = false;
 
     public Skill(SkillTypes skillType)
     {
@@ -99,6 +106,7 @@ public partial class Skill
         {
             PropertyType.Power => "#ff0000",
             PropertyType.Survivalibility => "#89fffd",
+            PropertyType.Speed => "#b56bff",
             _ => "white",
         };
     }
@@ -206,7 +214,7 @@ public partial class Skill
     public Character[] Chosetarget1()
     {
         int index = OwnerCharater.PositionIndex;
-        Character[] targets = (OwnerCharater.IsPlayer) switch
+        Character[] targets = OwnerCharater.IsPlayer switch
         {
             true => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(),
             false => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
@@ -226,10 +234,16 @@ public partial class Skill
                 return iindex;
             })
             .Where(x => x.State == Character.CharacterState.Normal)
+            .ToArray();
+
+        var visibleTargets = targets
             .Where(x =>
-                x.StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Invisible) == false
+                x.StartActionBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Invisible) == false
             )
             .ToArray();
+
+        // If everyone is invisible, still allow targeting to avoid soft-lock.
+        targets = visibleTargets.Length > 0 ? visibleTargets : targets;
 
         if (targets.Any(x => x.HurtBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Taunt)))
         {
@@ -240,6 +254,34 @@ public partial class Skill
                 .ToArray();
         }
         return targets;
+    }
+
+    public Character GetAllyByRelative(int Where, bool dyingFilter = false)
+    {
+        Character[] Ally = OwnerCharater.IsPlayer switch
+        {
+            true => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
+            false => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(),
+        };
+        Ally = Ally.OrderBy(x => x.PositionIndex).ToArray();
+        return Ally[(Array.IndexOf(Ally, OwnerCharater) + Where) % Ally.Length];
+    }
+
+    public Character GetAllyByIndex(int index, bool dyingFilter = false)
+    {
+        var allies = OwnerCharater.IsPlayer
+            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
+            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
+
+        allies = allies.OrderBy(x => x.PositionIndex);
+        var ally = allies.ElementAtOrDefault(index);
+        if (dyingFilter)
+        {
+            var aliveAlly = allies.Where(x => x.State == Character.CharacterState.Normal);
+            ally = aliveAlly.ElementAtOrDefault(index % aliveAlly.Count());
+        }
+
+        return ally;
     }
 
     public async Task Attack1(int damage) //顺位一段攻击
@@ -297,6 +339,16 @@ public partial class Skill
         }
     }
 
+    public async Task AOE(int damage, int Num, int times)
+    {
+        List<Task> tasks = new();
+        for (int i = 0; i < Num; i++)
+        {
+            tasks.Add(Attack3(damage, Chosetarget1()[i], times));
+        }
+        await Task.WhenAll(tasks);
+    }
+
     public async Task AttackAnimation(Character target)
     {
         AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
@@ -336,9 +388,33 @@ public partial class Skill
                 target.BattleSurvivability -= value;
                 icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
+            case PropertyType.Speed:
+                target.Speed -= value;
+                icon = target.SpeedIconLabel.GetParent() as ColorRect;
+                break;
+            case PropertyType.MaxLife:
+                target.BattleMaxLife -= value;
+                target.LifeLabel.Text = $"{target.Life}/{target.BattleMaxLife}";
+                target
+                    .CreateTween()
+                    .TweenMethod(
+                        Callable.From(
+                            (int x) =>
+                            {
+                                target.LifeBar.MaxValue = x;
+                            }
+                        ),
+                        target.LifeBar.MaxValue,
+                        target.BattleMaxLife,
+                        0.5f
+                    );
+                if (target.Life > target.BattleMaxLife)
+                    _ = target.GetHurt(target.BattleMaxLife - target.Life);
+                break;
         }
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
+        target.SpeedIconLabel.Text = target.Speed.ToString();
 
         CharacterEffect characterEffect =
             target.CharacterEffectScene.Instantiate<CharacterEffect>();
@@ -366,6 +442,27 @@ public partial class Skill
                 target.BattleSurvivability += value;
                 icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
+            case PropertyType.Speed:
+                target.Speed += value;
+                icon = target.SpeedIconLabel.GetParent() as ColorRect;
+                break;
+            case PropertyType.MaxLife:
+                target.BattleMaxLife += value;
+                target.LifeLabel.Text = $"{target.Life}/{target.BattleMaxLife}";
+                target
+                    .CreateTween()
+                    .TweenMethod(
+                        Callable.From(
+                            (int x) =>
+                            {
+                                target.LifeBar.MaxValue = x;
+                            }
+                        ),
+                        target.LifeBar.MaxValue,
+                        target.BattleMaxLife,
+                        0.5f
+                    );
+                break;
         }
 
         CharacterEffect characterEffect =
@@ -376,6 +473,7 @@ public partial class Skill
 
         target.PowerIconLabel.Text = target.BattlePower.ToString();
         target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
+        target.SpeedIconLabel.Text = target.Speed.ToString();
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
         hint.Text = $"{GetColoredPropertyLabel(type)} +{value}";
@@ -427,6 +525,9 @@ public partial class Skill
             SkillID.MendSlash => new MendSlash(),
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
+            SkillID.ShadowAmbush => new ShadowAmbush(),
+            SkillID.VeilStep => new VeilStep(),
+            SkillID.TempoSurge => new TempoSurge(),
             _ => null,
         };
     }
@@ -463,4 +564,7 @@ public enum SkillID
     MendSlash,
     FinalGuard,
     RebirthPrayer,
+    ShadowAmbush,
+    VeilStep,
+    TempoSurge,
 }

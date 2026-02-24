@@ -23,28 +23,8 @@ public partial class FinalGuard : Skill
         await base.Effect();
         OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
 
-        var target = GetLastAliveAllyOrSelf();
+        var target = GetAllyByIndex(OwnerCharater.BattleNode.PlayersList.Count - 1);
         IncreaseProperties(target, PropertyType.Power, PowerGain);
-
-        await Task.Delay(150);
-    }
-
-    private Character GetLastAliveAllyOrSelf()
-    {
-        if (OwnerCharater?.BattleNode == null)
-            return OwnerCharater;
-
-        var allies = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
-            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
-
-        return allies
-                .Where(x =>
-                    x != null && x != OwnerCharater && x.State == Character.CharacterState.Normal
-                )
-                .OrderBy(x => x.PositionIndex)
-                .LastOrDefault()
-            ?? OwnerCharater;
     }
 
     public override void UpdateDescription()
@@ -52,7 +32,7 @@ public partial class FinalGuard : Skill
         int totalBlock = BaseBlock + OwnerSurvivability;
         SetDescriptionLines(
             $"获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。",
-            $"使最后存活的队友获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}（若没有队友则作用于自己）。"
+            $"使最后存活的队友获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。"
         );
     }
 }

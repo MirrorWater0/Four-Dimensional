@@ -24,8 +24,8 @@ public partial class PlayerCharacter : Character
             Skill.GetSkill(info.TakenSkills[1]),
             Skill.GetSkill(info.TakenSkills[2]),
         ];
-        BattleLifemax = info.LifeMax;
-        Life = BattleLifemax;
+        BattleMaxLife = info.LifeMax;
+        Life = BattleMaxLife;
         BattlePower = info.Power;
         BattleSurvivability = info.Survivability;
         Speed = info.Speed;

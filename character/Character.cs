@@ -41,7 +41,7 @@ public partial class Character : Node2D
     [Export]
     public Texture2D Portrait;
     public virtual string CharacterName { get; set; }
-    public int BattleLifemax;
+    public int BattleMaxLife;
     public int Life { get; protected set; }
     public int BattlePower;
     public int BattleSurvivability;
@@ -79,8 +79,6 @@ public partial class Character : Node2D
     //action and skill
     public Skill[] Skills = new Skill[3];
 
-    // public int DoubleHitLayer = 1;
-
     public AnimatedSprite2D Animate1 => field ??= GetNode("Effect/Effect1") as AnimatedSprite2D;
     public AnimationPlayer CAplayer => field ??= GetNode("Player") as AnimationPlayer;
     public Battle BattleNode;
@@ -117,10 +115,10 @@ public partial class Character : Node2D
         State = CharacterState.Normal;
 
         BlockLabel.Text = Block.ToString();
-        Life = BattleLifemax;
+        Life = BattleMaxLife;
 
-        LifeBar.MaxValue = BattleLifemax;
-        BufferBar.MaxValue = BattleLifemax;
+        LifeBar.MaxValue = BattleMaxLife;
+        BufferBar.MaxValue = BattleMaxLife;
         LifeBar.MinValue = 0;
         BufferBar.MinValue = 0;
         LifeBar.Value = Life;
@@ -129,7 +127,7 @@ public partial class Character : Node2D
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
         EnergeIconLabel.Text = Energy.ToString();
         SpeedIconLabel.Text = Speed.ToString();
-        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
 
         Block = 0;
         BlockLabel.Text = Block.ToString();
@@ -404,23 +402,23 @@ public partial class Character : Node2D
         Tween tween = CreateTween();
         tween.TweenProperty(BufferBar, "value", Life, 0.2f);
         LifeBar.Value = Life;
-        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
 
+        tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
         if (Life == 0)
         {
             await Dying();
         }
-        tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
     }
 
     public virtual void Recover(int num, bool rebirth = false)
     {
         if (State == CharacterState.Dying && !rebirth)
             return;
-        Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleLifemax);
+        Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleMaxLife);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
-        LifeLabel.Text = Life.ToString() + "/" + BattleLifemax.ToString();
+        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
         numlabel.NumberLabel.Text = "+" + num.ToString();

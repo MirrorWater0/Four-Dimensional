@@ -79,6 +79,7 @@ public partial class LevelNode : ColorRect
         {
             new EvilRegedit(),
             new FearWormRegedit(),
+            new FearWormRegedit(),
             new EvilRegedit(),
         };
         RandomPosition(list, RandomNum);

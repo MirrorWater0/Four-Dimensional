@@ -7,7 +7,7 @@ public partial class Mariya : PlayerCharacter
     public override PackedScene CharaterScene { get; set; } = StartInterface._Mariya;
     public override string CharacterName { get; set; } = "Mariya";
 
-    private const int PassiveHealBase = 10;
+    private const int PassiveHealBase = 4;
 
     public override void EndAction()
     {

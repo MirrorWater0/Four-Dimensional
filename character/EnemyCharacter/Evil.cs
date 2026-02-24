@@ -17,7 +17,7 @@ public partial class Evil : EnemyCharacter
     {
         if (Registry == null)
         {
-            BattleLifemax = 50;
+            BattleMaxLife = 50;
             BattlePower = 15;
             BattleSurvivability = 15;
             Speed = 13;

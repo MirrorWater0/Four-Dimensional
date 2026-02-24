@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://pepwxge55oc6" path="res://character/PlayerCharacter/Nightingale/Nightingale.cs" id="2_gf2dr"]
 [ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/Nightingale.png" id="2_xke0u"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ht5hp"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gf2dr"]
 resource_local_to_scene = true
 shader = ExtResource("2_atrlc")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -20,11 +20,12 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 1.5
 
-[node name="Nightingale" unique_id=1123852147 instance=ExtResource("1_8j5yv")]
+[node name="Nightingale" unique_id=1123852147 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_8j5yv")]
 script = ExtResource("2_gf2dr")
+Sprite = NodePath("Sprite")
 
 [node name="Sprite" parent="." index="7" unique_id=968479023]
 texture = ExtResource("2_xke0u")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_ht5hp")
+material = SubResource("ShaderMaterial_gf2dr")

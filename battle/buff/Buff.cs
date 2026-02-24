@@ -24,6 +24,7 @@ public partial class Buff
             BuffName.Taunt => "敌方攻击更倾向于选择该目标；受到伤害时消耗1层。",
             BuffName.Stun => "无法行动；回合开始时消耗1层。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
+            BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
             _ => string.Empty,
         };
 
@@ -210,7 +211,7 @@ public class DyingBuff : Buff
             case BuffName.RebirthI:
                 if (Stack >= 1)
                 {
-                    Owner.Recover(Owner.BattleLifemax / 2, true);
+                    Owner.Recover(Owner.BattleMaxLife / 2, true);
                     Stack--;
                 }
                 break;

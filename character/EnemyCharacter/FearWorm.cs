@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Godot;
 
@@ -9,6 +10,17 @@ public partial class FearWorm : EnemyCharacter
     {
         base.Initialize();
         SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, 1);
+    }
+
+    public override void Passive(Skill skill)
+    {
+        skill.IncreaseProperties(this, Skill.PropertyType.Power, 2);
+    }
+
+    public override void EndAction()
+    {
+        base.EndAction();
+        Passive(new Skill(Skill.SkillTypes.Survive));
     }
 }
 
@@ -35,12 +47,8 @@ public partial class FearWormAttack : Skill
 
         int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 999);
         int count = Math.Min(MaxTargets, targets.Length);
-        for (int i = 0; i < count; i++)
-        {
-            var target = targets[i];
-            _ = Attack3(damage, target, 1);
-        }
-        await Task.Delay(400);
+
+        await AOE(damage, count, 1);
         for (int i = 0; i < count; i++)
         {
             var target = targets[i];
@@ -119,7 +127,11 @@ public partial class FearWormTermin : Skill
         var target = targets[0];
 
         DescendingProperties(target, PropertyType.Power, PowerDown);
-        StartActionBuff.BuffAdd(Buff.BuffName.Stun, target, StunStacks);
+        if (OwnerCharater.Energy >= cost)
+        {
+            OwnerCharater.UpdataEnergy(-cost);
+            StartActionBuff.BuffAdd(Buff.BuffName.Stun, target, StunStacks);
+        }
 
         int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
         await AttackAnimation(target);

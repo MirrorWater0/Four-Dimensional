@@ -79,3 +79,31 @@ public partial class RebirthPrayer : Skill
         );
     }
 }
+
+public partial class Sacrifice : Skill
+{
+    int basisDamage = 30;
+    int allyHurt = 20;
+    int num => OwnerCharater.BattleNode.EnemiesList.Count;
+    public override string SkillName { get; set; } = "献祭";
+
+    public Sacrifice()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override async Task Effect()
+    {
+        await base.Effect();
+        for (int i = 0; i < OwnerCharater.BattleNode.PlayersList.Count; i++)
+        {
+            DescendingProperties(
+                OwnerCharater.BattleNode.PlayersList[i],
+                PropertyType.MaxLife,
+                allyHurt
+            );
+        }
+        await AOE(basisDamage + OwnerPower, num, 1);
+    }
+}
