@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://xt2qlq4i1viq"
-path="res://.godot/imported/76843029_p0.jpg-e9992d40d32b7d6378d045d130a9cc4d.ctex"
+uid="uid://hu5nr5grtm12"
+path="res://.godot/imported/EchoPortrait.png-bc8acc40c0d3bf3334a58711cab6d1ad.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/PlayerCharater/Echo/76843029_p0.jpg"
-dest_files=["res://.godot/imported/76843029_p0.jpg-e9992d40d32b7d6378d045d130a9cc4d.ctex"]
+source_file="res://asset/PlayerCharater/Echo/EchoPortrait.png"
+dest_files=["res://.godot/imported/EchoPortrait.png-bc8acc40c0d3bf3334a58711cab6d1ad.ctex"]
 
 [params]
 

@@ -31,7 +31,7 @@ public partial class Skill
         Power,
 
         [Description("生存")]
-        Survivalibility,
+        Survivability,
 
         [Description("速度")]
         Speed,
@@ -105,7 +105,7 @@ public partial class Skill
         return type switch
         {
             PropertyType.Power => "#ff0000",
-            PropertyType.Survivalibility => "#89fffd",
+            PropertyType.Survivability => "#89fffd",
             PropertyType.Speed => "#b56bff",
             _ => "white",
         };
@@ -116,7 +116,7 @@ public partial class Skill
         return stat switch
         {
             StatX.Power => GetPropertyLabel(PropertyType.Power),
-            StatX.Survivability => GetPropertyLabel(PropertyType.Survivalibility),
+            StatX.Survivability => GetPropertyLabel(PropertyType.Survivability),
             StatX.Speed => "速度",
             StatX.Energy => "能量",
             StatX.Life => "生命",
@@ -130,7 +130,7 @@ public partial class Skill
         return stat switch
         {
             StatX.Power => GetPropertyColor(PropertyType.Power),
-            StatX.Survivability => GetPropertyColor(PropertyType.Survivalibility),
+            StatX.Survivability => GetPropertyColor(PropertyType.Survivability),
             StatX.Speed => "#b56bff",
             StatX.Energy => "#5353ff",
             StatX.Life => "#6bff6b",
@@ -258,30 +258,94 @@ public partial class Skill
 
     public Character GetAllyByRelative(int Where, bool dyingFilter = false)
     {
-        Character[] Ally = OwnerCharater.IsPlayer switch
+        // 1. 获取基础列表并排序
+        var query = OwnerCharater.IsPlayer
+            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
+            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
+
+        if (dyingFilter)
         {
-            true => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
-            false => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(),
-        };
-        Ally = Ally.OrderBy(x => x.PositionIndex).ToArray();
-        return Ally[(Array.IndexOf(Ally, OwnerCharater) + Where) % Ally.Length];
+            query = query.Where(x => x.State != Character.CharacterState.Dying);
+        }
+
+        Character[] Ally = query.OrderBy(x => x.PositionIndex).ToArray();
+
+        // 2. 安全检查：如果列表为空，直接返回 null
+        if (Ally.Length == 0)
+            return null;
+
+        // 3. 获取当前角色的位置
+        int currentIndex = Array.IndexOf(Ally, OwnerCharater);
+
+        // 如果当前角色不在列表里，默认从0开始算偏移
+        if (currentIndex == -1)
+            currentIndex = 0;
+
+        // 4. 【核心逻辑】处理负数：不管 Where 是多小的负数，都能转为正索引
+        // 逻辑：(基础计算 % 长度 + 长度) % 长度
+        int totalOffset = currentIndex + Where;
+        int targetIndex = (totalOffset % Ally.Length + Ally.Length) % Ally.Length;
+
+        return Ally[targetIndex];
+    }
+
+    public Character[] GetAllAllyWithOrder(bool dyingFilter = false)
+    {
+        if (dyingFilter)
+        {
+            switch (OwnerCharater.IsPlayer)
+            {
+                case true:
+                    return OwnerCharater
+                        .BattleNode.PlayersList.Cast<Character>()
+                        .Where(x => x.State != Character.CharacterState.Dying)
+                        .OrderBy(x => x.PositionIndex)
+                        .ToArray();
+                case false:
+                    return OwnerCharater
+                        .BattleNode.EnemiesList.Cast<Character>()
+                        .Where(x => x.State != Character.CharacterState.Dying)
+                        .OrderBy(x => x.PositionIndex)
+                        .ToArray();
+            }
+        }
+        switch (OwnerCharater.IsPlayer)
+        {
+            case true:
+                return OwnerCharater
+                    .BattleNode.PlayersList.Cast<Character>()
+                    .OrderBy(x => x.PositionIndex)
+                    .ToArray();
+            case false:
+                return OwnerCharater
+                    .BattleNode.EnemiesList.Cast<Character>()
+                    .OrderBy(x => x.PositionIndex)
+                    .ToArray();
+        }
     }
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
     {
-        var allies = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
-            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
+        // 1. 获取除自己以外的所有盟友，并立即转为 List（只遍历一次，性能更好）
+        var allies = (
+            OwnerCharater.IsPlayer
+                ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
+                : OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
+        )
+            .OrderBy(x => x.PositionIndex)
+            .ToList();
 
-        allies = allies.OrderBy(x => x.PositionIndex);
-        var ally = allies.ElementAtOrDefault(index);
+        // 2. 如果开启了死亡过滤，更新这个 List
         if (dyingFilter)
         {
-            var aliveAlly = allies.Where(x => x.State == Character.CharacterState.Normal);
-            ally = aliveAlly.ElementAtOrDefault(index % aliveAlly.Count());
+            allies = allies.Where(x => x.State != Character.CharacterState.Dying).ToList();
         }
 
-        return ally;
+        // 4. 核心逻辑：循环取模公式，确保负数和超界都能正确指向
+        // 使用 Count 属性（List已生成，Count是瞬间读取，性能极高）
+        int safeIndex = (index % allies.Count + allies.Count) % allies.Count;
+
+        return allies[safeIndex];
     }
 
     public async Task Attack1(int damage) //顺位一段攻击
@@ -341,10 +405,15 @@ public partial class Skill
 
     public async Task AOE(int damage, int Num, int times)
     {
+        var targets = Chosetarget1();
+        if (targets.Length == 0)
+            return;
+
+        int count = Math.Min(Num, targets.Length);
         List<Task> tasks = new();
-        for (int i = 0; i < Num; i++)
+        for (int i = 0; i < count; i++)
         {
-            tasks.Add(Attack3(damage, Chosetarget1()[i], times));
+            tasks.Add(Attack3(damage, targets[i], times));
         }
         await Task.WhenAll(tasks);
     }
@@ -384,7 +453,7 @@ public partial class Skill
                 target.BattlePower -= value;
                 icon = target.PowerIconLabel.GetParent() as ColorRect;
                 break;
-            case PropertyType.Survivalibility:
+            case PropertyType.Survivability:
                 target.BattleSurvivability -= value;
                 icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
@@ -408,13 +477,16 @@ public partial class Skill
                         target.BattleMaxLife,
                         0.5f
                     );
-                if (target.Life > target.BattleMaxLife)
-                    _ = target.GetHurt(target.BattleMaxLife - target.Life);
+                _ = target.GetHurt(Math.Max(target.Life - target.BattleMaxLife, 0));
                 break;
         }
-        target.PowerIconLabel.Text = target.BattlePower.ToString();
-        target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-        target.SpeedIconLabel.Text = target.Speed.ToString();
+        if (icon != null)
+        {
+            target.PowerIconLabel.Text = target.BattlePower.ToString();
+            target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
+            target.SpeedIconLabel.Text = target.Speed.ToString();
+            Buff.GhostExplode(icon, new Vector2(2f, 2f));
+        }
 
         CharacterEffect characterEffect =
             target.CharacterEffectScene.Instantiate<CharacterEffect>();
@@ -426,7 +498,6 @@ public partial class Skill
         hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         target.AddChild(hint);
-        Buff.GhostExplode(icon, new Vector2(2f, 2f));
     }
 
     public void IncreaseProperties(Character target, PropertyType type, int value)
@@ -438,7 +509,7 @@ public partial class Skill
                 target.BattlePower += value;
                 icon = target.PowerIconLabel.GetParent() as ColorRect;
                 break;
-            case PropertyType.Survivalibility:
+            case PropertyType.Survivability:
                 target.BattleSurvivability += value;
                 icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
@@ -471,16 +542,19 @@ public partial class Skill
         characterEffect.Animation.Play("absorb");
         target.BattleNode.BattleAnimationPlayer.Play("blue");
 
-        target.PowerIconLabel.Text = target.BattlePower.ToString();
-        target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-        target.SpeedIconLabel.Text = target.Speed.ToString();
+        if (icon != null)
+        {
+            target.PowerIconLabel.Text = target.BattlePower.ToString();
+            target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
+            target.SpeedIconLabel.Text = target.Speed.ToString();
+            Buff.GhostExplode(icon, new Vector2(2f, 2f));
+        }
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
         hint.Text = $"{GetColoredPropertyLabel(type)} +{value}";
         hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         target.AddChild(hint);
-        Buff.GhostExplode(icon, new Vector2(2f, 2f));
     }
 
     public async Task Carry(Character target, int skillIndex)
@@ -525,9 +599,13 @@ public partial class Skill
             SkillID.MendSlash => new MendSlash(),
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
+            SkillID.Sacrifice => new Sacrifice(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
+            SkillID.LongNight => new LongNight(),
+            SkillID.Vower => new Vower(),
+            SkillID.FlashOfLight => new FlashOfLight(),
             _ => null,
         };
     }
@@ -567,4 +645,8 @@ public enum SkillID
     ShadowAmbush,
     VeilStep,
     TempoSurge,
+    Sacrifice,
+    LongNight,
+    Vower,
+    FlashOfLight,
 }

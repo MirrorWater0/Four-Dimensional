@@ -5,7 +5,7 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="3_lucsw"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="5_yic7g"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="7_5ewuv"]
-[ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="7_lyi1f"]
+[ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png" id="7_lyi1f"]
 [ext_resource type="Material" uid="uid://cxcwh7k21rmok" path="res://tres/hit.tres" id="8_ek3d4"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="14_lucsw"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
@@ -721,3 +721,5 @@ offset_bottom = 30.000004
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=605015123]
 libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
+
+[node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]

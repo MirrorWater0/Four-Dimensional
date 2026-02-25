@@ -233,7 +233,7 @@ public partial class Battle : Node2D
     public void SetCharaterPostion()
     {
         // 你的核心基准参数
-        float bGapY = 160f; // 纵向行距
+        float bGapY = 140f; // 纵向行距
         float bGapX = 280f; // 横向列距
         float bSkew = 10f; // 每一行的水平偏移 (xoffset)
 

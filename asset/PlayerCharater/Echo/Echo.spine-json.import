@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.json"
+type="SpineSkeletonFileResource"
+uid="uid://ey8qi81vpvgb"
+path="res://.godot/imported/Echo.spine-json-544a9f2464de26eb06f800e1bb73a657.spjson"
+
+[deps]
+
+source_file="res://asset/PlayerCharater/Echo/Echo.spine-json"
+dest_files=["res://.godot/imported/Echo.spine-json-544a9f2464de26eb06f800e1bb73a657.spjson"]
+
+[params]
+

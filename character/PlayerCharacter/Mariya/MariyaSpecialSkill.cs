@@ -75,7 +75,7 @@ public partial class RebirthPrayer : Skill
         SetDescriptionLines(
             $"消耗{EnergyCost}点能量，使1名倒下的队友复活。",
             $"并令其获得+{gainEnergy}点能量。",
-            $"并回复+{BaseRebirthHeal}点生命（受目标{GetColoredPropertyLabel(PropertyType.Survivalibility)}加成）。"
+            $"并回复+{BaseRebirthHeal}点生命（受目标{GetColoredPropertyLabel(PropertyType.Survivability)}加成）。"
         );
     }
 }
@@ -85,6 +85,7 @@ public partial class Sacrifice : Skill
     int basisDamage = 30;
     int allyHurt = 20;
     int num => OwnerCharater.BattleNode.EnemiesList.Count;
+    int energyCost = 1;
     public override string SkillName { get; set; } = "献祭";
 
     public Sacrifice()
@@ -96,6 +97,10 @@ public partial class Sacrifice : Skill
     public override async Task Effect()
     {
         await base.Effect();
+        if (OwnerCharater.Energy < energyCost)
+            return;
+
+        OwnerCharater.UpdataEnergy(-energyCost);
         for (int i = 0; i < OwnerCharater.BattleNode.PlayersList.Count; i++)
         {
             DescendingProperties(
@@ -105,5 +110,15 @@ public partial class Sacrifice : Skill
             );
         }
         await AOE(basisDamage + OwnerPower, num, 1);
+    }
+
+    public override void UpdateDescription()
+    {
+        int totalDamage = basisDamage + OwnerPower;
+        string damageText = BasePlusXWithBattleTotal(basisDamage, totalDamage, StatX.Power);
+        SetDescriptionLines(
+            $"所有队友{GetColoredPropertyLabel(PropertyType.MaxLife)} -{allyHurt}。",
+            $"对所有敌人造成{damageText}点伤害。"
+        );
     }
 }

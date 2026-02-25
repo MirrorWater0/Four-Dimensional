@@ -125,6 +125,7 @@ bg_color = Color(1, 1, 1, 1)
 material = SubResource("ShaderMaterial_i77dj")
 offset_right = 250.0
 offset_bottom = 400.0
+scale = Vector2(1.2, 1.2)
 script = ExtResource("1_td24b")
 
 [node name="SubViewport" type="SubViewport" parent="." unique_id=15917497]
@@ -159,7 +160,7 @@ mouse_filter = 2
 theme = SubResource("Theme_0g0qh")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/normal_font_size = 25
+theme_override_font_sizes/normal_font_size = 19
 bbcode_enabled = true
 text = "none"
 fit_content = true

@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://db7jlo741jfmu"
-path="res://.godot/imported/Nightingale.png-c72d2e98db21bb0ce6e30c4932f6b96a.ctex"
+path="res://.godot/imported/NightingalePortrait.png-1df047f19987fe24f57fc9dc2a4f2009.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/PlayerCharater/Nightingale/Nightingale.png"
-dest_files=["res://.godot/imported/Nightingale.png-c72d2e98db21bb0ce6e30c4932f6b96a.ctex"]
+source_file="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png"
+dest_files=["res://.godot/imported/NightingalePortrait.png-1df047f19987fe24f57fc9dc2a4f2009.ctex"]
 
 [params]
 

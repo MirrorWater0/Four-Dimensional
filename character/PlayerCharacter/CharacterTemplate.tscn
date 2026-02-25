@@ -2,10 +2,12 @@
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="1_6of28"]
 [ext_resource type="Script" uid="uid://dqjsxaywlhdj6" path="res://character/PlayerCharacter/Mariya/Mariya.cs" id="2_4d22e"]
-[ext_resource type="Texture2D" uid="uid://buwln2vgwau50" path="res://asset/PlayerCharater/Mariya/Mariya.png" id="2_6obl6"]
+[ext_resource type="Texture2D" uid="uid://buwln2vgwau50" path="res://asset/PlayerCharater/Mariya/MariyaPortrait.png" id="2_6obl6"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="3_4d22e"]
+[ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="5_g1i3f"]
+[ext_resource type="Shader" uid="uid://bymfuv7reqeku" path="res://shader/Effect/SpineCharacter.gdshader" id="5_gb5rt"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_rka5w"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_gb5rt"]
 resource_local_to_scene = true
 shader = ExtResource("3_4d22e")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -20,6 +22,20 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 1.5
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5ey86"]
+shader = ExtResource("5_gb5rt")
+shader_parameter/character_height = 200.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_y8xhb"]
+shader = ExtResource("5_gb5rt")
+shader_parameter/character_height = 200.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
 [node name="CharacterTemplate" unique_id=1123852147 instance=ExtResource("1_6of28")]
 script = ExtResource("2_4d22e")
 
@@ -27,4 +43,10 @@ script = ExtResource("2_4d22e")
 texture = ExtResource("2_6obl6")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_rka5w")
+material = SubResource("ShaderMaterial_gb5rt")
+
+[node name="SpineSprite" parent="." index="11" unique_id=313145576]
+normal_material = SubResource("ShaderMaterial_5ey86")
+material = SubResource("ShaderMaterial_y8xhb")
+scale = Vector2(0.16, 0.16)
+script = ExtResource("5_g1i3f")

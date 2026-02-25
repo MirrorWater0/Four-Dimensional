@@ -2,7 +2,7 @@ shader_type canvas_item;
 
 // 这里我们需要手动设置角色的估计高度（像素单位）
 // 比如你的角色在 Godot 里大约高 200 像素
-uniform float character_height = 200.0; 
+uniform float character_height = 2500.0; 
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
 uniform float line_density = 80.0;
 uniform vec4 beam_color : source_color = vec4(0.0, 1.0, 1.0, 1.0);

@@ -3,7 +3,8 @@
 [ext_resource type="PackedScene" uid="uid://dugemrgb8a6ym" path="res://character/PlayerCharacter/CharacterTemplate.tscn" id="1_8j5yv"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="2_atrlc"]
 [ext_resource type="Script" uid="uid://pepwxge55oc6" path="res://character/PlayerCharacter/Nightingale/Nightingale.cs" id="2_gf2dr"]
-[ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/Nightingale.png" id="2_xke0u"]
+[ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="2_xke0u"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://bttb6ahtgolgm" path="res://asset/Spine/kasiya_skeleton_data_resource.tres" id="5_7veyp"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gf2dr"]
 resource_local_to_scene = true
@@ -29,3 +30,11 @@ texture = ExtResource("2_xke0u")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
 material = SubResource("ShaderMaterial_gf2dr")
+
+[node name="SpineSprite" parent="." index="11" unique_id=313145576]
+skeleton_data_res = ExtResource("5_7veyp")
+preview_skin = "Default"
+preview_animation = "-- Empty --"
+preview_frame = false
+preview_time = 0.0
+visible = false

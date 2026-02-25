@@ -90,7 +90,7 @@ public partial class EvilSurvive : Skill
     {
         await base.Effect();
         OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-        IncreaseProperties(OwnerCharater, PropertyType.Survivalibility, SurvivabilityGain);
+        IncreaseProperties(OwnerCharater, PropertyType.Survivability, SurvivabilityGain);
         DescendingProperties(Chosetarget1()[0], PropertyType.Power, DescendingNum);
     }
 
@@ -100,7 +100,7 @@ public partial class EvilSurvive : Skill
         string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
         SetDescriptionLines(
             $"获得{blockText}点格挡。",
-            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}。",
+            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。",
             $"下降目标{DescendingNum}点{GetColoredPropertyLabel(PropertyType.Power)}。"
         );
     }

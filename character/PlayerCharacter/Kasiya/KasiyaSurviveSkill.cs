@@ -74,7 +74,7 @@ public partial class ReNewedSpirit : Skill
     {
         await base.Effect();
         IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-        IncreaseProperties(OwnerCharater, PropertyType.Survivalibility, SurvivabilityGain);
+        IncreaseProperties(OwnerCharater, PropertyType.Survivability, SurvivabilityGain);
         OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
     }
 
@@ -89,7 +89,7 @@ public partial class ReNewedSpirit : Skill
         SetDescriptionLines(
             $"获得{blockText}点格挡。",
             $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}。"
+            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
         );
     }
 }

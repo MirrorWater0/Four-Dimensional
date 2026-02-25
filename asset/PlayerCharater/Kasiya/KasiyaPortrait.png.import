@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://buwln2vgwau50"
-path="res://.godot/imported/Mariya.png-187755fcd075312973ca3654332b9040.ctex"
+uid="uid://bkhpahg1835kf"
+path="res://.godot/imported/KasiyaPortrait.png-a6541ddcfb9c02ab47124b8b06ae7596.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/PlayerCharater/Mariya/Mariya.png"
-dest_files=["res://.godot/imported/Mariya.png-187755fcd075312973ca3654332b9040.ctex"]
+source_file="res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png"
+dest_files=["res://.godot/imported/KasiyaPortrait.png-a6541ddcfb9c02ab47124b8b06ae7596.ctex"]
 
 [params]
 

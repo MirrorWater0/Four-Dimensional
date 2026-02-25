@@ -1,7 +1,7 @@
-[gd_scene load_steps=8 format=3 uid="uid://bfc4xx36frun"]
+[gd_scene format=3 uid="uid://bfc4xx36frun"]
 
 [ext_resource type="Script" uid="uid://yx6xdsnoim5e" path="res://battle/UIScene/BattleReady/PortaitFrame.cs" id="1_ufud0"]
-[ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/Kasiya.png" id="2_b43d5"]
+[ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png" id="2_b43d5"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6ryha"]
 bg_color = Color(0.6, 0.6, 0.6, 0)

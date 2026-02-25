@@ -141,12 +141,15 @@ public partial class Character : Node2D
         Hoverframe.MouseEntered += OnHoverEntered;
         Hoverframe.MouseExited += OnHoverExited;
 
-        ShaderMaterial material = (ShaderMaterial)Sprite.Material.Duplicate();
-        material.ResourceLocalToScene = true;
-        Sprite.Material = material;
-        ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
-        Tween tween = CreateTween();
-        tween.TweenProperty(Sprite, "material:shader_parameter/progress", 0, 0.8f);
+        if (Sprite.Material != null)
+        {
+            ShaderMaterial material = (ShaderMaterial)Sprite.Material.Duplicate();
+            material.ResourceLocalToScene = true;
+            Sprite.Material = material;
+            ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
+            Tween tween = CreateTween();
+            tween.TweenProperty(Sprite, "material:shader_parameter/progress", 0, 0.8f);
+        }
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
@@ -352,6 +355,10 @@ public partial class Character : Node2D
 
         if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
         {
+            if(this is EnemyCharacter enemy)
+            {
+                await enemy.DisappearIntention();
+            }
             StartActionBuffs.First(x => x.ThisBuffName == Buff.BuffName.Stun).Trigger();
             var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
             AddChild(effect);

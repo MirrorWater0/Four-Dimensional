@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://brc6qnbnic6wn"
+path="res://.godot/imported/Echo.skel-380e1544beb94f3b4c423df4239f5bd3.spskel"
+
+[deps]
+
+source_file="res://asset/PlayerCharater/Echo/Echo.skel"
+dest_files=["res://.godot/imported/Echo.skel-380e1544beb94f3b4c423df4239f5bd3.spskel"]
+
+[params]
+

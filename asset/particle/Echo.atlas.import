@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://ddjfhhn4tx28k"
+path="res://.godot/imported/Echo.atlas-f73340947f1b09a56749fb9be1e0b8db.spatlas"
+
+[deps]
+
+source_file="res://asset/particle/Echo.atlas"
+dest_files=["res://.godot/imported/Echo.atlas-f73340947f1b09a56749fb9be1e0b8db.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

@@ -23,7 +23,7 @@ public partial class MendSlash : Skill
         await base.Effect();
         await Attack1(BaseDamage + OwnerPower);
         OwnerCharater.Recover(BaseHeal);
-        IncreaseProperties(OwnerCharater, PropertyType.Survivalibility, SurvivabilityGain);
+        IncreaseProperties(OwnerCharater, PropertyType.Survivability, SurvivabilityGain);
         await Task.Delay(150);
     }
 
@@ -35,7 +35,7 @@ public partial class MendSlash : Skill
         SetDescriptionLines(
             $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
             $"回复{BasePlusXWithBattleTotal(BaseHeal, totalHeal, StatX.Survivability)}点生命（对自己）。",
-            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivalibility)}。"
+            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
         );
     }
 }

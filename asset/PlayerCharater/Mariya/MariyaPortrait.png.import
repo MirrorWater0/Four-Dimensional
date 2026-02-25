@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dnsb6tgaae28r"
-path="res://.godot/imported/Echo.png-bb05af4adacb52df88f47fd241cc2ac9.ctex"
+uid="uid://buwln2vgwau50"
+path="res://.godot/imported/MariyaPortrait.png-30aa604d2e27186bc49ac44ef8365bab.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/PlayerCharater/Echo/Echo.png"
-dest_files=["res://.godot/imported/Echo.png-bb05af4adacb52df88f47fd241cc2ac9.ctex"]
+source_file="res://asset/PlayerCharater/Mariya/MariyaPortrait.png"
+dest_files=["res://.godot/imported/MariyaPortrait.png-30aa604d2e27186bc49ac44ef8365bab.ctex"]
 
 [params]
 

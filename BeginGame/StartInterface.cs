@@ -89,10 +89,13 @@ public partial class StartInterface : CanvasLayer
     public void test()
     {
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
-        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.ShockWave);
+        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
+        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
+        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
+        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.FlashOfLight);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 
@@ -123,7 +126,7 @@ public partial class PlayerCharacterRegistry
         Survivability = 11,
         Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Echo/Echo.png",
+        PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
         TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
         AllSkills =
         [
@@ -144,14 +147,14 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
         CharacterName = "Kasiya",
-        PassiveName = "回生",
+        PassiveName = "坚毅",
         PassiveDescription = "当其他队友使用攻击技能：回复生存点生命。",
         LifeMax = 60,
         Power = 12,
         Survivability = 12,
         Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Kasiya/Kasiya.png",
+        PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
         TakenSkills = [SkillID.Determination, SkillID.ReNewedSpirit, SkillID.TerminateLight],
         AllSkills =
         [
@@ -176,9 +179,9 @@ public partial class PlayerCharacterRegistry
         Survivability = 10,
         Speed = 9,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Mariya/Mariya.png",
+        PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
         TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
-        AllSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
+        AllSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer, SkillID.Sacrifice],
     };
 
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
@@ -191,8 +194,8 @@ public partial class PlayerCharacterRegistry
         Survivability = 11,
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Nightingale/Nightingale.png",
+        PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
         TakenSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
-        AllSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
+        AllSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge, SkillID.LongNight],
     };
 }

@@ -8,8 +8,16 @@ public partial class PlayerResourceState : CanvasLayer
         get => GameInfo.ElectricityCoin;
         set
         {
+            CreateTween()
+                .TweenMethod(
+                    Callable.From<float>(value =>
+                        ElectricityCoinIcon.GetChild<Label>(0).Text = value.ToString()
+                    ),
+                    GameInfo.ElectricityCoin,
+                    value,
+                    0.4f
+                );
             GameInfo.ElectricityCoin = value;
-            ElectricityCoinIcon.GetChild<Label>(0).Text = value.ToString();
         }
     }
     public int TransitionEnergy
