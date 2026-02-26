@@ -343,6 +343,15 @@ public partial class Character : Node2D
         {
             BlockBar.Visible = false;
         }
+
+        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Invisible))
+        {
+            Sprite.SelfModulate = new Color(0.8f, 0.8f, 1f, 0.95f);
+        }
+        else
+        {
+            Sprite.SelfModulate = new Color(1f, 1f, 1f, 1f);
+        }
     }
 
     public virtual async void StartAction()
@@ -355,7 +364,7 @@ public partial class Character : Node2D
 
         if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
         {
-            if(this is EnemyCharacter enemy)
+            if (this is EnemyCharacter enemy)
             {
                 await enemy.DisappearIntention();
             }
@@ -422,6 +431,7 @@ public partial class Character : Node2D
     {
         if (State == CharacterState.Dying && !rebirth)
             return;
+        num = Math.Clamp(num, 0, 999);
         Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleMaxLife);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
@@ -434,7 +444,7 @@ public partial class Character : Node2D
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
         effect.Animation.Play("recover");
-        if (State == CharacterState.Dying)
+        if (State == CharacterState.Dying && num > 0)
         {
             State = CharacterState.Normal;
             CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);

@@ -406,7 +406,6 @@ public partial class Battle : Node2D
             {
                 c.Reverse(1, c.Count - 1);
                 c.Reverse();
-                GD.Print("complate");
             }
             else
             {

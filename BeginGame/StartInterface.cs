@@ -94,8 +94,8 @@ public partial class StartInterface : CanvasLayer
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
         GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
-        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
-        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.FlashOfLight);
+        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);
+        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.Swift);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
     }
 
@@ -173,7 +173,7 @@ public partial class PlayerCharacterRegistry
     {
         CharacterName = "Mariya",
         PassiveName = "治愈",
-        PassiveDescription = "自己回合结束时：回复最低生命队友10点。",
+        PassiveDescription = $"自己回合结束时：回复最低生命队友{4}点。",
         LifeMax = 45,
         Power = 9,
         Survivability = 10,
@@ -181,14 +181,21 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
         TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
-        AllSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer, SkillID.Sacrifice],
+        AllSkills =
+        [
+            SkillID.MendSlash,
+            SkillID.FinalGuard,
+            SkillID.CrystalGuard,
+            SkillID.RebirthPrayer,
+            SkillID.Sacrifice,
+        ],
     };
 
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
     {
         CharacterName = "Nightingale",
         PassiveName = "夜光",
-        PassiveDescription = "队友结束回合时：追击一次。",
+        PassiveDescription = $"队友结束回合时：追击一次:造成{Skill.PropertyType.Power.GetDescription()}点伤害。",
         LifeMax = 50,
         Power = 9,
         Survivability = 11,
@@ -196,6 +203,13 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
         TakenSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
-        AllSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge, SkillID.LongNight],
+        AllSkills =
+        [
+            SkillID.ShadowAmbush,
+            SkillID.VeilStep,
+            SkillID.Swift,
+            SkillID.TempoSurge,
+            SkillID.LongNight,
+        ],
     };
 }

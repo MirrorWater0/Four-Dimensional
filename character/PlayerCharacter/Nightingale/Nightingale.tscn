@@ -6,7 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="2_xke0u"]
 [ext_resource type="SpineSkeletonDataResource" uid="uid://bttb6ahtgolgm" path="res://asset/Spine/kasiya_skeleton_data_resource.tres" id="5_7veyp"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_gf2dr"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7veyp"]
 resource_local_to_scene = true
 shader = ExtResource("2_atrlc")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -29,7 +29,7 @@ Sprite = NodePath("Sprite")
 texture = ExtResource("2_xke0u")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_gf2dr")
+material = SubResource("ShaderMaterial_7veyp")
 
 [node name="SpineSprite" parent="." index="11" unique_id=313145576]
 skeleton_data_res = ExtResource("5_7veyp")

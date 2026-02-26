@@ -46,7 +46,7 @@ public partial class EnemyCharacter : Character
 
     public override async void StartAction()
     {
-        await ToSignal(GetTree().CreateTimer(0.1f), "timeout");
+        await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
         if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
         {
             base.StartAction();

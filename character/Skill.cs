@@ -606,6 +606,8 @@ public partial class Skill
             SkillID.LongNight => new LongNight(),
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
+            SkillID.CrystalGuard => new CrystalGuard(),
+            SkillID.Swift => new Swift(),
             _ => null,
         };
     }
@@ -649,4 +651,6 @@ public enum SkillID
     LongNight,
     Vower,
     FlashOfLight,
+    CrystalGuard,
+    Swift,
 }

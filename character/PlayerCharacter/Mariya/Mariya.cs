@@ -25,7 +25,7 @@ public partial class Mariya : PlayerCharacter
             : BattleNode.EnemiesList.Cast<Character>();
 
         var target = allies
-            .Where(x => x != null && x != this && x.State == CharacterState.Normal)
+            .Where(x => x.Life < x.BattleMaxLife && x.State == CharacterState.Normal)
             .OrderBy(x => x.Life)
             .FirstOrDefault();
 

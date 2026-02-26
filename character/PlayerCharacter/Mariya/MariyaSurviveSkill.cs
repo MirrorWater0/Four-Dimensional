@@ -40,7 +40,7 @@ public partial class FinalGuard : Skill
 public partial class CrystalGuard : Skill
 {
     private const int BaseBlock = 7;
-    private const int SurvivabilityGain = 4;
+    private const int SurvivabilityGain = 3;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -53,7 +53,13 @@ public partial class CrystalGuard : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
+        var allys = GetAllAllyWithOrder(true);
+        for (int i = 0; i < allys.Length; i++)
+        {
+            if (allys[i] == OwnerCharater)
+                continue;
+            allys[i].UpdataBlock(BaseBlock + OwnerSurvivability);
+        }
         IncreaseProperties(
             GetAllyByRelative(-1, true),
             PropertyType.Survivability,
@@ -61,5 +67,12 @@ public partial class CrystalGuard : Skill
         );
     }
 
-    public override void UpdateDescription() { }
+    public override void UpdateDescription()
+    {
+        int totalBlock = BaseBlock + OwnerSurvivability;
+        SetDescriptionLines(
+            $"全队除自己以外获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。",
+            $"使上一个存活的角色获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
+        );
+    }
 }

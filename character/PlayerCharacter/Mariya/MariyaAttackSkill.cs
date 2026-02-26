@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -6,7 +7,7 @@ public partial class MariyaAttackSkill { }
 
 public partial class MendSlash : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 8;
     private const int BaseHeal = 4;
     private const int SurvivabilityGain = 2;
 
@@ -23,8 +24,7 @@ public partial class MendSlash : Skill
         await base.Effect();
         await Attack1(BaseDamage + OwnerPower);
         OwnerCharater.Recover(BaseHeal);
-        IncreaseProperties(OwnerCharater, PropertyType.Survivability, SurvivabilityGain);
-        await Task.Delay(150);
+        GetAllAllyWithOrder(true).FirstOrDefault(x => x.Life < x.BattleMaxLife).Recover(10);
     }
 
     public override void UpdateDescription()
@@ -34,7 +34,7 @@ public partial class MendSlash : Skill
 
         SetDescriptionLines(
             $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
-            $"回复{BasePlusXWithBattleTotal(BaseHeal, totalHeal, StatX.Survivability)}点生命（对自己）。",
+            $"对最前面的非满血角色回复{BasePlusXWithBattleTotal(BaseHeal, totalHeal, StatX.Survivability)}点生命。",
             $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
         );
     }

@@ -85,7 +85,7 @@ public partial class Sacrifice : Skill
     int basisDamage = 30;
     int allyHurt = 20;
     int num => OwnerCharater.BattleNode.EnemiesList.Count;
-    int energyCost = 1;
+    int energyCost = 2;
     public override string SkillName { get; set; } = "献祭";
 
     public Sacrifice()

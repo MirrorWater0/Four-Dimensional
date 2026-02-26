@@ -24,7 +24,7 @@ public partial class TempoSurge : Skill
         if (OwnerCharater.Energy >= cost)
         {
             OwnerCharater.UpdataEnergy(-cost);
-            await Carry(GetAllyByRelative(-1), 0);
+            await Carry(GetAllyByRelative(-1), 1);
         }
     }
 
@@ -32,7 +32,7 @@ public partial class TempoSurge : Skill
     {
         SetDescriptionLines(
             $"获得+{SpeedGain}{GetColoredPropertyLabel(PropertyType.Speed)}。",
-            $"消耗{cost}点能量:连携上一个队友攻击技能。"
+            $"消耗{cost}点能量:连携上一个队友（生存技能）。"
         );
     }
 }

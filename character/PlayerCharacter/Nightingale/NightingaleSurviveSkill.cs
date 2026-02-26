@@ -68,8 +68,8 @@ public partial class FlashOfLight : Skill
 
 public partial class Swift : Skill
 {
-    int InSpeed = 2;
-    int InSur = 3;
+    private const int SpeedGain = 2;
+    private const int SurvivabilityGain = 3;
 
     public Swift()
         : base(SkillTypes.Survive)
@@ -82,10 +82,18 @@ public partial class Swift : Skill
     public override async Task Effect()
     {
         await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Speed, InSpeed);
-        for (int i = 0; i < GetAllAllyWithOrder(true).Length; i++)
-        {
-            IncreaseProperties(GetAllAllyWithOrder()[i], PropertyType.Survivability, InSur);
-        }
+        IncreaseProperties(OwnerCharater, PropertyType.Speed, SpeedGain);
+
+        var allies = GetAllAllyWithOrder(true);
+        for (int i = 0; i < allies.Length; i++)
+            IncreaseProperties(allies[i], PropertyType.Survivability, SurvivabilityGain);
+    }
+
+    public override void UpdateDescription()
+    {
+        SetDescriptionLines(
+            $"使自己获得+{SpeedGain}{GetColoredPropertyLabel(PropertyType.Speed)}。",
+            $"使所有存活的角色获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
+        );
     }
 }
