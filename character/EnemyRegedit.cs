@@ -41,9 +41,9 @@ public partial class EvilRegedit : EnemyRegedit
 
         // Base stats (used for preview / original properties)
         MaxLife = 50;
-        Power = 13;
+        Power = 12;
         Survivability = 13;
-        Speed = 9;
+        Speed = 8;
 
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 

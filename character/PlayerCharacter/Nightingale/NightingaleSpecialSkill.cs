@@ -7,7 +7,8 @@ public partial class NightingaleSpecialSkill { }
 public partial class TempoSurge : Skill
 {
     private const int SpeedGain = 3;
-    int cost = 2;
+    int PowerGain = 4;
+    int cost = 3;
 
     public TempoSurge()
         : base(SkillTypes.Special)
@@ -21,10 +22,11 @@ public partial class TempoSurge : Skill
     {
         await base.Effect();
         IncreaseProperties(OwnerCharater, PropertyType.Speed, SpeedGain);
+        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
         if (OwnerCharater.Energy >= cost)
         {
             OwnerCharater.UpdataEnergy(-cost);
-            await Carry(GetAllyByRelative(-1), 1);
+            await Carry(GetAllyByRelative(-1, true), 1);
         }
     }
 
@@ -32,7 +34,8 @@ public partial class TempoSurge : Skill
     {
         SetDescriptionLines(
             $"获得+{SpeedGain}{GetColoredPropertyLabel(PropertyType.Speed)}。",
-            $"消耗{cost}点能量:连携上一个队友（生存技能）。"
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
+            $"消耗{cost}点能量:连携上一个非濒死队友（生存技能）。"
         );
     }
 }

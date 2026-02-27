@@ -46,6 +46,7 @@ public partial class Reward : CanvasLayer
     private int[] _offeredPlayerIndexes = Array.Empty<int>();
     private bool _picked;
     private LevelNode _completeNodeOnClose;
+    public Map MapNode => field ??= GetNode<Map>("/root/Map");
 
     public override void _Ready()
     {
@@ -228,6 +229,8 @@ public partial class Reward : CanvasLayer
         if (node.State == LevelNode.LevelState.Completed)
             return;
 
+        var rngN = new Random(node.RandomNum).Next(-10, 10);
+        MapNode.PlayerResourceState.ElectricityCoin += 30 + rngN;
         node.Completed();
     }
 }

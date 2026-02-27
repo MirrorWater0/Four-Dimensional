@@ -27,8 +27,8 @@ offset_top = 911.0
 offset_right = 1180.0
 offset_bottom = 989.0
 theme_override_font_sizes/font_size = 40
-text = "testbattle"
+text = "falsetest"
 
 [connection signal="pressed" from="Button" to="." method="Start"]
 [connection signal="pressed" from="Button2" to="." method="continueGame"]
-[connection signal="pressed" from="Button3" to="." method="TestBattle"]
+[connection signal="pressed" from="Button3" to="." method="falseTest"]

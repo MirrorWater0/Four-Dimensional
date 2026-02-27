@@ -38,7 +38,7 @@ public partial class Smite : Skill
 {
     private const int BaseDamage = 15;
     private const int SurvivalDown = 5;
-    int times = 2;
+    int times = 1;
 
     public Smite()
         : base(Skill.SkillTypes.Attack)
@@ -52,11 +52,8 @@ public partial class Smite : Skill
     {
         await base.Effect();
         Character[] targets = Chosetarget1();
-        if (targets.Length > 0)
-        {
-            DescendingProperties(targets[0], PropertyType.Survivability, SurvivalDown);
-            await Attack1(BaseDamage + OwnerPower);
-        }
+        DescendingProperties(targets[0], PropertyType.Survivability, SurvivalDown);
+        await Attack1(BaseDamage + OwnerPower);
         if (times > 0)
         {
             times--;

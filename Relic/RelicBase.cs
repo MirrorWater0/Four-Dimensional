@@ -5,52 +5,73 @@ using Godot;
 
 public partial class Relic
 {
-    public RelicName RelicName;
+    public RelicID ID;
     public string RelicDescription;
-    public int Num;
+    public int Num = -1;
+    public Control IconNode;
+    public static PackedScene IconScene = GD.Load<PackedScene>("res://Relic/RelicIcon.tscn");
 
-    public Relic()
+    public Relic(RelicID relicID)
     {
-        Num = 3;
+        ID = relicID;
     }
 
-    public Relic(RelicName relicName)
+    public static void RelicAdd(PlayerResourceState playerResourceState, RelicID relicID)
     {
-        RelicName = relicName;
-        Num = 3;
+        Relic relic = relicID switch
+        {
+            RelicID.Blessing => new Relic(RelicID.Blessing),
+            _ => new Relic(RelicID.curse),
+        };
+        int num = relicID switch
+        {
+            RelicID.Blessing => 3,
+            _ => -1,
+        };
+        relic.IconAdd(playerResourceState);
+        GameInfo.Relic.Add(relicID, num);
     }
 
     public void IconAdd(PlayerResourceState playerResourceState)
     {
-        switch (RelicName)
+        string path = ID switch
         {
-            case RelicName.Blessing:
-                break;
-            case RelicName.curse:
-                break;
-        }
+            RelicID.Blessing => "res://shader/Icon/RelicIcon/Point.gdshader",
+            _ => null,
+        };
+        var icon = IconScene.Instantiate() as ColorRect;
+        var shader = GD.Load<Shader>(path);
+        var material = new ShaderMaterial() { Shader = shader };
+        icon.Material = material;
+        icon.GetNode<Label>("Label").Text = Num.ToString();
+        playerResourceState.RelicContainer.AddChild(icon);
+        IconNode = icon;
     }
 
-    public async Task Effect(Battle battle)
+    public async Task BattleEffect(Battle battle)
     {
-        switch (RelicName)
+        switch (ID)
         {
-            case RelicName.Blessing:
+            case RelicID.Blessing:
+                if (Num <= 0)
+                    return;
                 List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
                 {
-                    list.Add(battle.EnemiesList[i].GetHurt(10));
+                    list.Add(battle.EnemiesList[i].GetHurt(20));
                 }
                 await Task.WhenAll(list);
                 Num--;
                 break;
-            case RelicName.curse:
+            case RelicID.curse:
                 break;
         }
+        GameInfo.Relic[ID] = Num;
+        IconNode.GetNode<Label>("Label").Text = Num.ToString();
     }
 }
 
-public enum RelicName
+public enum RelicID
 {
     Blessing,
     curse,

@@ -42,8 +42,6 @@ public partial class LevelNode : ColorRect
     public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
-    public PlayerResourceState PlayerResourceState =>
-        field ??= GetNode("/root/Map/PlayerResourceState") as PlayerResourceState;
     public int RandomNum;
 
     public override void _Ready()
@@ -161,8 +159,6 @@ public partial class LevelNode : ColorRect
         Button.Disabled = true;
         ApplyCompletedVisuals();
 
-        var rngN = new Random(RandomNum).Next(-10, 10);
-        PlayerResourceState.ElectricityCoin += 30 + rngN;
         SaveSystem.SaveAll();
     }
 

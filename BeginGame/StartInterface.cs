@@ -88,12 +88,15 @@ public partial class StartInterface : CanvasLayer
 
     public void test()
     {
+        GameInfo.Relic.Add(RelicID.Blessing, 3);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.SonicBoom);
         GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
+        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
         GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);
         GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.Swift);
         // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
@@ -105,12 +108,10 @@ public partial class StartInterface : CanvasLayer
         GetTree().ChangeSceneToFile("res://Map/Map.tscn");
     }
 
-    public void TestBattle()
+    public void falseTest()
     {
-        NewStart();
-        Battle.Istest = true;
-        GameInfo.InitNewGame();
-        GetTree().ChangeSceneToFile("res://battle/Battle.tscn");
+        Battle.Istest = false;
+        Start();
     }
 }
 
@@ -148,7 +149,7 @@ public partial class PlayerCharacterRegistry
     {
         CharacterName = "Kasiya",
         PassiveName = "坚毅",
-        PassiveDescription = "当其他队友使用攻击技能：回复生存点生命。",
+        PassiveDescription = "当其他队友使用攻击技能：回复一次生命。",
         LifeMax = 60,
         Power = 12,
         Survivability = 12,
@@ -195,9 +196,10 @@ public partial class PlayerCharacterRegistry
     {
         CharacterName = "Nightingale",
         PassiveName = "夜光",
-        PassiveDescription = $"队友结束回合时：追击一次:造成{Skill.PropertyType.Power.GetDescription()}点伤害。",
+        PassiveDescription =
+            $"队友结束回合时：追击一次:造成{Skill.PropertyType.Power.GetDescription()}点伤害。",
         LifeMax = 50,
-        Power = 9,
+        Power = 10,
         Survivability = 11,
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",

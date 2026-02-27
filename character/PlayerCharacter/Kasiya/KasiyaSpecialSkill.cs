@@ -59,6 +59,7 @@ public class HolySeal : Skill
     private const int BaseDamage = 8;
     private const int StunStacks = 1;
     private const int EnergyCost = 2;
+    public int times = 2;
 
     public HolySeal()
         : base(SkillTypes.Special)
@@ -87,6 +88,7 @@ public class HolySeal : Skill
             return;
 
         OwnerCharater.UpdataEnergy(-EnergyCost);
+        times--;
         StartActionBuff.BuffAdd(Buff.BuffName.Stun, target, StunStacks);
     }
 
@@ -94,12 +96,11 @@ public class HolySeal : Skill
     {
         int totalDamage = BaseDamage + OwnerPower;
         string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
-        int thisCastStunTimes = OwnerEnergy >= EnergyCost ? 1 : 0;
 
         SetDescriptionLines(
             $"造成{damageText}点伤害。",
-            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量，使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()}。",
-            $"触发次数：{thisCastStunTimes}。"
+            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量，使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()};",
+            $"触发次数：{times}。"
         );
     }
 }

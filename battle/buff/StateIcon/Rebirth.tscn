@@ -1,6 +1,6 @@
-[gd_scene load_steps=4 format=3 uid="uid://1tq2mq0bblk3"]
+[gd_scene format=3 uid="uid://1tq2mq0bblk3"]
 
-[ext_resource type="Shader" uid="uid://bx1mo4ua6tu43" path="res://shader/Icon/Rebirth.gdshader" id="1_878a6"]
+[ext_resource type="Shader" uid="uid://bx1mo4ua6tu43" path="res://shader/Icon/BuffIcon/Rebirth.gdshader" id="1_878a6"]
 [ext_resource type="Theme" uid="uid://8fh7uawwnl5m" path="res://battle/buff/StateIcon/IconLabel.tres" id="2_nsqb1"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_nsqb1"]

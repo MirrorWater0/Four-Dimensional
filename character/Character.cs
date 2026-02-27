@@ -378,16 +378,18 @@ public partial class Character : Node2D
         }
         if (StartActionBuffs != null)
         {
-            for (int i = 0; i < StartActionBuffs.Count; i++)
+            // Buffs can remove themselves from the list when triggered (Stack reaches 0).
+            // Iterate over a snapshot to avoid skipping the next buff due to index shifting.
+            foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                StartActionBuffs[i].Trigger();
+                buff.Trigger();
             }
         }
     }
 
     public virtual async void EndAction()
     {
-        BattleNode.EmitS(this);
+        await BattleNode.EmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         TrailAnimation.Stop();
@@ -399,10 +401,14 @@ public partial class Character : Node2D
         HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
         AddChild(hitParticle);
         if (HurtBuffs != null)
-            for (int i = 0; i < HurtBuffs.Count; i++)
+        {
+            // Hurt buffs can remove themselves from the list when triggered (Stack reaches 0).
+            // Iterate over a snapshot to ensure later buffs (e.g. DamageImmune) still trigger.
+            foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                HurtBuffs[i].Trigger(ref damage);
+                buff.Trigger(ref damage);
             }
+        }
 
         var attacknum = Number.Instantiate<Number>();
         AddChild(attacknum);
@@ -431,8 +437,8 @@ public partial class Character : Node2D
     {
         if (State == CharacterState.Dying && !rebirth)
             return;
-        num = Math.Clamp(num, 0, 999);
-        Life = Math.Clamp(Life + num + BattleSurvivability, 0, BattleMaxLife);
+        num = Math.Clamp(num + BattleSurvivability, 0, 999);
+        Life = Math.Clamp(Life + num, 0, BattleMaxLife);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
         LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
@@ -457,9 +463,11 @@ public partial class Character : Node2D
 
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.4f);
         if (DyingBuffs != null)
-            for (int i = 0; i < DyingBuffs.Count; i++)
+            // Dying buffs can remove themselves from the list when triggered (Stack reaches 0).
+            // Iterate over a snapshot to avoid skipping subsequent buffs.
+            foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                await DyingBuffs[i].Trigger();
+                await buff.Trigger();
             }
     }
 

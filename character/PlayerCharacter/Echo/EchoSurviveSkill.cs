@@ -26,7 +26,7 @@ public partial class SoundBarrier : Skill
         if (times > 0)
         {
             times--;
-            await Carry(OwnerCharater.BattleNode.PlayersList[0], 0);
+            await Carry(GetAllyByRelative(1), 0);
         }
     }
 
@@ -75,7 +75,7 @@ public partial class SonicDeflection : Skill
 
 public partial class TuningStance : Skill
 {
-    private const int PowerGain = 2;
+    private const int PowerGain = 5;
     private const int BaseBlock = 5;
 
     public TuningStance()
@@ -84,7 +84,7 @@ public partial class TuningStance : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "调音姿态";
+    public override string SkillName { get; set; } = "韵律姿态";
 
     public override async Task Effect()
     {
@@ -108,6 +108,7 @@ public partial class ResonantWard : Skill
 {
     private const int DebuffImmunityStacks = 2;
     private const int BaseBlock = 6;
+    int PowerGain = 2;
 
     public ResonantWard()
         : base(SkillTypes.Survive)
@@ -122,6 +123,7 @@ public partial class ResonantWard : Skill
         await base.Effect();
         SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, OwnerCharater, DebuffImmunityStacks);
         OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
+        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
     }
 
     public override void UpdateDescription()
@@ -130,7 +132,8 @@ public partial class ResonantWard : Skill
         string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
         SetDescriptionLines(
             $"获得{DebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
-            $"获得{blockText}点格挡。"
+            $"获得{blockText}点格挡。",
+            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。"
         );
     }
 }

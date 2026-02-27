@@ -16,6 +16,7 @@ public static partial class GameInfo
     public static int IntentionRandomNum { get; private set; }
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
+    public static Dictionary<RelicID, int> Relic = new();
 
     public static void InitNewGame()
     {

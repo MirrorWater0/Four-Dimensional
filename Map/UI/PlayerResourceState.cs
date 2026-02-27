@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 
 public partial class PlayerResourceState : CanvasLayer
@@ -60,12 +61,30 @@ public partial class PlayerResourceState : CanvasLayer
     static PackedScene TransitionEnergySlot = GD.Load<PackedScene>(
         "res://Map/UI/TransitionEnergySlot.tscn"
     );
+    public List<Relic> RelicList = new();
+    public VBoxContainer RelicContainer => field ??= GetNode<VBoxContainer>("RelicContainer");
 
     public override void _Ready()
     {
         ElectricityCoin = GameInfo.ElectricityCoin;
         TransitionEnergy = GameInfo.TransitionEnergy;
         InitTransitionEnergyMax();
+        InitRelic();
+    }
+
+    public void InitRelic()
+    {
+        foreach (var relic in GameInfo.Relic)
+        {
+            Relic relicInst = relic.Key switch
+            {
+                RelicID.Blessing => new Relic(RelicID.Blessing),
+                _ => new Relic(RelicID.curse),
+            };
+            relicInst.Num = relic.Value;
+            relicInst.IconAdd(this);
+            RelicList.Add(relicInst);
+        }
     }
 
     public void InitTransitionEnergyMax()

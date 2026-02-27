@@ -9,7 +9,7 @@ using Godot;
 
 public partial class Battle : Node2D
 {
-    public static bool Istest = true;
+    public static bool Istest = false;
     public Random BattleIntentionRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private ulong _battleInstanceId;
@@ -227,6 +227,11 @@ public partial class Battle : Node2D
         PlayerSpeed = 0;
         EnemySpeed = 0;
 
+        var relics = MapNode.PlayerResourceState.RelicList;
+        for (int i = 0; i < relics.Count; i++)
+        {
+            await relics[i].BattleEffect(this);
+        }
         await BattleBegin1(token);
     }
 

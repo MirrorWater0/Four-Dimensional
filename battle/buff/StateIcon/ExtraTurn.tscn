@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://7v13pycfsepn"]
 
 [ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_hucrt"]
-[ext_resource type="Shader" uid="uid://cy3vobor6ryqr" path="res://shader/Icon/ExtraTurn.gdshader" id="2_atcm0"]
+[ext_resource type="Shader" uid="uid://cy3vobor6ryqr" path="res://shader/Icon/BuffIcon/ExtraTurn.gdshader" id="2_atcm0"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_4j5cy"]
 shader = ExtResource("2_atcm0")

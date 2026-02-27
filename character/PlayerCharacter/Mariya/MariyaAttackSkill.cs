@@ -23,8 +23,7 @@ public partial class MendSlash : Skill
     {
         await base.Effect();
         await Attack1(BaseDamage + OwnerPower);
-        OwnerCharater.Recover(BaseHeal);
-        GetAllAllyWithOrder(true).FirstOrDefault(x => x.Life < x.BattleMaxLife).Recover(10);
+        GetAllAllyWithOrder(true).FirstOrDefault(x => x.Life < x.BattleMaxLife)?.Recover(10);
     }
 
     public override void UpdateDescription()
@@ -34,7 +33,7 @@ public partial class MendSlash : Skill
 
         SetDescriptionLines(
             $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
-            $"对最前面的非满血角色回复{BasePlusXWithBattleTotal(BaseHeal, totalHeal, StatX.Survivability)}点生命。",
+            $"对占位最靠前的非满血角色回复{BaseHeal}点生命。",
             $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
         );
     }

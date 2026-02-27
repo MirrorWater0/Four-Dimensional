@@ -326,7 +326,6 @@ public partial class Skill
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
     {
-        // 1. 获取除自己以外的所有盟友，并立即转为 List（只遍历一次，性能更好）
         var allies = (
             OwnerCharater.IsPlayer
                 ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
@@ -335,15 +334,25 @@ public partial class Skill
             .OrderBy(x => x.PositionIndex)
             .ToList();
 
+        int safeIndex = (index % allies.Count + allies.Count) % allies.Count;
         // 2. 如果开启了死亡过滤，更新这个 List
         if (dyingFilter)
         {
-            allies = allies.Where(x => x.State != Character.CharacterState.Dying).ToList();
+            while (allies[safeIndex].State == Character.CharacterState.Dying)
+            {
+                if (safeIndex + 1 >= allies.Count / 2.0)
+                {
+                    safeIndex = (safeIndex - 1) % allies.Count;
+                }
+                else
+                {
+                    safeIndex = (safeIndex + 1) % allies.Count;
+                }
+            }
         }
 
         // 4. 核心逻辑：循环取模公式，确保负数和超界都能正确指向
         // 使用 Count 属性（List已生成，Count是瞬间读取，性能极高）
-        int safeIndex = (index % allies.Count + allies.Count) % allies.Count;
 
         return allies[safeIndex];
     }

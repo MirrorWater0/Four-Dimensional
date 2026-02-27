@@ -434,6 +434,76 @@ _data = {
 &"intention": SubResource("Animation_yic7g")
 }
 
+[sub_resource type="Shader" id="Shader_difk4"]
+code = "shader_type canvas_item;
+
+uniform vec4 self_color : source_color = vec4(1.0);
+uniform float size : hint_range(0.0, 1.0) = 0.8;
+uniform float smoothness : hint_range(0.0, 0.1) = 0.01;
+
+float sdEquilateralTriangle(in vec2 p, in float r) {
+    const float k = sqrt(3.0);
+    p.x = abs(p.x) - r;
+    p.y = p.y + r / k;
+    if (p.x + k * p.y > 0.0) p = vec2(p.x - k * p.y, -k * p.x - p.y) / 2.0;
+    p.x -= clamp(p.x, -2.0 * r, 0.0);
+    return -length(p) * sign(p.y);
+}
+
+void fragment() {
+    vec2 p = UV - vec2(0.5);
+    p.y += 0.05;
+    float d = sdEquilateralTriangle(p, size * 0.4);
+    float shape_alpha = smoothstep(smoothness, 0.0, d);
+
+    // 【关键修改】：
+    // 1. vec4(self_color.rgb, self_color.a * shape_alpha) 是你定义的颜色和形状
+    // 2. 乘以 COLOR。这里的 COLOR 包含了粒子系统（Alpha Curve）算出来的实时颜色
+    COLOR = vec4(self_color.rgb, self_color.a * shape_alpha) * COLOR;
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_3q742"]
+shader = SubResource("Shader_difk4")
+shader_parameter/self_color = Color(1, 1, 1, 1)
+shader_parameter/size = 0.8
+shader_parameter/smoothness = 0.042000001995
+
+[sub_resource type="Curve" id="Curve_difk4"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.16836736, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_3q742"]
+curve = SubResource("Curve_difk4")
+
+[sub_resource type="Gradient" id="Gradient_difk4"]
+colors = PackedColorArray(0, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_3q742"]
+gradient = SubResource("Gradient_difk4")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_difk4"]
+lifetime_randomness = 0.3
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(70, 1, 1)
+angle_min = 1.0728835e-05
+angle_max = 124.40001
+direction = Vector3(0, -1, 0)
+spread = 0.0
+initial_velocity_max = 61.73
+angular_velocity_min = 17.779984
+angular_velocity_max = 65.179985
+gravity = Vector3(0, -12, 0)
+linear_accel_min = 5.759998
+linear_accel_max = 46.089996
+scale_min = 10.0
+scale_max = 32.92
+color_ramp = SubResource("GradientTexture1D_3q742")
+alpha_curve = SubResource("CurveTexture_3q742")
+hue_variation_min = -0.28000003
+hue_variation_max = 0.13999997
+
 [node name="CharacterTemplate" type="Node2D" unique_id=1123852147]
 z_index = 1
 scale = Vector2(0.8, 0.8)
@@ -723,3 +793,17 @@ libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
 
 [node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]
+
+[node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=914609816]
+top_level = true
+material = SubResource("ShaderMaterial_3q742")
+position = Vector2(0, 159)
+scale = Vector2(0.8, 0.8)
+amount = 20
+lifetime = 3.0
+process_material = SubResource("ParticleProcessMaterial_difk4")
+
+[node name="RemoteTransform2D" type="RemoteTransform2D" parent="." unique_id=507622661]
+position = Vector2(0, 198.75)
+remote_path = NodePath("../GPUParticles2D")
+metadata/_edit_lock_ = true

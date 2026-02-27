@@ -9,6 +9,7 @@ public class EchonicResonance : Skill
 {
     private const int CostPerCast = 1;
     private const int PowerGainPerCast = 1;
+    int desurive = 1;
 
     public EchonicResonance()
         : base(SkillTypes.Special)
@@ -26,6 +27,7 @@ public class EchonicResonance : Skill
         {
             OwnerCharater.UpdataEnergy(-CostPerCast);
             await Attack1(OwnerPower);
+            DescendingProperties(Chosetarget1()[0], PropertyType.Survivability, desurive);
             IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGainPerCast);
         }
     }
@@ -38,16 +40,21 @@ public class EchonicResonance : Skill
         int totalPowerGain = bonusCasts * PowerGainPerCast;
 
         string energyX = X(StatX.Energy);
-        string castTimesBasis = CostPerCast == 1 ? $"1+{energyX}" : $"1+ceil({energyX}/{CostPerCast})";
+        string castTimesBasis =
+            CostPerCast == 1 ? $"1+{energyX}" : $"1+ceil({energyX}/{CostPerCast})";
         string castTimesText = WithBattleTotal(castTimesBasis, castTimes);
         string perCastDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
-        string totalPowerGainBasis = CostPerCast == 1 ? $"{PowerGainPerCast}*{energyX}" : $"{PowerGainPerCast}*ceil({energyX}/{CostPerCast})";
+        string totalPowerGainBasis =
+            CostPerCast == 1
+                ? $"{PowerGainPerCast}*{energyX}"
+                : $"{PowerGainPerCast}*ceil({energyX}/{CostPerCast})";
         string totalPowerGainText = WithBattleTotal(totalPowerGainBasis, totalPowerGain);
 
         SetDescriptionLines(
-            $"施放次数：{castTimesText}。",
-            $"每次伤害：{perCastDamageText}。",
-            $"每次消耗：{CostPerCast}点能量。",
+            $"消耗所有能量:施放次数：{castTimesText};",
+            $"每次伤害：{perCastDamageText};",
+            $"每次消耗：{CostPerCast}点能量;",
+            $"每次降低目标{desurive}点{GetColoredPropertyLabel(PropertyType.Survivability)}。",
             $"每次提升：{PowerGainPerCast}点{GetColoredPropertyLabel(PropertyType.Power)}。",
             $"总力量提升：{totalPowerGainText}。"
         );
@@ -56,8 +63,9 @@ public class EchonicResonance : Skill
 
 public class SonicBoom : Skill
 {
-    private const int BaseDamage = 4;
-    private const int EnergyCost = 2;
+    private const int BaseDamage = 0;
+    private const int EnergyCost = 6;
+    int times = 2;
 
     public SonicBoom()
         : base(SkillTypes.Special)
@@ -71,37 +79,16 @@ public class SonicBoom : Skill
     {
         await base.Effect();
 
-        if (OwnerCharater?.BattleNode == null)
-            return;
-
-        var targets = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
-            : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
-
         int damage = BaseDamage + OwnerPower;
-        foreach (
-            var target in targets.Where(x =>
-                x != null && x.State == Character.CharacterState.Normal
-            )
-        )
-        {
-            _ = Attack3(damage, target, 1);
-        }
+        await AOE(damage, Chosetarget1().Length, 1);
 
         if (OwnerCharater.Energy >= EnergyCost)
         {
             OwnerCharater.UpdataEnergy(-EnergyCost);
-            foreach (
-                var target in targets.Where(x =>
-                    x != null && x.State == Character.CharacterState.Normal
-                )
-            )
-            {
-                _ = Attack3(damage, target, 1);
-            }
-        }
 
-        await Task.Delay(400);
+            await AOE(damage, Chosetarget1().Length, 1);
+            await AOE(damage, Chosetarget1().Length, 1);
+        }
     }
 
     public override void UpdateDescription()
@@ -114,7 +101,7 @@ public class SonicBoom : Skill
             $"对所有敌人造成{damageText}点伤害。",
             $"当前{wavesText}次。",
             $"若能量>={EnergyCost}：额外消耗{EnergyCost}点能量。",
-            $"并追加1次。"
+            $"并追加{times}次。"
         );
     }
 }
@@ -125,6 +112,7 @@ public class PhaseEcho : Skill
     private const int DamageImmuneStacks = 2;
     private const int BaseBlock = 12;
     int PowerGain = 4;
+
     public PhaseEcho()
         : base(SkillTypes.Special)
     {

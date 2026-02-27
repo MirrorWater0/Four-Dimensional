@@ -117,7 +117,8 @@ public partial class Sacrifice : Skill
         int totalDamage = basisDamage + OwnerPower;
         string damageText = BasePlusXWithBattleTotal(basisDamage, totalDamage, StatX.Power);
         SetDescriptionLines(
-            $"所有队友{GetColoredPropertyLabel(PropertyType.MaxLife)} -{allyHurt}。",
+            $"消耗{energyCost}点能量:",
+            $"所有队友{GetColoredPropertyLabel(PropertyType.MaxLife)} -{allyHurt};",
             $"对所有敌人造成{damageText}点伤害。"
         );
     }

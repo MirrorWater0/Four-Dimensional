@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://daxwcjm3hib5b"]
 
 [ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_utc48"]
-[ext_resource type="Shader" uid="uid://vnrtd04hgkwo" path="res://Aim.gdshader" id="2_i0r6n"]
+[ext_resource type="Shader" uid="uid://vnrtd04hgkwo" path="res://shader/Icon/BuffIcon/Aim.gdshader" id="2_i0r6n"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gj172"]
 shader = ExtResource("2_i0r6n")

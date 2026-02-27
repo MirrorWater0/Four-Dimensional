@@ -13,6 +13,8 @@ public partial class Map : Control
     Vector2 _velocity = Vector2.Zero;
     private double _time;
     ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
+    public  PlayerResourceState PlayerResourceState =>
+        field ??= GetNode<PlayerResourceState>("PlayerResourceState");
 
     [Export]
     public Vector2 MinBoundary = Vector2.Zero;

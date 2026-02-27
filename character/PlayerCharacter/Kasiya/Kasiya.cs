@@ -23,7 +23,7 @@ public partial class Kasiya : PlayerCharacter
             && skill.OwnerCharater.IsPlayer
         )
         {
-            Recover(BattleSurvivability);
+            Recover(0);
         }
     }
 }
