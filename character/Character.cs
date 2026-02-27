@@ -41,8 +41,9 @@ public partial class Character : Node2D
     [Export]
     public Texture2D Portrait;
     public virtual string CharacterName { get; set; }
+    [Export]
     public int BattleMaxLife;
-    public int Life { get; protected set; }
+    public int Life { get; set; }
     public int BattlePower;
     public int BattleSurvivability;
     public int Speed;

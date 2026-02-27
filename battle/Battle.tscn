@@ -10,6 +10,7 @@
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
 [ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
+[ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
 
 [sub_resource type="Environment" id="Environment_ttuon"]
@@ -597,3 +598,8 @@ lifetime = 10.0
 preprocess = 10.0
 visibility_rect = Rect2(-2300, -1200, 2000, 1100)
 process_material = SubResource("ParticleProcessMaterial_4km6a")
+
+[node name="Dummy" parent="." unique_id=1123852147 node_paths=PackedStringArray("Sprite") instance=ExtResource("12_4km6a")]
+position = Vector2(4784, 512)
+BattleMaxLife = 100000
+Sprite = NodePath(".")

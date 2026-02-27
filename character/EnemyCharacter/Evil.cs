@@ -75,7 +75,7 @@ public partial class EvilAttack : Skill
 public partial class EvilSurvive : Skill
 {
     private const int SurvivabilityGain = 3;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 10;
     int DescendingNum = 3;
 
     public EvilSurvive()
@@ -84,7 +84,7 @@ public partial class EvilSurvive : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "增幅";
+    public override string SkillName { get; set; } = "扭曲";
 
     public override async Task Effect()
     {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
@@ -83,7 +84,8 @@ public partial class RebirthPrayer : Skill
 public partial class Sacrifice : Skill
 {
     int basisDamage = 30;
-    int allyHurt = 20;
+    int allyHurt = 15;
+    int DeMax = 20;
     int num => OwnerCharater.BattleNode.EnemiesList.Count;
     int energyCost = 2;
     public override string SkillName { get; set; } = "献祭";
@@ -101,12 +103,19 @@ public partial class Sacrifice : Skill
             return;
 
         OwnerCharater.UpdataEnergy(-energyCost);
+        List<Task> tasks = new();
+        for (int i = 0; i < GetAllAllyWithOrder(true).Length; i++)
+        {
+            tasks.Add(GetAllAllyWithOrder(true)[i].GetHurt(allyHurt));
+        }
+        await Task.WhenAll(tasks);
+
         for (int i = 0; i < OwnerCharater.BattleNode.PlayersList.Count; i++)
         {
             DescendingProperties(
                 OwnerCharater.BattleNode.PlayersList[i],
                 PropertyType.MaxLife,
-                allyHurt
+                DeMax
             );
         }
         await AOE(basisDamage + OwnerPower, num, 1);
@@ -118,6 +127,7 @@ public partial class Sacrifice : Skill
         string damageText = BasePlusXWithBattleTotal(basisDamage, totalDamage, StatX.Power);
         SetDescriptionLines(
             $"消耗{energyCost}点能量:",
+            $"对所有队友造成{allyHurt}点伤害；",
             $"所有队友{GetColoredPropertyLabel(PropertyType.MaxLife)} -{allyHurt};",
             $"对所有敌人造成{damageText}点伤害。"
         );

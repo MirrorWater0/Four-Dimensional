@@ -253,6 +253,11 @@ public partial class Skill
                 )
                 .ToArray();
         }
+        if (targets.Length == 0)
+        {
+            targets = [OwnerCharater.BattleNode.dummy];
+            targets[0].Recover(1000000);
+        }
         return targets;
     }
 
@@ -472,6 +477,7 @@ public partial class Skill
                 break;
             case PropertyType.MaxLife:
                 target.BattleMaxLife -= value;
+                target.Life = Math.Min(target.Life, target.BattleMaxLife);
                 target.LifeLabel.Text = $"{target.Life}/{target.BattleMaxLife}";
                 target
                     .CreateTween()
@@ -486,7 +492,6 @@ public partial class Skill
                         target.BattleMaxLife,
                         0.5f
                     );
-                _ = target.GetHurt(Math.Max(target.Life - target.BattleMaxLife, 0));
                 break;
         }
         if (icon != null)

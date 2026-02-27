@@ -149,6 +149,7 @@ public partial class Battle : Node2D
         }
     }
     public LevelNode CurrentLevelNode;
+    public Character dummy => field ??= GetNode("Dummy") as Character;
 
     public override void _EnterTree()
     {
@@ -164,7 +165,7 @@ public partial class Battle : Node2D
     public override async void _Ready()
     {
         var token = _lifetimeCts.Token;
-
+        InitDummy();
         for (int i = 0; i < CurrentLevelNode.EnemiesRegeditList.Count; i++)
         {
             var regedit = CurrentLevelNode.EnemiesRegeditList[i];
@@ -534,6 +535,13 @@ public partial class Battle : Node2D
             EmitSignal(SignalName.Next);
         }
         catch (ObjectDisposedException) { }
+    }
+
+    private void InitDummy()
+    {
+        dummy.BattleNode = this;
+        dummy.Skills = [new Skill(Skill.SkillTypes.Attack)];
+        dummy.Initialize();
     }
 
     private async Task<bool> DelayOrCancel(int milliseconds, CancellationToken token)

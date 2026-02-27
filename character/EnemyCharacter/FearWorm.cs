@@ -71,7 +71,7 @@ public partial class FearWormAttack : Skill
 public partial class FearWormSurvive : Skill
 {
     private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 10;
 
     public FearWormSurvive()
         : base(SkillTypes.Survive)
