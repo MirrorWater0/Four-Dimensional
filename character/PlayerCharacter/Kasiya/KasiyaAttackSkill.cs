@@ -17,19 +17,17 @@ public partial class Determination : Skill
 
     public override string SkillName { get; set; } = "剑意已决";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        await Attack1(BaseDamage + OwnerPower);
-        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, DamageImmuneStacks);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        SetDescriptionLines(
-            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
-            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.DamageImmune,
+                stacks: DamageImmuneStacks,
+                index: 0,
+                dyingFilter: false
+            )
         );
     }
 }
@@ -48,26 +46,22 @@ public partial class Smite : Skill
 
     public override string SkillName { get; set; } = "绝域剑杀";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        Character[] targets = Chosetarget1();
-        DescendingProperties(targets[0], PropertyType.Survivability, SurvivalDown);
-        await Attack1(BaseDamage + OwnerPower);
-        if (times > 0)
-        {
-            times--;
-            DescendingProperties(targets[0], PropertyType.Survivability, SurvivalDown);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        SetDescriptionLines(
-            $"降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivability)}。",
-            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
-            $"额外触发降低目标{SurvivalDown}点{GetColoredPropertyLabel(PropertyType.Survivability)}，触发次数：{times}。"
+        return new SkillPlan(
+            this,
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown),
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ConditionGateStep(
+                condition: _ => times > 0,
+                onPass: _ =>
+                {
+                    times--;
+                    return Task.CompletedTask;
+                },
+                describe: _ => [$"剩余{times}次额外触发:"]
+            ),
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown)
         );
     }
 }
@@ -84,19 +78,25 @@ public partial class Charge : Skill
 
     public override string SkillName { get; set; } = "无畏冲锋";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        int damage = BaseDamage + OwnerPower;
-        await Attack1(damage);
-        OwnerCharater.UpdataBlock(damage);
-    }
-
-    public override void UpdateDescription()
-    {
-        int total = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, total, StatX.Power);
-        SetDescriptionLines($"造成{damageText}点伤害。", $"获得{damageText}点格挡。");
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            CustomStep(
+                _ =>
+                {
+                    int damage = DamageFromPower(BaseDamage);
+                    OwnerCharater?.UpdataBlock(Math.Clamp(damage, 0, 999));
+                    return Task.CompletedTask;
+                },
+                _ =>
+                {
+                    string damageText = DamageFromPowerText(BaseDamage);
+                    return new[] { $"获得{damageText}点格挡。" };
+                }
+            )
+        );
     }
 }
 
@@ -113,25 +113,21 @@ public partial class Vower : Skill
 
     public override string SkillName { get; set; } = "誓约者";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        int damage = BaseDamage + OwnerPower;
-        await Attack1(damage);
-        if (times > 0)
-        {
-            times--;
-            await Carry(GetAllyByRelative(-1), 1);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        int total = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, total, StatX.Power);
-        SetDescriptionLines(
-            $"造成{damageText}点伤害。",
-            $"连携上一位队友(生存技能)，剩余触发次数：{times}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ConditionGateStep(
+                condition: _ => times > 0,
+                onPass: _ =>
+                {
+                    times--;
+                    return Task.CompletedTask;
+                },
+                describe: _ => [$"剩余{times}次额外触发："]
+            ),
+            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
         );
     }
 }

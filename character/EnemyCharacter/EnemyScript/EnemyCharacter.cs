@@ -31,9 +31,7 @@ public partial class EnemyCharacter : Character
             PassiveDescription = Registry.PassiveDescription;
             BattleMaxLife = Registry.MaxLife;
             Life = BattleMaxLife;
-            BattlePower = Registry.Power;
-            BattleSurvivability = Registry.Survivability;
-            Speed = Registry.Speed;
+            SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed);
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
                 .Select(Skill.GetSkill)
                 .Where(x => x != null)
@@ -53,6 +51,7 @@ public partial class EnemyCharacter : Character
             return;
         }
         base.StartAction();
+
         await DisappearIntention();
         await Skills[IntentionIndex].Effect();
         EndAction();

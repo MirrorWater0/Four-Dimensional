@@ -1,6 +1,4 @@
-using System.Linq;
 using System.Threading.Tasks;
-using Godot;
 
 public partial class NightingaleSpecialSkill { }
 
@@ -18,24 +16,14 @@ public partial class TempoSurge : Skill
 
     public override string SkillName { get; set; } = "疾奏";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Speed, SpeedGain);
-        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-        if (OwnerCharater.Energy >= cost)
-        {
-            OwnerCharater.UpdataEnergy(-cost);
-            await Carry(GetAllyByRelative(-1, true), 1);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        SetDescriptionLines(
-            $"获得+{SpeedGain}{GetColoredPropertyLabel(PropertyType.Speed)}。",
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"消耗{cost}点能量:连携上一个非濒死队友（生存技能）。"
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Speed, SpeedGain),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            EnergyGateStep(cost, consume: true),
+            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1, dyingFilter: true)
         );
     }
 }
@@ -56,31 +44,42 @@ public partial class LongNight : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        if (OwnerCharater.Energy >= energyCost1 && times > 0)
-        {
-            await Carry(GetAllyByRelative(-1), 2);
-            await Carry(GetAllyByRelative(1), 2);
-            OwnerCharater.UpdataEnergy(-DeSurvive);
-            IncreaseProperties(OwnerCharater, PropertyType.Speed, -deSpeed);
-        }
-
-        if (OwnerCharater.Energy >= energyCost2)
-        {
-            OwnerCharater.UpdataEnergy(-energyCost2);
-            IncreaseProperties(OwnerCharater, PropertyType.Power, Inpower);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        SetDescriptionLines(
-            $"若能量>={energyCost1}：消耗{DeSurvive}点能量，连携前一位队友和后一位队友使用其特殊技能(剩余触发次数：{times})。",
-            $"自身-{deSpeed}点{GetColoredPropertyLabel(PropertyType.Speed)};",
-            $"-{DeSurvive}点{GetColoredPropertyLabel(PropertyType.Survivability)}。",
-            $"若能量>={energyCost2}：额外消耗{energyCost2}点能量，获得+{Inpower}{GetColoredPropertyLabel(PropertyType.Power)}（当前：{times}）。"
+        return new SkillPlan(
+            this,
+            ConditionGateStep(
+                condition: _ => OwnerEnergy >= energyCost1 && times > 0,
+                async skill =>
+                {
+                    await CarryRelativeAllyStep(
+                            relativeIndex: -1,
+                            skillIndex: 2,
+                            dyingFilter: false,
+                            describe: false
+                        )
+                        .Execute(skill);
+                    await CarryRelativeAllyStep(
+                            relativeIndex: 1,
+                            skillIndex: 2,
+                            dyingFilter: false,
+                            describe: false
+                        )
+                        .Execute(skill);
+                    await EnergyStep(-DeSurvive).Execute(skill);
+                    await ModifyPropertyStep(PropertyType.Speed, -deSpeed).Execute(skill);
+                },
+                describe: _ =>
+                    new[]
+                    {
+                        $"若能量>={energyCost1}：消耗{DeSurvive}点能量，连携前一位队友和后一位队友使用其特殊技能(剩余触发次数：{times})。",
+                        $"自身{DeltaPropertyText(PropertyType.Speed, -deSpeed)}。",
+                    },
+                stopOnFail: false
+            ),
+            EnergyGateStep(energyCost2, consume: true),
+            ModifyPropertyStep(PropertyType.Power, Inpower)
         );
     }
 }
+

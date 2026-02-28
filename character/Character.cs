@@ -41,12 +41,34 @@ public partial class Character : Node2D
     [Export]
     public Texture2D Portrait;
     public virtual string CharacterName { get; set; }
+
     [Export]
     public int BattleMaxLife;
     public int Life { get; set; }
-    public int BattlePower;
-    public int BattleSurvivability;
-    public int Speed;
+
+    [Export]
+    private int _battlePower;
+    public int BattlePower
+    {
+        get => _battlePower;
+        private set => _battlePower = value;
+    }
+
+    [Export]
+    private int _battleSurvivability;
+    public int BattleSurvivability
+    {
+        get => _battleSurvivability;
+        private set => _battleSurvivability = value;
+    }
+
+    [Export]
+    private int _speed;
+    public int Speed
+    {
+        get => _speed;
+        private set => _speed = value;
+    }
     public int Block { get; protected set; }
     public int Energy { get; protected set; } = 1;
 
@@ -104,6 +126,13 @@ public partial class Character : Node2D
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     public Vector2 OriginalPosition;
+
+    protected void SetCombatStats(int power, int survivability, int speed)
+    {
+        BattlePower = power;
+        BattleSurvivability = survivability;
+        Speed = speed;
+    }
 
     public virtual void Initialize()
     {
@@ -360,6 +389,7 @@ public partial class Character : Node2D
         Block = 0;
         UpdataBlock(0);
         UpdataEnergy(1);
+        OnTurnStart();
         TrailAnimation.Play("trail");
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
 
@@ -438,6 +468,7 @@ public partial class Character : Node2D
     {
         if (State == CharacterState.Dying && !rebirth)
             return;
+
         num = Math.Clamp(num + BattleSurvivability, 0, 999);
         Life = Math.Clamp(Life + num, 0, BattleMaxLife);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
@@ -445,8 +476,11 @@ public partial class Character : Node2D
         LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
-        numlabel.NumberLabel.Text = "+" + num.ToString();
-        numlabel.NumberLabel.AddThemeColorOverride("font_color", Colors.Green);
+        numlabel.NumberLabel.Text = num.ToString("+0;-0;0");
+        numlabel.NumberLabel.AddThemeColorOverride(
+            "font_color",
+            num >= 0 ? Colors.Green : Colors.Red
+        );
 
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
@@ -490,6 +524,8 @@ public partial class Character : Node2D
 
     public void UpdataBlock(int num)
     {
+        if (State == CharacterState.Dying)
+            return;
         if (num > 0)
         {
             CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
@@ -511,7 +547,129 @@ public partial class Character : Node2D
         }
     }
 
+    public void DescendingProperties(Skill.PropertyType type, int value)
+    {
+        if (value == 0)
+            return;
+
+        if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(this))
+        {
+            var immunityHint = Buff.HintScene.Instantiate<BuffHintLabel>();
+            immunityHint.Text =
+                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]";
+            immunityHint.TargetPosition = GlobalPosition + new Vector2(0, 150);
+            immunityHint.RandomOffset = true;
+            AddChild(immunityHint);
+            return;
+        }
+
+        ColorRect icon = null;
+        switch (type)
+        {
+            case Skill.PropertyType.Power:
+                BattlePower -= value;
+                icon = PowerIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.Survivability:
+                BattleSurvivability -= value;
+                icon = SurvivabilityIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.Speed:
+                Speed -= value;
+                icon = SpeedIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.MaxLife:
+                BattleMaxLife -= value;
+                Life = Math.Min(Life, BattleMaxLife);
+                LifeLabel.Text = $"{Life}/{BattleMaxLife}";
+                CreateTween()
+                    .TweenMethod(
+                        Callable.From((int x) => LifeBar.MaxValue = x),
+                        LifeBar.MaxValue,
+                        BattleMaxLife,
+                        0.5f
+                    );
+                break;
+        }
+
+        if (icon != null)
+        {
+            PowerIconLabel.Text = BattlePower.ToString();
+            SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+            SpeedIconLabel.Text = Speed.ToString();
+            Buff.GhostExplode(icon, new Vector2(2f, 2f));
+        }
+
+        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(characterEffect);
+        characterEffect.Animation.Play("lightning");
+
+        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
+        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} -{value}";
+        hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
+        hint.RandomOffset = true;
+        AddChild(hint);
+    }
+
+    public void IncreaseProperties(Skill.PropertyType type, int value)
+    {
+        if (value == 0)
+            return;
+
+        ColorRect icon = null;
+        switch (type)
+        {
+            case Skill.PropertyType.Power:
+                BattlePower += value;
+                icon = PowerIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.Survivability:
+                BattleSurvivability += value;
+                icon = SurvivabilityIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.Speed:
+                Speed += value;
+                icon = SpeedIconLabel.GetParent() as ColorRect;
+                break;
+            case Skill.PropertyType.MaxLife:
+                BattleMaxLife += value;
+                LifeLabel.Text = $"{Life}/{BattleMaxLife}";
+                CreateTween()
+                    .TweenMethod(
+                        Callable.From((int x) => LifeBar.MaxValue = x),
+                        LifeBar.MaxValue,
+                        BattleMaxLife,
+                        0.5f
+                    );
+                break;
+        }
+
+        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(characterEffect);
+        characterEffect.Animation.Play("absorb");
+        if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
+        {
+            BattleNode.BattleAnimationPlayer.Play("blue");
+        }
+
+        if (icon != null)
+        {
+            PowerIconLabel.Text = BattlePower.ToString();
+            SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+            SpeedIconLabel.Text = Speed.ToString();
+            Buff.GhostExplode(icon, new Vector2(2f, 2f));
+        }
+
+        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
+        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} +{value}";
+        hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
+        hint.RandomOffset = true;
+        AddChild(hint);
+    }
+
     public virtual void Passive(Skill skill) { }
+
+    protected virtual void OnTurnStart() { }
 
     public void Hover()
     {

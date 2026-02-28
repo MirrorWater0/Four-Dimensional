@@ -18,21 +18,17 @@ public partial class FinalGuard : Skill
 
     public override string SkillName { get; set; } = "终守";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-
-        var target = GetAllyByIndex(OwnerCharater.BattleNode.PlayersList.Count - 1, true);
-        IncreaseProperties(target, PropertyType.Power, PowerGain);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        SetDescriptionLines(
-            $"获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。",
-            $"使最后存活的角色获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        return new SkillPlan(
+            this,
+            SelfBlockStep(BaseBlock),
+            ModifyPropertyAbsoluteStep(
+                type: PropertyType.Power,
+                value: PowerGain,
+                selector: PropertyAbsoluteSelector.BackMost,
+                dyingFilter: true
+            )
         );
     }
 }
@@ -40,7 +36,7 @@ public partial class FinalGuard : Skill
 public partial class CrystalGuard : Skill
 {
     private const int BaseBlock = 7;
-    private const int SurvivabilityGain = 3;
+    private const int SurvivabilityGain = 5;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -50,29 +46,13 @@ public partial class CrystalGuard : Skill
 
     public override string SkillName { get; set; } = "水晶守护";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        var allys = GetAllAllyWithOrder(true);
-        for (int i = 0; i < allys.Length; i++)
-        {
-            if (allys[i] == OwnerCharater)
-                continue;
-            allys[i].UpdataBlock(BaseBlock + OwnerSurvivability);
-        }
-        IncreaseProperties(
-            GetAllyByRelative(-1, true),
-            PropertyType.Survivability,
-            SurvivabilityGain
-        );
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        SetDescriptionLines(
-            $"全队除自己以外获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。",
-            $"使上一个存活的角色获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
+            RelativeAllyBlockStep(relativeIndex: -1, baseBlock: BaseBlock),
+            RelativeAllyBlockStep(relativeIndex: 1, baseBlock: BaseBlock)
         );
     }
 }

@@ -36,7 +36,7 @@ public partial class Echo : PlayerCharacter
 
         if (skill.SkillType != Skill.SkillTypes.Survive)
         {
-            skill.IncreaseProperties(this, Skill.PropertyType.Power, 2);
+            IncreaseProperties(Skill.PropertyType.Power, 2);
             return;
         }
 

@@ -75,6 +75,12 @@ public partial class Skill
     {
         OwnerCharater.DisableSkill();
         OwnerCharater.BattleNode.UsedSkills.Add(this);
+
+        var plan = GetPlan();
+        if (plan != null)
+        {
+            await plan.Execute();
+        }
     }
 
     /// <summary>
@@ -93,9 +99,9 @@ public partial class Skill
     protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
     protected bool IsInBattle => OwnerCharater?.BattleNode != null;
 
-    protected static string GetPropertyLabel(PropertyType type) => type.GetDescription();
+    public static string GetPropertyLabel(PropertyType type) => type.GetDescription();
 
-    protected static string GetColoredPropertyLabel(PropertyType type)
+    public static string GetColoredPropertyLabel(PropertyType type)
     {
         return $"[color={GetPropertyColor(type)}]{GetPropertyLabel(type)}[/color]";
     }
@@ -209,56 +215,57 @@ public partial class Skill
         int clampMax = TooltipTotalMax
     ) => WithBattleTotal(FormatBasePlusX(baseValue, stat, xMultiplier), total, clampMax);
 
-    public virtual void UpdateDescription() { }
+    public virtual void UpdateDescription()
+    {
+        var plan = GetPlan();
+        if (plan != null)
+        {
+            SetDescriptionLines(plan.DescribeLines());
+        }
+    }
 
     public Character[] Chosetarget1()
     {
-        int index = OwnerCharater.PositionIndex;
-        Character[] targets = OwnerCharater.IsPlayer switch
-        {
-            true => OwnerCharater.BattleNode.EnemiesList.Cast<Character>().ToArray(),
-            false => OwnerCharater.BattleNode.PlayersList.Cast<Character>().ToArray(),
-        };
+        if (OwnerCharater?.BattleNode == null)
+            return [];
 
-        int[] id = (index % 3) switch
-        {
-            1 => [1, 4, 7, 2, 5, 8, 3, 6, 9],
-            2 => [2, 5, 8, 1, 4, 7, 3, 6, 9],
-            0 => [3, 6, 9, 2, 5, 8, 1, 4, 7],
-        };
+        static int Row(int pos) => pos > 0 ? (pos - 1) % 3 : 0;
+        static int Col(int pos) => pos > 0 ? (pos - 1) / 3 : 0;
 
-        targets = targets
-            .OrderBy(x =>
-            {
-                int iindex = Array.IndexOf(id, x.PositionIndex);
-                return iindex;
-            })
+        int attackerRow = Row(OwnerCharater.PositionIndex);
+
+        IEnumerable<Character> source = OwnerCharater.IsPlayer
+            ? OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
+            : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
+
+        var ordered = source
+            .Where(x => x != null)
+            .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
+            .ThenBy(x => Row(x.PositionIndex))
+            .ThenBy(x => Col(x.PositionIndex))
             .Where(x => x.State == Character.CharacterState.Normal)
             .ToArray();
 
-        var visibleTargets = targets
+        var visible = ordered
             .Where(x =>
                 x.StartActionBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Invisible) == false
             )
             .ToArray();
 
         // If everyone is invisible, still allow targeting to avoid soft-lock.
-        targets = visibleTargets.Length > 0 ? visibleTargets : targets;
+        var targets = visible.Length > 0 ? visible : ordered;
 
-        if (targets.Any(x => x.HurtBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Taunt)))
+        if (targets.Any(x => x.HurtBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Taunt)))
         {
+            // Stable sort: taunt targets first, keep prior ordering within groups.
             targets = targets
                 .OrderByDescending(target =>
                     target.HurtBuffs.Any(buff => buff.ThisBuffName == Buff.BuffName.Taunt)
                 )
                 .ToArray();
         }
-        if (targets.Length == 0)
-        {
-            targets = [OwnerCharater.BattleNode.dummy];
-            targets[0].Recover(1000000);
-        }
-        return targets;
+
+        return targets.Length > 0 ? targets : [OwnerCharater.BattleNode.dummy];
     }
 
     public Character GetAllyByRelative(int Where, bool dyingFilter = false)
@@ -296,37 +303,14 @@ public partial class Skill
 
     public Character[] GetAllAllyWithOrder(bool dyingFilter = false)
     {
+        IEnumerable<Character> query = OwnerCharater.IsPlayer
+            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
+            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
+
         if (dyingFilter)
-        {
-            switch (OwnerCharater.IsPlayer)
-            {
-                case true:
-                    return OwnerCharater
-                        .BattleNode.PlayersList.Cast<Character>()
-                        .Where(x => x.State != Character.CharacterState.Dying)
-                        .OrderBy(x => x.PositionIndex)
-                        .ToArray();
-                case false:
-                    return OwnerCharater
-                        .BattleNode.EnemiesList.Cast<Character>()
-                        .Where(x => x.State != Character.CharacterState.Dying)
-                        .OrderBy(x => x.PositionIndex)
-                        .ToArray();
-            }
-        }
-        switch (OwnerCharater.IsPlayer)
-        {
-            case true:
-                return OwnerCharater
-                    .BattleNode.PlayersList.Cast<Character>()
-                    .OrderBy(x => x.PositionIndex)
-                    .ToArray();
-            case false:
-                return OwnerCharater
-                    .BattleNode.EnemiesList.Cast<Character>()
-                    .OrderBy(x => x.PositionIndex)
-                    .ToArray();
-        }
+            query = query.Where(x => x.State != Character.CharacterState.Dying);
+
+        return query.OrderBy(x => x.PositionIndex).ToArray();
     }
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
@@ -444,141 +428,12 @@ public partial class Skill
         attack.GlobalPosition = target.GlobalPosition;
     }
 
-    public void DescendingProperties(Character target, PropertyType type, int value)
-    {
-        if (target == null)
-            return;
-
-        if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(target))
-        {
-            var immunityHint = Buff.HintScene.Instantiate<BuffHintLabel>();
-            immunityHint.Text =
-                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]";
-            immunityHint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
-            immunityHint.RandomOffset = true;
-            target.AddChild(immunityHint);
-            return;
-        }
-
-        ColorRect icon = null;
-        switch (type)
-        {
-            case PropertyType.Power:
-                target.BattlePower -= value;
-                icon = target.PowerIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.Survivability:
-                target.BattleSurvivability -= value;
-                icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.Speed:
-                target.Speed -= value;
-                icon = target.SpeedIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.MaxLife:
-                target.BattleMaxLife -= value;
-                target.Life = Math.Min(target.Life, target.BattleMaxLife);
-                target.LifeLabel.Text = $"{target.Life}/{target.BattleMaxLife}";
-                target
-                    .CreateTween()
-                    .TweenMethod(
-                        Callable.From(
-                            (int x) =>
-                            {
-                                target.LifeBar.MaxValue = x;
-                            }
-                        ),
-                        target.LifeBar.MaxValue,
-                        target.BattleMaxLife,
-                        0.5f
-                    );
-                break;
-        }
-        if (icon != null)
-        {
-            target.PowerIconLabel.Text = target.BattlePower.ToString();
-            target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-            target.SpeedIconLabel.Text = target.Speed.ToString();
-            Buff.GhostExplode(icon, new Vector2(2f, 2f));
-        }
-
-        CharacterEffect characterEffect =
-            target.CharacterEffectScene.Instantiate<CharacterEffect>();
-        target.AddChild(characterEffect);
-        characterEffect.Animation.Play("lightning");
-
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{GetColoredPropertyLabel(type)} -{value}";
-        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
-        hint.RandomOffset = true;
-        target.AddChild(hint);
-    }
-
-    public void IncreaseProperties(Character target, PropertyType type, int value)
-    {
-        ColorRect icon = null;
-        switch (type)
-        {
-            case PropertyType.Power:
-                target.BattlePower += value;
-                icon = target.PowerIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.Survivability:
-                target.BattleSurvivability += value;
-                icon = target.SurvivabilityIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.Speed:
-                target.Speed += value;
-                icon = target.SpeedIconLabel.GetParent() as ColorRect;
-                break;
-            case PropertyType.MaxLife:
-                target.BattleMaxLife += value;
-                target.LifeLabel.Text = $"{target.Life}/{target.BattleMaxLife}";
-                target
-                    .CreateTween()
-                    .TweenMethod(
-                        Callable.From(
-                            (int x) =>
-                            {
-                                target.LifeBar.MaxValue = x;
-                            }
-                        ),
-                        target.LifeBar.MaxValue,
-                        target.BattleMaxLife,
-                        0.5f
-                    );
-                break;
-        }
-
-        CharacterEffect characterEffect =
-            target.CharacterEffectScene.Instantiate<CharacterEffect>();
-        target.AddChild(characterEffect);
-        characterEffect.Animation.Play("absorb");
-        target.BattleNode.BattleAnimationPlayer.Play("blue");
-
-        if (icon != null)
-        {
-            target.PowerIconLabel.Text = target.BattlePower.ToString();
-            target.SurvivabilityIconLabel.Text = target.BattleSurvivability.ToString();
-            target.SpeedIconLabel.Text = target.Speed.ToString();
-            Buff.GhostExplode(icon, new Vector2(2f, 2f));
-        }
-
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{GetColoredPropertyLabel(type)} +{value}";
-        hint.TargetPosition = target.GlobalPosition + new Vector2(0, 150);
-        hint.RandomOffset = true;
-        target.AddChild(hint);
-    }
-
     public async Task Carry(Character target, int skillIndex)
     {
         if (target.State == Character.CharacterState.Dying)
             return;
         await target.Skills[skillIndex].Effect();
     }
-
-    public void BuffAdd(Buff.BuffName type, int stack) { }
 
     public static Skill GetSkill(SkillID skillID)
     {
@@ -622,6 +477,9 @@ public partial class Skill
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
             SkillID.Swift => new Swift(),
+            SkillID.ArmonAttack => new ArmonAttack(),
+            SkillID.ArmonSurvive => new ArmonSurvive(),
+            SkillID.ArmonSpecial => new ArmonSpecial(),
             _ => null,
         };
     }
@@ -667,4 +525,7 @@ public enum SkillID
     FlashOfLight,
     CrystalGuard,
     Swift,
+    ArmonAttack,
+    ArmonSurvive,
+    ArmonSpecial,
 }

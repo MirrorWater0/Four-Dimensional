@@ -19,37 +19,27 @@ public class TerminateLight : Skill
 
     public override string SkillName { get; set; } = "终末之光";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        await Attack1(BaseDamage + 2 * OwnerPower);
-        if (UsedTimes > 0 && OwnerCharater.Energy >= EnergyCost)
-        {
-            IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-            OwnerCharater.UpdataEnergy(-EnergyCost);
-            UsedTimes--;
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + 2 * OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(
-            BaseDamage,
-            totalDamage,
-            StatX.Power,
-            xMultiplier: 2,
-            clampMax: 999
-        );
-
-        int thisCastPowerBonusTimes = UsedTimes > 0 && OwnerEnergy >= EnergyCost ? 1 : 0;
-
-        SetDescriptionLines(
-            $"造成{damageText}点伤害（受到2倍{GetColoredPropertyLabel(PropertyType.Power)}加成）。",
-            $"若剩余强化>0且能量>={EnergyCost}：消耗{EnergyCost}点能量。",
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"触发次数：{thisCastPowerBonusTimes}。",
-            $"剩余强化次数：{UsedTimes}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 2),
+            ConditionGateStep(
+                condition: _ => UsedTimes > 0,
+                describe: _ => new[] { $"剩余强化次数：{UsedTimes}。" }
+            ),
+            EnergyGateStep(EnergyCost, consume: true),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ConditionGateStep(
+                condition: _ => true,
+                onPass: _ =>
+                {
+                    UsedTimes--;
+                    return Task.CompletedTask;
+                },
+                describe: _ => Array.Empty<string>(),
+                stopOnFail: false
+            )
         );
     }
 }
@@ -69,38 +59,33 @@ public class HolySeal : Skill
 
     public override string SkillName { get; set; } = "圣光封印";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-
-        var targets = Chosetarget1();
-        if (targets.Length == 0)
-            return;
-
-        var target = targets[0];
-        int damage = Math.Clamp(BaseDamage + OwnerPower, 0, 9999);
-
-        await AttackAnimation(target);
-        await target.GetHurt(damage);
-        await Task.Delay(100);
-
-        if (OwnerCharater.Energy < EnergyCost)
-            return;
-
-        OwnerCharater.UpdataEnergy(-EnergyCost);
-        times--;
-        StartActionBuff.BuffAdd(Buff.BuffName.Stun, target, StunStacks);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
-
-        SetDescriptionLines(
-            $"造成{damageText}点伤害。",
-            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量，使目标获得{StunStacks}层{Buff.BuffName.Stun.GetDescription()};",
-            $"触发次数：{times}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ConditionGateStep(
+                condition: _ => times > 0,
+                describe: _ => new[] { $"触发次数：{times}。" }
+            ),
+            EnergyGateStep(EnergyCost, consume: true),
+            ConditionGateStep(
+                condition: _ => true,
+                onPass: _ =>
+                {
+                    times--;
+                    return Task.CompletedTask;
+                },
+                describe: _ => Array.Empty<string>(),
+                stopOnFail: false
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Stun,
+                stacks: StunStacks,
+                maxTargets: 1,
+                energyCost: 0
+            )
         );
     }
 }
+

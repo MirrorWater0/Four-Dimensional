@@ -26,9 +26,7 @@ public partial class PlayerCharacter : Character
         ];
         BattleMaxLife = info.LifeMax;
         Life = BattleMaxLife;
-        BattlePower = info.Power;
-        BattleSurvivability = info.Survivability;
-        Speed = info.Speed;
+        SetCombatStats(info.Power, info.Survivability, info.Speed);
         base.Initialize();
         IsPlayer = true;
         BlockLabel.Position += new Vector2(230, 0);

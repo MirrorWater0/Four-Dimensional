@@ -15,37 +15,41 @@ public partial class SacredOnslaught : Skill
 
     public override string SkillName { get; set; } = "圣域冲击";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        Character[] targets = Chosetarget1();
-        int hitCount = Math.Min(MaxTargets, targets.Length);
-        for (int i = 0; i < hitCount; i++)
-        {
-            _ = Attack3(OwnerPower, targets[i], 1);
-        }
-        OwnerCharater.UpdataBlock(OwnerSurvivability + BlockPerTarget * hitCount);
-        await Task.Delay(400);
-    }
+        return new SkillPlan(
+            this,
+            AoeDamageStep(baseDamage: 0, powerMultiplier: 1, maxTargets: MaxTargets, times: 1),
+            CustomStep(
+                async __ =>
+                {
+                    int hitCount = Math.Min(MaxTargets, Chosetarget1().Length);
+                    OwnerCharater?.UpdataBlock(
+                        Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999)
+                    );
+                    await Task.Delay(400);
+                },
+                __ =>
+                {
+                    int targetCount = IsInBattle ? Math.Min(MaxTargets, Chosetarget1().Length) : 0;
+                    int totalBlock = IsInBattle
+                        ? (OwnerSurvivability + BlockPerTarget * targetCount)
+                        : 0;
 
-    public override void UpdateDescription()
-    {
-        int targetCount = IsInBattle ? Math.Min(MaxTargets, Chosetarget1().Length) : 0;
-        int totalBlock = IsInBattle ? (OwnerSurvivability + BlockPerTarget * targetCount) : 0;
+                    string targetCountText = Total("目标数", targetCount);
+                    string totalBlockText = WithBattleTotal(
+                        $"{X(StatX.Survivability)}+目标数*{BlockPerTarget}",
+                        totalBlock,
+                        clampMax: 999
+                    );
 
-        string targetCountText = WithBattleTotal("目标数", targetCount);
-        string perTargetDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
-        string totalBlockText = WithBattleTotal(
-            $"{X(StatX.Survivability)}+目标数*{BlockPerTarget}",
-            totalBlock,
-            clampMax: 999
-        );
-
-        SetDescriptionLines(
-            $"最多{MaxTargets}个目标。",
-            $"当前命中{targetCountText}个。",
-            $"每个目标造成{perTargetDamageText}点伤害。",
-            $"获得：{totalBlockText}点格挡。"
+                    return new[]
+                    {
+                        $"当前命中{targetCountText}个。",
+                        $"获得：{totalBlockText}点格挡。",
+                    };
+                }
+            )
         );
     }
 }
@@ -53,6 +57,7 @@ public partial class SacredOnslaught : Skill
 public partial class ResonantSlash : Skill
 {
     private const int BaseDamage = 3;
+    private const int UpgradeDamageBonus = 2;
 
     public ResonantSlash()
         : base(SkillTypes.Attack)
@@ -62,17 +67,12 @@ public partial class ResonantSlash : Skill
 
     public override string SkillName { get; set; } = "共振斩击";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        await Attack2(BaseDamage + OwnerPower);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
-        SetDescriptionLines($"二段攻击。", $"每段造成{damageText}点伤害。");
+        return new SkillPlan(
+            this,
+            DoubleStrikeStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus))
+        );
     }
 }
 
@@ -89,25 +89,16 @@ public partial class EchoPuncture : Skill
 
     public override string SkillName { get; set; } = "回声穿刺";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-
-        await Attack1(BaseDamage + OwnerPower);
-        var targets = Chosetarget1();
-        if (targets.Length == 0)
-            return;
-
-        HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, targets[0], VulnerableStacks);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
-        SetDescriptionLines(
-            $"造成{damageText}点伤害。",
-            $"给予目标{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: VulnerableStacks,
+                maxTargets: 1
+            )
         );
     }
 }

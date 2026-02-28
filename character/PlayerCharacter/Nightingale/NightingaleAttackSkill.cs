@@ -17,33 +17,28 @@ public partial class ShadowAmbush : Skill
 
     public override string SkillName { get; set; } = "影袭";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-
-        bool isInvisible =
-            OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
-            == true;
-        int damage = BaseDamage + OwnerPower;
-        await Attack1(damage);
-
-        if (isInvisible)
-            await Attack1(damage);
-
-        IncreaseProperties(OwnerCharater, PropertyType.Power, GainPower);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalDamage = BaseDamage + OwnerPower;
-        bool isInvisible =
-            OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
-            == true;
-
-        SetDescriptionLines(
-            $"造成{BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power)}点伤害。",
-            $"若自身拥有{Buff.BuffName.Invisible.GetDescription()}：额外造成一次伤害。",
-            $"获得{GainPower}点{PropertyType.Power.GetDescription()}。"
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ConditionGateStep(
+                condition: _ =>
+                    OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
+                    == true,
+                onPass: async _ =>
+                {
+                    int damage = DamageFromPower(BaseDamage);
+                    await Attack1(damage);
+                },
+                describe: _ =>
+                    new[]
+                    {
+                        $"若自身拥有{Buff.BuffName.Invisible.GetDescription()}：额外造成一次伤害。",
+                    },
+                stopOnFail: false
+            ),
+            ModifyPropertyStep(PropertyType.Power, GainPower)
         );
     }
 }

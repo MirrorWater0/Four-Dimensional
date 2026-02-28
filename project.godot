@@ -44,8 +44,10 @@ folder_colors={
 "res://battle/": "purple",
 "res://battle/buff/": "green",
 "res://battle/buff/StateIcon/": "green",
+"res://character/": "green",
 "res://character/EnemyCharacter/": "red",
-"res://character/PlayerCharacter/": "red"
+"res://character/PlayerCharacter/": "blue",
+"res://character/SkillBase/": "yellow"
 }
 
 [global]

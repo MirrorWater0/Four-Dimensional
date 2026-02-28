@@ -199,8 +199,8 @@ public partial class PlayerCharacterRegistry
         PassiveDescription =
             $"队友结束回合时：追击一次:造成{Skill.PropertyType.Power.GetDescription()}点伤害。",
         LifeMax = 50,
-        Power = 10,
-        Survivability = 11,
+        Power = 11,
+        Survivability = 10,
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",

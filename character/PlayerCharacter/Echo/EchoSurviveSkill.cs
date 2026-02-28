@@ -17,27 +17,23 @@ public partial class SoundBarrier : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        OwnerCharater.UpdataEnergy(EnergyGain);
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-        await Task.Delay(200);
-        if (times > 0)
-        {
-            times--;
-            await Carry(GetAllyByRelative(1), 0);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
-        SetDescriptionLines(
-            $"恢复{EnergyGain}点能量。",
-            $"获得{blockText}点格挡。",
-            $"连携下一位角色使用攻击技能。剩余{times}次"
+        return new SkillPlan(
+            this,
+            EnergyStep(EnergyGain),
+            SelfBlockStep(BaseBlock),
+            ConditionGateStep(
+                condition: _ => times > 0,
+                async skill =>
+                {
+                    await Task.Delay(200);
+                    times--;
+                    await skill.Carry(skill.GetAllyByRelative(1), 0);
+                },
+                describe: _ => new[] { $"连携下一位角色使用攻击技能。剩余{times}次" },
+                stopOnFail: false
+            )
         );
     }
 }
@@ -55,20 +51,17 @@ public partial class SonicDeflection : Skill
 
     public override string SkillName { get; set; } = "声波偏转";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-        HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, DamageImmuneStacks);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
-        SetDescriptionLines(
-            $"获得{blockText}点格挡。",
-            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。"
+        return new SkillPlan(
+            this,
+            SelfBlockStep(BaseBlock),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.DamageImmune,
+                stacks: DamageImmuneStacks,
+                index: 0,
+                dyingFilter: false
+            )
         );
     }
 }
@@ -86,20 +79,12 @@ public partial class TuningStance : Skill
 
     public override string SkillName { get; set; } = "韵律姿态";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
-        SetDescriptionLines(
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"获得{blockText}点格挡。"
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            SelfBlockStep(BaseBlock)
         );
     }
 }
@@ -118,22 +103,19 @@ public partial class ResonantWard : Skill
 
     public override string SkillName { get; set; } = "回响护佑";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, OwnerCharater, DebuffImmunityStacks);
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability);
-        SetDescriptionLines(
-            $"获得{DebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
-            $"获得{blockText}点格挡。",
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.DebuffImmunity,
+                stacks: DebuffImmunityStacks,
+                index: 0,
+                dyingFilter: false
+            ),
+            SelfBlockStep(BaseBlock),
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
+

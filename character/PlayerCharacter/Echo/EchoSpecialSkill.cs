@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -19,44 +18,44 @@ public class EchonicResonance : Skill
 
     public override string SkillName { get; set; } = "回响共鸣";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        await Attack1(OwnerPower);
-        while (OwnerCharater.Energy > 0)
-        {
-            OwnerCharater.UpdataEnergy(-CostPerCast);
-            await Attack1(OwnerPower);
-            DescendingProperties(Chosetarget1()[0], PropertyType.Survivability, desurive);
-            IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGainPerCast);
-        }
-    }
+        return new SkillPlan(
+            this,
+            ComboPrimaryAttackStep(
+                baseDamage: 0,
+                powerMultiplier: 1,
+                baseCasts: 1,
+                energyCostPerExtraCast: CostPerCast,
+                onAfterEachCast: async castIndex =>
+                {
+                    if (castIndex <= 1)
+                        return;
 
-    public override void UpdateDescription()
-    {
-        int energy = OwnerEnergy;
-        int bonusCasts = Math.Max(0, (int)Math.Ceiling((double)energy / CostPerCast));
-        int castTimes = 1 + bonusCasts;
-        int totalPowerGain = bonusCasts * PowerGainPerCast;
+                    await LowerTargetPropertyStep(PropertyType.Survivability, desurive).Execute(this);
+                    await ModifyPropertyStep(PropertyType.Power, PowerGainPerCast).Execute(this);
+                },
+                extraDescribe: () =>
+                {
+                    int bonusCasts = BonusCastsFromEnergy(CostPerCast);
+                    int totalPowerGain = bonusCasts * PowerGainPerCast;
+                    string totalPowerGainBasis =
+                        CostPerCast == 1
+                            ? $"{PowerGainPerCast}*{EnergyXText()}"
+                            : $"{PowerGainPerCast}*ceil({EnergyXText()}/{CostPerCast})";
+                    string totalPowerGainText = WithBattleTotal(
+                        totalPowerGainBasis,
+                        totalPowerGain
+                    );
 
-        string energyX = X(StatX.Energy);
-        string castTimesBasis =
-            CostPerCast == 1 ? $"1+{energyX}" : $"1+ceil({energyX}/{CostPerCast})";
-        string castTimesText = WithBattleTotal(castTimesBasis, castTimes);
-        string perCastDamageText = XWithBattleTotal(StatX.Power, OwnerPower);
-        string totalPowerGainBasis =
-            CostPerCast == 1
-                ? $"{PowerGainPerCast}*{energyX}"
-                : $"{PowerGainPerCast}*ceil({energyX}/{CostPerCast})";
-        string totalPowerGainText = WithBattleTotal(totalPowerGainBasis, totalPowerGain);
-
-        SetDescriptionLines(
-            $"消耗所有能量:施放次数：{castTimesText};",
-            $"每次伤害：{perCastDamageText};",
-            $"每次消耗：{CostPerCast}点能量;",
-            $"每次降低目标{desurive}点{GetColoredPropertyLabel(PropertyType.Survivability)}。",
-            $"每次提升：{PowerGainPerCast}点{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"总力量提升：{totalPowerGainText}。"
+                    return new[]
+                    {
+                        $"每次额外施放降低目标{LosePropertyText(PropertyType.Survivability, desurive)}。",
+                        $"每次额外施放提升{GainPropertyText(PropertyType.Power, PowerGainPerCast)}。",
+                        $"总力量提升：{totalPowerGainText}。",
+                    };
+                }
+            )
         );
     }
 }
@@ -65,7 +64,7 @@ public class SonicBoom : Skill
 {
     private const int BaseDamage = 0;
     private const int EnergyCost = 6;
-    int times = 2;
+    private const int ExtraTimes = 2;
 
     public SonicBoom()
         : base(SkillTypes.Special)
@@ -75,33 +74,13 @@ public class SonicBoom : Skill
 
     public override string SkillName { get; set; } = "音爆";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-
-        int damage = BaseDamage + OwnerPower;
-        await AOE(damage, Chosetarget1().Length, 1);
-
-        if (OwnerCharater.Energy >= EnergyCost)
-        {
-            OwnerCharater.UpdataEnergy(-EnergyCost);
-
-            await AOE(damage, Chosetarget1().Length, 1);
-            await AOE(damage, Chosetarget1().Length, 1);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        int waves = OwnerEnergy >= EnergyCost ? 2 : 1;
-        int totalDamage = BaseDamage + OwnerPower;
-        string damageText = BasePlusXWithBattleTotal(BaseDamage, totalDamage, StatX.Power);
-        string wavesText = WithBattleTotal("次数", waves);
-        SetDescriptionLines(
-            $"对所有敌人造成{damageText}点伤害。",
-            $"当前{wavesText}次。",
-            $"若能量>={EnergyCost}：额外消耗{EnergyCost}点能量。",
-            $"并追加{times}次。"
+        return new SkillPlan(
+            this,
+            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0),
+            EnergyGateStep(EnergyCost, consume: true),
+            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0, times: ExtraTimes)
         );
     }
 }
@@ -121,44 +100,66 @@ public class PhaseEcho : Skill
 
     public override string SkillName { get; set; } = "相位回声";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ConditionGateStep(
+                condition: _ => OwnerEnergy < EnergyCost,
+                onPass: async skill =>
+                {
+                    await SelfBlockStep(BaseBlock / 2).Execute(skill);
+                    await ApplyBuffFriendlyAbsolute(
+                            buffName: Buff.BuffName.DamageImmune,
+                            stacks: 1,
+                            index: 0,
+                            dyingFilter: false
+                        )
+                        .Execute(skill);
+                    await Task.Delay(200);
+                },
+                describe: _ =>
+                {
+                    string lowBlockText = BlockFromSurvivabilityText(BaseBlock / 2);
+                    return new[]
+                    {
+                        $"否则：获得{lowBlockText}点格挡。",
+                        BuffLine(Buff.BuffName.DamageImmune, 1),
+                    };
+                },
+                stopOnFail: false
+            ),
+            ConditionGateStep(
+                condition: _ => OwnerEnergy >= EnergyCost,
+                onPass: async skill =>
+                {
+                    if (!TrySpendEnergy(EnergyCost))
+                        return;
 
-        if (OwnerCharater.Energy >= EnergyCost)
-        {
-            OwnerCharater.UpdataEnergy(-EnergyCost);
-            OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-            HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, DamageImmuneStacks);
-        }
-        else
-        {
-            OwnerCharater.UpdataBlock(BaseBlock / 2 + OwnerSurvivability);
-            HurtBuff.BuffAdd(Buff.BuffName.DamageImmune, OwnerCharater, 1);
-        }
-
-        await Task.Delay(200);
-    }
-
-    public override void UpdateDescription()
-    {
-        int fullBlock = BaseBlock + OwnerSurvivability;
-        int lowBlock = BaseBlock / 2 + OwnerSurvivability;
-
-        string fullBlockText = BasePlusXWithBattleTotal(BaseBlock, fullBlock, StatX.Survivability);
-        string lowBlockText = BasePlusXWithBattleTotal(
-            BaseBlock / 2,
-            lowBlock,
-            StatX.Survivability
-        );
-        SetDescriptionLines(
-            $"获得{PowerGain}点{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"若能量>={EnergyCost}：消耗{EnergyCost}点能量。",
-            $"获得{fullBlockText}点格挡。",
-            $"获得{DamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
-            $"否则：获得{lowBlockText}点格挡。",
-            $"获得1层{Buff.BuffName.DamageImmune.GetDescription()}。"
+                    await SelfBlockStep(BaseBlock).Execute(skill);
+                    await ApplyBuffFriendlyAbsolute(
+                            buffName: Buff.BuffName.DamageImmune,
+                            stacks: DamageImmuneStacks,
+                            index: 0,
+                            dyingFilter: false
+                        )
+                        .Execute(skill);
+                    await Task.Delay(200);
+                },
+                describe: _ =>
+                {
+                    string fullBlockText = BlockFromSurvivabilityText(BaseBlock);
+                    return new[]
+                    {
+                        $"若能量>={EnergyCost}：消耗{EnergyCost}点能量。",
+                        $"获得{fullBlockText}点格挡。",
+                        BuffLine(Buff.BuffName.DamageImmune, DamageImmuneStacks),
+                    };
+                },
+                stopOnFail: false
+            )
         );
     }
 }
+

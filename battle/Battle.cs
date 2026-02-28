@@ -540,6 +540,9 @@ public partial class Battle : Node2D
     private void InitDummy()
     {
         dummy.BattleNode = this;
+        dummy.Visible = false;
+        dummy.Position = new Vector2(10000, -10000);
+        dummy.BattleMaxLife = 1_000_000_000;
         dummy.Skills = [new Skill(Skill.SkillTypes.Attack)];
         dummy.Initialize();
     }

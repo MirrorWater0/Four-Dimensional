@@ -16,19 +16,17 @@ public partial class VeilStep : Skill
 
     public override string SkillName { get; set; } = "夜幕潜行";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        StartActionBuff.BuffAdd(Buff.BuffName.Invisible, OwnerCharater, InvisibleStacks);
-        GetAllyByRelative(-1, true).UpdataBlock(BaseBlock + OwnerSurvivability);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        SetDescriptionLines(
-            $"获得{InvisibleStacks}层{Buff.BuffName.Invisible.GetDescription()}。",
-            $"令上一个存活的角色获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。"
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Invisible,
+                stacks: InvisibleStacks,
+                index: 0,
+                dyingFilter: false
+            ),
+            RelativeAllyBlockStep(relativeIndex: -1, baseBlock: BaseBlock, dyingFilter: true)
         );
     }
 }
@@ -47,21 +45,17 @@ public partial class FlashOfLight : Skill
 
     public override string SkillName { get; set; } = "闪耀之光";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        StartActionBuff.BuffAdd(Buff.BuffName.Vulnerable, Chosetarget1()[0], VulnerableStacks);
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-        IncreaseProperties(OwnerCharater, PropertyType.Power, Inpower);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        SetDescriptionLines(
-            $"获得{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。",
-            $"令自己获得{BasePlusXWithBattleTotal(BaseBlock, totalBlock, StatX.Survivability, clampMax: 999)}点格挡。",
-            $"使自己获得+{Inpower}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        return new SkillPlan(
+            this,
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: VulnerableStacks,
+                maxTargets: 1
+            ),
+            SelfBlockStep(BaseBlock),
+            ModifyPropertyStep(PropertyType.Power, Inpower)
         );
     }
 }
@@ -79,21 +73,18 @@ public partial class Swift : Skill
 
     public override string SkillName { get; set; } = "迅捷";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Speed, SpeedGain);
-
-        var allies = GetAllAllyWithOrder(true);
-        for (int i = 0; i < allies.Length; i++)
-            IncreaseProperties(allies[i], PropertyType.Survivability, SurvivabilityGain);
-    }
-
-    public override void UpdateDescription()
-    {
-        SetDescriptionLines(
-            $"使自己获得+{SpeedGain}{GetColoredPropertyLabel(PropertyType.Speed)}。",
-            $"使所有存活的角色获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Speed, SpeedGain),
+            ModifyPropertyAbsoluteStep(
+                type: PropertyType.Survivability,
+                value: SurvivabilityGain,
+                selector: PropertyAbsoluteSelector.All,
+                dyingFilter: true
+            )
         );
     }
 }
+

@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-public abstract partial class EnemyRegedit : Resource
+public abstract partial class EnemyRegedit
 {
     public enum EnemyPositionType
     {
@@ -74,5 +74,29 @@ public partial class FearWormRegedit : EnemyRegedit
         PassiveDescription =
             $"初始：获得1层{Buff.BuffName.DebuffImmunity.GetDescription()}。"
             + $"\n回合结束时：获得{2}点力量。";
+    }
+}
+
+public partial class ArmonRegedit : EnemyRegedit
+{
+    public ArmonRegedit()
+    {
+        CharacterName = "Armon";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Armon.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
+
+        // Base stats (used for preview / original properties)
+        MaxLife = 80;
+        Power = 13;
+        Survivability = 13;
+        Speed = 9;
+
+        SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
+
+        PassiveName = "矩阵核心";
+        PassiveDescription =
+            $"首个行动开始时：复活所有阵亡队友并恢复50%生命（受生存加成，可为负）；若无人阵亡，自身获得一次格挡（数值为自身生存）。"
+            + $"\n回合结束时：全阵获得格挡，数值为自身生存。";
     }
 }

@@ -18,41 +18,16 @@ public partial class ShockWave : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-
-        if (OwnerCharater?.BattleNode == null)
-            return;
-
-        var targets = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
-            : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
-
-        foreach (
-            var target in targets.Where(x =>
-                x != null && x.State == Character.CharacterState.Normal
-            )
-        )
-        {
-            HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, VulnerableStacks);
-        }
-
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(
-            BaseBlock,
-            totalBlock,
-            StatX.Survivability,
-            clampMax: 999
-        );
-        SetDescriptionLines(
-            $"使所有敌人获得{VulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}。",
-            $"获得{blockText}点格挡。"
+        return new SkillPlan(
+            this,
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: VulnerableStacks,
+                maxTargets: 0
+            ),
+            SelfBlockStep(BaseBlock)
         );
     }
 }
@@ -70,26 +45,13 @@ public partial class ReNewedSpirit : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        IncreaseProperties(OwnerCharater, PropertyType.Power, PowerGain);
-        IncreaseProperties(OwnerCharater, PropertyType.Survivability, SurvivabilityGain);
-        OwnerCharater.UpdataBlock(OwnerCharater.BattleSurvivability);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = OwnerSurvivability + SurvivabilityGain;
-        string blockText = BasePlusXWithBattleTotal(
-            SurvivabilityGain,
-            totalBlock,
-            StatX.Survivability
-        );
-        SetDescriptionLines(
-            $"获得{blockText}点格挡。",
-            $"获得+{PowerGain}{GetColoredPropertyLabel(PropertyType.Power)}。",
-            $"获得+{SurvivabilityGain}{GetColoredPropertyLabel(PropertyType.Survivability)}。"
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
+            SelfBlockStep(baseBlock: 0)
         );
     }
 }
@@ -106,26 +68,13 @@ public partial class AbsouluteDefense : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        OwnerCharater.UpdataBlock(basisBlock + OwnerCharater.BattleSurvivability);
-        OwnerCharater.UpdataBlock(basisBlock + OwnerCharater.BattleSurvivability);
-        IncreaseProperties(OwnerCharater, PropertyType.Power, GainPower);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = basisBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(
-            basisBlock,
-            totalBlock,
-            StatX.Survivability,
-            clampMax: 999
-        );
-        SetDescriptionLines(
-            $"获得{blockText}点格挡（共{2}次）。",
-            $"获得+{GainPower}{GetColoredPropertyLabel(PropertyType.Power)}。"
+        return new SkillPlan(
+            this,
+            SelfBlockStep(basisBlock),
+            SelfBlockStep(basisBlock),
+            ModifyPropertyStep(PropertyType.Power, GainPower)
         );
     }
 }
@@ -143,26 +92,18 @@ public partial class TauntingGuard : Skill
         UpdateDescription();
     }
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        await base.Effect();
-        HurtBuff.BuffAdd(Buff.BuffName.Taunt, OwnerCharater, TauntStacks);
-        OwnerCharater.UpdataBlock(BaseBlock + OwnerSurvivability);
-    }
-
-    public override void UpdateDescription()
-    {
-        int totalBlock = BaseBlock + OwnerSurvivability;
-        string blockText = BasePlusXWithBattleTotal(
-            BaseBlock,
-            totalBlock,
-            StatX.Survivability,
-            clampMax: 999
-        );
-
-        SetDescriptionLines(
-            $"使自己获得{TauntStacks}层{Buff.BuffName.Taunt.GetDescription()}。",
-            $"获得{blockText}点格挡。"
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Taunt,
+                stacks: TauntStacks,
+                index: 0,
+                dyingFilter: false
+            ),
+            SelfBlockStep(BaseBlock)
         );
     }
 }
+

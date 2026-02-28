@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://572h58d8tx3r"]
 
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="1_de7ns"]
-[ext_resource type="Script" uid="uid://cwve6v6oq1c2p" path="res://character/EnemyCharacter/FearWorm.cs" id="2_02sp4"]
+[ext_resource type="Script" uid="uid://cwve6v6oq1c2p" path="res://character/EnemyCharacter/EnemyScript/FearWorm.cs" id="2_02sp4"]
 [ext_resource type="Texture2D" uid="uid://bk0hpr8ld73nx" path="res://asset/EnemyCharater/FearWorm.png" id="2_j28qb"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="3_02sp4"]
 
