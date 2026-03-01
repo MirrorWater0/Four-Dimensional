@@ -15,7 +15,7 @@ public partial class ReadyButton : Button
     [Export]
     ColorRect ChangeEffect;
 
-    public override async void _Ready()
+    public override void _Ready()
     {
         ButtonDown += Click;
         MouseEntered += mouse_entered;

@@ -13,7 +13,7 @@ public partial class CharacterControl : Control
     public Frame[] CharactersControl =>
         new[] { CharaterFrame1, CharaterFrame2, CharaterFrame3, CharaterFrame4 };
 
-    public override async void _Ready() { }
+    public override void _Ready() { }
 
     public void Connect()
     {

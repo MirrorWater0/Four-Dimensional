@@ -36,7 +36,6 @@ public partial class LongNight : Skill
 {
     int DeSurvive = 3;
     int deSpeed = 3;
-    int times = 1;
     int energyCost1 = 2;
     int energyCost2 = 1;
     int Inpower = 5;

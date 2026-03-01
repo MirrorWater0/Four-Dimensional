@@ -137,9 +137,7 @@ public static class GlobalFunction
 
         // Only process outside BBCode tags to avoid corrupting things like [color=#87CEEB].
         // "Cambridge Blue" is commonly represented as #A3C1AD.
-        const string red = "#ff0000";
         const string cambridgeBlue = "#9cdacf";
-        const string darkBlue = "#4444ef";
 
         StringBuilder builder = new StringBuilder(input.Length * 2);
         bool inTag = false;

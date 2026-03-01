@@ -42,12 +42,13 @@ public partial class Armon : EnemyCharacter
         }
     }
 
-    public async Task StartPassive()
+    public Task StartPassive()
     {
         for (int i = 0; i < BattleNode.EnemiesList.Count; i++)
         {
             BattleNode.EnemiesList[i].UpdataBlock(BattleSurvivability);
         }
+        return Task.CompletedTask;
     }
 }
 

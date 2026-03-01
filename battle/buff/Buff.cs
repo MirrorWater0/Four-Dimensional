@@ -204,7 +204,7 @@ public class DyingBuff : Buff
     public DyingBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public async Task Trigger()
+    public Task Trigger()
     {
         switch (ThisBuffName)
         {
@@ -226,6 +226,7 @@ public class DyingBuff : Buff
             }
             Owner.DyingBuffs.Remove(this);
         }
+        return Task.CompletedTask;
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack)

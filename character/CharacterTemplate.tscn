@@ -501,8 +501,8 @@ scale_min = 10.0
 scale_max = 32.92
 color_ramp = SubResource("GradientTexture1D_3q742")
 alpha_curve = SubResource("CurveTexture_3q742")
-hue_variation_min = -0.28000003
-hue_variation_max = 0.13999997
+hue_variation_min = -0.08000002
+hue_variation_max = 0.009999977
 
 [node name="CharacterTemplate" type="Node2D" unique_id=1123852147]
 z_index = 1

@@ -6,23 +6,59 @@
 [ext_resource type="Texture2D" uid="uid://deraktmr5w000" path="res://asset/UI/轨迹素材_093.png" id="4_4b02f"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="5_ck3o7"]
 [ext_resource type="Material" uid="uid://1r2tn2d685o8" path="res://battle/UIScene/BattleReady/PosChange.tres" id="6_3abbs"]
-[ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="7_xivc3"]
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="7_q1qv0"]
+[ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="8_wa4fa"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="9_2161l"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
 shader = ExtResource("1_q1qv0")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_e2bq2"]
 shader = ExtResource("3_2161l")
-shader_parameter/speed = 1.0
-shader_parameter/bg_color = Color(0.14631414, 0.16134658, 0.2562786, 1)
-shader_parameter/rect_color = Color(0.003921569, 0.16078432, 0.30588236, 1)
-shader_parameter/rect_count = 60.0
-shader_parameter/edge_blur = 0.003
-shader_parameter/hue_variation = -0.08000000566247
-shader_parameter/appearance = 0.999999977648
+shader_parameter/color_top = Color(0.02, 0.04, 0.1, 1)
+shader_parameter/color_mid = Color(0.04, 0.02, 0.08, 1)
+shader_parameter/color_bot = Color(0.0883951, 0.12219914, 0.21050516, 1)
+shader_parameter/star_color = Color(0.5, 0.8, 1, 1)
+shader_parameter/line_color = Color(0.4, 0.39215687, 0.5882353, 0.3647059)
+shader_parameter/spacing = 160.0
+shader_parameter/density = 0.28
+shader_parameter/star_base_size = 3.0
+shader_parameter/line_weight = 1.0
+shader_parameter/line_softness = 1.3
+shader_parameter/drift_speed = 0.25
+shader_parameter/drift_dist = 0.22
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_e2bq2"]
 blend_mode = 1
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_q1qv0"]
+resource_local_to_scene = true
+shader = ExtResource("7_q1qv0")
+shader_parameter/sword_color = Color(1, 1, 1, 1)
+shader_parameter/blade_color = Color(1, 1, 1, 1)
+shader_parameter/handle_color = Color(1, 1, 1, 1)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2161l"]
+resource_local_to_scene = true
+shader = ExtResource("8_wa4fa")
+shader_parameter/color = Color(1.1801987, 1.1801987, 1.1801987, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4b02f"]
+resource_local_to_scene = true
+shader = ExtResource("9_2161l")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 0.5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5w4iu"]
 bg_color = Color(1, 1, 1, 1)
@@ -34,6 +70,87 @@ corner_radius_bottom_left = 4
 [sub_resource type="Theme" id="Theme_dbxj7"]
 Panel/styles/panel = SubResource("StyleBoxFlat_5w4iu")
 
+[sub_resource type="Shader" id="Shader_q1qv0"]
+code = "shader_type canvas_item;
+
+// --- 颜色与样式 ---
+uniform vec4 star_color : source_color = vec4(0.95, 0.90, 0.75, 1.0); // 香槟金
+uniform float line_width = 0.025;    // 外星形的线条粗细
+uniform float glow_strength = 20.0;  // 发光强度
+
+// --- 星形尺寸 ---
+uniform float outer_size = 0.35;     // 外层空心星形的大小
+uniform float inner_size = 0.12;     // 内层实心星形的大小
+uniform float concavity = 1.2;       // 星形的内凹/尖锐程度 (推荐 0.8 到 1.5)
+
+// 【核心数学公式】：完美的内凹四角星 SDF
+// 通过 length(p) + k * min(x,y) 构造出由四条抛物线组成的完美星形
+float sdConcaveStar(vec2 p, float r, float k) {
+    p = abs(p);
+    float len = length(p);
+    
+    // 保护机制，防止中心点出现 NaN
+    if (len < 0.00001) return -r; 
+    
+    float m = min(p.x, p.y);
+    float d = len + k * m - r;
+    
+    // 计算梯度对距离进行完美归一化，保证不管怎么变形，线条粗细绝对均匀
+    float grad_len = sqrt(1.0 + k*k + 2.0*k*m / len);
+    return d / grad_len;
+}
+
+void fragment() {
+    // 获取绝对精准的 1 像素宽度，用于抗锯齿
+    float px = fwidth(UV.y);
+    if (px == 0.0) px = 0.005; 
+    
+    // 坐标居中 (-0.5 到 0.5)
+    vec2 uv = UV - 0.5;
+    
+    // --- 绘制外层空心星形 ---
+    float d_outer = sdConcaveStar(uv, outer_size, concavity);
+    // 使用 abs() 将实心变成空心线条
+    float d_hollow = abs(d_outer) - line_width * 0.5;
+    
+    // --- 绘制内层实心星形 ---
+    // 内层的星星可以稍微没那么尖锐，所以 concavity - 0.2
+    float d_inner = sdConcaveStar(uv, inner_size, max(0.0, concavity - 0.2));
+    
+    // --- 图形合并 ---
+    float final_dist = min(d_hollow, d_inner);
+    
+    // --- 极致平滑抗锯齿 ---
+    // 强制使用 1.5 像素宽度的柔和过渡带
+    float shape_alpha = smoothstep(px * 1.5, -px * 1.5, final_dist);
+    
+    // --- 发光效果 ---
+    float glow = exp(-max(final_dist, 0.0) * glow_strength);
+    
+    // --- 颜色混合输出 ---
+    vec4 final_color = vec4(0.0);
+    
+    // 底层：泛光层
+    final_color.rgb = star_color.rgb;
+    final_color.a = glow * 0.5; 
+    
+    // 表层：实体高亮层
+    final_color.rgb = mix(final_color.rgb, star_color.rgb * 1.5, shape_alpha);
+    final_color.a = max(final_color.a, shape_alpha);
+    
+    COLOR = final_color;
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wa4fa"]
+shader = SubResource("Shader_q1qv0")
+shader_parameter/star_color = Color(0.95, 0.9, 0.75, 1)
+shader_parameter/line_width = 0.02
+shader_parameter/glow_strength = 25.0
+shader_parameter/outer_size = 0.35
+shader_parameter/inner_size = 0.12
+shader_parameter/concavity = 1.2
+
 [node name="BattleReady" type="Control" unique_id=342118046]
 material = SubResource("ShaderMaterial_ejwt2")
 layout_mode = 3
@@ -43,10 +160,8 @@ script = ExtResource("2_wa4fa")
 [node name="BG" type="ColorRect" parent="." unique_id=335133166]
 material = SubResource("ShaderMaterial_e2bq2")
 layout_mode = 0
-offset_top = -600.0
 offset_right = 1920.0
-offset_bottom = 1320.0
-metadata/_edit_lock_ = true
+offset_bottom = 1080.0
 
 [node name="TextureRect" type="TextureRect" parent="." unique_id=619797561]
 visible = false
@@ -170,33 +285,36 @@ theme_override_constants/separation = 14
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1313883033]
 layout_mode = 0
-offset_left = 875.0
-offset_top = 72.0
-offset_right = 1255.0
-offset_bottom = 132.0
+offset_left = 916.0
+offset_top = 79.0
+offset_right = 1296.0
+offset_bottom = 119.0
 scale = Vector2(2, 2)
-theme_override_constants/separation = 110
+theme_override_constants/separation = 130
 
-[node name="skill1" parent="HBoxContainer" unique_id=731445257 instance=ExtResource("7_xivc3")]
+[node name="ColorRect" type="ColorRect" parent="HBoxContainer" unique_id=284456308]
+material = SubResource("ShaderMaterial_q1qv0")
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-disabled = true
 
-[node name="skill2" parent="HBoxContainer" unique_id=1682797457 instance=ExtResource("7_xivc3")]
+[node name="RhomboidIcon" type="ColorRect" parent="HBoxContainer" unique_id=726284489]
+material = SubResource("ShaderMaterial_2161l")
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-disabled = true
-MySkillType = 1
+mouse_filter = 1
 
-[node name="skill3" parent="HBoxContainer" unique_id=1902815261 instance=ExtResource("7_xivc3")]
+[node name="TerminateSkillIcon" type="ColorRect" parent="HBoxContainer" unique_id=1999295931]
+material = SubResource("ShaderMaterial_4b02f")
+custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-disabled = true
-MySkillType = 2
+mouse_filter = 1
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=1055536850]
 layout_mode = 0
-offset_left = 798.0
-offset_top = 67.0
-offset_right = 1507.0
-offset_bottom = 636.0
+offset_left = 804.0
+offset_top = 194.0
+offset_right = 1513.0
+offset_bottom = 679.0
 mouse_filter = 2
 theme_override_constants/separation = 342
 
@@ -214,3 +332,11 @@ theme = SubResource("Theme_dbxj7")
 custom_minimum_size = Vector2(3, 20)
 layout_mode = 2
 theme = SubResource("Theme_dbxj7")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1598531785]
+material = SubResource("ShaderMaterial_wa4fa")
+layout_mode = 0
+offset_left = 1157.0
+offset_top = -2.0
+offset_right = 1217.0
+offset_bottom = 64.0

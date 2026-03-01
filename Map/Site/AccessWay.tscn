@@ -10,8 +10,8 @@ anti_aliasing_size = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8oxmn"]
 bg_color = Color(1, 1, 1, 1)
-border_width_top = 2
-border_width_bottom = 2
+border_width_top = 1
+border_width_bottom = 1
 border_color = Color(0.8, 0.8, 0.8, 0)
 corner_radius_top_left = 2
 corner_radius_top_right = 2
@@ -29,7 +29,7 @@ show_behind_parent = true
 offset_left = 65.0
 offset_top = 34.0
 offset_right = 195.0
-offset_bottom = 44.0
+offset_bottom = 39.0
 theme = SubResource("Theme_8oxmn")
 value = 10.0
 show_percentage = false

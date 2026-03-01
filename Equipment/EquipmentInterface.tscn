@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://letn64mu1u8d"]
+
+[ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="1_g450c"]
+[ext_resource type="Script" uid="uid://dacnydowvtjvc" path="res://Equipment/EquipmentInterface.cs" id="1_j0tuy"]
+[ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="3_y5pho"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j0tuy"]
+shader = ExtResource("1_g450c")
+shader_parameter/bg_color_top = Color(0.08, 0.09, 0.16, 1)
+shader_parameter/bg_color_bottom = Color(0.02, 0.02, 0.05, 1)
+shader_parameter/triangle_color = Color(0.3, 0.4, 0.6, 0.3)
+
+[node name="EquipmentInterface" type="Control" unique_id=724820203]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_j0tuy")
+metadata/_edit_lock_ = true
+
+[node name="BG" type="ColorRect" parent="." unique_id=1147493880]
+material = SubResource("ShaderMaterial_j0tuy")
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+metadata/_edit_lock_ = true
+
+[node name="Control" type="ColorRect" parent="." unique_id=447845334]
+layout_mode = 0
+offset_left = 123.0
+offset_top = 36.0
+offset_right = 341.0
+offset_bottom = 385.0
+color = Color(1, 1, 1, 0.31764707)
+
+[node name="TextureRect" type="TextureRect" parent="Control" unique_id=191712751]
+layout_mode = 0
+offset_left = -28.0
+offset_top = 17.0
+offset_right = 284.0
+offset_bottom = 329.0
+texture = ExtResource("3_y5pho")
+expand_mode = 1

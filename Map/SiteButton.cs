@@ -24,7 +24,7 @@ public partial class SiteButton : Button
         base._Ready();
     }
 
-    public async void GotoSite()
+    public void GotoSite()
     {
         // CreateTween().TweenProperty(Mask, "color", new Color(0, 0, 0, 1), 0.3f);
 
