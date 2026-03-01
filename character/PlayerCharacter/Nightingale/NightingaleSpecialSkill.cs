@@ -22,8 +22,12 @@ public partial class TempoSurge : Skill
             this,
             ModifyPropertyStep(PropertyType.Speed, SpeedGain),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            EnergyGateStep(cost, consume: true),
-            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1, dyingFilter: true)
+            EnergyTimesGateStep(
+                cost,
+                null,
+                null,
+                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1, dyingFilter: true)
+            )
         );
     }
 }
@@ -48,38 +52,21 @@ public partial class LongNight : Skill
     {
         return new SkillPlan(
             this,
-            ConditionGateStep(
-                condition: _ => OwnerEnergy >= energyCost1 && times > 0,
-                async skill =>
-                {
-                    await CarryRelativeAllyStep(
-                            relativeIndex: -1,
-                            skillIndex: 2,
-                            dyingFilter: false,
-                            describe: false
-                        )
-                        .Execute(skill);
-                    await CarryRelativeAllyStep(
-                            relativeIndex: 1,
-                            skillIndex: 2,
-                            dyingFilter: false,
-                            describe: false
-                        )
-                        .Execute(skill);
-                    await EnergyStep(-DeSurvive).Execute(skill);
-                    await ModifyPropertyStep(PropertyType.Speed, -deSpeed).Execute(skill);
-                },
-                describe: _ =>
-                    new[]
-                    {
-                        $"若能量>={energyCost1}：消耗{DeSurvive}点能量，连携前一位队友和后一位队友使用其特殊技能(剩余触发次数：{times})。",
-                        $"自身{DeltaPropertyText(PropertyType.Speed, -deSpeed)}。",
-                    },
-                stopOnFail: false
+            EnergyTimesGateStep(
+                energyCost1,
+                null,
+                null,
+                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 2, dyingFilter: false),
+                CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 2, dyingFilter: false),
+                ModifyPropertyStep(PropertyType.Survivability, -DeSurvive),
+                ModifyPropertyStep(PropertyType.Speed, -deSpeed)
             ),
-            EnergyGateStep(energyCost2, consume: true),
-            ModifyPropertyStep(PropertyType.Power, Inpower)
+            EnergyTimesGateStep(
+                energyCost2,
+                null,
+                null,
+                ModifyPropertyStep(PropertyType.Power, Inpower)
+            )
         );
     }
 }
-

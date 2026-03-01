@@ -29,14 +29,14 @@ public partial class Echo : PlayerCharacter
         base.EndAction();
     }
 
-    public override void Passive(Skill skill)
+    public override async void Passive(Skill skill)
     {
         if (skill.OwnerCharater != this)
             return;
 
         if (skill.SkillType != Skill.SkillTypes.Survive)
         {
-            IncreaseProperties(Skill.PropertyType.Power, 2);
+            await IncreaseProperties(PropertyType.Power, 2);
             return;
         }
 

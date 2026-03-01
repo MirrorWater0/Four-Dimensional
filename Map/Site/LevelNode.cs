@@ -77,8 +77,8 @@ public partial class LevelNode : ColorRect
     {
         List<EnemyRegedit> list = new()
         {
-            new EvilRegedit(),
-            new FearWormRegedit(),
+            new ArmonRegedit(),
+            new ArmonRegedit(),
             new ArmonRegedit(),
             new EvilRegedit(),
         };

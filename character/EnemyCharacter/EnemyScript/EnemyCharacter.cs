@@ -29,9 +29,8 @@ public partial class EnemyCharacter : Character
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
-            BattleMaxLife = Registry.MaxLife;
+            SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed, Registry.MaxLife);
             Life = BattleMaxLife;
-            SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed);
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
                 .Select(Skill.GetSkill)
                 .Where(x => x != null)

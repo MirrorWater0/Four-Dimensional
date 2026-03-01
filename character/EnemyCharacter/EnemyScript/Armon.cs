@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Armon : EnemyCharacter
@@ -8,10 +9,15 @@ public partial class Armon : EnemyCharacter
 
     public override string CharacterName { get; set; } = "Armon";
 
+    public override void Initialize()
+    {
+        base.Initialize();
+        BattleNode.StartEffectList.Add(StartPassive);
+    }
+
     protected override void OnTurnStart()
     {
         base.OnTurnStart();
-        TriggerFirstTurnPassive();
     }
 
     public override void EndAction()
@@ -36,37 +42,20 @@ public partial class Armon : EnemyCharacter
         }
     }
 
-    private void TriggerFirstTurnPassive()
+    public async Task StartPassive()
     {
-        if (_firstTurnPassiveTriggered || BattleNode == null)
-            return;
-        _firstTurnPassiveTriggered = true;
-
-        var allies = IsPlayer
-            ? BattleNode.PlayersList.Cast<Character>()
-            : BattleNode.EnemiesList.Cast<Character>();
-
-        bool revivedAny = false;
-        foreach (var ally in allies.Where(x => x != null && x != this))
+        for (int i = 0; i < BattleNode.EnemiesList.Count; i++)
         {
-            if (ally.State != CharacterState.Dying)
-                continue;
-
-            ally.Recover(ally.BattleMaxLife / 2, rebirth: true);
-            revivedAny = true;
-        }
-
-        if (!revivedAny)
-        {
-            UpdataBlock(Math.Clamp(BattleSurvivability, 0, 999));
+            BattleNode.EnemiesList[i].UpdataBlock(BattleSurvivability);
         }
     }
 }
 
 public partial class ArmonAttack : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 20;
     private const int SelfPowerGain = 5;
+    private const int SelfSurvivabilityGain = 3;
 
     public ArmonAttack()
         : base(SkillTypes.Attack)
@@ -81,9 +70,10 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseDamage),
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             RelativeAllyBlockStep(-1),
-            RelativeAllyBlockStep(1)
+            RelativeAllyBlockStep(1),
+            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
+            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
 }
@@ -106,7 +96,7 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock),
+            SelfBlockStep(BaseBlock, 2),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
             EnergyStep(EnergyGain)
         );
@@ -115,9 +105,9 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int BaseBlock = 10;
-    private const int PowerGainPerEnergy = 2;
-    private const int SurvivabilityGainPerEnergy = 3;
+    private const int BaseBlock = 15;
+    private const int PowerGainPerEnergy = 6;
+    private const int SurvivabilityGainPerEnergy = 10;
 
     public ArmonSpecial()
         : base(SkillTypes.Special)
@@ -131,9 +121,16 @@ public partial class ArmonSpecial : Skill
     {
         return new SkillPlan(
             this,
-            BlockStrikeAlignedTargetStep(BaseBlock),
-            ConsumeAllEnergyGainPropertiesStep(PowerGainPerEnergy, SurvivabilityGainPerEnergy)
+            AttackPrimaryStep(BaseBlock + OwnerSurvivability),
+            SelfBlockStep(BaseBlock),
+            EnergyTimesWhileStep(
+                energyCost: 2,
+                loopSteps: new[]
+                {
+                    ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy),
+                    ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGainPerEnergy),
+                }
+            )
         );
     }
 }
-

@@ -24,13 +24,41 @@ public partial class PlayerCharacter : Character
             Skill.GetSkill(info.TakenSkills[1]),
             Skill.GetSkill(info.TakenSkills[2]),
         ];
-        BattleMaxLife = info.LifeMax;
+        SetCombatStats(
+            info.Power + EquipmentProperty(PropertyType.Power, info),
+            info.Survivability + EquipmentProperty(PropertyType.Survivability, info),
+            info.Speed + EquipmentProperty(PropertyType.Speed, info),
+            info.LifeMax + EquipmentProperty(PropertyType.MaxLife, info)
+        );
         Life = BattleMaxLife;
-        SetCombatStats(info.Power, info.Survivability, info.Speed);
         base.Initialize();
         IsPlayer = true;
         BlockLabel.Position += new Vector2(230, 0);
         BlockLabel.HorizontalAlignment = HorizontalAlignment.Left;
+    }
+
+    public int EquipmentProperty(PropertyType type, PlayerInfoStructure info)
+    {
+        if (info.Equipments == null || info.Equipments.Length == 0)
+            return 0;
+
+        int value = 0;
+        foreach (var equipment in info.Equipments)
+        {
+            if (equipment == null)
+                continue;
+
+            value += type switch
+            {
+                PropertyType.Power => equipment.Power,
+                PropertyType.Survivability => equipment.Survivability,
+                PropertyType.Speed => equipment.Speed,
+                PropertyType.MaxLife => equipment.MaxLife,
+                _ => 0,
+            };
+        }
+
+        return value;
     }
 
     public override void StartAction()

@@ -22,39 +22,15 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            ComboPrimaryAttackStep(
-                baseDamage: 0,
-                powerMultiplier: 1,
-                baseCasts: 1,
-                energyCostPerExtraCast: CostPerCast,
-                onAfterEachCast: async castIndex =>
-                {
-                    if (castIndex <= 1)
-                        return;
-
-                    await LowerTargetPropertyStep(PropertyType.Survivability, desurive).Execute(this);
-                    await ModifyPropertyStep(PropertyType.Power, PowerGainPerCast).Execute(this);
-                },
-                extraDescribe: () =>
-                {
-                    int bonusCasts = BonusCastsFromEnergy(CostPerCast);
-                    int totalPowerGain = bonusCasts * PowerGainPerCast;
-                    string totalPowerGainBasis =
-                        CostPerCast == 1
-                            ? $"{PowerGainPerCast}*{EnergyXText()}"
-                            : $"{PowerGainPerCast}*ceil({EnergyXText()}/{CostPerCast})";
-                    string totalPowerGainText = WithBattleTotal(
-                        totalPowerGainBasis,
-                        totalPowerGain
-                    );
-
-                    return new[]
-                    {
-                        $"每次额外施放降低目标{LosePropertyText(PropertyType.Survivability, desurive)}。",
-                        $"每次额外施放提升{GainPropertyText(PropertyType.Power, PowerGainPerCast)}。",
-                        $"总力量提升：{totalPowerGainText}。",
-                    };
-                }
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
+            EnergyTimesWhileStep(
+                energyCost: CostPerCast,
+                loopSteps:
+                [
+                    AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
+                    LowerTargetPropertyStep(PropertyType.Survivability, desurive),
+                    ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
+                ]
             )
         );
     }
@@ -79,8 +55,12 @@ public class SonicBoom : Skill
         return new SkillPlan(
             this,
             AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0),
-            EnergyGateStep(EnergyCost, consume: true),
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0, times: ExtraTimes)
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0, times: ExtraTimes)
+            )
         );
     }
 }
@@ -105,61 +85,48 @@ public class PhaseEcho : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            ConditionGateStep(
-                condition: _ => OwnerEnergy < EnergyCost,
-                onPass: async skill =>
+            CustomStep(
+                async skill =>
                 {
-                    await SelfBlockStep(BaseBlock / 2).Execute(skill);
-                    await ApplyBuffFriendlyAbsolute(
-                            buffName: Buff.BuffName.DamageImmune,
-                            stacks: 1,
-                            index: 0,
-                            dyingFilter: false
-                        )
-                        .Execute(skill);
-                    await Task.Delay(200);
-                },
-                describe: _ =>
-                {
-                    string lowBlockText = BlockFromSurvivabilityText(BaseBlock / 2);
-                    return new[]
+                    if (OwnerEnergy >= EnergyCost && TrySpendEnergy(EnergyCost))
                     {
-                        $"否则：获得{lowBlockText}点格挡。",
-                        BuffLine(Buff.BuffName.DamageImmune, 1),
-                    };
-                },
-                stopOnFail: false
-            ),
-            ConditionGateStep(
-                condition: _ => OwnerEnergy >= EnergyCost,
-                onPass: async skill =>
-                {
-                    if (!TrySpendEnergy(EnergyCost))
-                        return;
+                        await SelfBlockStep(BaseBlock).Execute(skill);
+                        await ApplyBuffFriendlyAbsolute(
+                                buffName: Buff.BuffName.DamageImmune,
+                                stacks: DamageImmuneStacks,
+                                index: 0,
+                                dyingFilter: false
+                            )
+                            .Execute(skill);
+                    }
+                    else
+                    {
+                        await SelfBlockStep(BaseBlock / 2).Execute(skill);
+                        await ApplyBuffFriendlyAbsolute(
+                                buffName: Buff.BuffName.DamageImmune,
+                                stacks: 1,
+                                index: 0,
+                                dyingFilter: false
+                            )
+                            .Execute(skill);
+                    }
 
-                    await SelfBlockStep(BaseBlock).Execute(skill);
-                    await ApplyBuffFriendlyAbsolute(
-                            buffName: Buff.BuffName.DamageImmune,
-                            stacks: DamageImmuneStacks,
-                            index: 0,
-                            dyingFilter: false
-                        )
-                        .Execute(skill);
                     await Task.Delay(200);
                 },
-                describe: _ =>
+                _ =>
                 {
                     string fullBlockText = BlockFromSurvivabilityText(BaseBlock);
+                    string lowBlockText = BlockFromSurvivabilityText(BaseBlock / 2);
                     return new[]
                     {
                         $"若能量>={EnergyCost}：消耗{EnergyCost}点能量。",
                         $"获得{fullBlockText}点格挡。",
                         BuffLine(Buff.BuffName.DamageImmune, DamageImmuneStacks),
+                        $"否则：获得{lowBlockText}点格挡。",
+                        BuffLine(Buff.BuffName.DamageImmune, 1),
                     };
-                },
-                stopOnFail: false
+                }
             )
         );
     }
 }
-

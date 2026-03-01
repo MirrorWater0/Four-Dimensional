@@ -197,7 +197,7 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Nightingale",
         PassiveName = "夜光",
         PassiveDescription =
-            $"队友结束回合时：追击一次:造成{Skill.PropertyType.Power.GetDescription()}点伤害。",
+            $"队友结束回合时：追击一次:造成{PropertyType.Power.GetDescription()}点伤害。",
         LifeMax = 50,
         Power = 11,
         Survivability = 10,

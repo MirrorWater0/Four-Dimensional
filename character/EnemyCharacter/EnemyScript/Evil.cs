@@ -17,8 +17,7 @@ public partial class Evil : EnemyCharacter
     {
         if (Registry == null)
         {
-            BattleMaxLife = 50;
-            SetCombatStats(15, 15, 13);
+            SetCombatStats(15, 15, 13, 50);
             Skills = [new EvilAttack(), new EvilSurvive(), new EvilTermin()];
         }
 
@@ -103,12 +102,13 @@ public partial class EvilTermin : Skill
     {
         return new SkillPlan(
             this,
-            ComboPrimaryAttackStep(
-                baseDamage: 0,
-                powerMultiplier: 1,
-                baseCasts: 1,
-                energyCostPerExtraCast: EnergyCostPerHit,
-                clampMax: 9999
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
+            EnergyTimesWhileStep(
+                energyCost: EnergyCostPerHit,
+                loopSteps:
+                [
+                    AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
+                ]
             )
         );
     }

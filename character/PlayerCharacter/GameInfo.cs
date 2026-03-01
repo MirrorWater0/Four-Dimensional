@@ -45,12 +45,13 @@ public struct PlayerInfoStructure
     public int Speed;
     public List<SkillID> GainedSkills = new();
     public SkillID[] TakenSkills = new SkillID[3];
-    public SkillID[] AllSkills = new SkillID[3];
+    public SkillID[] AllSkills;
     public int PositionIndex;
     public string PortaitPath;
     public string CharacterName;
     public string PassiveName;
     public string PassiveDescription;
+    public Equipment[] Equipments = new Equipment[2];
 }
 
 public static class GlobalFunction

@@ -23,16 +23,18 @@ public partial class SoundBarrier : Skill
             this,
             EnergyStep(EnergyGain),
             SelfBlockStep(BaseBlock),
-            ConditionGateStep(
-                condition: _ => times > 0,
-                async skill =>
-                {
-                    await Task.Delay(200);
-                    times--;
-                    await skill.Carry(skill.GetAllyByRelative(1), 0);
-                },
-                describe: _ => new[] { $"连携下一位角色使用攻击技能。剩余{times}次" },
-                stopOnFail: false
+            EnergyTimesGateStep(
+                0,
+                () => times,
+                value => times = value,
+                CustomStep(
+                    async skill =>
+                    {
+                        await Task.Delay(200);
+                        await skill.Carry(skill.GetAllyByRelative(1), 0);
+                    },
+                    _ => new[] { "连携下一位角色使用攻击技能。" }
+                )
             )
         );
     }

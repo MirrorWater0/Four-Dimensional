@@ -40,6 +40,7 @@ naming/scene_name_casing=1
 [file_customization]
 
 folder_colors={
+"res://Equipment/": "orange",
 "res://asset/": "pink",
 "res://battle/": "purple",
 "res://battle/buff/": "green",

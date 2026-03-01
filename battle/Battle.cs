@@ -286,8 +286,14 @@ public partial class Battle : Node2D
         EmitSignal(SignalName.Next, character);
     }
 
+    public List<Func<Task>> StartEffectList = new();
+
     public async Task BattleBegin1(CancellationToken token)
     {
+        for (int i = 0; i < StartEffectList.Count; i++)
+        {
+            await StartEffectList[i]();
+        }
         // Null checks for lists
         if (token.IsCancellationRequested || !IsBattleAlive())
         {
@@ -542,7 +548,7 @@ public partial class Battle : Node2D
         dummy.BattleNode = this;
         dummy.Visible = false;
         dummy.Position = new Vector2(10000, -10000);
-        dummy.BattleMaxLife = 1_000_000_000;
+        dummy.ConfigureCombatStats(dummy.BattlePower, dummy.BattleSurvivability, dummy.Speed, 1_000_000_000);
         dummy.Skills = [new Skill(Skill.SkillTypes.Attack)];
         dummy.Initialize();
     }

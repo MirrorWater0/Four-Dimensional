@@ -43,7 +43,7 @@ public partial class Character : Node2D
     public virtual string CharacterName { get; set; }
 
     [Export]
-    public int BattleMaxLife;
+    public int BattleMaxLife { get; private set; }
     public int Life { get; set; }
 
     [Export]
@@ -127,11 +127,17 @@ public partial class Character : Node2D
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     public Vector2 OriginalPosition;
 
-    protected void SetCombatStats(int power, int survivability, int speed)
+    protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
     {
         BattlePower = power;
         BattleSurvivability = survivability;
         Speed = speed;
+        BattleMaxLife = MaxLife;
+    }
+
+    public void ConfigureCombatStats(int power, int survivability, int speed, int maxLife)
+    {
+        SetCombatStats(power, survivability, speed, maxLife);
     }
 
     public virtual void Initialize()
@@ -547,7 +553,7 @@ public partial class Character : Node2D
         }
     }
 
-    public void DescendingProperties(Skill.PropertyType type, int value)
+    public async Task DescendingProperties(PropertyType type, int value)
     {
         if (value == 0)
             return;
@@ -566,19 +572,19 @@ public partial class Character : Node2D
         ColorRect icon = null;
         switch (type)
         {
-            case Skill.PropertyType.Power:
+            case PropertyType.Power:
                 BattlePower -= value;
                 icon = PowerIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.Survivability:
+            case PropertyType.Survivability:
                 BattleSurvivability -= value;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.Speed:
+            case PropertyType.Speed:
                 Speed -= value;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.MaxLife:
+            case PropertyType.MaxLife:
                 BattleMaxLife -= value;
                 Life = Math.Min(Life, BattleMaxLife);
                 LifeLabel.Text = $"{Life}/{BattleMaxLife}";
@@ -609,9 +615,10 @@ public partial class Character : Node2D
         hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         AddChild(hint);
+        await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
-    public void IncreaseProperties(Skill.PropertyType type, int value)
+    public async Task IncreaseProperties(PropertyType type, int value)
     {
         if (value == 0)
             return;
@@ -619,19 +626,19 @@ public partial class Character : Node2D
         ColorRect icon = null;
         switch (type)
         {
-            case Skill.PropertyType.Power:
+            case PropertyType.Power:
                 BattlePower += value;
                 icon = PowerIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.Survivability:
+            case PropertyType.Survivability:
                 BattleSurvivability += value;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.Speed:
+            case PropertyType.Speed:
                 Speed += value;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
                 break;
-            case Skill.PropertyType.MaxLife:
+            case PropertyType.MaxLife:
                 BattleMaxLife += value;
                 LifeLabel.Text = $"{Life}/{BattleMaxLife}";
                 CreateTween()
@@ -665,6 +672,7 @@ public partial class Character : Node2D
         hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         AddChild(hint);
+        await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
     public virtual void Passive(Skill skill) { }

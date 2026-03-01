@@ -23,20 +23,24 @@ public partial class RebirthPrayer : Skill
     {
         return new SkillPlan(
             this,
-            EnergyGateStep(EnergyCost, consume: true),
-            HealFriendlyAbsolute(
-                baseHeal: BaseRebirthHeal,
-                survivabilityMultiplier: 0,
-                selector: AbsoluteFriendlySelector.FrontMost,
-                preferNonFull: true,
-                rebirth: true,
-                targetKey: SharedTargetKey
-            ),
-            FriendlyEnergyRelativeStep(
-                delta: GainEnergy,
-                relative: 0,
-                dyingFilter: true,
-                targetKey: SharedTargetKey
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                HealFriendlyAbsolute(
+                    baseHeal: BaseRebirthHeal,
+                    survivabilityMultiplier: 0,
+                    selector: AbsoluteFriendlySelector.FrontMost,
+                    preferNonFull: true,
+                    rebirth: true,
+                    targetKey: SharedTargetKey
+                ),
+                FriendlyEnergyRelativeStep(
+                    delta: GainEnergy,
+                    relative: 0,
+                    dyingFilter: true,
+                    targetKey: SharedTargetKey
+                )
             )
         );
     }
@@ -60,15 +64,20 @@ public partial class Sacrifice : Skill
     {
         return new SkillPlan(
             this,
-            EnergyGateStep(energyCost, consume: true),
-            HurtFriendly(allyHurt, all: true),
-            ModifyPropertyAbsoluteStep(
-                type: PropertyType.MaxLife,
-                value: -DeMax,
-                selector: PropertyAbsoluteSelector.All,
-                dyingFilter: false
-            ),
-            AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 1, maxTargets: 0)
+            EnergyTimesGateStep(
+                energyCost,
+                null,
+                null,
+                HurtFriendly(allyHurt, all: true),
+                ModifyPropertyAbsoluteStep(
+                    type: PropertyType.MaxLife,
+                    value: -DeMax,
+                    selector: PropertyAbsoluteSelector.All,
+                    dyingFilter: false
+                ),
+                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 1, maxTargets: 0)
+            )
         );
     }
 }
+

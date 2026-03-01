@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 // - Target Rule: 未显式指定目标策略时，默认按 Chosetarget1 顺序选取目标，描述中不额外说明。
 // - AttackPrimaryStep: 单段攻击（Attack1）。
 // - DoubleStrikeStep: 二段攻击（Attack2）。
-// - ComboPrimaryAttackStep: 连击（基础次数 + 按能量追加），可附加每击效果。
 // - AoeDamageStep: 群体伤害（按 Chosetarget1 顺序命中前N名）。
 // - ApplyBuffHostile: 对敌方施加Buff（buffName/stacks/maxTargets/energyCost）。
 // - ApplyBuffAll: 对全阵施加Buff（buffName/stacks/targetCamp/dyingFilter/energyCost）。
@@ -25,10 +24,9 @@ using System.Threading.Tasks;
 // - RelativeAllyBlockStep: 相对位队友获得格挡（0自己、-1前一位、+1后一位...；可选非濒死过滤）。
 // - CarryRelativeAllyStep: 连携相对位队友释放指定技能（+n下n位，-n上n位；index:0攻击/1生存/2特殊）。
 // - EnergyStep: 改变自身能量。
-// - ConditionGateStep: 条件门槛（条件不满足时阻断后续step，可选通过时回调）。
-// - EnergyGateStep: 能量门槛（满足则继续；不满足则阻断后续step）。
+// - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
+// - EnergyTimesWhileStep: while循环（按EnergyTimesGate条件判定；条件满足时循环执行循环体step）。
 // - BlockStrikeAlignedTargetStep: 获得格挡并打击对位目标。
-// - ConsumeAllEnergyGainPropertiesStep: 消耗全部能量转化属性。
 // - TextStep: 仅描述文本（不执行效果）。
 // - CustomStep: 自定义执行/描述兜底步骤。
 public partial class Skill
@@ -98,7 +96,11 @@ public partial class Skill
         return selected;
     }
 
-    private Character ResolveRelativeFriendlyTarget(int relative, bool dyingFilter, string targetKey)
+    private Character ResolveRelativeFriendlyTarget(
+        int relative,
+        bool dyingFilter,
+        string targetKey
+    )
     {
         if (!string.IsNullOrWhiteSpace(targetKey))
         {
@@ -189,25 +191,6 @@ public partial class Skill
             suffix,
             clampMax,
             includeTwoHitText
-        );
-
-    protected SkillStep ComboPrimaryAttackStep(
-        int baseDamage = 0,
-        int powerMultiplier = 1,
-        int baseCasts = 1,
-        int energyCostPerExtraCast = 0,
-        int clampMax = 9999,
-        Func<int, Task> onAfterEachCast = null,
-        Func<IEnumerable<string>> extraDescribe = null
-    ) =>
-        new ComboPrimaryAttackSkillStep(
-            baseDamage,
-            powerMultiplier,
-            baseCasts,
-            energyCostPerExtraCast,
-            clampMax,
-            onAfterEachCast,
-            extraDescribe
         );
 
     protected SkillStep AoeDamageStep(
@@ -356,27 +339,19 @@ public partial class Skill
 
     protected SkillStep EnergyStep(int delta) => new EnergySkillStep(delta);
 
-    protected SkillStep ConditionGateStep(
-        Func<Skill, bool> condition,
-        Func<Skill, Task> onPass = null,
-        Func<Skill, IEnumerable<string>> describe = null,
-        bool stopOnFail = true
-    ) => new ConditionGateSkillStep(condition, onPass, describe, stopOnFail);
+    protected SkillStep EnergyTimesGateStep(
+        int energyCost,
+        Func<int> times = null,
+        Action<int> setTimes = null,
+        params SkillStep[] onPassSteps
+    ) => new EnergyTimesGateSkillStep(energyCost, times, setTimes, onPassSteps);
 
-    protected SkillStep EnergyGateStep(int requiredEnergy, bool consume = true) =>
-        new EnergyGateSkillStep(requiredEnergy, consume);
-
-    protected SkillStep BlockStrikeAlignedTargetStep(
-        int baseBlock = 0,
-        int survivabilityMultiplier = 1,
-        int clampMax = 999
-    ) => new BlockStrikeAlignedTargetSkillStep(baseBlock, survivabilityMultiplier, clampMax);
-
-    protected SkillStep ConsumeAllEnergyGainPropertiesStep(
-        int powerGainPerEnergy,
-        int survivabilityGainPerEnergy
-    ) =>
-        new ConsumeAllEnergyGainPropertiesSkillStep(powerGainPerEnergy, survivabilityGainPerEnergy);
+    protected SkillStep EnergyTimesWhileStep(
+        int energyCost,
+        Func<int> times = null,
+        Action<int> setTimes = null,
+        params SkillStep[] loopSteps
+    ) => new EnergyTimesWhileSkillStep(energyCost, times, setTimes, loopSteps);
 
     protected SkillStep TextStep(string line) => new TextSkillStep(line);
 
@@ -473,98 +448,6 @@ public partial class Skill
         }
     }
 
-    private sealed class ComboPrimaryAttackSkillStep : SkillStep
-    {
-        private readonly int _baseDamage;
-        private readonly int _powerMultiplier;
-        private readonly int _baseCasts;
-        private readonly int _energyCostPerExtraCast;
-        private readonly int _clampMax;
-        private readonly Func<int, Task> _onAfterEachCast;
-        private readonly Func<IEnumerable<string>> _extraDescribe;
-
-        public ComboPrimaryAttackSkillStep(
-            int baseDamage,
-            int powerMultiplier,
-            int baseCasts,
-            int energyCostPerExtraCast,
-            int clampMax,
-            Func<int, Task> onAfterEachCast,
-            Func<IEnumerable<string>> extraDescribe
-        )
-        {
-            _baseDamage = baseDamage;
-            _powerMultiplier = powerMultiplier;
-            _baseCasts = baseCasts;
-            _energyCostPerExtraCast = energyCostPerExtraCast;
-            _clampMax = clampMax;
-            _onAfterEachCast = onAfterEachCast;
-            _extraDescribe = extraDescribe;
-        }
-
-        public override async Task Execute(Skill skill)
-        {
-            int castIndex = 0;
-
-            for (int i = 0; i < Math.Max(0, _baseCasts); i++)
-            {
-                castIndex++;
-                int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
-                await skill.Attack1(damage);
-                if (_onAfterEachCast != null)
-                    await (_onAfterEachCast(castIndex) ?? Task.CompletedTask);
-            }
-
-            if (_energyCostPerExtraCast <= 0)
-                return;
-
-            while (skill.TrySpendEnergy(_energyCostPerExtraCast))
-            {
-                castIndex++;
-                int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
-                await skill.Attack1(damage);
-                if (_onAfterEachCast != null)
-                    await (_onAfterEachCast(castIndex) ?? Task.CompletedTask);
-            }
-        }
-
-        public override IEnumerable<string> Describe(Skill skill)
-        {
-            int safeBaseCasts = Math.Max(0, _baseCasts);
-            if (_energyCostPerExtraCast > 0)
-            {
-                string castTimesText = skill.CastTimesFromEnergyText(
-                    _energyCostPerExtraCast,
-                    safeBaseCasts
-                );
-                yield return $"施放{castTimesText}次。";
-            }
-            else
-            {
-                yield return $"施放{safeBaseCasts}次。";
-            }
-
-            yield return skill.DamageLine(
-                _baseDamage,
-                _powerMultiplier,
-                prefix: "每次造成",
-                clampMax: _clampMax
-            );
-
-            if (_energyCostPerExtraCast > 0)
-                yield return $"每次消耗{_energyCostPerExtraCast}点能量。";
-
-            if (_extraDescribe == null)
-                yield break;
-
-            var extraLines = _extraDescribe() ?? Array.Empty<string>();
-            foreach (var line in extraLines.Where(line => !string.IsNullOrWhiteSpace(line)))
-            {
-                yield return line;
-            }
-        }
-    }
-
     private sealed class AoeDamageSkillStep : SkillStep
     {
         private readonly int _baseDamage;
@@ -626,23 +509,23 @@ public partial class Skill
             _maxTargets = maxTargets;
         }
 
-        public override Task Execute(Skill skill)
+        public override async Task Execute(Skill skill)
         {
             int loss = Math.Abs(_value);
             if (loss == 0)
-                return Task.CompletedTask;
+                return;
 
             var targets = skill.Chosetarget1();
             int count = _maxTargets <= 0 ? targets.Length : Math.Min(_maxTargets, targets.Length);
             if (count <= 0)
-                return Task.CompletedTask;
+                return;
 
             for (int i = 0; i < count; i++)
             {
-                targets[i].DescendingProperties(_type, loss);
+                if (targets[i] == null)
+                    continue;
+                await targets[i].DescendingProperties(_type, loss);
             }
-
-            return Task.CompletedTask;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -741,15 +624,15 @@ public partial class Skill
         return query.OrderBy(x => x.PositionIndex).ToArray();
     }
 
-    private static void ApplyPropertyDelta(Character target, PropertyType type, int value)
+    private static async Task ApplyPropertyDelta(Character target, PropertyType type, int value)
     {
         if (target == null || value == 0)
             return;
 
         if (value > 0)
-            target.IncreaseProperties(type, value);
+            await target.IncreaseProperties(type, value);
         else
-            target.DescendingProperties(type, -value);
+            await target.DescendingProperties(type, -value);
     }
 
     private static string PropertyDeltaActionText(PropertyType type, int value)
@@ -1314,11 +1197,10 @@ public partial class Skill
             _dyingFilter = dyingFilter;
         }
 
-        public override Task Execute(Skill skill)
+        public override async Task Execute(Skill skill)
         {
             var target = skill.GetAllyByRelative(_index, dyingFilter: _dyingFilter);
-            ApplyPropertyDelta(target, _type, _value);
-            return Task.CompletedTask;
+            await ApplyPropertyDelta(target, _type, _value);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -1352,15 +1234,13 @@ public partial class Skill
             _dyingFilter = dyingFilter;
         }
 
-        public override Task Execute(Skill skill)
+        public override async Task Execute(Skill skill)
         {
             Character[] targets = SelectPropertyAbsoluteTargets(skill, _selector, _dyingFilter);
             for (int i = 0; i < targets.Length; i++)
             {
-                ApplyPropertyDelta(targets[i], _type, _value);
+                await ApplyPropertyDelta(targets[i], _type, _value);
             }
-
-            return Task.CompletedTask;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -1609,211 +1489,165 @@ public partial class Skill
         }
     }
 
-    private sealed class ConditionGateSkillStep : SkillStep
+    private sealed class EnergyTimesGateSkillStep : SkillStep
     {
-        private readonly Func<Skill, bool> _condition;
-        private readonly Func<Skill, Task> _onPass;
-        private readonly Func<Skill, IEnumerable<string>> _describe;
-        private readonly bool _stopOnFail;
+        private readonly int _energyCost;
+        private readonly Func<int> _times;
+        private readonly Action<int> _setTimes;
+        private readonly SkillStep[] _onPassSteps;
 
-        public ConditionGateSkillStep(
-            Func<Skill, bool> condition,
-            Func<Skill, Task> onPass,
-            Func<Skill, IEnumerable<string>> describe,
-            bool stopOnFail
+        public EnergyTimesGateSkillStep(
+            int energyCost,
+            Func<int> times,
+            Action<int> setTimes,
+            SkillStep[] onPassSteps
         )
         {
-            _condition = condition;
-            _onPass = onPass;
-            _describe = describe;
-            _stopOnFail = stopOnFail;
+            _energyCost = Math.Max(0, energyCost);
+            _times = times;
+            _setTimes = setTimes;
+            _onPassSteps = onPassSteps ?? Array.Empty<SkillStep>();
         }
 
         public override async Task Execute(Skill skill)
         {
-            bool pass = _condition?.Invoke(skill) ?? true;
-            if (pass)
-            {
-                if (_onPass != null)
-                    await (_onPass(skill) ?? Task.CompletedTask);
+            if (!TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
                 return;
-            }
 
-            if (_stopOnFail)
-                skill._stopRemainingPlanExecution = true;
+            for (int i = 0; i < _onPassSteps.Length; i++)
+            {
+                await _onPassSteps[i].Execute(skill);
+                if (skill._stopRemainingPlanExecution)
+                    return;
+            }
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            return _describe?.Invoke(skill) ?? Array.Empty<string>();
+            bool hasTimes = _times != null;
+            int currentTimes = hasTimes ? Math.Max(0, _times?.Invoke() ?? 0) : 0;
+
+            if (hasTimes)
+            {
+                if (_energyCost > 0)
+                    yield return $"消耗{_energyCost}点能量并次数-1（当前次数：{currentTimes}）：";
+                else
+                    yield return $"次数-1（当前次数：{currentTimes}）：";
+            }
+            else if (_energyCost > 0)
+                yield return $"消耗{_energyCost}点能量：";
+
+            for (int i = 0; i < _onPassSteps.Length; i++)
+            {
+                IEnumerable<string> lines = _onPassSteps[i].Describe(skill) ?? Array.Empty<string>();
+                foreach (string line in lines.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    yield return $"生效：{line}";
+            }
         }
     }
 
-    private sealed class EnergyGateSkillStep : SkillStep
+    private sealed class EnergyTimesWhileSkillStep : SkillStep
     {
-        private readonly int _requiredEnergy;
-        private readonly bool _consume;
+        private readonly int _energyCost;
+        private readonly Func<int> _times;
+        private readonly Action<int> _setTimes;
+        private readonly SkillStep[] _loopSteps;
 
-        public EnergyGateSkillStep(int requiredEnergy, bool consume)
+        public EnergyTimesWhileSkillStep(
+            int energyCost,
+            Func<int> times,
+            Action<int> setTimes,
+            SkillStep[] loopSteps
+        )
         {
-            _requiredEnergy = Math.Max(0, requiredEnergy);
-            _consume = consume;
+            _energyCost = Math.Max(0, energyCost);
+            _times = times;
+            _setTimes = setTimes;
+            _loopSteps = loopSteps ?? Array.Empty<SkillStep>();
         }
 
-        public override Task Execute(Skill skill)
+        public override async Task Execute(Skill skill)
         {
-            if (_requiredEnergy <= 0)
-                return Task.CompletedTask;
+            if (_loopSteps.Length == 0)
+                return;
 
-            if (skill.OwnerCharater == null)
+            if (_energyCost <= 0 && _times == null)
+                return;
+
+            while (TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
             {
-                skill._stopRemainingPlanExecution = true;
-                return Task.CompletedTask;
+                for (int i = 0; i < _loopSteps.Length; i++)
+                {
+                    await _loopSteps[i].Execute(skill);
+                    if (skill._stopRemainingPlanExecution)
+                        return;
+                }
             }
-
-            bool pass = _consume
-                ? skill.TrySpendEnergy(_requiredEnergy)
-                : skill.OwnerEnergy >= _requiredEnergy;
-            if (!pass)
-                skill._stopRemainingPlanExecution = true;
-
-            return Task.CompletedTask;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_requiredEnergy <= 0)
+            bool hasTimes = _times != null;
+            int currentTimes = hasTimes ? Math.Max(0, _times?.Invoke() ?? 0) : 0;
+            if (_energyCost <= 0 && !hasTimes)
+            {
+                yield return "循环条件无效，不执行。";
                 yield break;
-
-            if (_consume)
-                yield return $"消耗{_requiredEnergy}点能量：";
-            else
-                yield return $"仅当能量>={_requiredEnergy}时，后续效果生效。";
-        }
-    }
-
-    private sealed class BlockStrikeAlignedTargetSkillStep : SkillStep
-    {
-        private readonly int _baseBlock;
-        private readonly int _survivabilityMultiplier;
-        private readonly int _clampMax;
-
-        public BlockStrikeAlignedTargetSkillStep(
-            int baseBlock,
-            int survivabilityMultiplier,
-            int clampMax
-        )
-        {
-            _baseBlock = baseBlock;
-            _survivabilityMultiplier = survivabilityMultiplier;
-            _clampMax = clampMax;
-        }
-
-        public override async Task Execute(Skill skill)
-        {
-            if (skill.OwnerCharater == null)
-                return;
-
-            int block = skill.BlockFromSurvivability(
-                _baseBlock,
-                _survivabilityMultiplier,
-                _clampMax
-            );
-            skill.OwnerCharater.UpdataBlock(block);
-
-            Character target = SelectAlignedTarget(skill);
-            if (target == null)
-                return;
-
-            await skill.AttackAnimation(target);
-            await target.GetHurt(Math.Clamp(block, 0, 9999));
-            await Task.Delay(100);
-        }
-
-        public override IEnumerable<string> Describe(Skill skill)
-        {
-            string blockText = skill.BlockFromSurvivabilityText(
-                _baseBlock,
-                _survivabilityMultiplier,
-                _clampMax
-            );
-            yield return $"获得{blockText}点格挡。";
-            yield return $"对对位目标造成{blockText}点伤害。";
-        }
-
-        private static Character SelectAlignedTarget(Skill skill)
-        {
-            var battle = skill.OwnerCharater?.BattleNode;
-            if (battle != null)
-            {
-                var enemies = skill.OwnerCharater.IsPlayer
-                    ? battle.EnemiesList.Cast<Character>()
-                    : battle.PlayersList.Cast<Character>();
-
-                var aligned = enemies.FirstOrDefault(x =>
-                    x != null
-                    && x.State == Character.CharacterState.Normal
-                    && x.PositionIndex == skill.OwnerCharater.PositionIndex
-                );
-                if (aligned != null)
-                    return aligned;
             }
 
-            var targets = skill.Chosetarget1();
-            return targets.Length > 0 ? targets[0] : null;
+            if (hasTimes)
+            {
+                if (_energyCost > 0)
+                    yield return $"循环每轮消耗{_energyCost}点能量并次数{-1}（当前次数：{currentTimes}）：";
+                else
+                    yield return $"循环每轮次数{-1}（当前次数：{currentTimes}）。";
+            }
+            else
+            {
+                yield return $"循环每轮消耗{_energyCost}点能量：";
+            }
+
+            for (int i = 0; i < _loopSteps.Length; i++)
+            {
+                IEnumerable<string> lines = _loopSteps[i].Describe(skill) ?? Array.Empty<string>();
+                foreach (string line in lines.Where(x => !string.IsNullOrWhiteSpace(x)))
+                {
+                    yield return $"循环：{line}";
+                }
+            }
         }
     }
 
-    private sealed class ConsumeAllEnergyGainPropertiesSkillStep : SkillStep
+    private static bool TryPassEnergyTimesGate(
+        Skill skill,
+        int energyCost,
+        Func<int> times,
+        Action<int> setTimes
+    )
     {
-        private readonly int _powerGainPerEnergy;
-        private readonly int _survivabilityGainPerEnergy;
+        if (skill?.OwnerCharater == null)
+            return false;
 
-        public ConsumeAllEnergyGainPropertiesSkillStep(
-            int powerGainPerEnergy,
-            int survivabilityGainPerEnergy
-        )
+        bool hasTimes = times != null;
+        int currentTimes = hasTimes ? Math.Max(0, times()) : 0;
+        if (hasTimes && currentTimes <= 0)
+            return false;
+
+        int safeEnergyCost = Math.Max(0, energyCost);
+        if (safeEnergyCost > 0 && !skill.TrySpendEnergy(safeEnergyCost))
+            return false;
+
+        if (hasTimes)
         {
-            _powerGainPerEnergy = powerGainPerEnergy;
-            _survivabilityGainPerEnergy = survivabilityGainPerEnergy;
+            if (setTimes == null)
+                return false;
+
+            setTimes(Math.Max(0, currentTimes - 1));
         }
 
-        public override Task Execute(Skill skill)
-        {
-            if (skill.OwnerCharater == null)
-                return Task.CompletedTask;
-
-            int energy = Math.Max(0, skill.OwnerEnergy);
-            if (energy <= 0 || !skill.TrySpendEnergy(energy))
-                return Task.CompletedTask;
-
-            skill.OwnerCharater.IncreaseProperties(
-                PropertyType.Power,
-                _powerGainPerEnergy * energy
-            );
-            skill.OwnerCharater.IncreaseProperties(
-                PropertyType.Survivability,
-                _survivabilityGainPerEnergy * energy
-            );
-            return Task.CompletedTask;
-        }
-
-        public override IEnumerable<string> Describe(Skill skill)
-        {
-            string energyX = skill.EnergyXText();
-            string totalPowerGainText = skill.WithBattleTotal(
-                $"{_powerGainPerEnergy}*{energyX}",
-                _powerGainPerEnergy * skill.OwnerEnergy
-            );
-            string totalSurvivabilityGainText = skill.WithBattleTotal(
-                $"{_survivabilityGainPerEnergy}*{energyX}",
-                _survivabilityGainPerEnergy * skill.OwnerEnergy
-            );
-
-            yield return $"消耗所有能量：每{energyX}获得{GainPropertyText(PropertyType.Power, _powerGainPerEnergy)}、{GainPropertyText(PropertyType.Survivability, _survivabilityGainPerEnergy)}。";
-            yield return $"总计获得：{totalPowerGainText}，{totalSurvivabilityGainText}。";
-        }
+        return true;
     }
+
 
     private sealed class TextSkillStep : SkillStep
     {

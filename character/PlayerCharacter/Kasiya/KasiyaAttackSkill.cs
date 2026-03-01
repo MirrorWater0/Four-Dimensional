@@ -6,8 +6,8 @@ public partial class KasiyaAttackSkill { }
 
 public partial class Determination : Skill
 {
-    private const int DamageImmuneStacks = 2;
-    private const int BaseDamage = 6;
+    private const int DamageImmuneStacks = 1;
+    private const int BaseDamage = 10;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -52,16 +52,12 @@ public partial class Smite : Skill
             this,
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown),
             AttackPrimaryStep(baseDamage: BaseDamage),
-            ConditionGateStep(
-                condition: _ => times > 0,
-                onPass: _ =>
-                {
-                    times--;
-                    return Task.CompletedTask;
-                },
-                describe: _ => [$"剩余{times}次额外触发:"]
-            ),
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown)
+            EnergyTimesGateStep(
+                0,
+                () => times,
+                value => times = value,
+                LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown)
+            )
         );
     }
 }
@@ -118,16 +114,12 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            ConditionGateStep(
-                condition: _ => times > 0,
-                onPass: _ =>
-                {
-                    times--;
-                    return Task.CompletedTask;
-                },
-                describe: _ => [$"剩余{times}次额外触发："]
-            ),
-            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
+            EnergyTimesGateStep(
+                0,
+                () => times,
+                value => times = value,
+                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
+            )
         );
     }
 }

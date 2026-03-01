@@ -10,9 +10,9 @@ public partial class FearWorm : EnemyCharacter
         SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, 1);
     }
 
-    public override void Passive(Skill skill)
+    public override async void Passive(Skill skill)
     {
-        IncreaseProperties(Skill.PropertyType.Power, 2);
+        await IncreaseProperties(PropertyType.Power, 2);
     }
 
     public override void EndAction()

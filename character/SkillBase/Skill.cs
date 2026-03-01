@@ -6,6 +6,21 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
+public enum PropertyType
+{
+    [Description("力量")]
+    Power,
+
+    [Description("生存")]
+    Survivability,
+
+    [Description("速度")]
+    Speed,
+
+    [Description("生命上限")]
+    MaxLife,
+}
+
 public partial class Skill
 {
     private int _previewPower;
@@ -22,21 +37,6 @@ public partial class Skill
         Speed,
         Energy,
         Life,
-        MaxLife,
-    }
-
-    public enum PropertyType
-    {
-        [Description("力量")]
-        Power,
-
-        [Description("生存")]
-        Survivability,
-
-        [Description("速度")]
-        Speed,
-
-        [Description("生命上限")]
         MaxLife,
     }
 

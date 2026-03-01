@@ -22,21 +22,24 @@ public partial class ShadowAmbush : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            ConditionGateStep(
-                condition: _ =>
-                    OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
-                    == true,
-                onPass: async _ =>
+            CustomStep(
+                async _ =>
                 {
+                    bool hasInvisible =
+                        OwnerCharater?.StartActionBuffs?.Any(x =>
+                            x.ThisBuffName == Buff.BuffName.Invisible
+                        ) == true;
+                    if (!hasInvisible)
+                        return;
+
                     int damage = DamageFromPower(BaseDamage);
                     await Attack1(damage);
                 },
-                describe: _ =>
+                _ =>
                     new[]
                     {
                         $"若自身拥有{Buff.BuffName.Invisible.GetDescription()}：额外造成一次伤害。",
-                    },
-                stopOnFail: false
+                    }
             ),
             ModifyPropertyStep(PropertyType.Power, GainPower)
         );
