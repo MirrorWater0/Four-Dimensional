@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://b6yv4na1485yt"]
+[gd_scene format=3 uid="uid://b6yv4na1485yt"]
 
 [ext_resource type="Theme" uid="uid://bdd0fy1fm2a6r" path="res://battle/UIScene/BattleReady/SelectButton.tres" id="1_apc1k"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="2_ey3wg"]
@@ -83,95 +83,99 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
+border_color = Color(0.62, 0.78, 0.94, 0.58)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [sub_resource type="Theme" id="Theme_8vcpf"]
 Panel/styles/panel = SubResource("StyleBoxFlat_apc1k")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8vcpf"]
 bg_color = Color(0.6, 0.6, 0.6, 0)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.83, 0.58, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
-[node name="SelectButton" type="Control"]
+[node name="SelectButton" type="Control" unique_id=1285070369]
 z_index = 2
-custom_minimum_size = Vector2(216, 45)
+custom_minimum_size = Vector2(200, 52)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 216.0
-offset_bottom = 45.0
+offset_right = 200.0
+offset_bottom = 52.0
 theme = ExtResource("1_apc1k")
 script = ExtResource("2_kqylh")
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-libraries = {
-&"": SubResource("AnimationLibrary_apc1k")
-}
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=70141601]
+libraries/ = SubResource("AnimationLibrary_apc1k")
 
-[node name="Control" type="Control" parent="."]
+[node name="Control" type="Control" parent="." unique_id=169429944]
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 232.0
+offset_bottom = 52.0
 
-[node name="Button" type="Button" parent="Control"]
-custom_minimum_size = Vector2(216, 45)
+[node name="Button" type="Button" parent="Control" unique_id=1135458589]
+custom_minimum_size = Vector2(200, 52)
 layout_mode = 0
-offset_right = 216.0
-offset_bottom = 45.0
+offset_right = 200.0
+offset_bottom = 52.0
 theme = ExtResource("1_apc1k")
 toggle_mode = true
 
-[node name="ColorRect" type="ColorRect" parent="Control"]
+[node name="ColorRect" type="ColorRect" parent="Control" unique_id=559482675]
+visible = false
 material = SubResource("ShaderMaterial_kqylh")
 layout_mode = 0
-offset_right = 36.0
-offset_bottom = 42.857143
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 208.0
+offset_bottom = 45.0
 mouse_filter = 1
 color = Color(0.74558026, 0.7455802, 0.7455802, 1)
 
-[node name="Label" type="Label" parent="Control"]
+[node name="Label" type="Label" parent="Control" unique_id=1277349013]
 layout_mode = 0
-offset_left = 37.0
-offset_top = -3.0
-offset_right = 177.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 193.0
 offset_bottom = 46.0
 theme = ExtResource("3_kqylh")
 theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
 text = "镜花水月"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="Border" type="Panel" parent="Control"]
+[node name="Border" type="Panel" parent="Control" unique_id=47731947]
 z_index = -1
 material = SubResource("ShaderMaterial_ey3wg")
 layout_mode = 0
-offset_left = -2.0
-offset_top = -2.0
-offset_right = 218.0
-offset_bottom = 47.0
-pivot_offset = Vector2(110, 24.5)
+offset_left = -1.0
+offset_top = -1.0
+offset_right = 199.0
+offset_bottom = 53.0
+pivot_offset = Vector2(116, 26)
 mouse_filter = 2
 theme = SubResource("Theme_8vcpf")
 
-[node name="Border2" type="Panel" parent="Control"]
+[node name="Border2" type="Panel" parent="Control" unique_id=394969099]
 modulate = Color(1, 1, 1, 0)
 z_index = -1
 material = SubResource("ShaderMaterial_ey3wg")
 layout_mode = 0
-offset_left = -2.0
-offset_top = -2.0
-offset_right = 218.0
-offset_bottom = 47.0
-pivot_offset = Vector2(110, 24.5)
+offset_left = -1.0
+offset_top = -1.0
+offset_right = 199.0
+offset_bottom = 53.0
+pivot_offset = Vector2(116, 26)
 mouse_filter = 2
 theme = SubResource("Theme_8vcpf")
 theme_override_styles/panel = SubResource("StyleBoxFlat_8vcpf")

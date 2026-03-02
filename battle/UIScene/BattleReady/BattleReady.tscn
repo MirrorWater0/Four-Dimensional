@@ -4,11 +4,11 @@
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="2_wa4fa"]
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_2161l"]
 [ext_resource type="Texture2D" uid="uid://deraktmr5w000" path="res://asset/UI/轨迹素材_093.png" id="4_4b02f"]
-[ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="5_ck3o7"]
 [ext_resource type="Material" uid="uid://1r2tn2d685o8" path="res://battle/UIScene/BattleReady/PosChange.tres" id="6_3abbs"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="7_q1qv0"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="8_wa4fa"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="9_2161l"]
+[ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="10_btn"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
 shader = ExtResource("1_q1qv0")
@@ -30,6 +30,51 @@ shader_parameter/drift_dist = 0.22
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_e2bq2"]
 blend_mode = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_blue"]
+bg_color = Color(0.08, 0.12, 0.18, 0.3)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5, 0.65, 0.8, 0.5)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="Theme" id="Theme_section_blue"]
+Panel/styles/panel = SubResource("StyleBoxFlat_section_blue")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_header"]
+bg_color = Color(0.13, 0.1, 0.07, 0.24)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.82, 0.65, 0.42, 0.56)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="Theme" id="Theme_section_header"]
+Panel/styles/panel = SubResource("StyleBoxFlat_section_header")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_char_select_orange"]
+bg_color = Color(0.12, 0.09, 0.06, 0.18)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.62, 0.35, 0.58)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="Theme" id="Theme_char_select_orange"]
+Panel/styles/panel = SubResource("StyleBoxFlat_char_select_orange")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_q1qv0"]
 resource_local_to_scene = true
@@ -61,11 +106,11 @@ shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 0.5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5w4iu"]
-bg_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+bg_color = Color(0.78, 0.64, 0.45, 0.52)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
 
 [sub_resource type="Theme" id="Theme_dbxj7"]
 Panel/styles/panel = SubResource("StyleBoxFlat_5w4iu")
@@ -173,37 +218,146 @@ texture = ExtResource("4_4b02f")
 expand_mode = 1
 metadata/_edit_lock_ = true
 
-[node name="frame" type="HBoxContainer" parent="." unique_id=855737133]
+[node name="FormationFrame" type="Panel" parent="." unique_id=460908895]
 layout_mode = 0
-offset_left = 55.000008
-offset_top = 700.0
-offset_right = 2015.0
-offset_bottom = 1040.0
-scale = Vector2(0.9, 0.9)
+offset_left = 186.0
+offset_top = 486.0
+offset_right = 755.0
+offset_bottom = 1030.0
 mouse_filter = 2
-theme_override_constants/separation = 170
-metadata/_edit_lock_ = true
+theme = SubResource("Theme_section_blue")
 
-[node name="frame" parent="frame" unique_id=1469862371 instance=ExtResource("5_ck3o7")]
-layout_mode = 2
-metadata/_edit_lock_ = true
+[node name="FormationHeaderFrame" type="Panel" parent="." unique_id=119332421]
+layout_mode = 0
+offset_left = 188.0
+offset_top = 424.0
+offset_right = 382.0
+offset_bottom = 478.0
+mouse_filter = 2
+theme = SubResource("Theme_section_header")
 
-[node name="frame2" parent="frame" unique_id=961458500 instance=ExtResource("5_ck3o7")]
-layout_mode = 2
+[node name="FormationHeader" type="Label" parent="FormationHeaderFrame" unique_id=1267270876]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 10.0
+offset_right = 211.0
+offset_bottom = 44.0
+theme_override_font_sizes/font_size = 24
+text = "站位调整"
 
-[node name="frame3" parent="frame" unique_id=1631348294 instance=ExtResource("5_ck3o7")]
-layout_mode = 2
+[node name="SkillAreaFrame" type="Panel" parent="." unique_id=1475926958]
+layout_mode = 0
+offset_left = 780.0
+offset_top = 160.0
+offset_right = 1718.0
+offset_bottom = 1020.0
+mouse_filter = 2
+theme = SubResource("Theme_section_blue")
 
-[node name="frame4" parent="frame" unique_id=1331880922 instance=ExtResource("5_ck3o7")]
+[node name="SkillAreaHeaderFrame" type="Panel" parent="." unique_id=1453034852]
+layout_mode = 0
+offset_left = 814.0
+offset_top = 179.0
+offset_right = 1092.0
+offset_bottom = 233.0
+mouse_filter = 2
+theme = SubResource("Theme_section_header")
+
+[node name="SkillAreaHeader" type="Label" parent="." unique_id=441230592]
+layout_mode = 0
+offset_left = 836.0
+offset_top = 188.0
+offset_right = 1084.0
+offset_bottom = 222.0
+theme_override_font_sizes/font_size = 24
+text = "战术技能"
+
+[node name="SkillTypeFrame" type="Panel" parent="." unique_id=859483008]
+layout_mode = 0
+offset_left = 864.0
+offset_top = 236.0
+offset_right = 1634.0
+offset_bottom = 314.0
+mouse_filter = 2
+theme = SubResource("Theme_section_blue")
+
+[node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
+anchors_preset = 0
+offset_left = 399.0
+offset_top = 132.0
+offset_right = 742.0
+offset_bottom = 471.0
+
+[node name="CharacterSelectFrame" type="Panel" parent="CharacterSelectRoot" unique_id=1033239150]
+layout_mode = 0
+offset_top = 9.0
+offset_right = 343.0
+offset_bottom = 333.0
+mouse_filter = 2
+theme = SubResource("Theme_char_select_orange")
+
+[node name="CharacterSelectHeader" type="Label" parent="CharacterSelectRoot" unique_id=2049201501]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 16.0
+offset_right = 328.0
+offset_bottom = 62.0
+theme_override_font_sizes/font_size = 28
+text = "人物选择"
+
+[node name="CharacterSelectPanel" type="VBoxContainer" parent="CharacterSelectRoot" unique_id=1332262597]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 66.0
+offset_right = 328.0
+offset_bottom = 378.0
+theme_override_constants/separation = 10
+
+[node name="CharacterSelectList" type="VBoxContainer" parent="CharacterSelectRoot/CharacterSelectPanel" unique_id=618954340]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="EchoButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1229815964]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 22
+text = "Echo"
+
+[node name="KasiyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=2123147018]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 22
+text = "Kasiya"
+
+[node name="MariyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1969700789]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 22
+text = "Mariya"
+
+[node name="NightingaleButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 22
+text = "Nightingale"
 
 [node name="GridContainer" type="GridContainer" parent="." unique_id=1216591860]
 z_index = 2
 layout_mode = 0
-offset_left = 187.0
-offset_top = 107.0
-offset_right = 485.0
-offset_bottom = 405.0
+offset_left = 218.99998
+offset_top = 506.0
+offset_right = 517.0
+offset_bottom = 804.0
 scale = Vector2(1.7, 1.7)
 mouse_filter = 2
 theme_override_constants/h_separation = 8
@@ -262,11 +416,11 @@ mouse_behavior_recursive = 2
 
 [node name="SkillContainer" type="HBoxContainer" parent="." unique_id=972831189]
 layout_mode = 0
-offset_left = 830.0
-offset_top = 220.0
-offset_right = 1290.0
-offset_bottom = 422.5
-theme_override_constants/separation = 130
+offset_left = 870.0
+offset_top = 349.0
+offset_right = 1620.0
+offset_bottom = 891.0
+theme_override_constants/separation = 60
 
 [node name="AttackFence" type="VBoxContainer" parent="SkillContainer" unique_id=1604114826]
 custom_minimum_size = Vector2(210, 0)
@@ -285,12 +439,12 @@ theme_override_constants/separation = 14
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1313883033]
 layout_mode = 0
-offset_left = 916.0
-offset_top = 79.0
-offset_right = 1296.0
-offset_bottom = 119.0
-scale = Vector2(2, 2)
-theme_override_constants/separation = 140
+offset_left = 947.0
+offset_top = 244.0
+offset_right = 1347.0
+offset_bottom = 284.0
+scale = Vector2(1.6, 1.6)
+theme_override_constants/separation = 128
 
 [node name="ColorRect" type="ColorRect" parent="HBoxContainer" unique_id=284456308]
 material = SubResource("ShaderMaterial_q1qv0")
@@ -311,12 +465,12 @@ mouse_filter = 1
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=1055536850]
 layout_mode = 0
-offset_left = 804.0
-offset_top = 194.0
-offset_right = 1513.0
-offset_bottom = 679.0
+offset_left = 834.0
+offset_top = 320.0
+offset_right = 1656.0
+offset_bottom = 970.0
 mouse_filter = 2
-theme_override_constants/separation = 342
+theme_override_constants/separation = 270
 
 [node name="Panel" type="Panel" parent="HBoxContainer2" unique_id=1958467348]
 custom_minimum_size = Vector2(3, 20)
@@ -341,7 +495,7 @@ theme = SubResource("Theme_dbxj7")
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1598531785]
 material = SubResource("ShaderMaterial_wa4fa")
 layout_mode = 0
-offset_left = 1157.0
-offset_top = -2.0
-offset_right = 1217.0
-offset_bottom = 64.0
+offset_left = 1021.0
+offset_top = 39.0
+offset_right = 1081.0
+offset_bottom = 105.0

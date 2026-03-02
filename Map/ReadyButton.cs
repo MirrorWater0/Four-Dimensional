@@ -24,52 +24,45 @@ public partial class ReadyButton : Button
         ChangeEffect.Visible = false;
     }
 
-    public void Click()
+    public async void Click()
     {
         if (Layer.GetChildCount() == 0)
         {
             ThisBattleReady = _readyScene.Instantiate() as BattleReady;
             Layer.AddChild(ThisBattleReady);
             ThisBattleReady.StartAnimation();
-            ChangeEffect.Visible = true;
-            Tween tween = CreateTween();
-            tween
-                .TweenMethod(
-                    Callable.From<float>(value =>
-                        ((ShaderMaterial)ChangeEffect.Material).SetShaderParameter(
-                            "progress",
-                            value
-                        )
-                    ),
-                    1f,
-                    0.1f,
-                    0.4f
-                )
-                .SetEase(Tween.EaseType.Out);
-            tween
-                .Chain()
-                .TweenCallback(
-                    Callable.From(() =>
-                    {
-                        ChangeEffect.Visible = false;
-                    })
-                );
+            // ChangeEffect.Visible = true;
+            // Tween tween = CreateTween();
+            // tween
+            //     .TweenMethod(
+            //         Callable.From<float>(value =>
+            //             ((ShaderMaterial)ChangeEffect.Material).SetShaderParameter(
+            //                 "progress",
+            //                 value
+            //             )
+            //         ),
+            //         1f,
+            //         0.1f,
+            //         0.4f
+            //     )
+            //     .SetEase(Tween.EaseType.Out);
+            // tween
+            //     .Chain()
+            //     .TweenCallback(
+            //         Callable.From(() =>
+            //         {
+            //             ChangeEffect.Visible = false;
+            //         })
+            //     );
         }
         else
         {
             Disabled = true;
-            Tween tween = CreateTween();
-            tween.TweenProperty(ThisBattleReady, "modulate", new Color(1, 1, 1, 0), 0.3f);
             ThisBattleReady.ComfirmTactics();
-            tween
-                .Chain()
-                .TweenCallback(
-                    Callable.From(() =>
-                    {
-                        Disabled = false;
-                        ThisBattleReady.QueueFree();
-                    })
-                );
+            await ThisBattleReady.PlayCloseAnimationAsync();
+            Disabled = false;
+            ThisBattleReady.QueueFree();
+            ThisBattleReady = null;
         }
     }
 

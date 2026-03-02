@@ -2,8 +2,30 @@
 
 [ext_resource type="Script" uid="uid://m44hfaa5v2ex" path="res://battle/UIScene/Tip.cs" id="1_mhy24"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tip_bg"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.08, 0.12, 0.18, 0.36)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.74, 0.9, 0.42)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.02, 0.03, 0.06, 0.24)
+shadow_size = 10
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="Theme" id="Theme_tip_bg"]
+Panel/styles/panel = SubResource("StyleBoxFlat_tip_bg")
+
 [node name="Tip" type="Control" unique_id=376716572]
-z_index = 20
+z_index = 24
 layout_mode = 3
 anchors_preset = 0
 grow_horizontal = 2
@@ -11,22 +33,25 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_mhy24")
 
-[node name="bg" type="ColorRect" parent="." unique_id=1720827472]
+[node name="bg" type="Panel" parent="." unique_id=1720827472]
 layout_mode = 0
-offset_right = 402.0
-offset_bottom = 222.0
+offset_right = 388.0
+offset_bottom = 192.0
 mouse_filter = 2
-color = Color(0.8980392, 1, 1, 0.5882353)
+theme = SubResource("Theme_tip_bg")
 
 [node name="Description" type="RichTextLabel" parent="." unique_id=1080839497]
 layout_mode = 0
-offset_left = 20.0
-offset_right = 185.0
-offset_bottom = 98.0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 350.0
+offset_bottom = 106.0
 mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.64)
+theme_override_constants/line_separation = 2
 theme_override_constants/outline_size = 2
-theme_override_font_sizes/normal_font_size = 20
+theme_override_font_sizes/normal_font_size = 19
 bbcode_enabled = true
 text = "ewesdsdsdsdsd"
 fit_content = true

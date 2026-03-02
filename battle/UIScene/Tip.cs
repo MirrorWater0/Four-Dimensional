@@ -3,6 +3,8 @@ using Godot;
 
 public partial class Tip : Control
 {
+    private static readonly Vector2 BackgroundPadding = new Vector2(28f, 24f);
+
     [Export]
     public bool FollowMouse = true;
 
@@ -15,7 +17,7 @@ public partial class Tip : Control
 
     private Vector2 _manualAnchorPosition = Vector2.Zero;
 
-    public ColorRect bg => field ??= GetNode<ColorRect>("bg");
+    public Panel bg => field ??= GetNode<Panel>("bg");
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("Description");
 
     public override void _Ready()
@@ -25,6 +27,9 @@ public partial class Tip : Control
             Description.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             Description.CustomMinimumSize = new Vector2(340, 0);
         }
+
+        if (bg != null)
+            bg.Position = Vector2.Zero;
 
         Visible = false;
 
@@ -40,7 +45,7 @@ public partial class Tip : Control
         // Update background size when description size changes
         if (bg != null && Description != null)
         {
-            bg.Size = Description.Size + new Vector2(20, 20);
+            bg.Size = Description.Size + BackgroundPadding;
         }
     }
 
@@ -72,10 +77,12 @@ public partial class Tip : Control
     /// </summary>
     private Vector2 GetTooltipSize()
     {
+        if (bg != null)
+            return bg.Size;
+
         if (Description != null)
-        {
             return Description.Size;
-        }
+
         return Size;
     }
 

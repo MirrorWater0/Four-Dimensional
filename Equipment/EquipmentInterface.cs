@@ -759,6 +759,10 @@ public partial class EquipmentInterface : Control
         if (GameInfo.OwnedEquipments.Count > 0)
             return;
 
+        // Only seed starter inventory for fresh/legacy data (no characters yet).
+        if (GameInfo.PlayerCharacters != null && GameInfo.PlayerCharacters.Length > 0)
+            return;
+
         // Keep current behavior for old saves that have no inventory yet.
         GameInfo.OwnedEquipments.Add(Equipment.Create(Equipment.EquipmentName.RiftBlade));
         GameInfo.OwnedEquipments.Add(Equipment.Create(Equipment.EquipmentName.PhaseShoulder));

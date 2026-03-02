@@ -1,16 +1,35 @@
-using Godot;
 using System.Threading.Tasks;
+using Godot;
 
 public partial class CardSlot : PanelContainer
 {
+    private static readonly Color DefaultBorderColor = new("#a7d6ff52");
+    private static readonly Color HoverBorderColor = new("#5cff8a");
+    private static readonly Color SelectedBorderColor = Colors.Red;
+
+    [Export]
+    public float HoverBorderTweenDuration = 0.12f;
+
+    [Export]
+    public float ParticleBoxPaddingX = 80f;
+
+    [Export]
+    public float ParticleYOffset = 12f;
+
     [Signal]
     public delegate void ClickedEventHandler();
-    public Label label => field ??= GetNodeOrNull<Label>("Card1Label") ?? GetNodeOrNull<Label>("Label");
+    public GpuParticles2D particles2D => field ??= GetNodeOrNull<GpuParticles2D>("Particles2D");
+    public Label label =>
+        field ??= GetNodeOrNull<Label>("Card1Label") ?? GetNodeOrNull<Label>("Label");
+    private GpuParticles2D Particles => field ??= GetNodeOrNull<GpuParticles2D>("GPUParticles2D");
 
     public override void _GuiInput(InputEvent @event)
     {
         if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+        {
+            TriggerParticles();
             EmitSignal(SignalName.Clicked);
+        }
     }
 
     public override void _Ready()
@@ -18,21 +37,44 @@ public partial class CardSlot : PanelContainer
         if (label != null)
             label.MouseFilter = MouseFilterEnum.Ignore;
 
+        _runtimeStyleBox = GetThemeStylebox("panel").Duplicate() as StyleBoxFlat;
+        if (_runtimeStyleBox != null)
+            AddThemeStyleboxOverride("panel", _runtimeStyleBox);
+
         Clicked += Select;
+        MouseEntered += OnMouseEntered;
+        MouseExited += OnMouseExited;
+        ItemRectChanged += UpdateParticlesLayout;
+        ApplyBorderState();
+
+        if (Particles != null)
+        {
+            Particles.OneShot = true;
+            Particles.Emitting = false;
+        }
+        CallDeferred(MethodName.UpdateParticlesLayout);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (Particles == null || !Particles.TopLevel)
+            return;
+
+        var rect = GetGlobalRect();
+        if (_lastGlobalPos != rect.Position || _lastSize != rect.Size)
+            UpdateParticlesLayout();
     }
 
     public void Select()
     {
-        var styleBox = GetThemeStylebox("panel").Duplicate() as StyleBoxFlat;
-        styleBox.BorderColor = Colors.Red;
-        AddThemeStyleboxOverride("panel", styleBox);
+        _isSelected = true;
+        ApplyBorderState();
     }
 
     public void Unselect()
     {
-        var styleBox = GetThemeStylebox("panel").Duplicate() as StyleBoxFlat;
-        styleBox.BorderColor = new Color("#a7d6ff52");
-        AddThemeStyleboxOverride("panel", styleBox);
+        _isSelected = false;
+        ApplyBorderState();
     }
 
     public async Task PlayRemoveAnimation(float moveDistance, float duration)
@@ -49,7 +91,12 @@ public partial class CardSlot : PanelContainer
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.In);
         tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(this, "global_position", baseGlobal + new Vector2(moveDistance, 0), duration);
+        tween.TweenProperty(
+            this,
+            "global_position",
+            baseGlobal + new Vector2(moveDistance, 0),
+            duration
+        );
         tween.TweenProperty(this, "modulate:a", 0.0f, duration * 0.95f);
 
         await ToSignal(tween, Tween.SignalName.Finished);
@@ -98,4 +145,94 @@ public partial class CardSlot : PanelContainer
     {
         Modulate = Modulate with { A = alpha };
     }
+
+    private void OnMouseEntered()
+    {
+        _isHovered = true;
+        ApplyBorderState(animate: true);
+    }
+
+    private void OnMouseExited()
+    {
+        _isHovered = false;
+        ApplyBorderState(animate: true);
+    }
+
+    private void ApplyBorderState(bool animate = false)
+    {
+        if (_runtimeStyleBox == null)
+            return;
+
+        Color targetColor = _isSelected
+            ? SelectedBorderColor
+            : (_isHovered ? HoverBorderColor : DefaultBorderColor);
+
+        if (!animate || _isSelected)
+        {
+            _borderTween?.Kill();
+            _runtimeStyleBox.BorderColor = targetColor;
+            _currentBorderColor = targetColor;
+            return;
+        }
+
+        _borderTween?.Kill();
+        Color startColor = _currentBorderColor;
+        _borderTween = CreateTween();
+        _borderTween.SetEase(Tween.EaseType.Out);
+        _borderTween.SetTrans(Tween.TransitionType.Cubic);
+        _borderTween.TweenMethod(
+            Callable.From<float>(t =>
+            {
+                _currentBorderColor = startColor.Lerp(targetColor, t);
+                _runtimeStyleBox.BorderColor = _currentBorderColor;
+            }),
+            0.0f,
+            1.0f,
+            HoverBorderTweenDuration
+        );
+    }
+
+    private void TriggerParticles()
+    {
+        if (Particles == null)
+            return;
+
+        Particles.Restart();
+        Particles.Emitting = true;
+    }
+
+    private void UpdateParticlesLayout()
+    {
+        if (Particles == null)
+            return;
+
+        if (Particles.TopLevel)
+        {
+            var rect = GetGlobalRect();
+            _lastGlobalPos = rect.Position;
+            _lastSize = rect.Size;
+            float targetX = rect.Position.X + rect.Size.X * 0.5f;
+            float targetY = rect.Position.Y + rect.Size.Y + ParticleYOffset;
+            Particles.GlobalPosition = new Vector2(targetX, targetY);
+        }
+        else
+        {
+            Particles.Position = new Vector2(Size.X * 0.5f, Size.Y + ParticleYOffset);
+        }
+
+        if (Particles.ProcessMaterial is ParticleProcessMaterial processMaterial)
+        {
+            Vector3 extents = processMaterial.EmissionBoxExtents;
+            float emitX = Size.X * 0.5f + ParticleBoxPaddingX;
+            processMaterial.EmissionBoxExtents = new Vector3(emitX, extents.Y, extents.Z);
+        }
+    }
+
+    private StyleBoxFlat _runtimeStyleBox;
+    private Tween _borderTween;
+    private Color _currentBorderColor = DefaultBorderColor;
+    private bool _isSelected;
+    private bool _isHovered;
+    private Vector2 _lastGlobalPos;
+    private Vector2 _lastSize;
 }

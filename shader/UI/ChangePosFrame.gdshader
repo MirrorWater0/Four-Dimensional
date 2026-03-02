@@ -10,7 +10,7 @@ uniform float corner_size : hint_range(0.05, 0.48) = 0.2;
 uniform vec4 accent_color : source_color = vec4(0.42, 0.78, 1.0, 1.0);
 uniform float pulse_speed : hint_range(0.0, 6.0) = 1.3;
 uniform float sweep_speed : hint_range(0.0, 1.0) = 0.;
-uniform float sweep_strength : hint_range(0.0, 1.0) = 0.2;
+uniform float sweep_strength : hint_range(0.0, 1.0) = 0.0;
 uniform float scanline_strength : hint_range(0.0, 0.2) = 0.04;
 
 float sd_box(vec2 p, vec2 b) {
@@ -51,10 +51,8 @@ void fragment() {
 
     float corner_dot = aa_step(length(abs(p) - vec2(0.5 - c * 0.25)), t * 1.6) * corner_region;
 
-    // Subtle animated energy sweep
-    float sweep_pos = fract(TIME * sweep_speed) * 1.8 - 0.4;
-    float sweep_axis = uv.x + uv.y * 0.65;
-    float sweep = exp(-pow((sweep_axis - sweep_pos) * 20.0, 2.0)) * panel * sweep_strength;
+    // Sweep highlight disabled by design to keep a calmer frame style.
+    float sweep = 0.0;
 
     // Scanline texture
     float scan = sin((uv.y + TIME * 0.03) * 220.0) * scanline_strength;

@@ -23,17 +23,17 @@ public partial class Battle : Node2D
     Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
     public List<PlayerCharacter> PlayersList = new();
     public List<EnemyCharacter> EnemiesList = new();
-    public Node2D Right => field ??= GetNode("Right") as Node2D;
-    public Node2D Left => field ??= GetNode("Left") as Node2D;
+    public Node2D Right => field ??= GetNode<Node2D>("Right");
+    public Node2D Left => field ??= GetNode<Node2D>("Left");
 
     public AnimationPlayer BattleAnimationPlayer =>
-        field ??= GetNode("BattlePlayer") as AnimationPlayer;
+        field ??= GetNode<AnimationPlayer>("BattlePlayer");
     private int _turn;
     public CharacterControl CharacterControl =>
-        field ??= GetNode("CharacterControl") as CharacterControl;
+        field ??= GetNode<CharacterControl>("CharacterControl");
 
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
-    public Button RetreatButton => field ??= GetNode("Retreat") as Button;
+    public Button RetreatButton => field ??= GetNode<Button>("Retreat");
 
     private int _playerSpeed = 0;
     private int _enemySpeed = 0;
@@ -96,60 +96,16 @@ public partial class Battle : Node2D
         }
     }
 
-    private GlowLabel _playerSpeedLabel;
-    private GlowLabel _enemySpeedLabel;
-    private ProgressBar _playerSpeedBar;
-    private ProgressBar _enemySpeedBar;
-
-    public GlowLabel PlayerSpeedLabel
-    {
-        get
-        {
-            if (_playerSpeedLabel == null || !GodotObject.IsInstanceValid(_playerSpeedLabel))
-            {
-                _playerSpeedLabel = GetNodeOrNull<GlowLabel>("SpeedBox/PlayerSpeed/Label");
-            }
-            return _playerSpeedLabel;
-        }
-    }
-
-    public GlowLabel EnemySpeedLabel
-    {
-        get
-        {
-            if (_enemySpeedLabel == null || !GodotObject.IsInstanceValid(_enemySpeedLabel))
-            {
-                _enemySpeedLabel = GetNodeOrNull<GlowLabel>("SpeedBox/EnemySpeed/Label");
-            }
-            return _enemySpeedLabel;
-        }
-    }
-
-    public ProgressBar PlayerSpeedBar
-    {
-        get
-        {
-            if (_playerSpeedBar == null || !GodotObject.IsInstanceValid(_playerSpeedBar))
-            {
-                _playerSpeedBar = GetNodeOrNull<ProgressBar>("SpeedBox/PlayerSpeed");
-            }
-            return _playerSpeedBar;
-        }
-    }
-
-    public ProgressBar EnemySpeedBar
-    {
-        get
-        {
-            if (_enemySpeedBar == null || !GodotObject.IsInstanceValid(_enemySpeedBar))
-            {
-                _enemySpeedBar = GetNodeOrNull<ProgressBar>("SpeedBox/EnemySpeed");
-            }
-            return _enemySpeedBar;
-        }
-    }
+    public GlowLabel PlayerSpeedLabel =>
+        field ??= GetNodeOrNull<GlowLabel>("SpeedBox/PlayerSpeed/Label");
+    public GlowLabel EnemySpeedLabel =>
+        field ??= GetNodeOrNull<GlowLabel>("SpeedBox/EnemySpeed/Label");
+    public ProgressBar PlayerSpeedBar =>
+        field ??= GetNodeOrNull<ProgressBar>("SpeedBox/PlayerSpeed");
+    public ProgressBar EnemySpeedBar => field ??= GetNodeOrNull<ProgressBar>("SpeedBox/EnemySpeed");
     public LevelNode CurrentLevelNode;
-    public Character dummy => field ??= GetNode("Dummy") as Character;
+    public Character dummy => field ??= GetNode<Character>("Dummy");
+    public RichTextLabel BattleRecord => field ??= GetNode<RichTextLabel>("CanvasLayer/BattleRecord");
 
     public override void _EnterTree()
     {
@@ -179,6 +135,9 @@ public partial class Battle : Node2D
 
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
+        BattleRecord.Text = string.Empty;
+        UsedSkills.ItemAdded -= OnSkillUsed;
+        UsedSkills.ItemAdded += OnSkillUsed;
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
@@ -234,6 +193,26 @@ public partial class Battle : Node2D
             await relics[i].BattleEffect(this);
         }
         await BattleBegin1(token);
+    }
+
+    private void OnSkillUsed(Skill skill)
+    {
+        if (skill == null)
+        {
+            return;
+        }
+
+        string characterName = skill.OwnerCharater?.CharacterName;
+        if (string.IsNullOrWhiteSpace(characterName))
+        {
+            characterName = skill.OwnerCharater?.Name ?? "Unknown";
+        }
+
+        string skillName = string.IsNullOrWhiteSpace(skill.SkillName)
+            ? skill.GetType().Name
+            : skill.SkillName;
+
+        BattleRecord.AppendText($"{characterName} 释放 {skillName}\n");
     }
 
     public void SetCharaterPostion()
@@ -548,7 +527,12 @@ public partial class Battle : Node2D
         dummy.BattleNode = this;
         dummy.Visible = false;
         dummy.Position = new Vector2(10000, -10000);
-        dummy.ConfigureCombatStats(dummy.BattlePower, dummy.BattleSurvivability, dummy.Speed, 1_000_000_000);
+        dummy.ConfigureCombatStats(
+            dummy.BattlePower,
+            dummy.BattleSurvivability,
+            dummy.Speed,
+            1_000_000_000
+        );
         dummy.Skills = [new Skill(Skill.SkillTypes.Attack)];
         dummy.Initialize();
     }
