@@ -1,30 +1,6 @@
 [gd_resource type="Theme" format=3 uid="uid://bltfa7a6iswv"]
 
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="1_pt7ni"]
-[ext_resource type="Texture2D" uid="uid://bx2kwwbho5it5" path="res://asset/UI/button/UIButton2.png" id="2_7acn0"]
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_7clsk"]
-texture = ExtResource("2_7acn0")
-modulate_color = Color(1, 1, 1, 0.281)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_hqcv5"]
-texture = ExtResource("2_7acn0")
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_sy2kx"]
-texture = ExtResource("2_7acn0")
-modulate_color = Color(55.135, 45.946, 51.352, 1)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_62406"]
-texture = ExtResource("2_7acn0")
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_itkh7"]
-texture = ExtResource("2_7acn0")
-modulate_color = Color(0.529412, 0.541176, 0.541176, 1)
 
 [resource]
 Button/fonts/font = ExtResource("1_pt7ni")
-Button/styles/disabled = SubResource("StyleBoxTexture_7clsk")
-Button/styles/focus = SubResource("StyleBoxTexture_hqcv5")
-Button/styles/hover = SubResource("StyleBoxTexture_sy2kx")
-Button/styles/normal = SubResource("StyleBoxTexture_62406")
-Button/styles/pressed = SubResource("StyleBoxTexture_itkh7")

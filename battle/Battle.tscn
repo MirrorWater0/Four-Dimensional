@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
-[ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="4_eoytn"]
 [ext_resource type="Texture2D" uid="uid://dfgi24opauw8h" path="res://asset/0.jpg" id="4_r4boa"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
@@ -330,6 +329,8 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uifq5"]
 shader = SubResource("Shader_1euq2")
 
+[sub_resource type="Theme" id="Theme_d0b6a"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jhxqk"]
 resource_local_to_scene = true
 shader = ExtResource("7_r8nfv")
@@ -473,15 +474,21 @@ color = Color(0, 0, 0, 0)
 metadata/_edit_lock_ = true
 
 [node name="Retreat" type="Button" parent="." unique_id=1228269267]
-material = SubResource("ShaderMaterial_jhxqk")
 offset_left = 1824.0
 offset_top = 984.0
-offset_right = 1923.0
-offset_bottom = 1080.0
-theme = ExtResource("4_eoytn")
+offset_right = 1924.0
+offset_bottom = 1084.0
+theme = SubResource("Theme_d0b6a")
 disabled = true
-text = "撤退
+text = "
 "
+
+[node name="ColorRect" type="ColorRect" parent="Retreat" unique_id=1694008529]
+material = SubResource("ShaderMaterial_jhxqk")
+layout_mode = 0
+offset_right = 100.0
+offset_bottom = 100.0
+mouse_filter = 1
 
 [node name="Label" type="Label" parent="Retreat" unique_id=160334765]
 layout_mode = 0

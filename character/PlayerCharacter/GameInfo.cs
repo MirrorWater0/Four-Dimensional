@@ -17,6 +17,7 @@ public static partial class GameInfo
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
     public static Dictionary<RelicID, int> Relic = new();
+    public static List<Equipment> OwnedEquipments = new();
 
     public static void InitNewGame()
     {
@@ -24,6 +25,7 @@ public static partial class GameInfo
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();
+        OwnedEquipments = CreateStarterOwnedEquipments();
         // Map generation logic in LevelProgress will populate this
         GD.Print("InitNewGame");
     }
@@ -31,6 +33,27 @@ public static partial class GameInfo
     public static void RefreshRandomNum(ref int num)
     {
         num = new Random(num).Next();
+    }
+
+    private static List<Equipment> CreateStarterOwnedEquipments()
+    {
+        // Starter inventory for equipment interface.
+        var result = new List<Equipment>(6);
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.RiftBlade));
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.PhaseShoulder));
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.EchoCore));
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.LumenBadge));
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.SilentPendant));
+        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.FoldedBulwark));
+        return result;
+    }
+
+    private static void AddOwnedIfNotNull(List<Equipment> target, Equipment equipment)
+    {
+        if (target == null || equipment == null)
+            return;
+
+        target.Add(equipment);
     }
 }
 

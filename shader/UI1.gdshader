@@ -43,7 +43,7 @@ void fragment() {
 	COLOR.a = ring1; 
 	//vec4 cyc = vec4(0.9,0.8,0.8,1.)*circle(uv,0.08,vec2(0.5));
 	//COLOR += cyc;
-	COLOR*= modulate;
+	COLOR *= modulate;
 }
 
 //void light() {

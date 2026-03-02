@@ -290,7 +290,7 @@ offset_top = 79.0
 offset_right = 1296.0
 offset_bottom = 119.0
 scale = Vector2(2, 2)
-theme_override_constants/separation = 130
+theme_override_constants/separation = 140
 
 [node name="ColorRect" type="ColorRect" parent="HBoxContainer" unique_id=284456308]
 material = SubResource("ShaderMaterial_q1qv0")
@@ -329,6 +329,11 @@ layout_mode = 2
 theme = SubResource("Theme_dbxj7")
 
 [node name="Panel3" type="Panel" parent="HBoxContainer2" unique_id=973292487]
+custom_minimum_size = Vector2(3, 20)
+layout_mode = 2
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel4" type="Panel" parent="HBoxContainer2" unique_id=980294257]
 custom_minimum_size = Vector2(3, 20)
 layout_mode = 2
 theme = SubResource("Theme_dbxj7")

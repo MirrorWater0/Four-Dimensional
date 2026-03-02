@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
+[ext_resource type="Script" uid="uid://eud58fsjwpgj" path="res://Map/EquipmentButton.cs" id="9_eqbtn"]
 [ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="10_nlecm"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
 [ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/UI/ExitButton.cs" id="11_cccvd"]
@@ -16,6 +17,7 @@
 [ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
+[ext_resource type="Script" uid="uid://ldty82sm2cbb" path="res://Map/DynamicCamera.cs" id="15_dcam"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -134,17 +136,20 @@ disabled = true
 metadata/_edit_lock_ = true
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
-position = Vector2(10, 5)
+position = Vector2(960, 540)
 limit_left = 0
 limit_top = 0
 limit_right = 3500
 limit_bottom = 1082
-position_smoothing_enabled = true
-metadata/_edit_lock_ = true
+script = ExtResource("15_dcam")
 
 [node name="SiteManagement" type="Control" parent="." unique_id=511334120]
 visible = false
 anchors_preset = 0
+offset_left = 1920.0
+offset_top = 1080.0
+offset_right = 1920.0
+offset_bottom = 1080.0
 
 [node name="Button" parent="SiteManagement" unique_id=302682044 instance=ExtResource("5_soa74")]
 layout_mode = 0
@@ -229,14 +234,16 @@ layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="Button3" type="Button" parent="UI" unique_id=326064623]
+[node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623]
+self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(130, 130)
 offset_left = 1752.0
 offset_top = 736.0
 offset_right = 1882.0
 offset_bottom = 866.0
+script = ExtResource("9_eqbtn")
 
-[node name="ColorRect" type="ColorRect" parent="UI/Button3" unique_id=425907821]
+[node name="ColorRect" type="ColorRect" parent="UI/EquipmentButton" unique_id=425907821]
 material = SubResource("ShaderMaterial_b3jsu")
 layout_mode = 0
 offset_right = 130.0
