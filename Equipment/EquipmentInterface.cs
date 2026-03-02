@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -15,8 +16,6 @@ public partial class EquipmentInterface : Control
     private const float InventoryReflowDuration = 0.18f;
 
     private static readonly string[] SlotLetters = ["A", "B"];
-    private static readonly Color SelectedFrameColor = new(0.93f, 0.26f, 0.24f, 0.95f);
-    private static readonly Color UnselectedSlotFrameColor = new(0.654902f, 0.839216f, 1f, 0.34f);
     private static readonly Color SelectedTextColor = new(1f, 0.55f, 0.55f, 1f);
     private static readonly Color NormalTextColor = new(0.9f, 0.95f, 1f, 1f);
 
@@ -56,85 +55,27 @@ public partial class EquipmentInterface : Control
             "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterCard/CharacterRow/CharacterInfo/CharacterHintLabel"
         );
 
-    private PanelContainer[] SlotPanels =>
+    private CardSlot[] SlotCards =>
         field ??= [
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA"
+            GetNode<CardSlot>(
+                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/Card"
             ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB"
+            GetNode<CardSlot>(
+                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/Card"
             ),
         ];
-    private VBoxContainer[] SlotContents =>
+    private Label[] SlotCardLabels =>
         field ??= [
-            GetNode<VBoxContainer>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/SlotAContent"
-            ),
-            GetNode<VBoxContainer>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/SlotBContent"
-            ),
-        ];
-    private Label[] SlotNameLabels =>
-        field ??= [
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/SlotAContent/SlotAName"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/SlotBContent/SlotBName"
-            ),
-        ];
-    private Label[] SlotBonusLabels =>
-        field ??= [
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/SlotAContent/SlotABonus"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/SlotBContent/SlotBBonus"
-            ),
+            SlotCards[0].label,
+            SlotCards[1].label,
         ];
 
-    private PanelContainer[] InventoryCards =>
-        field ??= [
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card1"
-            ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card2"
-            ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card3"
-            ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card4"
-            ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card5"
-            ),
-            GetNode<PanelContainer>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card6"
-            ),
-        ];
-    private Label[] InventoryCardLabels =>
-        field ??= [
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card1/Card1Label"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card2/Card2Label"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card3/Card3Label"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card4/Card4Label"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card5/Card5Label"
-            ),
-            GetNode<Label>(
-                "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card6/Card6Label"
-            ),
-        ];
+    private VBoxContainer InventoryGrid =>
+        field ??= GetNode<VBoxContainer>(
+            "RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid"
+        );
+    private CardSlot[] InventoryCards => field ??= BuildInventoryCards();
+    private Label[] InventoryCardLabels => field ??= BuildInventoryCardLabels();
 
     private Label DetailNameLabel =>
         field ??= GetNode<Label>(
@@ -179,10 +120,6 @@ public partial class EquipmentInterface : Control
     private int _selectedCharacterIndex;
     private int _selectedSlotIndex;
     private Equipment _selectedEquipment;
-    private StyleBoxFlat _slotNormalStyle;
-    private StyleBoxFlat _slotSelectedStyle;
-    private StyleBoxFlat _cardNormalStyle;
-    private StyleBoxFlat _cardSelectedStyle;
     private bool _isEquipAnimating;
 
     public override void _Ready()
@@ -194,17 +131,7 @@ public partial class EquipmentInterface : Control
         _selectedSlotIndex = 0;
         _selectedEquipment = null;
 
-        for (int i = 0; i < SlotPanels.Length; i++)
-        {
-            SlotContents[i].MouseFilter = MouseFilterEnum.Ignore;
-            SlotNameLabels[i].MouseFilter = MouseFilterEnum.Ignore;
-            SlotBonusLabels[i].MouseFilter = MouseFilterEnum.Ignore;
-        }
-        for (int i = 0; i < InventoryCardLabels.Length; i++)
-            InventoryCardLabels[i].MouseFilter = MouseFilterEnum.Ignore;
-
         WireUiEvents();
-        EnsureSelectionStyles();
         RefreshAll();
     }
 
@@ -219,16 +146,16 @@ public partial class EquipmentInterface : Control
             CharacterButtons[i].ToggleMode = true;
         }
 
-        for (int i = 0; i < SlotPanels.Length; i++)
+        for (int i = 0; i < SlotCards.Length; i++)
         {
             int captured = i;
-            SlotPanels[i].GuiInput += ev => OnSlotGuiInput(captured, ev);
+            SlotCards[i].Clicked += () => OnSlotCardPressed(captured);
         }
 
         for (int i = 0; i < InventoryCards.Length; i++)
         {
             int captured = i;
-            InventoryCards[i].GuiInput += ev => OnInventoryCardGuiInput(captured, ev);
+            InventoryCards[i].Clicked += () => OnInventoryCardPressed(captured);
         }
 
         EquipButton.Pressed += OnEquipPressed;
@@ -237,28 +164,25 @@ public partial class EquipmentInterface : Control
 
     private void OnCharacterButtonPressed(int characterIndex)
     {
-        if (GameInfo.PlayerCharacters == null || characterIndex >= GameInfo.PlayerCharacters.Length)
+        if (
+            GameInfo.PlayerCharacters == null
+            || (uint)characterIndex >= (uint)GameInfo.PlayerCharacters.Length
+        )
             return;
 
         _selectedCharacterIndex = characterIndex;
         RefreshAll();
     }
 
-    private void OnSlotGuiInput(int slotIndex, InputEvent ev)
+    private void OnSlotCardPressed(int slotIndex)
     {
-        if (ev is not InputEventMouseButton mb || mb.ButtonIndex != MouseButton.Left || !mb.Pressed)
-            return;
-
         _selectedSlotIndex = Math.Clamp(slotIndex, 0, SlotCount - 1);
         RefreshAll();
     }
 
-    private void OnInventoryCardGuiInput(int cardIndex, InputEvent ev)
+    private void OnInventoryCardPressed(int cardIndex)
     {
-        if (ev is not InputEventMouseButton mb || mb.ButtonIndex != MouseButton.Left || !mb.Pressed)
-            return;
-
-        if (cardIndex < 0 || cardIndex >= _catalog.Length)
+        if ((uint)cardIndex >= (uint)_catalog.Length)
             return;
 
         _selectedEquipment = Equipment.Clone(_catalog[cardIndex]);
@@ -272,14 +196,13 @@ public partial class EquipmentInterface : Control
         if (_selectedEquipment == null)
             return;
 
-        if (!TryGetSelectedPlayerInfo(out var info))
+        if (!TryGetSelectedPlayerWithEquipments(out var info))
             return;
 
         _isEquipAnimating = true;
         try
         {
-            EnsureEquipmentArray(ref info);
-            bool hadEquip = info.Equipments[_selectedSlotIndex] != null;
+            bool hadEquip = HasValidEquipment(info.Equipments[_selectedSlotIndex]);
             var inventoryPositionsBeforeRefresh = CaptureVisibleInventoryCardPositions();
             Equipment.EquipmentName? replacedEquipName = hadEquip
                 ? info.Equipments[_selectedSlotIndex].Name
@@ -289,9 +212,10 @@ public partial class EquipmentInterface : Control
             Task slotExitTask = hadEquip
                 ? AnimateSlotContentExitAsync(_selectedSlotIndex)
                 : Task.CompletedTask;
-            Task inventoryExitTask = removedCardIndex >= 0
-                ? AnimateInventoryCardExitAsync(removedCardIndex)
-                : Task.CompletedTask;
+            Task inventoryExitTask =
+                removedCardIndex >= 0
+                    ? AnimateInventoryCardExitAsync(removedCardIndex)
+                    : Task.CompletedTask;
             await Task.WhenAll(slotExitTask, inventoryExitTask);
 
             RemoveOwnedEquipmentFirstByName(_selectedEquipment.Name);
@@ -299,7 +223,7 @@ public partial class EquipmentInterface : Control
                 GameInfo.OwnedEquipments.Add(Equipment.Clone(info.Equipments[_selectedSlotIndex]));
 
             info.Equipments[_selectedSlotIndex] = Equipment.Clone(_selectedEquipment);
-            GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
+            SaveSelectedPlayerInfo(in info);
 
             RefreshAll();
 
@@ -321,31 +245,27 @@ public partial class EquipmentInterface : Control
         if (_isEquipAnimating)
             return;
 
-        if (!TryGetSelectedPlayerInfo(out var info))
+        if (!TryGetSelectedPlayerWithEquipments(out var info))
             return;
 
-        EnsureEquipmentArray(ref info);
-        if (info.Equipments[_selectedSlotIndex] == null)
+        if (!HasValidEquipment(info.Equipments[_selectedSlotIndex]))
             return;
 
         _isEquipAnimating = true;
         try
         {
-            var inventoryPositionsBeforeRefresh = CaptureVisibleInventoryCardPositions();
             Equipment unequipped = Equipment.Clone(info.Equipments[_selectedSlotIndex]);
             Equipment.EquipmentName unequippedName = unequipped.Name;
             await AnimateSlotContentExitAsync(_selectedSlotIndex);
 
             info.Equipments[_selectedSlotIndex] = null;
-            GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
+            SaveSelectedPlayerInfo(in info);
             GameInfo.OwnedEquipments.Add(unequipped);
 
             RefreshAll();
 
-            Task slotEnterTask = AnimateSlotContentEnterAsync(_selectedSlotIndex);
-            Task inventoryReflowTask = AnimateInventoryReflowAsync(inventoryPositionsBeforeRefresh);
-            Task inventoryEnterTask = AnimateInventoryCardEnterByNameAsync(unequippedName);
-            await Task.WhenAll(slotEnterTask, inventoryEnterTask, inventoryReflowTask);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await AnimateInventoryCardEnterByNameAsync(unequippedName);
         }
         finally
         {
@@ -367,14 +287,15 @@ public partial class EquipmentInterface : Control
 
     private void RefreshCharacterButtons()
     {
+        var players = GameInfo.PlayerCharacters;
         for (int i = 0; i < CharacterButtons.Length; i++)
         {
-            bool exists = GameInfo.PlayerCharacters != null && i < GameInfo.PlayerCharacters.Length;
+            bool exists = players != null && i < players.Length;
             CharacterButtons[i].Visible = exists;
             if (!exists)
                 continue;
 
-            var info = GameInfo.PlayerCharacters[i];
+            var info = players[i];
             CharacterButtons[i].Text = string.IsNullOrWhiteSpace(info.CharacterName)
                 ? $"角色 {i + 1}"
                 : info.CharacterName;
@@ -403,35 +324,27 @@ public partial class EquipmentInterface : Control
 
     private void RefreshSlots()
     {
-        if (!TryGetSelectedPlayerInfo(out var info))
+        if (!TryGetSelectedPlayerWithEquipments(out var info))
             return;
-
-        EnsureEquipmentArray(ref info);
 
         for (int i = 0; i < SlotCount; i++)
         {
-            var equip = info.Equipments[i];
-            SlotNameLabels[i].Text =
-                equip == null ? $"装备槽 {SlotLetters[i]}（空）" : equip.DisplayName;
-            SlotBonusLabels[i].Text = BuildEquipmentBonusInline(equip);
+            var equip = HasValidEquipment(info.Equipments[i]) ? info.Equipments[i] : null;
+            string title = equip == null ? $"装备槽 {SlotLetters[i]}（空）" : equip.DisplayName;
+            string bonus = BuildEquipmentBonusInline(equip);
+            if (SlotCardLabels[i] != null)
+                SlotCardLabels[i].Text = $"{title}\n{bonus}";
 
             bool selected = i == _selectedSlotIndex;
-            if (_slotSelectedStyle != null && _slotNormalStyle != null)
-                SlotPanels[i].AddThemeStyleboxOverride(
-                    "panel",
-                    selected ? _slotSelectedStyle : _slotNormalStyle
-                );
-
-            SlotPanels[i].Modulate = selected
-                ? new Color(1.08f, 1.08f, 1.08f, 1f)
-                : new Color(0.88f, 0.92f, 0.98f, 1f);
-            SlotNameLabels[i].Modulate = selected ? SelectedTextColor : NormalTextColor;
-            SlotBonusLabels[i].Modulate = selected
-                ? new Color(1f, 0.78f, 0.78f, 1f)
-                : new Color(0.86f, 0.92f, 1f, 1f);
+            if (selected)
+                SlotCards[i].Select();
+            else
+                SlotCards[i].Unselect();
+            if (SlotCardLabels[i] != null)
+                SlotCardLabels[i].Modulate = selected ? SelectedTextColor : NormalTextColor;
         }
 
-        GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
+        SaveSelectedPlayerInfo(in info);
     }
 
     private void RefreshInventoryCards()
@@ -441,22 +354,27 @@ public partial class EquipmentInterface : Control
             bool visible = i < _catalog.Length;
             InventoryCards[i].Visible = visible;
             if (!visible)
+            {
+                InventoryCards[i].Unselect();
                 continue;
+            }
 
             var eq = _catalog[i];
-            InventoryCardLabels[i].Text = $"{eq.DisplayName}\n{BuildEquipmentBonusInline(eq)}";
+            if (InventoryCardLabels[i] != null)
+            {
+                InventoryCardLabels[i].Text = $"{eq.DisplayName}\n{BuildEquipmentBonusInline(eq)}";
+                InventoryCardLabels[i].Modulate = NormalTextColor;
+            }
 
             bool selected = _selectedEquipment != null && _selectedEquipment.Name == eq.Name;
-            if (_cardSelectedStyle != null && _cardNormalStyle != null)
-                InventoryCards[i].AddThemeStyleboxOverride(
-                    "panel",
-                    selected ? _cardSelectedStyle : _cardNormalStyle
-                );
-
-            InventoryCards[i].Modulate = selected
-                ? new Color(1.08f, 1.08f, 1.08f, 1f)
-                : new Color(0.9f, 0.94f, 1f, 1f);
-            InventoryCardLabels[i].Modulate = selected ? SelectedTextColor : NormalTextColor;
+            if (selected)
+            {
+                InventoryCards[i].Select();
+                if (InventoryCardLabels[i] != null)
+                    InventoryCardLabels[i].Modulate = SelectedTextColor;
+            }
+            else
+                InventoryCards[i].Unselect();
         }
     }
 
@@ -477,10 +395,8 @@ public partial class EquipmentInterface : Control
 
     private void RefreshPreview()
     {
-        if (!TryGetSelectedPlayerInfo(out var info))
+        if (!TryGetSelectedPlayerWithEquipments(out var info))
             return;
-
-        EnsureEquipmentArray(ref info);
 
         Equipment[] current = info.Equipments;
         Equipment[] simulated = CloneEquipArray(current);
@@ -502,7 +418,7 @@ public partial class EquipmentInterface : Control
         SpeedValueLabel.Text = FormatPreview(currentSpeed, nextSpeed);
         LifeValueLabel.Text = FormatPreview(currentLife, nextLife);
 
-        GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
+        SaveSelectedPlayerInfo(in info);
     }
 
     private void RefreshActionButtons()
@@ -512,11 +428,10 @@ public partial class EquipmentInterface : Control
 
         EquipButton.Disabled = _selectedEquipment == null;
 
-        if (TryGetSelectedPlayerInfo(out var info))
+        if (TryGetSelectedPlayerWithEquipments(out var info))
         {
-            EnsureEquipmentArray(ref info);
-            UnequipButton.Disabled = info.Equipments[_selectedSlotIndex] == null;
-            GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
+            UnequipButton.Disabled = !HasValidEquipment(info.Equipments[_selectedSlotIndex]);
+            SaveSelectedPlayerInfo(in info);
         }
         else
         {
@@ -526,42 +441,59 @@ public partial class EquipmentInterface : Control
 
     private bool TryGetSelectedPlayerInfo(out PlayerInfoStructure info)
     {
-        info = default;
-        if (
-            GameInfo.PlayerCharacters == null
-            || _selectedCharacterIndex < 0
-            || _selectedCharacterIndex >= GameInfo.PlayerCharacters.Length
-        )
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || (uint)_selectedCharacterIndex >= (uint)players.Length)
+        {
+            info = default;
+            return false;
+        }
+
+        info = players[_selectedCharacterIndex];
+        return true;
+    }
+
+    private bool TryGetSelectedPlayerWithEquipments(out PlayerInfoStructure info)
+    {
+        if (!TryGetSelectedPlayerInfo(out info))
             return false;
 
-        info = GameInfo.PlayerCharacters[_selectedCharacterIndex];
+        EnsureEquipmentArray(ref info);
         return true;
+    }
+
+    private void SaveSelectedPlayerInfo(in PlayerInfoStructure info)
+    {
+        GameInfo.PlayerCharacters[_selectedCharacterIndex] = info;
     }
 
     private static void EnsureEquipmentArray(ref PlayerInfoStructure info)
     {
-        if (info.Equipments != null && info.Equipments.Length >= SlotCount)
+        var source = info.Equipments ?? Array.Empty<Equipment>();
+        if (source.Length >= SlotCount)
+        {
+            for (int i = 0; i < SlotCount; i++)
+                if (!HasValidEquipment(source[i]))
+                    source[i] = null;
             return;
+        }
 
         Equipment[] result = new Equipment[SlotCount];
-        if (info.Equipments != null)
-        {
-            int count = Math.Min(info.Equipments.Length, SlotCount);
-            for (int i = 0; i < count; i++)
-                result[i] = info.Equipments[i];
-        }
+        Array.Copy(source, result, Math.Min(source.Length, SlotCount));
+        for (int i = 0; i < result.Length; i++)
+            if (!HasValidEquipment(result[i]))
+                result[i] = null;
         info.Equipments = result;
     }
 
     private static Equipment[] CloneEquipArray(Equipment[] source)
     {
-        Equipment[] result = new Equipment[SlotCount];
+        var result = new Equipment[SlotCount];
         if (source == null)
             return result;
 
-        int count = Math.Min(source.Length, SlotCount);
-        for (int i = 0; i < count; i++)
-            result[i] = Equipment.Clone(source[i]);
+        Array.Copy(source, result, Math.Min(source.Length, SlotCount));
+        for (int i = 0; i < result.Length; i++)
+            result[i] = Equipment.Clone(result[i]);
         return result;
     }
 
@@ -571,12 +503,9 @@ public partial class EquipmentInterface : Control
             return 0;
 
         int sum = 0;
-        for (int i = 0; i < equips.Length; i++)
-        {
-            if (equips[i] == null)
-                continue;
-            sum += selector(equips[i]);
-        }
+        foreach (var equip in equips)
+            if (HasValidEquipment(equip))
+                sum += selector(equip);
         return sum;
     }
 
@@ -586,10 +515,7 @@ public partial class EquipmentInterface : Control
             return "暂无被动描述。";
 
         int newline = passive.IndexOf('\n');
-        if (newline <= 0)
-            return passive;
-
-        return passive.Substring(0, newline);
+        return newline > 0 ? passive[..newline] : passive;
     }
 
     private static string BuildEquipmentBonusInline(Equipment equip)
@@ -607,129 +533,47 @@ public partial class EquipmentInterface : Control
 
     private async Task AnimateSlotContentExitAsync(int slotIndex)
     {
-        var content = GetSlotContent(slotIndex);
-        if (content == null)
+        if ((uint)slotIndex >= (uint)SlotCards.Length)
             return;
 
-        Vector2 baseGlobal = content.GlobalPosition;
-        bool originalTopLevel = content.TopLevel;
-        SetControlTopLevel(content, true);
-
-        content.GlobalPosition = baseGlobal;
-        SetControlAlpha(content, 1.0f);
-
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.SetEase(Tween.EaseType.In);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(
-            content,
-            "global_position",
-            baseGlobal + new Vector2(SlotEquipMoveDistance, 0),
-            SlotExitDuration
-        );
-        tween.TweenProperty(content, "modulate:a", 0.0f, SlotExitDuration * 0.95f);
-
-        await ToSignal(tween, Tween.SignalName.Finished);
-
-        SetControlTopLevel(content, originalTopLevel);
-        content.GlobalPosition = baseGlobal;
+        await SlotCards[slotIndex].PlayRemoveAnimation(SlotEquipMoveDistance, SlotExitDuration);
     }
 
     private async Task AnimateSlotContentEnterAsync(int slotIndex)
     {
-        var content = GetSlotContent(slotIndex);
-        if (content == null)
+        if ((uint)slotIndex >= (uint)SlotCards.Length)
             return;
 
-        Vector2 baseGlobal = content.GlobalPosition;
-        bool originalTopLevel = content.TopLevel;
-        SetControlTopLevel(content, true);
-
-        content.GlobalPosition = baseGlobal - new Vector2(SlotEquipMoveDistance, 0);
-        SetControlAlpha(content, 0.0f);
-
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.SetEase(Tween.EaseType.Out);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(content, "global_position", baseGlobal, SlotEnterDuration);
-        tween.TweenProperty(content, "modulate:a", 1.0f, SlotEnterDuration * 0.95f);
-
-        await ToSignal(tween, Tween.SignalName.Finished);
-
-        SetControlTopLevel(content, originalTopLevel);
-        content.GlobalPosition = baseGlobal;
-        SetControlAlpha(content, 1.0f);
+        await SlotCards[slotIndex].PlayInsertAnimation(SlotEquipMoveDistance, SlotEnterDuration);
     }
 
     private async Task AnimateInventoryCardExitAsync(int cardIndex)
     {
-        if (cardIndex < 0 || cardIndex >= InventoryCards.Length)
+        if ((uint)cardIndex >= (uint)InventoryCards.Length)
             return;
 
         var card = InventoryCards[cardIndex];
-        if (card == null || !card.Visible)
+        if (!card.Visible)
             return;
 
-        Vector2 baseGlobal = card.GlobalPosition;
-        bool originalTopLevel = card.TopLevel;
-        SetControlTopLevel(card, true);
-
-        card.GlobalPosition = baseGlobal;
-        SetControlAlpha(card, 1.0f);
-
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.SetEase(Tween.EaseType.In);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(
-            card,
-            "global_position",
-            baseGlobal + new Vector2(InventoryMoveDistance, 0),
-            InventoryExitDuration
-        );
-        tween.TweenProperty(card, "modulate:a", 0.0f, InventoryExitDuration * 0.95f);
-
-        await ToSignal(tween, Tween.SignalName.Finished);
-
-        SetControlTopLevel(card, originalTopLevel);
-        card.GlobalPosition = baseGlobal;
+        await card.PlayRemoveAnimation(InventoryMoveDistance, InventoryExitDuration);
     }
 
     private async Task AnimateInventoryCardEnterAsync(int cardIndex)
     {
-        if (cardIndex < 0 || cardIndex >= InventoryCards.Length)
+        if ((uint)cardIndex >= (uint)InventoryCards.Length)
             return;
 
         var card = InventoryCards[cardIndex];
-        if (card == null || !card.Visible)
+        if (!card.Visible)
             return;
 
-        Vector2 baseGlobal = card.GlobalPosition;
-        bool originalTopLevel = card.TopLevel;
-        SetControlTopLevel(card, true);
-
-        card.GlobalPosition = baseGlobal - new Vector2(InventoryMoveDistance, 0);
-        SetControlAlpha(card, 0.0f);
-
-        var tween = CreateTween();
-        tween.SetParallel(true);
-        tween.SetEase(Tween.EaseType.Out);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(card, "global_position", baseGlobal, InventoryEnterDuration);
-        tween.TweenProperty(card, "modulate:a", 1.0f, InventoryEnterDuration * 0.95f);
-
-        await ToSignal(tween, Tween.SignalName.Finished);
-
-        SetControlTopLevel(card, originalTopLevel);
-        card.GlobalPosition = baseGlobal;
-        SetControlAlpha(card, 1.0f);
+        await card.PlayInsertAnimation(InventoryMoveDistance, InventoryEnterDuration);
     }
 
     private async Task AnimateInventoryCardEnterByNameAsync(Equipment.EquipmentName equipmentName)
     {
-        int cardIndex = FindCatalogIndexByName(equipmentName);
+        int cardIndex = FindLastCatalogIndexByName(equipmentName);
         if (cardIndex < 0)
             return;
 
@@ -737,23 +581,28 @@ public partial class EquipmentInterface : Control
     }
 
     private async Task AnimateInventoryReflowAsync(
-        Dictionary<Equipment.EquipmentName, Vector2> previousPositions
+        Dictionary<Equipment.EquipmentName, Queue<Vector2>> previousPositions
     )
     {
         if (previousPositions == null || previousPositions.Count == 0)
             return;
 
-        var cardsToRestore = new List<(PanelContainer card, bool originalTopLevel, Vector2 targetPos)>();
+        var cardsToRestore =
+            new List<(PanelContainer card, bool originalTopLevel, Vector2 targetPos)>();
         int count = Math.Min(_catalog.Length, InventoryCards.Length);
         for (int i = 0; i < count; i++)
         {
             var card = InventoryCards[i];
-            if (card == null || !card.Visible)
+            if (!card.Visible)
                 continue;
 
             var equipment = _catalog[i];
-            if (equipment == null || !previousPositions.TryGetValue(equipment.Name, out var previousPos))
+            if (
+                !previousPositions.TryGetValue(equipment.Name, out var positions)
+                || positions.Count == 0
+            )
                 continue;
+            Vector2 previousPos = positions.Dequeue();
 
             Vector2 targetPos = card.GlobalPosition;
             if (previousPos.DistanceSquaredTo(targetPos) < 0.25f)
@@ -776,7 +625,12 @@ public partial class EquipmentInterface : Control
         for (int i = 0; i < cardsToRestore.Count; i++)
         {
             var entry = cardsToRestore[i];
-            tween.TweenProperty(entry.card, "global_position", entry.targetPos, InventoryReflowDuration);
+            tween.TweenProperty(
+                entry.card,
+                "global_position",
+                entry.targetPos,
+                InventoryReflowDuration
+            );
         }
 
         await ToSignal(tween, Tween.SignalName.Finished);
@@ -789,16 +643,23 @@ public partial class EquipmentInterface : Control
         }
     }
 
-    private Dictionary<Equipment.EquipmentName, Vector2> CaptureVisibleInventoryCardPositions()
+    private Dictionary<Equipment.EquipmentName, Queue<Vector2>> CaptureVisibleInventoryCardPositions()
     {
-        var result = new Dictionary<Equipment.EquipmentName, Vector2>();
+        var result = new Dictionary<Equipment.EquipmentName, Queue<Vector2>>();
         int count = Math.Min(_catalog.Length, InventoryCards.Length);
         for (int i = 0; i < count; i++)
         {
-            if (_catalog[i] == null || InventoryCards[i] == null || !InventoryCards[i].Visible)
+            if (!InventoryCards[i].Visible)
                 continue;
 
-            result[_catalog[i].Name] = InventoryCards[i].GlobalPosition;
+            var equipmentName = _catalog[i].Name;
+            if (!result.TryGetValue(equipmentName, out var positions))
+            {
+                positions = new Queue<Vector2>();
+                result[equipmentName] = positions;
+            }
+
+            positions.Enqueue(InventoryCards[i].GlobalPosition);
         }
 
         return result;
@@ -814,16 +675,29 @@ public partial class EquipmentInterface : Control
         return -1;
     }
 
-    private Control GetSlotContent(int slotIndex)
+    private int FindLastCatalogIndexByName(Equipment.EquipmentName equipmentName)
     {
-        if (slotIndex < 0 || slotIndex >= SlotContents.Length)
-            return null;
-        return SlotContents[slotIndex];
+        for (int i = _catalog.Length - 1; i >= 0; i--)
+        {
+            if (_catalog[i].Name == equipmentName)
+                return i;
+        }
+        return -1;
+    }
+
+    private CardSlot[] BuildInventoryCards()
+    {
+        return InventoryGrid.GetChildren().OfType<CardSlot>().ToArray();
+    }
+
+    private Label[] BuildInventoryCardLabels()
+    {
+        return InventoryCards.Select(card => card.label).ToArray();
     }
 
     private static void SetControlTopLevel(Control control, bool topLevel)
     {
-        if (control == null || control.TopLevel == topLevel)
+        if (control.TopLevel == topLevel)
             return;
 
         Vector2 globalPos = control.GlobalPosition;
@@ -833,11 +707,7 @@ public partial class EquipmentInterface : Control
 
     private static void SetControlAlpha(Control control, float alpha)
     {
-        if (control == null)
-            return;
-
-        Color modulate = control.Modulate;
-        control.Modulate = new Color(modulate.R, modulate.G, modulate.B, alpha);
+        control.Modulate = control.Modulate with { A = alpha };
     }
 
     private void RefreshAvailableCatalog()
@@ -869,13 +739,14 @@ public partial class EquipmentInterface : Control
     private Equipment[] BuildAvailableCatalog()
     {
         EnsureOwnedEquipmentsInitialized();
-        var available = new List<Equipment>(GameInfo.OwnedEquipments.Count);
-        for (int i = 0; i < GameInfo.OwnedEquipments.Count; i++)
+        var owned = GameInfo.OwnedEquipments;
+        var available = new List<Equipment>(owned.Count);
+        foreach (var equip in owned)
         {
-            if (GameInfo.OwnedEquipments[i] == null)
+            if (!HasValidEquipment(equip))
                 continue;
 
-            available.Add(Equipment.Clone(GameInfo.OwnedEquipments[i]));
+            available.Add(Equipment.Clone(equip));
         }
         return available.ToArray();
     }
@@ -895,48 +766,22 @@ public partial class EquipmentInterface : Control
         GameInfo.OwnedEquipments.Add(Equipment.Create(Equipment.EquipmentName.LumenBadge));
         GameInfo.OwnedEquipments.Add(Equipment.Create(Equipment.EquipmentName.SilentPendant));
         GameInfo.OwnedEquipments.Add(Equipment.Create(Equipment.EquipmentName.FoldedBulwark));
-        GameInfo.OwnedEquipments.RemoveAll(x => x == null);
+        GameInfo.OwnedEquipments.RemoveAll(x => !HasValidEquipment(x));
     }
 
     private static void RemoveOwnedEquipmentFirstByName(Equipment.EquipmentName equipmentName)
     {
         EnsureOwnedEquipmentsInitialized();
-        for (int i = 0; i < GameInfo.OwnedEquipments.Count; i++)
-        {
-            if (GameInfo.OwnedEquipments[i] == null)
-                continue;
-            if (GameInfo.OwnedEquipments[i].Name != equipmentName)
-                continue;
-
-            GameInfo.OwnedEquipments.RemoveAt(i);
-            return;
-        }
+        int index = GameInfo
+            .OwnedEquipments
+            .FindIndex(x => HasValidEquipment(x) && x.Name == equipmentName);
+        if (index >= 0)
+            GameInfo.OwnedEquipments.RemoveAt(index);
     }
 
-    private void EnsureSelectionStyles()
+    private static bool HasValidEquipment(Equipment equip)
     {
-        _slotNormalStyle = ClonePanelStyle(SlotPanels[0], UnselectedSlotFrameColor, 2);
-        _slotSelectedStyle = ClonePanelStyle(SlotPanels[0], SelectedFrameColor, 3);
-        _cardNormalStyle = ClonePanelStyle(InventoryCards[0], UnselectedSlotFrameColor, 2);
-        _cardSelectedStyle = ClonePanelStyle(InventoryCards[0], SelectedFrameColor, 3);
-    }
-
-    private static StyleBoxFlat ClonePanelStyle(PanelContainer panel, Color borderColor, int borderWidth)
-    {
-        var source = panel.GetThemeStylebox("panel") as StyleBoxFlat;
-        if (source == null)
-            return null;
-
-        var clone = source.Duplicate() as StyleBoxFlat;
-        if (clone == null)
-            return null;
-
-        clone.BorderColor = borderColor;
-        clone.BorderWidthLeft = borderWidth;
-        clone.BorderWidthTop = borderWidth;
-        clone.BorderWidthRight = borderWidth;
-        clone.BorderWidthBottom = borderWidth;
-        return clone;
+        return equip != null && !string.IsNullOrWhiteSpace(equip.DisplayName);
     }
 
     private static void EnsureGameData()

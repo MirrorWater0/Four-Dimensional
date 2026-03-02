@@ -7,9 +7,6 @@ using Godot.Collections;
 
 public partial class BattleReady : Control
 {
-    public static PackedScene SkillButtonScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/SkillButton.tscn"
-    );
     public static PackedScene PortaitScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/PortaitFrame.tscn"
     );

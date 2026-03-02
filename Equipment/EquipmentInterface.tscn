@@ -7,6 +7,7 @@
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="5_gearshader"]
 [ext_resource type="Shader" uid="uid://dt5olcfi6tvjs" path="res://shader/UI/ChangePosFrame.gdshader" id="6_frameshader"]
 [ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="7_portrait"]
+[ext_resource type="PackedScene" uid="uid://cd401j5kbyi03" path="res://Equipment/CardSlot.tscn" id="8_7dsut"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("1_bgshader")
@@ -160,10 +161,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 44.0
-offset_top = 34.0
-offset_right = -44.0
-offset_bottom = -34.0
+offset_left = 77.0
+offset_top = 16.0
+offset_right = -43.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 16
@@ -318,6 +319,7 @@ text = "游击 / 追击"
 
 [node name="CharacterHintLabel" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterCard/CharacterRow/CharacterInfo" unique_id=1900560451]
 modulate = Color(0.86, 0.9, 0.98, 0.84)
+custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 text = "装备会即时影响基础战斗属性。"
 autowrap_mode = 2
@@ -339,23 +341,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="SlotAContent" type="VBoxContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA" unique_id=2036189007]
+[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA" unique_id=1635379138 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="SlotAName" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/SlotAContent" unique_id=583887445]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "装备槽 A"
-horizontal_alignment = 1
-
-[node name="SlotABonus" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA/SlotAContent" unique_id=1170677774]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "力量 +0  生存 +0  速度 +0  生命 +0"
-horizontal_alignment = 1
 
 [node name="SlotB" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots" unique_id=1662736954]
 custom_minimum_size = Vector2(0, 170)
@@ -363,23 +350,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="SlotBContent" type="VBoxContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB" unique_id=651364056]
+[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB" unique_id=808746017 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="SlotBName" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/SlotBContent" unique_id=454535878]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "装备槽 B"
-horizontal_alignment = 1
-
-[node name="SlotBBonus" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/SlotBContent" unique_id=1320000456]
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "力量 +0  生存 +0  速度 +0  生命 +0"
-horizontal_alignment = 1
 
 [node name="CenterPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow" unique_id=669659142]
 layout_mode = 2
@@ -406,77 +378,23 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="Card1" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1792682027]
-custom_minimum_size = Vector2(0, 110)
+[node name="InventoryCard1" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=778845103 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="Card1Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card1" unique_id=1039742991]
+[node name="InventoryCard2" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1375604999 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "裂隙短刃
-+8 力量  +4 速度"
 
-[node name="Card2" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1203200734]
-custom_minimum_size = Vector2(0, 110)
+[node name="InventoryCard3" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1689470362 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="Card2Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card2" unique_id=1816672650]
+[node name="InventoryCard4" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=127016721 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "相位肩甲
-+12 生存  +18 生命"
 
-[node name="Card3" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=141056418]
-custom_minimum_size = Vector2(0, 110)
+[node name="InventoryCard5" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=714987932 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
 
-[node name="Card3Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card3" unique_id=1972318766]
+[node name="InventoryCard6" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=961014269 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "回响核心
-+6 力量  +6 生存"
-
-[node name="Card4" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=912221747]
-custom_minimum_size = Vector2(0, 110)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
-
-[node name="Card4Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card4" unique_id=2133613695]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "流光徽章
-+10 速度  +10 生命"
-
-[node name="Card5" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=495716852]
-custom_minimum_size = Vector2(0, 110)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
-
-[node name="Card5Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card5" unique_id=1637351276]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "缄默吊坠
-+5 生存  +4 速度"
-
-[node name="Card6" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=300084499]
-custom_minimum_size = Vector2(0, 110)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
-
-[node name="Card6Label" type="Label" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid/Card6" unique_id=114697697]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "折叠护壁
-+16 生命上限"
 
 [node name="RightPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow" unique_id=587285966]
 custom_minimum_size = Vector2(420, 0)
@@ -515,6 +433,7 @@ theme_override_font_sizes/font_size = 18
 text = "武装 · 攻击向"
 
 [node name="DetailDescLabel" type="Label" parent="RootMargin/MainVBox/ContentRow/RightPanel/RightVBox/DetailCard/DetailVBox" unique_id=651694222]
+custom_minimum_size = Vector2(460, 120)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 18

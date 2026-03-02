@@ -168,17 +168,41 @@ public partial class BattlePreview : Control
     private static string BuildPlayerPropertyText(PlayerInfoStructure info, string name)
     {
         var sb = new StringBuilder(128);
+        int lifeBonus = SumEquipmentBonus(info, x => x.MaxLife);
+        int powerBonus = SumEquipmentBonus(info, x => x.Power);
+        int surviveBonus = SumEquipmentBonus(info, x => x.Survivability);
+        int speedBonus = SumEquipmentBonus(info, x => x.Speed);
 
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命 {info.LifeMax}\n");
-        sb.Append($"力量 {info.Power}\n");
-        sb.Append($"生存 {info.Survivability}\n");
-        sb.Append($"速度 {info.Speed}\n");
+        sb.Append($"生命：{info.LifeMax + lifeBonus}（{FormatSigned(lifeBonus)}）\n");
+        sb.Append($"力量：{info.Power + powerBonus}（{FormatSigned(powerBonus)}）\n");
+        sb.Append($"生存：{info.Survivability + surviveBonus}（{FormatSigned(surviveBonus)}）\n");
+        sb.Append($"速度：{info.Speed + speedBonus}（{FormatSigned(speedBonus)}）\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
         text = GlobalFunction.ColorizeKeywords(text);
         return text;
+    }
+
+    private static int SumEquipmentBonus(PlayerInfoStructure info, Func<Equipment, int> selector)
+    {
+        if (info.Equipments == null || info.Equipments.Length == 0)
+            return 0;
+
+        int sum = 0;
+        foreach (var equipment in info.Equipments)
+        {
+            if (equipment == null)
+                continue;
+            sum += selector(equipment);
+        }
+        return sum;
+    }
+
+    private static string FormatSigned(int value)
+    {
+        return value >= 0 ? $"+{value}" : value.ToString();
     }
 
     private static string BuildEnemyPropertyText(EnemyRegedit regedit)

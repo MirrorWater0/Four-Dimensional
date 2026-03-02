@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://cd401j5kbyi03"]
+
+[ext_resource type="Script" uid="uid://ihft21au1h7i" path="res://Equipment/CardSlot.cs" id="1_ykovi"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.101, 0.146, 0.24, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.654902, 0.839216, 1, 0.32)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="Card" type="PanelContainer" unique_id=1635379138]
+custom_minimum_size = Vector2(0, 110)
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("1_ykovi")
+
+[node name="Label" type="Label" parent="." unique_id=1222242650]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "裂隙短刃
++8 力量  +4 速度"

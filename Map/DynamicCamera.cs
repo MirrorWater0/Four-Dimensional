@@ -3,10 +3,16 @@ using Godot;
 public partial class DynamicCamera : Camera2D
 {
     [Export]
-    public Vector2 MinBoundary = new(966, 543);
+    public float WorldLeftBoundary = 0.0f;
 
     [Export]
-    public Vector2 MaxBoundary = new(2271, 1423);
+    public float WorldRightBoundary = 3500.0f;
+
+    [Export]
+    public float HalfViewportWidth = 960.0f;
+
+    [Export]
+    public float FixedCenterY = 540.0f;
 
     [Export(PropertyHint.Range, "1,400,1")]
     public float OverscrollDistance = 230.0f;
@@ -28,26 +34,36 @@ public partial class DynamicCamera : Camera2D
 
     public Vector2 ClampToBoundary(Vector2 position)
     {
-        return new Vector2(
-            Mathf.Clamp(position.X, MinBoundary.X, MaxBoundary.X),
-            Mathf.Clamp(position.Y, MinBoundary.Y, MaxBoundary.Y)
-        );
+        GetHorizontalCenterBoundary(out float minX, out float maxX);
+        return new Vector2(Mathf.Clamp(position.X, minX, maxX), FixedCenterY);
     }
 
     public bool IsInsideBoundary(Vector2 position)
     {
-        return position.X >= MinBoundary.X
-            && position.X <= MaxBoundary.X
-            && position.Y >= MinBoundary.Y
-            && position.Y <= MaxBoundary.Y;
+        GetHorizontalCenterBoundary(out float minX, out float maxX);
+        return position.X >= minX && position.X <= maxX;
     }
 
     public Vector2 ApplyBoundaryResistance(Vector2 position)
     {
-        return new Vector2(
-            ApplyAxisResistance(position.X, MinBoundary.X, MaxBoundary.X),
-            ApplyAxisResistance(position.Y, MinBoundary.Y, MaxBoundary.Y)
-        );
+        GetHorizontalCenterBoundary(out float minX, out float maxX);
+        return new Vector2(ApplyAxisResistance(position.X, minX, maxX), FixedCenterY);
+    }
+
+    private void GetHorizontalCenterBoundary(out float minX, out float maxX)
+    {
+        float left = Mathf.Min(WorldLeftBoundary, WorldRightBoundary);
+        float right = Mathf.Max(WorldLeftBoundary, WorldRightBoundary);
+        float halfViewWidth = Mathf.Max(0.0f, HalfViewportWidth);
+        minX = left + halfViewWidth;
+        maxX = right - halfViewWidth;
+
+        if (minX > maxX)
+        {
+            float centerX = (left + right) * 0.5f;
+            minX = centerX;
+            maxX = centerX;
+        }
     }
 
     private float ApplyAxisResistance(float value, float min, float max)
