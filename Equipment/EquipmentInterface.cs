@@ -121,6 +121,7 @@ public partial class EquipmentInterface : Control
     private int _selectedSlotIndex;
     private Equipment _selectedEquipment;
     private bool _isEquipAnimating;
+    public bool HasEquipmentChanges { get; private set; }
 
     public override void _Ready()
     {
@@ -224,6 +225,7 @@ public partial class EquipmentInterface : Control
 
             info.Equipments[_selectedSlotIndex] = Equipment.Clone(_selectedEquipment);
             SaveSelectedPlayerInfo(in info);
+            HasEquipmentChanges = true;
 
             RefreshAll();
 
@@ -261,6 +263,7 @@ public partial class EquipmentInterface : Control
             info.Equipments[_selectedSlotIndex] = null;
             SaveSelectedPlayerInfo(in info);
             GameInfo.OwnedEquipments.Add(unequipped);
+            HasEquipmentChanges = true;
 
             RefreshAll();
 

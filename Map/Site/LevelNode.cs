@@ -38,6 +38,7 @@ public partial class LevelNode : ColorRect
     public static PackedScene BattlePreviewScene = GD.Load<PackedScene>(
         "res://battle/BattlePreview/BattlePreview.tscn"
     );
+    public static PackedScene EventScene = GD.Load<PackedScene>("res://Event/EventInterface.tscn");
     public Vector2I SelfCoordinate;
     public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;
     public AnimationPlayer AnimationPlayer =>
@@ -77,9 +78,9 @@ public partial class LevelNode : ColorRect
     {
         List<EnemyRegedit> list = new()
         {
-            new ArmonRegedit(),
-            new ArmonRegedit(),
-            new ArmonRegedit(),
+            new EvilRegedit(),
+            new EvilRegedit(),
+            new EvilRegedit(),
             new EvilRegedit(),
         };
         RandomPosition(list, RandomNum);
@@ -207,6 +208,26 @@ public partial class LevelNode : ColorRect
 
     public void PressButton()
     {
+        switch (Type)
+        {
+            case LevelType.Normal:
+                GotoBattlePreview();
+                Completed();
+                break;
+            case LevelType.Boss:
+                GotoBattlePreview();
+                break;
+            case LevelType.Elite:
+                GotoBattlePreview();
+                break;
+            case LevelType.Event:
+                GotoEvent();
+                break;
+        }
+    }
+
+    public void GotoBattlePreview()
+    {
         var tween = ExplodeAnimation();
 
         EnemiesRegeditList = ProduceEnemies();
@@ -219,6 +240,23 @@ public partial class LevelNode : ColorRect
                 Callable.From(() =>
                 {
                     GetTree().Root.GetNode("Map/SiteUI").AddChild(preview);
+                    preview.StartAnimation();
+                })
+            );
+    }
+
+    public void GotoEvent()
+    {
+        var gameEventInterface = EventScene.Instantiate() as EventInterface;
+        gameEventInterface.WhichNode = this;
+        gameEventInterface.ThisEvent = GameEvent.Catalog?.FirstOrDefault();
+        var tween = ExplodeAnimation();
+        tween
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    GetTree().Root.GetNode("Map/SiteUI").AddChild(gameEventInterface);
                 })
             );
     }

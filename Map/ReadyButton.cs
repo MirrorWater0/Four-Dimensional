@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -26,9 +27,24 @@ public partial class ReadyButton : Button
 
     public async void Click()
     {
-        if (Layer.GetChildCount() == 0)
+        if (!HasActiveBattleReady() && Layer != null)
+            ThisBattleReady = Layer.GetChildren().OfType<BattleReady>().FirstOrDefault();
+
+        if (!HasActiveBattleReady())
         {
+            if (Layer == null || _readyScene == null)
+            {
+                GD.PushError("ReadyButton: Layer 或 BattleReady 场景未设置，无法打开备战界面。");
+                return;
+            }
+
             ThisBattleReady = _readyScene.Instantiate() as BattleReady;
+            if (ThisBattleReady == null)
+            {
+                GD.PushError("ReadyButton: BattleReady 场景实例化失败。");
+                return;
+            }
+
             Layer.AddChild(ThisBattleReady);
             ThisBattleReady.StartAnimation();
             // ChangeEffect.Visible = true;
@@ -58,12 +74,26 @@ public partial class ReadyButton : Button
         else
         {
             Disabled = true;
-            ThisBattleReady.ComfirmTactics();
-            await ThisBattleReady.PlayCloseAnimationAsync();
-            Disabled = false;
-            ThisBattleReady.QueueFree();
-            ThisBattleReady = null;
+            try
+            {
+                ThisBattleReady.ComfirmTactics();
+                await ThisBattleReady.PlayCloseAnimationAsync();
+                if (GodotObject.IsInstanceValid(ThisBattleReady))
+                    ThisBattleReady.QueueFree();
+            }
+            finally
+            {
+                Disabled = false;
+                ThisBattleReady = null;
+            }
         }
+    }
+
+    private bool HasActiveBattleReady()
+    {
+        return ThisBattleReady != null
+            && GodotObject.IsInstanceValid(ThisBattleReady)
+            && ThisBattleReady.IsInsideTree();
     }
 
     public void mouse_entered()

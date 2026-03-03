@@ -41,6 +41,7 @@ naming/scene_name_casing=1
 
 folder_colors={
 "res://Equipment/": "orange",
+"res://Event/": "blue",
 "res://asset/": "pink",
 "res://battle/": "purple",
 "res://battle/buff/": "green",

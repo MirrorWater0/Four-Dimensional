@@ -105,7 +105,19 @@ public partial class Battle : Node2D
     public ProgressBar EnemySpeedBar => field ??= GetNodeOrNull<ProgressBar>("SpeedBox/EnemySpeed");
     public LevelNode CurrentLevelNode;
     public Character dummy => field ??= GetNode<Character>("Dummy");
-    public RichTextLabel BattleRecord => field ??= GetNode<RichTextLabel>("CanvasLayer/BattleRecord");
+    public RichTextLabel BattleRecord => field ??= GetNodeOrNull<RichTextLabel>("UI/BattleRecord");
+    public Button RecordButton => field ??= GetNodeOrNull<Button>("UI/RecordButton");
+
+    private const float RecordSlideDuration = 0.2f;
+    private const float RecordHideMargin = 18f;
+    private bool _recordInitialized;
+    private bool _recordVisible;
+    private float _recordVisibleLeft;
+    private float _recordVisibleRight;
+    private float _recordHiddenLeft;
+    private float _recordHiddenRight;
+    private Tween _recordTween;
+    private int _recordIndex;
 
     public override void _EnterTree()
     {
@@ -135,7 +147,12 @@ public partial class Battle : Node2D
 
         RetreatButton.ButtonDown += Retreat;
         UsedSkills.Clear();
-        BattleRecord.Text = string.Empty;
+        if (BattleRecord != null)
+        {
+            BattleRecord.Text = string.Empty;
+        }
+        _recordIndex = 0;
+        InitRecordButton();
         UsedSkills.ItemAdded -= OnSkillUsed;
         UsedSkills.ItemAdded += OnSkillUsed;
 
@@ -212,8 +229,101 @@ public partial class Battle : Node2D
             ? skill.GetType().Name
             : skill.SkillName;
 
-        BattleRecord.AppendText($"{characterName} 释放 {skillName}\n");
+        var record = BattleRecord;
+        if (record == null)
+        {
+            return;
+        }
+        _recordIndex++;
+        const string nameColor = "#ffd36b";
+        const string skillColor = "#b56bff";
+        record.AppendText(
+            $"[color=#b0b6c2]{_recordIndex:00}[/color]  [color={nameColor}]{characterName}[/color]  释放  [color={skillColor}]{skillName}[/color]\n"
+        );
     }
+
+    private void InitRecordButton()
+    {
+        if (_recordInitialized)
+        {
+            return;
+        }
+
+        var record = BattleRecord;
+        var button = RecordButton;
+        if (record == null || button == null)
+        {
+            return;
+        }
+
+        _recordVisibleLeft = record.OffsetLeft;
+        _recordVisibleRight = record.OffsetRight;
+
+        float width = _recordVisibleRight - _recordVisibleLeft;
+        float shift = width + RecordHideMargin;
+        _recordHiddenLeft = _recordVisibleLeft + shift;
+        _recordHiddenRight = _recordVisibleRight + shift;
+
+        button.Pressed += ToggleRecord;
+        _recordVisible = false;
+        SetRecordOffsets(_recordHiddenLeft, _recordHiddenRight);
+        _recordInitialized = true;
+    }
+
+    private void ToggleRecord()
+    {
+        if (!_recordInitialized)
+        {
+            InitRecordButton();
+        }
+
+        ShowBattleRecord(!_recordVisible);
+    }
+
+    private void ShowBattleRecord(bool show)
+    {
+        var record = BattleRecord;
+        if (record == null)
+        {
+            return;
+        }
+
+        _recordVisible = show;
+        _recordTween?.Kill();
+        _recordTween = CreateTween();
+        _recordTween.SetParallel();
+        _recordTween
+            .TweenProperty(
+                record,
+                "offset_left",
+                show ? _recordVisibleLeft : _recordHiddenLeft,
+                RecordSlideDuration
+            )
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        _recordTween
+            .TweenProperty(
+                record,
+                "offset_right",
+                show ? _recordVisibleRight : _recordHiddenRight,
+                RecordSlideDuration
+            )
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private void SetRecordOffsets(float left, float right)
+    {
+        var record = BattleRecord;
+        if (record == null)
+        {
+            return;
+        }
+
+        record.OffsetLeft = left;
+        record.OffsetRight = right;
+    }
+
 
     public void SetCharaterPostion()
     {

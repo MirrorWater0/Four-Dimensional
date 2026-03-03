@@ -19,7 +19,8 @@ public partial class EquipmentButton : Button
         Hiding,
     }
 
-    private CanvasLayer SiteUILayer => field ??= GetNode<CanvasLayer>("/root/Map/SiteUI");
+    [Export]
+    private CanvasLayer SiteUILayer;
     private EquipmentInterface CurrentUI;
     private List<PartState> _parts = new();
     private Tween _activeTween;
@@ -182,7 +183,10 @@ public partial class EquipmentButton : Button
         _activeTween.Finished += () =>
         {
             if (IsUiAlive())
+            {
+                RefreshBattlePreviewIfNeeded();
                 CurrentUI.QueueFree();
+            }
             _phase = UiAnimPhase.Idle;
             _activeTween = null;
         };
@@ -320,5 +324,15 @@ public partial class EquipmentButton : Button
         _parts.Clear();
         _phase = UiAnimPhase.Idle;
         CurrentUI = null;
+    }
+
+    private void RefreshBattlePreviewIfNeeded()
+    {
+        if (!IsUiAlive() || !CurrentUI.HasEquipmentChanges)
+            return;
+
+        var preview = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
+        if (preview != null)
+            preview.SetPortraitPostion();
     }
 }

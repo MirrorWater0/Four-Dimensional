@@ -355,28 +355,6 @@ fill = 2
 fill_from = Vector2(0.490826, 0.5)
 fill_to = Vector2(0, 0.00458716)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_battle_record"]
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-bg_color = Color(0.06, 0.08, 0.1, 0.55)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.45, 0.65, 0.85, 0.35)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.02, 0.03, 0.06, 0.2)
-shadow_size = 6
-shadow_offset = Vector2(0, 2)
-
-[sub_resource type="Theme" id="Theme_battle_record"]
-RichTextLabel/styles/normal = SubResource("StyleBoxFlat_battle_record")
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d0b6a"]
@@ -429,6 +407,28 @@ scale_min = 0.39999998
 color = Color(12.619461, 18.892157, 18.892157, 0.90200007)
 hue_variation_min = -0.18000002
 hue_variation_max = 0.009999977
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_battle_record"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0.08, 0.1, 0.55)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.65, 0.85, 0.35)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.02, 0.03, 0.06, 0.2)
+shadow_size = 6
+shadow_offset = Vector2(0, 2)
+
+[sub_resource type="Theme" id="Theme_battle_record"]
+RichTextLabel/styles/normal = SubResource("StyleBoxFlat_battle_record")
 
 [node name="Battle" type="Node2D" unique_id=167871935]
 script = ExtResource("1_n3ui2")
@@ -565,21 +565,6 @@ offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
-[node name="BattleRecord" type="RichTextLabel" parent="CanvasLayer" unique_id=1836555925]
-offset_left = 1809.0
-offset_top = 287.0
-offset_right = 1914.0
-offset_bottom = 459.0
-theme = SubResource("Theme_battle_record")
-theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.9)
-theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.7)
-theme_override_constants/line_separation = 4
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/normal_font_size = 18
-bbcode_enabled = true
-text = "sdsdsdsdsdsdsdsdsdsds"
-scroll_following = true
-
 [node name="SpeedBox" type="HBoxContainer" parent="." unique_id=209606245]
 offset_left = 563.0
 offset_top = 28.0
@@ -647,3 +632,32 @@ process_material = SubResource("ParticleProcessMaterial_4km6a")
 position = Vector2(4784, 512)
 BattleMaxLife = 100000
 Sprite = NodePath(".")
+
+[node name="UI" type="CanvasLayer" parent="." unique_id=209018588]
+layer = 6
+
+[node name="BattleRecord" type="RichTextLabel" parent="UI" unique_id=1836555925]
+z_index = 5
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -257.0
+offset_top = 130.0
+offset_right = -2.0
+offset_bottom = 370.0
+grow_horizontal = 0
+theme = SubResource("Theme_battle_record")
+theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.7)
+theme_override_constants/line_separation = 4
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+scroll_following = true
+
+[node name="RecordButton" type="Button" parent="UI" unique_id=413180388]
+offset_left = 1867.0
+offset_top = 78.0
+offset_right = 1920.0
+offset_bottom = 131.0
+text = "<"

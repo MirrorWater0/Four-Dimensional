@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Linq;
 using System.Text;
 using Godot;
@@ -11,6 +12,21 @@ public partial class BattlePreview : Control
     public GridContainer EnemyFormation =>
         field ??= GetNode<GridContainer>("HBoxContainer/EnemyFormation");
     public Button StartBattleButton => field ??= GetNode<Button>("StartBattle");
+    private Control FormationContainer => field ??= GetNode<Control>("HBoxContainer");
+    private ColorRect BackgroundPanel => field ??= GetNode<ColorRect>("Panel");
+    private Control TitleMain => field ??= GetNode<Control>("TitleMain");
+    private Control TitleSub => field ??= GetNode<Control>("TitleSub");
+    private Control TitleLineLeft => field ??= GetNode<Control>("TitleLineLeft");
+    private Control TitleLineRight => field ??= GetNode<Control>("TitleLineRight");
+    private Control PlayerFrame => field ??= GetNode<Control>("PlayerFrame");
+    private Control EnemyFrame => field ??= GetNode<Control>("EnemyFrame");
+    private Control VsLabel => field ??= GetNode<Control>("VSLabel");
+    private Control PlayerSpeedPanel => field ??= GetNode<Control>("PlayerSpeedPanel");
+    private Control EnemySpeedPanel => field ??= GetNode<Control>("EnemySpeedPanel");
+    private RichTextLabel PlayerSpeedLabel =>
+        field ??= GetNode<RichTextLabel>("PlayerSpeedPanel/PlayerSpeedLabel");
+    private RichTextLabel EnemySpeedLabel =>
+        field ??= GetNode<RichTextLabel>("EnemySpeedPanel/EnemySpeedLabel");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
     Map MapNode => field ??= GetNode<Map>("/root/Map");
@@ -36,14 +52,26 @@ public partial class BattlePreview : Control
 
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip PropertyTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
+    private bool _isTransitioning;
+    private readonly System.Collections.Generic.Dictionary<Control, Vector2> _basePositions = [];
+
+    private readonly struct AssemblyItem(Control control, Vector2 offset, float delay)
+    {
+        public Control Control { get; } = control;
+        public Vector2 Offset { get; } = offset;
+        public float Delay { get; } = delay;
+    }
 
     public override void _Ready()
     {
         EnsureTipLayer();
         exitButton.PressedActions.Add(Close);
-        Modulate = new Color(1, 1, 1, 0);
-        CreateTween().TweenProperty(this, "modulate:a", 1, 0.3f);
+        Modulate = Modulate with { A = 0.0f };
+        SetControlAlpha(BackgroundPanel, 0.0f);
         SetPortraitPostion();
+        CacheAssemblyBasePositions();
+        UpdateBrushButtonMaterialSize();
+        tex.Resized += UpdateBrushButtonMaterialSize;
         StartBattleButton.Pressed += StartBattle;
         StartBattleButton.MouseEntered += () =>
         {
@@ -64,6 +92,132 @@ public partial class BattlePreview : Control
             GlobalFunction.TweenShader(tex, "cut_x", 0.6f, 0.2f);
             GlobalFunction.TweenShader(tex, "cut_y", 0.6f, 0.2f);
         };
+    }
+
+    private void UpdateBrushButtonMaterialSize()
+    {
+        if (tex?.Material is ShaderMaterial material)
+            material.SetShaderParameter("rect_size_px", tex.Size);
+    }
+
+    public async void StartAnimation()
+    {
+        if (_basePositions.Count == 0)
+            CacheAssemblyBasePositions();
+        await PlayAssembleAnimationAsync();
+    }
+
+    public async System.Threading.Tasks.Task PlayCloseAnimationAsync()
+    {
+        while (_isTransitioning)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        _isTransitioning = true;
+        try
+        {
+            var tween = CreateTween();
+            tween.SetParallel(true);
+            tween.SetEase(Tween.EaseType.In);
+            tween.SetTrans(Tween.TransitionType.Cubic);
+            tween.TweenProperty(this, "modulate:a", 0.0f, 0.24f);
+            tween.TweenProperty(BackgroundPanel, "modulate:a", 0.0f, 0.2f);
+
+            foreach (var item in GetAssemblyItems())
+            {
+                if (!_basePositions.TryGetValue(item.Control, out var basePos))
+                    continue;
+
+                tween.TweenProperty(item.Control, "position", basePos + item.Offset * 0.75f, 0.2f);
+                tween.TweenProperty(item.Control, "modulate:a", 0.0f, 0.18f);
+            }
+
+            await ToSignal(tween, Tween.SignalName.Finished);
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task PlayAssembleAnimationAsync()
+    {
+        if (_isTransitioning)
+            return;
+
+        _isTransitioning = true;
+        try
+        {
+            Modulate = Modulate with { A = 0.0f };
+            SetControlAlpha(BackgroundPanel, 0.0f);
+
+            var items = GetAssemblyItems();
+            foreach (var item in items)
+            {
+                if (!_basePositions.TryGetValue(item.Control, out var basePos))
+                    continue;
+
+                item.Control.Position = basePos + item.Offset;
+                SetControlAlpha(item.Control, 0.0f);
+            }
+
+            var tween = CreateTween();
+            tween.SetParallel(true);
+            tween.SetEase(Tween.EaseType.Out);
+            tween.SetTrans(Tween.TransitionType.Cubic);
+            tween.TweenProperty(this, "modulate:a", 1.0f, 0.28f);
+            tween.TweenProperty(BackgroundPanel, "modulate:a", 1.0f, 0.34f);
+
+            foreach (var item in items)
+            {
+                if (!_basePositions.TryGetValue(item.Control, out var basePos))
+                    continue;
+
+                tween.TweenProperty(item.Control, "position", basePos, 0.3f).SetDelay(item.Delay);
+                tween.TweenProperty(item.Control, "modulate:a", 1.0f, 0.26f).SetDelay(item.Delay);
+            }
+
+            await ToSignal(tween, Tween.SignalName.Finished);
+        }
+        finally
+        {
+            _isTransitioning = false;
+        }
+    }
+
+    private void CacheAssemblyBasePositions()
+    {
+        _basePositions.Clear();
+        foreach (var item in GetAssemblyItems())
+        {
+            if (item.Control == null)
+                continue;
+            _basePositions[item.Control] = item.Control.Position;
+        }
+    }
+
+    private AssemblyItem[] GetAssemblyItems()
+    {
+        return
+        [
+            new AssemblyItem(TitleMain, new Vector2(0f, -28f), 0.00f),
+            new AssemblyItem(TitleSub, new Vector2(0f, -22f), 0.03f),
+            new AssemblyItem(TitleLineLeft, new Vector2(-60f, 0f), 0.06f),
+            new AssemblyItem(TitleLineRight, new Vector2(60f, 0f), 0.06f),
+            new AssemblyItem(PlayerFrame, new Vector2(-90f, 20f), 0.08f),
+            new AssemblyItem(EnemyFrame, new Vector2(90f, 20f), 0.08f),
+            new AssemblyItem(FormationContainer, new Vector2(0f, 32f), 0.12f),
+            new AssemblyItem(VsLabel, new Vector2(0f, 24f), 0.16f),
+            new AssemblyItem(PlayerSpeedPanel, new Vector2(-70f, 18f), 0.2f),
+            new AssemblyItem(EnemySpeedPanel, new Vector2(70f, 18f), 0.2f),
+            new AssemblyItem(StartBattleButton, new Vector2(0f, 40f), 0.24f),
+        ];
+    }
+
+    private static void SetControlAlpha(Control control, float alpha)
+    {
+        if (control == null)
+            return;
+        control.Modulate = control.Modulate with { A = alpha };
     }
 
     private void EnsureTipLayer()
@@ -134,6 +288,60 @@ public partial class BattlePreview : Control
 
             EnemyFormation.GetChild(remapEnemy[positionindex] - 1).AddChild(portrait);
         }
+
+        UpdateSpeedSummary();
+    }
+
+    private void UpdateSpeedSummary()
+    {
+        int playerTotal = CalculatePlayerTotalSpeed();
+        int enemyTotal = CalculateEnemyTotalSpeed();
+
+        SetSpeedLabel(PlayerSpeedLabel, "我方总速度", playerTotal);
+        SetSpeedLabel(EnemySpeedLabel, "敌方总速度", enemyTotal);
+    }
+
+    private static void SetSpeedLabel(RichTextLabel label, string title, int total)
+    {
+        if (label == null)
+            return;
+
+        string text = $"{title} {total}";
+        text = GlobalFunction.ColorizeNumbers(text);
+        label.Text = text;
+    }
+
+    private static int CalculatePlayerTotalSpeed()
+    {
+        if (GameInfo.PlayerCharacters == null)
+            return 0;
+
+        int sum = 0;
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
+        {
+            var info = GameInfo.PlayerCharacters[i];
+            int bonus = SumEquipmentBonus(info, x => x.Speed);
+            sum += info.Speed + bonus;
+        }
+
+        return sum;
+    }
+
+    private int CalculateEnemyTotalSpeed()
+    {
+        if (WhichNode?.EnemiesRegeditList == null)
+            return 0;
+
+        int sum = 0;
+        for (int i = 0; i < WhichNode.EnemiesRegeditList.Count; i++)
+        {
+            var regedit = WhichNode.EnemiesRegeditList[i];
+            if (regedit == null)
+                continue;
+            sum += regedit.Speed;
+        }
+
+        return sum;
     }
 
     private (string skillText, string propertyText)? BuildPlayerPortraitTips(int characterIndex)
@@ -376,9 +584,13 @@ public partial class BattlePreview : Control
     public void Close()
     {
         HidePortraitTooltips();
-        Tween tween = CreateTween();
-        tween.TweenProperty(this, "modulate:a", 0, 0.3f);
-        tween.TweenCallback(Callable.From(QueueFree));
+        _ = CloseAsync();
+    }
+
+    private async System.Threading.Tasks.Task CloseAsync()
+    {
+        await PlayCloseAnimationAsync();
+        QueueFree();
     }
 
     public void ClearGrid()

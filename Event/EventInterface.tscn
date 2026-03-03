@@ -1,0 +1,371 @@
+[gd_scene format=3 uid="uid://dlsb6wasvrln5"]
+
+[ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="1_bno6k"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="1_title_font"]
+[ext_resource type="Script" uid="uid://ciweo42q0w4h8" path="res://Event/EventInterface.cs" id="2_event_script"]
+[ext_resource type="PackedScene" uid="uid://4opia7kg26cu" path="res://Event/TargetSelectOverlay.tscn" id="4_dcu8k"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yci0a"]
+shader = ExtResource("1_bno6k")
+shader_parameter/color_top = Color(0.01, 0.03, 0.06, 1)
+shader_parameter/color_mid = Color(0.02, 0.02, 0.04, 1)
+shader_parameter/color_bot = Color(0.01, 0.01, 0.02, 1)
+shader_parameter/star_color = Color(0.75, 0.9, 1, 1)
+shader_parameter/line_color = Color(0.32, 0.45, 0.7, 0.28)
+shader_parameter/spacing = 180.0
+shader_parameter/density = 0.22
+shader_parameter/star_base_size = 1.6
+shader_parameter/line_weight = 0.6
+shader_parameter/line_softness = 1.2
+shader_parameter/drift_speed = 0.32
+shader_parameter/drift_dist = 0.2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_event_frame"]
+bg_color = Color(0.04, 0.06, 0.09, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.5, 0.7, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0.01, 0.02, 0.04, 0.45)
+shadow_size = 10
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="Theme" id="Theme_event_frame"]
+Panel/styles/panel = SubResource("StyleBoxFlat_event_frame")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_header_bar"]
+bg_color = Color(0.05, 0.07, 0.11, 0.98)
+border_width_bottom = 1
+border_color = Color(0.62, 0.54, 0.33, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+
+[sub_resource type="Theme" id="Theme_header_bar"]
+Panel/styles/panel = SubResource("StyleBoxFlat_header_bar")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_image_frame"]
+bg_color = Color(0.02, 0.03, 0.05, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.65, 0.58, 0.35, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_image_frame"]
+Panel/styles/panel = SubResource("StyleBoxFlat_image_frame")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_normal"]
+bg_color = Color(0.05, 0.08, 0.12, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.62, 0.8, 0.65)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_pressed"]
+bg_color = Color(0.03, 0.06, 0.1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.65, 0.58, 0.35, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_option_hover"]
+bg_color = Color(0.07, 0.12, 0.2, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.75, 0.7, 0.45, 0.9)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="EventInterface" type="Control" unique_id=352844998]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_event_script")
+IntroAnimationSpeed = 1.5
+
+[node name="BG" type="ColorRect" parent="." unique_id=2010976170]
+material = SubResource("ShaderMaterial_yci0a")
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.03, 0.04, 0.06, 1)
+
+[node name="Frame" type="Panel" parent="." unique_id=1256450934]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 90.0
+offset_right = 1780.0
+offset_bottom = 990.0
+theme = SubResource("Theme_event_frame")
+
+[node name="HeaderBar" type="Panel" parent="Frame" unique_id=883487435]
+layout_mode = 0
+offset_right = 1640.0
+offset_bottom = 64.0
+theme = SubResource("Theme_header_bar")
+
+[node name="HeaderAccent" type="ColorRect" parent="Frame/HeaderBar" unique_id=257999464]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 28.0
+offset_right = 220.0
+offset_bottom = 30.0
+color = Color(0.7, 0.62, 0.4, 0.8)
+
+[node name="HeaderTitle" type="Label" parent="Frame/HeaderBar" unique_id=917490944]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 740.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.7)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("1_title_font")
+theme_override_font_sizes/font_size = 28
+text = "EVENT LOG"
+
+[node name="HeaderCode" type="Label" parent="Frame/HeaderBar" unique_id=1300616143]
+layout_mode = 0
+offset_left = 1160.0
+offset_top = 16.0
+offset_right = 1600.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.75, 0.68, 0.45, 0.9)
+theme_override_font_sizes/font_size = 18
+text = "SECTOR-A7"
+horizontal_alignment = 2
+
+[node name="LeftAccent" type="ColorRect" parent="Frame" unique_id=15253754]
+layout_mode = 0
+offset_top = 80.0
+offset_right = 6.0
+offset_bottom = 820.0
+color = Color(0.6, 0.7, 0.85, 0.3)
+
+[node name="RightAccent" type="ColorRect" parent="Frame" unique_id=1737449849]
+layout_mode = 0
+offset_left = 1634.0
+offset_top = 120.0
+offset_right = 1640.0
+offset_bottom = 860.0
+color = Color(0.6, 0.7, 0.85, 0.2)
+
+[node name="Title" type="Label" parent="Frame" unique_id=1282100988]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 90.0
+offset_right = 1560.0
+offset_bottom = 140.0
+theme_override_colors/font_color = Color(0.86, 0.92, 1, 0.95)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.7)
+theme_override_constants/outline_size = 4
+theme_override_fonts/font = ExtResource("1_title_font")
+theme_override_font_sizes/font_size = 40
+text = "事件：未知信号 / UNKNOWN SIGNAL"
+
+[node name="Subtitle" type="Label" parent="Frame" unique_id=1043295555]
+layout_mode = 0
+offset_left = 42.0
+offset_top = 142.0
+offset_right = 1560.0
+offset_bottom = 174.0
+theme_override_colors/font_color = Color(0.74, 0.82, 0.95, 0.75)
+theme_override_font_sizes/font_size = 18
+text = "你在雾化的走廊尽头发现一台仍在运作的终端。"
+
+[node name="Divider" type="ColorRect" parent="Frame" unique_id=1145919192]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 184.0
+offset_right = 1600.0
+offset_bottom = 186.0
+color = Color(0.6, 0.54, 0.33, 0.45)
+
+[node name="ContentGroup" type="Control" parent="Frame" unique_id=1739182743]
+anchors_preset = 0
+offset_left = 40.0
+offset_top = 210.0
+offset_right = 1600.0
+offset_bottom = 500.0
+
+[node name="ArtFrame" type="Panel" parent="Frame/ContentGroup" unique_id=1093471714]
+layout_mode = 0
+offset_right = 420.0
+offset_bottom = 260.0
+theme = SubResource("Theme_image_frame")
+
+[node name="Art" type="TextureRect" parent="Frame/ContentGroup/ArtFrame" unique_id=1786768666]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 410.0
+offset_bottom = 250.0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StoryText" type="RichTextLabel" parent="Frame/ContentGroup" unique_id=2073938372]
+layout_mode = 0
+offset_left = 460.0
+offset_right = 1560.0
+offset_bottom = 260.0
+theme_override_colors/default_color = Color(0.88, 0.92, 1, 0.88)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.7)
+theme_override_constants/line_separation = 4
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/normal_font_size = 21
+bbcode_enabled = true
+text = "终端屏幕上滚动着重复的提示：
+[i]“验证失败。重试。”[/i]
+
+你注意到机壳侧面留有一条刚好够手指插入的凹槽，像是等待着某种指令。"
+scroll_active = false
+
+[node name="EnterButton" type="Button" parent="Frame" unique_id=85447888]
+layout_mode = 0
+offset_left = 44.0
+offset_top = 678.0
+offset_right = 1604.0
+offset_bottom = 742.0
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_option_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option_hover")
+text = "进入事件"
+
+[node name="ExitButton" type="Button" parent="Frame" unique_id=835730917]
+layout_mode = 0
+offset_left = 44.0
+offset_top = 754.0
+offset_right = 1604.0
+offset_bottom = 808.0
+theme_override_colors/font_color = Color(0.8, 0.86, 0.96, 0.96)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_option_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option_hover")
+text = "退出事件"
+
+[node name="OptionsTitle" type="Label" parent="Frame" unique_id=528145064]
+visible = false
+layout_mode = 0
+offset_left = 40.0
+offset_top = 616.0
+offset_right = 640.0
+offset_bottom = 646.0
+theme_override_colors/font_color = Color(0.78, 0.74, 0.5, 0.85)
+theme_override_font_sizes/font_size = 18
+text = "行动选项"
+
+[node name="Options" type="Control" parent="Frame" unique_id=175369410]
+visible = false
+anchors_preset = 0
+offset_left = 40.0
+offset_top = 656.0
+offset_right = 1600.0
+offset_bottom = 856.0
+
+[node name="Option1" type="Button" parent="Frame/Options" unique_id=924565209]
+layout_mode = 0
+offset_right = 1560.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.88, 0.94, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 21
+theme_override_styles/normal = SubResource("StyleBoxFlat_option_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option_hover")
+text = "尝试入侵终端"
+
+[node name="Accent" type="ColorRect" parent="Frame/Options/Option1" unique_id=829472203]
+show_behind_parent = true
+layout_mode = 0
+offset_left = 2.0
+offset_top = 4.0
+offset_right = 8.0
+offset_bottom = 56.0
+mouse_filter = 2
+color = Color(0.72, 0.64, 0.4, 0.9)
+
+[node name="Option2" type="Button" parent="Frame/Options" unique_id=185492456]
+layout_mode = 0
+offset_top = 72.0
+offset_right = 1560.0
+offset_bottom = 132.0
+theme_override_colors/font_color = Color(0.88, 0.94, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 21
+theme_override_styles/normal = SubResource("StyleBoxFlat_option_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option_hover")
+text = "拔下电源并带走模块"
+
+[node name="Accent" type="ColorRect" parent="Frame/Options/Option2" unique_id=30924091]
+show_behind_parent = true
+layout_mode = 0
+offset_left = 2.0
+offset_top = 4.0
+offset_right = 8.0
+offset_bottom = 56.0
+mouse_filter = 2
+color = Color(0.72, 0.64, 0.4, 0.9)
+
+[node name="Option3" type="Button" parent="Frame/Options" unique_id=1079330241]
+layout_mode = 0
+offset_top = 144.0
+offset_right = 1560.0
+offset_bottom = 204.0
+theme_override_colors/font_color = Color(0.88, 0.94, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.6)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 21
+theme_override_styles/normal = SubResource("StyleBoxFlat_option_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_option_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_option_hover")
+text = "离开"
+
+[node name="Accent" type="ColorRect" parent="Frame/Options/Option3" unique_id=1797169599]
+show_behind_parent = true
+layout_mode = 0
+offset_left = 2.0
+offset_top = 4.0
+offset_right = 8.0
+offset_bottom = 56.0
+mouse_filter = 2
+color = Color(0.72, 0.64, 0.4, 0.9)
+
+[node name="TargetSelectOverlay" parent="Frame" unique_id=637401648 instance=ExtResource("4_dcu8k")]
+layout_mode = 0

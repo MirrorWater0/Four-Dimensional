@@ -237,7 +237,7 @@ layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623]
+[node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623 node_paths=PackedStringArray("SiteUILayer")]
 self_modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(130, 130)
 offset_left = 1752.0
@@ -245,6 +245,7 @@ offset_top = 736.0
 offset_right = 1882.0
 offset_bottom = 866.0
 script = ExtResource("9_eqbtn")
+SiteUILayer = NodePath("../../BattleReadyLayer")
 
 [node name="ColorRect" type="ColorRect" parent="UI/EquipmentButton" unique_id=425907821]
 material = SubResource("ShaderMaterial_b3jsu")

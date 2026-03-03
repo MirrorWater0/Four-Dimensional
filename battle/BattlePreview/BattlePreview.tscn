@@ -5,6 +5,7 @@
 [ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_starbg"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="3_gear"]
 [ext_resource type="Shader" uid="uid://tidlfiqqjox0" path="res://shader/UI/BrushButton.gdshader" id="5_brshbtn"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="6_font"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_starbg"]
 shader = ExtResource("2_starbg")
@@ -39,6 +40,38 @@ shader_parameter/tooth_length = 0.1
 shader_parameter/radius_percent = 0.35
 shader_parameter/hole_percent = 0.15
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_preview_frame"]
+bg_color = Color(0.06, 0.09, 0.14, 0.36)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.45, 0.62, 0.82, 0.45)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0.02, 0.03, 0.06, 0.35)
+shadow_size = 8
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="Theme" id="Theme_preview_frame"]
+Panel/styles/panel = SubResource("StyleBoxFlat_preview_frame")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_speed_panel"]
+bg_color = Color(0.08, 0.12, 0.18, 0.46)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.72, 0.5, 0.55)
+shadow_color = Color(0.02, 0.03, 0.06, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="Theme" id="Theme_speed_panel"]
+Panel/styles/panel = SubResource("StyleBoxFlat_speed_panel")
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tp1km"]
 resource_local_to_scene = true
 shader = ExtResource("1_jwyif")
@@ -46,14 +79,23 @@ shader_parameter/bg_color = Color(0.061972275, 0.106753655, 0.18598887, 0.588235
 shader_parameter/line_color = Color(0.7, 0.75, 0.8, 1)
 shader_parameter/border_thickness = 0.005
 shader_parameter/corner_size = 0.2
+shader_parameter/accent_color = Color(0.42, 0.78, 1, 1)
+shader_parameter/pulse_speed = 1.3
+shader_parameter/sweep_speed = 0.0
+shader_parameter/sweep_strength = 0.0
+shader_parameter/scanline_strength = 0.04
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_brushbtn"]
 shader = ExtResource("5_brshbtn")
 shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/accent_color = Color(0.35, 0.85, 1, 1)
 shader_parameter/thickness_px = 3.0000001425
 shader_parameter/bevel_px = 7.4790003552525
 shader_parameter/cut_x = 0.6
 shader_parameter/cut_y = 0.6
+shader_parameter/rect_size_px = Vector2(256, 64)
+shader_parameter/glow_strength = 1.1
+shader_parameter/scan_strength = 0.18
 
 [node name="BattlePreview" type="Control" unique_id=1580075193]
 layout_mode = 3
@@ -98,6 +140,172 @@ offset_top = 100.0
 offset_right = 1800.0
 offset_bottom = 300.0
 metadata/_edit_lock_ = true
+
+[node name="TitleLineLeft" type="ColorRect" parent="." unique_id=202194191]
+z_index = 2
+layout_mode = 0
+offset_left = 260.0
+offset_top = 92.0
+offset_right = 780.0
+offset_bottom = 96.0
+color = Color(0.55, 0.72, 0.95, 0.25)
+
+[node name="TitleLineRight" type="ColorRect" parent="." unique_id=515143246]
+z_index = 2
+layout_mode = 0
+offset_left = 1140.0
+offset_top = 92.0
+offset_right = 1660.0
+offset_bottom = 96.0
+color = Color(0.55, 0.72, 0.95, 0.25)
+
+[node name="TitleMain" type="Label" parent="." unique_id=685406011]
+z_index = 3
+layout_mode = 0
+offset_top = 36.0
+offset_right = 1920.0
+offset_bottom = 90.0
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.8)
+theme_override_constants/outline_size = 6
+theme_override_fonts/font = ExtResource("6_font")
+theme_override_font_sizes/font_size = 44
+text = "BATTLE PREVIEW"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TitleSub" type="Label" parent="." unique_id=166413658]
+z_index = 3
+layout_mode = 0
+offset_top = 88.0
+offset_right = 1920.0
+offset_bottom = 122.0
+theme_override_colors/font_color = Color(0.86, 0.9, 0.98, 0.8)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.7)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "战斗预览"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerFrame" type="Panel" parent="." unique_id=2856201]
+z_index = 1
+layout_mode = 0
+offset_left = 120.0
+offset_top = 140.0
+offset_right = 820.0
+offset_bottom = 780.0
+mouse_filter = 2
+theme = SubResource("Theme_preview_frame")
+
+[node name="PlayerHeader" type="Label" parent="PlayerFrame" unique_id=233477687]
+layout_mode = 0
+offset_top = -36.0
+offset_right = 182.0
+offset_bottom = -2.0
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_font_sizes/font_size = 24
+text = "我方"
+
+[node name="EnemyFrame" type="Panel" parent="." unique_id=1043213637]
+z_index = 1
+layout_mode = 0
+offset_left = 1100.0
+offset_top = 140.0
+offset_right = 1800.0
+offset_bottom = 780.0
+mouse_filter = 2
+theme = SubResource("Theme_preview_frame")
+
+[node name="EnemyHeader" type="Label" parent="EnemyFrame" unique_id=1755394729]
+layout_mode = 0
+offset_left = 4.0
+offset_top = -36.0
+offset_right = 186.0
+offset_bottom = -2.0
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_font_sizes/font_size = 24
+text = "敌方"
+
+[node name="VSLabel" type="Label" parent="." unique_id=2095877332]
+z_index = 3
+layout_mode = 0
+offset_left = 860.0
+offset_top = 360.0
+offset_right = 1060.0
+offset_bottom = 450.0
+theme_override_colors/font_color = Color(0.95, 0.9, 0.75, 0.9)
+theme_override_colors/font_outline_color = Color(0.05, 0.04, 0.03, 0.8)
+theme_override_constants/outline_size = 8
+theme_override_fonts/font = ExtResource("6_font")
+theme_override_font_sizes/font_size = 72
+text = "VS"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlayerSpeedPanel" type="Panel" parent="." unique_id=1211075483]
+z_index = 3
+layout_mode = 0
+offset_left = 180.0
+offset_top = 800.0
+offset_right = 760.0
+offset_bottom = 868.0
+mouse_filter = 2
+theme = SubResource("Theme_speed_panel")
+
+[node name="Accent" type="ColorRect" parent="PlayerSpeedPanel" unique_id=454262556]
+layout_mode = 0
+offset_right = 6.0
+offset_bottom = 68.0
+color = Color(0.85, 0.72, 0.5, 0.8)
+
+[node name="PlayerSpeedLabel" type="RichTextLabel" parent="PlayerSpeedPanel" unique_id=1149368060]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 12.0
+offset_right = 540.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.7)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 24
+bbcode_enabled = true
+text = "我方总速度 0"
+fit_content = true
+scroll_active = false
+
+[node name="EnemySpeedPanel" type="Panel" parent="." unique_id=1083772963]
+z_index = 3
+layout_mode = 0
+offset_left = 1160.0
+offset_top = 800.0
+offset_right = 1740.0
+offset_bottom = 868.0
+mouse_filter = 2
+theme = SubResource("Theme_speed_panel")
+
+[node name="Accent" type="ColorRect" parent="EnemySpeedPanel" unique_id=383124828]
+layout_mode = 0
+offset_right = 6.0
+offset_bottom = 68.0
+color = Color(0.85, 0.72, 0.5, 0.8)
+
+[node name="EnemySpeedLabel" type="RichTextLabel" parent="EnemySpeedPanel" unique_id=1939900611]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 12.0
+offset_right = 540.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.7)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 24
+bbcode_enabled = true
+text = "敌方总速度 0"
+fit_content = true
+scroll_active = false
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1198887818]
 layout_mode = 0
