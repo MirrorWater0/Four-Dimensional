@@ -8,6 +8,7 @@
 [ext_resource type="Shader" uid="uid://dt5olcfi6tvjs" path="res://shader/UI/ChangePosFrame.gdshader" id="6_frameshader"]
 [ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="7_portrait"]
 [ext_resource type="PackedScene" uid="uid://cd401j5kbyi03" path="res://Equipment/CardSlot.tscn" id="8_7dsut"]
+[ext_resource type="Script" path="res://Equipment/SlotDropPanel.cs" id="9_slotdrop_script"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("1_bgshader")
@@ -341,18 +342,28 @@ custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("9_slotdrop_script")
+SlotIndex = 0
 
-[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA" unique_id=1635379138 instance=ExtResource("8_7dsut")]
+[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA" unique_id=1049910847 instance=ExtResource("8_7dsut")]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+EnableDrag = false
 
 [node name="SlotB" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots" unique_id=1662736954]
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+script = ExtResource("9_slotdrop_script")
+SlotIndex = 1
 
-[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB" unique_id=808746017 instance=ExtResource("8_7dsut")]
+[node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB" unique_id=2111252294 instance=ExtResource("8_7dsut")]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+EnableDrag = false
 
 [node name="CenterPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow" unique_id=669659142]
 layout_mode = 2
@@ -521,3 +532,6 @@ size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
 theme_override_font_sizes/font_size = 24
 text = "卸下"
+
+[editable path="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA"]
+[editable path="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB"]

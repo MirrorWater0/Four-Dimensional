@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://crcut2wbx7oex"
+path="res://.godot/imported/Kasiya.atlas-00d8a35e2c4423bb26f50ec2f583c028.spatlas"
+
+[deps]
+
+source_file="res://asset/PlayerCharater/Kasiya/Kasiya.atlas"
+dest_files=["res://.godot/imported/Kasiya.atlas-00d8a35e2c4423bb26f50ec2f583c028.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

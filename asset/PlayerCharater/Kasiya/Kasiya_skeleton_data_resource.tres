@@ -1,0 +1,8 @@
+[gd_resource type="SpineSkeletonDataResource" format=3 uid="uid://b33uiy2f51sf0"]
+
+[ext_resource type="SpineAtlasResource" uid="uid://crcut2wbx7oex" path="res://asset/PlayerCharater/Kasiya/Kasiya.atlas" id="1_n2w7d"]
+[ext_resource type="SpineSkeletonFileResource" uid="uid://b23s4op2vttja" path="res://asset/PlayerCharater/Kasiya/Kasiya.skel" id="2_jjypp"]
+
+[resource]
+atlas_res = ExtResource("1_n2w7d")
+skeleton_file_res = ExtResource("2_jjypp")

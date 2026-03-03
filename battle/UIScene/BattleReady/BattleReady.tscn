@@ -256,19 +256,19 @@ theme = SubResource("Theme_section_blue")
 
 [node name="SkillAreaHeaderFrame" type="Panel" parent="." unique_id=1453034852]
 layout_mode = 0
-offset_left = 814.0
-offset_top = 179.0
-offset_right = 1092.0
-offset_bottom = 233.0
+offset_left = 807.0
+offset_top = 175.0
+offset_right = 1085.0
+offset_bottom = 229.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
 [node name="SkillAreaHeader" type="Label" parent="." unique_id=441230592]
 layout_mode = 0
-offset_left = 836.0
-offset_top = 188.0
-offset_right = 1084.0
-offset_bottom = 222.0
+offset_left = 829.0
+offset_top = 184.0
+offset_right = 1077.0
+offset_bottom = 218.0
 theme_override_font_sizes/font_size = 24
 text = "战术技能"
 
@@ -352,7 +352,6 @@ theme_override_font_sizes/font_size = 22
 text = "Nightingale"
 
 [node name="GridContainer" type="GridContainer" parent="." unique_id=1216591860]
-z_index = 2
 layout_mode = 0
 offset_left = 218.99998
 offset_top = 506.0

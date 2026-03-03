@@ -5,7 +5,7 @@ public partial class CardSlot : PanelContainer
 {
     private static readonly Color DefaultBorderColor = new("#a7d6ff52");
     private static readonly Color HoverBorderColor = new("#5cff8a");
-    private static readonly Color SelectedBorderColor = Colors.Red;
+    private static readonly Color SelectedBorderColor = Colors.Yellow;
 
     [Export]
     public float HoverBorderTweenDuration = 0.12f;
@@ -15,6 +15,9 @@ public partial class CardSlot : PanelContainer
 
     [Export]
     public float ParticleYOffset = 12f;
+
+    [Export]
+    public bool EnableDrag = true;
 
     [Signal]
     public delegate void ClickedEventHandler();
@@ -30,6 +33,23 @@ public partial class CardSlot : PanelContainer
             TriggerParticles();
             EmitSignal(SignalName.Clicked);
         }
+    }
+
+    public override Variant _GetDragData(Vector2 atPosition)
+    {
+        if (!EnableDrag || !Visible)
+            return default;
+
+        var data = new Godot.Collections.Dictionary
+        {
+            { "source_path", GetPath() },
+        };
+
+        var preview = BuildDragPreview();
+        if (preview != null)
+            SetDragPreview(preview);
+
+        return data;
     }
 
     public override void _Ready()
@@ -144,6 +164,26 @@ public partial class CardSlot : PanelContainer
     private void SetAlpha(float alpha)
     {
         Modulate = Modulate with { A = alpha };
+    }
+
+    private Control BuildDragPreview()
+    {
+        var preview = new PanelContainer();
+        preview.CustomMinimumSize = Size;
+        preview.Size = Size;
+        preview.MouseFilter = MouseFilterEnum.Ignore;
+        preview.Modulate = new Color(1, 1, 1, 0.92f);
+
+        var style = GetThemeStylebox("panel")?.Duplicate() as StyleBox;
+        if (style != null)
+            preview.AddThemeStyleboxOverride("panel", style);
+
+        var textLabel = new Label();
+        textLabel.Text = label?.Text ?? string.Empty;
+        textLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        textLabel.MouseFilter = MouseFilterEnum.Ignore;
+        preview.AddChild(textLabel);
+        return preview;
     }
 
     private void OnMouseEntered()

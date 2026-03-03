@@ -95,6 +95,7 @@ public partial class StartInterface : CanvasLayer
         GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
         GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.SonicBoom);
+        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.PhaseEcho);
         GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
         GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
         GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);

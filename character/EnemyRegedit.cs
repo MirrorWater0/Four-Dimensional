@@ -28,6 +28,8 @@ public abstract partial class EnemyRegedit
 
     public string PassiveName;
     public string PassiveDescription;
+
+    public EnemyRegedit GetRegedit() => (EnemyRegedit)MemberwiseClone();
 }
 
 public partial class EvilRegedit : EnemyRegedit
@@ -63,9 +65,9 @@ public partial class FearWormRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 65;
-        Power = 18;
-        Survivability = 12;
+        MaxLife = 60;
+        Power = 15;
+        Survivability = 9;
         Speed = 13;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
@@ -98,4 +100,11 @@ public partial class ArmonRegedit : EnemyRegedit
         PassiveDescription =
             $"回合开始时全阵获得格挡。" + $"\n回合结束时：全阵获得格挡，数值为自身生存。";
     }
+}
+
+public enum EnemiesEnum
+{
+    Evil,
+    FearWorm,
+    Armon,
 }

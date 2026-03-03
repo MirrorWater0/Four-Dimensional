@@ -14,10 +14,14 @@ public partial class EquipmentInterface : Control
     private const float InventoryExitDuration = 0.16f;
     private const float InventoryEnterDuration = 0.2f;
     private const float InventoryReflowDuration = 0.18f;
+    private const float SlotBorderTweenDuration = 0.12f;
 
     private static readonly string[] SlotLetters = ["A", "B"];
     private static readonly Color SelectedTextColor = new(1f, 0.55f, 0.55f, 1f);
     private static readonly Color NormalTextColor = new(0.9f, 0.95f, 1f, 1f);
+    private static readonly Color SlotDefaultBorderColor = new("#a7d6ff52");
+    private static readonly Color SlotHoverBorderColor = new("#5cff8a");
+    private static readonly Color SlotSelectedBorderColor = new("#ffd24a");
 
     private Button CloseButton =>
         field ??= GetNode<Button>("RootMargin/MainVBox/TopBar/CloseButton");
@@ -62,6 +66,15 @@ public partial class EquipmentInterface : Control
             ),
             GetNode<CardSlot>(
                 "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB/Card"
+            ),
+        ];
+    private SlotDropPanel[] SlotPanels =>
+        field ??= [
+            GetNode<SlotDropPanel>(
+                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA"
+            ),
+            GetNode<SlotDropPanel>(
+                "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB"
             ),
         ];
     private Label[] SlotCardLabels =>
@@ -121,6 +134,10 @@ public partial class EquipmentInterface : Control
     private int _selectedSlotIndex;
     private Equipment _selectedEquipment;
     private bool _isEquipAnimating;
+    private readonly StyleBoxFlat[] _slotRuntimeStyleBoxes = new StyleBoxFlat[SlotCount];
+    private readonly Tween[] _slotBorderTweens = new Tween[SlotCount];
+    private readonly Color[] _slotCurrentBorderColors = new Color[SlotCount];
+    private readonly bool[] _slotHovered = new bool[SlotCount];
     public bool HasEquipmentChanges { get; private set; }
 
     public override void _Ready()
@@ -132,6 +149,7 @@ public partial class EquipmentInterface : Control
         _selectedSlotIndex = 0;
         _selectedEquipment = null;
 
+        InitializeSlotPanelStyles();
         WireUiEvents();
         RefreshAll();
     }
@@ -151,6 +169,10 @@ public partial class EquipmentInterface : Control
         {
             int captured = i;
             SlotCards[i].Clicked += () => OnSlotCardPressed(captured);
+            SlotPanels[i].GuiInput += @event => OnSlotPanelGuiInput(captured, @event);
+            SlotPanels[i].MouseEntered += () => OnSlotPanelMouseEntered(captured);
+            SlotPanels[i].MouseExited += () => OnSlotPanelMouseExited(captured);
+            SlotPanels[i].InventoryCardDropped += OnSlotPanelInventoryCardDropped;
         }
 
         for (int i = 0; i < InventoryCards.Length; i++)
@@ -159,7 +181,6 @@ public partial class EquipmentInterface : Control
             InventoryCards[i].Clicked += () => OnInventoryCardPressed(captured);
         }
 
-        EquipButton.Pressed += OnEquipPressed;
         UnequipButton.Pressed += OnUnequipPressed;
     }
 
@@ -178,7 +199,59 @@ public partial class EquipmentInterface : Control
     private void OnSlotCardPressed(int slotIndex)
     {
         _selectedSlotIndex = Math.Clamp(slotIndex, 0, SlotCount - 1);
+        if (TryGetSelectedPlayerWithEquipments(out var info))
+        {
+            var equipped = info.Equipments[_selectedSlotIndex];
+            _selectedEquipment = HasValidEquipment(equipped) ? Equipment.Clone(equipped) : null;
+            SaveSelectedPlayerInfo(in info);
+        }
+        else
+        {
+            _selectedEquipment = null;
+        }
         RefreshAll();
+    }
+
+    private void OnSlotPanelGuiInput(int slotIndex, InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+            return;
+
+        OnSlotCardPressed(slotIndex);
+    }
+
+    private async void OnSlotPanelInventoryCardDropped(int slotIndex, NodePath sourceCardPath)
+    {
+        if (_isEquipAnimating)
+            return;
+        if ((uint)slotIndex >= (uint)SlotCount)
+            return;
+
+        _selectedSlotIndex = slotIndex;
+        int cardIndex = FindInventoryCardIndexByPath(sourceCardPath);
+        if (cardIndex < 0 || cardIndex >= _catalog.Length)
+        {
+            RefreshAll();
+            return;
+        }
+
+        await EquipInventoryCardToSlotAsync(cardIndex, slotIndex, animateReplacedToInventory: true);
+    }
+
+    private void OnSlotPanelMouseEntered(int slotIndex)
+    {
+        if ((uint)slotIndex >= (uint)SlotCount)
+            return;
+        _slotHovered[slotIndex] = true;
+        ApplySlotPanelBorderState(slotIndex, animate: true);
+    }
+
+    private void OnSlotPanelMouseExited(int slotIndex)
+    {
+        if ((uint)slotIndex >= (uint)SlotCount)
+            return;
+        _slotHovered[slotIndex] = false;
+        ApplySlotPanelBorderState(slotIndex, animate: true);
     }
 
     private void OnInventoryCardPressed(int cardIndex)
@@ -196,45 +269,82 @@ public partial class EquipmentInterface : Control
             return;
         if (_selectedEquipment == null)
             return;
+        int removedCardIndex = FindCatalogIndexByName(_selectedEquipment.Name);
+        if (removedCardIndex < 0)
+            return;
 
+        await EquipInventoryCardToSlotAsync(
+            removedCardIndex,
+            _selectedSlotIndex,
+            animateReplacedToInventory: false
+        );
+    }
+
+    private async Task EquipInventoryCardToSlotAsync(
+        int inventoryCardIndex,
+        int slotIndex,
+        bool animateReplacedToInventory
+    )
+    {
+        if (_isEquipAnimating)
+            return;
+        if ((uint)slotIndex >= (uint)SlotCount)
+            return;
+        if ((uint)inventoryCardIndex >= (uint)_catalog.Length)
+            return;
         if (!TryGetSelectedPlayerWithEquipments(out var info))
             return;
 
         _isEquipAnimating = true;
         try
         {
-            bool hadEquip = HasValidEquipment(info.Equipments[_selectedSlotIndex]);
+            _selectedSlotIndex = slotIndex;
+            var selectedFromInventory = Equipment.Clone(_catalog[inventoryCardIndex]);
+            bool hadEquip = HasValidEquipment(info.Equipments[slotIndex]);
+            Vector2 replacedEquipFromGlobalPos = hadEquip
+                ? SlotCards[slotIndex].GlobalPosition
+                : Vector2.Zero;
             var inventoryPositionsBeforeRefresh = CaptureVisibleInventoryCardPositions();
-            Equipment.EquipmentName? replacedEquipName = hadEquip
-                ? info.Equipments[_selectedSlotIndex].Name
-                : null;
-            int removedCardIndex = FindCatalogIndexByName(_selectedEquipment.Name);
+            Equipment.EquipmentName? replacedEquipName = hadEquip ? info.Equipments[slotIndex].Name : null;
 
             Task slotExitTask = hadEquip
-                ? AnimateSlotContentExitAsync(_selectedSlotIndex)
+                ? AnimateSlotContentExitAsync(slotIndex)
                 : Task.CompletedTask;
-            Task inventoryExitTask =
-                removedCardIndex >= 0
-                    ? AnimateInventoryCardExitAsync(removedCardIndex)
-                    : Task.CompletedTask;
+            Task inventoryExitTask = AnimateInventoryCardExitAsync(inventoryCardIndex);
             await Task.WhenAll(slotExitTask, inventoryExitTask);
 
-            RemoveOwnedEquipmentFirstByName(_selectedEquipment.Name);
-            if (hadEquip && info.Equipments[_selectedSlotIndex] != null)
-                GameInfo.OwnedEquipments.Add(Equipment.Clone(info.Equipments[_selectedSlotIndex]));
+            RemoveOwnedEquipmentByAvailableIndex(inventoryCardIndex);
+            if (hadEquip && info.Equipments[slotIndex] != null)
+                GameInfo.OwnedEquipments.Add(Equipment.Clone(info.Equipments[slotIndex]));
 
-            info.Equipments[_selectedSlotIndex] = Equipment.Clone(_selectedEquipment);
+            info.Equipments[slotIndex] = Equipment.Clone(selectedFromInventory);
             SaveSelectedPlayerInfo(in info);
             HasEquipmentChanges = true;
+            _selectedEquipment = Equipment.Clone(selectedFromInventory);
 
             RefreshAll();
 
-            Task slotEnterTask = AnimateSlotContentEnterAsync(_selectedSlotIndex);
-            Task inventoryReflowTask = AnimateInventoryReflowAsync(inventoryPositionsBeforeRefresh);
-            Task inventoryEnterTask = replacedEquipName.HasValue
-                ? AnimateInventoryCardEnterByNameAsync(replacedEquipName.Value)
-                : Task.CompletedTask;
-            await Task.WhenAll(slotEnterTask, inventoryEnterTask, inventoryReflowTask);
+            int replacedCardIndex = replacedEquipName.HasValue
+                ? FindLastCatalogIndexByName(replacedEquipName.Value)
+                : -1;
+
+            Task slotEnterTask = AnimateSlotContentEnterAsync(slotIndex);
+            Task inventoryReflowTask = AnimateInventoryReflowAsync(
+                inventoryPositionsBeforeRefresh,
+                replacedCardIndex
+            );
+            Task replacedEquipTask = Task.CompletedTask;
+            if (replacedCardIndex >= 0)
+            {
+                replacedEquipTask = animateReplacedToInventory
+                    ? AnimateReplacedEquipmentToInventoryEndAsync(
+                        replacedCardIndex,
+                        replacedEquipFromGlobalPos
+                    )
+                    : AnimateInventoryCardEnterAsync(replacedCardIndex);
+            }
+
+            await Task.WhenAll(slotEnterTask, inventoryReflowTask, replacedEquipTask);
         }
         finally
         {
@@ -333,18 +443,23 @@ public partial class EquipmentInterface : Control
         for (int i = 0; i < SlotCount; i++)
         {
             var equip = HasValidEquipment(info.Equipments[i]) ? info.Equipments[i] : null;
-            string title = equip == null ? $"装备槽 {SlotLetters[i]}（空）" : equip.DisplayName;
-            string bonus = BuildEquipmentBonusInline(equip);
+            bool hasEquip = equip != null;
+            SlotCards[i].Visible = hasEquip;
             if (SlotCardLabels[i] != null)
-                SlotCardLabels[i].Text = $"{title}\n{bonus}";
+            {
+                SlotCardLabels[i].Text = hasEquip
+                    ? $"{equip.DisplayName}\n{BuildEquipmentBonusInline(equip)}"
+                    : string.Empty;
+            }
 
             bool selected = i == _selectedSlotIndex;
-            if (selected)
+            if (selected && hasEquip)
                 SlotCards[i].Select();
             else
                 SlotCards[i].Unselect();
             if (SlotCardLabels[i] != null)
                 SlotCardLabels[i].Modulate = selected ? SelectedTextColor : NormalTextColor;
+            ApplySlotPanelBorderState(i, animate: false);
         }
 
         SaveSelectedPlayerInfo(in info);
@@ -426,10 +541,10 @@ public partial class EquipmentInterface : Control
 
     private void RefreshActionButtons()
     {
-        EquipButton.Text = $"装配到槽 {SlotLetters[_selectedSlotIndex]}";
+        EquipButton.Text = $"拖拽到槽 {SlotLetters[_selectedSlotIndex]} 装配";
         UnequipButton.Text = $"卸下槽 {SlotLetters[_selectedSlotIndex]}";
 
-        EquipButton.Disabled = _selectedEquipment == null;
+        EquipButton.Disabled = true;
 
         if (TryGetSelectedPlayerWithEquipments(out var info))
         {
@@ -534,6 +649,61 @@ public partial class EquipmentInterface : Control
         return current == next ? current.ToString() : $"{current} → {next}";
     }
 
+    private void InitializeSlotPanelStyles()
+    {
+        for (int i = 0; i < SlotPanels.Length; i++)
+        {
+            var style = SlotPanels[i].GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
+            if (style == null)
+                continue;
+
+            _slotRuntimeStyleBoxes[i] = style;
+            SlotPanels[i].AddThemeStyleboxOverride("panel", style);
+            _slotCurrentBorderColors[i] = style.BorderColor;
+            ApplySlotPanelBorderState(i, animate: false);
+        }
+    }
+
+    private void ApplySlotPanelBorderState(int slotIndex, bool animate)
+    {
+        if ((uint)slotIndex >= (uint)_slotRuntimeStyleBoxes.Length)
+            return;
+
+        var style = _slotRuntimeStyleBoxes[slotIndex];
+        if (style == null)
+            return;
+
+        Color targetColor = slotIndex == _selectedSlotIndex
+            ? SlotSelectedBorderColor
+            : (_slotHovered[slotIndex] ? SlotHoverBorderColor : SlotDefaultBorderColor);
+
+        if (!animate || slotIndex == _selectedSlotIndex)
+        {
+            _slotBorderTweens[slotIndex]?.Kill();
+            style.BorderColor = targetColor;
+            _slotCurrentBorderColors[slotIndex] = targetColor;
+            return;
+        }
+
+        _slotBorderTweens[slotIndex]?.Kill();
+        Color startColor = _slotCurrentBorderColors[slotIndex];
+        var tween = CreateTween();
+        _slotBorderTweens[slotIndex] = tween;
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+        tween.TweenMethod(
+            Callable.From<float>(t =>
+            {
+                var c = startColor.Lerp(targetColor, t);
+                _slotCurrentBorderColors[slotIndex] = c;
+                style.BorderColor = c;
+            }),
+            0.0f,
+            1.0f,
+            SlotBorderTweenDuration
+        );
+    }
+
     private async Task AnimateSlotContentExitAsync(int slotIndex)
     {
         if ((uint)slotIndex >= (uint)SlotCards.Length)
@@ -546,6 +716,16 @@ public partial class EquipmentInterface : Control
     {
         if ((uint)slotIndex >= (uint)SlotCards.Length)
             return;
+        if (!TryGetSelectedPlayerWithEquipments(out var info))
+            return;
+        if (!HasValidEquipment(info.Equipments[slotIndex]))
+            return;
+
+        // When inserting into an empty slot, the card just became visible and may need a frame
+        // for container layout to finalize its size before playing move/alpha animation.
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (SlotCards[slotIndex].Size.X <= 1f || SlotCards[slotIndex].Size.Y <= 1f)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
         await SlotCards[slotIndex].PlayInsertAnimation(SlotEquipMoveDistance, SlotEnterDuration);
     }
@@ -583,8 +763,38 @@ public partial class EquipmentInterface : Control
         await AnimateInventoryCardEnterAsync(cardIndex);
     }
 
+    private async Task AnimateReplacedEquipmentToInventoryEndAsync(
+        int cardIndex,
+        Vector2 fromGlobalPosition
+    )
+    {
+        if ((uint)cardIndex >= (uint)InventoryCards.Length)
+            return;
+
+        var card = InventoryCards[cardIndex];
+        if (!card.Visible)
+            return;
+
+        Vector2 targetGlobal = card.GlobalPosition;
+        bool originalTopLevel = card.TopLevel;
+        SetControlTopLevel(card, true);
+        card.GlobalPosition = fromGlobalPosition;
+        SetControlAlpha(card, 1.0f);
+
+        var tween = CreateTween();
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Quint);
+        tween.TweenProperty(card, "global_position", targetGlobal, InventoryEnterDuration);
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        SetControlTopLevel(card, originalTopLevel);
+        card.GlobalPosition = targetGlobal;
+        SetControlAlpha(card, 1.0f);
+    }
+
     private async Task AnimateInventoryReflowAsync(
-        Dictionary<Equipment.EquipmentName, Queue<Vector2>> previousPositions
+        Dictionary<Equipment.EquipmentName, Queue<Vector2>> previousPositions,
+        int skipCardIndex = -1
     )
     {
         if (previousPositions == null || previousPositions.Count == 0)
@@ -595,6 +805,9 @@ public partial class EquipmentInterface : Control
         int count = Math.Min(_catalog.Length, InventoryCards.Length);
         for (int i = 0; i < count; i++)
         {
+            if (i == skipCardIndex)
+                continue;
+
             var card = InventoryCards[i];
             if (!card.Visible)
                 continue;
@@ -678,6 +891,23 @@ public partial class EquipmentInterface : Control
         return -1;
     }
 
+    private int FindInventoryCardIndexByPath(NodePath sourceCardPath)
+    {
+        if (sourceCardPath.IsEmpty)
+            return -1;
+
+        var sourceCard = GetNodeOrNull<CardSlot>(sourceCardPath);
+        if (sourceCard == null)
+            return -1;
+
+        for (int i = 0; i < InventoryCards.Length; i++)
+        {
+            if (InventoryCards[i] == sourceCard)
+                return i;
+        }
+        return -1;
+    }
+
     private int FindLastCatalogIndexByName(Equipment.EquipmentName equipmentName)
     {
         for (int i = _catalog.Length - 1; i >= 0; i--)
@@ -735,6 +965,23 @@ public partial class EquipmentInterface : Control
             return;
         }
 
+        if (TryGetSelectedPlayerWithEquipments(out var info))
+        {
+            for (int i = 0; i < SlotCount; i++)
+            {
+                var equipped = info.Equipments[i];
+                if (!HasValidEquipment(equipped))
+                    continue;
+                if (equipped.Name != _selectedEquipment.Name)
+                    continue;
+
+                _selectedEquipment = Equipment.Clone(equipped);
+                SaveSelectedPlayerInfo(in info);
+                return;
+            }
+            SaveSelectedPlayerInfo(in info);
+        }
+
         // Keep an empty selection when current selected card is removed from available list.
         _selectedEquipment = null;
     }
@@ -776,14 +1023,24 @@ public partial class EquipmentInterface : Control
         GameInfo.OwnedEquipments.RemoveAll(x => !HasValidEquipment(x));
     }
 
-    private static void RemoveOwnedEquipmentFirstByName(Equipment.EquipmentName equipmentName)
+    private static void RemoveOwnedEquipmentByAvailableIndex(int availableIndex)
     {
+        if (availableIndex < 0)
+            return;
+
         EnsureOwnedEquipmentsInitialized();
-        int index = GameInfo
-            .OwnedEquipments
-            .FindIndex(x => HasValidEquipment(x) && x.Name == equipmentName);
-        if (index >= 0)
-            GameInfo.OwnedEquipments.RemoveAt(index);
+        int visibleIndex = 0;
+        for (int i = 0; i < GameInfo.OwnedEquipments.Count; i++)
+        {
+            if (!HasValidEquipment(GameInfo.OwnedEquipments[i]))
+                continue;
+            if (visibleIndex == availableIndex)
+            {
+                GameInfo.OwnedEquipments.RemoveAt(i);
+                return;
+            }
+            visibleIndex++;
+        }
     }
 
     private static bool HasValidEquipment(Equipment equip)

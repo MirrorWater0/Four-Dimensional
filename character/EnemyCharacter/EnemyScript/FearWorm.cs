@@ -78,7 +78,7 @@ public partial class FearWormSurvive : Skill
                 energyCost: 0
             ),
             SelfBlockStep(BaseBlock),
-            CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0, dyingFilter: true)
+            CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0, dyingFilter: false)
         );
     }
 }

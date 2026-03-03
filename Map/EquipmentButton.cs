@@ -1,12 +1,14 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
 public partial class EquipmentButton : Button
 {
-    private const float PartMoveDuration = 0.24f;
+    private const float PartMoveDuration = 0.28f;
+    private const float PartFadeDuration = 0.24f;
     private const float PartHideDuration = 0.2f;
-    private const float PartStagger = 0.04f;
-    private const float BackgroundFadeDuration = 0.32f;
+    private const float PartStagger = 0.055f;
+    private const float BackgroundFadeDuration = 0.34f;
 
     private static readonly PackedScene EquipmentInterfaceScene = ResourceLoader.Load<PackedScene>(
         "res://Equipment/EquipmentInterface.tscn"
@@ -95,12 +97,12 @@ public partial class EquipmentButton : Button
         CapturePartBases();
 
         _activeTween = CreateTween();
-        _activeTween.SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
+        _activeTween.SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Quint);
         _activeTween.SetParallel(true);
         for (int i = 0; i < _parts.Count; i++)
         {
             var part = _parts[i];
-            float delay = i * PartStagger;
+            float delay = GetShowDelay(part, i);
             bool isBackground = IsBackgroundPart(part);
             if (!isBackground)
                 SetPartTopLevel(part, true);
@@ -125,7 +127,7 @@ public partial class EquipmentButton : Button
                     part.Node,
                     "modulate:a",
                     part.BaseAlpha,
-                    isBackground ? BackgroundFadeDuration : PartMoveDuration * 0.9f
+                    isBackground ? BackgroundFadeDuration : PartFadeDuration
                 )
                 .SetDelay(isBackground ? 0.0f : delay);
         }
@@ -160,8 +162,7 @@ public partial class EquipmentButton : Button
         {
             var part = _parts[i];
             bool isBackground = IsBackgroundPart(part);
-            int reverseIndex = _parts.Count - 1 - i;
-            float delay = reverseIndex * PartStagger;
+            float delay = GetHideDelay(part, i);
             var hiddenPos = part.BaseGlobalPosition + part.Offset;
 
             if (!isBackground)
@@ -176,7 +177,7 @@ public partial class EquipmentButton : Button
                     part.Node,
                     "modulate:a",
                     0.0f,
-                    isBackground ? BackgroundFadeDuration : PartHideDuration * 0.9f
+                    isBackground ? BackgroundFadeDuration : PartFadeDuration * 0.8f
                 )
                 .SetDelay(isBackground ? 0.0f : delay);
         }
@@ -314,6 +315,37 @@ public partial class EquipmentButton : Button
             return false;
 
         return part.Node.Name == "BG" || part.Node.Name == "Overlay";
+    }
+
+    private static int GetShowOrder(PartState part, int fallbackIndex)
+    {
+        if (part?.Node == null)
+            return fallbackIndex;
+
+        string name = part.Node.Name;
+        return name switch
+        {
+            "BG" => 0,
+            "Overlay" => 1,
+            "TopBar" => 2,
+            "LeftPanel" => 3,
+            "CenterPanel" => 4,
+            "RightPanel" => 5,
+            "GearLeft" => 6,
+            "GearRight" => 7,
+            _ => 8 + fallbackIndex,
+        };
+    }
+
+    private static float GetShowDelay(PartState part, int fallbackIndex)
+    {
+        return GetShowOrder(part, fallbackIndex) * PartStagger;
+    }
+
+    private static float GetHideDelay(PartState part, int fallbackIndex)
+    {
+        int order = GetShowOrder(part, fallbackIndex);
+        return (7 - Math.Clamp(order, 0, 7)) * PartStagger;
     }
 
     private void OnUiTreeExited()

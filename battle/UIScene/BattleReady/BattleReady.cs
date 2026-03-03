@@ -273,10 +273,15 @@ public partial class BattleReady : Control
 
             Grid.GetChild(remap[positionindex] - 1).AddChild(portrait);
 
-            portrait.PortaitButton.ButtonDown += () => _dragTarget = portrait;
+            portrait.PortaitButton.ButtonDown += () =>
+            {
+                _dragTarget = portrait;
+                portrait.ZIndex = 1;
+            };
             portrait.PortaitButton.ButtonUp += () =>
             {
                 _dragTarget = null;
+                portrait.ZIndex = 0;
                 var olderParent = portrait.GetParent();
                 var newParent = Grid.GetChildren()
                     .OfType<ColorRect>()

@@ -66,15 +66,6 @@ _data = {
 &"explode": SubResource("Animation_kqylh")
 }
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_kqylh"]
-resource_local_to_scene = true
-shader = ExtResource("2_ey3wg")
-shader_parameter/sword_color = Color(1, 1, 1, 1)
-shader_parameter/blade_color = Color(1, 1, 1, 1)
-shader_parameter/handle_color = Color(1, 1, 1, 1)
-shader_parameter/glow_intensity = 0.5
-shader_parameter/angle = 0.0
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ey3wg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_apc1k"]
@@ -104,8 +95,16 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_kqylh"]
+resource_local_to_scene = true
+shader = ExtResource("2_ey3wg")
+shader_parameter/sword_color = Color(1, 1, 1, 1)
+shader_parameter/blade_color = Color(1, 1, 1, 1)
+shader_parameter/handle_color = Color(1, 1, 1, 1)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
 [node name="SelectButton" type="Control" unique_id=1285070369]
-z_index = 2
 custom_minimum_size = Vector2(200, 52)
 layout_mode = 3
 anchors_preset = 0
@@ -121,6 +120,19 @@ libraries/ = SubResource("AnimationLibrary_apc1k")
 anchors_preset = 0
 offset_right = 232.0
 offset_bottom = 52.0
+
+[node name="Border2" type="Panel" parent="Control" unique_id=394969099]
+modulate = Color(1, 1, 1, 0)
+material = SubResource("ShaderMaterial_ey3wg")
+layout_mode = 0
+offset_left = -1.0
+offset_top = -1.0
+offset_right = 199.0
+offset_bottom = 53.0
+pivot_offset = Vector2(116, 26)
+mouse_filter = 2
+theme = SubResource("Theme_8vcpf")
+theme_override_styles/panel = SubResource("StyleBoxFlat_8vcpf")
 
 [node name="Button" type="Button" parent="Control" unique_id=1135458589]
 custom_minimum_size = Vector2(200, 52)
@@ -165,17 +177,3 @@ offset_bottom = 53.0
 pivot_offset = Vector2(116, 26)
 mouse_filter = 2
 theme = SubResource("Theme_8vcpf")
-
-[node name="Border2" type="Panel" parent="Control" unique_id=394969099]
-modulate = Color(1, 1, 1, 0)
-z_index = -1
-material = SubResource("ShaderMaterial_ey3wg")
-layout_mode = 0
-offset_left = -1.0
-offset_top = -1.0
-offset_right = 199.0
-offset_bottom = 53.0
-pivot_offset = Vector2(116, 26)
-mouse_filter = 2
-theme = SubResource("Theme_8vcpf")
-theme_override_styles/panel = SubResource("StyleBoxFlat_8vcpf")

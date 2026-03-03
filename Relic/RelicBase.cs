@@ -58,7 +58,7 @@ public partial class Relic
                 List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
                 {
-                    list.Add(battle.EnemiesList[i].GetHurt(20));
+                    list.Add(battle.EnemiesList[i].GetHurt(25));
                 }
                 await Task.WhenAll(list);
                 Num--;

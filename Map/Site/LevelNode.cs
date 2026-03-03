@@ -76,12 +76,19 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> ProduceEnemies()
     {
+        var rng = new Random(RandomNum);
+        EnemyRegedit[] enemyRegedits =
+        [
+            new EvilRegedit(),
+            new FearWormRegedit(),
+            new ArmonRegedit(),
+        ];
         List<EnemyRegedit> list = new()
         {
-            new EvilRegedit(),
-            new EvilRegedit(),
-            new EvilRegedit(),
-            new EvilRegedit(),
+            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
         };
         RandomPosition(list, RandomNum);
         return list;
@@ -212,7 +219,6 @@ public partial class LevelNode : ColorRect
         {
             case LevelType.Normal:
                 GotoBattlePreview();
-                Completed();
                 break;
             case LevelType.Boss:
                 GotoBattlePreview();
@@ -249,7 +255,9 @@ public partial class LevelNode : ColorRect
     {
         var gameEventInterface = EventScene.Instantiate() as EventInterface;
         gameEventInterface.WhichNode = this;
-        gameEventInterface.ThisEvent = GameEvent.Catalog?.FirstOrDefault();
+        gameEventInterface.ThisEvent = GameEvent.Catalog[
+            new Random().Next(0, GameEvent.Catalog.Length)
+        ];
         var tween = ExplodeAnimation();
         tween
             .Chain()

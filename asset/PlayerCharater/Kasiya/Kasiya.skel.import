@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://b23s4op2vttja"
+path="res://.godot/imported/Kasiya.skel-6b525c27741121bd3d6bb47e66da98b1.spskel"
+
+[deps]
+
+source_file="res://asset/PlayerCharater/Kasiya/Kasiya.skel"
+dest_files=["res://.godot/imported/Kasiya.skel-6b525c27741121bd3d6bb47e66da98b1.spskel"]
+
+[params]
+

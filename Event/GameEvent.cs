@@ -27,7 +27,7 @@ public partial class GameEvent
                     PropertyChange = new Dictionary<PropertyType, int>()
                     {
                         { PropertyType.Power, 2 },
-                        { PropertyType.Survivability, -2 },
+                        { PropertyType.Survivability, -1 },
                     },
                     RandomChange = true,
                     Exit = true,
