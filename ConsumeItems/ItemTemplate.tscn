@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://c0sox72c6id8b"]
+
+[ext_resource type="Shader" uid="uid://c5xbhmr2dppim" path="res://shader/Icon/ComsumeItems/ExplosionItem.gdshader" id="1_p1egc"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_32cm7"]
+shader = ExtResource("1_p1egc")
+
+[node name="ItemTemplate" type="ColorRect" unique_id=1742854669]
+material = SubResource("ShaderMaterial_32cm7")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1870.0
+offset_bottom = -1030.0
+grow_horizontal = 2
+grow_vertical = 2

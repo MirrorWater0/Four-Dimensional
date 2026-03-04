@@ -1,7 +1,7 @@
 using System;
 using Godot;
 
-public partial class RewardCard : SubViewportContainer
+public partial class SkillCard : SubViewportContainer
 {
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("SubViewport/Description");
     public Label NameLabel => field ??= GetNode<Label>("SubViewport/NameLabel");

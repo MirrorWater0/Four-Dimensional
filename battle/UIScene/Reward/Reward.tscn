@@ -1,26 +1,414 @@
 [gd_scene format=3 uid="uid://c1td3x2a04val"]
 
-[ext_resource type="Script" uid="uid://bibl21bxys62g" path="res://Map/Reward.cs" id="1_6w8bn"]
+[ext_resource type="Script" uid="uid://bibl21bxys62g" path="res://battle/UIScene/Reward/Reward.cs" id="1_t3jtr"]
 [ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_f2bgc"]
+[ext_resource type="Script" uid="uid://bsmpg1cd6evq" path="res://Equipment/InventoryGrid.cs" id="3_f2bgc"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_b3jsu"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_f2bgc")
-shader_parameter/bg_color_top = Color(0.08, 0.09, 0.16, 1)
+shader_parameter/bg_color_top = Color(0.06, 0.08, 0.12, 1)
 shader_parameter/bg_color_bottom = Color(0.02, 0.02, 0.05, 1)
-shader_parameter/triangle_color = Color(0.3, 0.4, 0.6, 0.3)
+shader_parameter/triangle_color = Color(0.2, 0.35, 0.6, 0.28)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
+bg_color = Color(0.06, 0.08, 0.12, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.56, 0.78, 0.96, 0.7)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
+bg_color = Color(0.04, 0.06, 0.09, 0.7)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.45, 0.6, 0.5)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
+bg_color = Color(0.1, 0.12, 0.16, 0.5)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.4, 0.55, 0.5)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.16, 0.24, 0.34, 0.85)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.9, 1, 0.9)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.12, 0.18, 0.26, 0.7)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.52, 0.72, 0.92, 0.6)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+bg_color = Color(0.08, 0.14, 0.22, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.45, 0.65, 0.85, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="Theme" id="Theme_button"]
+Button/colors/font_color = Color(0.88, 0.94, 1, 1)
+Button/colors/font_disabled_color = Color(0.55, 0.65, 0.78, 0.7)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_outline_color = Color(0.1, 0.2, 0.35, 0.5)
+Button/colors/font_pressed_color = Color(0.75, 0.9, 1, 1)
+Button/constants/outline_size = 2
+Button/styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+Button/styles/hover = SubResource("StyleBoxFlat_button_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_button")
+Button/styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 
 [node name="Reward" type="CanvasLayer" unique_id=941172096]
-script = ExtResource("1_6w8bn")
+script = ExtResource("1_t3jtr")
 
 [node name="BG" type="ColorRect" parent="." unique_id=771452579]
-material = SubResource("ShaderMaterial_b3jsu")
-offset_right = 1920.0
-offset_bottom = 1080.0
-color = Color(0.98939866, 0.98939866, 0.98939854, 0.79607844)
+z_index = -2
+material = SubResource("ShaderMaterial_bg")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.98, 0.98, 0.99, 0.64)
+
+[node name="Panel" type="Panel" parent="." unique_id=356725601]
+anchors_preset = -1
+anchor_left = 0.38
+anchor_top = 0.08
+anchor_right = 0.62
+anchor_bottom = 0.92
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Shadow" type="ColorRect" parent="Panel" unique_id=1754484886]
+z_index = -1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 10.0
+offset_right = -8.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.35)
+
+[node name="Inner" type="Panel" parent="Panel" unique_id=1789686245]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="Inventory" type="Control" parent="Panel" unique_id=1347733859]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_f2bgc")
+CardHeight = 126.0
+CardSpacing = 12.0
+ScrollStep = 70.0
+HorizontalPadding = 26.0
+TopPadding = 96.0
+BottomPadding = 26.0
+metadata/_edit_lock_ = true
+
+[node name="Button" type="Button" parent="Panel/Inventory" unique_id=1420635368]
+layout_mode = 0
+offset_left = 32.400024
+offset_top = 88.6
+offset_right = 413.40002
+offset_bottom = 142.6
+theme = SubResource("Theme_button")
+
+[node name="Decor" type="Control" parent="Panel" unique_id=1803058254]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/Decor" unique_id=1083981846]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="HeaderLineLeft" type="ColorRect" parent="Panel/Decor/Header" unique_id=1650965803]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.58, 0.8, 1, 0.65)
+
+[node name="HeaderTitle" type="Label" parent="Panel/Decor/Header" unique_id=1850350095]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.1, 0.2, 0.35, 0.6)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 22
+text = "战斗奖励"
+
+[node name="HeaderLineRight" type="ColorRect" parent="Panel/Decor/Header" unique_id=1005716594]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.58, 0.8, 1, 0.65)
+
+[node name="HeaderHint" type="Label" parent="Panel/Decor" unique_id=1311998967]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 52.0
+offset_right = -24.0
+offset_bottom = 72.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.95, 0.7)
+theme_override_font_sizes/font_size = 14
+text = "选择你的战斗奖励"
+horizontal_alignment = 1
+
+[node name="TopLine" type="ColorRect" parent="Panel/Decor" unique_id=364302489]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 20.0
+offset_top = 80.0
+offset_right = -20.0
+offset_bottom = 82.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.42, 0.65, 0.88, 0.5)
+
+[node name="BottomLine" type="ColorRect" parent="Panel/Decor" unique_id=1431859723]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -28.0
+offset_right = -20.0
+offset_bottom = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.42, 0.65, 0.88, 0.35)
+
+[node name="SideLineLeft" type="ColorRect" parent="Panel/Decor" unique_id=474247641]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 90.0
+offset_right = 18.0
+offset_bottom = -34.0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.42, 0.65, 0.88, 0.35)
+
+[node name="SideLineRight" type="ColorRect" parent="Panel/Decor" unique_id=622351613]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -18.0
+offset_top = 90.0
+offset_right = -16.0
+offset_bottom = -34.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.42, 0.65, 0.88, 0.35)
+
+[node name="CornerTL_H" type="ColorRect" parent="Panel/Decor" unique_id=318913950]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 44.0
+offset_bottom = 14.0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.9)
+
+[node name="CornerTL_V" type="ColorRect" parent="Panel/Decor" unique_id=633905822]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 14.0
+offset_bottom = 44.0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.9)
+
+[node name="CornerTR_H" type="ColorRect" parent="Panel/Decor" unique_id=6058333]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -44.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 14.0
+grow_horizontal = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.9)
+
+[node name="CornerTR_V" type="ColorRect" parent="Panel/Decor" unique_id=2087995625]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -14.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 44.0
+grow_horizontal = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.9)
+
+[node name="CornerBL_H" type="ColorRect" parent="Panel/Decor" unique_id=548944679]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -28.0
+offset_right = 44.0
+offset_bottom = -26.0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.65)
+
+[node name="CornerBL_V" type="ColorRect" parent="Panel/Decor" unique_id=1649792962]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -58.0
+offset_right = 14.0
+offset_bottom = -26.0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.65)
+
+[node name="CornerBR_H" type="ColorRect" parent="Panel/Decor" unique_id=419826509]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -44.0
+offset_top = -28.0
+offset_right = -12.0
+offset_bottom = -26.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.65)
+
+[node name="CornerBR_V" type="ColorRect" parent="Panel/Decor" unique_id=374172901]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -14.0
+offset_top = -58.0
+offset_right = -12.0
+offset_bottom = -26.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.62, 0.85, 1, 0.65)
+
+[node name="SkillMask" type="ColorRect" parent="." unique_id=513257457]
+visible = false
+z_index = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0.02, 0.04, 0.08, 0.75)
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1736903180]
-offset_left = 406.0
-offset_top = 333.0
-offset_right = 1586.0
-offset_bottom = 733.0
+z_index = 2
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -560.0
+offset_top = -200.0
+offset_right = 560.0
+offset_bottom = 200.0
 theme_override_constants/separation = 60

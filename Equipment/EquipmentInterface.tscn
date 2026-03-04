@@ -8,7 +8,7 @@
 [ext_resource type="Shader" uid="uid://dt5olcfi6tvjs" path="res://shader/UI/ChangePosFrame.gdshader" id="6_frameshader"]
 [ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="7_portrait"]
 [ext_resource type="PackedScene" uid="uid://cd401j5kbyi03" path="res://Equipment/CardSlot.tscn" id="8_7dsut"]
-[ext_resource type="Script" path="res://Equipment/SlotDropPanel.cs" id="9_slotdrop_script"]
+[ext_resource type="Script" uid="uid://bsmpg1cd6evq" path="res://Equipment/InventoryGrid.cs" id="9_gridscript"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("1_bgshader")
@@ -35,7 +35,7 @@ shader_parameter/radius_percent = 0.33
 shader_parameter/hole_percent = 0.2
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-content_margin_left = 18.0
+content_margin_left = 16.0
 content_margin_top = 16.0
 content_margin_right = 18.0
 content_margin_bottom = 16.0
@@ -110,6 +110,22 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_reorg"]
+content_margin_left = 16.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+bg_color = Color(0.09019608, 0.12156863, 0.18039216, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.46, 0.62, 0.78, 0.26)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
 [node name="EquipmentInterface" type="Control" unique_id=724820203]
 layout_mode = 3
 anchors_preset = 15
@@ -157,7 +173,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.03, 0.04, 0.07, 0.26)
 
-[node name="RootMargin" type="MarginContainer" parent="." unique_id=189994339]
+[node name="RootMargin" type="Control" parent="." unique_id=189994339]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -168,13 +184,18 @@ offset_right = -43.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 14
 
 [node name="MainVBox" type="VBoxContainer" parent="RootMargin" unique_id=739712834]
-layout_mode = 2
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = -16.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 18
 
 [node name="TopBar" type="HBoxContainer" parent="RootMargin/MainVBox" unique_id=535258908]
@@ -342,28 +363,20 @@ custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
-script = ExtResource("9_slotdrop_script")
-SlotIndex = 0
 
 [node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA" unique_id=1049910847 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
-EnableDrag = false
 
 [node name="SlotB" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots" unique_id=1662736954]
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_card")
-script = ExtResource("9_slotdrop_script")
-SlotIndex = 1
 
 [node name="Card" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB" unique_id=2111252294 instance=ExtResource("8_7dsut")]
 layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
-EnableDrag = false
 
 [node name="CenterPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow" unique_id=669659142]
 layout_mode = 2
@@ -381,32 +394,20 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "可选装备"
 
-[node name="InventoryScroll" type="ScrollContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox" unique_id=304521758]
+[node name="InventoryScroll" type="Panel" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox" unique_id=1840431193]
+clip_contents = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_reorg")
 
-[node name="InventoryGrid" type="VBoxContainer" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll" unique_id=1859921399]
-layout_mode = 2
+[node name="InventoryGrid" type="Control" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll" unique_id=1859921399]
+anchors_preset = 0
+offset_left = 13.0
+offset_top = 14.0
+offset_right = 13.0
+offset_bottom = 14.0
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
-
-[node name="InventoryCard1" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=778845103 instance=ExtResource("8_7dsut")]
-layout_mode = 2
-
-[node name="InventoryCard2" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1375604999 instance=ExtResource("8_7dsut")]
-layout_mode = 2
-
-[node name="InventoryCard3" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=1689470362 instance=ExtResource("8_7dsut")]
-layout_mode = 2
-
-[node name="InventoryCard4" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=127016721 instance=ExtResource("8_7dsut")]
-layout_mode = 2
-
-[node name="InventoryCard5" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=714987932 instance=ExtResource("8_7dsut")]
-layout_mode = 2
-
-[node name="InventoryCard6" parent="RootMargin/MainVBox/ContentRow/CenterPanel/CenterVBox/InventoryScroll/InventoryGrid" unique_id=961014269 instance=ExtResource("8_7dsut")]
-layout_mode = 2
+script = ExtResource("9_gridscript")
 
 [node name="RightPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow" unique_id=587285966]
 custom_minimum_size = Vector2(420, 0)
@@ -532,6 +533,3 @@ size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
 theme_override_font_sizes/font_size = 24
 text = "卸下"
-
-[editable path="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotA"]
-[editable path="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/EquippedSlots/SlotB"]

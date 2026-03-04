@@ -324,7 +324,6 @@ public partial class Battle : Node2D
         record.OffsetRight = right;
     }
 
-
     public void SetCharaterPostion()
     {
         // 你的核心基准参数
@@ -565,6 +564,7 @@ public partial class Battle : Node2D
         if (isWin || Istest)
         {
             var reward = Reward.Show(this);
+            ConfigureRewards(reward);
             if ((isWin || Istest) && CurrentLevelNode != null)
             {
                 reward.SetCompleteNodeOnClose(CurrentLevelNode);
@@ -596,6 +596,53 @@ public partial class Battle : Node2D
             EnemiesList[i].PositionIndex = i + 1;
             EnemiesList[i].BattleNode = this;
             EnemiesList[i].Initialize();
+        }
+    }
+
+    private void ConfigureRewards(Reward reward)
+    {
+        if (reward == null)
+            return;
+
+        reward.ClearRewardItems();
+        reward.AddSkillRewardEntry();
+
+        var rng = new Random(CurrentLevelNode.RandomNum);
+        var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
+
+        int equipCount;
+
+        bool addRelic;
+        switch (levelType)
+        {
+            case LevelNode.LevelType.Boss:
+                addRelic = true;
+                equipCount = 2;
+                break;
+            case LevelNode.LevelType.Elite:
+                addRelic = true;
+                equipCount = 1;
+                break;
+            case LevelNode.LevelType.Event:
+                addRelic = rng.Next(0, 100) < 50;
+                equipCount = rng.Next(0, 100) < 50 ? 1 : 0;
+                break;
+            default:
+                addRelic = rng.Next(0, 100) < 20;
+                equipCount = rng.Next(0, 100) < 70 ? 1 : 0;
+                break;
+        }
+
+        if (addRelic)
+            reward.AddRelicRewardEntry(RelicID.Blessing);
+
+        if (equipCount > 0)
+        {
+            for (int i = 0; i < equipCount; i++)
+            {
+                var pick = Equipment.Catalog[rng.Next(0, Equipment.Catalog.Length)];
+                reward.AddEquipmentRewardEntry(Equipment.Clone(pick));
+            }
         }
     }
 

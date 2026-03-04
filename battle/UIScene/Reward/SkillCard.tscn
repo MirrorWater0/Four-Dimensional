@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cpj08hfffou4g"]
 
 [ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_hfhot"]
-[ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/RewardCard.cs" id="1_td24b"]
+[ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
 [ext_resource type="StyleBox" uid="uid://bsks3e8p2c8iu" path="res://battle/UIScene/Reward/RewardPanel.tres" id="2_hfhot"]
 [ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="3_i77dj"]
 [ext_resource type="Shader" uid="uid://bjwq3ux2tr1an" path="res://shader/UI4.gdshader" id="4_3f2ir"]

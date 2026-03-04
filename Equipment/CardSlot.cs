@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Godot;
 
-public partial class CardSlot : PanelContainer
+public partial class CardSlot : Control
 {
     private static readonly Color DefaultBorderColor = new("#a7d6ff52");
     private static readonly Color HoverBorderColor = new("#5cff8a");
@@ -16,55 +16,35 @@ public partial class CardSlot : PanelContainer
     [Export]
     public float ParticleYOffset = 12f;
 
-    [Export]
-    public bool EnableDrag = true;
-
     [Signal]
     public delegate void ClickedEventHandler();
-    public GpuParticles2D particles2D => field ??= GetNodeOrNull<GpuParticles2D>("Particles2D");
-    public Label label =>
-        field ??= GetNodeOrNull<Label>("Card1Label") ?? GetNodeOrNull<Label>("Label");
+    public Label label => field ??= GetNodeOrNull<Label>("Panel/Label");
     private GpuParticles2D Particles => field ??= GetNodeOrNull<GpuParticles2D>("GPUParticles2D");
-
-    public override void _GuiInput(InputEvent @event)
-    {
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
-        {
-            TriggerParticles();
-            EmitSignal(SignalName.Clicked);
-        }
-    }
-
-    public override Variant _GetDragData(Vector2 atPosition)
-    {
-        if (!EnableDrag || !Visible)
-            return default;
-
-        var data = new Godot.Collections.Dictionary
-        {
-            { "source_path", GetPath() },
-        };
-
-        var preview = BuildDragPreview();
-        if (preview != null)
-            SetDragPreview(preview);
-
-        return data;
-    }
+    private PanelContainer Panel => field ??= GetNodeOrNull<PanelContainer>("Panel");
 
     public override void _Ready()
     {
         if (label != null)
             label.MouseFilter = MouseFilterEnum.Ignore;
 
-        _runtimeStyleBox = GetThemeStylebox("panel").Duplicate() as StyleBoxFlat;
-        if (_runtimeStyleBox != null)
-            AddThemeStyleboxOverride("panel", _runtimeStyleBox);
+        _runtimeStyleBox = Panel?.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
+        if (_runtimeStyleBox != null && Panel != null)
+            Panel.AddThemeStyleboxOverride("panel", _runtimeStyleBox);
 
         Clicked += Select;
-        MouseEntered += OnMouseEntered;
-        MouseExited += OnMouseExited;
-        ItemRectChanged += UpdateParticlesLayout;
+        if (Panel != null)
+        {
+            Panel.GuiInput += OnPanelGuiInput;
+            Panel.MouseEntered += OnMouseEntered;
+            Panel.MouseExited += OnMouseExited;
+            SyncPanelSizeToCard();
+        }
+        else
+        {
+            MouseEntered += OnMouseEntered;
+            MouseExited += OnMouseExited;
+        }
+        ItemRectChanged += OnItemRectChanged;
         ApplyBorderState();
 
         if (Particles != null)
@@ -80,7 +60,8 @@ public partial class CardSlot : PanelContainer
         if (Particles == null || !Particles.TopLevel)
             return;
 
-        var rect = GetGlobalRect();
+        Control targetControl = Panel != null ? Panel : this;
+        var rect = targetControl.GetGlobalRect();
         if (_lastGlobalPos != rect.Position || _lastSize != rect.Size)
             UpdateParticlesLayout();
     }
@@ -97,93 +78,102 @@ public partial class CardSlot : PanelContainer
         ApplyBorderState();
     }
 
-    public async Task PlayRemoveAnimation(float moveDistance, float duration)
+    public async Task PlayRemoveAnimation(float moveDistance, float duration, bool keepHidden = false)
     {
-        if (!Visible)
+        if (!Visible || Panel == null || !Panel.Visible)
             return;
 
-        Vector2 baseGlobal = GlobalPosition;
-        bool originalTopLevel = TopLevel;
-        SetTopLevelPreservePosition(true);
-        SetAlpha(1.0f);
+        Vector2 basePos = Vector2.Zero;
+        Panel.Position = basePos;
+        SetAlpha(Panel, 1.0f);
 
         var tween = CreateTween();
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.In);
         tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(
-            this,
-            "global_position",
-            baseGlobal + new Vector2(moveDistance, 0),
-            duration
-        );
-        tween.TweenProperty(this, "modulate:a", 0.0f, duration * 0.95f);
+        tween.TweenProperty(Panel, "position", basePos + new Vector2(moveDistance, 0), duration);
+        tween.TweenProperty(Panel, "modulate:a", 0.0f, duration * 0.95f);
 
         await ToSignal(tween, Tween.SignalName.Finished);
 
-        SetTopLevelPreservePosition(originalTopLevel);
-        GlobalPosition = baseGlobal;
-        SetAlpha(1.0f);
+        Panel.Position = basePos;
+        SetAlpha(Panel, keepHidden ? 0.0f : 1.0f);
     }
 
     public async Task PlayInsertAnimation(float moveDistance, float duration)
     {
-        if (!Visible)
+        if (!Visible || Panel == null || !Panel.Visible)
             return;
 
-        Vector2 baseGlobal = GlobalPosition;
-        bool originalTopLevel = TopLevel;
-        SetTopLevelPreservePosition(true);
-        GlobalPosition = baseGlobal - new Vector2(moveDistance, 0);
-        SetAlpha(0.0f);
+        SyncPanelSizeToCard();
+        Vector2 basePos = Vector2.Zero;
+        Panel.Position = basePos;
+        Panel.Position = basePos - new Vector2(moveDistance, 0);
+        SetAlpha(Panel, 0.0f);
 
         var tween = CreateTween();
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.Out);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(this, "global_position", baseGlobal, duration);
-        tween.TweenProperty(this, "modulate:a", 1.0f, duration * 0.95f);
+        tween.SetTrans(Tween.TransitionType.Sine);
+        tween.TweenProperty(Panel, "position", basePos, duration);
+        tween.TweenProperty(Panel, "modulate:a", 1.0f, duration * 0.95f);
 
         await ToSignal(tween, Tween.SignalName.Finished);
 
-        SetTopLevelPreservePosition(originalTopLevel);
-        GlobalPosition = baseGlobal;
-        SetAlpha(1.0f);
+        Panel.Position = basePos;
+        SetAlpha(Panel, 1.0f);
     }
 
-    private void SetTopLevelPreservePosition(bool topLevel)
+    public void SyncPanelSizeToCard()
     {
-        if (TopLevel == topLevel)
+        if (Panel == null)
             return;
 
-        Vector2 globalPos = GlobalPosition;
-        TopLevel = topLevel;
-        GlobalPosition = globalPos;
+        Panel.Position = Vector2.Zero;
+        Panel.CustomMinimumSize = Size;
+        Panel.Size = Size;
     }
 
-    private void SetAlpha(float alpha)
+    public void ResetPanelVisualState()
     {
-        Modulate = Modulate with { A = alpha };
+        if (Panel == null)
+            return;
+
+        SyncPanelSizeToCard();
+        Panel.Visible = true;
+        SetAlpha(Panel, 1.0f);
     }
 
-    private Control BuildDragPreview()
+    public void PrepareForInsertVisual()
     {
-        var preview = new PanelContainer();
-        preview.CustomMinimumSize = Size;
-        preview.Size = Size;
-        preview.MouseFilter = MouseFilterEnum.Ignore;
-        preview.Modulate = new Color(1, 1, 1, 0.92f);
+        if (Panel == null)
+            return;
 
-        var style = GetThemeStylebox("panel")?.Duplicate() as StyleBox;
-        if (style != null)
-            preview.AddThemeStyleboxOverride("panel", style);
+        SyncPanelSizeToCard();
+        Panel.Visible = true;
+        SetAlpha(Panel, 0.0f);
+    }
 
-        var textLabel = new Label();
-        textLabel.Text = label?.Text ?? string.Empty;
-        textLabel.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        textLabel.MouseFilter = MouseFilterEnum.Ignore;
-        preview.AddChild(textLabel);
-        return preview;
+    private static void SetAlpha(CanvasItem node, float alpha)
+    {
+        if (node == null)
+            return;
+        node.Modulate = node.Modulate with { A = alpha };
+    }
+
+    private void OnPanelGuiInput(InputEvent @event)
+    {
+        if (@event is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
+            return;
+
+        TriggerParticles();
+        EmitSignal(SignalName.Clicked);
+    }
+
+    private void OnItemRectChanged()
+    {
+        SyncPanelSizeToCard();
+        UpdateParticlesLayout();
     }
 
     private void OnMouseEntered()
@@ -246,9 +236,12 @@ public partial class CardSlot : PanelContainer
         if (Particles == null)
             return;
 
+        Control targetNode = Panel != null ? Panel : this;
+        Vector2 targetSize = targetNode.Size;
+
         if (Particles.TopLevel)
         {
-            var rect = GetGlobalRect();
+            var rect = targetNode.GetGlobalRect();
             _lastGlobalPos = rect.Position;
             _lastSize = rect.Size;
             float targetX = rect.Position.X + rect.Size.X * 0.5f;
@@ -257,13 +250,13 @@ public partial class CardSlot : PanelContainer
         }
         else
         {
-            Particles.Position = new Vector2(Size.X * 0.5f, Size.Y + ParticleYOffset);
+            Particles.Position = new Vector2(targetSize.X * 0.5f, targetSize.Y + ParticleYOffset);
         }
 
         if (Particles.ProcessMaterial is ParticleProcessMaterial processMaterial)
         {
             Vector3 extents = processMaterial.EmissionBoxExtents;
-            float emitX = Size.X * 0.5f + ParticleBoxPaddingX;
+            float emitX = targetSize.X * 0.5f + ParticleBoxPaddingX;
             processMaterial.EmissionBoxExtents = new Vector3(emitX, extents.Y, extents.Z);
         }
     }

@@ -26,6 +26,7 @@ public static partial class GameInfo
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();
         OwnedEquipments = CreateStarterOwnedEquipments();
+        GD.Print("OwnedEquipments: " + OwnedEquipments.Count);
         // Map generation logic in LevelProgress will populate this
         GD.Print("InitNewGame");
     }
@@ -38,13 +39,8 @@ public static partial class GameInfo
     private static List<Equipment> CreateStarterOwnedEquipments()
     {
         // Starter inventory for equipment interface.
-        var result = new List<Equipment>(6);
+        var result = new List<Equipment>();
         AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.RiftBlade));
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.PhaseShoulder));
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.EchoCore));
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.LumenBadge));
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.SilentPendant));
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.FoldedBulwark));
         return result;
     }
 
