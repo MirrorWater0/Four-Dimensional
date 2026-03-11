@@ -111,6 +111,14 @@ public partial class InventoryGrid : Control
             if (!card.Visible)
                 continue;
 
+            if (card.AnchorLeft != card.AnchorRight || card.AnchorTop != card.AnchorBottom)
+            {
+                card.AnchorLeft = 0.0f;
+                card.AnchorRight = 0.0f;
+                card.AnchorTop = 0.0f;
+                card.AnchorBottom = 0.0f;
+            }
+
             hasVisibleCard = true;
 
             float cardHeight = fallbackHeight;

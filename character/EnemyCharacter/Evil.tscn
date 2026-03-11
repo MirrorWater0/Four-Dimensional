@@ -5,6 +5,9 @@
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="3_w73r8"]
 [ext_resource type="Texture2D" uid="uid://cyxqg6nucggy5" path="res://asset/EnemyCharater/Evil.png" id="4_n6o37"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="5_2vsxy"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://cg30bhevhtx8l" path="res://asset/EnemyCharater/Evil/Evil_skeleton_data_resource.tres" id="6_73ckh"]
+[ext_resource type="Shader" uid="uid://bymfuv7reqeku" path="res://shader/Effect/SpineCharacter.gdshader" id="7_52j4j"]
+[ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="7_jcsx0"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2vsxy"]
 resource_local_to_scene = true
@@ -30,14 +33,32 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 1.5
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_w30o5"]
+shader = ExtResource("7_52j4j")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
 [node name="Demon" unique_id=47154144 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_heyqv")]
 script = ExtResource("2_se7fp")
 Portrait = ExtResource("4_n6o37")
-Sprite = NodePath("Sprite")
+Sprite = NodePath("SpineSprite")
 
 [node name="Sprite" parent="." index="7" unique_id=968479023]
+visible = false
 material = SubResource("ShaderMaterial_2vsxy")
 texture = ExtResource("4_n6o37")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
 material = SubResource("ShaderMaterial_73ckh")
+
+[node name="SpineSprite" parent="." index="11" unique_id=313145576]
+skeleton_data_res = ExtResource("6_73ckh")
+normal_material = SubResource("ShaderMaterial_w30o5")
+preview_skin = "Default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+scale = Vector2(0.16, 0.16)
+script = ExtResource("7_jcsx0")

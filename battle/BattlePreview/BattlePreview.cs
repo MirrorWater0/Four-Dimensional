@@ -6,6 +6,9 @@ using Godot;
 
 public partial class BattlePreview : Control
 {
+    [Export]
+    public bool WarmupMode { get; set; }
+
     public LevelNode WhichNode;
     public GridContainer PlayerFormation =>
         field ??= GetNode<GridContainer>("HBoxContainer/PlayerFormation");
@@ -64,6 +67,14 @@ public partial class BattlePreview : Control
 
     public override void _Ready()
     {
+        if (WarmupMode)
+        {
+            SetProcess(false);
+            SetProcessInput(false);
+            SetPhysicsProcess(false);
+            return;
+        }
+
         EnsureTipLayer();
         exitButton.PressedActions.Add(Close);
         Modulate = Modulate with { A = 0.0f };

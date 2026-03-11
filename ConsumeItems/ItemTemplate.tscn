@@ -4,9 +4,15 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_32cm7"]
 shader = ExtResource("1_p1egc")
+shader_parameter/main_color = Color(0, 0.8, 1, 1)
+shader_parameter/accent_color = Color(0.5, 0.9, 1, 1)
+shader_parameter/speed = 2.0
+shader_parameter/pulse_speed = 3.0
+shader_parameter/line_thickness = 0.018
 
 [node name="ItemTemplate" type="ColorRect" unique_id=1742854669]
 material = SubResource("ShaderMaterial_32cm7")
+custom_minimum_size = Vector2(45, 45)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -14,3 +20,4 @@ offset_right = -1870.0
 offset_bottom = -1030.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 1

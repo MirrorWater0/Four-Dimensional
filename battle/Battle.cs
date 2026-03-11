@@ -9,6 +9,9 @@ using Godot;
 
 public partial class Battle : Node2D
 {
+    [Export]
+    public bool WarmupMode { get; set; }
+
     public static bool Istest = false;
     public Random BattleIntentionRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
@@ -20,7 +23,7 @@ public partial class Battle : Node2D
 
     PackedScene _test1 = (PackedScene)
         ResourceLoader.Load("res://character/EnemyCharacter/Evil.tscn");
-    Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
+    public Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
     public List<PlayerCharacter> PlayersList = new();
     public List<EnemyCharacter> EnemiesList = new();
     public Node2D Right => field ??= GetNode<Node2D>("Right");
@@ -118,7 +121,6 @@ public partial class Battle : Node2D
     private float _recordHiddenRight;
     private Tween _recordTween;
     private int _recordIndex;
-
     public override void _EnterTree()
     {
         _battleInstanceId = GetInstanceId();
@@ -132,6 +134,14 @@ public partial class Battle : Node2D
 
     public override async void _Ready()
     {
+        if (WarmupMode)
+        {
+            SetProcess(false);
+            SetProcessInput(false);
+            SetPhysicsProcess(false);
+            return;
+        }
+
         var token = _lifetimeCts.Token;
         InitDummy();
         for (int i = 0; i < CurrentLevelNode.EnemiesRegeditList.Count; i++)
@@ -629,7 +639,7 @@ public partial class Battle : Node2D
                 break;
             default:
                 addRelic = rng.Next(0, 100) < 20;
-                equipCount = rng.Next(0, 100) < 70 ? 1 : 0;
+                equipCount = rng.Next(0, 100) < 30 ? 1 : 0;
                 break;
         }
 
@@ -643,6 +653,13 @@ public partial class Battle : Node2D
                 var pick = Equipment.Catalog[rng.Next(0, Equipment.Catalog.Length)];
                 reward.AddEquipmentRewardEntry(Equipment.Clone(pick));
             }
+        }
+
+        if (rng.Next(0, 100) < 50)
+        {
+            ItemID[] itemPool = { ItemID.Health, ItemID.Explosion };
+            var itemPick = itemPool[rng.Next(0, itemPool.Length)];
+            reward.AddItemRewardEntry(itemPick);
         }
     }
 

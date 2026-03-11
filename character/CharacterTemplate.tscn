@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png" id="7_lyi1f"]
 [ext_resource type="Material" uid="uid://cxcwh7k21rmok" path="res://tres/hit.tres" id="8_ek3d4"]
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="14_lucsw"]
+[ext_resource type="Shader" uid="uid://bymfuv7reqeku" path="res://shader/Effect/SpineCharacter.gdshader" id="15_3q742"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
@@ -434,6 +435,13 @@ _data = {
 &"intention": SubResource("Animation_yic7g")
 }
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_n13y5"]
+shader = ExtResource("15_3q742")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
 [sub_resource type="Shader" id="Shader_difk4"]
 code = "shader_type canvas_item;
 
@@ -504,10 +512,11 @@ alpha_curve = SubResource("CurveTexture_3q742")
 hue_variation_min = -0.08000002
 hue_variation_max = 0.009999977
 
-[node name="CharacterTemplate" type="Node2D" unique_id=1123852147]
+[node name="CharacterTemplate" type="Node2D" unique_id=1123852147 node_paths=PackedStringArray("Sprite")]
 z_index = 1
 scale = Vector2(0.8, 0.8)
 script = ExtResource("1_4ikhs")
+Sprite = NodePath("Sprite")
 
 [node name="LifeBar" type="ProgressBar" parent="." unique_id=843212991]
 show_behind_parent = true
@@ -793,6 +802,7 @@ libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
 
 [node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]
+normal_material = SubResource("ShaderMaterial_n13y5")
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=914609816]
 top_level = true

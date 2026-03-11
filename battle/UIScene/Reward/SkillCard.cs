@@ -3,6 +3,9 @@ using Godot;
 
 public partial class SkillCard : SubViewportContainer
 {
+    private const int DefaultDescriptionFontSize = 19;
+    private const int MinDescriptionFontSize = 11;
+
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("SubViewport/Description");
     public Label NameLabel => field ??= GetNode<Label>("SubViewport/NameLabel");
     public Button Button => field ??= GetNode<Button>("SubViewport/Button");
@@ -14,11 +17,13 @@ public partial class SkillCard : SubViewportContainer
     private Tween _progressTween;
     private Tween _pressTween;
     private Tween _hoverTween;
+    private int _baseDescriptionFontSize;
 
     public override void _Ready()
     {
         ApplySkillToUi();
         HoverHint.Visible = false;
+        CacheBaseFontSizes();
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
         Button.MouseEntered += () =>
         {
@@ -104,6 +109,8 @@ public partial class SkillCard : SubViewportContainer
 
         SkillTypeIcon.SelfSkill = CurrentSkill;
         SkillTypeIcon.SetSkillType(CurrentSkill.SkillType);
+
+        CallDeferred(nameof(AdjustTextSizes));
     }
 
     public void Vanish()
@@ -148,4 +155,42 @@ public partial class SkillCard : SubViewportContainer
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
     }
+
+    private void CacheBaseFontSizes()
+    {
+        _baseDescriptionFontSize = Description.GetThemeFontSize("normal_font_size");
+        if (_baseDescriptionFontSize <= 0)
+            _baseDescriptionFontSize = DefaultDescriptionFontSize;
+
+    }
+
+    private void AdjustTextSizes()
+    {
+        if (!IsInsideTree())
+            return;
+
+        AdjustDescriptionFont();
+    }
+    private void AdjustDescriptionFont()
+    {
+        Description.AddThemeFontSizeOverride("normal_font_size", _baseDescriptionFontSize);
+
+        float availableHeight = Description.Size.Y;
+        if (availableHeight <= 0.0f)
+            return;
+
+        float contentHeight = Description.GetContentHeight();
+        if (contentHeight <= availableHeight)
+            return;
+
+        float ratio = availableHeight / contentHeight;
+        int targetSize = Mathf.FloorToInt(
+            _baseDescriptionFontSize * Mathf.Clamp(ratio, 0.1f, 1.0f)
+        );
+        if (targetSize < MinDescriptionFontSize)
+            targetSize = MinDescriptionFontSize;
+
+        Description.AddThemeFontSizeOverride("normal_font_size", targetSize);
+    }
+
 }

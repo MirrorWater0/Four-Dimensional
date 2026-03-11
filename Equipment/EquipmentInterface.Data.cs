@@ -89,8 +89,8 @@ public partial class EquipmentInterface
         if (string.IsNullOrWhiteSpace(passive))
             return "暂无被动描述。";
 
-        int newline = passive.IndexOf('\n');
-        return newline > 0 ? passive[..newline] : passive;
+        // Accept escaped "\\n" as line breaks in data.
+        return passive.Replace("\\n", "\n");
     }
 
     private static string BuildEquipmentBonusInline(Equipment equip)

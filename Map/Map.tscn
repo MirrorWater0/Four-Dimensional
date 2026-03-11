@@ -18,6 +18,7 @@
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
 [ext_resource type="Script" uid="uid://ldty82sm2cbb" path="res://Map/DynamicCamera.cs" id="15_dcam"]
+[ext_resource type="Script" uid="uid://1xuby1ssicl4" path="res://Map/ItemContainer.cs" id="18_bl6si"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -357,26 +358,36 @@ metadata/_edit_lock_ = true
 layout_mode = 2
 text = "遗物"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
+[node name="ItemsHContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
 offset_left = 1696.0
 offset_top = 8.0
 offset_right = 1854.0
 offset_bottom = 58.0
 
-[node name="Panel" type="Panel" parent="PlayerResourceState/HBoxContainer" unique_id=1771931634]
+[node name="Panel" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1242127179]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
+script = ExtResource("18_bl6si")
 
-[node name="Panel2" type="Panel" parent="PlayerResourceState/HBoxContainer" unique_id=1891596240]
+[node name="Panel2" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1125941698]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
+script = ExtResource("18_bl6si")
 
-[node name="Panel3" type="Panel" parent="PlayerResourceState/HBoxContainer" unique_id=1247634466]
+[node name="Panel3" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1306712741]
 custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
+script = ExtResource("18_bl6si")
+
+[node name="Label" type="Label" parent="PlayerResourceState" unique_id=409693065]
+offset_left = 1656.0
+offset_top = 8.0
+offset_right = 1696.0
+offset_bottom = 31.0
+text = "道具"
 
 [node name="MaskLayer" type="CanvasLayer" parent="." unique_id=2006589008]
 layer = 7

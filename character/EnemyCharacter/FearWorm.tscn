@@ -4,8 +4,10 @@
 [ext_resource type="Script" uid="uid://cwve6v6oq1c2p" path="res://character/EnemyCharacter/EnemyScript/FearWorm.cs" id="2_02sp4"]
 [ext_resource type="Texture2D" uid="uid://bk0hpr8ld73nx" path="res://asset/EnemyCharater/FearWorm.png" id="2_j28qb"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="3_02sp4"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://d2vqiyfi701p0" path="res://asset/EnemyCharater/FearWorm/FearWorm_skeleton_data_resource.tres" id="5_02sp4"]
+[ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="6_qlljk"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_j28qb"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qlljk"]
 resource_local_to_scene = true
 shader = ExtResource("3_02sp4")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -20,12 +22,22 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 1.5
 
-[node name="CharacterTemplate" unique_id=1123852147 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_de7ns")]
+[node name="FearWorm" unique_id=1123852147 node_paths=PackedStringArray("Sprite") instance=ExtResource("1_de7ns")]
 script = ExtResource("2_02sp4")
-Sprite = NodePath("Sprite")
+Sprite = NodePath("SpineSprite")
 
 [node name="Sprite" parent="." index="7" unique_id=968479023]
+visible = false
 texture = ExtResource("2_j28qb")
 
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
-material = SubResource("ShaderMaterial_j28qb")
+material = SubResource("ShaderMaterial_qlljk")
+
+[node name="SpineSprite" parent="." index="11" unique_id=313145576]
+skeleton_data_res = ExtResource("5_02sp4")
+preview_skin = "Default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+scale = Vector2(0.16, 0.16)
+script = ExtResource("6_qlljk")

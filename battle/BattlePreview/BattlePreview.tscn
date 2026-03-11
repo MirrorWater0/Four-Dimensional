@@ -88,7 +88,7 @@ shader_parameter/scanline_strength = 0.04
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_brushbtn"]
 shader = ExtResource("5_brshbtn")
 shader_parameter/line_color = Color(1, 1, 1, 1)
-shader_parameter/accent_color = Color(0.35, 0.85, 1, 1)
+shader_parameter/accent_color = Color(1, 1, 1, 1)
 shader_parameter/thickness_px = 3.0000001425
 shader_parameter/bevel_px = 7.4790003552525
 shader_parameter/cut_x = 0.6

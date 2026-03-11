@@ -23,7 +23,7 @@ public partial class SkillButton : Button
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
 
-    public Tip globalTooltip => field ??= GetTree().Root.GetNode<Tip>("TipLayer/Tip");
+    public Tip globalTooltip => field ??= EnsureGlobalTooltip();
 
     public override void _Ready()
     {
@@ -104,6 +104,36 @@ public partial class SkillButton : Button
         {
             globalTooltip.Visible = false;
         }
+    }
+
+    private Tip EnsureGlobalTooltip()
+    {
+        var tree = GetTree();
+        var root = tree?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer == null)
+        {
+            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            root.AddChild(layer);
+        }
+
+        var tip = layer.GetNodeOrNull<Tip>("Tip");
+        if (tip != null)
+            return tip;
+
+        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+        if (tipScene == null)
+            return null;
+
+        tip = tipScene.Instantiate<Tip>();
+        tip.Name = "Tip";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(20f, 20f);
+        layer.AddChild(tip);
+        return tip;
     }
 
     public void Enable()

@@ -4,6 +4,12 @@ shader_type canvas_item;
 uniform vec4 target_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 uniform float line_width : hint_range(0.0, 0.1) = 0.04;
 
+// --- 动画参数 ---
+uniform float rotation_speed : hint_range(-10.0, 10.0, 0.1) = 0.0;
+uniform float appear_speed : hint_range(0.1, 5.0, 0.1) = 3.0;
+uniform float appear_delay : hint_range(0.0, 2.0, 0.01) = 0.0;
+uniform float appear_scale : hint_range(0.3, 1.0, 0.01) = 0.6;
+
 // --- 中心圆环 ---
 uniform float inner_ring_radius : hint_range(0.0, 0.5) = 0.18;
 
@@ -16,9 +22,22 @@ uniform float tri_inner_radius : hint_range(0.0, 1.0) = 0.45;
 uniform float tri_outer_radius : hint_range(0.0, 1.5) = 0.95;
 uniform float tri_width : hint_range(0.0, 2.0) = 0.8;
 
+mat2 Rot(float angle) {
+    float c = cos(angle);
+    float s = sin(angle);
+    return mat2(vec2(c, -s), vec2(s, c));
+}
+
 void fragment() {
+    float appear_time = max(0.0, TIME - appear_delay);
+    float appear = clamp(appear_time * appear_speed, 0.0, 1.0);
+    float appear_ease = smoothstep(0.0, 1.0, appear);
+    float scale = mix(appear_scale, 1.0, appear_ease);
+
     // 1. 坐标系转换：UV映射到 (-1 ~ 1)，中心点为 (0,0)
     vec2 p = (UV - 0.5) * 2.0;
+    p /= scale;
+    p = Rot(TIME * rotation_speed) * p;
     float r = length(p);
 
     // 【核心抗锯齿】: fwidth 动态计算当前屏幕上一个像素在 p 坐标系下的宽度。
@@ -80,5 +99,5 @@ void fragment() {
     // smoothstep 从正距离(外部 aa 像素) 平滑过渡到 负距离(内部 -aa 像素)
     float alpha = smoothstep(aa, -aa, d_final);
     
-    COLOR *= vec4(target_color.rgb, target_color.a * alpha);
+    COLOR *= vec4(target_color.rgb, target_color.a * alpha * appear_ease);
 }

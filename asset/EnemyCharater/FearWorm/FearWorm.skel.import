@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://sfiek7uwhabi"
+path="res://.godot/imported/FearWorm.skel-36a039a45fa0ce18872277b61f275116.spskel"
+
+[deps]
+
+source_file="res://asset/EnemyCharater/FearWorm/FearWorm.skel"
+dest_files=["res://.godot/imported/FearWorm.skel-36a039a45fa0ce18872277b61f275116.spskel"]
+
+[params]
+

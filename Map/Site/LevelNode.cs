@@ -82,13 +82,14 @@ public partial class LevelNode : ColorRect
             new EvilRegedit(),
             new FearWormRegedit(),
             new ArmonRegedit(),
+            new EvilRegedit(),
         ];
         List<EnemyRegedit> list = new()
         {
-            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 3)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
         };
         RandomPosition(list, RandomNum);
         return list;
@@ -299,96 +300,22 @@ public partial class LevelNode : ColorRect
         where T : EnemyRegedit
     {
         Random random = new Random(RandomNum);
+        var positions = Enumerable.Range(1, 9).ToList();
 
-        // Chosetarget1 prefers targets within a "lane" in front->mid->back order:
-        // (1,4,7), (2,5,8), (3,6,9).
-        //
-        // Placement rule:
-        // - FrontRow enemies: absolutely random among all free slots (1..9).
-        // - BackRow enemies: prefer back slots (7..9) if possible, then mid (4..6), then front (1..3).
-        var front = new List<int> { 1, 2, 3 };
-        var middle = new List<int> { 4, 5, 6 };
-        var back = new List<int> { 7, 8, 9 };
-        var any = Enumerable.Range(1, 9).ToList();
-        var available = new HashSet<int>(any);
-
-        static void Shuffle(List<int> arr, Random rng)
+        for (int i = positions.Count - 1; i > 0; i--)
         {
-            for (int i = arr.Count - 1; i > 0; i--)
-            {
-                int k = rng.Next(i + 1);
-                (arr[i], arr[k]) = (arr[k], arr[i]);
-            }
+            int k = random.Next(i + 1);
+            (positions[i], positions[k]) = (positions[k], positions[i]);
         }
 
-        Shuffle(front, random);
-        Shuffle(middle, random);
-        Shuffle(back, random);
-        Shuffle(any, random);
-
-        int? TakeOne(List<int> pool)
+        int posIndex = 0;
+        foreach (var enemy in list)
         {
-            while (pool.Count > 0)
-            {
-                int idx = pool.Count - 1;
-                int val = pool[idx];
-                pool.RemoveAt(idx);
-                if (available.Remove(val))
-                    return val;
-            }
-            return null;
-        }
-
-        int? TakeAny()
-        {
-            while (any.Count > 0)
-            {
-                int idx = any.Count - 1;
-                int val = any[idx];
-                any.RemoveAt(idx);
-                if (available.Remove(val))
-                    return val;
-            }
-            return null;
-        }
-
-        var frontEnemies = list.Where(x =>
-                x != null && x.PType == EnemyRegedit.EnemyPositionType.FrontRow
-            )
-            .ToList();
-        var backEnemies = list.Where(x =>
-                x != null && x.PType == EnemyRegedit.EnemyPositionType.BackRow
-            )
-            .ToList();
-        var otherEnemies = list.Where(x =>
-                x != null
-                && x.PType != EnemyRegedit.EnemyPositionType.FrontRow
-                && x.PType != EnemyRegedit.EnemyPositionType.BackRow
-            )
-            .ToList();
-
-        foreach (var enemy in frontEnemies)
-        {
-            int? pos = TakeAny();
-
-            if (pos.HasValue)
-                enemy.PositionIndex = pos.Value;
-        }
-
-        foreach (var enemy in backEnemies)
-        {
-            int? pos = TakeOne(back) ?? TakeOne(middle) ?? TakeOne(front) ?? TakeAny();
-
-            if (pos.HasValue)
-                enemy.PositionIndex = pos.Value;
-        }
-
-        foreach (var enemy in otherEnemies)
-        {
-            int? pos = TakeAny();
-
-            if (pos.HasValue)
-                enemy.PositionIndex = pos.Value;
+            if (enemy == null)
+                continue;
+            if (posIndex >= positions.Count)
+                break;
+            enemy.PositionIndex = positions[posIndex++];
         }
     }
 }

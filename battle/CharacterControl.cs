@@ -53,5 +53,7 @@ public partial class CharacterControl : Control
                 skillButton.Modulate = SkillButton.DisabledModulate;
             }
         }
+
+        BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
     }
 }

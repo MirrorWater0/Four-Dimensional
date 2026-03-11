@@ -89,18 +89,17 @@ public partial class StartInterface : CanvasLayer
     public void test()
     {
         GameInfo.Relic.Add(RelicID.Blessing, 3);
-        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
-        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
-        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
-        GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.SonicBoom);
-        GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.PhaseEcho);
-        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
-        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
-        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);
-        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.Swift);
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.TerminateLight);
+        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
+        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
+        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
+        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
+        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
+        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.SonicBoom);
+        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.PhaseEcho);
+        // GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
+        // GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
+        // GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);
+        // GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.Swift);
     }
 
     public void continueGame()
@@ -122,7 +121,7 @@ public partial class PlayerCharacterRegistry
     {
         CharacterName = "Echo",
         PassiveName = "余响",
-        PassiveDescription = "使用生存技能时：获得1点能量。\n使用非生存技能时：获得2点力量。",
+        PassiveDescription = $"使用生存技能时：获得{1}点能量。\n使用非生存技能时：获得{2}点力量。",
         LifeMax = 50,
         Power = 9,
         Survivability = 11,

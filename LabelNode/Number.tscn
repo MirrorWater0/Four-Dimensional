@@ -1,19 +1,63 @@
-[gd_scene load_steps=3 format=3 uid="uid://cuswws5b0y001"]
+[gd_scene format=3 uid="uid://cuswws5b0y001"]
 
 [ext_resource type="Script" uid="uid://bit7v53qindo5" path="res://LabelNode/Number.cs" id="1_au4bt"]
-[ext_resource type="FontFile" uid="uid://cfccx8dim5ojw" path="res://asset/font/千图笔锋手写体.ttf" id="2_s3g7q"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_80rvk"]
 
-[node name="Node2D" type="Node2D"]
+[sub_resource type="Shader" id="Shader_80rvk"]
+code = "shader_type canvas_item;
+
+// 用于获取背景，实现真正的加法发光
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
+
+void fragment() {
+    // 1. 获取 Label 的原始形状掩码 (非 MSDF 模式下它是白色 alpha 掩码)
+    vec4 tex_data = texture(TEXTURE, UV);
+    
+    // 2. 获取当前像素的最终颜色（文字是红色，描边是黑色）
+    // 在 Label 中，COLOR.rgb 包含了你设置的 Font Color 和 Outline Color
+    vec3 current_color = tex_data.rgb * COLOR.rgb;
+    
+    // 获取背景
+    vec3 screen_color = texture(screen_texture, SCREEN_UV).rgb;
+
+    // --- 核心逻辑：根据颜色亮度区分文字和描边 ---
+    // 计算当前像素是否有亮度。
+    // 如果是红色文字，亮度高；如果是黑色描边 (0,0,0)，亮度几乎为 0。
+    float brightness = max(current_color.r, max(current_color.g, current_color.b));
+    float is_text = smoothstep(0.01, 0.1, brightness);
+
+    // 模拟普通混合（用于黑色描边：遮挡背景）
+    vec3 normal_blend = mix(screen_color, current_color, tex_data.a);
+    
+    // 模拟加法混合（用于红色文字：在背景上叠加红色）
+    vec3 add_blend = screen_color + current_color;
+
+    // 混合方案：如果是文字部分用加法，如果是描边部分用普通遮挡
+    vec3 result = mix(normal_blend, add_blend, is_text);
+
+    // 输出最终颜色，Alpha 设为 1（因为我们已经手动混合了背景）
+    COLOR = vec4(result, tex_data.a); 
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mujro"]
+shader = SubResource("Shader_80rvk")
+
+[node name="Node2D" type="Node2D" unique_id=209851084]
 script = ExtResource("1_au4bt")
 
-[node name="Label" type="Label" parent="."]
-offset_left = -29.0
-offset_top = -34.0
-offset_right = 43.0
-offset_bottom = 28.0
+[node name="Label" type="Label" parent="." unique_id=1397386024]
+self_modulate = Color(0.9, 0.9, 0.9, 1)
+material = SubResource("ShaderMaterial_mujro")
+offset_left = -138.0
+offset_top = 23.0
+offset_right = 142.0
+offset_bottom = 263.0
 pivot_offset = Vector2(40, 40)
-theme_override_colors/font_color = Color(0.827451, 0, 0, 1)
-theme_override_constants/outline_size = 7
-theme_override_fonts/font = ExtResource("2_s3g7q")
-theme_override_font_sizes/font_size = 50
+theme_override_colors/font_color = Color(0.83, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 3
+theme_override_constants/shadow_offset_y = 4
+theme_override_constants/outline_size = 40
+theme_override_fonts/font = ExtResource("2_80rvk")
+theme_override_font_sizes/font_size = 180
 text = "100"

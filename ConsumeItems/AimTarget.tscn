@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://bfs6n8l4wcqtt"]
+
+[ext_resource type="Shader" uid="uid://vnrtd04hgkwo" path="res://shader/Icon/BuffIcon/Aim.gdshader" id="1_3b1h6"]
+[ext_resource type="Script" uid="uid://be4k7otmffmtd" path="res://ConsumeItems/AimTarget.cs" id="2_fp4mh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_fp4mh"]
+resource_local_to_scene = true
+shader = ExtResource("1_3b1h6")
+shader_parameter/target_color = Color(0.69411767, 0, 0, 1)
+shader_parameter/line_width = 0.04
+shader_parameter/rotation_speed = 1.0000001639131995
+shader_parameter/appear_speed = 3.0
+shader_parameter/appear_delay = 0.0
+shader_parameter/appear_scale = 0.6
+shader_parameter/inner_ring_radius = 0.18
+shader_parameter/outer_arc_radius = 0.65
+shader_parameter/outer_arc_length = 0.35
+shader_parameter/tri_inner_radius = 0.45
+shader_parameter/tri_outer_radius = 0.95
+shader_parameter/tri_width = 0.8
+
+[node name="AimTarget" type="ColorRect" unique_id=330053714]
+top_level = true
+z_index = 4
+material = SubResource("ShaderMaterial_fp4mh")
+offset_right = 40.0
+offset_bottom = 40.0
+pivot_offset_ratio = Vector2(0.5, 0.5)
+mouse_filter = 2
+script = ExtResource("2_fp4mh")

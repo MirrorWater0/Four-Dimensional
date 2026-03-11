@@ -25,6 +25,7 @@ public partial class Reward : CanvasLayer
     private ColorRect SkillMask => field ??= GetNodeOrNull<ColorRect>("SkillMask");
     private Control PanelNode => field ??= GetNode<Control>("Panel");
     private Control DecorNode => field ??= GetNodeOrNull<Control>("Panel/Decor");
+    private Button SkipButton => field ??= GetNodeOrNull<Button>("Panel/Decor/SkipButton");
     public Map MapNode => field ??= GetNode<Map>("/root/Map");
 
     private readonly List<SkillCard> _skillRewardSlots = new();
@@ -42,12 +43,14 @@ public partial class Reward : CanvasLayer
     private Tween _maskTween;
     private Vector2 _panelBasePosition;
     private bool _panelBaseCached;
+    private const float RewardReflowDuration = 0.18f;
 
     private enum RewardKind
     {
         Skill,
         Relic,
         Equipment,
+        Item,
     }
 
     private sealed class RewardEntry
@@ -55,6 +58,7 @@ public partial class Reward : CanvasLayer
         public RewardKind Kind;
         public RelicID RelicId;
         public Equipment Equipment;
+        public ItemID ItemId;
     }
 
     // Call from anywhere (e.g. Battle) to show the reward UI.
@@ -94,6 +98,8 @@ public partial class Reward : CanvasLayer
         }
 
         WireStaticRewardControls();
+        if (SkipButton != null)
+            SkipButton.Pressed += SkipRewards;
     }
 
     public void SetCompleteNodeOnClose(LevelNode node)
@@ -105,9 +111,18 @@ public partial class Reward : CanvasLayer
     public void Open()
     {
         ResetSkillRewardPanel();
-        ClearRewardItems(clearStatic: false);
-        WireStaticRewardControls();
-        EnsureDefaultSkillRewardEntry();
+        bool hasRuntimeEntries = _rewardEntries.Count > 0;
+        if (!hasRuntimeEntries)
+        {
+            ClearRewardItems(clearStatic: false);
+            WireStaticRewardControls();
+            EnsureDefaultSkillRewardEntry();
+        }
+        else if (SkillRewardButton != null)
+        {
+            SkillRewardButton.Visible = false;
+            SkillRewardButton.Disabled = true;
+        }
         InventoryGridNode?.LayoutCards(force: true);
         Visible = true;
         PlayIntroAnimation();
@@ -171,6 +186,19 @@ public partial class Reward : CanvasLayer
     public CardSlot AddEquipmentRewardEntry(Equipment.EquipmentName equipmentName)
     {
         return AddEquipmentRewardEntry(Equipment.Create(equipmentName));
+    }
+
+    /// <summary>Add a consumable item reward entry to the inventory list.</summary>
+    public CardSlot AddItemRewardEntry(ItemID itemId, string displayName = null)
+    {
+        string title = displayName ?? $"道具 · {GetItemName(itemId)}";
+        string detail = GetItemDescription(itemId);
+        var entry = new RewardEntry { Kind = RewardKind.Item, ItemId = itemId };
+        var card = CreateRewardCard(title, detail);
+        if (card == null)
+            return null;
+        RegisterRewardControl(card, entry, isRuntime: true);
+        return card;
     }
 
     private void WireStaticRewardControls()
@@ -292,14 +320,17 @@ public partial class Reward : CanvasLayer
                 break;
             case RewardKind.Relic:
                 GrantRelicReward(entry.RelicId);
-                RemoveRewardControl(control);
-                InventoryGridNode?.LayoutCards(force: true);
+                RemoveRewardControlWithReflow(control);
                 TryCloseIfDone();
                 break;
             case RewardKind.Equipment:
                 GrantEquipmentReward(entry.Equipment);
-                RemoveRewardControl(control);
-                InventoryGridNode?.LayoutCards(force: true);
+                RemoveRewardControlWithReflow(control);
+                TryCloseIfDone();
+                break;
+            case RewardKind.Item:
+                GrantItemReward(entry.ItemId);
+                RemoveRewardControlWithReflow(control);
                 TryCloseIfDone();
                 break;
         }
@@ -490,9 +521,8 @@ public partial class Reward : CanvasLayer
 
         if (_activeSkillRewardControl != null)
         {
-            RemoveRewardControl(_activeSkillRewardControl);
+            RemoveRewardControlWithReflow(_activeSkillRewardControl);
             _activeSkillRewardControl = null;
-            InventoryGridNode?.LayoutCards(force: true);
         }
 
         TryCloseIfDone();
@@ -530,6 +560,93 @@ public partial class Reward : CanvasLayer
         GameInfo.OwnedEquipments.Add(Equipment.Clone(equipment));
     }
 
+    private void GrantItemReward(ItemID itemId)
+    {
+        var resourceState = MapNode?.PlayerResourceState;
+        if (resourceState == null)
+            return;
+
+        ConsumeItem.AddItem(resourceState, itemId, syncGameInfo: true);
+    }
+
+    private void RemoveRewardControlWithReflow(Control control)
+    {
+        if (InventoryGridNode == null)
+        {
+            RemoveRewardControl(control);
+            return;
+        }
+
+        var previousPositions = CaptureRewardPositions();
+        if (control != null && GodotObject.IsInstanceValid(control))
+            control.Visible = false;
+        RemoveRewardControl(control);
+        InventoryGridNode.LayoutCards(force: true);
+        _ = AnimateRewardReflowAsync(previousPositions);
+    }
+
+    private Dictionary<Control, Vector2> CaptureRewardPositions()
+    {
+        var positions = new Dictionary<Control, Vector2>();
+        if (InventoryGridNode == null)
+            return positions;
+
+        foreach (var child in InventoryGridNode.GetChildren())
+        {
+            if (child is not Control control)
+                continue;
+            if (!control.Visible)
+                continue;
+            positions[control] = control.Position;
+        }
+
+        return positions;
+    }
+
+    private async System.Threading.Tasks.Task AnimateRewardReflowAsync(
+        Dictionary<Control, Vector2> previousPositions
+    )
+    {
+        if (InventoryGridNode == null || previousPositions == null || previousPositions.Count == 0)
+            return;
+
+        var toAnimate = new List<(Control control, Vector2 from, Vector2 to)>();
+
+        foreach (var pair in previousPositions)
+        {
+            var control = pair.Key;
+            if (!GodotObject.IsInstanceValid(control) || !control.Visible)
+                continue;
+
+            Vector2 target = control.Position;
+            Vector2 from = pair.Value;
+            if (from.DistanceSquaredTo(target) < 0.25f)
+                continue;
+
+            toAnimate.Add((control, from, target));
+        }
+
+        if (toAnimate.Count == 0)
+            return;
+
+        InventoryGridNode.SetLayoutSuppressed(true);
+        foreach (var entry in toAnimate)
+            entry.control.Position = entry.from;
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+
+        foreach (var entry in toAnimate)
+            tween.TweenProperty(entry.control, "position", entry.to, RewardReflowDuration);
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        InventoryGridNode.SetLayoutSuppressed(false);
+        InventoryGridNode.LayoutCards(force: true);
+    }
+
     private void TryCloseIfDone()
     {
         if (_isSkillRewardOpen)
@@ -548,6 +665,13 @@ public partial class Reward : CanvasLayer
             Visible = false;
             TryCompleteNodeOnClose();
         });
+    }
+
+    private void SkipRewards()
+    {
+        ResetSkillRewardPanel();
+        ClearRewardItems(clearStatic: true);
+        CloseReward();
     }
 
     private void PlayIntroAnimation()
@@ -728,5 +852,25 @@ public partial class Reward : CanvasLayer
             return;
         string prefix = value > 0 ? "+" : string.Empty;
         segments.Add($"{prefix}{value} {label}");
+    }
+
+    private static string GetItemName(ItemID itemId)
+    {
+        return itemId switch
+        {
+            ItemID.Health => "医疗包",
+            ItemID.Explosion => "爆裂弹",
+            _ => "未知道具",
+        };
+    }
+
+    private static string GetItemDescription(ItemID itemId)
+    {
+        return itemId switch
+        {
+            ItemID.Health => "点击后选择角色，回复15生命。",
+            ItemID.Explosion => "点击后选择角色，造成30伤害。",
+            _ => string.Empty,
+        };
     }
 }

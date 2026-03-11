@@ -4,3 +4,26 @@
 
 [node name="PreloadeScene" type="Node2D" unique_id=2003656134]
 script = ExtResource("1_2o3yy")
+
+[node name="SceneHolder" type="Node" parent="." unique_id=1787628375]
+
+[node name="WarmupHolder" type="Node" parent="." unique_id=51583494]
+
+[node name="FadeLayer" type="CanvasLayer" parent="." unique_id=1731160086]
+layer = 100
+
+[node name="ShaderWarmupRect" type="ColorRect" parent="FadeLayer" unique_id=2116599110]
+visible = false
+offset_right = 4.0
+offset_bottom = 4.0
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+
+[node name="Black" type="ColorRect" parent="FadeLayer" unique_id=143001758]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)

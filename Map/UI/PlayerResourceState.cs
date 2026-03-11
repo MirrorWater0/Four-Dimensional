@@ -63,6 +63,8 @@ public partial class PlayerResourceState : CanvasLayer
     );
     public List<Relic> RelicList = new();
     public VBoxContainer RelicContainer => field ??= GetNode<VBoxContainer>("RelicContainer");
+    public List<ConsumeItem> Items = new();
+    public HBoxContainer ItemContainer => field ??= GetNode<HBoxContainer>("ItemsHContainer");
 
     public override void _Ready()
     {
@@ -70,6 +72,7 @@ public partial class PlayerResourceState : CanvasLayer
         TransitionEnergy = GameInfo.TransitionEnergy;
         InitTransitionEnergyMax();
         InitRelic();
+        InitItems();
     }
 
     public void InitRelic()
@@ -84,6 +87,28 @@ public partial class PlayerResourceState : CanvasLayer
             relicInst.Num = relic.Value;
             relicInst.IconAdd(this);
             RelicList.Add(relicInst);
+        }
+    }
+
+    public void InitItems()
+    {
+        Items.Clear();
+        if (GameInfo.Items == null || GameInfo.Items.Count == 0)
+            return;
+
+        foreach (var item in GameInfo.Items)
+            ConsumeItem.AddItem(this, item, syncGameInfo: false);
+    }
+
+    public void SetItemsEnabled(bool enabled)
+    {
+        if (ItemContainer == null)
+            return;
+
+        for (int i = 0; i < ItemContainer.GetChildCount(); i++)
+        {
+            if (ItemContainer.GetChild(i) is ItemContainer container)
+                container.SetEnabled(enabled);
         }
     }
 

@@ -17,6 +17,8 @@ public static partial class GameInfo
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
     public static Dictionary<RelicID, int> Relic = new();
+    public static int ItemsMaxCount = 3;
+    public static List<ItemID> Items = new();
     public static List<Equipment> OwnedEquipments = new();
 
     public static void InitNewGame()
@@ -25,10 +27,9 @@ public static partial class GameInfo
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();
+        Items.Clear();
+        GameInfo.Items.Add(ItemID.Explosion);
         OwnedEquipments = CreateStarterOwnedEquipments();
-        GD.Print("OwnedEquipments: " + OwnedEquipments.Count);
-        // Map generation logic in LevelProgress will populate this
-        GD.Print("InitNewGame");
     }
 
     public static void RefreshRandomNum(ref int num)

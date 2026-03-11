@@ -245,6 +245,19 @@ grow_horizontal = 2
 mouse_filter = 2
 color = Color(0.42, 0.65, 0.88, 0.5)
 
+[node name="SkipButton" type="Button" parent="Panel/Decor" unique_id=1156214760]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -275.40002
+offset_top = 839.6
+offset_right = -175.40002
+offset_bottom = 869.6
+grow_horizontal = 0
+theme = SubResource("Theme_button")
+text = "跳过"
+
 [node name="BottomLine" type="ColorRect" parent="Panel/Decor" unique_id=1431859723]
 layout_mode = 1
 anchors_preset = 12

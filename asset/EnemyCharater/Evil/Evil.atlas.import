@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://o0nup78ok4ca"
+path="res://.godot/imported/Evil.atlas-e5463eb63092b99f93e7d777095f2814.spatlas"
+
+[deps]
+
+source_file="res://asset/EnemyCharater/Evil/Evil.atlas"
+dest_files=["res://.godot/imported/Evil.atlas-e5463eb63092b99f93e7d777095f2814.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

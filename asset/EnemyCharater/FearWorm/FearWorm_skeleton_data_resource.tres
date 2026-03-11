@@ -1,0 +1,8 @@
+[gd_resource type="SpineSkeletonDataResource" format=3 uid="uid://d2vqiyfi701p0"]
+
+[ext_resource type="SpineAtlasResource" uid="uid://bpynx5uwekvlw" path="res://asset/EnemyCharater/FearWorm/FearWorm.atlas" id="1_o036g"]
+[ext_resource type="SpineSkeletonFileResource" uid="uid://sfiek7uwhabi" path="res://asset/EnemyCharater/FearWorm/FearWorm.skel" id="2_2s27h"]
+
+[resource]
+atlas_res = ExtResource("1_o036g")
+skeleton_file_res = ExtResource("2_2s27h")

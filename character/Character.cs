@@ -9,6 +9,9 @@ using Godot;
 [Serializable]
 public partial class Character : Node2D
 {
+    [Export]
+    public bool WarmupMode { get; set; }
+
     public int CharacterIndex;
 
     public enum CharacterState
@@ -174,6 +177,18 @@ public partial class Character : Node2D
 
     public override async void _Ready()
     {
+        if (WarmupMode)
+        {
+            if (Sprite?.Material is ShaderMaterial material)
+            {
+                ShaderMaterial warmMaterial = (ShaderMaterial)material.Duplicate();
+                warmMaterial.ResourceLocalToScene = true;
+                Sprite.Material = warmMaterial;
+                warmMaterial.SetShaderParameter("progress", 1f);
+            }
+            return;
+        }
+
         Hoverframe.MouseEntered += OnHoverEntered;
         Hoverframe.MouseExited += OnHoverExited;
 
@@ -449,7 +464,6 @@ public partial class Character : Node2D
 
         var attacknum = Number.Instantiate<Number>();
         AddChild(attacknum);
-        attacknum.Position = Position + new Vector2(0, -50f);
         attacknum.NumberLabel.Text = (-(int)damage).ToString();
 
         BattleNode.BattleAnimationPlayer.Play("hit");
@@ -483,10 +497,7 @@ public partial class Character : Node2D
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
         numlabel.NumberLabel.Text = num.ToString("+0;-0;0");
-        numlabel.NumberLabel.AddThemeColorOverride(
-            "font_color",
-            num >= 0 ? Colors.Green : Colors.Red
-        );
+        numlabel.SetNumberColor(num >= 0 ? Colors.Green : Colors.Red);
 
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
@@ -546,10 +557,7 @@ public partial class Character : Node2D
             Number number = Number.Instantiate<Number>();
             AddChild(number);
             number.NumberLabel.Text = "+" + num.ToString();
-            number.NumberLabel.AddThemeColorOverride(
-                "font_color",
-                new Color(180, 220, 255, 255) / 255
-            );
+            number.SetNumberColor(new Color(180, 220, 255, 255) / 255);
         }
     }
 

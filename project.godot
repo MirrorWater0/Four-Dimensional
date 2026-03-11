@@ -15,12 +15,12 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="tower"
-run/main_scene="res://BeginGame/StartInterface.tscn"
+run/main_scene="res://PreloadeScene.tscn"
 config/features=PackedStringArray("4.6", "C#", "Mobile")
 
 [autoload]
 
-PreloadeScene="*uid://ctfp7tpcv8l2p"
+MouseTrail="*uid://d0hwex3fc1sp4"
 
 [display]
 

@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://d0hwex3fc1sp4"]
+
+[ext_resource type="Script" uid="uid://dr7wgiscwtyg2" path="res://MouseTrail/MouseTrail.cs" id="1_bf3sd"]
+[ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="1_umtsf"]
+
+[sub_resource type="Curve" id="Curve_42och"]
+_data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8084291, 0.7125851), 0.30350965, 0.30350965, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="Gradient_x7o5h"]
+colors = PackedColorArray(10.811581, 10.811581, 10.811581, 0.7294118, 0.47435445, 0.59966856, 0.9999998, 1)
+
+[node name="MouseTrail" type="CanvasLayer" unique_id=695303506]
+layer = 10
+script = ExtResource("1_bf3sd")
+
+[node name="Node2D" type="Node2D" parent="." unique_id=375777724]
+
+[node name="Line2D" type="Line2D" parent="." unique_id=1008460198 node_paths=PackedStringArray("Target")]
+modulate = Color(1, 1, 1, 0.5058824)
+top_level = true
+z_index = 10
+position = Vector2(134.68222, 10.6154785)
+scale = Vector2(1.3269181, 1.3269181)
+width_curve = SubResource("Curve_42och")
+gradient = SubResource("Gradient_x7o5h")
+end_cap_mode = 2
+script = ExtResource("1_umtsf")
+Target = NodePath("../Node2D")

@@ -3,6 +3,9 @@ using Godot;
 
 public partial class Map : Control
 {
+    [Export]
+    public bool WarmupMode { get; set; }
+
     public Button DragButton => field ??= GetNode("DragButton") as Button;
     public TextureRect GameMap => field ??= GetNode("GameMap") as TextureRect;
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
@@ -158,6 +161,14 @@ public partial class Map : Control
 
     public override void _Ready()
     {
+        if (WarmupMode)
+        {
+            SetProcess(false);
+            SetProcessInput(false);
+            SetPhysicsProcess(false);
+            return;
+        }
+
         SeedLabel.Text = $"Seed: {GameInfo.Seed}";
         Camera.LimitEnabled = false;
         Camera.PositionSmoothingEnabled = false;

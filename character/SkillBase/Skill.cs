@@ -57,6 +57,9 @@ public partial class Skill
 
         [Description("特殊")]
         Special,
+
+        [Description("无")]
+        none,
     }
 
     public virtual string SkillName { set; get; }

@@ -78,6 +78,7 @@ public partial class PlayerCharacter : Character
         }
         SelfFrame.Selected.Visible = true;
         BattleNode.RetreatButton.Disabled = false;
+        BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
     }
 
     public override void EndAction()
@@ -89,6 +90,7 @@ public partial class PlayerCharacter : Character
 
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();
+        BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
         base.EndAction();
     }
 

@@ -2,13 +2,50 @@
 
 [ext_resource type="Script" uid="uid://cbwa86f1lvhat" path="res://LabelNode/BuffHintLabel.cs" id="1_cpt8r"]
 
-[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_cpt8r"]
-light_mode = 1
+[sub_resource type="Shader" id="Shader_80rvk"]
+code = "shader_type canvas_item;
+
+// 用于获取背景，实现真正的加法发光
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
+
+void fragment() {
+    // 1. 获取 Label 的原始形状掩码 (非 MSDF 模式下它是白色 alpha 掩码)
+    vec4 tex_data = texture(TEXTURE, UV);
+    
+    // 2. 获取当前像素的最终颜色（文字是红色，描边是黑色）
+    // 在 Label 中，COLOR.rgb 包含了你设置的 Font Color 和 Outline Color
+    vec3 current_color = tex_data.rgb * COLOR.rgb;
+    
+    // 获取背景
+    vec3 screen_color = texture(screen_texture, SCREEN_UV).rgb;
+
+    // --- 核心逻辑：根据颜色亮度区分文字和描边 ---
+    // 计算当前像素是否有亮度。
+    // 如果是红色文字，亮度高；如果是黑色描边 (0,0,0)，亮度几乎为 0。
+    float brightness = max(current_color.r, max(current_color.g, current_color.b));
+    float is_text = smoothstep(0.01, 0.1, brightness);
+
+    // 模拟普通混合（用于黑色描边：遮挡背景）
+    vec3 normal_blend = mix(screen_color, current_color, tex_data.a);
+    
+    // 模拟加法混合（用于红色文字：在背景上叠加红色）
+    vec3 add_blend = screen_color + current_color;
+
+    // 混合方案：如果是文字部分用加法，如果是描边部分用普通遮挡
+    vec3 result = mix(normal_blend, add_blend, is_text);
+
+    // 输出最终颜色，Alpha 设为 1（因为我们已经手动混合了背景）
+    COLOR = vec4(result, tex_data.a); 
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cpt8r"]
+shader = SubResource("Shader_80rvk")
 
 [node name="BuffHintLabel" type="RichTextLabel" unique_id=1933578828]
 top_level = true
 z_index = 3
-material = SubResource("CanvasItemMaterial_cpt8r")
+material = SubResource("ShaderMaterial_cpt8r")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -21,7 +58,7 @@ grow_vertical = 2
 theme_override_colors/default_color = Color(1, 1, 1, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
 theme_override_constants/shadow_outline_size = 3
-theme_override_constants/outline_size = 5
+theme_override_constants/outline_size = 20
 theme_override_font_sizes/normal_font_size = 50
 bbcode_enabled = true
 text = "sdsds"
