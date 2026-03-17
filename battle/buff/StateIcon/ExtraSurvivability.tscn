@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://bq6dmhjsvo2j8"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_o55tn"]
+[ext_resource type="Shader" uid="uid://cy3vobor6ryqr" path="res://shader/Icon/BuffIcon/ExtraTurn.gdshader" id="2_bxnrl"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_q5k3l"]
+shader = ExtResource("2_bxnrl")
+shader_parameter/arrow_color = Color(0.6901961, 1, 1, 1)
+shader_parameter/line_width = 0.05
+shader_parameter/angle = 90.0
+shader_parameter/head_length = 0.4
+shader_parameter/head_width = 0.35
+shader_parameter/tail_length = 0.45
+shader_parameter/tail_width = 0.15
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_o55tn")]
+material = SubResource("ShaderMaterial_q5k3l")

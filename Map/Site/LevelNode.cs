@@ -76,22 +76,12 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> ProduceEnemies()
     {
-        var rng = new Random(RandomNum);
-        EnemyRegedit[] enemyRegedits =
-        [
-            new EvilRegedit(),
-            new FearWormRegedit(),
-            new ArmonRegedit(),
-            new EvilRegedit(),
-        ];
-        List<EnemyRegedit> list = new()
+        List<EnemyRegedit> list = Type switch
         {
-            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 4)].GetRegedit(),
+            LevelType.Normal => GetNormalEnemies(),
+            LevelType.Elite => GetEliteEnemies(),
+            _ => GetEliteEnemies(),
         };
-        RandomPosition(list, RandomNum);
         return list;
     }
 
@@ -216,6 +206,7 @@ public partial class LevelNode : ColorRect
 
     public void PressButton()
     {
+        GetParent()?.GetParent<LevelProgress>()?.LockAllNodes();
         switch (Type)
         {
             case LevelType.Normal:
@@ -317,5 +308,34 @@ public partial class LevelNode : ColorRect
                 break;
             enemy.PositionIndex = positions[posIndex++];
         }
+    }
+
+    public List<EnemyRegedit> GetNormalEnemies()
+    {
+        var rng = new Random(RandomNum);
+        EnemyRegedit[] enemyRegedits =
+        [
+            new EvilRegedit(),
+            new FearWormRegedit(),
+            new ArmonRegedit(),
+            new EvilRegedit(),
+            new AlienBodyRegedit(),
+        ];
+        List<EnemyRegedit> list = new()
+        {
+            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
+        };
+        RandomPosition(list, RandomNum);
+        return list;
+    }
+
+    public List<EnemyRegedit> GetEliteEnemies()
+    {
+        var rng = new Random(RandomNum);
+        List<EnemyRegedit> list = new() { new ArroganceRegedit() { PositionIndex = 5 } };
+        return list;
     }
 }

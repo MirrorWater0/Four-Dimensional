@@ -31,7 +31,7 @@ public partial class BattlePreview : Control
     private RichTextLabel EnemySpeedLabel =>
         field ??= GetNode<RichTextLabel>("EnemySpeedPanel/EnemySpeedLabel");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
-    ExitButton exitButton => field ??= GetNode<ExitButton>("/root/Map/UI/ExitButton");
+    ExitButton exitButton => field ??= GetNode<ExitButton>("ExitButton");
     Map MapNode => field ??= GetNode<Map>("/root/Map");
     public int RandomNum;
     public static System.Collections.Generic.Dictionary<int, int> remapEnemy { get; } =
@@ -517,7 +517,11 @@ public partial class BattlePreview : Control
         return sb.ToString().TrimEnd();
     }
 
-    private static void AppendPassiveTooltip(StringBuilder sb, string passiveName, string passiveDesc)
+    private static void AppendPassiveTooltip(
+        StringBuilder sb,
+        string passiveName,
+        string passiveDesc
+    )
     {
         if (string.IsNullOrWhiteSpace(passiveName) && string.IsNullOrWhiteSpace(passiveDesc))
             return;

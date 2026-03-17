@@ -19,17 +19,6 @@ public partial class Skill
         return Math.Clamp(block, 0, clampMax);
     }
 
-    protected int HealFromSurvivability(
-        int baseHeal = 0,
-        int survivabilityMultiplier = 1,
-        int clampMax = 999
-    )
-    {
-        int heal = baseHeal + OwnerSurvivability * survivabilityMultiplier;
-        return Math.Clamp(heal, 0, clampMax);
-    }
-
-
     protected bool TrySpendEnergy(int cost)
     {
         if (OwnerCharater == null)

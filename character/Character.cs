@@ -6,13 +6,10 @@ using System.Text;
 using System.Threading.Tasks;
 using Godot;
 
-[Serializable]
 public partial class Character : Node2D
 {
     [Export]
     public bool WarmupMode { get; set; }
-
-    public int CharacterIndex;
 
     public enum CharacterState
     {
@@ -49,29 +46,11 @@ public partial class Character : Node2D
     public int BattleMaxLife { get; private set; }
     public int Life { get; set; }
 
-    [Export]
-    private int _battlePower;
-    public int BattlePower
-    {
-        get => _battlePower;
-        private set => _battlePower = value;
-    }
+    public int BattlePower { get; private set; }
 
-    [Export]
-    private int _battleSurvivability;
-    public int BattleSurvivability
-    {
-        get => _battleSurvivability;
-        private set => _battleSurvivability = value;
-    }
+    public int BattleSurvivability { get; private set; }
 
-    [Export]
-    private int _speed;
-    public int Speed
-    {
-        get => _speed;
-        private set => _speed = value;
-    }
+    public int Speed { get; private set; }
     public int Block { get; protected set; }
     public int Energy { get; protected set; } = 1;
 
@@ -125,7 +104,9 @@ public partial class Character : Node2D
     public List<DyingBuff> DyingBuffs = new List<DyingBuff>();
     public List<HurtBuff> HurtBuffs = new List<HurtBuff>();
     public List<StartActionBuff> StartActionBuffs = new List<StartActionBuff>();
+    public List<EndActionBuff> EndActionBuffs = new List<EndActionBuff>();
     public List<SpecialBuff> SpecialBuffs = new List<SpecialBuff>();
+    public List<SkillBuff> SkillBuffs = new List<SkillBuff>();
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     public Vector2 OriginalPosition;
@@ -342,6 +323,30 @@ public partial class Character : Node2D
             }
         }
 
+        if (EndActionBuffs != null)
+        {
+            foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                any = true;
+            }
+        }
+
+        if (SkillBuffs != null)
+        {
+            foreach (var buff in SkillBuffs.Where(x => x != null && x.Stack > 0))
+            {
+                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+                if (!string.IsNullOrWhiteSpace(effect))
+                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                any = true;
+            }
+        }
+
         if (SpecialBuffs != null)
         {
             foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
@@ -414,20 +419,6 @@ public partial class Character : Node2D
         TrailAnimation.Play("trail");
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
 
-        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
-        {
-            if (this is EnemyCharacter enemy)
-            {
-                await enemy.DisappearIntention();
-            }
-            StartActionBuffs.First(x => x.ThisBuffName == Buff.BuffName.Stun).Trigger();
-            var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-            AddChild(effect);
-            effect.Animation.Play("stun");
-            await ToSignal(effect.Animation, "animation_finished");
-            EndAction();
-            return;
-        }
         if (StartActionBuffs != null)
         {
             // Buffs can remove themselves from the list when triggered (Stack reaches 0).
@@ -441,6 +432,13 @@ public partial class Character : Node2D
 
     public virtual async void EndAction()
     {
+        if (EndActionBuffs != null)
+        {
+            foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0).ToArray())
+            {
+                await buff.Trigger();
+            }
+        }
         await BattleNode.EmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
@@ -489,15 +487,15 @@ public partial class Character : Node2D
         if (State == CharacterState.Dying && !rebirth)
             return;
 
-        num = Math.Clamp(num + BattleSurvivability, 0, 999);
-        Life = Math.Clamp(Life + num, 0, BattleMaxLife);
+        int heal = Math.Clamp(num + BattleSurvivability, 0, 999);
+        Life = Math.Clamp(Life + heal, 0, BattleMaxLife);
         CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
         CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
         LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
-        numlabel.NumberLabel.Text = num.ToString("+0;-0;0");
-        numlabel.SetNumberColor(num >= 0 ? Colors.Green : Colors.Red);
+        numlabel.NumberLabel.Text = heal.ToString("+0;-0;0");
+        numlabel.SetNumberColor(heal >= 0 ? Colors.Green : Colors.Red);
 
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
@@ -628,17 +626,20 @@ public partial class Character : Node2D
 
     public async Task IncreaseProperties(PropertyType type, int value)
     {
-        if (value == 0)
-            return;
-
         ColorRect icon = null;
         switch (type)
         {
             case PropertyType.Power:
+                value +=
+                    SpecialBuffs.Find(x => x.ThisBuffName == Buff.BuffName.ExtraPower)?.Stack ?? 0;
                 BattlePower += value;
                 icon = PowerIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Survivability:
+                value +=
+                    SpecialBuffs
+                        .Find(x => x.ThisBuffName == Buff.BuffName.ExtraSurvivability)
+                        ?.Stack ?? 0;
                 BattleSurvivability += value;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;

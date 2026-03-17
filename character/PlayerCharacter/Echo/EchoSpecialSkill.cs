@@ -28,7 +28,6 @@ public class EchonicResonance : Skill
                 loopSteps:
                 [
                     AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
-                    LowerTargetPropertyStep(PropertyType.Survivability, desurive),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )

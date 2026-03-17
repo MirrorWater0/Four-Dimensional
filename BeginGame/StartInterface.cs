@@ -89,6 +89,8 @@ public partial class StartInterface : CanvasLayer
     public void test()
     {
         GameInfo.Relic.Add(RelicID.Blessing, 3);
+        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.ShadowExecution);
+        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.SwapSlash);
         // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
         // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
         // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
@@ -128,12 +130,13 @@ public partial class PlayerCharacterRegistry
         Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
-        TakenSkills = [SkillID.SacredOnslaught, SkillID.SoundBarrier, SkillID.EchonicResonance],
+        TakenSkills = [SkillID.BreakStrike, SkillID.SoundBarrier, SkillID.EchonicResonance],
         AllSkills =
         [
             SkillID.SacredOnslaught,
             SkillID.ResonantSlash,
             SkillID.EchoPuncture,
+            SkillID.BreakStrike,
             SkillID.SoundBarrier,
             SkillID.SonicDeflection,
             SkillID.TuningStance,
@@ -208,8 +211,10 @@ public partial class PlayerCharacterRegistry
         AllSkills =
         [
             SkillID.ShadowAmbush,
+            SkillID.ShadowExecution,
             SkillID.VeilStep,
             SkillID.Swift,
+            SkillID.StarWard,
             SkillID.TempoSurge,
             SkillID.LongNight,
         ],

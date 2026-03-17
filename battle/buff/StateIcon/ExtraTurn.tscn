@@ -5,8 +5,9 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_4j5cy"]
 shader = ExtResource("2_atcm0")
-shader_parameter/arrow_color = Color(1, 0.78039217, 0, 1)
+shader_parameter/arrow_color = Color(1, 0.8627451, 0, 1)
 shader_parameter/line_width = 0.05
+shader_parameter/angle = 0.0
 shader_parameter/head_length = 0.4
 shader_parameter/head_width = 0.35
 shader_parameter/tail_length = 0.45

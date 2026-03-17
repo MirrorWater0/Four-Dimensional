@@ -6,6 +6,8 @@
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="3_gear"]
 [ext_resource type="Shader" uid="uid://tidlfiqqjox0" path="res://shader/UI/BrushButton.gdshader" id="5_brshbtn"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="6_font"]
+[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="7_unbvp"]
+[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/UI/ExitButton.cs" id="8_r8tws"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_starbg"]
 shader = ExtResource("2_starbg")
@@ -96,6 +98,10 @@ shader_parameter/cut_y = 0.6
 shader_parameter/rect_size_px = Vector2(256, 64)
 shader_parameter/glow_strength = 1.1
 shader_parameter/scan_strength = 0.18
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sfsg5"]
+shader = ExtResource("7_unbvp")
+shader_parameter/icon_color = Color(1, 1, 1, 1)
 
 [node name="BattlePreview" type="Control" unique_id=1580075193]
 layout_mode = 3
@@ -466,3 +472,24 @@ offset_right = 1926.0
 offset_bottom = 1077.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
+
+[node name="ExitButton" type="Button" parent="." unique_id=653736399]
+material = SubResource("ShaderMaterial_sfsg5")
+layout_mode = 0
+offset_left = -15.0
+offset_top = 130.0
+offset_right = 96.0
+offset_bottom = 204.0
+theme_override_font_sizes/font_size = 40
+text = "x"
+script = ExtResource("8_r8tws")
+
+[node name="ColorRect" type="ColorRect" parent="ExitButton" unique_id=1595074811]
+show_behind_parent = true
+layout_mode = 0
+offset_left = -66.0
+offset_top = 9.0
+offset_right = 104.0
+offset_bottom = 69.0
+mouse_filter = 1
+color = Color(0.68235296, 0, 0, 1)

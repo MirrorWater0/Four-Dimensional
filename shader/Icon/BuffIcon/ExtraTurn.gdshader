@@ -3,7 +3,7 @@ shader_type canvas_item;
 // --- 颜色和线条基础设置 ---
 uniform vec4 arrow_color : source_color = vec4(1.0, 1.0, 1.0, 1.0); // 箭头颜色
 uniform float line_width : hint_range(0.01, 0.2) = 0.05;            // 空心尾巴的线条粗细
-
+uniform float angle : hint_range(0.0, 360.0, 1) = 0.;
 // --- 箭头形态参数 ---
 uniform float head_length : hint_range(0.1, 1.0) = 0.4;             // 箭头三角形的长度
 uniform float head_width : hint_range(0.1, 1.0) = 0.35;             // 箭头三角形的半宽
@@ -17,6 +17,11 @@ void fragment() {
     // 为了让整个箭头在视觉上完美居中，我们在 X 轴上做一点偏移
     float center_offset = (tail_length - head_length) / 2.0;
     uv.x += center_offset;
+
+    // 角度旋转（绕中心）
+    float rad = radians(angle);
+    mat2 rot = mat2(vec2(cos(rad), sin(rad)), vec2(-sin(rad), cos(rad)));
+    uv = rot * uv;
 
     // 【核心抗锯齿】：动态计算屏幕像素在当前 UV 坐标系下的物理宽度
     float aa = fwidth(uv.x) * 1.5;

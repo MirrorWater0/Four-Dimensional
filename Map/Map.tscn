@@ -7,9 +7,7 @@
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
 [ext_resource type="Script" uid="uid://eud58fsjwpgj" path="res://Map/EquipmentButton.cs" id="9_eqbtn"]
-[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="10_nlecm"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
-[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/UI/ExitButton.cs" id="11_cccvd"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://byfjhw3duk8p3" path="res://shader/UI/Button/Figure.gdshader" id="12_0g0qh"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
@@ -26,10 +24,6 @@ glow_enabled = true
 glow_intensity = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_vk5l4"]
-shader = ExtResource("10_nlecm")
-shader_parameter/icon_color = Color(1, 1, 1, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
@@ -188,26 +182,6 @@ offset_right = 56.0
 offset_bottom = 137.0
 text = "seed:"
 horizontal_alignment = 2
-
-[node name="ExitButton" type="Button" parent="UI" unique_id=374258170]
-material = SubResource("ShaderMaterial_vk5l4")
-offset_left = -15.0
-offset_top = 130.0
-offset_right = 96.0
-offset_bottom = 204.0
-theme_override_font_sizes/font_size = 40
-text = "x"
-script = ExtResource("11_cccvd")
-
-[node name="ColorRect" type="ColorRect" parent="UI/ExitButton" unique_id=1584509521]
-show_behind_parent = true
-layout_mode = 0
-offset_left = -66.0
-offset_top = 9.0
-offset_right = 104.0
-offset_bottom = 69.0
-mouse_filter = 1
-color = Color(0.68235296, 0, 0, 1)
 
 [node name="ReadyButton" type="Button" parent="UI" unique_id=870573151 node_paths=PackedStringArray("Layer", "ChangeEffect")]
 top_level = true

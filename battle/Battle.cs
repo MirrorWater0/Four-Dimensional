@@ -37,6 +37,7 @@ public partial class Battle : Node2D
 
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
     public Button RetreatButton => field ??= GetNode<Button>("Retreat");
+    public bool SuppressSpeedGainThisTurn { get; set; }
 
     private int _playerSpeed = 0;
     private int _enemySpeed = 0;
@@ -121,6 +122,7 @@ public partial class Battle : Node2D
     private float _recordHiddenRight;
     private Tween _recordTween;
     private int _recordIndex;
+
     public override void _EnterTree()
     {
         _battleInstanceId = GetInstanceId();
@@ -479,7 +481,15 @@ public partial class Battle : Node2D
             if (PlayersList != null && PlayersList.Count > 0)
             {
                 PlayersList[0].AddChild(label);
-                await CharacterAction(PlayersList, token);
+                SuppressSpeedGainThisTurn = true;
+                try
+                {
+                    await CharacterAction(PlayersList, token);
+                }
+                finally
+                {
+                    SuppressSpeedGainThisTurn = false;
+                }
             }
         }
 
@@ -494,7 +504,15 @@ public partial class Battle : Node2D
             if (EnemiesList != null && EnemiesList.Count > 0)
             {
                 EnemiesList[0].AddChild(label);
-                await CharacterAction(EnemiesList, token);
+                SuppressSpeedGainThisTurn = true;
+                try
+                {
+                    await CharacterAction(EnemiesList, token);
+                }
+                finally
+                {
+                    SuppressSpeedGainThisTurn = false;
+                }
             }
         }
     }
@@ -639,7 +657,7 @@ public partial class Battle : Node2D
                 break;
             default:
                 addRelic = rng.Next(0, 100) < 20;
-                equipCount = rng.Next(0, 100) < 30 ? 1 : 0;
+                equipCount = rng.Next(0, 100) < 10 ? 1 : 0;
                 break;
         }
 
@@ -655,7 +673,7 @@ public partial class Battle : Node2D
             }
         }
 
-        if (rng.Next(0, 100) < 50)
+        if (rng.Next(0, 100) < 30)
         {
             ItemID[] itemPool = { ItemID.Health, ItemID.Explosion };
             var itemPick = itemPool[rng.Next(0, itemPool.Length)];

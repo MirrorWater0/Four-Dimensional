@@ -32,6 +32,9 @@ public partial class LevelProgress : Control
     private Control _nodeContainer;
     private Control _connectionContainer;
     private readonly Random rng = new Random(GameInfo.Seed);
+    private CanvasLayer _siteUiLayer;
+    private bool _manualLock;
+    private bool _siteUiHasChildren;
 
     public override void _Ready()
     {
@@ -48,8 +51,54 @@ public partial class LevelProgress : Control
         _nodeContainer.MouseFilter = MouseFilterEnum.Ignore; // Pass events through
         AddChild(_nodeContainer);
 
+        _siteUiLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("Map/SiteUI");
         GenerateMap();
+        RefreshNodeInteractivity();
         // CallDeferred("StartAnimation");
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_siteUiLayer == null)
+            return;
+
+        bool hasChildren = _siteUiLayer.GetChildCount() > 0;
+        if (hasChildren == _siteUiHasChildren)
+            return;
+
+        _siteUiHasChildren = hasChildren;
+        RefreshNodeInteractivity();
+    }
+
+    public void LockAllNodes()
+    {
+        _manualLock = true;
+        RefreshNodeInteractivity();
+    }
+
+    private void RefreshNodeInteractivity()
+    {
+        bool hasChildren = _siteUiLayer != null && _siteUiLayer.GetChildCount() > 0;
+        if (hasChildren)
+        {
+            _manualLock = false;
+            _siteUiHasChildren = true;
+        }
+        else
+        {
+            _siteUiHasChildren = false;
+        }
+
+        bool shouldDisable = _manualLock || hasChildren;
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (node == null)
+                    continue;
+                node.Button.Disabled = shouldDisable || node.State != LevelNode.LevelState.Unlocked;
+            }
+        }
     }
 
     private void GenerateMap()

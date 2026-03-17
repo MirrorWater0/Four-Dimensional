@@ -31,3 +31,25 @@ public partial class MendSlash : Skill
         );
     }
 }
+
+public partial class SwapSlash : Skill
+{
+    private const int BaseDamage = 10;
+
+    public SwapSlash()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "斩断裂隙";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            SwapPositionFriendlyStep(relativeIndexA: -1, relativeIndexB: 1)
+        );
+    }
+}

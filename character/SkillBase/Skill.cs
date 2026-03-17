@@ -76,9 +76,24 @@ public partial class Skill
 
     public virtual async Task Effect()
     {
+        if (OwnerCharater?.SkillBuffs != null)
+        {
+            var stun = OwnerCharater.SkillBuffs.FirstOrDefault(x =>
+                x != null && x.ThisBuffName == Buff.BuffName.Stun && x.Stack > 0
+            );
+            if (stun != null)
+            {
+                await stun.Trigger(this);
+                return;
+            }
+        }
+
         OwnerCharater.DisableSkill();
         OwnerCharater.BattleNode.UsedSkills.Add(this);
-
+        foreach (var buff in OwnerCharater.SkillBuffs)
+        {
+            await buff.Trigger(this);
+        }
         var plan = GetPlan();
         if (plan != null)
         {
@@ -349,6 +364,168 @@ public partial class Skill
         return allies[safeIndex];
     }
 
+    public async Task SwapPositionIndex(
+        Character first,
+        Character second,
+        float disappearDuration = 0.28f,
+        float moveDuration = 0.22f,
+        float appearDuration = 0.28f
+    )
+    {
+        if (first == null || second == null || first == second)
+            return;
+
+        var battle = first.BattleNode;
+        if (battle == null || second.BattleNode == null)
+            return;
+        if (!GodotObject.IsInstanceValid(battle) || battle != second.BattleNode)
+            return;
+        if (first.IsPlayer != second.IsPlayer)
+            return;
+
+        await Task.WhenAll(
+            TweenSpriteProgress(first, 1f, disappearDuration),
+            TweenSpriteProgress(second, 1f, disappearDuration)
+        );
+
+        int tempIndex = first.PositionIndex;
+        first.PositionIndex = second.PositionIndex;
+        second.PositionIndex = tempIndex;
+
+        SwapBattleOrder(battle, first, second);
+        Vector2 firstTarget = ComputeBattlePosition(first.PositionIndex, first.IsPlayer);
+        Vector2 secondTarget = ComputeBattlePosition(second.PositionIndex, second.IsPlayer);
+        UpdateZIndexByPosition(first);
+        UpdateZIndexByPosition(second);
+
+        await Task.WhenAll(
+            TweenCharacterPosition(first, firstTarget, moveDuration),
+            TweenCharacterPosition(second, secondTarget, moveDuration)
+        );
+        first.Position = firstTarget;
+        second.Position = secondTarget;
+        first.OriginalPosition = firstTarget;
+        second.OriginalPosition = secondTarget;
+
+        await Task.WhenAll(
+            TweenSpriteProgress(first, 0f, appearDuration),
+            TweenSpriteProgress(second, 0f, appearDuration)
+        );
+    }
+
+    private static async Task TweenSpriteProgress(Character character, float target, float duration)
+    {
+        if (character?.Sprite == null || !GodotObject.IsInstanceValid(character.Sprite))
+            return;
+
+        if (!TryGetProgressMaterial(character.Sprite, out ShaderMaterial material))
+            return;
+
+        Tween tween = character.CreateTween();
+        tween.TweenMethod(
+            Callable.From<float>(value => material.SetShaderParameter("progress", value)),
+            (float)material.GetShaderParameter("progress"),
+            target,
+            Math.Max(0f, duration)
+        );
+        await character.ToSignal(tween, "finished");
+    }
+
+    private static async Task TweenCharacterPosition(
+        Character character,
+        Vector2 target,
+        float duration
+    )
+    {
+        if (character == null || !GodotObject.IsInstanceValid(character))
+            return;
+
+        Tween tween = character.CreateTween();
+        tween.TweenProperty(character, "position", target, Math.Max(0f, duration));
+        await character.ToSignal(tween, "finished");
+    }
+
+    private static Vector2 ComputeBattlePosition(int positionIndex, bool isPlayer)
+    {
+        float bGapY = 140f;
+        float bGapX = 280f;
+        float bSkew = 10f;
+        int row = positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
+        int col = positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
+        int side = isPlayer ? -1 : 1;
+        float xPos = col * bGapX * side - (row * bSkew - 100 * (row - 1));
+        float yPos = row * bGapY;
+        return new Vector2(xPos, yPos);
+    }
+
+    private static void UpdateZIndexByPosition(Character character)
+    {
+        if (character == null)
+            return;
+
+        int row = character.PositionIndex > 0 ? (character.PositionIndex - 1) % 3 : 0;
+        character.ZIndex = row;
+    }
+
+    private static bool TryGetProgressMaterial(Node sprite, out ShaderMaterial material)
+    {
+        material = null;
+
+        if (sprite is CanvasItem canvas && canvas.Material is ShaderMaterial canvasMaterial)
+        {
+            material = canvasMaterial;
+            return true;
+        }
+
+        if (sprite.GetClass() == "SpineSprite")
+        {
+            Variant normalVariant = sprite.Get("normal_material");
+            if (normalVariant.VariantType == Variant.Type.Object)
+            {
+                material = normalVariant.As<ShaderMaterial>();
+                if (material != null)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void SwapBattleOrder(Battle battle, Character first, Character second)
+    {
+        if (battle == null || first == null || second == null)
+            return;
+
+        if (first.IsPlayer)
+        {
+            var list = battle.PlayersList;
+            if (first is not PlayerCharacter p1 || second is not PlayerCharacter p2)
+                return;
+
+            int firstIndex = list.IndexOf(p1);
+            int secondIndex = list.IndexOf(p2);
+            if (firstIndex < 0 || secondIndex < 0 || firstIndex == secondIndex)
+                return;
+
+            (list[firstIndex], list[secondIndex]) = (list[secondIndex], list[firstIndex]);
+            return;
+        }
+
+        var enemyList = battle.EnemiesList;
+        if (first is not EnemyCharacter e1 || second is not EnemyCharacter e2)
+            return;
+
+        int enemyFirstIndex = enemyList.IndexOf(e1);
+        int enemySecondIndex = enemyList.IndexOf(e2);
+        if (enemyFirstIndex < 0 || enemySecondIndex < 0 || enemyFirstIndex == enemySecondIndex)
+            return;
+
+        (enemyList[enemyFirstIndex], enemyList[enemySecondIndex]) = (
+            enemyList[enemySecondIndex],
+            enemyList[enemyFirstIndex]
+        );
+    }
+
     public async Task Attack1(int damage) //顺位一段攻击
     {
         damage = Math.Clamp(damage, 0, 9999);
@@ -451,6 +628,7 @@ public partial class Skill
             SkillID.SacredOnslaught => new SacredOnslaught(),
             SkillID.ResonantSlash => new ResonantSlash(),
             SkillID.EchoPuncture => new EchoPuncture(),
+            SkillID.BreakStrike => new BreakStrike(),
             SkillID.EchonicResonance => new EchonicResonance(),
             SkillID.SonicBoom => new SonicBoom(),
             SkillID.PhaseEcho => new PhaseEcho(),
@@ -469,10 +647,12 @@ public partial class Skill
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
             SkillID.MendSlash => new MendSlash(),
+            SkillID.SwapSlash => new SwapSlash(),
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
             SkillID.Sacrifice => new Sacrifice(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
+            SkillID.ShadowExecution => new ShadowExecution(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
@@ -480,9 +660,16 @@ public partial class Skill
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
             SkillID.Swift => new Swift(),
+            SkillID.StarWard => new StarWard(),
             SkillID.ArmonAttack => new ArmonAttack(),
             SkillID.ArmonSurvive => new ArmonSurvive(),
             SkillID.ArmonSpecial => new ArmonSpecial(),
+            SkillID.ArroganceAttack => new ArroganceAttack(),
+            SkillID.ArroganceSurvive => new ArroganceSurvive(),
+            SkillID.ArroganceSpecial => new ArroganceSpecial(),
+            SkillID.AlienBodyAttack => new AlienBodyAttack(),
+            SkillID.AlienBodySurvive => new AlienBodySurvive(),
+            SkillID.AlienBodySpecial => new AlienBodySpecial(),
             _ => null,
         };
     }
@@ -498,6 +685,7 @@ public enum SkillID
     SacredOnslaught,
     ResonantSlash,
     EchoPuncture,
+    BreakStrike,
     EchonicResonance,
     SonicBoom,
     PhaseEcho,
@@ -520,6 +708,7 @@ public enum SkillID
     FinalGuard,
     RebirthPrayer,
     ShadowAmbush,
+    ShadowExecution,
     VeilStep,
     TempoSurge,
     Sacrifice,
@@ -528,7 +717,15 @@ public enum SkillID
     FlashOfLight,
     CrystalGuard,
     Swift,
+    StarWard,
     ArmonAttack,
     ArmonSurvive,
     ArmonSpecial,
+    ArroganceAttack,
+    ArroganceSurvive,
+    ArroganceSpecial,
+    AlienBodyAttack,
+    AlienBodySurvive,
+    AlienBodySpecial,
+    SwapSlash,
 }

@@ -37,6 +37,7 @@ public partial class Map : Control
     private Vector2 _dragStartCameraPos = Vector2.Zero;
     Vector2 _velocity = Vector2.Zero;
     private Vector2 _dragVelocity = Vector2.Zero;
+    private ulong _wheelHandledFrame = ulong.MaxValue;
     ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
@@ -44,6 +45,21 @@ public partial class Map : Control
     public override void _Process(double delta)
     {
         float dt = (float)delta;
+        ulong frame = Engine.GetProcessFrames();
+
+        if (_wheelHandledFrame != frame)
+        {
+            if (Input.IsActionJustPressed("Wheelup"))
+            {
+                ApplyWheelMove(-WheelStep);
+                _wheelHandledFrame = frame;
+            }
+            else if (Input.IsActionJustPressed("Wheeldown"))
+            {
+                ApplyWheelMove(WheelStep);
+                _wheelHandledFrame = frame;
+            }
+        }
 
         if (_isDrag)
         {
@@ -99,7 +115,9 @@ public partial class Map : Control
         }
 
         bool isTargetOutOfBoundary = !Camera.IsInsideBoundary(_targetPos);
-        Vector2 desiredTarget = isTargetOutOfBoundary ? Camera.ClampToBoundary(_targetPos) : _targetPos;
+        Vector2 desiredTarget = isTargetOutOfBoundary
+            ? Camera.ClampToBoundary(_targetPos)
+            : _targetPos;
 
         if (isTargetOutOfBoundary)
         {
@@ -120,10 +138,12 @@ public partial class Map : Control
             _velocity.X = 0;
         }
 
-        if (!_isDrag
+        if (
+            !_isDrag
             && isTargetOutOfBoundary
             && _velocity.LengthSquared() < 0.25f
-            && Camera.GlobalPosition.DistanceSquaredTo(desiredTarget) < 0.25f)
+            && Camera.GlobalPosition.DistanceSquaredTo(desiredTarget) < 0.25f
+        )
         {
             SetCameraPosition(desiredTarget);
             _velocity = Vector2.Zero;
@@ -137,25 +157,16 @@ public partial class Map : Control
             if (mouseButton.ButtonIndex == MouseButton.WheelUp)
             {
                 ApplyWheelMove(-WheelStep);
+                _wheelHandledFrame = Engine.GetProcessFrames();
                 return;
             }
 
             if (mouseButton.ButtonIndex == MouseButton.WheelDown)
             {
                 ApplyWheelMove(WheelStep);
+                _wheelHandledFrame = Engine.GetProcessFrames();
                 return;
             }
-        }
-
-        // Keep compatibility if project also binds wheel to custom input actions.
-        if (Input.IsActionPressed("Wheelup"))
-        {
-            ApplyWheelMove(-WheelStep);
-        }
-
-        if (Input.IsActionPressed("Wheeldown"))
-        {
-            ApplyWheelMove(WheelStep);
         }
     }
 

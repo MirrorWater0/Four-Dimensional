@@ -4,7 +4,9 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
-    int Count = 0;
+    private const int TriggerCount = 3;
+    private int Count = 0;
+    private string _basePassiveDescription;
     public override string CharacterName { get; set; } = "Evil";
 
     // Called when the node enters the scene tree for the first time.
@@ -15,31 +17,36 @@ public partial class Evil : EnemyCharacter
 
     public override void Initialize()
     {
-        if (Registry == null)
-        {
-            SetCombatStats(15, 15, 13, 50);
-            Skills = [new EvilAttack(), new EvilSurvive(), new EvilTermin()];
-        }
-
         base.Initialize();
-        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
+        _basePassiveDescription ??= PassiveDescription ?? string.Empty;
+        UpdatePassiveDescription();
         UpdataEnergy(1);
+        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
     }
 
     public override void StartAction()
     {
         Count++;
         Passive(null);
+        UpdatePassiveDescription();
         base.StartAction();
     }
 
     public override void Passive(Skill skill)
     {
-        if (Count == 2)
+        if (Count >= TriggerCount)
         {
             Count = 0;
             DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
         }
+    }
+
+    private void UpdatePassiveDescription()
+    {
+        if (string.IsNullOrWhiteSpace(_basePassiveDescription))
+            _basePassiveDescription = PassiveDescription ?? string.Empty;
+
+        PassiveDescription = $"{_basePassiveDescription}\n当前计数：{Count}/{TriggerCount}";
     }
 }
 
@@ -105,12 +112,8 @@ public partial class EvilTermin : Skill
             AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
             EnergyTimesWhileStep(
                 energyCost: EnergyCostPerHit,
-                loopSteps:
-                [
-                    AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
-                ]
+                loopSteps: [AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999)]
             )
         );
     }
 }
-

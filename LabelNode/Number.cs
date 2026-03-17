@@ -214,7 +214,7 @@ public partial class Number : Node2D
         Vector2 margin = half + new Vector2(ViewportPadding, ViewportPadding);
         Vector2 end = visible.Position + visible.Size;
 
-        Transform2D canvas = viewport.GetCanvasTransform();
+        Transform2D canvas = GetCanvasTransform();
         Transform2D inverse = canvas.AffineInverse();
         Vector2 viewPos = canvas * globalPos;
         float x = Mathf.Clamp(viewPos.X, visible.Position.X + margin.X, end.X - margin.X);

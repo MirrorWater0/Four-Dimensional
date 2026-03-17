@@ -102,13 +102,13 @@ public partial class FearWormTermin : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(PropertyType.Power, PowerDown),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Stun,
                 stacks: StunStacks,
                 maxTargets: 1,
                 energyCost: Cost
             ),
+            LowerTargetPropertyStep(PropertyType.Power, PowerDown),
             AttackPrimaryStep(BaseDamage)
         );
     }

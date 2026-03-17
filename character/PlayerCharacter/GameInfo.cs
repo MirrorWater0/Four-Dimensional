@@ -8,7 +8,7 @@ using Godot;
 public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
-    public static int Seed = 1223;
+    public static int Seed = 3223;
     public static int ElectricityCoin;
     public static int TransitionEnergy;
     public static int TransitionEnergyMax;

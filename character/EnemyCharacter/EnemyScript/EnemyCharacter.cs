@@ -44,11 +44,6 @@ public partial class EnemyCharacter : Character
     public override async void StartAction()
     {
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
-        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
-        {
-            base.StartAction();
-            return;
-        }
         base.StartAction();
 
         await DisappearIntention();
@@ -61,9 +56,12 @@ public partial class EnemyCharacter : Character
         IntentionIndex = BattleNode.BattleIntentionRandom.Next(0, Skills.Length);
         DisplayIntention();
 
-        BattleNode.EnemySpeed += BattleNode
-            .EnemiesList.Where(x => x.State != CharacterState.Dying)
-            .Sum(x => x.Speed);
+        if (BattleNode?.SuppressSpeedGainThisTurn != true)
+        {
+            BattleNode.EnemySpeed += BattleNode
+                .EnemiesList.Where(x => x.State != CharacterState.Dying)
+                .Sum(x => x.Speed);
+        }
         base.EndAction();
     }
 

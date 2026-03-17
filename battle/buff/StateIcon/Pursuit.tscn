@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://g6ha5r3sea6a"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_n5hp7"]
+[ext_resource type="Shader" uid="uid://dhvx1ugd3mdpi" path="res://shader/Icon/BuffIcon/Moon.gdshader" id="2_peaa8"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8ookd"]
+shader = ExtResource("2_peaa8")
+shader_parameter/moon_color = Color(0.93, 0.6355, 0, 1)
+shader_parameter/offset = 0.2
+shader_parameter/radius = 0.4
+shader_parameter/smoothness = 0.0370000017575
+
+[node name="Pursuit" unique_id=1043864828 instance=ExtResource("1_n5hp7")]
+material = SubResource("ShaderMaterial_8ookd")

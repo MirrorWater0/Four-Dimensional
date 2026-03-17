@@ -55,7 +55,7 @@ public partial class Armon : EnemyCharacter
 public partial class ArmonAttack : Skill
 {
     private const int BaseDamage = 20;
-    private const int SelfPowerGain = 4;
+    private const int SelfPowerGain = 2;
     private const int SelfSurvivabilityGain = 2;
 
     public ArmonAttack()
@@ -71,8 +71,8 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseDamage),
-            RelativeAllyBlockStep(-1),
-            RelativeAllyBlockStep(1),
+            RelativeAllyBlockStep(-1, dyingFilter: false),
+            RelativeAllyBlockStep(1, dyingFilter: false),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
@@ -107,8 +107,8 @@ public partial class ArmonSurvive : Skill
 public partial class ArmonSpecial : Skill
 {
     private const int BaseBlock = 13;
-    private const int PowerGainPerEnergy = 5;
-    private const int SurvivabilityGainPerEnergy = 8;
+    private const int PowerGainPerEnergy = 4;
+    private const int SurvivabilityGainPerEnergy = 7;
 
     public ArmonSpecial()
         : base(SkillTypes.Special)

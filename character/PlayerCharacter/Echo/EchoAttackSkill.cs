@@ -102,3 +102,36 @@ public partial class EchoPuncture : Skill
         );
     }
 }
+
+public partial class BreakStrike : Skill
+{
+    private const int BaseDamage = 5;
+
+    public BreakStrike()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "破击";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            CustomStep(
+                _ =>
+                {
+                    var targets = Chosetarget1();
+                    var target = targets[0];
+                    if (target.Block > 0)
+                        target.UpdataBlock(-target.Block);
+
+                    return Task.CompletedTask;
+                },
+                _ => new[] { "去掉目标的格挡。" }
+            ),
+            AttackPrimaryStep(baseDamage: BaseDamage)
+        );
+    }
+}

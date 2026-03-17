@@ -63,7 +63,7 @@ public partial class Relic
                 List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
                 {
-                    list.Add(battle.EnemiesList[i].GetHurt(25));
+                    list.Add(battle.EnemiesList[i].GetHurt(40));
                 }
                 await Task.WhenAll(list);
                 Num--;
@@ -97,7 +97,7 @@ public partial class Relic
     {
         return relicID switch
         {
-            RelicID.Blessing => "战斗开始时对所有敌人造成25伤害。",
+            RelicID.Blessing => $"战斗开始时对所有敌人造成{40}伤害。",
             _ => "负面遗物，暂无效果。",
         };
     }

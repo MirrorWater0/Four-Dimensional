@@ -10,6 +10,7 @@ public partial class PlayerCharacter : Character
     public Control SkillButtonControl;
     public List<Skill> UntakeSkills;
     public bool Istest;
+    public int CharacterIndex;
 
     public override void Initialize()
     {
@@ -63,12 +64,6 @@ public partial class PlayerCharacter : Character
 
     public override void StartAction()
     {
-        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Stun))
-        {
-            base.StartAction();
-            return;
-        }
-
         base.StartAction();
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {
@@ -84,9 +79,12 @@ public partial class PlayerCharacter : Character
     public override void EndAction()
     {
         SelfFrame.Selected.Visible = false;
-        BattleNode.PlayerSpeed += BattleNode
-            .PlayersList.Where(x => x.State != CharacterState.Dying)
-            .Sum(x => x.Speed);
+        if (BattleNode?.SuppressSpeedGainThisTurn != true)
+        {
+            BattleNode.PlayerSpeed += BattleNode
+                .PlayersList.Where(x => x.State != CharacterState.Dying)
+                .Sum(x => x.Speed);
+        }
 
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();

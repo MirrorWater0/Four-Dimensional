@@ -88,3 +88,31 @@ public partial class Swift : Skill
     }
 }
 
+public partial class StarWard : Skill
+{
+    private const int BaseBlock = 15;
+    private const int ExtraPowerStacks = 2;
+
+    public StarWard()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "星辉守势";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            SelfBlockStep(baseBlock: BaseBlock, survivabilityMultiplier: 0),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraPower,
+                stacks: ExtraPowerStacks,
+                index: 0,
+                dyingFilter: false
+            )
+        );
+    }
+}
+

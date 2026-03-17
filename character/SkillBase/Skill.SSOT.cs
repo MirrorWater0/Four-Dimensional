@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 // - AoeDamageStep: 群体伤害（按 Chosetarget1 顺序命中前N名）。
 // - ApplyBuffHostile: 对敌方施加Buff（buffName/stacks/maxTargets/energyCost）。
 // - ApplyBuffAll: 对全阵施加Buff（buffName/stacks/targetCamp/dyingFilter/energyCost）。
-// - LowerTargetPropertyStep: 下降前N名目标属性（type/value/maxTargets）。
+// - LowerTargetPropertyStep: 下降前N名目标属性（type/value/maxTargets/permanent）。
 // - ModifyPropertyStep: 按相对位调整友方属性（type/value/index；value正增负减）。
 // - ModifyPropertyAbsoluteStep: 按绝对位调整友方属性（type/value/selector；支持全阵，value正增负减）。
 // - ApplyBuffFriendly: 对友方相对位施加Buff（buffName/stacks/index/dyingFilter/energyCost）。
@@ -23,10 +23,11 @@ using System.Threading.Tasks;
 // - SelfBlockStep: 自身获得格挡。
 // - RelativeAllyBlockStep: 相对位队友获得格挡（0自己、-1前一位、+1后一位...；可选非濒死过滤）。
 // - CarryRelativeAllyStep: 连携相对位队友释放指定技能（+n下n位，-n上n位；index:0攻击/1生存/2特殊）。
+// - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
 // - EnergyStep: 改变自身能量。
 // - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
 // - EnergyTimesWhileStep: while循环（按EnergyTimesGate条件判定；条件满足时循环执行循环体step）。
-// - BlockStrikeAlignedTargetStep: 获得格挡并打击对位目标。
+// - ConditionStep: 条件执行（condition/steps/conditionDescription）。
 // - TextStep: 仅描述文本（不执行效果）。
 // - CustomStep: 自定义执行/描述兜底步骤。
 public partial class Skill
@@ -34,6 +35,7 @@ public partial class Skill
     private SkillPlan _cachedPlan;
     private bool _stopRemainingPlanExecution;
     private readonly Dictionary<string, Character> _absoluteFriendlyTargetBinds = new();
+    private readonly Dictionary<string, Character> _hostileTargetBinds = new();
 
     public enum AbsoluteFriendlySelector
     {
@@ -123,6 +125,42 @@ public partial class Skill
         return selected;
     }
 
+    private Character ResolveHostileTarget(string targetKey)
+    {
+        if (!string.IsNullOrWhiteSpace(targetKey))
+        {
+            if (_hostileTargetBinds.TryGetValue(targetKey, out Character cached))
+            {
+                if (cached != null)
+                    return cached;
+            }
+        }
+
+        Character selected = null;
+        var targets = Chosetarget1();
+        if (targets.Length > 0)
+            selected = targets[0];
+
+        if (!string.IsNullOrWhiteSpace(targetKey))
+        {
+            if (selected == null)
+                _hostileTargetBinds.Remove(targetKey);
+            else
+                _hostileTargetBinds[targetKey] = selected;
+        }
+
+        return selected;
+    }
+
+    protected Character GetHostileTargetBind(string targetKey)
+    {
+        if (string.IsNullOrWhiteSpace(targetKey))
+            return null;
+
+        _hostileTargetBinds.TryGetValue(targetKey, out Character cached);
+        return cached;
+    }
+
     protected sealed class SkillPlan
     {
         private readonly Skill _skill;
@@ -138,6 +176,7 @@ public partial class Skill
         {
             _skill._stopRemainingPlanExecution = false;
             _skill._absoluteFriendlyTargetBinds.Clear();
+            _skill._hostileTargetBinds.Clear();
             for (int i = 0; i < _steps.Length; i++)
             {
                 if (_skill._stopRemainingPlanExecution)
@@ -146,6 +185,7 @@ public partial class Skill
             }
             _skill._stopRemainingPlanExecution = false;
             _skill._absoluteFriendlyTargetBinds.Clear();
+            _skill._hostileTargetBinds.Clear();
         }
 
         public string[] DescribeLines()
@@ -173,8 +213,9 @@ public partial class Skill
         int powerMultiplier = 1,
         string prefix = "造成",
         string suffix = "点伤害。",
-        int clampMax = 9999
-    ) => new AttackPrimarySkillStep(baseDamage, powerMultiplier, prefix, suffix, clampMax);
+        int clampMax = 9999,
+        string targetKey = null
+    ) => new AttackPrimarySkillStep(baseDamage, powerMultiplier, prefix, suffix, clampMax, targetKey);
 
     protected SkillStep DoubleStrikeStep(
         int baseDamage = 0,
@@ -182,7 +223,8 @@ public partial class Skill
         string prefix = "每段造成",
         string suffix = "点伤害。",
         int clampMax = 9999,
-        bool includeTwoHitText = true
+        bool includeTwoHitText = true,
+        string targetKey = null
     ) =>
         new DoubleStrikeSkillStep(
             baseDamage,
@@ -190,7 +232,8 @@ public partial class Skill
             prefix,
             suffix,
             clampMax,
-            includeTwoHitText
+            includeTwoHitText,
+            targetKey
         );
 
     protected SkillStep AoeDamageStep(
@@ -216,8 +259,12 @@ public partial class Skill
         int energyCost = 0
     ) => new ApplyBuffAllSkillStep(buffName, stacks, targetCamp, dyingFilter, energyCost);
 
-    protected SkillStep LowerTargetPropertyStep(PropertyType type, int value, int maxTargets = 1) =>
-        new LowerTargetPropertySkillStep(type, value, maxTargets);
+    protected SkillStep LowerTargetPropertyStep(
+        PropertyType type,
+        int value,
+        int maxTargets = 1,
+        bool permanent = false
+    ) => new LowerTargetPropertySkillStep(type, value, maxTargets, permanent);
 
     protected SkillStep ApplyBuffFriendly(
         Buff.BuffName buffName,
@@ -337,6 +384,21 @@ public partial class Skill
             descriptionLine
         );
 
+    protected SkillStep SwapPositionFriendlyStep(
+        int relativeIndexA,
+        int relativeIndexB,
+        bool dyingFilter = true,
+        bool describe = true,
+        string descriptionLine = null
+    ) =>
+        new SwapPositionFriendlySkillStep(
+            relativeIndexA,
+            relativeIndexB,
+            dyingFilter,
+            describe,
+            descriptionLine
+        );
+
     protected SkillStep EnergyStep(int delta) => new EnergySkillStep(delta);
 
     protected SkillStep EnergyTimesGateStep(
@@ -353,6 +415,12 @@ public partial class Skill
         params SkillStep[] loopSteps
     ) => new EnergyTimesWhileSkillStep(energyCost, times, setTimes, loopSteps);
 
+    protected SkillStep ConditionStep(
+        Func<bool> condition,
+        string conditionDescription,
+        params SkillStep[] onPassSteps
+    ) => new ConditionSkillStep(condition, conditionDescription, onPassSteps);
+
     protected SkillStep TextStep(string line) => new TextSkillStep(line);
 
     protected SkillStep CustomStep(
@@ -367,13 +435,15 @@ public partial class Skill
         private readonly string _prefix;
         private readonly string _suffix;
         private readonly int _clampMax;
+        private readonly string _targetKey;
 
         public AttackPrimarySkillStep(
             int baseDamage,
             int powerMultiplier,
             string prefix,
             string suffix,
-            int clampMax
+            int clampMax,
+            string targetKey
         )
         {
             _baseDamage = baseDamage;
@@ -381,11 +451,21 @@ public partial class Skill
             _prefix = prefix;
             _suffix = suffix;
             _clampMax = clampMax;
+            _targetKey = targetKey;
         }
 
         public override async Task Execute(Skill skill)
         {
             int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
+            if (!string.IsNullOrWhiteSpace(_targetKey))
+            {
+                var target = skill.ResolveHostileTarget(_targetKey);
+                if (target == null)
+                    return;
+                await AttackTargetOnce(skill, target, damage);
+                return;
+            }
+
             await skill.Attack1(damage);
         }
 
@@ -409,6 +489,7 @@ public partial class Skill
         private readonly string _suffix;
         private readonly int _clampMax;
         private readonly bool _includeTwoHitText;
+        private readonly string _targetKey;
 
         public DoubleStrikeSkillStep(
             int baseDamage,
@@ -416,7 +497,8 @@ public partial class Skill
             string prefix,
             string suffix,
             int clampMax,
-            bool includeTwoHitText
+            bool includeTwoHitText,
+            string targetKey
         )
         {
             _baseDamage = baseDamage;
@@ -425,11 +507,21 @@ public partial class Skill
             _suffix = suffix;
             _clampMax = clampMax;
             _includeTwoHitText = includeTwoHitText;
+            _targetKey = targetKey;
         }
 
         public override async Task Execute(Skill skill)
         {
             int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
+            if (!string.IsNullOrWhiteSpace(_targetKey))
+            {
+                var target = skill.ResolveHostileTarget(_targetKey);
+                if (target == null)
+                    return;
+                await AttackTargetDoubleStrike(skill, target, damage);
+                return;
+            }
+
             await skill.Attack2(damage);
         }
 
@@ -501,12 +593,19 @@ public partial class Skill
         private readonly PropertyType _type;
         private readonly int _value;
         private readonly int _maxTargets;
+        private readonly bool _permanent;
 
-        public LowerTargetPropertySkillStep(PropertyType type, int value, int maxTargets)
+        public LowerTargetPropertySkillStep(
+            PropertyType type,
+            int value,
+            int maxTargets,
+            bool permanent
+        )
         {
             _type = type;
             _value = value;
             _maxTargets = maxTargets;
+            _permanent = permanent;
         }
 
         public override async Task Execute(Skill skill)
@@ -524,7 +623,17 @@ public partial class Skill
             {
                 if (targets[i] == null)
                     continue;
+                bool tryPermanent = _permanent && targets[i] is PlayerCharacter;
+                int before = 0;
+                if (tryPermanent)
+                    before = GetPropertyValue(targets[i], _type);
                 await targets[i].DescendingProperties(_type, loss);
+                if (tryPermanent)
+                {
+                    int after = GetPropertyValue(targets[i], _type);
+                    if (after != before)
+                        ApplyPermanentPropertyLoss(targets[i], _type, loss);
+                }
             }
         }
 
@@ -536,12 +645,68 @@ public partial class Skill
 
             string loseText = LosePropertyText(_type, loss);
             if (_maxTargets == 1)
-                yield return $"下降目标{loseText}。";
+                yield return $"下降目标{loseText}{PermanentTag()}。";
             else if (_maxTargets <= 0)
-                yield return $"下降所有命中目标{loseText}。";
+                yield return $"下降所有命中目标{loseText}{PermanentTag()}。";
             else
-                yield return $"下降至多{_maxTargets}名目标{loseText}。";
+                yield return $"下降至多{_maxTargets}名目标{loseText}{PermanentTag()}。";
         }
+
+        private string PermanentTag()
+        {
+            return _permanent ? "（永久）" : string.Empty;
+        }
+    }
+
+    private static void ApplyPermanentPropertyLoss(Character target, PropertyType type, int loss)
+    {
+        if (loss <= 0)
+            return;
+
+        if (target is not PlayerCharacter player)
+            return;
+
+        if (GameInfo.PlayerCharacters == null || GameInfo.PlayerCharacters.Length == 0)
+            return;
+
+        int index = player.CharacterIndex;
+        if (index < 0 || index >= GameInfo.PlayerCharacters.Length)
+            return;
+
+        PlayerInfoStructure info = GameInfo.PlayerCharacters[index];
+        switch (type)
+        {
+            case PropertyType.Power:
+                info.Power -= loss;
+                break;
+            case PropertyType.Survivability:
+                info.Survivability -= loss;
+                break;
+            case PropertyType.Speed:
+                info.Speed -= loss;
+                break;
+            case PropertyType.MaxLife:
+                info.LifeMax -= loss;
+                break;
+            default:
+                return;
+        }
+        GameInfo.PlayerCharacters[index] = info;
+    }
+
+    private static int GetPropertyValue(Character target, PropertyType type)
+    {
+        if (target == null)
+            return 0;
+
+        return type switch
+        {
+            PropertyType.Power => target.BattlePower,
+            PropertyType.Survivability => target.BattleSurvivability,
+            PropertyType.Speed => target.Speed,
+            PropertyType.MaxLife => target.BattleMaxLife,
+            _ => 0,
+        };
     }
 
     private static bool TryApplyBuffToTarget(Buff.BuffName buffName, Character target, int stacks)
@@ -560,10 +725,17 @@ public partial class Skill
                 HurtBuff.BuffAdd(buffName, target, stacks);
                 return true;
             case Buff.BuffName.Stun:
+                SkillBuff.BuffAdd(buffName, target, stacks);
+                return true;
+            case Buff.BuffName.Pursuit:
+                EndActionBuff.BuffAdd(buffName, target, stacks);
+                return true;
             case Buff.BuffName.Invisible:
                 StartActionBuff.BuffAdd(buffName, target, stacks);
                 return true;
             case Buff.BuffName.DebuffImmunity:
+            case Buff.BuffName.ExtraPower:
+            case Buff.BuffName.ExtraSurvivability:
                 SpecialBuff.BuffAdd(buffName, target, stacks);
                 return true;
             default:
@@ -989,7 +1161,7 @@ public partial class Skill
             if (target == null)
                 return Task.CompletedTask;
 
-            int heal = skill.HealFromSurvivability(_baseHeal, _survivabilityMultiplier, _clampMax);
+            int heal = Math.Clamp(_baseHeal, 0, _clampMax);
             target.Recover(heal, rebirth: _rebirth);
             return Task.CompletedTask;
         }
@@ -997,11 +1169,8 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             string targetText = RelativeFriendlyTargetText(_index, _dyingFilter);
-            string healText = skill.HealFromSurvivabilityText(
-                _baseHeal,
-                _survivabilityMultiplier,
-                _clampMax
-            );
+            int heal = Math.Clamp(_baseHeal, 0, _clampMax);
+            string healText = heal.ToString();
             string line = $"使{targetText}回复{healText}点生命。";
             if (_rebirth)
                 line += "（可对濒死目标生效）";
@@ -1107,7 +1276,7 @@ public partial class Skill
             if (target == null)
                 return Task.CompletedTask;
 
-            int heal = skill.HealFromSurvivability(_baseHeal, _survivabilityMultiplier, _clampMax);
+            int heal = Math.Clamp(_baseHeal, 0, _clampMax);
             target.Recover(heal, rebirth: _rebirth);
             return Task.CompletedTask;
         }
@@ -1115,11 +1284,8 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             string targetText = AbsoluteFriendlySelectorText(_selector);
-            string healText = skill.HealFromSurvivabilityText(
-                _baseHeal,
-                _survivabilityMultiplier,
-                _clampMax
-            );
+            int heal = Math.Clamp(_baseHeal, 0, _clampMax);
+            string healText = heal.ToString();
             string line = $"使{targetText}回复{healText}点生命。";
             string priorityText = AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth);
             if (!string.IsNullOrWhiteSpace(priorityText))
@@ -1462,6 +1628,84 @@ public partial class Skill
         }
     }
 
+    private sealed class SwapPositionFriendlySkillStep : SkillStep
+    {
+        private readonly int _relativeIndexA;
+        private readonly int _relativeIndexB;
+        private readonly bool _dyingFilter;
+        private readonly bool _describe;
+        private readonly string _descriptionLine;
+
+        public SwapPositionFriendlySkillStep(
+            int relativeIndexA,
+            int relativeIndexB,
+            bool dyingFilter,
+            bool describe,
+            string descriptionLine
+        )
+        {
+            _relativeIndexA = relativeIndexA;
+            _relativeIndexB = relativeIndexB;
+            _dyingFilter = dyingFilter;
+            _describe = describe;
+            _descriptionLine = descriptionLine;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            if (skill?.OwnerCharater?.BattleNode == null)
+                return;
+
+            var first = skill.GetAllyByRelative(_relativeIndexA, dyingFilter: _dyingFilter);
+            var second = skill.GetAllyByRelative(_relativeIndexB, dyingFilter: _dyingFilter);
+            if (first == null || second == null || first == second)
+                return;
+
+            await skill.SwapPositionIndex(first, second);
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (!_describe)
+                yield break;
+
+            if (!string.IsNullOrWhiteSpace(_descriptionLine))
+            {
+                string line = _descriptionLine;
+                if (_dyingFilter && line.Contains("非濒死", StringComparison.Ordinal) == false)
+                {
+                    line = $"{line}（目标为非濒死）";
+                }
+                yield return line;
+                yield break;
+            }
+
+            string firstText = _relativeIndexA switch
+            {
+                0 => "自己",
+                1 => "下一位",
+                -1 => "上一位",
+                > 1 => $"下{_relativeIndexA}位",
+                _ => $"上{-_relativeIndexA}位",
+            };
+            if (_dyingFilter)
+                firstText = $"非濒死{firstText}";
+
+            string secondText = _relativeIndexB switch
+            {
+                0 => "自己",
+                1 => "下一位",
+                -1 => "上一位",
+                > 1 => $"下{_relativeIndexB}位",
+                _ => $"上{-_relativeIndexB}位",
+            };
+            if (_dyingFilter)
+                secondText = $"非濒死{secondText}";
+
+            yield return $"交换{firstText}与{secondText}的位置。";
+        }
+    }
+
     private sealed class EnergySkillStep : SkillStep
     {
         private readonly int _delta;
@@ -1646,6 +1890,87 @@ public partial class Skill
         }
 
         return true;
+    }
+
+    private static async Task AttackTargetOnce(Skill skill, Character target, int damage)
+    {
+        if (skill == null || target == null)
+            return;
+
+        int clamped = Math.Clamp(damage, 0, 9999);
+        await skill.AttackAnimation(target);
+        await target.GetHurt(clamped);
+        await Task.Delay(100);
+    }
+
+    private static async Task AttackTargetDoubleStrike(Skill skill, Character target, int damage)
+    {
+        if (skill == null || target == null)
+            return;
+
+        int clamped = Math.Clamp(damage, 0, 9999);
+        await skill.AttackAnimation(target);
+        await target.GetHurt(clamped);
+        await Task.Delay(100);
+        if (target.State != Character.CharacterState.Normal)
+            return;
+
+        var attack2 = AttackScene.Instantiate() as AttackEffect;
+        target.AddChild(attack2);
+        attack2.AnimationPlayer0.Play("Attack1");
+        attack2.GlobalPosition = target.GlobalPosition;
+        await target.GetHurt(clamped);
+    }
+
+    private sealed class ConditionSkillStep : SkillStep
+    {
+        private readonly Func<bool> _condition;
+        private readonly string _conditionDescription;
+        private readonly SkillStep[] _onPassSteps;
+
+        public ConditionSkillStep(
+            Func<bool> condition,
+            string conditionDescription,
+            SkillStep[] onPassSteps
+        )
+        {
+            _condition = condition;
+            _conditionDescription = conditionDescription;
+            _onPassSteps = onPassSteps ?? Array.Empty<SkillStep>();
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            if (_onPassSteps.Length == 0)
+                return;
+
+            bool pass = _condition?.Invoke() == true;
+            if (!pass)
+                return;
+
+            for (int i = 0; i < _onPassSteps.Length; i++)
+            {
+                await _onPassSteps[i].Execute(skill);
+                if (skill._stopRemainingPlanExecution)
+                    return;
+            }
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (_onPassSteps.Length == 0)
+                yield break;
+
+            if (!string.IsNullOrWhiteSpace(_conditionDescription))
+                yield return $"若{_conditionDescription}：";
+
+            for (int i = 0; i < _onPassSteps.Length; i++)
+            {
+                IEnumerable<string> lines = _onPassSteps[i].Describe(skill) ?? Array.Empty<string>();
+                foreach (string line in lines.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    yield return $"生效：{line}";
+            }
+        }
     }
 
 

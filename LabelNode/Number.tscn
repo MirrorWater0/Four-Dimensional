@@ -36,7 +36,7 @@ void fragment() {
     vec3 result = mix(normal_blend, add_blend, is_text);
 
     // 输出最终颜色，Alpha 设为 1（因为我们已经手动混合了背景）
-    COLOR = vec4(result, tex_data.a); 
+    COLOR *= vec4(result, tex_data.a); 
 }
 "
 
@@ -47,7 +47,6 @@ shader = SubResource("Shader_80rvk")
 script = ExtResource("1_au4bt")
 
 [node name="Label" type="Label" parent="." unique_id=1397386024]
-self_modulate = Color(0.9, 0.9, 0.9, 1)
 material = SubResource("ShaderMaterial_mujro")
 offset_left = -138.0
 offset_top = 23.0

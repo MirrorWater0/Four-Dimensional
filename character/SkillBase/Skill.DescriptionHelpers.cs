@@ -48,22 +48,6 @@ public partial class Skill
         );
     }
 
-    protected string HealFromSurvivabilityText(
-        int baseHeal = 0,
-        int survivabilityMultiplier = 1,
-        int clampMax = 999
-    )
-    {
-        int totalHeal = baseHeal + OwnerSurvivability * survivabilityMultiplier;
-        return BasePlusXWithBattleTotal(
-            baseHeal,
-            totalHeal,
-            StatX.Survivability,
-            xMultiplier: survivabilityMultiplier,
-            clampMax: clampMax
-        );
-    }
-
     protected static string GainPropertyText(PropertyType type, int value) =>
         $"+{value}{GetColoredPropertyLabel(type)}";
 

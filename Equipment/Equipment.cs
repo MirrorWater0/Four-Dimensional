@@ -85,7 +85,7 @@ public partial class Equipment
             Power = 0,
             Survivability = 0,
             Speed = 0,
-            MaxLife = 15,
+            MaxLife = 12,
             Description = "展开后形成缓冲屏障，直接抬升生命上限。",
         },
     ];
