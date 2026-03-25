@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://c0pyjc4sh3cmq"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_7gqmj"]
+[ext_resource type="Shader" uid="uid://dnijq7is7ufn6" path="res://shader/Icon/BuffIcon/AutoArmor.gdshader" id="2_xynrs"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7ftm3"]
+shader = ExtResource("2_xynrs")
+shader_parameter/block_color = Color(0.6, 0.8, 1, 1)
+shader_parameter/bg_color = Color(0, 0, 0, 0)
+shader_parameter/scale = 0.8
+shader_parameter/gap = 0.05
+shader_parameter/margin = 0.02
+
+[node name="AutoArmor" unique_id=1043864828 instance=ExtResource("1_7gqmj")]
+material = SubResource("ShaderMaterial_7ftm3")

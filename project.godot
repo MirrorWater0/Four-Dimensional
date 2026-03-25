@@ -42,6 +42,8 @@ naming/scene_name_casing=1
 folder_colors={
 "res://Equipment/": "orange",
 "res://Event/": "blue",
+"res://Relic/": "gray",
+"res://Shop/": "teal",
 "res://asset/": "pink",
 "res://battle/": "purple",
 "res://battle/buff/": "green",
@@ -49,7 +51,8 @@ folder_colors={
 "res://character/": "green",
 "res://character/EnemyCharacter/": "red",
 "res://character/PlayerCharacter/": "blue",
-"res://character/SkillBase/": "yellow"
+"res://character/SkillBase/": "yellow",
+"res://shader/": "red"
 }
 
 [global]

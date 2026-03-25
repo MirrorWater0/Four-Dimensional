@@ -1,10 +1,14 @@
 [gd_scene format=3 uid="uid://dqf2r5pl8xw26"]
 
-[ext_resource type="Shader" uid="uid://dltc2hb36u48" path="res://shader/Icon/RelicIcon/Point.gdshader" id="1_00jhh"]
+[ext_resource type="Shader" uid="uid://c33mj8ngeoswj" path="res://shader/Icon/RelicIcon/Triangle.gdshader" id="1_00jhh"]
 [ext_resource type="Theme" uid="uid://8fh7uawwnl5m" path="res://battle/buff/IconLabel.tres" id="1_2gt0m"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2gt0m"]
 shader = ExtResource("1_00jhh")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/size = 0.5
+shader_parameter/thickness = 0.02
+shader_parameter/smoothing = 0.01
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_00jhh"]
 bg_color = Color(0.105882354, 0.105882354, 0.105882354, 0)

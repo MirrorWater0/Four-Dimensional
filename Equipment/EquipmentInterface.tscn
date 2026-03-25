@@ -50,21 +50,36 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_subpanel_highlight"]
-content_margin_left = 12.0
-content_margin_top = 10.0
-content_margin_right = 12.0
-content_margin_bottom = 10.0
-bg_color = Color(0.09, 0.12, 0.18, 0.56)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_track"]
+bg_color = Color(0.08, 0.12, 0.18, 0.34)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.76, 0.66, 0.5, 0.45)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.52, 0.66, 0.82, 0.38)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb"]
+bg_color = Color(0.82, 0.7, 0.48, 0.18)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.84, 0.66, 0.56)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb_accent"]
+bg_color = Color(0.92, 0.84, 0.72, 0.16)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_subpanel"]
 content_margin_left = 12.0
@@ -125,6 +140,22 @@ corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_subpanel_highlight"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.09, 0.12, 0.18, 0.56)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.76, 0.66, 0.5, 0.45)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [node name="EquipmentInterface" type="Control" unique_id=724820203]
 layout_mode = 3
@@ -217,13 +248,6 @@ theme_override_font_sizes/font_size = 46
 text = "装备整备"
 horizontal_alignment = 1
 
-[node name="CloseButton" type="Button" parent="RootMargin/MainVBox/TopBar" unique_id=192888139]
-custom_minimum_size = Vector2(170, 74)
-layout_mode = 2
-theme = ExtResource("4_buttontheme")
-theme_override_font_sizes/font_size = 24
-text = "关闭"
-
 [node name="ContentRow" type="HBoxContainer" parent="RootMargin/MainVBox" unique_id=1564605585]
 layout_mode = 2
 size_flags_vertical = 3
@@ -245,48 +269,94 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "人物选择"
 
-[node name="CharacterSelectPanel" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox" unique_id=125160384]
-custom_minimum_size = Vector2(0, 188)
+[node name="CharacterSelectRoot" type="Control" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox" unique_id=125160384]
+custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_subpanel_highlight")
 
-[node name="CharacterSelectList" type="VBoxContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel" unique_id=1555392889]
+[node name="CharacterSelectFrame" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot" unique_id=1932057093]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 18.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
+
+[node name="CharacterSelectThumb" type="PanelContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot" unique_id=1494763101]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 30.0
+offset_right = 116.24999
+offset_bottom = 84.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
+
+[node name="CharacterSelectThumbAccent" type="Panel" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectThumb" unique_id=103473297]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
+
+[node name="CharacterSelectPanel" type="MarginContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot" unique_id=1547860300]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 18.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="CharacterSelectList" type="HBoxContainer" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel" unique_id=1555392889]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="EchoButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList" unique_id=521799248]
-custom_minimum_size = Vector2(0, 44)
+[node name="EchoButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=521799248]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
 text = "Echo"
+flat = true
 
-[node name="KasiyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList" unique_id=493690773]
-custom_minimum_size = Vector2(0, 44)
+[node name="KasiyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=493690773]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
 text = "Kasiya"
+flat = true
 
-[node name="MariyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList" unique_id=978871022]
-custom_minimum_size = Vector2(0, 44)
+[node name="MariyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=978871022]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
 text = "Mariya"
+flat = true
 
-[node name="NightingaleButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList" unique_id=1808269257]
-custom_minimum_size = Vector2(0, 44)
+[node name="NightingaleButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1808269257]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
 text = "Nightingale"
+flat = true
 
 [node name="CharacterHeader" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox" unique_id=1338195573]
 modulate = Color(0.96, 0.87, 0.56, 0.95)

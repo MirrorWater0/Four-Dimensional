@@ -22,7 +22,7 @@ public partial class SoundBarrier : Skill
         return new SkillPlan(
             this,
             EnergyStep(EnergyGain),
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             EnergyTimesGateStep(
                 0,
                 () => times,
@@ -57,7 +57,7 @@ public partial class SonicDeflection : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -86,7 +86,7 @@ public partial class TuningStance : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            SelfBlockStep(BaseBlock)
+            BlockFriendlyByRelativeStep(0, BaseBlock)
         );
     }
 }
@@ -115,7 +115,7 @@ public partial class ResonantWard : Skill
                 index: 0,
                 dyingFilter: false
             ),
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }

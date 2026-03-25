@@ -46,8 +46,7 @@ public partial class FearWormAttack : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: MaxTargets,
-                energyCost: 0
+                maxTargets: MaxTargets
             )
         );
     }
@@ -74,10 +73,9 @@ public partial class FearWormSurvive : Skill
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
                 index: 0,
-                dyingFilter: false,
-                energyCost: 0
+                dyingFilter: false
             ),
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0, dyingFilter: false)
         );
     }
@@ -102,11 +100,16 @@ public partial class FearWormTermin : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Stun,
-                stacks: StunStacks,
-                maxTargets: 1,
-                energyCost: Cost
+            EnergyTimesGateStep(
+                energyCost: Cost,
+                onPassSteps:
+                [
+                    ApplyBuffHostile(
+                        buffName: Buff.BuffName.Stun,
+                        stacks: StunStacks,
+                        maxTargets: 1
+                    ),
+                ]
             ),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown),
             AttackPrimaryStep(BaseDamage)

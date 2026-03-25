@@ -28,6 +28,7 @@ public partial class Buff
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
             BuffName.ExtraPower => "获得力量或生存时额外获得等同层数的力量。",
             BuffName.ExtraSurvivability => "获得力量或生存时额外获得等同层数的生存。",
+            BuffName.AutoArmor => "受到伤害后获得等同层数的格挡。",
             _ => string.Empty,
         };
 
@@ -139,6 +140,9 @@ public partial class Buff
 
         [Description("额外生存")]
         ExtraSurvivability,
+
+        [Description("自动护盾")]
+        AutoArmor,
     }
 
     public Character Owner;
@@ -168,6 +172,7 @@ public partial class Buff
             BuffName.DebuffImmunity => Nature.positive,
             BuffName.ExtraPower => Nature.positive,
             BuffName.ExtraSurvivability => Nature.positive,
+            BuffName.AutoArmor => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -305,6 +310,12 @@ public partial class HurtBuff : Buff
             case BuffName.Taunt:
                 Stack--;
                 break;
+            case BuffName.AutoArmor:
+                if (Owner != null && Stack > 0)
+                {
+                    Owner.CallDeferred(nameof(Character.UpdataBlock), Stack);
+                }
+                break;
         }
         TweenLabel();
         if (Stack == 0)
@@ -359,6 +370,13 @@ public partial class HurtBuff : Buff
                 icon =
                     GD.Load<PackedScene>("res://battle/buff/StateIcon/Aim.tscn").Instantiate()
                     as ColorRect;
+                break;
+            case BuffName.AutoArmor:
+                buff = new HurtBuff(target, BuffName.AutoArmor, stack);
+                target.HurtBuffs.Add(buff);
+                icon =
+                    GD.Load<PackedScene>("res://battle/buff/StateIcon/AutoArmor.tscn")
+                        .Instantiate() as ColorRect;
                 break;
             default:
                 return;

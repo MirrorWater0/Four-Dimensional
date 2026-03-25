@@ -6,6 +6,10 @@ using Godot;
 
 public partial class EnemyCharacter : Character
 {
+    private const float DefaultIntentWeight = 3f;
+    private const float SpecialIntentWeightMin = 0.5f;
+    private const float SpecialIntentWeightMax = 7f;
+
     public EnemyRegedit Registry;
     public Control IntentionContorl => field ??= GetNode<Control>("Intention");
     public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
@@ -15,6 +19,7 @@ public partial class EnemyCharacter : Character
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex;
+    public int SpecialIntentThreshold { get; private set; } = 3;
 
     public override void _Ready()
     {
@@ -29,6 +34,7 @@ public partial class EnemyCharacter : Character
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
+            SpecialIntentThreshold = Math.Max(0, Registry.SpecialIntentThreshold);
             SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed, Registry.MaxLife);
             Life = BattleMaxLife;
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
@@ -53,7 +59,7 @@ public partial class EnemyCharacter : Character
 
     public override void EndAction()
     {
-        IntentionIndex = BattleNode.BattleIntentionRandom.Next(0, Skills.Length);
+        IntentionIndex = RollIntentionIndex();
         DisplayIntention();
 
         if (BattleNode?.SuppressSpeedGainThisTurn != true)
@@ -63,6 +69,57 @@ public partial class EnemyCharacter : Character
                 .Sum(x => x.Speed);
         }
         base.EndAction();
+    }
+
+    public int RollIntentionIndex()
+    {
+        if (Skills == null || Skills.Length == 0)
+            return 0;
+
+        float totalWeight = 0f;
+        float[] weights = new float[Skills.Length];
+        for (int i = 0; i < Skills.Length; i++)
+        {
+            float weight = GetIntentionWeight(Skills[i]);
+            weights[i] = weight;
+            totalWeight += weight;
+        }
+
+        if (totalWeight <= 0f)
+        {
+            for (int i = 0; i < Skills.Length; i++)
+            {
+                if (Skills[i] != null)
+                    return i;
+            }
+            return 0;
+        }
+
+        float roll = (float)BattleNode.BattleIntentionRandom.NextDouble() * totalWeight;
+        for (int i = 0; i < weights.Length; i++)
+        {
+            roll -= weights[i];
+            if (roll <= 0f)
+                return i;
+        }
+
+        return Math.Max(0, Skills.Length - 1);
+    }
+
+    private float GetIntentionWeight(Skill skill)
+    {
+        if (skill == null)
+            return 0f;
+
+        if (skill.SkillType != Skill.SkillTypes.Special)
+            return DefaultIntentWeight;
+
+        int energyDelta = Energy - SpecialIntentThreshold;
+        return Math.Clamp(
+            DefaultIntentWeight + energyDelta,
+            SpecialIntentWeightMin,
+            SpecialIntentWeightMax
+        );
     }
 
     public override async Task GetHurt(float damage)

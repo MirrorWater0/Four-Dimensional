@@ -24,10 +24,10 @@ public partial class EquipmentInterface : Control
     private static readonly string[] SlotLetters = ["A", "B"];
     private static readonly string[] CharacterButtonPaths =
     [
-        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList/EchoButton",
-        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList/KasiyaButton",
-        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList/MariyaButton",
-        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectPanel/CharacterSelectList/NightingaleButton",
+        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/EchoButton",
+        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/KasiyaButton",
+        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/MariyaButton",
+        "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/NightingaleButton",
     ];
     private static readonly string[] SlotCardPaths =
     [
@@ -45,10 +45,15 @@ public partial class EquipmentInterface : Control
     private static readonly Color SlotHoverBorderColor = new("#5cff8a");
     private static readonly Color SlotSelectedBorderColor = new("#ffd24a");
 
-    private Button CloseButton =>
-        field ??= GetNode<Button>("RootMargin/MainVBox/TopBar/CloseButton");
-
     private Button[] CharacterButtons => field ??= BuildNodes<Button>(CharacterButtonPaths);
+    private Control CharacterSelectRoot =>
+        field ??= GetNode<Control>(
+            "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot"
+        );
+    private Control CharacterSelectorThumb =>
+        field ??= GetNode<Control>(
+            "RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectThumb"
+        );
 
     private TextureRect CharacterPortrait =>
         field ??= GetNode<TextureRect>(
@@ -133,6 +138,8 @@ public partial class EquipmentInterface : Control
     private readonly bool[] _slotHovered = new bool[SlotCount];
     private readonly HashSet<CardSlot> _wiredInventoryCards = [];
     private CardSlot[] _inventoryCards = Array.Empty<CardSlot>();
+    private Tween _characterSelectorTween;
+    private bool _characterSelectorPositioned;
     public bool HasEquipmentChanges { get; private set; }
 
     public override void _Ready()
@@ -143,12 +150,14 @@ public partial class EquipmentInterface : Control
         InitializeSlotPanelStyles();
         WireUiEvents();
         RefreshAll();
+        CharacterSelectRoot.Resized += RefreshCharacterSelectorLayout;
+        foreach (var button in CharacterButtons)
+            button.Resized += RefreshCharacterSelectorLayout;
+        CallDeferred(nameof(RefreshCharacterSelectorLayout));
     }
 
     private void WireUiEvents()
     {
-        CloseButton.Pressed += QueueFree;
-
         for (int i = 0; i < CharacterButtons.Length; i++)
         {
             int captured = i;
@@ -231,6 +240,57 @@ public partial class EquipmentInterface : Control
             }
             SetEquipAnimating(false);
         }
+    }
+
+    private void RefreshCharacterSelectorLayout()
+    {
+        UpdateCharacterSelectorPosition(false);
+    }
+
+    private void UpdateCharacterSelectorPosition(bool animate)
+    {
+        if (
+            CharacterButtons == null
+            || CharacterButtons.Length == 0
+            || _selectedCharacterIndex < 0
+            || _selectedCharacterIndex >= CharacterButtons.Length
+        )
+            return;
+
+        var button = CharacterButtons[_selectedCharacterIndex];
+        if (button == null || !button.Visible || !GodotObject.IsInstanceValid(button))
+            return;
+
+        Rect2 selectorRect = CharacterSelectRoot.GetGlobalRect();
+        Rect2 buttonRect = button.GetGlobalRect();
+        if (selectorRect.Size.X <= 0f || buttonRect.Size.X <= 0f)
+            return;
+
+        Vector2 targetPosition = buttonRect.Position - selectorRect.Position;
+        Vector2 targetSize = buttonRect.Size;
+
+        _characterSelectorTween?.Kill();
+        if (animate && _characterSelectorPositioned)
+        {
+            _characterSelectorTween = CreateTween();
+            _characterSelectorTween.SetParallel(true);
+            _characterSelectorTween.SetEase(Tween.EaseType.Out);
+            _characterSelectorTween.SetTrans(Tween.TransitionType.Cubic);
+            _characterSelectorTween.TweenProperty(
+                CharacterSelectorThumb,
+                "position",
+                targetPosition,
+                0.22f
+            );
+            _characterSelectorTween.TweenProperty(CharacterSelectorThumb, "size", targetSize, 0.22f);
+        }
+        else
+        {
+            CharacterSelectorThumb.Position = targetPosition;
+            CharacterSelectorThumb.Size = targetSize;
+        }
+
+        _characterSelectorPositioned = true;
     }
 
     private int[] CollectVisibleSlotIndices()
@@ -523,8 +583,15 @@ public partial class EquipmentInterface : Control
             CharacterButtons[i].Text = string.IsNullOrWhiteSpace(info.CharacterName)
                 ? $"角色 {i + 1}"
                 : info.CharacterName;
-            CharacterButtons[i].ButtonPressed = (i == _selectedCharacterIndex);
+
+            bool selected = i == _selectedCharacterIndex;
+            CharacterButtons[i].SetPressedNoSignal(selected);
+            CharacterButtons[i].Modulate = selected
+                ? Colors.White
+                : new Color(0.84f, 0.88f, 0.94f, 0.82f);
         }
+
+        UpdateCharacterSelectorPosition(true);
     }
 
     private void RefreshCharacterCard()

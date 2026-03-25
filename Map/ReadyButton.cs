@@ -30,6 +30,16 @@ public partial class ReadyButton : Button
         if (!HasActiveBattleReady() && Layer != null)
             ThisBattleReady = Layer.GetChildren().OfType<BattleReady>().FirstOrDefault();
 
+        if (HasActiveBattleReady())
+        {
+            await CloseBattleReadyAsync(confirmTactics: true);
+            return;
+        }
+
+        Task frontUiCloseTask = null;
+        if (ThisMap != null && ThisMap.HasFrontUiChildren())
+            frontUiCloseTask = ThisMap.CloseFrontUiLayerAsync();
+
         if (!HasActiveBattleReady())
         {
             if (Layer == null || _readyScene == null)
@@ -71,21 +81,36 @@ public partial class ReadyButton : Button
             //         })
             //     );
         }
-        else
+
+        if (frontUiCloseTask != null)
+            await frontUiCloseTask;
+    }
+
+    public async Task CloseBattleReadyAsync(bool confirmTactics)
+    {
+        if (!HasActiveBattleReady() && Layer != null)
+            ThisBattleReady = Layer.GetChildren().OfType<BattleReady>().FirstOrDefault();
+
+        if (!HasActiveBattleReady())
         {
-            Disabled = true;
-            try
-            {
+            ThisBattleReady = null;
+            return;
+        }
+
+        Disabled = true;
+        try
+        {
+            if (confirmTactics)
                 ThisBattleReady.ComfirmTactics();
-                await ThisBattleReady.PlayCloseAnimationAsync();
-                if (GodotObject.IsInstanceValid(ThisBattleReady))
-                    ThisBattleReady.QueueFree();
-            }
-            finally
-            {
-                Disabled = false;
-                ThisBattleReady = null;
-            }
+
+            await ThisBattleReady.PlayCloseAnimationAsync();
+            if (GodotObject.IsInstanceValid(ThisBattleReady))
+                ThisBattleReady.QueueFree();
+        }
+        finally
+        {
+            Disabled = false;
+            ThisBattleReady = null;
         }
     }
 

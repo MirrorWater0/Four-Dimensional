@@ -1,0 +1,667 @@
+[gd_scene format=3 uid="uid://ongum1thmlj8"]
+
+[ext_resource type="Script" uid="uid://dovi0x3pg0hv4" path="res://Shop/SpaceStationShop.cs" id="1_shop"]
+[ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="2_bxft0"]
+[ext_resource type="Shader" uid="uid://d87jvnuogxn0" path="res://shader/UI/SpaceStationShopAccent.gdshader" id="3_shop_accent"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+shader = ExtResource("2_bxft0")
+shader_parameter/color_top = Color(0.02, 0.05, 0.1, 1)
+shader_parameter/color_mid = Color(0.03, 0.02, 0.06, 1)
+shader_parameter/color_bot = Color(0.01, 0.01, 0.02, 1)
+shader_parameter/star_color = Color(0.6, 0.85, 1, 1)
+shader_parameter/line_color = Color(0.35, 0.55, 1, 0.35)
+shader_parameter/spacing = 160.0
+shader_parameter/density = 0.28
+shader_parameter/star_base_size = 2.0
+shader_parameter/line_weight = 0.7
+shader_parameter/line_softness = 1.3
+shader_parameter/drift_speed = 0.45
+shader_parameter/drift_dist = 0.22
+shader_parameter/flow_strength = 0.18
+shader_parameter/line_breath = 0.22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.04, 0.07, 0.1, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.62, 0.72, 0.4)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
+bg_color = Color(0.03, 0.05, 0.08, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.18, 0.42, 0.5, 0.26)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_track"]
+bg_color = Color(0.03, 0.07, 0.09, 0.44)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16, 0.36, 0.42, 0.26)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_thumb"]
+bg_color = Color(0.16, 0.32, 0.38, 0.62)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.54, 0.8, 0.88, 0.5)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_thumb_accent"]
+bg_color = Color(0.94, 0.98, 1, 0.76)
+corner_radius_top_left = 21
+corner_radius_top_right = 21
+corner_radius_bottom_right = 21
+corner_radius_bottom_left = 21
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_button_clear"]
+bg_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_button_hover"]
+bg_color = Color(0.92, 0.98, 1, 0.05)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="Theme" id="Theme_module_button"]
+Button/colors/font_color = Color(0.74, 0.84, 0.88, 0.78)
+Button/colors/font_disabled_color = Color(0.44, 0.52, 0.58, 0.7)
+Button/colors/font_hover_color = Color(0.93, 0.97, 1, 0.98)
+Button/colors/font_outline_color = Color(0.04, 0.09, 0.14, 0.42)
+Button/colors/font_pressed_color = Color(0.98, 1, 1, 1)
+Button/constants/outline_size = 1
+Button/styles/disabled = SubResource("StyleBoxFlat_module_button_clear")
+Button/styles/focus = SubResource("StyleBoxFlat_module_button_clear")
+Button/styles/hover = SubResource("StyleBoxFlat_module_button_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_module_button_clear")
+Button/styles/pressed = SubResource("StyleBoxFlat_module_button_clear")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_header_accent"]
+resource_local_to_scene = true
+shader = ExtResource("3_shop_accent")
+shader_parameter/base_color = Color(0.04, 0.11, 0.13, 0.22)
+shader_parameter/accent_color = Color(0.34, 0.76, 0.84, 0.54)
+shader_parameter/glow_color = Color(0.96, 0.79, 0.56, 0.36)
+shader_parameter/line_density = 24.0
+shader_parameter/scan_speed = 0.07
+shader_parameter/scan_width = 0.22
+shader_parameter/scan_intensity = 0.18
+shader_parameter/grid_intensity = 0.06
+shader_parameter/frame_intensity = 0.18
+shader_parameter/corner_size = 0.09
+shader_parameter/slant = 0.32
+shader_parameter/alpha_scale = 0.66
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
+bg_color = Color(0.08, 0.11, 0.14, 0.38)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.3, 0.36, 0.34)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.13, 0.23, 0.26, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.82, 0.86, 0.54)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.09, 0.15, 0.18, 0.7)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.56, 0.62, 0.42)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+bg_color = Color(0.08, 0.16, 0.2, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.56, 0.8, 0.86, 0.62)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="Theme" id="Theme_button"]
+Button/colors/font_color = Color(0.9, 0.95, 1, 1)
+Button/colors/font_disabled_color = Color(0.56, 0.65, 0.76, 0.72)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_outline_color = Color(0.05, 0.12, 0.18, 0.52)
+Button/colors/font_pressed_color = Color(0.92, 0.96, 0.98, 1)
+Button/constants/outline_size = 2
+Button/styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+Button/styles/hover = SubResource("StyleBoxFlat_button_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_button")
+Button/styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+
+[node name="SpaceStationShop" type="Control" unique_id=2070076138]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("1_shop")
+metadata/_edit_lock_ = true
+
+[node name="BG" type="ColorRect" parent="." unique_id=794907811]
+z_index = -2
+material = SubResource("ShaderMaterial_bg")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.72)
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=185374979]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.07
+anchor_top = 0.07
+anchor_right = 0.93
+anchor_bottom = 0.93
+offset_bottom = 47.599976
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Inner" type="PanelContainer" parent="Panel" unique_id=559504060]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="MainLayout" type="HBoxContainer" parent="Panel" unique_id=1795017865]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ModulePanel" type="PanelContainer" parent="Panel/MainLayout" unique_id=1199063594]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="ModuleBar" type="VBoxContainer" parent="Panel/MainLayout/ModulePanel" unique_id=1696917646]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PanelContainer" type="PanelContainer" parent="Panel/MainLayout/ModulePanel/ModuleBar" unique_id=2139576787]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="ModuleSelector" type="Control" parent="Panel/MainLayout/ModulePanel/ModuleBar" unique_id=1221489680]
+custom_minimum_size = Vector2(0, 292)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Track" type="PanelContainer" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector" unique_id=1636804516]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_module_track")
+
+[node name="Thumb" type="PanelContainer" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector" unique_id=1827097854]
+clip_contents = true
+layout_mode = 0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 121.600006
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_module_thumb")
+
+[node name="ThumbAccent" type="Panel" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/Thumb" unique_id=1908150548]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_module_thumb_accent")
+
+[node name="ButtonsMargin" type="MarginContainer" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector" unique_id=1408920492]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Buttons" type="VBoxContainer" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin" unique_id=434250512]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="StatButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=1563616495]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_module_button")
+toggle_mode = true
+text = "属性"
+flat = true
+
+[node name="SkillButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=1939443166]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_module_button")
+toggle_mode = true
+text = "技能"
+flat = true
+
+[node name="EquipmentButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=629863191]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_module_button")
+toggle_mode = true
+text = "装备"
+flat = true
+
+[node name="RelicButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=1449950045]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_module_button")
+toggle_mode = true
+text = "遗物"
+flat = true
+
+[node name="PotionButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=708416234]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_module_button")
+toggle_mode = true
+text = "道具"
+flat = true
+
+[node name="ContentArea" type="Control" parent="Panel/MainLayout" unique_id=1644216060]
+clip_contents = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CatalogViewport" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=341993371]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 148.4
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="CatalogMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/CatalogViewport" unique_id=1896004102]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="CatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/CatalogViewport/CatalogMargin" unique_id=36665217]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 18
+columns = 2
+
+[node name="StatPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=1377609489]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 155.4
+offset_right = -12.400024
+offset_bottom = -51.599976
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="StatMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/StatPanel" unique_id=1431825810]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="StatOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/StatPanel/StatMargin" unique_id=1810312140]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 18
+columns = 2
+
+[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=2003971415]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 153.4
+offset_right = -14.400024
+offset_bottom = -53.599976
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/SkillPanel" unique_id=53835426]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin" unique_id=409129123]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin/VBox" unique_id=1103841539]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 4
+
+[node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin/VBox" unique_id=746639838]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.9, 0.68)
+theme_override_font_sizes/font_size = 13
+text = "技能卡购买后会立即加入其所属角色的技能池。"
+horizontal_alignment = 1
+
+[node name="Decor" type="Control" parent="Panel" unique_id=1783009613]
+layout_mode = 2
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="HeaderBackplate" type="ColorRect" parent="Panel/Decor" unique_id=335426685]
+z_index = -1
+material = SubResource("ShaderMaterial_header_accent")
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = 126.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="Header" type="HBoxContainer" parent="Panel/Decor" unique_id=441907285]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = -24.0
+offset_bottom = 54.0
+grow_horizontal = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="HeaderLineLeft" type="ColorRect" parent="Panel/Decor/Header" unique_id=368917711]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.44, 0.78, 0.84, 0.44)
+
+[node name="HeaderTitle" type="Label" parent="Panel/Decor/Header" unique_id=1180721113]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.97, 0.99, 0.96)
+theme_override_font_sizes/font_size = 24
+text = "空间站商店"
+
+[node name="HeaderLineRight" type="ColorRect" parent="Panel/Decor/Header" unique_id=1194127999]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.44, 0.78, 0.84, 0.44)
+
+[node name="CatalogTitle" type="Label" parent="Panel/Decor" unique_id=1593891395]
+layout_mode = 0
+offset_left = 224.0
+offset_top = 78.0
+offset_right = 464.0
+offset_bottom = 108.0
+theme_override_colors/font_color = Color(0.9, 0.95, 0.98, 0.92)
+theme_override_font_sizes/font_size = 20
+text = "补给目录"
+
+[node name="CatalogHint" type="Label" parent="Panel/Decor" unique_id=514831313]
+layout_mode = 0
+offset_left = 224.0
+offset_top = 102.0
+offset_right = 660.0
+offset_bottom = 122.0
+theme_override_colors/font_color = Color(0.72, 0.84, 0.88, 0.62)
+theme_override_font_sizes/font_size = 14
+text = "通过模块按钮切换商店区块。"
+
+[node name="CloseButton" type="Button" parent="Panel/Decor" unique_id=1471276139]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -112.0
+offset_top = 70.0
+offset_right = -24.0
+offset_bottom = 114.0
+grow_horizontal = 0
+theme = SubResource("Theme_button")
+text = "离开"
+
+[node name="HideButton" type="Button" parent="Panel/Decor" unique_id=275190641]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -204.0
+offset_top = 70.0
+offset_right = -116.0
+offset_bottom = 114.0
+grow_horizontal = 0
+theme = SubResource("Theme_button")
+text = "隐藏"
+
+[node name="TopLine" type="ColorRect" parent="Panel/Decor" unique_id=1649198424]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 140.0
+offset_right = -24.0
+offset_bottom = 142.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.42, 0.72, 0.8, 0.26)
+
+[node name="FooterLine" type="ColorRect" parent="Panel/Decor" unique_id=1844671991]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -42.400024
+offset_right = -24.0
+offset_bottom = -40.400024
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.64, 0.74, 0.78, 0.18)
+
+[node name="FooterHint" type="Label" parent="Panel/Decor" unique_id=585885666]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 54.600006
+offset_top = -38.0
+offset_right = -30.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.8, 0.88, 0.92, 0.64)
+theme_override_font_sizes/font_size = 14
+text = "浏览空间站补给目录"
+
+[node name="CornerTL_H" type="ColorRect" parent="Panel/Decor" unique_id=366967958]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 46.0
+offset_bottom = 14.0
+mouse_filter = 2
+color = Color(0.46, 0.74, 0.8, 0.48)
+
+[node name="CornerTL_V" type="ColorRect" parent="Panel/Decor" unique_id=730699794]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 14.0
+offset_bottom = 46.0
+mouse_filter = 2
+color = Color(0.46, 0.74, 0.8, 0.48)
+
+[node name="CornerTR_H" type="ColorRect" parent="Panel/Decor" unique_id=1024201182]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -46.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 14.0
+grow_horizontal = 0
+mouse_filter = 2
+color = Color(0.46, 0.74, 0.8, 0.48)
+
+[node name="CornerTR_V" type="ColorRect" parent="Panel/Decor" unique_id=2127359639]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -14.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 46.0
+grow_horizontal = 0
+mouse_filter = 2
+color = Color(0.46, 0.74, 0.8, 0.48)
+
+[node name="CornerBL_H" type="ColorRect" parent="Panel/Decor" unique_id=379827329]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -28.0
+offset_right = 46.0
+offset_bottom = -26.0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.52, 0.66, 0.72, 0.34)
+
+[node name="CornerBL_V" type="ColorRect" parent="Panel/Decor" unique_id=1668538783]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -60.0
+offset_right = 14.0
+offset_bottom = -26.0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.52, 0.66, 0.72, 0.34)
+
+[node name="CornerBR_H" type="ColorRect" parent="Panel/Decor" unique_id=180103764]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -46.0
+offset_top = -28.0
+offset_right = -12.0
+offset_bottom = -26.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.52, 0.66, 0.72, 0.34)
+
+[node name="CornerBR_V" type="ColorRect" parent="Panel/Decor" unique_id=753573654]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -14.0
+offset_top = -60.0
+offset_right = -12.0
+offset_bottom = -26.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.52, 0.66, 0.72, 0.34)

@@ -71,8 +71,8 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseDamage),
-            RelativeAllyBlockStep(-1, dyingFilter: false),
-            RelativeAllyBlockStep(1, dyingFilter: false),
+            BlockFriendlyByRelativeStep(-1, dyingFilter: false),
+            BlockFriendlyByRelativeStep(1, dyingFilter: false),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
@@ -97,7 +97,7 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock, 2),
+            BlockFriendlyByRelativeStep(0, BaseBlock, 2),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
             EnergyStep(EnergyGain)
         );
@@ -123,7 +123,7 @@ public partial class ArmonSpecial : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseBlock),
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             EnergyTimesWhileStep(
                 energyCost: 2,
                 loopSteps: new[]

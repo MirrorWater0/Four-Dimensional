@@ -27,7 +27,7 @@ public partial class ShockWave : Skill
                 stacks: VulnerableStacks,
                 maxTargets: 0
             ),
-            SelfBlockStep(BaseBlock)
+            BlockFriendlyByRelativeStep(0, BaseBlock)
         );
     }
 }
@@ -51,7 +51,7 @@ public partial class ReNewedSpirit : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            SelfBlockStep(baseBlock: 0)
+            BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: 0)
         );
     }
 }
@@ -72,8 +72,8 @@ public partial class AbsouluteDefense : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(basisBlock),
-            SelfBlockStep(basisBlock),
+            BlockFriendlyByRelativeStep(0, basisBlock),
+            BlockFriendlyByRelativeStep(0, basisBlock),
             ModifyPropertyStep(PropertyType.Power, GainPower)
         );
     }
@@ -102,7 +102,7 @@ public partial class TauntingGuard : Skill
                 index: 0,
                 dyingFilter: false
             ),
-            SelfBlockStep(BaseBlock)
+            BlockFriendlyByRelativeStep(0, BaseBlock)
         );
     }
 }

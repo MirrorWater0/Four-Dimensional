@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Map : Control
@@ -39,6 +40,11 @@ public partial class Map : Control
     private Vector2 _dragVelocity = Vector2.Zero;
     private ulong _wheelHandledFrame = ulong.MaxValue;
     ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
+    private CanvasLayer SiteUiLayer => field ??= GetNodeOrNull<CanvasLayer>("SiteUI");
+    private CanvasLayer FrontUiLayer => field ??= GetNodeOrNull<CanvasLayer>("BattleReadyLayer");
+    private ReadyButton ReadyButtonNode => field ??= GetNodeOrNull<ReadyButton>("UI/ReadyButton");
+    private EquipmentButton EquipmentButtonNode =>
+        field ??= GetNodeOrNull<EquipmentButton>("UI/EquipmentButton");
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
 
@@ -46,6 +52,18 @@ public partial class Map : Control
     {
         float dt = (float)delta;
         ulong frame = Engine.GetProcessFrames();
+
+        if (HasBlockingOverlay())
+        {
+            _isDrag = false;
+            _isDragActive = false;
+            _isWheelPanning = false;
+            _dragVelocity = Vector2.Zero;
+            _velocity = Vector2.Zero;
+            _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
+            _wheelHandledFrame = frame;
+            return;
+        }
 
         if (_wheelHandledFrame != frame)
         {
@@ -152,6 +170,9 @@ public partial class Map : Control
 
     public override void _Input(InputEvent @event)
     {
+        if (HasBlockingOverlay())
+            return;
+
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
         {
             if (mouseButton.ButtonIndex == MouseButton.WheelUp)
@@ -231,6 +252,52 @@ public partial class Map : Control
         return tween;
     }
 
+    public bool HasFrontUiChildren()
+    {
+        return FrontUiLayer != null && FrontUiLayer.GetChildCount() > 0;
+    }
+
+    public async Task CloseFrontUiLayerAsync()
+    {
+        if (!HasFrontUiChildren())
+            return;
+
+        var closingNodes = new Godot.Collections.Array<Node>();
+        if (FrontUiLayer != null)
+        {
+            foreach (Node child in FrontUiLayer.GetChildren())
+            {
+                if (child != null && GodotObject.IsInstanceValid(child))
+                    closingNodes.Add(child);
+            }
+        }
+
+        var tasks = new System.Collections.Generic.List<Task>(2);
+        if (EquipmentButtonNode != null)
+            tasks.Add(EquipmentButtonNode.CloseCurrentUiAsync());
+
+        if (ReadyButtonNode != null)
+            tasks.Add(ReadyButtonNode.CloseBattleReadyAsync(confirmTactics: true));
+
+        if (tasks.Count > 0)
+            await Task.WhenAll(tasks);
+
+        if (FrontUiLayer == null)
+            return;
+
+        for (int i = 0; i < closingNodes.Count; i++)
+        {
+            var child = closingNodes[i];
+            if (
+                child != null
+                && GodotObject.IsInstanceValid(child)
+                && child.IsInsideTree()
+                && child.GetParent() == FrontUiLayer
+            )
+                child.QueueFree();
+        }
+    }
+
     private Vector2 SetCameraPosition(Vector2 position)
     {
         Vector2 clamped = Camera.ClampToBoundary(position);
@@ -243,5 +310,33 @@ public partial class Map : Control
         _targetPos = Camera.ClampToBoundary(_targetPos + new Vector2(deltaX, 0));
         _isWheelPanning = true;
         _velocity = Vector2.Zero;
+    }
+
+    private bool HasBlockingOverlay()
+    {
+        return LayerHasVisibleChildren(SiteUiLayer) || LayerHasVisibleChildren(FrontUiLayer);
+    }
+
+    private static bool LayerHasVisibleChildren(CanvasLayer layer)
+    {
+        if (layer == null)
+            return false;
+
+        foreach (Node child in layer.GetChildren())
+        {
+            if (child == null || child.IsQueuedForDeletion())
+                continue;
+
+            if (child is CanvasItem canvasItem)
+            {
+                if (canvasItem.Visible)
+                    return true;
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }

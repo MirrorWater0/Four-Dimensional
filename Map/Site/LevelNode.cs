@@ -20,6 +20,7 @@ public partial class LevelNode : ColorRect
     {
         Normal,
         Event,
+        Shop,
         Elite,
         Boss,
     }
@@ -121,6 +122,9 @@ public partial class LevelNode : ColorRect
                     case LevelType.Event:
                         ringColor = new Color(0, 0.6f, 1, 1);
                         break;
+                    case LevelType.Shop:
+                        ringColor = new Color(1f, 0.84f, 0.18f, 1f);
+                        break;
                 }
                 mat.SetShaderParameter("ring_color", ringColor);
                 break;
@@ -197,6 +201,9 @@ public partial class LevelNode : ColorRect
             case LevelType.Event:
                 ringColor = new Color(0, 0.6f, 1, 1);
                 break;
+            case LevelType.Shop:
+                ringColor = new Color(1f, 0.84f, 0.18f, 1f);
+                break;
         }
 
         mat.SetShaderParameter("ring_color", ringColor);
@@ -220,6 +227,9 @@ public partial class LevelNode : ColorRect
                 break;
             case LevelType.Event:
                 GotoEvent();
+                break;
+            case LevelType.Shop:
+                GotoShop();
                 break;
         }
     }
@@ -257,6 +267,22 @@ public partial class LevelNode : ColorRect
                 Callable.From(() =>
                 {
                     GetTree().Root.GetNode("Map/SiteUI").AddChild(gameEventInterface);
+                })
+            );
+    }
+
+    public void GotoShop()
+    {
+        GetParent()?.GetParent<LevelProgress>()?.OnNodeSelected(this);
+
+        var tween = ExplodeAnimation();
+        tween
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    var shop = SpaceStationShop.Show(this);
+                    shop.WhichNode = this;
                 })
             );
     }
@@ -320,13 +346,14 @@ public partial class LevelNode : ColorRect
             new ArmonRegedit(),
             new EvilRegedit(),
             new AlienBodyRegedit(),
+            new RedHuskRegedit(),
         ];
         List<EnemyRegedit> list = new()
         {
-            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 5)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
+            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
         };
         RandomPosition(list, RandomNum);
         return list;

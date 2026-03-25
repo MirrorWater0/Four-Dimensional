@@ -1,0 +1,257 @@
+[gd_scene format=3 uid="uid://dkhomcj0tp7i1"]
+
+[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="1_sword"]
+[ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="2_rhomboid"]
+[ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="3_wing"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.06, 0.09, 0.14, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.36, 0.54, 0.74, 0.58)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tile"]
+bg_color = Color(0.1, 0.14, 0.22, 0.84)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.68, 0.9, 0.46)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon"]
+bg_color = Color(0.06, 0.1, 0.16, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.84, 0.9, 1, 0.4)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_power"]
+resource_local_to_scene = true
+shader = ExtResource("1_sword")
+shader_parameter/sword_color = Color(1, 0, 0, 1)
+shader_parameter/blade_color = Color(1, 0.2, 0.2, 1)
+shader_parameter/handle_color = Color(0.3, 0.1, 0.1, 1)
+shader_parameter/glow_intensity = 0.5
+shader_parameter/angle = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_survivability"]
+resource_local_to_scene = true
+shader = ExtResource("2_rhomboid")
+shader_parameter/color = Color(0.6, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_speed"]
+resource_local_to_scene = true
+shader = ExtResource("3_wing")
+shader_parameter/wing_color = Color(1, 1, 1, 1)
+shader_parameter/flip_vertical = false
+shader_parameter/wing_size = 0.63400002685512
+shader_parameter/pivot = Vector2(0.7, 0.7)
+shader_parameter/rotation = 0.6860001210766509
+shader_parameter/edge_smoothness = 0.01
+shader_parameter/blade_count = 5
+shader_parameter/wing_span = 1.2
+shader_parameter/spine_thickness = 0.06
+
+[node name="StatCharacterPanel" type="PanelContainer" unique_id=1526595195]
+custom_minimum_size = Vector2(0, 238)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=304646089]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 14
+
+[node name="VBox" type="VBoxContainer" parent="Margin" unique_id=1622016490]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/VBox" unique_id=665766283]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "角色"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="Margin/VBox" unique_id=522357395]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.81, 0.92, 0.72)
+theme_override_font_sizes/font_size = 12
+text = "选择一项永久提升"
+horizontal_alignment = 1
+
+[node name="Options" type="GridContainer" parent="Margin/VBox" unique_id=1546961421]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="Power" type="PanelContainer" parent="Margin/VBox/Options" unique_id=1471266668]
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
+
+[node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Power" unique_id=728189068]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBox/Options/Power/Margin" unique_id=167171027]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="IconCenter" type="CenterContainer" parent="Margin/VBox/Options/Power/Margin/VBox" unique_id=1374815853]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="IconFrame" type="PanelContainer" parent="Margin/VBox/Options/Power/Margin/VBox/IconCenter" unique_id=297376072]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
+
+[node name="Icon" type="ColorRect" parent="Margin/VBox/Options/Power/Margin/VBox/IconCenter/IconFrame" unique_id=563366018]
+material = SubResource("ShaderMaterial_power")
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ValueLabel" type="Label" parent="Margin/VBox/Options/Power/Margin/VBox" unique_id=1864047234]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_font_sizes/font_size = 12
+text = "力量 +1"
+horizontal_alignment = 1
+
+[node name="PriceLabel" type="Label" parent="Margin/VBox/Options/Power/Margin/VBox" unique_id=361656013]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "26 电力币"
+horizontal_alignment = 1
+
+[node name="Survivability" type="PanelContainer" parent="Margin/VBox/Options" unique_id=280059755]
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
+
+[node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Survivability" unique_id=666538829]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBox/Options/Survivability/Margin" unique_id=526935757]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="IconCenter" type="CenterContainer" parent="Margin/VBox/Options/Survivability/Margin/VBox" unique_id=1901444976]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="IconFrame" type="PanelContainer" parent="Margin/VBox/Options/Survivability/Margin/VBox/IconCenter" unique_id=595056321]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
+
+[node name="Icon" type="ColorRect" parent="Margin/VBox/Options/Survivability/Margin/VBox/IconCenter/IconFrame" unique_id=2045552908]
+material = SubResource("ShaderMaterial_survivability")
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ValueLabel" type="Label" parent="Margin/VBox/Options/Survivability/Margin/VBox" unique_id=37315595]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_font_sizes/font_size = 12
+text = "生存 +1"
+horizontal_alignment = 1
+
+[node name="PriceLabel" type="Label" parent="Margin/VBox/Options/Survivability/Margin/VBox" unique_id=1405327174]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "26 电力币"
+horizontal_alignment = 1
+
+[node name="Speed" type="PanelContainer" parent="Margin/VBox/Options" unique_id=1752412710]
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
+
+[node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Speed" unique_id=1608805493]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBox/Options/Speed/Margin" unique_id=797324825]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="IconCenter" type="CenterContainer" parent="Margin/VBox/Options/Speed/Margin/VBox" unique_id=2069073598]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="IconFrame" type="PanelContainer" parent="Margin/VBox/Options/Speed/Margin/VBox/IconCenter" unique_id=634369434]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
+
+[node name="Icon" type="ColorRect" parent="Margin/VBox/Options/Speed/Margin/VBox/IconCenter/IconFrame" unique_id=104853998]
+material = SubResource("ShaderMaterial_speed")
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ValueLabel" type="Label" parent="Margin/VBox/Options/Speed/Margin/VBox" unique_id=1114590503]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_font_sizes/font_size = 12
+text = "速度 +1"
+horizontal_alignment = 1
+
+[node name="PriceLabel" type="Label" parent="Margin/VBox/Options/Speed/Margin/VBox" unique_id=659082837]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "32 电力币"
+horizontal_alignment = 1

@@ -12,7 +12,7 @@ public partial class Battle : Node2D
     [Export]
     public bool WarmupMode { get; set; }
 
-    public static bool Istest = false;
+    public static bool Istest = true;
     public Random BattleIntentionRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private ulong _battleInstanceId;
@@ -157,7 +157,7 @@ public partial class Battle : Node2D
             EnemiesList.Add(enemy);
         }
 
-        RetreatButton.ButtonDown += Retreat;
+        RetreatButton.ButtonDown += ManualRetreat;
         UsedSkills.Clear();
         if (BattleRecord != null)
         {
@@ -199,7 +199,7 @@ public partial class Battle : Node2D
             }
 
             var enemy = EnemiesList[i];
-            enemy.IntentionIndex = BattleIntentionRandom.Next(0, enemy.Skills.Length);
+            enemy.IntentionIndex = enemy.RollIntentionIndex();
             await enemy.DisappearIntention();
             if (token.IsCancellationRequested || !IsBattleAlive())
             {
@@ -542,7 +542,24 @@ public partial class Battle : Node2D
         }
     }
 
-    public async void Retreat()
+    private void ManualRetreat()
+    {
+        if (!CanManualRetreat())
+            return;
+
+        Retreat(consumeTransitionEnergy: true);
+    }
+
+    public bool CanManualRetreat()
+    {
+        if (_retreating)
+            return false;
+
+        int transitionEnergy = MapNode?.PlayerResourceState?.TransitionEnergy ?? GameInfo.TransitionEnergy;
+        return transitionEnergy > 0;
+    }
+
+    public async void Retreat(bool consumeTransitionEnergy = false)
     {
         if (_retreating)
         {
@@ -570,6 +587,12 @@ public partial class Battle : Node2D
         {
             RetreatButton.Disabled = true;
         }
+
+        if (consumeTransitionEnergy)
+        {
+            ConsumeRetreatTransitionEnergy();
+        }
+
         MapNode?.BlackMaskAnimation(0.8f);
         await Task.Delay(800);
 
@@ -608,6 +631,22 @@ public partial class Battle : Node2D
         {
             GetParent()?.QueueFree();
         }
+    }
+
+    private void ConsumeRetreatTransitionEnergy()
+    {
+        var resourceState = MapNode?.PlayerResourceState;
+        if (resourceState != null)
+        {
+            resourceState.TransitionEnergy = Math.Max(0, resourceState.TransitionEnergy - 1);
+            return;
+        }
+
+        GameInfo.TransitionEnergy = Math.Clamp(
+            GameInfo.TransitionEnergy - 1,
+            0,
+            GameInfo.TransitionEnergyMax
+        );
     }
 
     public void TestBattle()
@@ -662,7 +701,11 @@ public partial class Battle : Node2D
         }
 
         if (addRelic)
-            reward.AddRelicRewardEntry(RelicID.Blessing);
+        {
+            RelicID[] relicDropPool = { RelicID.Blessing, RelicID.Triangle };
+            var relicPick = relicDropPool[rng.Next(0, relicDropPool.Length)];
+            reward.AddRelicRewardEntry(relicPick);
+        }
 
         if (equipCount > 0)
         {

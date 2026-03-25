@@ -37,6 +37,18 @@ shader_parameter/outer_ring_dist = 0.26999999396496
 shader_parameter/triangle_dist = 0.27999999374144
 shader_parameter/hover = 0.0
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_equipment_hover"]
+shader = ExtResource("8_vk5l4")
+shader_parameter/rotation_speed = 3.0
+shader_parameter/scale = 1.90000002086168
+shader_parameter/color = Color(0.16799998, 0.6159999, 0.84, 1)
+shader_parameter/thickness = 0.01999999950874
+shader_parameter/dist2 = 0.5000000074506
+shader_parameter/dist1 = 0.70000001043084
+shader_parameter/outer_ring_dist = 0.26999999396496
+shader_parameter/triangle_dist = 0.27999999374144
+shader_parameter/hover = 0.0
+
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_b38e6"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_fl2tk"]
@@ -227,12 +239,15 @@ offset_right = 40.0
 offset_bottom = 40.0
 
 [node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623 node_paths=PackedStringArray("SiteUILayer")]
-self_modulate = Color(1, 1, 1, 0)
+material = SubResource("ShaderMaterial_equipment_hover")
+self_modulate = Color(1, 1, 1, 1)
 custom_minimum_size = Vector2(130, 130)
 offset_left = 1752.0
 offset_top = 736.0
 offset_right = 1882.0
 offset_bottom = 866.0
+focus_mode = 0
+flat = true
 script = ExtResource("9_eqbtn")
 SiteUILayer = NodePath("../../BattleReadyLayer")
 

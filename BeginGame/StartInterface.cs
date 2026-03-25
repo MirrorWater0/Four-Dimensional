@@ -88,20 +88,27 @@ public partial class StartInterface : CanvasLayer
 
     public void test()
     {
-        GameInfo.Relic.Add(RelicID.Blessing, 3);
-        GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.ShadowExecution);
-        GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.SwapSlash);
-        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Smite);
-        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.Vower);
-        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.TauntingGuard);
-        // GameInfo.PlayerCharacters[1].GainedSkills.Add(SkillID.HolySeal);
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.ResonantWard);
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.SonicBoom);
-        // GameInfo.PlayerCharacters[0].GainedSkills.Add(SkillID.PhaseEcho);
-        // GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.LongNight);
-        // GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.Sacrifice);
-        // GameInfo.PlayerCharacters[2].GainedSkills.Add(SkillID.CrystalGuard);
-        // GameInfo.PlayerCharacters[3].GainedSkills.Add(SkillID.Swift);
+        // Give the first character the whole roster's skill pool for pagination tests.
+        // SkillID[] rosterSkills = GameInfo
+        //     .PlayerCharacters.Where(info => info.AllSkills != null)
+        //     .SelectMany(info => info.AllSkills)
+        //     .Distinct()
+        //     .ToArray();
+        // AddTestSkills(0, rosterSkills);
+    }
+
+    private static void AddTestSkills(int characterIndex, params SkillID[] skills)
+    {
+        if (GameInfo.PlayerCharacters == null)
+            return;
+        if (characterIndex < 0 || characterIndex >= GameInfo.PlayerCharacters.Length)
+            return;
+
+        var info = GameInfo.PlayerCharacters[characterIndex];
+        info.GainedSkills ??= new List<SkillID>();
+        info.GainedSkills.AddRange(skills);
+        info.GainedSkills = info.GainedSkills.Distinct().ToList();
+        GameInfo.PlayerCharacters[characterIndex] = info;
     }
 
     public void continueGame()

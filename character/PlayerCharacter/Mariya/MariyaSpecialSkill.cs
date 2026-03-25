@@ -9,7 +9,7 @@ public partial class RebirthPrayer : Skill
     private const int EnergyCost = 2;
     private const int BaseRebirthHeal = 12;
     private const int GainEnergy = 1;
-    private const string SharedTargetKey = "rebirth_target";
+    private const string SharedTargetKey = "治疗目标";
 
     public RebirthPrayer()
         : base(SkillTypes.Special)

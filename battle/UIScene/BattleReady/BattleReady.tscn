@@ -25,11 +25,44 @@ shader_parameter/density = 0.28
 shader_parameter/star_base_size = 3.0
 shader_parameter/line_weight = 1.0
 shader_parameter/line_softness = 1.3
-shader_parameter/drift_speed = 0.25
+shader_parameter/drift_speed = 0.45
 shader_parameter/drift_dist = 0.22
+shader_parameter/flow_strength = 0.18
+shader_parameter/line_breath = 0.22
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_e2bq2"]
 blend_mode = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_track"]
+bg_color = Color(0.08, 0.12, 0.18, 0.36)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.52, 0.66, 0.82, 0.42)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_right = 24
+corner_radius_bottom_left = 24
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb"]
+bg_color = Color(0.82, 0.7, 0.48, 0.2)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.84, 0.66, 0.62)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb_accent"]
+bg_color = Color(0.92, 0.84, 0.72, 0.18)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_blue"]
 bg_color = Color(0.08, 0.12, 0.18, 0.3)
@@ -60,21 +93,6 @@ corner_radius_bottom_left = 10
 
 [sub_resource type="Theme" id="Theme_section_header"]
 Panel/styles/panel = SubResource("StyleBoxFlat_section_header")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_char_select_orange"]
-bg_color = Color(0.12, 0.09, 0.06, 0.18)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.85, 0.62, 0.35, 0.58)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="Theme" id="Theme_char_select_orange"]
-Panel/styles/panel = SubResource("StyleBoxFlat_char_select_orange")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_q1qv0"]
 resource_local_to_scene = true
@@ -218,25 +236,114 @@ texture = ExtResource("4_4b02f")
 expand_mode = 1
 metadata/_edit_lock_ = true
 
-[node name="FormationFrame" type="Panel" parent="." unique_id=460908895]
+[node name="ModeSelectorRoot" type="Control" parent="." unique_id=389790671]
+anchors_preset = 0
+offset_left = 207.0
+offset_top = 140.0
+offset_right = 295.0
+offset_bottom = 420.0
+
+[node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
+
+[node name="ModeThumb" type="PanelContainer" parent="ModeSelectorRoot" unique_id=1124246541]
 layout_mode = 0
-offset_left = 186.0
-offset_top = 486.0
-offset_right = 755.0
-offset_bottom = 1030.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 80.0
+offset_bottom = 134.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
+
+[node name="ModeThumbAccent" type="Panel" parent="ModeSelectorRoot/ModeThumb" unique_id=576403778]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
+
+[node name="ModeButtonsMargin" type="MarginContainer" parent="ModeSelectorRoot" unique_id=472093660]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="ModeButtons" type="VBoxContainer" parent="ModeSelectorRoot/ModeButtonsMargin" unique_id=210837710]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="TacticsModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=374647924]
+custom_minimum_size = Vector2(0, 126)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 18
+toggle_mode = true
+text = "技
+能
+装
+配"
+flat = true
+
+[node name="FormationModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=1087776721]
+custom_minimum_size = Vector2(0, 126)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 18
+toggle_mode = true
+text = "站
+位
+调
+整"
+flat = true
+
+[node name="FormationModeRoot" type="Control" parent="." unique_id=107765323]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 615.0
+offset_top = 168.0
+offset_right = 615.0
+offset_bottom = 168.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.1, 1.1)
+
+[node name="FormationFrame" type="Panel" parent="FormationModeRoot" unique_id=460908895]
+layout_mode = 0
+offset_left = 9.0
+offset_top = 65.0
+offset_right = 578.0
+offset_bottom = 609.0
 mouse_filter = 2
 theme = SubResource("Theme_section_blue")
 
-[node name="FormationHeaderFrame" type="Panel" parent="." unique_id=119332421]
+[node name="FormationHeaderFrame" type="Panel" parent="FormationModeRoot" unique_id=119332421]
 layout_mode = 0
-offset_left = 188.0
-offset_top = 424.0
-offset_right = 382.0
-offset_bottom = 478.0
+offset_left = 11.0
+offset_top = 3.0
+offset_right = 205.0
+offset_bottom = 57.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
-[node name="FormationHeader" type="Label" parent="FormationHeaderFrame" unique_id=1267270876]
+[node name="FormationHeader" type="Label" parent="FormationModeRoot/FormationHeaderFrame" unique_id=1267270876]
 layout_mode = 0
 offset_left = 11.0
 offset_top = 10.0
@@ -245,256 +352,310 @@ offset_bottom = 44.0
 theme_override_font_sizes/font_size = 24
 text = "站位调整"
 
-[node name="SkillAreaFrame" type="Panel" parent="." unique_id=1475926958]
+[node name="GridContainer" type="GridContainer" parent="FormationModeRoot" unique_id=1216591860]
 layout_mode = 0
-offset_left = 780.0
-offset_top = 160.0
-offset_right = 1718.0
-offset_bottom = 1020.0
-mouse_filter = 2
-theme = SubResource("Theme_section_blue")
-
-[node name="SkillAreaHeaderFrame" type="Panel" parent="." unique_id=1453034852]
-layout_mode = 0
-offset_left = 807.0
-offset_top = 175.0
-offset_right = 1085.0
-offset_bottom = 229.0
-mouse_filter = 2
-theme = SubResource("Theme_section_header")
-
-[node name="SkillAreaHeader" type="Label" parent="." unique_id=441230592]
-layout_mode = 0
-offset_left = 829.0
-offset_top = 184.0
-offset_right = 1077.0
-offset_bottom = 218.0
-theme_override_font_sizes/font_size = 24
-text = "战术技能"
-
-[node name="SkillTypeFrame" type="Panel" parent="." unique_id=859483008]
-layout_mode = 0
-offset_left = 864.0
-offset_top = 236.0
-offset_right = 1634.0
-offset_bottom = 314.0
-mouse_filter = 2
-theme = SubResource("Theme_section_blue")
-
-[node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
-anchors_preset = 0
-offset_left = 399.0
-offset_top = 132.0
-offset_right = 742.0
-offset_bottom = 471.0
-
-[node name="CharacterSelectFrame" type="Panel" parent="CharacterSelectRoot" unique_id=1033239150]
-layout_mode = 0
-offset_top = 9.0
-offset_right = 343.0
-offset_bottom = 333.0
-mouse_filter = 2
-theme = SubResource("Theme_char_select_orange")
-
-[node name="CharacterSelectHeader" type="Label" parent="CharacterSelectRoot" unique_id=2049201501]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 16.0
-offset_right = 328.0
-offset_bottom = 62.0
-theme_override_font_sizes/font_size = 28
-text = "人物选择"
-
-[node name="CharacterSelectPanel" type="VBoxContainer" parent="CharacterSelectRoot" unique_id=1332262597]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 66.0
-offset_right = 328.0
-offset_bottom = 378.0
-theme_override_constants/separation = 10
-
-[node name="CharacterSelectList" type="VBoxContainer" parent="CharacterSelectRoot/CharacterSelectPanel" unique_id=618954340]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="EchoButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1229815964]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 22
-text = "Echo"
-
-[node name="KasiyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=2123147018]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 22
-text = "Kasiya"
-
-[node name="MariyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1969700789]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 22
-text = "Mariya"
-
-[node name="NightingaleButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 22
-text = "Nightingale"
-
-[node name="GridContainer" type="GridContainer" parent="." unique_id=1216591860]
-layout_mode = 0
-offset_left = 218.99998
-offset_top = 506.0
-offset_right = 517.0
-offset_bottom = 804.0
+offset_left = 41.99997
+offset_top = 84.999954
+offset_right = 339.99997
+offset_bottom = 383.0
 scale = Vector2(1.7, 1.7)
 mouse_filter = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 3
 
-[node name="7" type="ColorRect" parent="GridContainer" unique_id=670262986]
+[node name="7" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=670262986]
 material = ExtResource("6_3abbs")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="4" type="ColorRect" parent="GridContainer" unique_id=507973548]
+[node name="4" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=507973548]
 material = ExtResource("6_3abbs")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="1" type="ColorRect" parent="GridContainer" unique_id=462326292]
+[node name="1" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=462326292]
 material = ExtResource("6_3abbs")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="8" type="ColorRect" parent="GridContainer" unique_id=408727890]
+[node name="8" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=408727890]
 material = ExtResource("6_3abbs")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="5" type="ColorRect" parent="GridContainer" unique_id=1707540503]
+[node name="5" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=1707540503]
 material = ExtResource("6_3abbs")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="2" type="ColorRect" parent="GridContainer" unique_id=1955521935]
+[node name="2" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=1955521935]
 material = ExtResource("6_3abbs")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="9" type="ColorRect" parent="GridContainer" unique_id=1976518645]
+[node name="9" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=1976518645]
 material = ExtResource("6_3abbs")
 custom_minimum_size = Vector2(94, 94)
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="6" type="ColorRect" parent="GridContainer" unique_id=242345855]
+[node name="6" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=242345855]
 material = ExtResource("6_3abbs")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="3" type="ColorRect" parent="GridContainer" unique_id=1927236506]
+[node name="3" type="ColorRect" parent="FormationModeRoot/GridContainer" unique_id=1927236506]
 material = ExtResource("6_3abbs")
 layout_mode = 2
 mouse_behavior_recursive = 2
 
-[node name="SkillContainer" type="HBoxContainer" parent="." unique_id=972831189]
+[node name="TacticsModeRoot" type="Control" parent="." unique_id=1957179782]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -22.0
+offset_top = -21.0
+offset_right = -22.0
+offset_bottom = -21.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SkillAreaFrame" type="Panel" parent="TacticsModeRoot" unique_id=1475926958]
 layout_mode = 0
-offset_left = 870.0
-offset_top = 349.0
-offset_right = 1620.0
-offset_bottom = 891.0
-theme_override_constants/separation = 60
+offset_left = 388.0
+offset_top = 160.0
+offset_right = 1718.0
+offset_bottom = 1020.0
+mouse_filter = 2
+theme = SubResource("Theme_section_blue")
 
-[node name="AttackFence" type="VBoxContainer" parent="SkillContainer" unique_id=1604114826]
-custom_minimum_size = Vector2(210, 0)
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="DefenseFence" type="VBoxContainer" parent="SkillContainer" unique_id=1963456351]
-custom_minimum_size = Vector2(210, 0)
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="SpecialFence" type="VBoxContainer" parent="SkillContainer" unique_id=1109577460]
-custom_minimum_size = Vector2(210, 0)
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1313883033]
+[node name="SkillAreaHeaderFrame" type="Panel" parent="TacticsModeRoot" unique_id=1453034852]
 layout_mode = 0
-offset_left = 947.0
-offset_top = 244.0
-offset_right = 1347.0
-offset_bottom = 284.0
-scale = Vector2(1.6, 1.6)
-theme_override_constants/separation = 128
+offset_left = 410.0
+offset_top = 177.0
+offset_right = 548.0
+offset_bottom = 231.0
+mouse_filter = 2
+theme = SubResource("Theme_section_header")
 
-[node name="ColorRect" type="ColorRect" parent="HBoxContainer" unique_id=284456308]
+[node name="SkillAreaHeader" type="Label" parent="TacticsModeRoot/SkillAreaHeaderFrame" unique_id=441230592]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 9.0
+offset_right = 118.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 24
+text = "战术技能"
+
+[node name="SkillTypeFrame" type="Panel" parent="TacticsModeRoot" unique_id=859483008]
+layout_mode = 0
+offset_left = 415.0
+offset_top = 354.0
+offset_right = 521.0
+offset_bottom = 922.0
+mouse_filter = 2
+theme = SubResource("Theme_section_blue")
+
+[node name="SkillTypeIcons" type="VBoxContainer" parent="TacticsModeRoot/SkillTypeFrame" unique_id=1313883033]
+layout_mode = 0
+offset_left = 25.00003
+offset_top = 29.0
+offset_right = 65.00003
+offset_bottom = 373.0
+scale = Vector2(1.45, 1.45)
+theme_override_constants/separation = 112
+
+[node name="ColorRect" type="ColorRect" parent="TacticsModeRoot/SkillTypeFrame/SkillTypeIcons" unique_id=284456308]
 material = SubResource("ShaderMaterial_q1qv0")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 
-[node name="RhomboidIcon" type="ColorRect" parent="HBoxContainer" unique_id=726284489]
+[node name="RhomboidIcon" type="ColorRect" parent="TacticsModeRoot/SkillTypeFrame/SkillTypeIcons" unique_id=726284489]
 material = SubResource("ShaderMaterial_2161l")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 1
 
-[node name="TerminateSkillIcon" type="ColorRect" parent="HBoxContainer" unique_id=1999295931]
+[node name="TerminateSkillIcon" type="ColorRect" parent="TacticsModeRoot/SkillTypeFrame/SkillTypeIcons" unique_id=1999295931]
 material = SubResource("ShaderMaterial_4b02f")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 1
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=1055536850]
+[node name="CharacterSelectRoot" type="Control" parent="TacticsModeRoot" unique_id=603340522]
+anchors_preset = 0
+offset_left = 404.0
+offset_top = 189.0
+offset_right = 924.0
+offset_bottom = 329.0
+
+[node name="CharacterSelectFrame" type="PanelContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1033239150]
 layout_mode = 0
-offset_left = 834.0
-offset_top = 320.0
-offset_right = 1656.0
-offset_bottom = 970.0
+offset_top = 54.0
+offset_right = 520.0
+offset_bottom = 126.0
 mouse_filter = 2
-theme_override_constants/separation = 270
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
 
-[node name="Panel" type="Panel" parent="HBoxContainer2" unique_id=1958467348]
-custom_minimum_size = Vector2(3, 20)
+[node name="CharacterSelectThumb" type="PanelContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1485209336]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 62.0
+offset_right = 126.0
+offset_bottom = 118.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
+
+[node name="CharacterSelectThumbAccent" type="Panel" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectThumb" unique_id=1790214888]
 layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
+
+[node name="CharacterSelectHeader" type="Label" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=2049201501]
+layout_mode = 0
+offset_left = 165.0
+offset_top = -4.0
+offset_right = 253.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 22
+text = "人物选择"
+
+[node name="CharacterSelectPanel" type="MarginContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1332262597]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 54.0
+offset_right = 512.0
+offset_bottom = 126.0
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="CharacterSelectList" type="HBoxContainer" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel" unique_id=618954340]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="EchoButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1229815964]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Echo"
+flat = true
+
+[node name="KasiyaButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=2123147018]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Kasiya"
+flat = true
+
+[node name="MariyaButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1969700789]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Mariya"
+flat = true
+
+[node name="NightingaleButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 16
+toggle_mode = true
+text = "Nightingale"
+flat = true
+
+[node name="SkillContainer" type="VBoxContainer" parent="TacticsModeRoot" unique_id=972831189]
+layout_mode = 0
+offset_left = 543.0
+offset_top = 417.0
+offset_right = 1626.0
+offset_bottom = 919.0
+theme_override_constants/separation = 150
+
+[node name="AttackFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1604114826]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 6
+
+[node name="DefenseFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1963456351]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 6
+
+[node name="SpecialFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1109577460]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 6
+
+[node name="SkillDividers" type="Control" parent="TacticsModeRoot" unique_id=1055536850]
+anchors_preset = 0
+offset_left = 546.0
+offset_top = 377.0
+offset_right = 1626.0
+offset_bottom = 919.0
+mouse_filter = 2
+
+[node name="Panel" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1958467348]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 0
+offset_right = 1000.0
+offset_bottom = 3.0
 theme = SubResource("Theme_dbxj7")
 
-[node name="Panel2" type="Panel" parent="HBoxContainer2" unique_id=1589845525]
-custom_minimum_size = Vector2(3, 20)
-layout_mode = 2
+[node name="Panel2" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1589845525]
+layout_mode = 0
+offset_top = 179.0
+offset_right = 1000.0
+offset_bottom = 182.0
 theme = SubResource("Theme_dbxj7")
 
-[node name="Panel3" type="Panel" parent="HBoxContainer2" unique_id=973292487]
-custom_minimum_size = Vector2(3, 20)
-layout_mode = 2
+[node name="Panel3" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=973292487]
+layout_mode = 0
+offset_top = 358.0
+offset_right = 1000.0
+offset_bottom = 361.0
 theme = SubResource("Theme_dbxj7")
 
-[node name="Panel4" type="Panel" parent="HBoxContainer2" unique_id=980294257]
-custom_minimum_size = Vector2(3, 20)
-layout_mode = 2
+[node name="Panel4" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=980294257]
+layout_mode = 0
+offset_top = 537.0
+offset_right = 1000.0
+offset_bottom = 540.0
 theme = SubResource("Theme_dbxj7")
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1598531785]
 material = SubResource("ShaderMaterial_wa4fa")
 layout_mode = 0
-offset_left = 1021.0
-offset_top = 39.0
-offset_right = 1081.0
-offset_bottom = 105.0
+offset_left = 960.0
+offset_top = 44.0
+offset_right = 1020.0
+offset_bottom = 110.0

@@ -22,7 +22,7 @@ public partial class FinalGuard : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             ModifyPropertyAbsoluteStep(
                 type: PropertyType.Power,
                 value: PowerGain,
@@ -51,8 +51,8 @@ public partial class CrystalGuard : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            RelativeAllyBlockStep(relativeIndex: -1, baseBlock: BaseBlock),
-            RelativeAllyBlockStep(relativeIndex: 1, baseBlock: BaseBlock)
+            BlockFriendlyByRelativeStep(relativeIndex: -1, baseBlock: BaseBlock),
+            BlockFriendlyByRelativeStep(relativeIndex: 1, baseBlock: BaseBlock)
         );
     }
 }

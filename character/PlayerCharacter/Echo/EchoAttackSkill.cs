@@ -23,7 +23,7 @@ public partial class SacredOnslaught : Skill
             CustomStep(
                 async __ =>
                 {
-                    int hitCount = Math.Min(MaxTargets, Chosetarget1().Length);
+                    int hitCount = Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length);
                     OwnerCharater?.UpdataBlock(
                         Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999)
                     );
@@ -31,7 +31,9 @@ public partial class SacredOnslaught : Skill
                 },
                 __ =>
                 {
-                    int targetCount = IsInBattle ? Math.Min(MaxTargets, Chosetarget1().Length) : 0;
+                    int targetCount = IsInBattle
+                        ? Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length)
+                        : 0;
                     int totalBlock = IsInBattle
                         ? (OwnerSurvivability + BlockPerTarget * targetCount)
                         : 0;
@@ -122,7 +124,7 @@ public partial class BreakStrike : Skill
             CustomStep(
                 _ =>
                 {
-                    var targets = Chosetarget1();
+                    var targets = ChosetargetByOrder(byBehindRow: false);
                     var target = targets[0];
                     if (target.Block > 0)
                         target.UpdataBlock(-target.Block);

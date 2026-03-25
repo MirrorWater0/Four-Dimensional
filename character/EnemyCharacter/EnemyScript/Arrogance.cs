@@ -60,7 +60,7 @@ public partial class ArroganceSurvive : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(baseBlock: BaseBlock),
+            BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: BaseBlock),
             ApplyBuffAll(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -89,12 +89,17 @@ public partial class ArroganceSpecial : Skill
             this,
             HealFriendlyRelative(4),
             ModifyPropertyStep(PropertyType.Power, 3),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Pursuit,
-                stacks: PursuitStacks,
-                index: 0,
-                dyingFilter: false,
-                energyCost: PursuitEnergyCost
+            EnergyTimesGateStep(
+                energyCost: PursuitEnergyCost,
+                onPassSteps:
+                [
+                    ApplyBuffFriendly(
+                        buffName: Buff.BuffName.Pursuit,
+                        stacks: PursuitStacks,
+                        index: 0,
+                        dyingFilter: false
+                    ),
+                ]
             )
         );
     }

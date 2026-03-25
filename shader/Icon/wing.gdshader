@@ -6,12 +6,12 @@ uniform bool flip_vertical = false;
 
 // --- 整体变换控制 ---
 uniform float wing_size : hint_range(0.1, 3.0) = 1.0;
-uniform vec2 pivot = vec2(0.5, 0.5);   // 旋转与缩放的中心点
+uniform vec2 pivot = vec2(0.7, 0.7);   // 旋转与缩放的中心点
 uniform float rotation : hint_range(-6.28, 6.28) = 0.0; // 整体旋转角度 (弧度)
 uniform float edge_smoothness : hint_range(0.0, 0.1) = 0.01;
 
 // --- 翅膀细节 ---
-uniform int blade_count : hint_range(3, 12) = 6;
+uniform int blade_count : hint_range(3, 12) = 5;
 uniform float wing_span : hint_range(0.1, 2.0) = 1.2;
 uniform float spine_thickness : hint_range(0.01, 0.2) = 0.06;
 

@@ -4,7 +4,7 @@ using Godot;
 public partial class SkillCard : SubViewportContainer
 {
     private const int DefaultDescriptionFontSize = 19;
-    private const int MinDescriptionFontSize = 11;
+    private const int MinDescriptionFontSize = 8;
 
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("SubViewport/Description");
     public Label NameLabel => field ??= GetNode<Label>("SubViewport/NameLabel");
@@ -18,30 +18,41 @@ public partial class SkillCard : SubViewportContainer
     private Tween _pressTween;
     private Tween _hoverTween;
     private int _baseDescriptionFontSize;
+    private int _textAdjustVersion;
+    private Vector2 _baseScale = Vector2.One;
+    private Vector2 _configuredDisplayScale = Vector2.One;
 
     public override void _Ready()
     {
         ApplySkillToUi();
         HoverHint.Visible = false;
         CacheBaseFontSizes();
+        ApplyConfiguredDisplayScale();
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
         Button.MouseEntered += () =>
         {
             HoverHint.Visible = true;
             _hoverTween?.Kill();
             _hoverTween = CreateTween();
-            _hoverTween.TweenProperty(this, "scale", 1.1f * Vector2.One, 0.2f);
+            _hoverTween.TweenProperty(this, "scale", _baseScale * 1.08f, 0.2f);
         };
         Button.MouseExited += () =>
         {
             HoverHint.Visible = false;
             _hoverTween?.Kill();
             _hoverTween = CreateTween();
-            _hoverTween.TweenProperty(this, "scale", Vector2.One, 0.2f);
+            _hoverTween.TweenProperty(this, "scale", _baseScale, 0.2f);
         };
         (Material as ShaderMaterial)?.SetShaderParameter("progress", 1f);
         Button.Pressed += PressEffect;
         SkillTypeIcon.Disabled = true;
+    }
+
+    public void ConfigureDisplayScale(Vector2 scale)
+    {
+        _configuredDisplayScale = scale;
+        if (IsInsideTree())
+            ApplyConfiguredDisplayScale();
     }
 
     public void ResetState()
@@ -51,12 +62,28 @@ public partial class SkillCard : SubViewportContainer
         _hoverTween?.Kill();
 
         HoverHint.Visible = false;
-        Scale = Vector2.One;
+        Scale = _baseScale;
         Modulate = new Color(1, 1, 1, 1);
 
         if (Material is ShaderMaterial shader)
         {
             shader.SetShaderParameter("progress", 1f);
+            shader.SetShaderParameter("center_vanish", 0f);
+        }
+    }
+
+    public void RestoreDisplayState()
+    {
+        _progressTween?.Kill();
+        _pressTween?.Kill();
+        _hoverTween?.Kill();
+
+        HoverHint.Visible = false;
+        Scale = _baseScale;
+
+        if (Material is ShaderMaterial shader)
+        {
+            shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
         }
     }
@@ -110,7 +137,7 @@ public partial class SkillCard : SubViewportContainer
         SkillTypeIcon.SelfSkill = CurrentSkill;
         SkillTypeIcon.SetSkillType(CurrentSkill.SkillType);
 
-        CallDeferred(nameof(AdjustTextSizes));
+        QueueAdjustTextSizes();
     }
 
     public void Vanish()
@@ -161,36 +188,43 @@ public partial class SkillCard : SubViewportContainer
         _baseDescriptionFontSize = Description.GetThemeFontSize("normal_font_size");
         if (_baseDescriptionFontSize <= 0)
             _baseDescriptionFontSize = DefaultDescriptionFontSize;
-
     }
 
-    private void AdjustTextSizes()
+    private void ApplyConfiguredDisplayScale()
     {
+        _baseScale = _configuredDisplayScale;
+        Scale = _baseScale;
+    }
+
+    private async void QueueAdjustTextSizes()
+    {
+        int version = ++_textAdjustVersion;
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        if (!IsInsideTree() || version != _textAdjustVersion)
+            return;
+
+        Description.Size = new Vector2(Description.Size.X, CharacterName.Position.Y - Description.Position.Y - 10f);
         if (!IsInsideTree())
             return;
 
         AdjustDescriptionFont();
     }
+
     private void AdjustDescriptionFont()
     {
-        Description.AddThemeFontSizeOverride("normal_font_size", _baseDescriptionFontSize);
-
         float availableHeight = Description.Size.Y;
         if (availableHeight <= 0.0f)
             return;
 
-        float contentHeight = Description.GetContentHeight();
-        if (contentHeight <= availableHeight)
-            return;
+        for (int fontSize = _baseDescriptionFontSize; fontSize >= MinDescriptionFontSize; fontSize--)
+        {
+            Description.AddThemeFontSizeOverride("normal_font_size", fontSize);
+            if (Description.GetContentHeight() <= availableHeight)
+                return;
+        }
 
-        float ratio = availableHeight / contentHeight;
-        int targetSize = Mathf.FloorToInt(
-            _baseDescriptionFontSize * Mathf.Clamp(ratio, 0.1f, 1.0f)
-        );
-        if (targetSize < MinDescriptionFontSize)
-            targetSize = MinDescriptionFontSize;
-
-        Description.AddThemeFontSizeOverride("normal_font_size", targetSize);
+        Description.AddThemeFontSizeOverride("normal_font_size", MinDescriptionFontSize);
     }
 
 }

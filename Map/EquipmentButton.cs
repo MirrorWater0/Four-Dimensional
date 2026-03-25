@@ -1,14 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class EquipmentButton : Button
 {
-    private const float PartMoveDuration = 0.28f;
-    private const float PartFadeDuration = 0.24f;
-    private const float PartHideDuration = 0.2f;
-    private const float PartStagger = 0.055f;
-    private const float BackgroundFadeDuration = 0.34f;
+    private const float PartMoveDuration = 0.22f;
+    private const float PartFadeDuration = 0.2f;
+    private const float PartHideDuration = 0.16f;
+    private const float PartStagger = 0.035f;
+    private const float BackgroundFadeDuration = 0.26f;
 
     private static readonly PackedScene EquipmentInterfaceScene = ResourceLoader.Load<PackedScene>(
         "res://Equipment/EquipmentInterface.tscn"
@@ -23,7 +25,9 @@ public partial class EquipmentButton : Button
 
     [Export]
     private CanvasLayer SiteUILayer;
+    private Map ThisMap => field ??= GetNodeOrNull<Map>("/root/Map");
     private EquipmentInterface CurrentUI;
+    private Color _originalHoverColor;
     private List<PartState> _parts = new();
     private Tween _activeTween;
     private UiAnimPhase _phase = UiAnimPhase.Idle;
@@ -31,14 +35,14 @@ public partial class EquipmentButton : Button
 
     private readonly (string path, Vector2 offset)[] _partSpecs =
     [
-        ("BG", new Vector2(0, 28)),
-        ("Overlay", new Vector2(0, 36)),
-        ("GearLeft", new Vector2(-220, 130)),
-        ("GearRight", new Vector2(240, -150)),
-        ("RootMargin/MainVBox/TopBar", new Vector2(0, -96)),
-        ("RootMargin/MainVBox/ContentRow/LeftPanel", new Vector2(-180, 0)),
-        ("RootMargin/MainVBox/ContentRow/CenterPanel", new Vector2(0, 128)),
-        ("RootMargin/MainVBox/ContentRow/RightPanel", new Vector2(190, 0)),
+        ("BG", new Vector2(0, 10)),
+        ("Overlay", new Vector2(0, 14)),
+        ("GearLeft", new Vector2(-92, 54)),
+        ("GearRight", new Vector2(98, -62)),
+        ("RootMargin/MainVBox/TopBar", new Vector2(0, -42)),
+        ("RootMargin/MainVBox/ContentRow/LeftPanel", new Vector2(-64, 12)),
+        ("RootMargin/MainVBox/ContentRow/CenterPanel", new Vector2(0, 34)),
+        ("RootMargin/MainVBox/ContentRow/RightPanel", new Vector2(68, 12)),
     ];
 
     private sealed class PartState
@@ -54,20 +58,31 @@ public partial class EquipmentButton : Button
     public override void _Ready()
     {
         Pressed += ToggleEquipmentInterface;
+        MouseEntered += OnMouseEntered;
+        MouseExited += OnMouseExited;
+        if (Material is ShaderMaterial material)
+            _originalHoverColor = (Color)material.GetShaderParameter("color");
     }
 
-    private void ToggleEquipmentInterface()
+    private async void ToggleEquipmentInterface()
     {
+        if (!IsUiAlive() && SiteUILayer != null)
+            CurrentUI = SiteUILayer.GetChildren().OfType<EquipmentInterface>().FirstOrDefault();
+
         if (IsUiAlive())
         {
-            if (_phase == UiAnimPhase.Hiding)
-                ShowEquipmentInterface(true);
-            else
-                HideEquipmentInterface();
+            await CloseCurrentUiAsync();
         }
         else
         {
+            Task frontUiCloseTask = null;
+            if (ThisMap != null && ThisMap.HasFrontUiChildren())
+                frontUiCloseTask = ThisMap.CloseFrontUiLayerAsync();
+
             ShowEquipmentInterface(true);
+
+            if (frontUiCloseTask != null)
+                await frontUiCloseTask;
         }
     }
 
@@ -97,7 +112,7 @@ public partial class EquipmentButton : Button
         CapturePartBases();
 
         _activeTween = CreateTween();
-        _activeTween.SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Quint);
+        _activeTween.SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
         _activeTween.SetParallel(true);
         for (int i = 0; i < _parts.Count; i++)
         {
@@ -193,15 +208,20 @@ public partial class EquipmentButton : Button
         };
     }
 
-    private void BindCloseButtonWithAnimation(EquipmentInterface ui)
+    public async Task CloseCurrentUiAsync()
     {
-        var closeButton = ui.GetNodeOrNull<Button>("RootMargin/MainVBox/TopBar/CloseButton");
-        if (closeButton == null)
-            return;
+        if (!IsUiAlive() && SiteUILayer != null)
+            CurrentUI = SiteUILayer.GetChildren().OfType<EquipmentInterface>().FirstOrDefault();
 
-        // Replace direct close with animated close.
-        closeButton.Pressed -= ui.QueueFree;
-        closeButton.Pressed += HideEquipmentInterface;
+        if (!IsUiAlive())
+        {
+            CurrentUI = null;
+            return;
+        }
+
+        HideEquipmentInterface();
+        while (IsUiAlive())
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
 
     private bool IsUiAlive()
@@ -223,7 +243,6 @@ public partial class EquipmentButton : Button
 
         CurrentUI = equipmentInterface;
         CurrentUI.TreeExited += OnUiTreeExited;
-        BindCloseButtonWithAnimation(CurrentUI);
         _parts.Clear();
         return true;
     }
@@ -356,6 +375,34 @@ public partial class EquipmentButton : Button
         _parts.Clear();
         _phase = UiAnimPhase.Idle;
         CurrentUI = null;
+    }
+
+    private void OnMouseEntered()
+    {
+        if (Material is not ShaderMaterial material)
+            return;
+
+        material.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist2", 1f, 0.2f);
+        material.SetShaderParameter("color", new Color(1, 1, 1, 1));
+        GlobalFunction.TweenShader(this, "dist1", 1f, 0.2f);
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.43f, 0.2f);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.45f, 0.2f);
+        GlobalFunction.TweenShader(this, "hover", 1f, 0.2f);
+    }
+
+    private void OnMouseExited()
+    {
+        if (Material is not ShaderMaterial material)
+            return;
+
+        material.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist2", 0.5f, 0.2f);
+        material.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist1", 0.7f, 0.2f);
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.27f, 0.2f);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.28f, 0.2f);
+        GlobalFunction.TweenShader(this, "hover", 0f, 0.2f);
     }
 
     private void RefreshBattlePreviewIfNeeded()

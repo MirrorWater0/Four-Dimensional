@@ -4,6 +4,11 @@ using Godot;
 
 public partial class SelectButton : Control
 {
+    private const float SkillButtonEnterDuration = 0.10f;
+    private const float SkillButtonEnterFadeDuration = 0.12f;
+    private const float SkillButtonExitDuration = 0.10f;
+    private const float SkillButtonExitFadeDuration = 0.12f;
+
     Color out_orignalColor;
     public Skill MySkill;
     public Label ThisLabel => field ??= GetNode("Control/Label") as Label;
@@ -12,8 +17,7 @@ public partial class SelectButton : Control
     public AnimationPlayer animation => field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public Button Button => field ??= GetNode("Control/Button") as Button;
     public Control Control => field ??= GetNode("Control") as Control;
-    private Tip GlobalTooltip =>
-        field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
+    private Tip GlobalTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
 
     public override void _Process(double delta) { }
 
@@ -71,15 +75,17 @@ public partial class SelectButton : Control
     {
         await ToSignal(GetTree().CreateTimer(delay), "timeout");
         Control.Position = new Vector2(-50, 0);
-        CreateTween().TweenProperty(Control, "position", new Vector2(0, 0), 0.2f);
-        CreateTween().TweenProperty(this, "modulate:a", 1f, 0.15f);
+        CreateTween()
+            .TweenProperty(Control, "position", new Vector2(0, 0), SkillButtonEnterDuration)
+            .SetEase(Tween.EaseType.Out);
+        CreateTween().TweenProperty(this, "modulate:a", 1f, SkillButtonEnterFadeDuration);
     }
 
     public async void FadeAnimation(float delay)
     {
         await ToSignal(GetTree().CreateTimer(delay), "timeout");
-        CreateTween().TweenProperty(Control, "position", new Vector2(50, 0), 0.2f);
-        CreateTween().TweenProperty(this, "modulate:a", 0f, 0.2f);
+        CreateTween().TweenProperty(Control, "position", new Vector2(50, 0), SkillButtonExitDuration);
+        CreateTween().TweenProperty(this, "modulate:a", 0f, SkillButtonExitFadeDuration);
     }
 
     private static string BuildSkillTooltipText(Skill skill)

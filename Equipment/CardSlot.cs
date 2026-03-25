@@ -6,6 +6,9 @@ public partial class CardSlot : Control
     private static readonly Color DefaultBorderColor = new("#a7d6ff52");
     private static readonly Color HoverBorderColor = new("#5cff8a");
     private static readonly Color SelectedBorderColor = Colors.Yellow;
+    private static readonly Color DisabledBorderColor = new("#5e6f8670");
+    private static readonly Color EnabledModulate = Colors.White;
+    private static readonly Color DisabledModulate = new(0.62f, 0.68f, 0.78f, 0.78f);
 
     [Export]
     public float HoverBorderTweenDuration = 0.12f;
@@ -144,6 +147,22 @@ public partial class CardSlot : Control
         SetAlpha(Panel, 1.0f);
     }
 
+    public void SetInteractable(bool interactable)
+    {
+        _isInteractable = interactable;
+        if (!_isInteractable)
+        {
+            _isHovered = false;
+            _isSelected = false;
+        }
+
+        if (Panel != null)
+            Panel.MouseFilter = _isInteractable ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+
+        Modulate = _isInteractable ? EnabledModulate : DisabledModulate;
+        ApplyBorderState();
+    }
+
     public void PrepareForInsertVisual()
     {
         if (Panel == null)
@@ -163,6 +182,9 @@ public partial class CardSlot : Control
 
     private void OnPanelGuiInput(InputEvent @event)
     {
+        if (!_isInteractable)
+            return;
+
         if (@event is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true })
             return;
 
@@ -193,11 +215,13 @@ public partial class CardSlot : Control
         if (_runtimeStyleBox == null)
             return;
 
-        Color targetColor = _isSelected
-            ? SelectedBorderColor
-            : (_isHovered ? HoverBorderColor : DefaultBorderColor);
+        Color targetColor = !_isInteractable
+            ? DisabledBorderColor
+            : _isSelected
+                ? SelectedBorderColor
+                : (_isHovered ? HoverBorderColor : DefaultBorderColor);
 
-        if (!animate || _isSelected)
+        if (!animate || _isSelected || !_isInteractable)
         {
             _borderTween?.Kill();
             _runtimeStyleBox.BorderColor = targetColor;
@@ -266,6 +290,7 @@ public partial class CardSlot : Control
     private Color _currentBorderColor = DefaultBorderColor;
     private bool _isSelected;
     private bool _isHovered;
+    private bool _isInteractable = true;
     private Vector2 _lastGlobalPos;
     private Vector2 _lastSize;
 }

@@ -20,7 +20,8 @@ public partial class Reward : CanvasLayer
 
     private InventoryGrid InventoryGridNode => field ??= GetNode<InventoryGrid>("Panel/Inventory");
     private Button SkillRewardButton => field ??= GetNodeOrNull<Button>("Panel/Inventory/Button");
-    private HBoxContainer SkillRewardsContainer => field ??= GetNodeOrNull<HBoxContainer>("HBoxContainer");
+    private HBoxContainer SkillRewardsContainer =>
+        field ??= GetNodeOrNull<HBoxContainer>("HBoxContainer");
     private ColorRect BG => field ??= GetNode<ColorRect>("BG");
     private ColorRect SkillMask => field ??= GetNodeOrNull<ColorRect>("SkillMask");
     private Control PanelNode => field ??= GetNode<Control>("Panel");
@@ -158,7 +159,8 @@ public partial class Reward : CanvasLayer
     /// <summary>Add a relic reward entry to the inventory list.</summary>
     public CardSlot AddRelicRewardEntry(RelicID relicId, string displayName = null)
     {
-        string title = displayName ?? $"遗物 · {relicId}";
+        var relic = Relic.Create(relicId);
+        string title = displayName ?? $"遗物 · {relic.RelicName}";
         var entry = new RewardEntry { Kind = RewardKind.Relic, RelicId = relicId };
         var card = CreateRewardCard(title, "点击领取遗物");
         if (card == null)
@@ -213,7 +215,11 @@ public partial class Reward : CanvasLayer
         button.Visible = true;
         button.Disabled = false;
         button.Modulate = new Color(1, 1, 1, 1);
-        RegisterRewardControl(button, new RewardEntry { Kind = RewardKind.Skill }, isRuntime: false);
+        RegisterRewardControl(
+            button,
+            new RewardEntry { Kind = RewardKind.Skill },
+            isRuntime: false
+        );
     }
 
     private void EnsureDefaultSkillRewardEntry()
@@ -541,15 +547,10 @@ public partial class Reward : CanvasLayer
             return;
         }
 
-        int addNum = relicId switch
-        {
-            RelicID.Blessing => 3,
-            _ => -1,
-        };
+        int addNum = Relic.GetAcquireAmount(relicId);
         existing.Num += addNum;
         GameInfo.Relic[relicId] = existing.Num;
-        if (existing.IconNode != null)
-            existing.IconNode.GetNode<Label>("Label").Text = existing.Num.ToString();
+        existing.UpdateIconLabel();
     }
 
     private void GrantEquipmentReward(Equipment equipment)
@@ -710,13 +711,16 @@ public partial class Reward : CanvasLayer
             _introTween.TweenProperty(BG, "modulate:a", 1.0f, 0.25f);
         if (PanelNode != null)
         {
-            _introTween.TweenProperty(PanelNode, "position", _panelBasePosition, 0.35f)
+            _introTween
+                .TweenProperty(PanelNode, "position", _panelBasePosition, 0.35f)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
-            _introTween.TweenProperty(PanelNode, "scale", Vector2.One, 0.35f)
+            _introTween
+                .TweenProperty(PanelNode, "scale", Vector2.One, 0.35f)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
-            _introTween.TweenProperty(PanelNode, "modulate:a", 1.0f, 0.25f)
+            _introTween
+                .TweenProperty(PanelNode, "modulate:a", 1.0f, 0.25f)
                 .SetEase(Tween.EaseType.Out);
         }
 
@@ -726,7 +730,8 @@ public partial class Reward : CanvasLayer
         if (DecorNode != null)
         {
             _introTween.TweenProperty(DecorNode, "modulate:a", 1.0f, 0.2f);
-            _introTween.TweenProperty(DecorNode, "scale", Vector2.One, 0.2f)
+            _introTween
+                .TweenProperty(DecorNode, "scale", Vector2.One, 0.2f)
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.Out);
         }
@@ -747,10 +752,12 @@ public partial class Reward : CanvasLayer
             _outroTween.TweenProperty(DecorNode, "modulate:a", 0.0f, 0.15f);
         if (PanelNode != null)
         {
-            _outroTween.TweenProperty(PanelNode, "scale", new Vector2(0.96f, 0.96f), 0.2f)
+            _outroTween
+                .TweenProperty(PanelNode, "scale", new Vector2(0.96f, 0.96f), 0.2f)
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.In);
-            _outroTween.TweenProperty(
+            _outroTween
+                .TweenProperty(
                     PanelNode,
                     "position",
                     _panelBasePosition + new Vector2(0, 20),
@@ -784,14 +791,16 @@ public partial class Reward : CanvasLayer
             SkillMask.Visible = true;
             SkillMask.Modulate = new Color(1, 1, 1, 0);
             _maskTween = CreateTween();
-            _maskTween.TweenProperty(SkillMask, "modulate:a", 1.0f, 0.18f)
+            _maskTween
+                .TweenProperty(SkillMask, "modulate:a", 1.0f, 0.18f)
                 .SetEase(Tween.EaseType.Out)
                 .SetTrans(Tween.TransitionType.Sine);
         }
         else
         {
             _maskTween = CreateTween();
-            _maskTween.TweenProperty(SkillMask, "modulate:a", 0.0f, 0.16f)
+            _maskTween
+                .TweenProperty(SkillMask, "modulate:a", 0.0f, 0.16f)
                 .SetEase(Tween.EaseType.In)
                 .SetTrans(Tween.TransitionType.Sine);
             _maskTween.TweenCallback(Callable.From(() => SkillMask.Visible = false));

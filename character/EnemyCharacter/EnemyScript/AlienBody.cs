@@ -71,7 +71,7 @@ public partial class AlienBodySurvive : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, permanent: true)
         );
     }

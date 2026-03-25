@@ -72,7 +72,7 @@ public partial class PlayerCharacter : Character
             skillButton.Modulate = SkillButton.EnabledModulate;
         }
         SelfFrame.Selected.Visible = true;
-        BattleNode.RetreatButton.Disabled = false;
+        BattleNode.RetreatButton.Disabled = !BattleNode.CanManualRetreat();
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
     }
 

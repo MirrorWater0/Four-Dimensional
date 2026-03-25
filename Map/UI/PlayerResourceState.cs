@@ -27,36 +27,15 @@ public partial class PlayerResourceState : CanvasLayer
         set
         {
             value = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
-            if (value < GameInfo.TransitionEnergy)
-            {
-                for (int i = GameInfo.TransitionEnergy; i > value; i--)
-                {
-                    TransitionEnergyControl
-                        .GetNode<HBoxContainer>("HBoxContainer")
-                        .GetChild<ProgressBar>(TransistionEnergyMax - i - 1)
-                        .Value = 0;
-                }
-            }
-            else
-            {
-                for (int i = GameInfo.TransitionEnergy; i < value; i++)
-                {
-                    TransitionEnergyControl
-                        .GetNode<HBoxContainer>("HBoxContainer")
-                        .GetChild<ProgressBar>(TransistionEnergyMax - i - 1)
-                        .Value = 100;
-                }
-            }
             GameInfo.TransitionEnergy = value;
-            if (value > GameInfo.TransitionEnergyMax)
-            {
-                GD.Print("Energy overflow");
-            }
+            RefreshTransitionEnergyUI(value);
         }
     }
 
     public int TransistionEnergyMax => GameInfo.TransitionEnergyMax;
     public Control TransitionEnergyControl => field ??= GetNode<Control>("TransitionEnergyControl");
+    private HBoxContainer TransitionEnergySlots =>
+        field ??= TransitionEnergyControl.GetNode<HBoxContainer>("HBoxContainer");
     public ColorRect ElectricityCoinIcon => field ??= GetNode<ColorRect>("ElectricityCoin");
     static PackedScene TransitionEnergySlot = GD.Load<PackedScene>(
         "res://Map/UI/TransitionEnergySlot.tscn"
@@ -69,8 +48,8 @@ public partial class PlayerResourceState : CanvasLayer
     public override void _Ready()
     {
         ElectricityCoin = GameInfo.ElectricityCoin;
-        TransitionEnergy = GameInfo.TransitionEnergy;
         InitTransitionEnergyMax();
+        TransitionEnergy = GameInfo.TransitionEnergy;
         InitRelic();
         InitItems();
     }
@@ -79,11 +58,7 @@ public partial class PlayerResourceState : CanvasLayer
     {
         foreach (var relic in GameInfo.Relic)
         {
-            Relic relicInst = relic.Key switch
-            {
-                RelicID.Blessing => new Relic(RelicID.Blessing),
-                _ => new Relic(RelicID.curse),
-            };
+            Relic relicInst = Relic.Create(relic.Key);
             relicInst.Num = relic.Value;
             relicInst.IconAdd(this);
             RelicList.Add(relicInst);
@@ -114,11 +89,26 @@ public partial class PlayerResourceState : CanvasLayer
 
     public void InitTransitionEnergyMax()
     {
+        while (TransitionEnergySlots.GetChildCount() > 0)
+        {
+            var child = TransitionEnergySlots.GetChild(0);
+            TransitionEnergySlots.RemoveChild(child);
+            child.QueueFree();
+        }
+
         for (int i = 0; i < GameInfo.TransitionEnergyMax; i++)
         {
-            TransitionEnergyControl
-                .GetNode<HBoxContainer>("HBoxContainer")
-                .AddChild(TransitionEnergySlot.Instantiate());
+            TransitionEnergySlots.AddChild(TransitionEnergySlot.Instantiate());
+        }
+    }
+
+    private void RefreshTransitionEnergyUI(int value)
+    {
+        var slots = TransitionEnergySlots;
+        for (int i = 0; i < slots.GetChildCount(); i++)
+        {
+            if (slots.GetChild(i) is ProgressBar slot)
+                slot.Value = i < value ? 100 : 0;
         }
     }
 }

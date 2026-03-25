@@ -19,35 +19,56 @@ public partial class Relic
         RelicDescription = GetRelicDescription(relicID);
     }
 
-    public static void RelicAdd(PlayerResourceState playerResourceState, RelicID relicID)
+    public static Relic Create(RelicID relicID)
     {
-        Relic relic = relicID switch
+        return relicID switch
         {
             RelicID.Blessing => new Relic(RelicID.Blessing),
+            RelicID.Triangle => new Relic(RelicID.Triangle),
             _ => new Relic(RelicID.curse),
         };
-        int num = relicID switch
+    }
+
+    public static int GetAcquireAmount(RelicID relicID)
+    {
+        return relicID switch
         {
             RelicID.Blessing => 3,
             _ => -1,
         };
+    }
+
+    public static string GetIconShaderPath(RelicID relicID)
+    {
+        return relicID switch
+        {
+            RelicID.Blessing => "res://shader/Icon/RelicIcon/Point.gdshader",
+            RelicID.Triangle => "res://shader/Icon/RelicIcon/Triangle.gdshader",
+            _ => null,
+        };
+    }
+
+    public static string FormatCountLabel(int count)
+    {
+        return count < 0 ? string.Empty : count.ToString();
+    }
+
+    public static void RelicAdd(PlayerResourceState playerResourceState, RelicID relicID)
+    {
+        Relic relic = Create(relicID);
+        int num = GetAcquireAmount(relicID);
         relic.Num = num;
         relic.IconAdd(playerResourceState);
-        GameInfo.Relic.Add(relicID, num);
+        GameInfo.Relic[relicID] = num;
     }
 
     public void IconAdd(PlayerResourceState playerResourceState)
     {
-        string path = ID switch
-        {
-            RelicID.Blessing => "res://shader/Icon/RelicIcon/Point.gdshader",
-            _ => null,
-        };
+        string path = GetIconShaderPath(ID);
         var icon = IconScene.Instantiate() as ColorRect;
-        var shader = GD.Load<Shader>(path);
-        var material = new ShaderMaterial() { Shader = shader };
-        icon.Material = material;
-        icon.GetNode<Label>("Label").Text = Num.ToString();
+        var shader = string.IsNullOrWhiteSpace(path) ? null : GD.Load<Shader>(path);
+        icon.Material = shader == null ? null : new ShaderMaterial() { Shader = shader };
+        icon.GetNode<Label>("Label").Text = GetIconCountText();
         WireRelicTip(icon, playerResourceState);
         playerResourceState.RelicContainer.AddChild(icon);
         IconNode = icon;
@@ -68,20 +89,40 @@ public partial class Relic
                 await Task.WhenAll(list);
                 Num--;
                 break;
+            case RelicID.Triangle:
+
+                int survivabilityGain = 2;
+                int targetCount = Math.Min(2, battle.PlayersList.Count);
+                for (int i = 0; i < targetCount; i++)
+                {
+                    var player = battle.PlayersList[i];
+                    if (player == null || player.State == Character.CharacterState.Dying)
+                        continue;
+
+                    await player.IncreaseProperties(PropertyType.Survivability, survivabilityGain);
+                }
+                break;
             case RelicID.curse:
                 break;
         }
         GameInfo.Relic[ID] = Num;
-        IconNode.GetNode<Label>("Label").Text = Num.ToString();
+        UpdateIconLabel();
         UpdateRelicTipText();
     }
 
     private string BuildTooltip()
     {
-        string countText = Num >= 0 ? $"\n次数: {Num}" : string.Empty;
         string name = Colorize(RelicName, NameColorHex);
-        string description = ColorizeNumbers($"{RelicDescription}{countText}", NumberColorHex);
+        string description = ColorizeNumbers(RelicDescription, NumberColorHex);
         return $"{name}\n{description}";
+    }
+
+    public void UpdateIconLabel()
+    {
+        if (IconNode == null)
+            return;
+
+        IconNode.GetNode<Label>("Label").Text = GetIconCountText();
     }
 
     private static string GetRelicName(RelicID relicID)
@@ -89,6 +130,7 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => "祝福",
+            RelicID.Triangle => "三角",
             _ => "诅咒",
         };
     }
@@ -98,8 +140,14 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{40}伤害。",
-            _ => "负面遗物，暂无效果。",
+            RelicID.Triangle => $"战斗开始时第一位和第二位角色获得{2}点生存。",
+            _ => "暂无效果。",
         };
+    }
+
+    private string GetIconCountText()
+    {
+        return FormatCountLabel(Num);
     }
 
     private void WireRelicTip(Control icon, PlayerResourceState playerResourceState)
@@ -225,5 +273,6 @@ public partial class Relic
 public enum RelicID
 {
     Blessing,
+    Triangle,
     curse,
 }

@@ -23,6 +23,7 @@ public abstract partial class EnemyRegedit
     public int Survivability;
     public int MaxLife;
     public int Speed;
+    public int SpecialIntentThreshold = 3;
 
     public EnemyRegedit() { }
 
@@ -42,10 +43,11 @@ public partial class EvilRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 60;
-        Power = 12;
+        MaxLife = 70;
+        Power = 14;
         Survivability = 13;
         Speed = 8;
+        SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
@@ -69,6 +71,7 @@ public partial class FearWormRegedit : EnemyRegedit
         Power = 15;
         Survivability = 9;
         Speed = 13;
+        SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
@@ -89,10 +92,11 @@ public partial class ArmonRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 90;
-        Power = 13;
-        Survivability = 14;
-        Speed = 9;
+        MaxLife = 75;
+        Power = 10;
+        Survivability = 8;
+        Speed = 8;
+        SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
@@ -112,10 +116,11 @@ public partial class AlienBodyRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 70;
+        MaxLife = 60;
         Power = 10;
         Survivability = 11;
         Speed = 8;
+        SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
 
@@ -138,11 +143,35 @@ public partial class ArroganceRegedit : EnemyRegedit
         Power = 25;
         Survivability = 30;
         Speed = 50;
+        SpecialIntentThreshold = 4;
 
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
         PassiveName = "傲慢";
         PassiveDescription = $"战斗开始时：获得{2}层{Buff.BuffName.Stun.GetDescription()}。";
+    }
+}
+
+public partial class RedHuskRegedit : EnemyRegedit
+{
+    public RedHuskRegedit()
+    {
+        CharacterName = "RedHusk";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
+
+        // Base stats (used for preview / original properties)
+        MaxLife = 100;
+        Power = 16;
+        Survivability = 15;
+        Speed = 10;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
+
+        PassiveName = "赤壳护盾";
+        PassiveDescription = $"战斗开始时：获得{12}层{Buff.BuffName.AutoArmor.GetDescription()}。";
     }
 }
 
@@ -153,4 +182,5 @@ public enum EnemiesEnum
     Armon,
     Arrogance,
     AlienBody,
+    RedHusk,
 }

@@ -242,7 +242,7 @@ public partial class Skill
         }
     }
 
-    public Character[] Chosetarget1()
+    public Character[] ChosetargetByOrder(bool byBehindRow = false)
     {
         if (OwnerCharater?.BattleNode == null)
             return [];
@@ -256,13 +256,21 @@ public partial class Skill
             ? OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
             : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
 
-        var ordered = source
-            .Where(x => x != null)
-            .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
-            .ThenBy(x => Row(x.PositionIndex))
-            .ThenBy(x => Col(x.PositionIndex))
-            .Where(x => x.State == Character.CharacterState.Normal)
-            .ToArray();
+        var ordered = byBehindRow
+            ? source
+                .Where(x => x != null)
+                .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
+                .ThenBy(x => Row(x.PositionIndex))
+                .ThenByDescending(x => Col(x.PositionIndex))
+                .Where(x => x.State == Character.CharacterState.Normal)
+                .ToArray()
+            : source
+                .Where(x => x != null)
+                .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
+                .ThenBy(x => Row(x.PositionIndex))
+                .ThenBy(x => Col(x.PositionIndex))
+                .Where(x => x.State == Character.CharacterState.Normal)
+                .ToArray();
 
         var visible = ordered
             .Where(x =>
@@ -526,10 +534,10 @@ public partial class Skill
         );
     }
 
-    public async Task Attack1(int damage) //顺位一段攻击
+    public async Task Attack1(int damage, bool byBehindRow = false) //顺位一段攻击
     {
         damage = Math.Clamp(damage, 0, 9999);
-        Character[] targets = Chosetarget1();
+        Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
         if (targets.Length == 0)
             return;
 
@@ -539,10 +547,10 @@ public partial class Skill
         await Task.Delay(100);
     }
 
-    public async Task Attack2(int damage) //顺位二段攻击
+    public async Task Attack2(int damage, bool byBehindRow = false) //顺位二段攻击
     {
         damage = Math.Clamp(damage, 0, 9999);
-        Character[] targets = Chosetarget1();
+        Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
         if (targets.Length == 0)
             return;
         await AttackAnimation(targets[0]);
@@ -581,9 +589,9 @@ public partial class Skill
         }
     }
 
-    public async Task AOE(int damage, int Num, int times)
+    public async Task AOE(int damage, int Num, int times, bool byBehindRow = false)
     {
-        var targets = Chosetarget1();
+        var targets = ChosetargetByOrder(byBehindRow: byBehindRow);
         if (targets.Length == 0)
             return;
 
@@ -670,6 +678,9 @@ public partial class Skill
             SkillID.AlienBodyAttack => new AlienBodyAttack(),
             SkillID.AlienBodySurvive => new AlienBodySurvive(),
             SkillID.AlienBodySpecial => new AlienBodySpecial(),
+            SkillID.RedHuskAttack => new RedHuskAttack(),
+            SkillID.RedHuskSurvive => new RedHuskSurvive(),
+            SkillID.RedHuskSpecial => new RedHuskSpecial(),
             _ => null,
         };
     }
@@ -727,5 +738,8 @@ public enum SkillID
     AlienBodyAttack,
     AlienBodySurvive,
     AlienBodySpecial,
+    RedHuskAttack,
+    RedHuskSurvive,
+    RedHuskSpecial,
     SwapSlash,
 }

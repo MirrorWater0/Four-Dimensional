@@ -86,7 +86,7 @@ public partial class EvilSurvive : Skill
     {
         return new SkillPlan(
             this,
-            SelfBlockStep(BaseBlock),
+            BlockFriendlyByRelativeStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
             LowerTargetPropertyStep(PropertyType.Power, DescendingNum)
         );

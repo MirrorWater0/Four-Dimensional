@@ -8,20 +8,19 @@ using System.Threading.Tasks;
 // - AttackPrimaryStep: 单段攻击（Attack1）。
 // - DoubleStrikeStep: 二段攻击（Attack2）。
 // - AoeDamageStep: 群体伤害（按 Chosetarget1 顺序命中前N名）。
-// - ApplyBuffHostile: 对敌方施加Buff（buffName/stacks/maxTargets/energyCost）。
-// - ApplyBuffAll: 对全阵施加Buff（buffName/stacks/targetCamp/dyingFilter/energyCost）。
+// - ApplyBuffHostile: 对敌方施加Buff（buffName/stacks/maxTargets）。
+// - ApplyBuffAll: 对全阵施加Buff（buffName/stacks/targetCamp/dyingFilter）。
 // - LowerTargetPropertyStep: 下降前N名目标属性（type/value/maxTargets/permanent）。
 // - ModifyPropertyStep: 按相对位调整友方属性（type/value/index；value正增负减）。
 // - ModifyPropertyAbsoluteStep: 按绝对位调整友方属性（type/value/selector；支持全阵，value正增负减）。
-// - ApplyBuffFriendly: 对友方相对位施加Buff（buffName/stacks/index/dyingFilter/energyCost）。
-// - ApplyBuffFriendlyAbsolute: 对友方绝对位施加Buff（buffName/stacks/index/dyingFilter/energyCost）。
+// - ApplyBuffFriendly: 对友方相对位施加Buff（buffName/stacks/index/dyingFilter）。
+// - ApplyBuffFriendlyAbsolute: 对友方绝对位施加Buff（buffName/stacks/index/dyingFilter）。
 // - HealFriendlyRelative: 对友方相对位治疗（baseHeal/survivabilityMultiplier/index/dyingFilter/rebirth）。
 // - HurtFriendly: 对友方造成伤害（damage/index/all）。
 // - HealFriendlyAbsolute: 对友方绝对位治疗（baseHeal/survivabilityMultiplier/selector/preferNonFull/rebirth）。
 // - FriendlyEnergyRelativeStep: 对友方相对位增减能量（delta/relative/dyingFilter）。
 // - ModifyPropertyStep: 调整友方属性（可按相对位；value正增负减）。
-// - SelfBlockStep: 自身获得格挡。
-// - RelativeAllyBlockStep: 相对位队友获得格挡（0自己、-1前一位、+1后一位...；可选非濒死过滤）。
+// - BlockFriendlyByRelativeStep: 相对位友方获得格挡（0自己、-1前一位、+1后一位...；可选非濒死过滤）。
 // - CarryRelativeAllyStep: 连携相对位队友释放指定技能（+n下n位，-n上n位；index:0攻击/1生存/2特殊）。
 // - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
 // - EnergyStep: 改变自身能量。
@@ -36,6 +35,7 @@ public partial class Skill
     private bool _stopRemainingPlanExecution;
     private readonly Dictionary<string, Character> _absoluteFriendlyTargetBinds = new();
     private readonly Dictionary<string, Character> _hostileTargetBinds = new();
+    private readonly HashSet<string> _describedAbsoluteFriendlyTargetKeys = new();
 
     public enum AbsoluteFriendlySelector
     {
@@ -125,7 +125,7 @@ public partial class Skill
         return selected;
     }
 
-    private Character ResolveHostileTarget(string targetKey)
+    private Character ResolveHostileTarget(string targetKey, bool byBehindRow)
     {
         if (!string.IsNullOrWhiteSpace(targetKey))
         {
@@ -137,7 +137,7 @@ public partial class Skill
         }
 
         Character selected = null;
-        var targets = Chosetarget1();
+        var targets = ChosetargetByOrder(byBehindRow: byBehindRow);
         if (targets.Length > 0)
             selected = targets[0];
 
@@ -159,6 +159,18 @@ public partial class Skill
 
         _hostileTargetBinds.TryGetValue(targetKey, out Character cached);
         return cached;
+    }
+
+    private bool ShouldDisplayAbsoluteFriendlyTargetKey(string targetKey)
+    {
+        if (string.IsNullOrWhiteSpace(targetKey))
+            return false;
+
+        if (_describedAbsoluteFriendlyTargetKeys.Contains(targetKey))
+            return true;
+
+        _describedAbsoluteFriendlyTargetKeys.Add(targetKey);
+        return false;
     }
 
     protected sealed class SkillPlan
@@ -190,6 +202,7 @@ public partial class Skill
 
         public string[] DescribeLines()
         {
+            _skill._describedAbsoluteFriendlyTargetKeys.Clear();
             var lines = new List<string>();
             for (int i = 0; i < _steps.Length; i++)
             {
@@ -197,6 +210,7 @@ public partial class Skill
                     _steps[i].Describe(_skill).Where(line => !string.IsNullOrWhiteSpace(line))
                 );
             }
+            _skill._describedAbsoluteFriendlyTargetKeys.Clear();
             return lines.ToArray();
         }
     }
@@ -214,8 +228,18 @@ public partial class Skill
         string prefix = "造成",
         string suffix = "点伤害。",
         int clampMax = 9999,
+        bool byBehindRow = false,
         string targetKey = null
-    ) => new AttackPrimarySkillStep(baseDamage, powerMultiplier, prefix, suffix, clampMax, targetKey);
+    ) =>
+        new AttackPrimarySkillStep(
+            baseDamage,
+            powerMultiplier,
+            prefix,
+            suffix,
+            clampMax,
+            byBehindRow,
+            targetKey
+        );
 
     protected SkillStep DoubleStrikeStep(
         int baseDamage = 0,
@@ -224,6 +248,7 @@ public partial class Skill
         string suffix = "点伤害。",
         int clampMax = 9999,
         bool includeTwoHitText = true,
+        bool byBehindRow = false,
         string targetKey = null
     ) =>
         new DoubleStrikeSkillStep(
@@ -233,6 +258,7 @@ public partial class Skill
             suffix,
             clampMax,
             includeTwoHitText,
+            byBehindRow,
             targetKey
         );
 
@@ -241,46 +267,45 @@ public partial class Skill
         int powerMultiplier = 1,
         int maxTargets = 3,
         int times = 1,
-        int clampMax = 9999
-    ) => new AoeDamageSkillStep(baseDamage, powerMultiplier, maxTargets, times, clampMax);
+        int clampMax = 9999,
+        bool byBehindRow = false
+    ) => new AoeDamageSkillStep(baseDamage, powerMultiplier, maxTargets, times, clampMax, byBehindRow);
 
     protected SkillStep ApplyBuffHostile(
         Buff.BuffName buffName,
         int stacks,
         int maxTargets = 1,
-        int energyCost = 0
-    ) => new ApplyBuffHostileSkillStep(buffName, stacks, maxTargets, energyCost);
+        bool byBehindRow = false
+    ) => new ApplyBuffHostileSkillStep(buffName, stacks, maxTargets, byBehindRow);
 
     protected SkillStep ApplyBuffAll(
         Buff.BuffName buffName,
         int stacks,
         BuffTargetCamp targetCamp = BuffTargetCamp.Hostile,
-        bool dyingFilter = true,
-        int energyCost = 0
-    ) => new ApplyBuffAllSkillStep(buffName, stacks, targetCamp, dyingFilter, energyCost);
+        bool dyingFilter = true
+    ) => new ApplyBuffAllSkillStep(buffName, stacks, targetCamp, dyingFilter);
 
     protected SkillStep LowerTargetPropertyStep(
         PropertyType type,
         int value,
         int maxTargets = 1,
-        bool permanent = false
-    ) => new LowerTargetPropertySkillStep(type, value, maxTargets, permanent);
+        bool permanent = false,
+        bool byBehindRow = false
+    ) => new LowerTargetPropertySkillStep(type, value, maxTargets, permanent, byBehindRow);
 
     protected SkillStep ApplyBuffFriendly(
         Buff.BuffName buffName,
         int stacks,
         int index = 0,
-        bool dyingFilter = true,
-        int energyCost = 0
-    ) => new ApplyBuffFriendlySkillStep(buffName, stacks, index, dyingFilter, energyCost);
+        bool dyingFilter = true
+    ) => new ApplyBuffFriendlySkillStep(buffName, stacks, index, dyingFilter);
 
     protected SkillStep ApplyBuffFriendlyAbsolute(
         Buff.BuffName buffName,
         int stacks,
         int index = 0,
-        bool dyingFilter = true,
-        int energyCost = 0
-    ) => new ApplyBuffFriendlyAbsoluteSkillStep(buffName, stacks, index, dyingFilter, energyCost);
+        bool dyingFilter = true
+    ) => new ApplyBuffFriendlyAbsoluteSkillStep(buffName, stacks, index, dyingFilter);
 
     protected SkillStep HealFriendlyRelative(
         int baseHeal = 0,
@@ -342,16 +367,8 @@ public partial class Skill
         bool dyingFilter = false
     ) => new ModifyPropertyAbsoluteSkillStep(type, value, selector, dyingFilter);
 
-    protected SkillStep SelfBlockStep(
-        int baseBlock = 0,
-        int survivabilityMultiplier = 1,
-        string prefix = "获得",
-        string suffix = "点格挡。",
-        int clampMax = 999
-    ) => new SelfBlockSkillStep(baseBlock, survivabilityMultiplier, prefix, suffix, clampMax);
-
-    protected SkillStep RelativeAllyBlockStep(
-        int relativeIndex,
+    protected SkillStep BlockFriendlyByRelativeStep(
+        int relativeIndex = 0,
         int baseBlock = 0,
         int survivabilityMultiplier = 1,
         int clampMax = 999,
@@ -359,7 +376,7 @@ public partial class Skill
         bool describe = true,
         string descriptionPrefix = null
     ) =>
-        new RelativeAllyBlockSkillStep(
+        new BlockFriendlyByRelativeSkillStep(
             relativeIndex,
             baseBlock,
             survivabilityMultiplier,
@@ -435,6 +452,7 @@ public partial class Skill
         private readonly string _prefix;
         private readonly string _suffix;
         private readonly int _clampMax;
+        private readonly bool _byBehindRow;
         private readonly string _targetKey;
 
         public AttackPrimarySkillStep(
@@ -443,6 +461,7 @@ public partial class Skill
             string prefix,
             string suffix,
             int clampMax,
+            bool byBehindRow,
             string targetKey
         )
         {
@@ -451,6 +470,7 @@ public partial class Skill
             _prefix = prefix;
             _suffix = suffix;
             _clampMax = clampMax;
+            _byBehindRow = byBehindRow;
             _targetKey = targetKey;
         }
 
@@ -459,25 +479,29 @@ public partial class Skill
             int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
             if (!string.IsNullOrWhiteSpace(_targetKey))
             {
-                var target = skill.ResolveHostileTarget(_targetKey);
+                var target = skill.ResolveHostileTarget(_targetKey, _byBehindRow);
                 if (target == null)
                     return;
                 await AttackTargetOnce(skill, target, damage);
                 return;
             }
 
-            await skill.Attack1(damage);
+            await skill.Attack1(damage, _byBehindRow);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            yield return skill.DamageLine(
+            string line = skill.DamageLine(
                 _baseDamage,
                 _powerMultiplier,
                 _prefix,
                 _suffix,
                 _clampMax
             );
+            if (_byBehindRow && !line.Contains("后排", StringComparison.Ordinal))
+                line = $"对后排目标{line}";
+
+            yield return line;
         }
     }
 
@@ -489,6 +513,7 @@ public partial class Skill
         private readonly string _suffix;
         private readonly int _clampMax;
         private readonly bool _includeTwoHitText;
+        private readonly bool _byBehindRow;
         private readonly string _targetKey;
 
         public DoubleStrikeSkillStep(
@@ -498,6 +523,7 @@ public partial class Skill
             string suffix,
             int clampMax,
             bool includeTwoHitText,
+            bool byBehindRow,
             string targetKey
         )
         {
@@ -507,6 +533,7 @@ public partial class Skill
             _suffix = suffix;
             _clampMax = clampMax;
             _includeTwoHitText = includeTwoHitText;
+            _byBehindRow = byBehindRow;
             _targetKey = targetKey;
         }
 
@@ -515,14 +542,14 @@ public partial class Skill
             int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
             if (!string.IsNullOrWhiteSpace(_targetKey))
             {
-                var target = skill.ResolveHostileTarget(_targetKey);
+                var target = skill.ResolveHostileTarget(_targetKey, _byBehindRow);
                 if (target == null)
                     return;
                 await AttackTargetDoubleStrike(skill, target, damage);
                 return;
             }
 
-            await skill.Attack2(damage);
+            await skill.Attack2(damage, _byBehindRow);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -530,13 +557,17 @@ public partial class Skill
             if (_includeTwoHitText)
                 yield return "二段攻击。";
 
-            yield return skill.DamageLine(
+            string line = skill.DamageLine(
                 _baseDamage,
                 _powerMultiplier,
                 _prefix,
                 _suffix,
                 _clampMax
             );
+            if (_byBehindRow && !line.Contains("后排", StringComparison.Ordinal))
+                line = $"对后排目标{line}";
+
+            yield return line;
         }
     }
 
@@ -547,13 +578,15 @@ public partial class Skill
         private readonly int _maxTargets;
         private readonly int _times;
         private readonly int _clampMax;
+        private readonly bool _byBehindRow;
 
         public AoeDamageSkillStep(
             int baseDamage,
             int powerMultiplier,
             int maxTargets,
             int times,
-            int clampMax
+            int clampMax,
+            bool byBehindRow
         )
         {
             _baseDamage = baseDamage;
@@ -561,18 +594,19 @@ public partial class Skill
             _maxTargets = maxTargets;
             _times = times;
             _clampMax = clampMax;
+            _byBehindRow = byBehindRow;
         }
 
         public override async Task Execute(Skill skill)
         {
-            var targets = skill.Chosetarget1();
+            var targets = skill.ChosetargetByOrder(byBehindRow: _byBehindRow);
             int count = _maxTargets <= 0 ? targets.Length : Math.Min(_maxTargets, targets.Length);
             if (count <= 0)
                 return;
 
             int times = Math.Max(1, _times);
             int damage = skill.DamageFromPower(_baseDamage, _powerMultiplier, _clampMax);
-            await skill.AOE(damage, count, times);
+            await skill.AOE(damage, count, times, _byBehindRow);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -581,7 +615,10 @@ public partial class Skill
             if (_maxTargets <= 0)
                 yield return $"对所有目标造成{damageText}点伤害。";
             else
-                yield return $"对至多{_maxTargets}名目标造成{damageText}点伤害。";
+            {
+                string targetText = _byBehindRow ? "后排目标" : "目标";
+                yield return $"对至多{_maxTargets}名{targetText}造成{damageText}点伤害。";
+            }
 
             if (_times > 1)
                 yield return $"共{_times}段。";
@@ -594,18 +631,21 @@ public partial class Skill
         private readonly int _value;
         private readonly int _maxTargets;
         private readonly bool _permanent;
+        private readonly bool _byBehindRow;
 
         public LowerTargetPropertySkillStep(
             PropertyType type,
             int value,
             int maxTargets,
-            bool permanent
+            bool permanent,
+            bool byBehindRow
         )
         {
             _type = type;
             _value = value;
             _maxTargets = maxTargets;
             _permanent = permanent;
+            _byBehindRow = byBehindRow;
         }
 
         public override async Task Execute(Skill skill)
@@ -614,7 +654,7 @@ public partial class Skill
             if (loss == 0)
                 return;
 
-            var targets = skill.Chosetarget1();
+            var targets = skill.ChosetargetByOrder(byBehindRow: _byBehindRow);
             int count = _maxTargets <= 0 ? targets.Length : Math.Min(_maxTargets, targets.Length);
             if (count <= 0)
                 return;
@@ -644,12 +684,15 @@ public partial class Skill
                 yield break;
 
             string loseText = LosePropertyText(_type, loss);
+            string targetText;
             if (_maxTargets == 1)
-                yield return $"下降目标{loseText}{PermanentTag()}。";
+                targetText = _byBehindRow ? "后排目标" : "目标";
             else if (_maxTargets <= 0)
-                yield return $"下降所有命中目标{loseText}{PermanentTag()}。";
+                targetText = "所有命中目标";
             else
-                yield return $"下降至多{_maxTargets}名目标{loseText}{PermanentTag()}。";
+                targetText = _byBehindRow ? $"至多{_maxTargets}名后排目标" : $"至多{_maxTargets}名目标";
+
+            yield return $"下降{targetText}{loseText}{PermanentTag()}。";
         }
 
         private string PermanentTag()
@@ -722,6 +765,7 @@ public partial class Skill
             case Buff.BuffName.DamageImmune:
             case Buff.BuffName.Vulnerable:
             case Buff.BuffName.Taunt:
+            case Buff.BuffName.AutoArmor:
                 HurtBuff.BuffAdd(buffName, target, stacks);
                 return true;
             case Buff.BuffName.Stun:
@@ -941,27 +985,24 @@ public partial class Skill
         private readonly Buff.BuffName _buffName;
         private readonly int _stacks;
         private readonly int _maxTargets;
-        private readonly int _energyCost;
+        private readonly bool _byBehindRow;
 
         public ApplyBuffHostileSkillStep(
             Buff.BuffName buffName,
             int stacks,
             int maxTargets,
-            int energyCost
+            bool byBehindRow
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _maxTargets = maxTargets;
-            _energyCost = Math.Max(0, energyCost);
+            _byBehindRow = byBehindRow;
         }
 
         public override Task Execute(Skill skill)
         {
-            if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
-                return Task.CompletedTask;
-
-            var targets = skill.Chosetarget1();
+            var targets = skill.ChosetargetByOrder(byBehindRow: _byBehindRow);
             int count = _maxTargets <= 0 ? targets.Length : Math.Min(_maxTargets, targets.Length);
             for (int i = 0; i < count; i++)
             {
@@ -973,16 +1014,19 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_energyCost > 0)
-                yield return $"消耗{_energyCost}点能量:";
-
             string stacksText = BuffStacksText(_buffName, _stacks);
             if (_maxTargets == 1)
-                yield return $"使目标获得{stacksText}。";
+            {
+                string targetText = _byBehindRow ? "后排目标" : "目标";
+                yield return $"使{targetText}获得{stacksText}。";
+            }
             else if (_maxTargets <= 0)
                 yield return $"使所有命中目标获得{stacksText}。";
             else
-                yield return $"使其各获得{stacksText}。";
+            {
+                string targetText = _byBehindRow ? "后排目标" : "目标";
+                yield return $"使{targetText}各获得{stacksText}。";
+            }
         }
     }
 
@@ -992,28 +1036,22 @@ public partial class Skill
         private readonly int _stacks;
         private readonly BuffTargetCamp _targetCamp;
         private readonly bool _dyingFilter;
-        private readonly int _energyCost;
 
         public ApplyBuffAllSkillStep(
             Buff.BuffName buffName,
             int stacks,
             BuffTargetCamp targetCamp,
-            bool dyingFilter,
-            int energyCost
+            bool dyingFilter
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _targetCamp = targetCamp;
             _dyingFilter = dyingFilter;
-            _energyCost = Math.Max(0, energyCost);
         }
 
         public override Task Execute(Skill skill)
         {
-            if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
-                return Task.CompletedTask;
-
             Character[] targets =
                 _targetCamp == BuffTargetCamp.Hostile
                     ? GetAllHostileWithOrder(skill, _dyingFilter)
@@ -1029,9 +1067,6 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_energyCost > 0)
-                yield return $"消耗{_energyCost}点能量:";
-
             string campText = _targetCamp == BuffTargetCamp.Hostile ? "敌方全阵" : "友方全阵";
             if (_dyingFilter)
                 campText += "（非濒死）";
@@ -1047,28 +1082,22 @@ public partial class Skill
         private readonly int _stacks;
         private readonly int _index;
         private readonly bool _dyingFilter;
-        private readonly int _energyCost;
 
         public ApplyBuffFriendlySkillStep(
             Buff.BuffName buffName,
             int stacks,
             int index,
-            bool dyingFilter,
-            int energyCost
+            bool dyingFilter
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _index = index;
             _dyingFilter = dyingFilter;
-            _energyCost = Math.Max(0, energyCost);
         }
 
         public override Task Execute(Skill skill)
         {
-            if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
-                return Task.CompletedTask;
-
             var target = skill.GetAllyByRelative(_index, dyingFilter: _dyingFilter);
             TryApplyBuffToTarget(_buffName, target, _stacks);
             return Task.CompletedTask;
@@ -1076,9 +1105,6 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_energyCost > 0)
-                yield return $"消耗{_energyCost}点能量:";
-
             string targetText = RelativeFriendlyTargetText(_index, _dyingFilter);
             string stacksText = BuffStacksText(_buffName, _stacks);
             yield return $"使{targetText}获得{stacksText}。";
@@ -1091,28 +1117,22 @@ public partial class Skill
         private readonly int _stacks;
         private readonly int _index;
         private readonly bool _dyingFilter;
-        private readonly int _energyCost;
 
         public ApplyBuffFriendlyAbsoluteSkillStep(
             Buff.BuffName buffName,
             int stacks,
             int index,
-            bool dyingFilter,
-            int energyCost
+            bool dyingFilter
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _index = index;
             _dyingFilter = dyingFilter;
-            _energyCost = Math.Max(0, energyCost);
         }
 
         public override Task Execute(Skill skill)
         {
-            if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
-                return Task.CompletedTask;
-
             var target = GetAllyByAbsoluteOrder(skill, _index, _dyingFilter);
             TryApplyBuffToTarget(_buffName, target, _stacks);
             return Task.CompletedTask;
@@ -1120,9 +1140,6 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_energyCost > 0)
-                yield return $"消耗{_energyCost}点能量:";
-
             string targetText = AbsoluteFriendlyTargetText(_index, _dyingFilter);
             string stacksText = BuffStacksText(_buffName, _stacks);
             yield return $"使{targetText}获得{stacksText}。";
@@ -1290,7 +1307,7 @@ public partial class Skill
             string priorityText = AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth);
             if (!string.IsNullOrWhiteSpace(priorityText))
                 line += $"（{priorityText}）";
-            if (!string.IsNullOrWhiteSpace(_targetKey))
+            if (skill.ShouldDisplayAbsoluteFriendlyTargetKey(_targetKey))
                 line += $"（目标为{_targetKey}）";
             yield return line;
         }
@@ -1337,7 +1354,7 @@ public partial class Skill
             string targetText = RelativeFriendlyTargetText(_relative, _dyingFilter);
             string energyText = _delta > 0 ? $"恢复{_delta}点能量" : $"消耗{-_delta}点能量";
             string line = $"使{targetText}{energyText}。";
-            if (!string.IsNullOrWhiteSpace(_targetKey))
+            if (skill.ShouldDisplayAbsoluteFriendlyTargetKey(_targetKey))
                 line += $"（目标为{_targetKey}）";
             yield return line;
         }
@@ -1420,56 +1437,7 @@ public partial class Skill
         }
     }
 
-    private sealed class SelfBlockSkillStep : SkillStep
-    {
-        private readonly int _baseBlock;
-        private readonly int _survivabilityMultiplier;
-        private readonly string _prefix;
-        private readonly string _suffix;
-        private readonly int _clampMax;
-
-        public SelfBlockSkillStep(
-            int baseBlock,
-            int survivabilityMultiplier,
-            string prefix,
-            string suffix,
-            int clampMax
-        )
-        {
-            _baseBlock = baseBlock;
-            _survivabilityMultiplier = survivabilityMultiplier;
-            _prefix = prefix;
-            _suffix = suffix;
-            _clampMax = clampMax;
-        }
-
-        public override Task Execute(Skill skill)
-        {
-            if (skill.OwnerCharater == null)
-                return Task.CompletedTask;
-
-            int block = skill.BlockFromSurvivability(
-                _baseBlock,
-                _survivabilityMultiplier,
-                _clampMax
-            );
-            skill.OwnerCharater.UpdataBlock(block);
-            return Task.CompletedTask;
-        }
-
-        public override IEnumerable<string> Describe(Skill skill)
-        {
-            yield return skill.BlockLine(
-                _baseBlock,
-                _survivabilityMultiplier,
-                _prefix,
-                _suffix,
-                _clampMax
-            );
-        }
-    }
-
-    private sealed class RelativeAllyBlockSkillStep : SkillStep
+    private sealed class BlockFriendlyByRelativeSkillStep : SkillStep
     {
         private readonly int _relativeIndex;
         private readonly int _baseBlock;
@@ -1479,7 +1447,7 @@ public partial class Skill
         private readonly bool _describe;
         private readonly string _descriptionPrefix;
 
-        public RelativeAllyBlockSkillStep(
+        public BlockFriendlyByRelativeSkillStep(
             int relativeIndex,
             int baseBlock,
             int survivabilityMultiplier,

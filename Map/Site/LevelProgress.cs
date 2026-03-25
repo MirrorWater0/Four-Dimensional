@@ -6,15 +6,18 @@ using Godot;
 public partial class LevelProgress : Control
 {
     private const int MapLength = 12; // Number of stages
-    private const int MapHeight = 4; // Nodes per stage (Fixed to 4 vertical slots)
+    private const int MaxMapHeight = 4; // Maximum vertical slots per stage
+    private const int BossSlot = 1;
+    private const int PathCount = 6;
     private const float NodeSpacingX = 250f; // Distance between stages
-    private const float NodeSpacingY = 250f; // Increased vertical spacing for 4 nodes
+    private const float NodeSpacingY = 290f; // Vertical distance between slots
     private const float MapLeftMargin = 200f;
 
     [Export]
     public float JitterAmount = 90f;
 
-    // Branch control parameters (percentage of nodes per stage)
+    // Legacy tuning fields kept for scene compatibility.
+    // The current path-first generator does not use them directly.
     [Export]
     public int TwoBranchPercentage = 30; // % of nodes with 2 branches
 
@@ -35,6 +38,332 @@ public partial class LevelProgress : Control
     private CanvasLayer _siteUiLayer;
     private bool _manualLock;
     private bool _siteUiHasChildren;
+
+    private Vector2[] GetStageNodePositions(int stageIndex, int nodeCount, bool isBoss = false)
+    {
+        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
+        float startY = (1080 - totalMapHeight) / 2f;
+        float baseX = MapLeftMargin + stageIndex * NodeSpacingX;
+        Vector2[] positions = new Vector2[nodeCount];
+
+        if (nodeCount <= 1)
+        {
+            positions[0] = new Vector2(baseX, startY + totalMapHeight / 2f);
+            return positions;
+        }
+
+        float edgeInset = MathF.Min(NodeSpacingY * 0.18f, JitterAmount * 0.45f);
+        float usableHeight = MathF.Max(totalMapHeight - edgeInset * 2f, totalMapHeight * 0.6f);
+        float maxStageYOffset = isBoss ? 0f : MathF.Min(JitterAmount * 0.22f, (totalMapHeight - usableHeight) / 2f);
+        float stageYOffset = isBoss ? 0f : RandomRange(-maxStageYOffset, maxStageYOffset);
+        float stageStartY = startY + (totalMapHeight - usableHeight) / 2f + stageYOffset;
+
+        float[] segmentWeights = new float[nodeCount - 1];
+        float weightSum = 0f;
+        float spacingVariance = Mathf.Clamp(JitterAmount / NodeSpacingY * 0.75f, 0.12f, 0.4f);
+        for (int i = 0; i < segmentWeights.Length; i++)
+        {
+            float randomOffset = ((float)rng.NextDouble() * 2f - 1f) * spacingVariance;
+            segmentWeights[i] = 1f + randomOffset;
+            weightSum += segmentWeights[i];
+        }
+
+        float segmentScale = usableHeight / weightSum;
+        float stageXOffset = isBoss ? 0f : RandomRange(-JitterAmount * 0.08f, JitterAmount * 0.08f);
+        float maxXJitter = isBoss ? 0f : MathF.Min(32f, JitterAmount * 0.35f);
+        float currentY = stageStartY;
+        positions[0] = new Vector2(baseX + stageXOffset + RandomRange(-maxXJitter, maxXJitter), currentY);
+
+        for (int i = 1; i < nodeCount; i++)
+        {
+            currentY += segmentWeights[i - 1] * segmentScale;
+            positions[i] = new Vector2(
+                baseX + stageXOffset + RandomRange(-maxXJitter, maxXJitter),
+                currentY
+            );
+        }
+
+        return positions;
+    }
+
+    private float RandomRange(float minValue, float maxValue)
+    {
+        return minValue + (float)rng.NextDouble() * (maxValue - minValue);
+    }
+
+    private bool[,] GeneratePathDrivenNodes(out bool[,,] edges)
+    {
+        bool[,] activeNodes = new bool[MapLength, MaxMapHeight];
+        edges = new bool[MapLength - 1, MaxMapHeight, MaxMapHeight];
+
+        List<int> startSlots = new List<int>(PathCount);
+        for (int y = 0; y < MaxMapHeight; y++)
+            startSlots.Add(y);
+
+        while (startSlots.Count < PathCount)
+            startSlots.Add(rng.Next(MaxMapHeight));
+
+        Shuffle(startSlots);
+
+        foreach (int startY in startSlots)
+            GenerateSinglePath(startY, activeNodes, edges);
+
+        activeNodes[MapLength - 1, BossSlot] = true;
+        return activeNodes;
+    }
+
+    private void GenerateSinglePath(int startY, bool[,] activeNodes, bool[,,] edges)
+    {
+        int currentY = startY;
+        activeNodes[0, currentY] = true;
+
+        for (int x = 0; x < MapLength - 1; x++)
+        {
+            int nextY = x == MapLength - 2 ? BossSlot : ChooseNextPathSlot(x, currentY, activeNodes, edges);
+            edges[x, currentY, nextY] = true;
+            activeNodes[x + 1, nextY] = true;
+            currentY = nextY;
+        }
+    }
+
+    private int ChooseNextPathSlot(int stageIndex, int currentY, bool[,] activeNodes, bool[,,] edges)
+    {
+        var preferred = new List<(int nextY, int weight)>(3);
+        var fallback = new List<(int nextY, int weight)>(3);
+
+        for (
+            int nextY = Math.Max(0, currentY - 1);
+            nextY <= Math.Min(MaxMapHeight - 1, currentY + 1);
+            nextY++
+        )
+        {
+            int weight = CalculatePathCandidateWeight(stageIndex, currentY, nextY, activeNodes);
+            if (!WouldCrossExistingEdge(stageIndex, currentY, nextY, edges))
+                preferred.Add((nextY, weight));
+            else
+                fallback.Add((nextY, Math.Max(1, weight / 3)));
+        }
+
+        return ChooseWeightedNextSlot(preferred.Count > 0 ? preferred : fallback);
+    }
+
+    private int CalculatePathCandidateWeight(
+        int stageIndex,
+        int currentY,
+        int nextY,
+        bool[,] activeNodes
+    )
+    {
+        int weight = 1;
+
+        // Prefer unused nodes in the next stage so full layers appear more often.
+        weight += activeNodes[stageIndex + 1, nextY] ? 2 : 9;
+
+        // Favor straighter paths, but still allow adjacent drift.
+        weight += nextY == currentY ? 4 : 2;
+
+        // Gently pull paths toward the centered boss lane near the end.
+        int distanceToBoss = Math.Abs(BossSlot - nextY);
+        weight += Math.Max(0, 3 - distanceToBoss);
+        if (stageIndex >= MapLength - 5)
+            weight += Math.Max(0, 4 - distanceToBoss * 2);
+
+        return weight;
+    }
+
+    private int ChooseWeightedNextSlot(List<(int nextY, int weight)> candidates)
+    {
+        int totalWeight = 0;
+        foreach (var candidate in candidates)
+            totalWeight += candidate.weight;
+
+        int roll = rng.Next(totalWeight);
+        foreach (var candidate in candidates)
+        {
+            roll -= candidate.weight;
+            if (roll < 0)
+                return candidate.nextY;
+        }
+
+        return candidates[candidates.Count - 1].nextY;
+    }
+
+    private bool WouldCrossExistingEdge(int stageIndex, int fromY, int toY, bool[,,] edges)
+    {
+        for (int otherFrom = 0; otherFrom < MaxMapHeight; otherFrom++)
+        {
+            for (int otherTo = 0; otherTo < MaxMapHeight; otherTo++)
+            {
+                if (!edges[stageIndex, otherFrom, otherTo])
+                    continue;
+
+                if ((fromY - otherFrom) * (toY - otherTo) < 0)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void Shuffle<T>(IList<T> items)
+    {
+        for (int i = items.Count - 1; i > 0; i--)
+        {
+            int swapIndex = rng.Next(i + 1);
+            (items[i], items[swapIndex]) = (items[swapIndex], items[i]);
+        }
+    }
+
+    private void ApplyConnectionAwareLayout()
+    {
+        var basePositions = new Dictionary<LevelNode, Vector2>();
+        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
+        float startY = (1080 - totalMapHeight) / 2f;
+        float minY = startY;
+        float maxY = startY + totalMapHeight;
+
+        for (int x = 0; x < MapLength; x++)
+        {
+            var orderedNodes = _mapNodes[x].Where(node => node != null).OrderBy(node => node.SelfCoordinate.Y).ToList();
+            if (orderedNodes.Count == 0)
+                continue;
+
+            Vector2[] stagePositions = GetStageNodePositions(x, orderedNodes.Count, x == MapLength - 1);
+            for (int i = 0; i < orderedNodes.Count; i++)
+            {
+                orderedNodes[i].Position = stagePositions[i];
+                basePositions[orderedNodes[i]] = stagePositions[i];
+            }
+        }
+
+        for (int pass = 0; pass < 3; pass++)
+        {
+            for (int x = 0; x < MapLength; x++)
+            {
+                var orderedNodes = _mapNodes[x].Where(node => node != null).OrderBy(node => node.SelfCoordinate.Y).ToList();
+                if (orderedNodes.Count == 0)
+                    continue;
+
+                float[] desiredY = new float[orderedNodes.Count];
+                for (int i = 0; i < orderedNodes.Count; i++)
+                {
+                    LevelNode node = orderedNodes[i];
+                    float baseY = basePositions[node].Y;
+                    List<float> neighborY = new List<float>(node.ParentNodes.Count + node.NextNodes.Count);
+
+                    foreach (var parent in node.ParentNodes)
+                        neighborY.Add(parent.Position.Y);
+
+                    foreach (var next in node.NextNodes)
+                        neighborY.Add(next.Position.Y);
+
+                    if (neighborY.Count == 0)
+                    {
+                        desiredY[i] = baseY;
+                        continue;
+                    }
+
+                    float connectionCenter = neighborY.Average();
+                    float pull = GetConnectionPull(x, node);
+                    desiredY[i] = Mathf.Lerp(baseY, connectionCenter, pull);
+                }
+
+                RelaxStageNodePositions(orderedNodes, desiredY, minY, maxY);
+            }
+        }
+    }
+
+    private float GetConnectionPull(int stageIndex, LevelNode node)
+    {
+        if (stageIndex == MapLength - 1)
+            return 0f;
+
+        if (stageIndex == 0)
+            return 0.28f;
+
+        int connectionCount = node.ParentNodes.Count + node.NextNodes.Count;
+        if (connectionCount >= 3)
+            return 0.55f;
+
+        if (node.ParentNodes.Count > 0 && node.NextNodes.Count > 0)
+            return 0.48f;
+
+        return 0.38f;
+    }
+
+    private void RelaxStageNodePositions(List<LevelNode> orderedNodes, float[] desiredY, float minY, float maxY)
+    {
+        if (orderedNodes.Count == 1)
+        {
+            orderedNodes[0].Position = new Vector2(
+                orderedNodes[0].Position.X,
+                Mathf.Clamp(desiredY[0], minY, maxY)
+            );
+            return;
+        }
+
+        float availableHeight = maxY - minY;
+        float minSpacing = MathF.Min(
+            NodeSpacingY * 0.64f,
+            availableHeight / (orderedNodes.Count - 1) * 0.92f
+        );
+        float[] adjusted = (float[])desiredY.Clone();
+
+        adjusted[0] = Mathf.Clamp(
+            adjusted[0],
+            minY,
+            maxY - minSpacing * (orderedNodes.Count - 1)
+        );
+
+        for (int i = 1; i < adjusted.Length; i++)
+            adjusted[i] = MathF.Max(adjusted[i], adjusted[i - 1] + minSpacing);
+
+        float overflow = adjusted[adjusted.Length - 1] - maxY;
+        if (overflow > 0f)
+        {
+            for (int i = 0; i < adjusted.Length; i++)
+                adjusted[i] -= overflow;
+        }
+
+        if (adjusted[0] < minY)
+        {
+            float underflow = minY - adjusted[0];
+            for (int i = 0; i < adjusted.Length; i++)
+                adjusted[i] += underflow;
+        }
+
+        for (int i = 1; i < adjusted.Length; i++)
+            adjusted[i] = MathF.Max(adjusted[i], adjusted[i - 1] + minSpacing);
+
+        overflow = adjusted[adjusted.Length - 1] - maxY;
+        if (overflow > 0f)
+        {
+            for (int i = 0; i < adjusted.Length; i++)
+                adjusted[i] -= overflow;
+        }
+
+        for (int i = 0; i < orderedNodes.Count; i++)
+            orderedNodes[i].Position = new Vector2(orderedNodes[i].Position.X, adjusted[i]);
+    }
+
+    private void BuildAccessWays()
+    {
+        _paths.Clear();
+        foreach (Node child in _connectionContainer.GetChildren())
+            child.QueueFree();
+
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (node == null)
+                    continue;
+
+                foreach (var next in node.NextNodes)
+                    CreateAccessWay(node, next);
+            }
+        }
+    }
 
     public override void _Ready()
     {
@@ -62,7 +391,7 @@ public partial class LevelProgress : Control
         if (_siteUiLayer == null)
             return;
 
-        bool hasChildren = _siteUiLayer.GetChildCount() > 0;
+        bool hasChildren = HasVisibleSiteUi();
         if (hasChildren == _siteUiHasChildren)
             return;
 
@@ -78,7 +407,7 @@ public partial class LevelProgress : Control
 
     private void RefreshNodeInteractivity()
     {
-        bool hasChildren = _siteUiLayer != null && _siteUiLayer.GetChildCount() > 0;
+        bool hasChildren = HasVisibleSiteUi();
         if (hasChildren)
         {
             _manualLock = false;
@@ -101,233 +430,80 @@ public partial class LevelProgress : Control
         }
     }
 
+    private bool HasVisibleSiteUi()
+    {
+        if (_siteUiLayer == null)
+            return false;
+
+        foreach (Node child in _siteUiLayer.GetChildren())
+        {
+            if (child == null || child.IsQueuedForDeletion())
+                continue;
+
+            if (child is CanvasItem canvasItem)
+            {
+                if (canvasItem.Visible)
+                    return true;
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
     private void GenerateMap()
     {
         _mapNodes.Clear();
+        _paths.Clear();
+
+        foreach (Node child in _nodeContainer.GetChildren())
+            child.QueueFree();
+
+        foreach (Node child in _connectionContainer.GetChildren())
+            child.QueueFree();
+
+        bool[,,] topologyEdges;
+        bool[,] activeNodes = GeneratePathDrivenNodes(out topologyEdges);
 
         // 1. Generate Nodes (Left to Right)
         for (int x = 0; x < MapLength; x++)
         {
             List<LevelNode> currentLayer = new List<LevelNode>();
+            LevelNode[] layerNodes = new LevelNode[MaxMapHeight];
 
-            // Fixed 4 nodes per layer, except boss
-            int nodeCount = (x == MapLength - 1) ? 1 : 4;
-
-            LevelNode[] layerNodes = new LevelNode[MapHeight];
-
-            if (nodeCount == 1) // Boss
+            for (int y = 0; y < MaxMapHeight; y++)
             {
-                // Boss in the middle slot-ish (between 1 and 2 visual center)
-                // For simplicity, let's put it at index 1 and offset visually later, or just index 1.
-                // Or better: Logic coordinate 1 or 2.
-                int bossY = 1;
-                layerNodes[bossY] = CreateNode(x, bossY, 0);
-
-                // Adjust boss position to be vertically centered
-                float totalHeight = (MapHeight - 1) * NodeSpacingY;
-                float startY = (1080 - totalHeight) / 2;
-                layerNodes[bossY].Position = new Vector2(
-                    MapLeftMargin + x * NodeSpacingX,
-                    startY + 1.5f * NodeSpacingY // Center between 1 and 2
-                );
-            }
-            else
-            {
-                // Create exactly 4 nodes at y=0,1,2,3
-                for (int y = 0; y < MapHeight; y++)
-                {
-                    float jitter = (float)(rng.NextDouble() * 2 - 1) * JitterAmount;
-                    layerNodes[y] = CreateNode(x, y, jitter);
-                }
+                bool shouldCreate = x == MapLength - 1 ? y == BossSlot : activeNodes[x, y];
+                if (shouldCreate)
+                    layerNodes[y] = CreateNode(x, y, 0);
             }
 
             currentLayer.AddRange(layerNodes);
             _mapNodes.Add(currentLayer);
         }
 
-        // 2. Connect Nodes using Gap Logic to prevent crossing
+        // 2. Build topology from full paths first, then position nodes from those connections.
         for (int x = 0; x < MapLength - 1; x++)
         {
-            var currentLayer = _mapNodes[x];
-            var nextLayer = _mapNodes[x + 1];
-
-            // Gap constraints: 0=None, 1=Down(y->y+1), -1=Up(y+1->y)
-            // Gaps are between 0-1, 1-2, 2-3. Indices 0, 1, 2.
-            int[] gaps = new int[MapHeight - 1];
-
-            // Randomly decide gap directions
-            for (int i = 0; i < gaps.Length; i++)
+            for (int fromY = 0; fromY < MaxMapHeight; fromY++)
             {
-                int roll = rng.Next(100);
-                if (roll < 40)
-                    gaps[i] = 0; // No cross
-                else if (roll < 70)
-                    gaps[i] = 1; // Down
-                else
-                    gaps[i] = -1; // Up
-            }
-
-            // Determine max branches for each node based on percentages
-            int[] maxBranches = new int[MapHeight];
-            for (int y = 0; y < MapHeight; y++)
-            {
-                if (currentLayer[y] == null)
+                for (int toY = 0; toY < MaxMapHeight; toY++)
                 {
-                    maxBranches[y] = 0;
-                    continue;
+                    if (!topologyEdges[x, fromY, toY])
+                        continue;
+
+                    LevelNode from = _mapNodes[x][fromY];
+                    LevelNode to = _mapNodes[x + 1][toY];
+                    if (from != null && to != null)
+                        ConnectNodes(from, to);
                 }
-
-                int roll = rng.Next(100);
-                if (roll < ThreeBranchPercentage)
-                    maxBranches[y] = 3; // 3 branches
-                else if (roll < ThreeBranchPercentage + TwoBranchPercentage)
-                    maxBranches[y] = 2; // 2 branches
-                else
-                    maxBranches[y] = 1; // 1 branch
-            }
-
-            // Step A & B: Create connections with variable max branches
-            for (int y = 0; y < MapHeight; y++)
-            {
-                var node = currentLayer[y];
-                if (node == null)
-                    continue;
-
-                List<LevelNode> candidates = new List<LevelNode>();
-
-                // 1. Straight
-                if (nextLayer[y] != null)
-                    candidates.Add(nextLayer[y]);
-
-                // 2. Cross Down (y -> y+1) if gap says so
-                if (y < MapHeight - 1 && gaps[y] == 1 && nextLayer[y + 1] != null)
-                    candidates.Add(nextLayer[y + 1]);
-
-                // 3. Cross Up (y -> y-1) if gap says so (gaps[y-1] == -1 means y -> y-1)
-                if (y > 0 && gaps[y - 1] == -1 && nextLayer[y - 1] != null)
-                    candidates.Add(nextLayer[y - 1]);
-
-                // Enforce max branches for this specific node
-                while (candidates.Count > maxBranches[y])
-                {
-                    // If we have 3 (Straight, Down, Up) and need to reduce, remove Straight to favor crossing
-                    if (
-                        candidates.Count == 3
-                        && maxBranches[y] < 3
-                        && candidates.Contains(nextLayer[y])
-                    )
-                        candidates.Remove(nextLayer[y]);
-                    else
-                        candidates.RemoveAt(candidates.Count - 1);
-                }
-
-                foreach (var next in candidates)
-                {
-                    ConnectNodes(node, next);
-                }
-            }
-
-            // Step C: Handle Boss layer (special case, everything converges)
-            if (x == MapLength - 2)
-            {
-                LevelNode boss = nextLayer[1]; // We put boss at index 1
-                if (boss == null)
-                {
-                    // Find non-null boss
-                    foreach (var n in nextLayer)
-                        if (n != null)
-                            boss = n;
-                }
-
-                foreach (var node in currentLayer)
-                {
-                    if (node != null)
-                        ConnectNodes(node, boss);
-                }
-            }
-            else
-            {
-                // Step D: Connectivity Check & Repair
-                // 1. Ensure every Current node has a child
-                for (int y = 0; y < MapHeight; y++)
-                {
-                    var node = currentLayer[y];
-                    if (node != null && node.NextNodes.Count == 0)
-                    {
-                        // Needs a child. Try Straight, then Valid Cross.
-                        if (nextLayer[y] != null)
-                        {
-                            ConnectNodes(node, nextLayer[y]);
-                        }
-                        else
-                        {
-                            // If straight not avail (unlikely with fixed grid), look neighbors
-                            // Check valid gap directions
-                            if (y < MapHeight - 1 && gaps[y] != -1 && nextLayer[y + 1] != null) // Can go down?
-                            {
-                                ConnectNodes(node, nextLayer[y + 1]);
-                                gaps[y] = 1; // Enforce
-                            }
-                            else if (y > 0 && gaps[y - 1] != 1 && nextLayer[y - 1] != null) // Can go up?
-                            {
-                                ConnectNodes(node, nextLayer[y - 1]);
-                                gaps[y - 1] = -1; // Enforce
-                            }
-                        }
-                    }
-                }
-
-                // 2. Ensure every Next node has a parent
-                for (int y = 0; y < MapHeight; y++)
-                {
-                    var node = nextLayer[y];
-                    if (node != null && node.ParentNodes.Count == 0)
-                    {
-                        // Attempt to find a parent with available slots (< 2)
-                        bool connected = false;
-
-                        // Candidates: Straight, Above (Down), Below (Up)
-                        var candidates = new List<(LevelNode parent, int gapIdx, int gapVal)>();
-
-                        if (currentLayer[y] != null)
-                            candidates.Add((currentLayer[y], -1, 0)); // Straight
-
-                        if (y > 0 && gaps[y - 1] != -1 && currentLayer[y - 1] != null)
-                            candidates.Add((currentLayer[y - 1], y - 1, 1)); // Down
-
-                        if (y < MapHeight - 1 && gaps[y] != 1 && currentLayer[y + 1] != null)
-                            candidates.Add((currentLayer[y + 1], y, -1)); // Up
-
-                        // Try to find one with space
-                        foreach (var cand in candidates)
-                        {
-                            if (cand.parent.NextNodes.Count < 2)
-                            {
-                                ConnectNodes(cand.parent, node);
-                                if (cand.gapIdx != -1)
-                                    gaps[cand.gapIdx] = cand.gapVal;
-                                connected = true;
-                                break;
-                            }
-                        }
-
-                        // If still not connected (all full), force connect to first candidate
-                        if (!connected && candidates.Count > 0)
-                        {
-                            var cand = candidates[0];
-                            ConnectNodes(cand.parent, node);
-                            if (cand.gapIdx != -1)
-                                gaps[cand.gapIdx] = cand.gapVal;
-                        }
-                    }
-                }
-
-                // Step E: Random Pruning (Optional)
-                // To make it look more like STS, we can remove some straight paths if redundancy exists
-                // But simple connectivity is better for now to guarantee no dead ends.
-                // We'll leave all valid connections.
             }
         }
+
+        ApplyConnectionAwareLayout();
+        BuildAccessWays();
 
         // 3. Assign Types
         AssignNodeTypes(rng);
@@ -373,7 +549,6 @@ public partial class LevelProgress : Control
         {
             from.NextNodes.Add(to);
             to.ParentNodes.Add(from);
-            CreateAccessWay(from, to);
         }
     }
 
@@ -459,7 +634,7 @@ public partial class LevelProgress : Control
         node.RandomNum = rng.Next();
         _nodeContainer.AddChild(node);
 
-        float totalMapHeight = (MapHeight - 1) * NodeSpacingY;
+        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
         float startY = (1080 - totalMapHeight) / 2;
 
         node.Position = new Vector2(
@@ -505,10 +680,12 @@ public partial class LevelProgress : Control
                 else
                 {
                     int roll = rng.Next(100);
-                    if (roll < 50)
+                    if (roll < 45)
                         node.Type = LevelNode.LevelType.Normal;
-                    else if (roll < 70)
+                    else if (roll < 60)
                         node.Type = LevelNode.LevelType.Event;
+                    else if (roll < 75)
+                        node.Type = LevelNode.LevelType.Shop;
                     else if (roll < 90 && x > 2) // Elite can only appear after first 3 stages
                         node.Type = LevelNode.LevelType.Elite;
                     else

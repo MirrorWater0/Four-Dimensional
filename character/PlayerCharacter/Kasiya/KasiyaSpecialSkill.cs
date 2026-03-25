@@ -61,8 +61,7 @@ public class HolySeal : Skill
                 ApplyBuffHostile(
                     buffName: Buff.BuffName.Stun,
                     stacks: StunStacks,
-                    maxTargets: 1,
-                    energyCost: 0
+                    maxTargets: 1
                 )
             )
         );

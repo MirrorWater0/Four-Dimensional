@@ -151,11 +151,11 @@ offset_bottom = 398.0
 theme = SubResource("Theme_7a0j3")
 
 [node name="Description" type="RichTextLabel" parent="SubViewport" unique_id=574232235]
-custom_minimum_size = Vector2(234, 384)
+custom_minimum_size = Vector2(234, 302)
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 242.0
-offset_bottom = 392.0
+offset_bottom = 310.0
 mouse_filter = 2
 theme = SubResource("Theme_0g0qh")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
@@ -163,7 +163,7 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 19
 bbcode_enabled = true
 text = "none"
-fit_content = true
+fit_content = false
 scroll_active = false
 
 [node name="SkillIcon" parent="SubViewport" unique_id=429305689 instance=ExtResource("3_i77dj")]
