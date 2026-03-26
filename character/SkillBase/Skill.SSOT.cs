@@ -787,6 +787,30 @@ public partial class Skill
         }
     }
 
+    private static bool ShouldDescribeRelativeTargetAsNonDying(int index, bool dyingFilter)
+    {
+        return dyingFilter && index != 0;
+    }
+
+    private static string ApplyRelativeDyingFilterText(string targetText, int index, bool dyingFilter)
+    {
+        return ShouldDescribeRelativeTargetAsNonDying(index, dyingFilter)
+            ? $"非濒死{targetText}"
+            : targetText;
+    }
+
+    private static string AppendRelativeDyingFilterNote(
+        string line,
+        bool dyingFilter,
+        params int[] relativeIndexes
+    )
+    {
+        if (!dyingFilter || line.Contains("非濒死", StringComparison.Ordinal))
+            return line;
+
+        return relativeIndexes.Any(index => index != 0) ? $"{line}（目标为非濒死）" : line;
+    }
+
     private static string RelativeFriendlyTargetText(int index, bool dyingFilter)
     {
         string relativeText = index switch
@@ -797,7 +821,7 @@ public partial class Skill
             > 1 => $"下{index}位队友",
             _ => $"上{-index}位队友",
         };
-        return dyingFilter ? $"非濒死{relativeText}" : relativeText;
+        return ApplyRelativeDyingFilterText(relativeText, index, dyingFilter);
     }
 
     private static string AbsoluteFriendlyTargetText(int index, bool dyingFilter)
@@ -1498,10 +1522,7 @@ public partial class Skill
             if (!string.IsNullOrWhiteSpace(_descriptionPrefix))
             {
                 string line = $"{_descriptionPrefix}{blockText}点格挡。";
-                if (_dyingFilter && line.Contains("非濒死", StringComparison.Ordinal) == false)
-                {
-                    line = $"{line}（目标为非濒死）";
-                }
+                line = AppendRelativeDyingFilterNote(line, _dyingFilter, _relativeIndex);
                 yield return line;
                 yield break;
             }
@@ -1514,8 +1535,7 @@ public partial class Skill
                 > 1 => $"后{_relativeIndex}位队友",
                 _ => $"前{-_relativeIndex}位队友",
             };
-            if (_dyingFilter)
-                targetText = $"非濒死{targetText}";
+            targetText = ApplyRelativeDyingFilterText(targetText, _relativeIndex, _dyingFilter);
             yield return $"令{targetText}获得{blockText}点格挡。";
         }
     }
@@ -1567,10 +1587,7 @@ public partial class Skill
             if (!string.IsNullOrWhiteSpace(_descriptionLine))
             {
                 string line = _descriptionLine;
-                if (_dyingFilter && line.Contains("非濒死", StringComparison.Ordinal) == false)
-                {
-                    line = $"{line}（目标为非濒死）";
-                }
+                line = AppendRelativeDyingFilterNote(line, _dyingFilter, _relativeIndex);
                 yield return line;
                 yield break;
             }
@@ -1583,8 +1600,7 @@ public partial class Skill
                 > 1 => $"下{_relativeIndex}位",
                 _ => $"上{-_relativeIndex}位",
             };
-            if (_dyingFilter)
-                relativeText = $"非濒死{relativeText}";
+            relativeText = ApplyRelativeDyingFilterText(relativeText, _relativeIndex, _dyingFilter);
             string skillText = _skillIndex switch
             {
                 0 => "攻击技能",
@@ -1640,10 +1656,12 @@ public partial class Skill
             if (!string.IsNullOrWhiteSpace(_descriptionLine))
             {
                 string line = _descriptionLine;
-                if (_dyingFilter && line.Contains("非濒死", StringComparison.Ordinal) == false)
-                {
-                    line = $"{line}（目标为非濒死）";
-                }
+                line = AppendRelativeDyingFilterNote(
+                    line,
+                    _dyingFilter,
+                    _relativeIndexA,
+                    _relativeIndexB
+                );
                 yield return line;
                 yield break;
             }
@@ -1656,8 +1674,7 @@ public partial class Skill
                 > 1 => $"下{_relativeIndexA}位",
                 _ => $"上{-_relativeIndexA}位",
             };
-            if (_dyingFilter)
-                firstText = $"非濒死{firstText}";
+            firstText = ApplyRelativeDyingFilterText(firstText, _relativeIndexA, _dyingFilter);
 
             string secondText = _relativeIndexB switch
             {
@@ -1667,8 +1684,7 @@ public partial class Skill
                 > 1 => $"下{_relativeIndexB}位",
                 _ => $"上{-_relativeIndexB}位",
             };
-            if (_dyingFilter)
-                secondText = $"非濒死{secondText}";
+            secondText = ApplyRelativeDyingFilterText(secondText, _relativeIndexB, _dyingFilter);
 
             yield return $"交换{firstText}与{secondText}的位置。";
         }

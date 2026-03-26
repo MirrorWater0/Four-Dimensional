@@ -281,15 +281,15 @@ public partial class Skill
         // If everyone is invisible, still allow targeting to avoid soft-lock.
         var targets = visible.Length > 0 ? visible : ordered;
 
-        if (targets.Any(x => x.HurtBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Taunt)))
-        {
-            // Stable sort: taunt targets first, keep prior ordering within groups.
-            targets = targets
-                .OrderByDescending(target =>
-                    target.HurtBuffs.Any(buff => buff.ThisBuffName == Buff.BuffName.Taunt)
+        var tauntTargets = targets
+            .Where(target =>
+                target.HurtBuffs.Any(buff =>
+                    buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
                 )
-                .ToArray();
-        }
+            )
+            .ToArray();
+        if (tauntTargets.Length > 0)
+            targets = tauntTargets;
 
         return targets.Length > 0 ? targets : [OwnerCharater.BattleNode.dummy];
     }
@@ -688,58 +688,162 @@ public partial class Skill
 
 public enum SkillID
 {
-    Determination,
-    ReNewedSpirit,
-    TerminateLight,
-    Smite,
-    Charge,
-    SacredOnslaught,
-    ResonantSlash,
-    EchoPuncture,
-    BreakStrike,
-    EchonicResonance,
-    SonicBoom,
-    PhaseEcho,
-    SoundBarrier,
-    SonicDeflection,
-    TuningStance,
-    ResonantWard,
-    EvilAttack,
-    EvilSurvive,
-    EvilTermin,
-    DeSurviveSkill,
-    ShockWave,
-    AbsouluteDefense,
-    TauntingGuard,
-    HolySeal,
-    FearWormAttack,
-    FearWormSurvive,
-    FearWormTermin,
-    MendSlash,
-    FinalGuard,
-    RebirthPrayer,
-    ShadowAmbush,
-    ShadowExecution,
-    VeilStep,
-    TempoSurge,
-    Sacrifice,
-    LongNight,
-    Vower,
-    FlashOfLight,
-    CrystalGuard,
-    Swift,
-    StarWard,
-    ArmonAttack,
-    ArmonSurvive,
-    ArmonSpecial,
-    ArroganceAttack,
-    ArroganceSurvive,
-    ArroganceSpecial,
-    AlienBodyAttack,
-    AlienBodySurvive,
-    AlienBodySpecial,
-    RedHuskAttack,
-    RedHuskSurvive,
-    RedHuskSpecial,
-    SwapSlash,
+    #region Player Characters
+
+    #region Echo
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    SacredOnslaught = 5,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    ResonantSlash = 6,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    EchoPuncture = 7,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    BreakStrike = 8,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    EchonicResonance = 9,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    SonicBoom = 10,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    PhaseEcho = 11,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    SoundBarrier = 12,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    SonicDeflection = 13,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    TuningStance = 14,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    ResonantWard = 15,
+    #endregion
+
+    #region Kasiya
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Determination = 0,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    ReNewedSpirit = 1,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    TerminateLight = 2,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Smite = 3,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Charge = 4,
+
+    DeSurviveSkill = 19,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    ShockWave = 20,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    AbsouluteDefense = 21,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    TauntingGuard = 22,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    HolySeal = 23,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Vower = 36,
+    #endregion
+
+    #region Mariya
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    MendSlash = 27,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    FinalGuard = 28,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    RebirthPrayer = 29,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    Sacrifice = 34,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    CrystalGuard = 38,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    SwapSlash = 53,
+    #endregion
+
+    #region Nightingale
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    ShadowAmbush = 30,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    ShadowExecution = 31,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    VeilStep = 32,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    TempoSurge = 33,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    LongNight = 35,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    FlashOfLight = 37,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    Swift = 39,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    StarWard = 40,
+    #endregion
+
+    #endregion
+
+    #region Enemies
+
+    #region Evil
+    EvilAttack = 16,
+    EvilSurvive = 17,
+    EvilTermin = 18,
+    #endregion
+
+    #region FearWorm
+    FearWormAttack = 24,
+    FearWormSurvive = 25,
+    FearWormTermin = 26,
+    #endregion
+
+    #region Armon
+    ArmonAttack = 41,
+    ArmonSurvive = 42,
+    ArmonSpecial = 43,
+    #endregion
+
+    #region Arrogance
+    ArroganceAttack = 44,
+    ArroganceSurvive = 45,
+    ArroganceSpecial = 46,
+    #endregion
+
+    #region AlienBody
+    AlienBodyAttack = 47,
+    AlienBodySurvive = 48,
+    AlienBodySpecial = 49,
+    #endregion
+
+    #region RedHusk
+    RedHuskAttack = 50,
+    RedHuskSurvive = 51,
+    RedHuskSpecial = 52,
+    #endregion
+
+    #endregion
 }

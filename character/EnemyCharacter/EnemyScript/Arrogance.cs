@@ -54,13 +54,14 @@ public partial class ArroganceSurvive : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "傲慢壁垒";
+    public override string SkillName { get; set; } = "暗黑吞噬";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: BaseBlock),
+            ModifyPropertyStep(PropertyType.Survivability, 5),
             ApplyBuffAll(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -87,7 +88,8 @@ public partial class ArroganceSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealFriendlyRelative(4),
+            HealFriendlyRelative(10),
+            BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, 3),
             EnergyTimesGateStep(
                 energyCost: PursuitEnergyCost,

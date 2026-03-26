@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Godot;
@@ -31,7 +29,6 @@ public partial class Battle : Node2D
 
     public AnimationPlayer BattleAnimationPlayer =>
         field ??= GetNode<AnimationPlayer>("BattlePlayer");
-    private int _turn;
     public CharacterControl CharacterControl =>
         field ??= GetNode<CharacterControl>("CharacterControl");
 
@@ -45,59 +42,14 @@ public partial class Battle : Node2D
     public int PlayerSpeed
     {
         get => _playerSpeed;
-        set
-        {
-            _playerSpeed = Math.Clamp(value, 0, 100);
-            if (!IsBattleAlive())
-            {
-                return;
-            }
-
-            var label = PlayerSpeedLabel;
-            if (GodotObject.IsInstanceValid(label))
-            {
-                int speedSum =
-                    PlayersList
-                        ?.Where(x => x.State != Character.CharacterState.Dying)
-                        .Sum(x => x.Speed) ?? 0;
-                label.Text = _playerSpeed + "(" + speedSum + ")";
-            }
-
-            var bar = PlayerSpeedBar;
-            if (GodotObject.IsInstanceValid(bar))
-            {
-                CreateTween().TweenProperty(bar, "value", _playerSpeed, 0.3f);
-            }
-        }
+        set =>
+            SetSpeedValue(ref _playerSpeed, value, PlayerSpeedLabel, PlayerSpeedBar, PlayersList);
     }
 
     public int EnemySpeed
     {
         get => _enemySpeed;
-        set
-        {
-            _enemySpeed = Math.Clamp(value, 0, 100);
-            if (!IsBattleAlive())
-            {
-                return;
-            }
-
-            var label = EnemySpeedLabel;
-            if (GodotObject.IsInstanceValid(label))
-            {
-                int speedSum =
-                    EnemiesList
-                        ?.Where(x => x.State != Character.CharacterState.Dying)
-                        .Sum(x => x.Speed) ?? 0;
-                label.Text = _enemySpeed + "(" + speedSum + ")";
-            }
-
-            var bar = EnemySpeedBar;
-            if (GodotObject.IsInstanceValid(bar))
-            {
-                CreateTween().TweenProperty(bar, "value", _enemySpeed, 0.3f);
-            }
-        }
+        set => SetSpeedValue(ref _enemySpeed, value, EnemySpeedLabel, EnemySpeedBar, EnemiesList);
     }
 
     public GlowLabel PlayerSpeedLabel =>
@@ -122,6 +74,17 @@ public partial class Battle : Node2D
     private float _recordHiddenRight;
     private Tween _recordTween;
     private int _recordIndex;
+    private const float FormationGapY = 140f;
+    private const float FormationGapX = 280f;
+    private const float FormationSkew = 10f;
+    private const float FormationRowOffset = 100f;
+    private const int MaxBattleTurns = 100;
+    private const int PostActionDelayMs = 800;
+    private const int BattleOverDelayMs = 5000;
+    private const int PlayerSpeedHintDelayMs = 200;
+    private const int EnemySpeedHintDelayMs = 400;
+    private const int SpeedTriggerThreshold = 100;
+    private const string SpeedTriggerText = "[color=yellow]超速触发[/color]";
 
     public override void _EnterTree()
     {
@@ -138,119 +101,174 @@ public partial class Battle : Node2D
     {
         if (WarmupMode)
         {
-            SetProcess(false);
-            SetProcessInput(false);
-            SetPhysicsProcess(false);
+            DisableBattleProcessing();
             return;
         }
 
         var token = _lifetimeCts.Token;
         InitDummy();
-        for (int i = 0; i < CurrentLevelNode.EnemiesRegeditList.Count; i++)
-        {
-            var regedit = CurrentLevelNode.EnemiesRegeditList[i];
-            EnemyCharacter enemy = regedit.CharacterScene.Instantiate<EnemyCharacter>();
-            enemy.Registry = regedit;
-            enemy.PositionIndex = regedit.PositionIndex;
-            enemy.BattleNode = this;
-            enemy.Initialize();
-            EnemiesList.Add(enemy);
-        }
-
-        RetreatButton.ButtonDown += ManualRetreat;
-        UsedSkills.Clear();
-        if (BattleRecord != null)
-        {
-            BattleRecord.Text = string.Empty;
-        }
-        _recordIndex = 0;
-        InitRecordButton();
-        UsedSkills.ItemAdded -= OnSkillUsed;
-        UsedSkills.ItemAdded += OnSkillUsed;
-
-        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
-        {
-            PlayerCharacter character = GD.Load<PackedScene>(
-                    GameInfo.PlayerCharacters[i].CharacterScenePath
-                )
-                .Instantiate<PlayerCharacter>();
-            character.CharacterIndex = i;
-            character.BattleNode = this;
-            character.Initialize();
-            PlayersList.Add(character);
-        }
-
-        PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
-        EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
-        SetCharaterPostion(); //加入节点树
+        InitializeBattleCharacters();
+        InitializeBattleUi();
+        SetCharaterPostion();
         CharacterControl.Connect();
-        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
-        if (token.IsCancellationRequested || !IsBattleAlive())
+        if (!await DelayOrCancel(PlayerSpeedHintDelayMs, token))
         {
             return;
         }
 
         CharacterControl.DisableAll();
-        for (int i = 0; i < EnemiesList.Count; i++)
+        if (!await InitializeEnemyIntentions(token))
         {
-            if (token.IsCancellationRequested || !IsBattleAlive())
+            return;
+        }
+
+        PlayerSpeed = 0;
+        EnemySpeed = 0;
+        await ApplyRelicBattleEffects(token);
+        await BattleBegin1(token);
+    }
+
+    private void DisableBattleProcessing()
+    {
+        SetProcess(false);
+        SetProcessInput(false);
+        SetPhysicsProcess(false);
+    }
+
+    private void InitializeBattleCharacters()
+    {
+        EnemiesList.Clear();
+        foreach (var regedit in CurrentLevelNode.EnemiesRegeditList)
+        {
+            var enemy = regedit.CharacterScene.Instantiate<EnemyCharacter>();
+            enemy.Registry = regedit;
+            enemy.PositionIndex = regedit.PositionIndex;
+            InitializeCharacter(enemy);
+            EnemiesList.Add(enemy);
+        }
+
+        PlayersList.Clear();
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
+        {
+            var character = GD.Load<PackedScene>(GameInfo.PlayerCharacters[i].CharacterScenePath)
+                .Instantiate<PlayerCharacter>();
+            character.CharacterIndex = i;
+            InitializeCharacter(character);
+            PlayersList.Add(character);
+        }
+
+        PlayersList = PlayersList.OrderBy(x => x.PositionIndex).ToList();
+        EnemiesList = EnemiesList.OrderBy(x => x.PositionIndex).ToList();
+    }
+
+    private void InitializeCharacter(Character character)
+    {
+        character.BattleNode = this;
+        character.Initialize();
+    }
+
+    private void InitializeBattleUi()
+    {
+        RetreatButton.ButtonDown += ManualRetreat;
+        UsedSkills.Clear();
+        UsedSkills.ItemAdded -= OnSkillUsed;
+        UsedSkills.ItemAdded += OnSkillUsed;
+        _recordIndex = 0;
+        if (BattleRecord != null)
+        {
+            BattleRecord.Text = string.Empty;
+        }
+        InitRecordButton();
+    }
+
+    private async Task<bool> InitializeEnemyIntentions(CancellationToken token)
+    {
+        foreach (var enemy in EnemiesList)
+        {
+            if (!CanContinue(token))
             {
-                return;
+                return false;
             }
 
-            var enemy = EnemiesList[i];
             enemy.IntentionIndex = enemy.RollIntentionIndex();
             await enemy.DisappearIntention();
-            if (token.IsCancellationRequested || !IsBattleAlive())
+            if (!CanContinue(token))
             {
-                return;
+                return false;
             }
+
             enemy.IntentionContorl.Visible = true;
             enemy.DisplayIntention();
         }
 
-        if (!await DelayOrCancel(800, token))
+        return await DelayOrCancel(PostActionDelayMs, token);
+    }
+
+    private async Task ApplyRelicBattleEffects(CancellationToken token)
+    {
+        var relics = MapNode?.PlayerResourceState?.RelicList;
+        if (relics == null)
         {
             return;
         }
-        PlayerSpeed = 0;
-        EnemySpeed = 0;
 
-        var relics = MapNode.PlayerResourceState.RelicList;
-        for (int i = 0; i < relics.Count; i++)
+        foreach (var relic in relics)
         {
-            await relics[i].BattleEffect(this);
+            if (!CanContinue(token))
+            {
+                return;
+            }
+
+            await relic.BattleEffect(this);
         }
-        await BattleBegin1(token);
     }
+
+    private void SetSpeedValue(
+        ref int currentValue,
+        int nextValue,
+        GlowLabel label,
+        ProgressBar bar,
+        IEnumerable<Character> characters
+    )
+    {
+        currentValue = Math.Max(nextValue, 0);
+        if (!IsBattleAlive())
+        {
+            return;
+        }
+
+        if (GodotObject.IsInstanceValid(label))
+        {
+            label.Text = $"{currentValue}({SumAliveSpeed(characters)})";
+        }
+
+        if (GodotObject.IsInstanceValid(bar))
+        {
+            CreateTween().TweenProperty(bar, "value", currentValue, 0.3f);
+        }
+    }
+
+    private static int SumAliveSpeed(IEnumerable<Character> characters) =>
+        characters?.Where(IsCharacterAlive).Sum(x => x.Speed) ?? 0;
 
     private void OnSkillUsed(Skill skill)
     {
-        if (skill == null)
+        var record = BattleRecord;
+        if (skill == null || record == null)
         {
             return;
         }
 
-        string characterName = skill.OwnerCharater?.CharacterName;
-        if (string.IsNullOrWhiteSpace(characterName))
-        {
-            characterName = skill.OwnerCharater?.Name ?? "Unknown";
-        }
-
+        string characterName = string.IsNullOrWhiteSpace(skill.OwnerCharater?.CharacterName)
+            ? skill.OwnerCharater?.Name ?? "Unknown"
+            : skill.OwnerCharater.CharacterName;
         string skillName = string.IsNullOrWhiteSpace(skill.SkillName)
             ? skill.GetType().Name
             : skill.SkillName;
-
-        var record = BattleRecord;
-        if (record == null)
-        {
-            return;
-        }
-        _recordIndex++;
         const string nameColor = "#ffd36b";
         const string skillColor = "#b56bff";
         record.AppendText(
-            $"[color=#b0b6c2]{_recordIndex:00}[/color]  [color={nameColor}]{characterName}[/color]  释放  [color={skillColor}]{skillName}[/color]\n"
+            $"[color=#b0b6c2]{++_recordIndex:00}[/color]  [color={nameColor}]{characterName}[/color]  释放  [color={skillColor}]{skillName}[/color]\n"
         );
     }
 
@@ -285,10 +303,7 @@ public partial class Battle : Node2D
     private void ToggleRecord()
     {
         if (!_recordInitialized)
-        {
             InitRecordButton();
-        }
-
         ShowBattleRecord(!_recordVisible);
     }
 
@@ -328,51 +343,48 @@ public partial class Battle : Node2D
     {
         var record = BattleRecord;
         if (record == null)
-        {
             return;
-        }
-
         record.OffsetLeft = left;
         record.OffsetRight = right;
     }
 
     public void SetCharaterPostion()
     {
-        // 你的核心基准参数
-        float bGapY = 140f; // 纵向行距
-        float bGapX = 280f; // 横向列距
-        float bSkew = 10f; // 每一行的水平偏移 (xoffset)
+        SetCharacterPositionGroup(PlayersList, Left, -1);
+        SetCharacterPositionGroup(EnemiesList, Right, 1);
+    }
 
-        void ProcessList<T>(List<T> list, Node container, int side)
-            where T : Character
+    private void SetCharacterPositionGroup<T>(List<T> characters, Node container, int side)
+        where T : Character
+    {
+        foreach (var character in characters)
         {
-            for (int j = 0; j < list.Count; j++)
-            {
-                T c = list[j];
-                // 映射行列：row (0,1,2), col (0,1,2)
-                int row = (c.PositionIndex - 1) % 3;
-                int col = (c.PositionIndex - 1) / 3;
+            int row = (character.PositionIndex - 1) % 3;
+            ReparentCharacter(character, container);
+            character.Position = GetFormationPosition(character.PositionIndex, side);
+            character.OriginalPosition = character.Position;
+            character.ZIndex = row;
+        }
+    }
 
-                // 1. 节点层级管理
-                if (c.GetParent() != container)
-                {
-                    c.GetParent()?.RemoveChild(c);
-                    container.AddChild(c);
-                }
-
-                // 3. 基础位置计算 (平行四边形逻辑)
-                // x = (列间距 + 行偏移) * 阵营系数
-                float xPos = col * bGapX * side - (row * bSkew - 100 * (row - 1));
-                float yPos = row * bGapY;
-
-                c.Position = new Vector2(xPos, yPos);
-                c.OriginalPosition = c.Position;
-                c.ZIndex = row; // 确保前排遮挡后排
-            }
+    private static void ReparentCharacter(Character character, Node container)
+    {
+        if (character.GetParent() == container)
+        {
+            return;
         }
 
-        ProcessList(PlayersList, Left, -1);
-        ProcessList(EnemiesList, Right, 1);
+        character.GetParent()?.RemoveChild(character);
+        container.AddChild(character);
+    }
+
+    private static Vector2 GetFormationPosition(int positionIndex, int side)
+    {
+        int row = (positionIndex - 1) % 3;
+        int col = (positionIndex - 1) / 3;
+        float xPos =
+            col * FormationGapX * side - (row * FormationSkew - FormationRowOffset * (row - 1));
+        return new Vector2(xPos, row * FormationGapY);
     }
 
     public List<Func<Character, Task>> EmitList = new();
@@ -394,8 +406,8 @@ public partial class Battle : Node2D
         {
             await StartEffectList[i]();
         }
-        // Null checks for lists
-        if (token.IsCancellationRequested || !IsBattleAlive())
+
+        if (!CanContinue(token))
         {
             return;
         }
@@ -405,159 +417,85 @@ public partial class Battle : Node2D
             await CharacterAction(EnemiesList, token);
         }
 
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < MaxBattleTurns && CanContinue(token); i++)
         {
-            if (token.IsCancellationRequested || !IsBattleAlive())
+            await CharacterAction(PlayersList, token);
+            if (!CanContinue(token))
             {
                 return;
             }
 
-            await CharacterAction(PlayersList, token);
-            if (token.IsCancellationRequested || !IsBattleAlive())
-            {
-                return;
-            }
             await CharacterAction(EnemiesList, token);
         }
 
-        // Battle completed after 100 turns - retreat
-        GD.Print("Battle completed after 100 turns");
-        Retreat();
+        if (CanContinue(token))
+        {
+            GD.Print("Battle completed after 100 turns");
+            Retreat();
+        }
     }
 
     public async Task CharacterAction<T>(List<T> characterlist, CancellationToken token)
         where T : Character
     {
-        // Null check for characterlist
-        if (characterlist == null || characterlist.Count == 0)
-        {
-            return;
-        }
-
-        if (token.IsCancellationRequested || !IsBattleAlive())
+        if (!CanAct(characterlist, token))
         {
             return;
         }
 
         DyingDetector(characterlist);
         characterlist[0].StartAction();
-
-        characterlist.Reverse(1, characterlist.Count - 1);
-        characterlist.Reverse();
+        RotateFrontToBack(characterlist);
         await ToSignal(this, SignalName.Next);
-        if (token.IsCancellationRequested || !IsBattleAlive())
-        {
-            return;
-        }
-        if (!await DelayOrCancel(800, token))
+        if (!await DelayOrCancel(PostActionDelayMs, token) || await HandleBattleOver(token))
         {
             return;
         }
 
-        // Null checks for lists before accessing
-        if (PlayersList != null && EnemiesList != null)
+        await TryTriggerSpeedBurst(
+            PlayersList,
+            () => PlayerSpeed,
+            value => PlayerSpeed = value,
+            PlayerSpeedHintDelayMs,
+            token
+        );
+        if (CanContinue(token))
         {
-            if (
-                PlayersList.All(x => x.State == Character.CharacterState.Dying)
-                || EnemiesList.All(x => x.State == Character.CharacterState.Dying)
-            )
-            {
-                GD.Print("over");
-                Retreat();
-                if (!await DelayOrCancel(5000, token))
-                {
-                    return;
-                }
-            }
-        }
-
-        if (PlayerSpeed == 100)
-        {
-            PlayerSpeed = 0;
-            BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
-            label.TargetPosition = Vector2.Zero;
-            label.Text = "[color=yellow]超速触发[/color]";
-            await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
-            if (PlayersList != null && PlayersList.Count > 0)
-            {
-                PlayersList[0].AddChild(label);
-                SuppressSpeedGainThisTurn = true;
-                try
-                {
-                    await CharacterAction(PlayersList, token);
-                }
-                finally
-                {
-                    SuppressSpeedGainThisTurn = false;
-                }
-            }
-        }
-
-        if (EnemySpeed == 100)
-        {
-            EnemySpeed = 0;
-
-            BuffHintLabel label = Buff.HintScene.Instantiate() as BuffHintLabel;
-            label.TargetPosition = Vector2.Zero;
-            label.Text = "[color=yellow]超速触发[/color]";
-            await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
-            if (EnemiesList != null && EnemiesList.Count > 0)
-            {
-                EnemiesList[0].AddChild(label);
-                SuppressSpeedGainThisTurn = true;
-                try
-                {
-                    await CharacterAction(EnemiesList, token);
-                }
-                finally
-                {
-                    SuppressSpeedGainThisTurn = false;
-                }
-            }
+            await TryTriggerSpeedBurst(
+                EnemiesList,
+                () => EnemySpeed,
+                value => EnemySpeed = value,
+                EnemySpeedHintDelayMs,
+                token
+            );
         }
     }
 
     public void DyingDetector<T>(List<T> c)
         where T : Character
     {
-        // Null check for list
-        if (c == null || c.Count == 0)
+        if (c == null || c.Count == 0 || IsTeamDefeated(c))
         {
             return;
         }
 
-        if (c.All(x => x.State == Character.CharacterState.Dying))
-            return;
-        while (c.Count > 0)
+        while (c[0].State == Character.CharacterState.Dying)
         {
-            if (c[0].State == Character.CharacterState.Dying)
-            {
-                c.Reverse(1, c.Count - 1);
-                c.Reverse();
-            }
-            else
-            {
-                break;
-            }
+            RotateFrontToBack(c);
         }
     }
 
     private void ManualRetreat()
     {
-        if (!CanManualRetreat())
-            return;
-
-        Retreat(consumeTransitionEnergy: true);
+        if (CanManualRetreat())
+        {
+            Retreat(consumeTransitionEnergy: true);
+        }
     }
 
-    public bool CanManualRetreat()
-    {
-        if (_retreating)
-            return false;
-
-        int transitionEnergy = MapNode?.PlayerResourceState?.TransitionEnergy ?? GameInfo.TransitionEnergy;
-        return transitionEnergy > 0;
-    }
+    public bool CanManualRetreat() =>
+        !_retreating
+        && (MapNode?.PlayerResourceState?.TransitionEnergy ?? GameInfo.TransitionEnergy) > 0;
 
     public async void Retreat(bool consumeTransitionEnergy = false)
     {
@@ -569,20 +507,11 @@ public partial class Battle : Node2D
         _retreating = true;
         TryCancelLifetime();
         TryEmitNextToUnblock();
-
-        // Check if Battle instance is still valid before proceeding
         if (!IsBattleInstanceValid())
         {
             return;
         }
 
-        // Check if lists are initialized
-        if (PlayersList == null || EnemiesList == null)
-        {
-            return;
-        }
-
-        // Disable retreat button to prevent multiple retreats
         if (RetreatButton != null)
         {
             RetreatButton.Disabled = true;
@@ -594,44 +523,109 @@ public partial class Battle : Node2D
         }
 
         MapNode?.BlackMaskAnimation(0.8f);
-        await Task.Delay(800);
+        await Task.Delay(PostActionDelayMs);
 
         if (!IsBattleInstanceValid())
         {
             return;
         }
 
-        bool enemyAllDead =
-            EnemiesList != null
-            && EnemiesList.Count > 0
-            && EnemiesList.All(x => x != null && x.State == Character.CharacterState.Dying);
-
-        bool playerHasSurvivor =
-            PlayersList != null
-            && PlayersList.Count > 0
-            && PlayersList.Any(x => x != null && x.State == Character.CharacterState.Normal);
-
-        bool isWin = enemyAllDead && playerHasSurvivor;
+        bool isWin = IsTeamDefeated(EnemiesList) && HasLivingMember(PlayersList);
         if (isWin || Istest)
         {
             var reward = Reward.Show(this);
             ConfigureRewards(reward);
-            if ((isWin || Istest) && CurrentLevelNode != null)
+            if (CurrentLevelNode != null)
             {
                 reward.SetCompleteNodeOnClose(CurrentLevelNode);
             }
         }
 
-        // Clear lists
-        PlayersList.Clear();
-        EnemiesList.Clear();
+        PlayersList?.Clear();
+        EnemiesList?.Clear();
 
-        // Change scene - check if Battle instance is still valid
         if (IsBattleInstanceValid())
         {
             GetParent()?.QueueFree();
         }
     }
+
+    private bool CanContinue(CancellationToken token) =>
+        !token.IsCancellationRequested && IsBattleAlive();
+
+    private bool CanAct<T>(List<T> characters, CancellationToken token)
+        where T : Character => characters is { Count: > 0 } && CanContinue(token);
+
+    private async Task<bool> HandleBattleOver(CancellationToken token)
+    {
+        if (!IsTeamDefeated(PlayersList) && !IsTeamDefeated(EnemiesList))
+        {
+            return false;
+        }
+
+        GD.Print("over");
+        Retreat();
+        await DelayOrCancel(BattleOverDelayMs, token);
+        return true;
+    }
+
+    private async Task TryTriggerSpeedBurst<T>(
+        List<T> team,
+        Func<int> getSpeed,
+        Action<int> setSpeed,
+        int delayMs,
+        CancellationToken token
+    )
+        where T : Character
+    {
+        if (team == null || team.Count == 0 || getSpeed() < SpeedTriggerThreshold)
+        {
+            return;
+        }
+
+        setSpeed(getSpeed() - SpeedTriggerThreshold);
+        if (!await DelayOrCancel(delayMs, token) || !CanContinue(token))
+        {
+            return;
+        }
+
+        team[0].AddChild(CreateSpeedTriggerHint());
+        SuppressSpeedGainThisTurn = true;
+        try
+        {
+            await CharacterAction(team, token);
+        }
+        finally
+        {
+            SuppressSpeedGainThisTurn = false;
+        }
+    }
+
+    private static BuffHintLabel CreateSpeedTriggerHint()
+    {
+        var label = Buff.HintScene.Instantiate<BuffHintLabel>();
+        label.TargetPosition = Vector2.Zero;
+        label.Text = SpeedTriggerText;
+        return label;
+    }
+
+    private static void RotateFrontToBack<T>(List<T> characters)
+    {
+        if (characters.Count <= 1)
+            return;
+        characters.Reverse(1, characters.Count - 1);
+        characters.Reverse();
+    }
+
+    private static bool IsTeamDefeated<T>(IEnumerable<T> characters)
+        where T : Character =>
+        characters?.Any() == true && characters.All(character => !IsCharacterAlive(character));
+
+    private static bool HasLivingMember<T>(IEnumerable<T> characters)
+        where T : Character => characters?.Any(IsCharacterAlive) == true;
+
+    private static bool IsCharacterAlive(Character character) =>
+        character != null && character.State != Character.CharacterState.Dying;
 
     private void ConsumeRetreatTransitionEnergy()
     {
@@ -661,8 +655,7 @@ public partial class Battle : Node2D
         for (int i = 0; i < EnemiesList.Count; i++)
         {
             EnemiesList[i].PositionIndex = i + 1;
-            EnemiesList[i].BattleNode = this;
-            EnemiesList[i].Initialize();
+            InitializeCharacter(EnemiesList[i]);
         }
     }
 
@@ -674,65 +667,71 @@ public partial class Battle : Node2D
         reward.ClearRewardItems();
         reward.AddSkillRewardEntry();
 
-        var rng = new Random(CurrentLevelNode.RandomNum);
-        var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
+        var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
+        var (addRelic, equipCount) = GetRewardConfig(
+            CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal,
+            rng
+        );
 
-        int equipCount;
-
-        bool addRelic;
-        switch (levelType)
-        {
-            case LevelNode.LevelType.Boss:
-                addRelic = true;
-                equipCount = 2;
-                break;
-            case LevelNode.LevelType.Elite:
-                addRelic = true;
-                equipCount = 1;
-                break;
-            case LevelNode.LevelType.Event:
-                addRelic = rng.Next(0, 100) < 50;
-                equipCount = rng.Next(0, 100) < 50 ? 1 : 0;
-                break;
-            default:
-                addRelic = rng.Next(0, 100) < 20;
-                equipCount = rng.Next(0, 100) < 10 ? 1 : 0;
-                break;
-        }
-
-        if (addRelic)
-        {
-            RelicID[] relicDropPool = { RelicID.Blessing, RelicID.Triangle };
-            var relicPick = relicDropPool[rng.Next(0, relicDropPool.Length)];
-            reward.AddRelicRewardEntry(relicPick);
-        }
-
-        if (equipCount > 0)
-        {
-            for (int i = 0; i < equipCount; i++)
-            {
-                var pick = Equipment.Catalog[rng.Next(0, Equipment.Catalog.Length)];
-                reward.AddEquipmentRewardEntry(Equipment.Clone(pick));
-            }
-        }
-
-        if (rng.Next(0, 100) < 30)
-        {
-            ItemID[] itemPool = { ItemID.Health, ItemID.Explosion };
-            var itemPick = itemPool[rng.Next(0, itemPool.Length)];
-            reward.AddItemRewardEntry(itemPick);
-        }
+        TryAddRelicReward(reward, rng, addRelic);
+        AddEquipmentRewards(reward, rng, equipCount);
+        TryAddItemReward(reward, rng);
     }
 
-    private bool IsBattleInstanceValid()
+    private static (bool AddRelic, int EquipCount) GetRewardConfig(
+        LevelNode.LevelType levelType,
+        Random rng
+    )
     {
-        return _battleInstanceId != 0 && GodotObject.IsInstanceIdValid(_battleInstanceId);
+        return levelType switch
+        {
+            LevelNode.LevelType.Boss => (true, 2),
+            LevelNode.LevelType.Elite => (true, 1),
+            LevelNode.LevelType.Event => (rng.Next(100) < 50, rng.Next(100) < 50 ? 1 : 0),
+            _ => (false, rng.Next(100) < 10 ? 1 : 0),
+        };
     }
 
-    private bool IsBattleAlive()
+    private static void TryAddRelicReward(Reward reward, Random rng, bool addRelic)
     {
-        return !_retreating && !_lifetimeCts.IsCancellationRequested && IsBattleInstanceValid();
+        if (!addRelic)
+        {
+            return;
+        }
+
+        var relicDropPool = Relic.GetUnownedOfferPool();
+        if (relicDropPool.Length > 0)
+        {
+            reward.AddRelicRewardEntry(PickRandom(relicDropPool, rng));
+        }
     }
+
+    private static void AddEquipmentRewards(Reward reward, Random rng, int equipCount)
+    {
+        for (int i = 0; i < equipCount; i++)
+        {
+            reward.AddEquipmentRewardEntry(Equipment.Clone(PickRandom(Equipment.Catalog, rng)));
+        }
+    }
+
+    private static void TryAddItemReward(Reward reward, Random rng)
+    {
+        if (rng.Next(100) >= 30)
+        {
+            return;
+        }
+
+        ItemID[] itemPool = [ItemID.Health, ItemID.Explosion];
+        reward.AddItemRewardEntry(PickRandom(itemPool, rng));
+    }
+
+    private static T PickRandom<T>(IReadOnlyList<T> pool, Random rng) => pool[rng.Next(pool.Count)];
+
+    private bool IsBattleInstanceValid() =>
+        _battleInstanceId != 0 && GodotObject.IsInstanceIdValid(_battleInstanceId);
+
+    private bool IsBattleAlive() =>
+        !_retreating && !_lifetimeCts.IsCancellationRequested && IsBattleInstanceValid();
 
     private void TryCancelLifetime()
     {
@@ -746,10 +745,7 @@ public partial class Battle : Node2D
     private void TryEmitNextToUnblock()
     {
         if (!IsBattleInstanceValid())
-        {
             return;
-        }
-
         try
         {
             EmitSignal(SignalName.Next);
@@ -779,7 +775,7 @@ public partial class Battle : Node2D
             await Task.Delay(milliseconds, token);
             return true;
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
             return false;
         }

@@ -139,8 +139,8 @@ public partial class ArroganceRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 195;
-        Power = 25;
+        MaxLife = 210;
+        Power = 24;
         Survivability = 30;
         Speed = 50;
         SpecialIntentThreshold = 4;
@@ -162,9 +162,9 @@ public partial class RedHuskRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 100;
-        Power = 16;
-        Survivability = 15;
+        MaxLife = 90;
+        Power = 14;
+        Survivability = 13;
         Speed = 10;
         SpecialIntentThreshold = 3;
 

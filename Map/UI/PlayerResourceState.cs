@@ -56,7 +56,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     public void InitRelic()
     {
-        foreach (var relic in GameInfo.Relic)
+        foreach (var relic in GameInfo.Relics)
         {
             Relic relicInst = Relic.Create(relic.Key);
             relicInst.Num = relic.Value;

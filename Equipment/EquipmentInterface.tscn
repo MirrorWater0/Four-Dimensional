@@ -15,6 +15,13 @@ shader = ExtResource("1_bgshader")
 shader_parameter/bg_color_top = Color(0.07, 0.09, 0.14, 1)
 shader_parameter/bg_color_bottom = Color(0.04, 0.055, 0.095, 1)
 shader_parameter/triangle_color = Color(0.24, 0.34, 0.5, 0.12)
+shader_parameter/triangle_size_near = 0.26
+shader_parameter/triangle_size_far = 0.1
+shader_parameter/triangle_flatten_min = 0.52
+shader_parameter/triangle_flatten_max = 1.18
+shader_parameter/triangle_drift = 0.14
+shader_parameter/triangle_perspective = 0.18
+shader_parameter/edge_softness = 0.006
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gear_left"]
 shader = ExtResource("5_gearshader")
@@ -165,6 +172,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_script")
+metadata/_edit_lock_ = true
 
 [node name="BG" type="ColorRect" parent="." unique_id=2055352993]
 material = SubResource("ShaderMaterial_bg")
@@ -175,6 +183,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+metadata/_edit_lock_ = true
 
 [node name="GearLeft" type="ColorRect" parent="." unique_id=345088590]
 material = SubResource("ShaderMaterial_gear_left")

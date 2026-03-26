@@ -19,6 +19,20 @@ public partial class Relic
         RelicDescription = GetRelicDescription(relicID);
     }
 
+    public static RelicID[] GetUnownedOfferPool()
+    {
+        var ownedRelics = GameInfo.Relics;
+        List<RelicID> result = new();
+        RelicID[] pool = { RelicID.Blessing, RelicID.Triangle };
+        for (int i = 0; i < pool.Length; i++)
+        {
+            var relicId = pool[i];
+            if (ownedRelics == null || !ownedRelics.ContainsKey(relicId))
+                result.Add(relicId);
+        }
+        return result.ToArray();
+    }
+
     public static Relic Create(RelicID relicID)
     {
         return relicID switch
@@ -59,7 +73,9 @@ public partial class Relic
         int num = GetAcquireAmount(relicID);
         relic.Num = num;
         relic.IconAdd(playerResourceState);
-        GameInfo.Relic[relicID] = num;
+        playerResourceState.RelicList ??= new List<Relic>();
+        playerResourceState.RelicList.Add(relic);
+        GameInfo.Relics[relicID] = num;
     }
 
     public void IconAdd(PlayerResourceState playerResourceState)
@@ -105,7 +121,7 @@ public partial class Relic
             case RelicID.curse:
                 break;
         }
-        GameInfo.Relic[ID] = Num;
+        GameInfo.Relics[ID] = Num;
         UpdateIconLabel();
         UpdateRelicTipText();
     }
@@ -130,7 +146,7 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => "祝福",
-            RelicID.Triangle => "三角",
+            RelicID.Triangle => "三角形",
             _ => "诅咒",
         };
     }

@@ -20,8 +20,8 @@ public partial class Buff
         {
             BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
-            BuffName.Vulnerable => "受到伤害时，伤害提高25%，消耗1层。",
-            BuffName.Taunt => "敌方攻击更倾向于选择该目标；受到伤害时消耗1层。",
+            BuffName.Vulnerable => "受到伤害时，伤害提高40%，消耗1层。",
+            BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
             BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
             BuffName.Pursuit => "回合结束时：造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
@@ -302,7 +302,7 @@ public partial class HurtBuff : Buff
                 BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
                 break;
             case BuffName.Vulnerable:
-                damage *= 1.25f;
+                damage *= 1.4f;
                 Stack--;
 
                 BuffIcon.GetChild<Label>(0).Text = Stack.ToString();

@@ -16,7 +16,7 @@ public static partial class GameInfo
     public static int IntentionRandomNum { get; private set; }
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
-    public static Dictionary<RelicID, int> Relic = new();
+    public static Dictionary<RelicID, int> Relics = new();
     public static int ItemsMaxCount = 3;
     public static List<ItemID> Items = new();
     public static List<Equipment> OwnedEquipments = new();
@@ -29,6 +29,7 @@ public static partial class GameInfo
         FirstLevelState.Clear();
         Items.Clear();
         GameInfo.Items.Add(ItemID.Explosion);
+        Relics.Add(RelicID.Blessing, 3);
         OwnedEquipments = CreateStarterOwnedEquipments();
     }
 

@@ -22,12 +22,12 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
+            AttackPrimaryStep(baseDamage: 5, powerMultiplier: 1),
             EnergyTimesWhileStep(
                 energyCost: CostPerCast,
                 loopSteps:
                 [
-                    AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
+                    AttackPrimaryStep(baseDamage: -3, powerMultiplier: 1),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )

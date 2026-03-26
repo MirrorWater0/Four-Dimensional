@@ -68,14 +68,8 @@ public partial class StartInterface : CanvasLayer
             new PlayerCharacterRegistry().Mariya,
             new PlayerCharacterRegistry().Nightingale,
         ];
-        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
-        {
-            var info = GameInfo.PlayerCharacters[i];
-            info.PositionIndex = i + 1;
-            info.GainedSkills.AddRange(info.TakenSkills);
-            info.GainedSkills = info.GainedSkills.Distinct().ToList();
-            GameInfo.PlayerCharacters[i] = info;
-        }
+        GameInfo.NormalizePlayerCharacters();
+        GameInfo.SeedTakenSkillsAsGained();
         test();
     }
 
@@ -138,22 +132,6 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
         TakenSkills = [SkillID.BreakStrike, SkillID.SoundBarrier, SkillID.EchonicResonance],
-        AllSkills =
-        [
-            SkillID.SacredOnslaught,
-            SkillID.ResonantSlash,
-            SkillID.EchoPuncture,
-            SkillID.BreakStrike,
-            SkillID.SoundBarrier,
-            SkillID.SonicDeflection,
-            SkillID.TuningStance,
-            SkillID.ResonantWard,
-            SkillID.EchonicResonance,
-            SkillID.SonicBoom,
-            SkillID.PhaseEcho,
-            SkillID.ResonantSlash,
-            SkillID.ResonantWard,
-        ],
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
@@ -167,18 +145,6 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
         TakenSkills = [SkillID.Determination, SkillID.ReNewedSpirit, SkillID.TerminateLight],
-        AllSkills =
-        [
-            SkillID.Determination,
-            SkillID.Charge,
-            SkillID.Smite,
-            SkillID.ReNewedSpirit,
-            SkillID.AbsouluteDefense,
-            SkillID.ShockWave,
-            SkillID.TauntingGuard,
-            SkillID.TerminateLight,
-            SkillID.HolySeal,
-        ],
     };
     public PlayerInfoStructure Mariya = new PlayerInfoStructure()
     {
@@ -192,14 +158,6 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
         TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
-        AllSkills =
-        [
-            SkillID.MendSlash,
-            SkillID.FinalGuard,
-            SkillID.CrystalGuard,
-            SkillID.RebirthPrayer,
-            SkillID.Sacrifice,
-        ],
     };
 
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
@@ -215,15 +173,5 @@ public partial class PlayerCharacterRegistry
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
         TakenSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
-        AllSkills =
-        [
-            SkillID.ShadowAmbush,
-            SkillID.ShadowExecution,
-            SkillID.VeilStep,
-            SkillID.Swift,
-            SkillID.StarWard,
-            SkillID.TempoSurge,
-            SkillID.LongNight,
-        ],
     };
 }

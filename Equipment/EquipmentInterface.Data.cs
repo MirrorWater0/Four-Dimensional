@@ -255,6 +255,7 @@ public partial class EquipmentInterface
     private static void EnsureGameData()
     {
         EnsureOwnedEquipmentsInitialized();
+        bool createdDefaults = false;
 
         if (GameInfo.PlayerCharacters == null || GameInfo.PlayerCharacters.Length == 0)
         {
@@ -265,14 +266,12 @@ public partial class EquipmentInterface
                 new PlayerCharacterRegistry().Mariya,
                 new PlayerCharacterRegistry().Nightingale,
             ];
-
-            for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
-            {
-                var info = GameInfo.PlayerCharacters[i];
-                info.PositionIndex = i + 1;
-                GameInfo.PlayerCharacters[i] = info;
-            }
+            createdDefaults = true;
         }
+
+        GameInfo.NormalizePlayerCharacters();
+        if (createdDefaults)
+            GameInfo.SeedTakenSkillsAsGained();
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {

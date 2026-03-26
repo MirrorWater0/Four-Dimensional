@@ -6,7 +6,7 @@ public partial class KasiyaSpecialSkill : Node { }
 
 public class TerminateLight : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 0;
     private int UsedTimes = 2;
     private const int EnergyCost = 2;
     private const int PowerGain = 5;
@@ -23,7 +23,7 @@ public class TerminateLight : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 2),
+            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 3),
             EnergyTimesGateStep(
                 EnergyCost,
                 () => UsedTimes,
@@ -58,11 +58,7 @@ public class HolySeal : Skill
                 EnergyCost,
                 () => times,
                 value => times = value,
-                ApplyBuffHostile(
-                    buffName: Buff.BuffName.Stun,
-                    stacks: StunStacks,
-                    maxTargets: 1
-                )
+                ApplyBuffHostile(buffName: Buff.BuffName.Stun, stacks: StunStacks, maxTargets: 1)
             )
         );
     }

@@ -65,6 +65,7 @@ public static class SaveSystem
                 field.SetValue(null, AssignVariant(savedVariant, field.FieldType));
             }
         }
+        GameInfo.NormalizePlayerCharacters();
         GD.Print("存档已自动加载。");
     }
 

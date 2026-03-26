@@ -549,7 +549,7 @@ public partial class Reward : CanvasLayer
 
         int addNum = Relic.GetAcquireAmount(relicId);
         existing.Num += addNum;
-        GameInfo.Relic[relicId] = existing.Num;
+        GameInfo.Relics[relicId] = existing.Num;
         existing.UpdateIconLabel();
     }
 

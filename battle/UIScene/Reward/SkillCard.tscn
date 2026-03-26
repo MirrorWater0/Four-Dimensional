@@ -32,6 +32,14 @@ border_width_right = 2
 border_width_bottom = 2
 border_color = Color(1, 1, 1, 0.8627451)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5iaav"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.8627451)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0g0qh"]
 content_margin_left = 10.0
 content_margin_top = 60.0
@@ -46,7 +54,7 @@ border_width_bottom = 2
 [sub_resource type="Theme" id="Theme_0g0qh"]
 RichTextLabel/styles/normal = SubResource("StyleBoxFlat_0g0qh")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_hfhot"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5iaav"]
 resource_local_to_scene = true
 shader = ExtResource("4_3f2ir")
 shader_parameter/speed = 1.0
@@ -57,7 +65,7 @@ shader_parameter/glow_intensity = 0.5000000074506
 shader_parameter/glow_radius = 8.0
 shader_parameter/disable = false
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_3f2ir"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_l0m1e"]
 resource_local_to_scene = true
 shader = ExtResource("5_ycl6p")
 shader_parameter/sword_color = Color(1, 1, 1, 1)
@@ -66,12 +74,12 @@ shader_parameter/handle_color = Color(1, 1, 1, 1)
 shader_parameter/glow_intensity = 0.5
 shader_parameter/angle = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ycl6p"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t7rj0"]
 resource_local_to_scene = true
 shader = ExtResource("6_emx86")
 shader_parameter/color = Color(1.1801987, 1.1801987, 1.1801987, 1)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_emx86"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_q0eru"]
 resource_local_to_scene = true
 shader = ExtResource("7_u21a0")
 shader_parameter/symbol_color = Color(1, 1, 1, 1)
@@ -86,7 +94,7 @@ shader_parameter/ring_radius = 0.72
 shader_parameter/glow_intensity = 0.6
 shader_parameter/tip_softness = 0.5
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_u21a0"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_laerk"]
 resource_local_to_scene = true
 shader = ExtResource("8_pvbql")
 shader_parameter/line_color = Color(1, 1, 1, 1)
@@ -96,7 +104,7 @@ shader_parameter/base_thickness = 0.0050000002375
 shader_parameter/max_thickness = 0.0
 shader_parameter/glow_intensity = 19.0010009025475
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_pvbql"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_g23ta"]
 resource_local_to_scene = true
 shader = ExtResource("9_ydg12")
 shader_parameter/main_color = Color(0.2, 0.6, 1, 1)
@@ -141,6 +149,14 @@ offset_bottom = 400.0
 theme = SubResource("Theme_7a0j3")
 theme_override_styles/panel = SubResource("StyleBoxFlat_hfhot")
 
+[node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
+offset_left = 9.166666
+offset_top = 310.8333
+offset_right = 242.5
+offset_bottom = 390.0
+theme = SubResource("Theme_7a0j3")
+theme_override_styles/panel = SubResource("StyleBoxFlat_5iaav")
+
 [node name="HoverHint" type="Panel" parent="SubViewport" unique_id=904079227]
 visible = false
 custom_minimum_size = Vector2(240, 390)
@@ -163,7 +179,6 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 19
 bbcode_enabled = true
 text = "none"
-fit_content = false
 scroll_active = false
 
 [node name="SkillIcon" parent="SubViewport" unique_id=429305689 instance=ExtResource("3_i77dj")]
@@ -173,25 +188,25 @@ offset_right = 153.0
 offset_bottom = 70.0
 
 [node name="AbleRing" parent="SubViewport/SkillIcon" index="0" unique_id=423852926]
-material = SubResource("ShaderMaterial_hfhot")
+material = SubResource("ShaderMaterial_5iaav")
 
 [node name="ColorRect2" parent="SubViewport/SkillIcon" index="1" unique_id=1267468745]
 visible = false
 
 [node name="SwordIcon" parent="SubViewport/SkillIcon" index="2" unique_id=1278232838]
-material = SubResource("ShaderMaterial_3f2ir")
+material = SubResource("ShaderMaterial_l0m1e")
 
 [node name="RhomboidIcon" parent="SubViewport/SkillIcon" index="3" unique_id=1011236504]
-material = SubResource("ShaderMaterial_ycl6p")
+material = SubResource("ShaderMaterial_t7rj0")
 
 [node name="TerminateSkillIcon" parent="SubViewport/SkillIcon" index="4" unique_id=1065074037]
-material = SubResource("ShaderMaterial_emx86")
+material = SubResource("ShaderMaterial_q0eru")
 
 [node name="ShockWave" parent="SubViewport/SkillIcon" index="5" unique_id=342777392]
-material = SubResource("ShaderMaterial_u21a0")
+material = SubResource("ShaderMaterial_laerk")
 
 [node name="SparkLight" parent="SubViewport/SkillIcon" index="6" unique_id=1133246718]
-material = SubResource("ShaderMaterial_pvbql")
+material = SubResource("ShaderMaterial_g23ta")
 
 [node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
 custom_minimum_size = Vector2(220, 30)

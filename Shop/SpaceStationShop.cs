@@ -343,8 +343,11 @@ public partial class SpaceStationShop : Control
 
     private void BuildRelicOffers()
     {
-        AddRelicOffer(RelicID.Blessing, 88);
-        AddRelicOffer(RelicID.Triangle, 88);
+        var relicPool = Relic.GetUnownedOfferPool();
+        for (int i = 0; i < relicPool.Length; i++)
+        {
+            AddRelicOffer(relicPool[i], 88);
+        }
     }
 
     private void BuildPotionOffers()
@@ -934,12 +937,12 @@ public partial class SpaceStationShop : Control
     {
         if (ResourceState == null)
         {
-            GameInfo.Relic ??= new Dictionary<RelicID, int>();
+            GameInfo.Relics ??= new Dictionary<RelicID, int>();
             int addedAmount = GetRelicAddAmount(relicId);
-            if (!GameInfo.Relic.TryGetValue(relicId, out int amount))
-                GameInfo.Relic[relicId] = addedAmount;
+            if (!GameInfo.Relics.TryGetValue(relicId, out int amount))
+                GameInfo.Relics[relicId] = addedAmount;
             else
-                GameInfo.Relic[relicId] = amount + addedAmount;
+                GameInfo.Relics[relicId] = amount + addedAmount;
             return;
         }
 
@@ -952,7 +955,7 @@ public partial class SpaceStationShop : Control
 
         int addNum = GetRelicAddAmount(relicId);
         existing.Num += addNum;
-        GameInfo.Relic[relicId] = existing.Num;
+        GameInfo.Relics[relicId] = existing.Num;
         existing.UpdateIconLabel();
     }
 
