@@ -393,6 +393,7 @@ public partial class BattleReady : Control
     }
 
     private PortaitFrame _dragTarget;
+    private Vector2 _dragMouseOffset;
     private int _selectedCharacterIndex;
     private bool _isTransitioning;
     private bool _isModeTransitioning;
@@ -591,6 +592,7 @@ public partial class BattleReady : Control
         SetModeSelectorEnabled(false);
         HideTransientTooltips();
         _dragTarget = null;
+        _dragMouseOffset = Vector2.Zero;
 
         try
         {
@@ -890,8 +892,7 @@ public partial class BattleReady : Control
             return;
 
         if (_dragTarget != null)
-            _dragTarget.GlobalPosition =
-                GetViewport().GetMousePosition() - _dragTarget.PortaitRect.Size;
+            _dragTarget.GlobalPosition = GetViewport().GetMousePosition() - _dragMouseOffset;
 
         var mousePos = GetViewport().GetMousePosition();
         for (int i = 0; i < Grid.GetChildCount(); i++)
@@ -1013,11 +1014,13 @@ public partial class BattleReady : Control
             portrait.PortaitButton.ButtonDown += () =>
             {
                 _dragTarget = portrait;
+                _dragMouseOffset = GetViewport().GetMousePosition() - portrait.GlobalPosition;
                 portrait.ZIndex = 1;
             };
             portrait.PortaitButton.ButtonUp += () =>
             {
                 _dragTarget = null;
+                _dragMouseOffset = Vector2.Zero;
                 portrait.ZIndex = 0;
                 var olderParent = portrait.GetParent();
                 var newParent = Grid.GetChildren()
@@ -1037,6 +1040,7 @@ public partial class BattleReady : Control
                     portrait.Reparent(newParent);
                     TweenSetAnimation(portrait, 0.2f);
                     _dragTarget = null;
+                    _dragMouseOffset = Vector2.Zero;
                 }
                 else
                 {

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Godot;
 
 public partial class SkillButton : Button
@@ -22,6 +23,8 @@ public partial class SkillButton : Button
     private ColorRect TerminateSkillIcon => field ??= GetNode<ColorRect>("TerminateSkillIcon");
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
+    private Character[] _previewTargets = Array.Empty<Character>();
+    private static readonly Color TargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
 
     public Tip globalTooltip => field ??= EnsureGlobalTooltip();
 
@@ -92,11 +95,12 @@ public partial class SkillButton : Button
             globalTooltip.Description.Text = SelfSkill.Description;
             globalTooltip.Visible = true;
         }
+
+        ShowTargetPreview();
     }
 
     public void mouse_exited()
     {
-
         Modulate -= changeColor;
 
         // Hide tooltip
@@ -104,6 +108,14 @@ public partial class SkillButton : Button
         {
             globalTooltip.Visible = false;
         }
+
+        HideTargetPreview();
+    }
+
+    public override void _ExitTree()
+    {
+        HideTargetPreview();
+        base._ExitTree();
     }
 
     private Tip EnsureGlobalTooltip()
@@ -164,5 +176,40 @@ public partial class SkillButton : Button
                 0.4f
             )
             .SetEase(Tween.EaseType.Out);
+    }
+
+    private void ShowTargetPreview()
+    {
+        HideTargetPreview();
+        if (SelfSkill == null)
+            return;
+
+        _previewTargets = SelfSkill.GetPreviewHostileTargets();
+        if (_previewTargets == null || _previewTargets.Length == 0)
+        {
+            _previewTargets = Array.Empty<Character>();
+            return;
+        }
+
+        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
+        {
+            target.ShowTargetPreview(TargetPreviewColor);
+        }
+    }
+
+    private void HideTargetPreview()
+    {
+        if (_previewTargets == null || _previewTargets.Length == 0)
+        {
+            _previewTargets = Array.Empty<Character>();
+            return;
+        }
+
+        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
+        {
+            target.HideTargetPreview();
+        }
+
+        _previewTargets = Array.Empty<Character>();
     }
 }

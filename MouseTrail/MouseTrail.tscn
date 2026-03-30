@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dr7wgiscwtyg2" path="res://MouseTrail/MouseTrail.cs" id="1_bf3sd"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="1_umtsf"]
+[ext_resource type="Shader" uid="uid://bo8yjtdm15jy2" path="res://shader/UI/CursorIcon.gdshader" id="3_ecg7h"]
 
 [sub_resource type="Curve" id="Curve_42och"]
 _data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8084291, 0.7125851), 0.30350965, 0.30350965, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
@@ -10,8 +11,18 @@ point_count = 3
 [sub_resource type="Gradient" id="Gradient_x7o5h"]
 colors = PackedColorArray(10.811581, 10.811581, 10.811581, 0.7294118, 0.47435445, 0.59966856, 0.9999998, 1)
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_cpg7l"]
+shader = ExtResource("3_ecg7h")
+shader_parameter/color_left = Color(0.586583, 0.80877894, 0.9999996, 1)
+shader_parameter/color_right = Color(0.7420778, 0.92605776, 0.9999998, 1)
+shader_parameter/color_rim = Color(1, 1, 1, 1)
+shader_parameter/tilt_angle = -0.537999954305
+shader_parameter/rim_width = 0.0150000007125
+shader_parameter/shape_width = 0.4
+shader_parameter/shape_length = 0.7
+
 [node name="MouseTrail" type="CanvasLayer" unique_id=695303506]
-layer = 10
+layer = 200
 script = ExtResource("1_bf3sd")
 
 [node name="Node2D" type="Node2D" parent="." unique_id=375777724]
@@ -27,3 +38,13 @@ gradient = SubResource("Gradient_x7o5h")
 end_cap_mode = 2
 script = ExtResource("1_umtsf")
 Target = NodePath("../Node2D")
+
+[node name="Cursor" type="ColorRect" parent="." unique_id=1465019521]
+top_level = true
+z_index = 20
+material = SubResource("ShaderMaterial_cpg7l")
+offset_left = -24.0
+offset_top = -16.0
+offset_right = 48.0
+offset_bottom = 56.0
+mouse_filter = 2

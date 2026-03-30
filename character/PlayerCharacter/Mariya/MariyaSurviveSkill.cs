@@ -23,10 +23,10 @@ public partial class FinalGuard : Skill
         return new SkillPlan(
             this,
             BlockFriendlyByRelativeStep(0, BaseBlock),
-            ModifyPropertyAbsoluteStep(
+            ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
-                selector: PropertyAbsoluteSelector.BackMost,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
                 dyingFilter: true
             )
         );
@@ -54,6 +54,38 @@ public partial class CrystalGuard : Skill
             BlockFriendlyByRelativeStep(relativeIndex: -1, baseBlock: BaseBlock),
             BlockFriendlyByRelativeStep(relativeIndex: 1, baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
+        );
+    }
+}
+
+public partial class QuietVeil : Skill
+{
+    private const int InvisibleStacks = 2;
+    private const int MaxLifeGain = 10;
+    private const int SurvivabilityGain = 6;
+    private const int BaseHeal = 5;
+
+    public QuietVeil()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "静影庇护";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Invisible,
+                stacks: InvisibleStacks,
+                index: 0,
+                dyingFilter: false
+            ),
+            ModifyPropertyStep(PropertyType.MaxLife, MaxLifeGain),
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
+            HealFriendlyStep(baseHeal: BaseHeal, target: RelativeTarget(0))
         );
     }
 }

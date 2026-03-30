@@ -6,15 +6,22 @@ public partial class RedHusk : EnemyCharacter
 {
     private const int StartAutoArmorStacks = 12;
 
+    public const string PassiveNameText = "赤壳护盾";
+    public static string PassiveDescriptionText =>
+        $"战斗开始时：获得{StartAutoArmorStacks}层{Buff.BuffName.AutoArmor.GetDescription()}。";
+
     public override void Initialize()
     {
         base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
         BattleNode.StartEffectList.Add(StartPassive);
     }
 
     public Task StartPassive()
     {
-        HurtBuff.BuffAdd(Buff.BuffName.AutoArmor, this, StartAutoArmorStacks);
+        using var _ = BeginEffectSource("被动");
+        HurtBuff.BuffAdd(Buff.BuffName.AutoArmor, this, StartAutoArmorStacks, this);
         return Task.CompletedTask;
     }
 }

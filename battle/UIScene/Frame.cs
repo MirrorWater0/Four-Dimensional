@@ -6,6 +6,7 @@ public partial class Frame : ColorRect
 {
     public Label NameLabel => field ??= GetNode<Label>("Name");
     public int IDindex;
+    public Character OwnerCharacter;
     public Control SkillButtonContainer => field ??= GetNode("SkillControl") as Control;
     public SkillButton SkillButton1 => field ??= GetNode("SkillControl/skill1") as SkillButton;
     public SkillButton SkillButton2 => field ??= GetNode("SkillControl/skill2") as SkillButton;
@@ -24,6 +25,7 @@ public partial class Frame : ColorRect
 
     // Rotation speed (radians per second)
     private float _rotationSpeed = 0.2f;
+    private bool _isMouseInsideFrame;
 
     public override void _Ready()
     {
@@ -53,9 +55,10 @@ public partial class Frame : ColorRect
     public override void _Process(double delta)
     {
         ClickButton.Position = Size / 2 - ClickButton.Size / 2;
+        UpdateOwnerHoverPreview();
         UIShaderRotate(delta);
-        // Update rotation angle
-        _currentRotation += (float)(_rotationSpeed * delta);
+        if (!IsMouseInsideFrame())
+            _currentRotation += (float)(_rotationSpeed * delta);
 
         // Calculate origin as center of the container
         Vector2 origin = SkillButtonContainer.Size / 2;
@@ -72,6 +75,34 @@ public partial class Frame : ColorRect
             Vector2 centeredPosition = circularPosition - skillButton.Size / 2;
             skillButton.Position = centeredPosition;
         }
+    }
+
+    private bool IsMouseInsideFrame()
+    {
+        if (ClickButton == null || !ClickButton.IsInsideTree())
+            return false;
+
+        Vector2 mousePosition = GetViewport().GetMousePosition();
+        return ClickButton.GetGlobalRect().HasPoint(mousePosition);
+    }
+
+    private void UpdateOwnerHoverPreview()
+    {
+        bool isInside = IsMouseInsideFrame();
+        if (_isMouseInsideFrame == isInside)
+            return;
+
+        _isMouseInsideFrame = isInside;
+        if (_isMouseInsideFrame)
+            OwnerCharacter?.ShowFramePreview();
+        else
+            OwnerCharacter?.HideFramePreview();
+    }
+
+    public override void _ExitTree()
+    {
+        OwnerCharacter?.HideFramePreview();
+        base._ExitTree();
     }
 
     public void SortButtons()

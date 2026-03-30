@@ -78,20 +78,17 @@ public partial class Charge : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
-            CustomStep(
-                _ =>
-                {
-                    int damage = DamageFromPower(BaseDamage);
-                    OwnerCharater?.UpdataBlock(Math.Clamp(damage, 0, 999));
-                    return Task.CompletedTask;
-                },
-                _ =>
-                {
-                    string damageText = DamageFromPowerText(BaseDamage);
-                    return new[] { $"获得{damageText}点格挡。" };
-                }
-            )
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: "charge_target"),
+            BlockFriendlyByRelativeStep(
+                relativeIndex: 0,
+                baseBlock: _ =>
+                    OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
+                        source: OwnerCharater,
+                        target: GetStoredTarget("charge_target")
+                    ) ?? 0,
+                describe: false
+            ),
+            TextStep($"获得等同于此次造成伤害+{X(StatX.Survivability)}的格挡。")
         );
     }
 }

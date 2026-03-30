@@ -4,15 +4,27 @@ using Godot;
 
 public partial class FearWorm : EnemyCharacter
 {
+    private const int PassiveDebuffImmunityStacks = 1;
+    private const int PassiveEndActionPowerGain = 2;
+
+    public const string PassiveNameText = "蜕皮";
+    public static string PassiveDescriptionText =>
+        $"初始：获得{PassiveDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。\n"
+        + $"回合结束时：获得{PassiveEndActionPowerGain}点力量。";
+
     public override void Initialize()
     {
         base.Initialize();
-        SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, 1);
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
+        using var _ = BeginEffectSource("被动");
+        SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, PassiveDebuffImmunityStacks, this);
     }
 
     public override async void Passive(Skill skill)
     {
-        await IncreaseProperties(PropertyType.Power, 2);
+        using var _ = BeginEffectSource("被动");
+        await IncreaseProperties(PropertyType.Power, PassiveEndActionPowerGain, this);
     }
 
     public override void EndAction()

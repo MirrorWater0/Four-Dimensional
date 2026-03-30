@@ -25,7 +25,8 @@ public partial class SacredOnslaught : Skill
                 {
                     int hitCount = Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length);
                     OwnerCharater?.UpdataBlock(
-                        Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999)
+                        Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999),
+                        source: OwnerCharater
                     );
                     await Task.Delay(400);
                 },
@@ -127,7 +128,7 @@ public partial class BreakStrike : Skill
                     var targets = ChosetargetByOrder(byBehindRow: false);
                     var target = targets[0];
                     if (target.Block > 0)
-                        target.UpdataBlock(-target.Block);
+                        target.UpdataBlock(-target.Block, source: OwnerCharater);
 
                     return Task.CompletedTask;
                 },

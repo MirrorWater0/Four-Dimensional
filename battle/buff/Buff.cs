@@ -179,6 +179,19 @@ public partial class Buff
 
     public static bool IsDebuff(BuffName name) => GetNature(name) == Nature.negative;
 
+    protected static void RecordBuffGain(
+        Character target,
+        BuffName name,
+        int stack,
+        Character source = null
+    )
+    {
+        if (target?.BattleNode == null || stack == 0)
+            return;
+
+        target.BattleNode.RecordBuffGain(target, name, stack, source);
+    }
+
     public void TweenLabel()
     {
         if (Stack == 0)
@@ -226,12 +239,13 @@ public class DyingBuff : Buff
 
     public Task Trigger()
     {
+        using var _ = Owner?.BeginEffectSource(ThisBuffName.GetDescription());
         switch (ThisBuffName)
         {
             case BuffName.RebirthI:
                 if (Stack >= 1)
                 {
-                    Owner.Recover(Owner.BattleMaxLife / 2, true);
+                    Owner.Recover(Owner.BattleMaxLife / 2, true, Owner);
                     Stack--;
                 }
                 break;
@@ -249,7 +263,7 @@ public class DyingBuff : Buff
         return Task.CompletedTask;
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (target.DyingBuffs.Any(x => x.ThisBuffName == name))
         {
@@ -259,6 +273,7 @@ public class DyingBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
         DyingBuff buff = null;
@@ -283,6 +298,7 @@ public class DyingBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 
@@ -313,7 +329,7 @@ public partial class HurtBuff : Buff
             case BuffName.AutoArmor:
                 if (Owner != null && Stack > 0)
                 {
-                    Owner.CallDeferred(nameof(Character.UpdataBlock), Stack);
+                    Owner.CallDeferred(nameof(Character.UpdataBlock), Stack, true, Owner);
                 }
                 break;
         }
@@ -331,7 +347,7 @@ public partial class HurtBuff : Buff
         }
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
             return;
@@ -344,6 +360,7 @@ public partial class HurtBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
         HurtBuff buff = null;
@@ -388,6 +405,7 @@ public partial class HurtBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 
@@ -422,7 +440,7 @@ public partial class StartActionBuff : Buff
         }
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
             return;
@@ -435,6 +453,7 @@ public partial class StartActionBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
         StartActionBuff buff = null;
@@ -462,6 +481,7 @@ public partial class StartActionBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 
@@ -515,7 +535,7 @@ public partial class SkillBuff : Buff
         }
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
             return;
@@ -531,6 +551,7 @@ public partial class SkillBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
 
@@ -559,6 +580,7 @@ public partial class SkillBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 
@@ -571,6 +593,8 @@ public partial class EndActionBuff : Buff
     {
         if (Stack <= 0 || Owner == null)
             return;
+
+        using var _ = Owner.BeginEffectSource(ThisBuffName.GetDescription());
 
         switch (ThisBuffName)
         {
@@ -597,7 +621,7 @@ public partial class EndActionBuff : Buff
         }
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (target?.EndActionBuffs == null)
             return;
@@ -610,6 +634,7 @@ public partial class EndActionBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
 
@@ -638,6 +663,7 @@ public partial class EndActionBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 
@@ -676,7 +702,7 @@ public partial class SpecialBuff : Buff
         return true;
     }
 
-    public static void BuffAdd(BuffName name, Character target, int stack)
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (target?.SpecialBuffs == null)
             return;
@@ -689,6 +715,7 @@ public partial class SpecialBuff : Buff
             buff0.TweenLabel();
             buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
             buff0.BuffAddAnimation();
+            RecordBuffGain(target, name, stack, source);
             return;
         }
 
@@ -731,6 +758,7 @@ public partial class SpecialBuff : Buff
         target.StateIconContainer.AddChild(icon);
 
         buff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
     }
 }
 

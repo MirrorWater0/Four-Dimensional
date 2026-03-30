@@ -27,19 +27,19 @@ public partial class RebirthPrayer : Skill
                 EnergyCost,
                 null,
                 null,
-                HealFriendlyAbsolute(
+                HealFriendlyStep(
                     baseHeal: BaseRebirthHeal,
                     survivabilityMultiplier: 0,
-                    selector: AbsoluteFriendlySelector.FrontMost,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
+                    dyingFilter: false,
                     preferNonFull: true,
                     rebirth: true,
-                    targetKey: SharedTargetKey
+                    storeAs: SharedTargetKey
                 ),
-                FriendlyEnergyRelativeStep(
+                FriendlyEnergyStep(
                     delta: GainEnergy,
-                    relative: 0,
-                    dyingFilter: true,
-                    targetKey: SharedTargetKey
+                    target: StoredTarget(SharedTargetKey),
+                    dyingFilter: true
                 )
             )
         );
@@ -69,15 +69,14 @@ public partial class Sacrifice : Skill
                 null,
                 null,
                 HurtFriendly(allyHurt, all: true),
-                ModifyPropertyAbsoluteStep(
+                ModifyPropertyStep(
                     type: PropertyType.MaxLife,
                     value: -DeMax,
-                    selector: PropertyAbsoluteSelector.All,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
                     dyingFilter: false
                 ),
-                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 1, maxTargets: 0)
+                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, maxTargets: 0)
             )
         );
     }
 }
-

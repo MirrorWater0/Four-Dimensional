@@ -120,6 +120,7 @@ public partial class SpaceStationShop : Control
     private PanelContainer PanelNode => field ??= GetNode<PanelContainer>("Panel");
     private Control ModulePanelNode =>
         field ??= GetNode<Control>("Panel/MainLayout/ModulePanel");
+    private Control MainLayoutNode => field ??= GetNode<Control>("Panel/MainLayout");
     private Control ContentAreaNode =>
         field ??= GetNode<Control>("Panel/MainLayout/ContentArea");
     private Control HeaderBackplate =>
@@ -198,6 +199,7 @@ public partial class SpaceStationShop : Control
     private bool _isTransitioning;
     private Tip _shopRelicTip;
     private Control _inputBlocker;
+    private Control _moduleTransitionBlocker;
     private readonly Dictionary<Control, Vector2> _assemblyBasePositions = new();
     private readonly Dictionary<Control, Tween> _statPanelHoverTweens = new();
     private Vector2 _panelBasePosition;
@@ -327,6 +329,14 @@ public partial class SpaceStationShop : Control
                 26
             );
             AddStatOffer(optionGrid.GetNode<PanelContainer>("Speed"), i, characterName, PropertyType.Speed, 1, 32);
+            AddStatOffer(
+                optionGrid.GetNode<PanelContainer>("MaxLife"),
+                i,
+                characterName,
+                PropertyType.MaxLife,
+                5,
+                30
+            );
         }
     }
 
@@ -1493,66 +1503,94 @@ public partial class SpaceStationShop : Control
         if (!IsInsideTree() || _isClosing || _currentModule == module)
             return;
 
+        ShopModule outgoingModule = _currentModule;
         int transitionDirection = GetModuleTransitionDirection(_currentModule, module);
         _isTransitioning = true;
-        SetUiInteractive(false);
+        SetModuleTransitionInteractive(false);
         HideRelicTip();
-
-        var outgoingRoot = GetModuleContentRoot(_currentModule);
-        bool useOutgoingSnapshot = ShouldUseModuleTransitionSnapshot(outgoingRoot, module);
-        var outgoingVisual = useOutgoingSnapshot
-            ? CreateModuleTransitionSnapshot(outgoingRoot)
-            : outgoingRoot;
-        SetModule(module, animateSelector: true);
-        var incomingRoot = GetModuleContentRoot(_currentModule);
-        RestoreModuleTransitionVisualState(_currentModule);
-
-        if (
-            !useOutgoingSnapshot
-            && outgoingVisual != null
-            && GodotObject.IsInstanceValid(outgoingVisual)
-            && outgoingVisual != incomingRoot
-        )
+        try
         {
-            outgoingVisual.Visible = true;
-            SetControlAlpha(outgoingVisual, 1.0f);
-        }
+            var outgoingRoot = GetModuleContentRoot(outgoingModule);
+            var targetRoot = GetModuleContentRoot(module);
+            if (ShouldUseSequentialModuleTransition(outgoingRoot, targetRoot))
+            {
+                await AnimateSequentialModuleTransitionAsync(
+                    outgoingModule,
+                    module,
+                    outgoingRoot,
+                    transitionDirection
+                );
+            }
+            else
+            {
+                SetModule(module, animateSelector: true);
+                var incomingRoot = GetModuleContentRoot(_currentModule);
+                RestoreModuleTransitionVisualState(_currentModule);
 
-        await AnimateModuleRootTransitionAsync(
-            outgoingVisual,
-            incomingRoot,
-            transitionDirection,
-            disposeOutgoingVisual: useOutgoingSnapshot
-        );
+                if (
+                    outgoingRoot != null
+                    && GodotObject.IsInstanceValid(outgoingRoot)
+                    && outgoingRoot != incomingRoot
+                )
+                {
+                    outgoingRoot.Visible = true;
+                    SetControlAlpha(outgoingRoot, 1.0f);
+                }
+
+                await AnimateModuleRootTransitionAsync(
+                    outgoingRoot,
+                    incomingRoot,
+                    transitionDirection,
+                    disposeOutgoingVisual: false
+                );
+            }
+        }
+        finally
+        {
+            _isTransitioning = false;
+            if (IsInsideTree())
+                SetModuleTransitionInteractive(true);
+        }
+    }
+
+    private async Task AnimateSequentialModuleTransitionAsync(
+        ShopModule outgoingModule,
+        ShopModule targetModule,
+        Control outgoingRoot,
+        int transitionDirection
+    )
+    {
+        if (outgoingRoot != null && GodotObject.IsInstanceValid(outgoingRoot))
+        {
+            await RunModuleFadeAsync(
+                outgoingRoot,
+                GetModuleTransitionItems(outgoingModule),
+                entering: false,
+                horizontalDirection: -transitionDirection,
+                duration: ModuleContentFadeOutDuration,
+                animateRootPosition: false
+            );
+        }
 
         if (!IsInsideTree() || _isClosing)
             return;
 
-        _isTransitioning = false;
-        SetUiInteractive(true);
-    }
+        SetModule(targetModule, animateSelector: true);
+        RestoreModuleTransitionVisualState(_currentModule);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
-    private Control CreateModuleTransitionSnapshot(Control sourceRoot)
-    {
-        if (sourceRoot == null || !GodotObject.IsInstanceValid(sourceRoot) || !sourceRoot.Visible)
-            return null;
+        if (!IsInsideTree() || _isClosing)
+            return;
 
-        if (sourceRoot.GetParent() is not Node parent)
-            return null;
-
-        if (sourceRoot.Duplicate() is not Control snapshot)
-            return null;
-
-        snapshot.Name = $"{sourceRoot.Name}TransitionSnapshot";
-        snapshot.MouseFilter = MouseFilterEnum.Ignore;
-        snapshot.ZIndex = sourceRoot.ZIndex + 1;
-        snapshot.Position = sourceRoot.Position;
-        snapshot.Size = sourceRoot.Size;
-        snapshot.Visible = true;
-        snapshot.Modulate = sourceRoot.Modulate;
-        parent.AddChild(snapshot);
-        parent.MoveChild(snapshot, parent.GetChildCount() - 1);
-        return snapshot;
+        var incomingRoot = GetModuleContentRoot(_currentModule);
+        await RunModuleFadeAsync(
+            incomingRoot,
+            GetModuleTransitionItems(_currentModule),
+            entering: true,
+            horizontalDirection: transitionDirection,
+            duration: ModuleContentFadeInDuration,
+            animateRootPosition: false
+        );
     }
 
     private async Task AnimateModuleRootTransitionAsync(
@@ -1586,11 +1624,13 @@ public partial class SpaceStationShop : Control
         tween.SetParallel(true);
         tween.SetTrans(Tween.TransitionType.Cubic);
         tween.SetEase(Tween.EaseType.Out);
+        bool hasTweener = false;
 
         if (incomingRoot != null && GodotObject.IsInstanceValid(incomingRoot))
         {
             tween.TweenProperty(incomingRoot, "position", incomingBasePosition, ModuleContentFadeInDuration);
             tween.TweenProperty(incomingRoot, "modulate:a", 1.0f, ModuleContentFadeInDuration);
+            hasTweener = true;
         }
 
         if (outgoingVisual != null && GodotObject.IsInstanceValid(outgoingVisual))
@@ -1607,6 +1647,15 @@ public partial class SpaceStationShop : Control
                 0.0f,
                 ModuleContentFadeOutDuration
             );
+            hasTweener = true;
+        }
+
+        if (!hasTweener)
+        {
+            tween.Kill();
+            if (_moduleContentTween == tween)
+                _moduleContentTween = null;
+            return;
         }
 
         await ToSignal(tween, Tween.SignalName.Finished);
@@ -1636,10 +1685,12 @@ public partial class SpaceStationShop : Control
         Control[] items,
         bool entering,
         int horizontalDirection,
-        float duration
+        float duration,
+        bool animateRootPosition = true
     )
     {
         KillModuleContentTween();
+        items ??= Array.Empty<Control>();
 
         float[] itemTargetAlphas = items.Select(item =>
             item != null && GodotObject.IsInstanceValid(item) ? item.Modulate.A : 1.0f
@@ -1654,7 +1705,7 @@ public partial class SpaceStationShop : Control
 
         if (entering)
         {
-            if (root != null && GodotObject.IsInstanceValid(root))
+            if (animateRootPosition && root != null && GodotObject.IsInstanceValid(root))
                 root.Position = rootBasePosition + GetModuleEnterOffset(horizontalDirection);
             PrepareModuleItemsForTransition(items, entering: true);
         }
@@ -1668,13 +1719,15 @@ public partial class SpaceStationShop : Control
         tween.SetParallel(true);
         tween.SetEase(entering ? Tween.EaseType.Out : Tween.EaseType.In);
         tween.SetTrans(Tween.TransitionType.Cubic);
+        bool hasTweener = false;
 
-        if (root != null && GodotObject.IsInstanceValid(root))
+        if (animateRootPosition && root != null && GodotObject.IsInstanceValid(root))
         {
             Vector2 rootTargetPosition = entering
                 ? rootBasePosition
                 : rootBasePosition + GetModuleExitOffset(horizontalDirection);
             tween.TweenProperty(root, "position", rootTargetPosition, duration);
+            hasTweener = true;
         }
 
         for (int i = 0; i < items.Length; i++)
@@ -1692,6 +1745,23 @@ public partial class SpaceStationShop : Control
                     ModuleItemTweenDuration
                 )
                 .SetDelay(delay);
+            hasTweener = true;
+        }
+
+        if (!hasTweener)
+        {
+            tween.Kill();
+            if (root != null && GodotObject.IsInstanceValid(root))
+                root.Position = rootBasePosition;
+            ResetModuleItemsToBase(
+                items,
+                entering
+                    ? itemTargetAlphas
+                    : Enumerable.Repeat(0.0f, itemTargetAlphas.Length).ToArray()
+            );
+            if (_moduleContentTween == tween)
+                _moduleContentTween = null;
+            return;
         }
 
         await ToSignal(tween, Tween.SignalName.Finished);
@@ -1776,15 +1846,14 @@ public partial class SpaceStationShop : Control
         ResetModuleItemsVisualState(GetModuleTransitionItems(_currentModule));
     }
 
-    private bool ShouldUseModuleTransitionSnapshot(Control outgoingRoot, ShopModule targetModule)
+    private bool ShouldUseSequentialModuleTransition(Control outgoingRoot, Control incomingRoot)
     {
         if (outgoingRoot == null || !GodotObject.IsInstanceValid(outgoingRoot))
             return false;
 
-        if (outgoingRoot == CatalogViewport)
-            return true;
-
-        return outgoingRoot == GetModuleContentRoot(targetModule);
+        return incomingRoot != null
+            && GodotObject.IsInstanceValid(incomingRoot)
+            && outgoingRoot == incomingRoot;
     }
 
     private void RestoreModuleTransitionVisualState(ShopModule module)
@@ -2139,6 +2208,13 @@ public partial class SpaceStationShop : Control
         HideButton.Disabled = !interactive;
     }
 
+    private void SetModuleTransitionInteractive(bool interactive)
+    {
+        var blocker = EnsureModuleTransitionBlocker();
+        if (blocker != null)
+            blocker.Visible = !interactive;
+    }
+
     private Control EnsureInputBlocker()
     {
         if (_inputBlocker != null && GodotObject.IsInstanceValid(_inputBlocker))
@@ -2155,6 +2231,24 @@ public partial class SpaceStationShop : Control
         AddChild(_inputBlocker);
         MoveChild(_inputBlocker, GetChildCount() - 1);
         return _inputBlocker;
+    }
+
+    private Control EnsureModuleTransitionBlocker()
+    {
+        if (_moduleTransitionBlocker != null && GodotObject.IsInstanceValid(_moduleTransitionBlocker))
+            return _moduleTransitionBlocker;
+
+        _moduleTransitionBlocker = new Control
+        {
+            Name = "ModuleTransitionBlocker",
+            MouseFilter = MouseFilterEnum.Stop,
+            Visible = false,
+            FocusMode = FocusModeEnum.None,
+        };
+        _moduleTransitionBlocker.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        MainLayoutNode.AddChild(_moduleTransitionBlocker);
+        MainLayoutNode.MoveChild(_moduleTransitionBlocker, MainLayoutNode.GetChildCount() - 1);
+        return _moduleTransitionBlocker;
     }
 
     private void UpdatePanelPivot()

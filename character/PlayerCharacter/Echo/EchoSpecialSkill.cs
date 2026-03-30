@@ -66,7 +66,7 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 15;
+    int damage = 20;
     int PowerGain = -4;
     int EnergyCost = 1;
 
@@ -87,7 +87,7 @@ public class PhaseEcho : Skill
                 null,
                 null,
                 [
-                    AoeDamageStep(baseDamage: damage, maxTargets: 4),
+                    AoeDamageStep(baseDamage: damage),
                     ModifyPropertyStep(PropertyType.Power, PowerGain),
                 ]
             )

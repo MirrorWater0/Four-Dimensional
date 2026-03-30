@@ -6,7 +6,7 @@ public partial class KasiyaSpecialSkill : Node { }
 
 public class TerminateLight : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 5;
     private int UsedTimes = 2;
     private const int EnergyCost = 2;
     private const int PowerGain = 5;
@@ -29,7 +29,9 @@ public class TerminateLight : Skill
                 () => UsedTimes,
                 value => UsedTimes = value,
                 ModifyPropertyStep(PropertyType.Power, PowerGain)
-            )
+            ),
+            HurtFriendly(8, 0),
+            ModifyPropertyStep(PropertyType.Power, -2)
         );
     }
 }

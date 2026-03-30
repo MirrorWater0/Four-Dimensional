@@ -25,7 +25,7 @@ public partial class Skill
             return false;
         if (OwnerCharater.Energy < cost)
             return false;
-        OwnerCharater.UpdataEnergy(-cost);
+        OwnerCharater.UpdataEnergy(-cost, OwnerCharater);
         return true;
     }
 }

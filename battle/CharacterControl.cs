@@ -20,6 +20,7 @@ public partial class CharacterControl : Control
         for (int i = 0; i < CharactersControl.Length && i < BattleNode.PlayersList.Count; i++)
         {
             BattleNode.PlayersList[i].SelfFrame = CharactersControl[i];
+            CharactersControl[i].OwnerCharacter = BattleNode.PlayersList[i];
             var skillButtons = CharactersControl[i].SkillButtonContainer;
             CharactersControl[i].NameLabel.Text = BattleNode.PlayersList[i].CharacterName;
             BattleNode.PlayersList[i].SkillButtonControl = skillButtons;

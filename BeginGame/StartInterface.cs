@@ -89,6 +89,7 @@ public partial class StartInterface : CanvasLayer
         //     .Distinct()
         //     .ToArray();
         // AddTestSkills(0, rosterSkills);
+        GameInfo.ElectricityCoin += 999;
     }
 
     private static void AddTestSkills(int characterIndex, params SkillID[] skills)
@@ -123,8 +124,8 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Echo = new PlayerInfoStructure()
     {
         CharacterName = "Echo",
-        PassiveName = "余响",
-        PassiveDescription = $"使用生存技能时：获得{1}点能量。\n使用非生存技能时：获得{2}点力量。",
+        PassiveName = global::Echo.PassiveNameText,
+        PassiveDescription = global::Echo.PassiveDescriptionText,
         LifeMax = 50,
         Power = 9,
         Survivability = 11,
@@ -136,8 +137,8 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
         CharacterName = "Kasiya",
-        PassiveName = "坚毅",
-        PassiveDescription = "当其他队友使用攻击技能：回复一次生命。",
+        PassiveName = global::Kasiya.PassiveNameText,
+        PassiveDescription = global::Kasiya.PassiveDescriptionText,
         LifeMax = 60,
         Power = 12,
         Survivability = 12,
@@ -149,8 +150,8 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Mariya = new PlayerInfoStructure()
     {
         CharacterName = "Mariya",
-        PassiveName = "治愈",
-        PassiveDescription = $"自己回合结束时：回复最低生命队友{4}点。",
+        PassiveName = global::Mariya.PassiveNameText,
+        PassiveDescription = global::Mariya.PassiveDescriptionText,
         LifeMax = 45,
         Power = 9,
         Survivability = 10,
@@ -163,9 +164,8 @@ public partial class PlayerCharacterRegistry
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
     {
         CharacterName = "Nightingale",
-        PassiveName = "夜光",
-        PassiveDescription =
-            $"队友结束回合时：追击一次:造成{PropertyType.Power.GetDescription()}点伤害。",
+        PassiveName = global::Nightingale.PassiveNameText,
+        PassiveDescription = global::Nightingale.PassiveDescriptionText,
         LifeMax = 50,
         Power = 11,
         Survivability = 10,

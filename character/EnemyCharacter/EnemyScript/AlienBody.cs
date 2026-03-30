@@ -4,7 +4,20 @@ using Godot;
 
 public partial class AlienBody : EnemyCharacter
 {
+    private const int PassivePowerGain = 3;
+
+    public const string PassiveNameText = "寄生馈赠";
+    public static string PassiveDescriptionText =>
+        $"回合结束时：上一位非濒死队友获得{PassivePowerGain}点力量。";
+
     public override string CharacterName { get; set; } = "AlienBody";
+
+    public override void Initialize()
+    {
+        base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
+    }
 
     public override void EndAction()
     {
@@ -14,6 +27,7 @@ public partial class AlienBody : EnemyCharacter
 
     public override async void Passive(Skill skill)
     {
+        using var _ = BeginEffectSource("被动");
         if (BattleNode == null)
             return;
 
@@ -27,7 +41,7 @@ public partial class AlienBody : EnemyCharacter
         if (ally == null || ally == this)
             return;
 
-        await ally.IncreaseProperties(PropertyType.Power, 3);
+        await ally.IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
 }
 

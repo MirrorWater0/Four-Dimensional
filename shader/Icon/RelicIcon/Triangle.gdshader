@@ -34,5 +34,5 @@ void fragment() {
     float alpha = smoothstep(smoothing, 0.0, hollow_dist);
     
     // 输出颜色
-    COLOR = vec4(line_color.rgb, line_color.a * alpha);
+    COLOR *= vec4(line_color.rgb, line_color.a * alpha);
 }

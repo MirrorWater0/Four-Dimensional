@@ -9,6 +9,7 @@ public partial class EnemyCharacter : Character
     private const float DefaultIntentWeight = 3f;
     private const float SpecialIntentWeightMin = 0.5f;
     private const float SpecialIntentWeightMax = 7f;
+    private static readonly Color IntentionTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
 
     public EnemyRegedit Registry;
     public Control IntentionContorl => field ??= GetNode<Control>("Intention");
@@ -20,11 +21,23 @@ public partial class EnemyCharacter : Character
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex;
     public int SpecialIntentThreshold { get; private set; } = 3;
+    private Character[] _intentionPreviewTargets = Array.Empty<Character>();
+    private int _intentionPreviewHoverDepth;
 
     public override void _Ready()
     {
         base._Ready();
         IsPlayer = false;
+        Hoverframe.MouseEntered += OnIntentionPreviewHoverEntered;
+        Hoverframe.MouseExited += OnIntentionPreviewHoverExited;
+        IntentionContorl.MouseEntered += OnIntentionPreviewHoverEntered;
+        IntentionContorl.MouseExited += OnIntentionPreviewHoverExited;
+    }
+
+    public override void _ExitTree()
+    {
+        HideIntentionTargetPreview();
+        base._ExitTree();
     }
 
     public override void Initialize()
@@ -61,13 +74,6 @@ public partial class EnemyCharacter : Character
     {
         IntentionIndex = RollIntentionIndex();
         DisplayIntention();
-
-        if (BattleNode?.SuppressSpeedGainThisTurn != true)
-        {
-            BattleNode.EnemySpeed += BattleNode
-                .EnemiesList.Where(x => x.State != CharacterState.Dying)
-                .Sum(x => x.Speed);
-        }
         base.EndAction();
     }
 
@@ -122,16 +128,9 @@ public partial class EnemyCharacter : Character
         );
     }
 
-    public override async Task GetHurt(float damage)
-    {
-        await base.GetHurt(damage);
-        Tween tween = CreateTween();
-        tween.TweenProperty(this, "position", OriginalPosition + 20 * Vector2.Right, 0.3f);
-        tween.TweenProperty(this, "position", OriginalPosition, 0.2f);
-    }
-
     public async Task DisappearIntention()
     {
+        HideIntentionTargetPreview();
         Buff.GhostExplode(IntentionContorl, new Vector2(2, 2));
         await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
         AttackIntention.Visible = false;
@@ -163,5 +162,67 @@ public partial class EnemyCharacter : Character
         tween
             .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
             .SetEase(Tween.EaseType.Out);
+
+        if (_intentionPreviewHoverDepth > 0)
+            ShowIntentionTargetPreview();
+    }
+
+    private void OnIntentionPreviewHoverEntered()
+    {
+        _intentionPreviewHoverDepth++;
+        if (_intentionPreviewHoverDepth == 1)
+            ShowIntentionTargetPreview();
+    }
+
+    private void OnIntentionPreviewHoverExited()
+    {
+        _intentionPreviewHoverDepth = Math.Max(0, _intentionPreviewHoverDepth - 1);
+        if (_intentionPreviewHoverDepth == 0)
+            HideIntentionTargetPreview();
+    }
+
+    private void ShowIntentionTargetPreview()
+    {
+        HideIntentionTargetPreview();
+
+        var skill = GetCurrentIntentionSkill();
+        if (skill == null)
+            return;
+
+        _intentionPreviewTargets = skill
+            .GetPreviewHostileTargets()
+            .Where(GodotObject.IsInstanceValid)
+            .Distinct()
+            .ToArray();
+
+        for (int i = 0; i < _intentionPreviewTargets.Length; i++)
+        {
+            _intentionPreviewTargets[i].ShowTargetPreview(IntentionTargetPreviewColor);
+        }
+    }
+
+    private void HideIntentionTargetPreview()
+    {
+        if (_intentionPreviewTargets == null || _intentionPreviewTargets.Length == 0)
+        {
+            _intentionPreviewTargets = Array.Empty<Character>();
+            return;
+        }
+
+        for (int i = 0; i < _intentionPreviewTargets.Length; i++)
+        {
+            if (GodotObject.IsInstanceValid(_intentionPreviewTargets[i]))
+                _intentionPreviewTargets[i].HideTargetPreview();
+        }
+
+        _intentionPreviewTargets = Array.Empty<Character>();
+    }
+
+    private Skill GetCurrentIntentionSkill()
+    {
+        if (Skills == null || IntentionIndex < 0 || IntentionIndex >= Skills.Length)
+            return null;
+
+        return Skills[IntentionIndex];
     }
 }

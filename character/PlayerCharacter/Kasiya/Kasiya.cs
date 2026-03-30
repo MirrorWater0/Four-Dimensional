@@ -4,6 +4,14 @@ using Godot;
 
 public partial class Kasiya : PlayerCharacter
 {
+    private const int PassiveAttackBaseHeal = -5;
+    private const int PassiveSurvivePowerGain = 1;
+
+    public const string PassiveNameText = "坚毅";
+    public static string PassiveDescriptionText =>
+        $"当其他队友使用攻击技能：回复{PassiveAttackBaseHeal}点基础生命。\n"
+        + $"当其他队友使用生存技能：获得{PassiveSurvivePowerGain}点力量。";
+
     Label label => field ??= GetNode<Label>("Label");
     public override PackedScene CharaterScene { get; set; } = StartInterface._Kasiya;
     public override string CharacterName { get; set; } = "Kasiya";
@@ -11,19 +19,31 @@ public partial class Kasiya : PlayerCharacter
     public override void Initialize()
     {
         base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
 
         BattleNode.UsedSkills.ItemAdded += Passive;
     }
 
-    public override void Passive(Skill skill)
+    public override async void Passive(Skill skill)
     {
+        if (State == CharacterState.Dying)
+            return;
+        using var _ = BeginEffectSource("被动");
         if (
-            skill.OwnerCharater != this
-            && skill.SkillType == Skill.SkillTypes.Attack
-            && skill.OwnerCharater.IsPlayer
+            skill?.OwnerCharater == null
+            || skill.OwnerCharater == this
+            || !skill.OwnerCharater.IsPlayer
         )
+            return;
+
+        if (skill.SkillType == Skill.SkillTypes.Attack)
         {
-            Recover(0);
+            Recover(PassiveAttackBaseHeal, source: this);
+            return;
         }
+
+        if (skill.SkillType == Skill.SkillTypes.Survive)
+            await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
     }
 }

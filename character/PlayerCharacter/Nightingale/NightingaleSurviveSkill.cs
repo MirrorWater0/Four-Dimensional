@@ -27,7 +27,7 @@ public partial class VeilStep : Skill
                 dyingFilter: false
             ),
             BlockFriendlyByRelativeStep(relativeIndex: 1, baseBlock: BaseBlock, dyingFilter: true),
-            HealFriendlyRelative(baseHeal: 5, index: 0)
+            HealFriendlyStep(baseHeal: 5, target: RelativeTarget(0))
         );
     }
 }
@@ -79,10 +79,10 @@ public partial class Swift : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Speed, SpeedGain),
-            ModifyPropertyAbsoluteStep(
+            ModifyPropertyStep(
                 type: PropertyType.Survivability,
                 value: SurvivabilityGain,
-                selector: PropertyAbsoluteSelector.All,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
                 dyingFilter: true
             )
         );

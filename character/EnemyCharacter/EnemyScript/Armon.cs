@@ -5,13 +5,17 @@ using Godot;
 
 public partial class Armon : EnemyCharacter
 {
-    private bool _firstTurnPassiveTriggered;
+    public const string PassiveNameText = "矩阵核心";
+    public const string PassiveDescriptionText =
+        "回合开始时：全阵获得等同于自身生存的格挡。\n回合结束时：全阵获得等同于自身生存的格挡。";
 
     public override string CharacterName { get; set; } = "Armon";
 
     public override void Initialize()
     {
         base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
         BattleNode.StartEffectList.Add(StartPassive);
     }
 
@@ -31,22 +35,24 @@ public partial class Armon : EnemyCharacter
         if (BattleNode == null)
             return;
 
+        using var _ = BeginEffectSource("被动");
+
         int block = Math.Clamp(BattleSurvivability, 0, 999);
-        var allies = IsPlayer
-            ? BattleNode.PlayersList.Cast<Character>()
-            : BattleNode.EnemiesList.Cast<Character>();
+        var allies = BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true);
 
         foreach (var ally in allies.Where(x => x != null && x.State == CharacterState.Normal))
         {
-            ally.UpdataBlock(block);
+            ally.UpdataBlock(block, source: this);
         }
     }
 
     public Task StartPassive()
     {
-        for (int i = 0; i < BattleNode.EnemiesList.Count; i++)
+        using var _ = BeginEffectSource("被动");
+        var allies = BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true).ToArray();
+        for (int i = 0; i < allies.Length; i++)
         {
-            BattleNode.EnemiesList[i].UpdataBlock(BattleSurvivability);
+            allies[i].UpdataBlock(BattleSurvivability, source: this);
         }
         return Task.CompletedTask;
     }

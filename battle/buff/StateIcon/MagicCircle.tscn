@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://cwitod3tr3t1s"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tskrw"]
+[ext_resource type="Shader" uid="uid://bxbss16fmrkfo" path="res://shader/Icon/BuffIcon/MagicCircle.gdshader" id="2_0cl5y"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vdthd"]
+shader = ExtResource("2_0cl5y")
+shader_parameter/magic_color = Color(0.3, 0.6, 1, 1)
+shader_parameter/line_thickness = 0.01500000036324
+shader_parameter/glow_intensity = 0.05
+shader_parameter/size = 0.81700003554762
+
+[node name="MagicCircle" unique_id=1043864828 instance=ExtResource("1_tskrw")]
+material = SubResource("ShaderMaterial_vdthd")

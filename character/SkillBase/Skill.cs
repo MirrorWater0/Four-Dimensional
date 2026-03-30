@@ -76,6 +76,7 @@ public partial class Skill
 
     public virtual async Task Effect()
     {
+        using var _ = OwnerCharater?.BattleNode?.PushEffectSource(OwnerCharater, SkillName);
         if (OwnerCharater?.SkillBuffs != null)
         {
             var stun = OwnerCharater.SkillBuffs.FirstOrDefault(x =>
@@ -89,7 +90,8 @@ public partial class Skill
         }
 
         OwnerCharater.DisableSkill();
-        OwnerCharater.BattleNode.UsedSkills.Add(this);
+        if (OwnerCharater?.TriggersSkillUseEvents != false)
+            OwnerCharater.BattleNode.UsedSkills.Add(this);
         foreach (var buff in OwnerCharater.SkillBuffs)
         {
             await buff.Trigger(this);
@@ -252,9 +254,10 @@ public partial class Skill
 
         int attackerRow = Row(OwnerCharater.PositionIndex);
 
-        IEnumerable<Character> source = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
-            : OwnerCharater.BattleNode.PlayersList.Cast<Character>();
+        IEnumerable<Character> source = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
+            !OwnerCharater.IsPlayer,
+            includeSummons: true
+        );
 
         var ordered = byBehindRow
             ? source
@@ -296,61 +299,50 @@ public partial class Skill
 
     public Character GetAllyByRelative(int Where, bool dyingFilter = false)
     {
-        // 1. 获取基础列表并排序
-        var query = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
-            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
+        Character[] ally = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
+            OwnerCharater.IsPlayer,
+            includeSummons: false,
+            dyingFilter: dyingFilter
+        );
 
-        if (dyingFilter)
-        {
-            query = query.Where(x => x.State != Character.CharacterState.Dying);
-        }
+        if (!OwnerCharater.IsFullCharacter && Where == 0)
+            return OwnerCharater;
 
-        Character[] Ally = query.OrderBy(x => x.PositionIndex).ToArray();
-
-        // 2. 安全检查：如果列表为空，直接返回 null
-        if (Ally.Length == 0)
+        if (ally.Length == 0)
             return null;
 
-        // 3. 获取当前角色的位置
-        int currentIndex = Array.IndexOf(Ally, OwnerCharater);
+        Character anchor = OwnerCharater;
+        if (!OwnerCharater.IsFullCharacter && OwnerCharater is SummonCharacter summon)
+            anchor = summon.Summoner ?? OwnerCharater;
 
-        // 如果当前角色不在列表里，默认从0开始算偏移
+        int currentIndex = Array.IndexOf(ally, anchor);
         if (currentIndex == -1)
             currentIndex = 0;
 
-        // 4. 【核心逻辑】处理负数：不管 Where 是多小的负数，都能转为正索引
-        // 逻辑：(基础计算 % 长度 + 长度) % 长度
         int totalOffset = currentIndex + Where;
-        int targetIndex = (totalOffset % Ally.Length + Ally.Length) % Ally.Length;
+        int targetIndex = (totalOffset % ally.Length + ally.Length) % ally.Length;
 
-        return Ally[targetIndex];
+        return ally[targetIndex];
     }
 
-    public Character[] GetAllAllyWithOrder(bool dyingFilter = false)
+    public Character[] GetAllAllyWithOrder(bool dyingFilter = false, bool includeSummons = false)
     {
-        IEnumerable<Character> query = OwnerCharater.IsPlayer
-            ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
-            : OwnerCharater.BattleNode.EnemiesList.Cast<Character>();
-
-        if (dyingFilter)
-            query = query.Where(x => x.State != Character.CharacterState.Dying);
-
-        return query.OrderBy(x => x.PositionIndex).ToArray();
+        return OwnerCharater.BattleNode.GetOrderedTeamCharacters(
+            OwnerCharater.IsPlayer,
+            includeSummons,
+            dyingFilter
+        );
     }
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
     {
-        var allies = (
-            OwnerCharater.IsPlayer
-                ? OwnerCharater.BattleNode.PlayersList.Cast<Character>()
-                : OwnerCharater.BattleNode.EnemiesList.Cast<Character>()
-        )
-            .OrderBy(x => x.PositionIndex)
+        var allies = OwnerCharater.BattleNode
+            .GetOrderedTeamCharacters(OwnerCharater.IsPlayer, includeSummons: false)
             .ToList();
+        if (allies.Count == 0)
+            return null;
 
         int safeIndex = (index % allies.Count + allies.Count) % allies.Count;
-        // 2. 如果开启了死亡过滤，更新这个 List
         if (dyingFilter)
         {
             while (allies[safeIndex].State == Character.CharacterState.Dying)
@@ -365,9 +357,6 @@ public partial class Skill
                 }
             }
         }
-
-        // 4. 核心逻辑：循环取模公式，确保负数和超界都能正确指向
-        // 使用 Count 属性（List已生成，Count是瞬间读取，性能极高）
 
         return allies[safeIndex];
     }
@@ -414,6 +403,8 @@ public partial class Skill
         second.Position = secondTarget;
         first.OriginalPosition = firstTarget;
         second.OriginalPosition = secondTarget;
+        battle.RefreshSummonPositions(first);
+        battle.RefreshSummonPositions(second);
 
         await Task.WhenAll(
             TweenSpriteProgress(first, 0f, appearDuration),
@@ -543,7 +534,7 @@ public partial class Skill
 
         await AttackAnimation(targets[0]);
 
-        await targets[0].GetHurt(damage);
+        await targets[0].GetHurt(damage, OwnerCharater);
         await Task.Delay(100);
     }
 
@@ -554,7 +545,7 @@ public partial class Skill
         if (targets.Length == 0)
             return;
         await AttackAnimation(targets[0]);
-        await targets[0].GetHurt(damage);
+        await targets[0].GetHurt(damage, OwnerCharater);
         await Task.Delay(100);
         // Only apply second hit if target is still alive
         if (targets[0].State == Character.CharacterState.Normal)
@@ -563,7 +554,7 @@ public partial class Skill
             targets[0].AddChild(attack2);
             attack2.AnimationPlayer0.Play("Attack1");
             attack2.GlobalPosition = targets[0].GlobalPosition;
-            await targets[0].GetHurt(damage);
+            await targets[0].GetHurt(damage, OwnerCharater);
         }
     }
 
@@ -584,7 +575,7 @@ public partial class Skill
             target.AddChild(attack);
             attack.AnimationPlayer0.Play("Attack1");
             attack.GlobalPosition = target.GlobalPosition;
-            await target.GetHurt(damage);
+            await target.GetHurt(damage, OwnerCharater);
             await Task.Delay(100);
         }
     }
@@ -618,7 +609,7 @@ public partial class Skill
 
     public async Task Carry(Character target, int skillIndex)
     {
-        if (target.State == Character.CharacterState.Dying)
+        if (target == null || !target.IsFullCharacter || target.State == Character.CharacterState.Dying)
             return;
         await target.Skills[skillIndex].Effect();
     }
@@ -655,6 +646,7 @@ public partial class Skill
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
             SkillID.MendSlash => new MendSlash(),
+            SkillID.SiphonSlash => new SiphonSlash(),
             SkillID.SwapSlash => new SwapSlash(),
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
@@ -667,6 +659,7 @@ public partial class Skill
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
+            SkillID.QuietVeil => new QuietVeil(),
             SkillID.Swift => new Swift(),
             SkillID.StarWard => new StarWard(),
             SkillID.ArmonAttack => new ArmonAttack(),
@@ -681,6 +674,10 @@ public partial class Skill
             SkillID.RedHuskAttack => new RedHuskAttack(),
             SkillID.RedHuskSurvive => new RedHuskSurvive(),
             SkillID.RedHuskSpecial => new RedHuskSpecial(),
+            SkillID.WarAttack => new WarAttack(),
+            SkillID.WarSurvive => new WarSurvive(),
+            SkillID.WarSpecial => new WarSpecial(),
+            SkillID.WarThrallAttack => new WarThrallAttack(),
             _ => null,
         };
     }
@@ -764,6 +761,9 @@ public enum SkillID
     MendSlash = 27,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
+    SiphonSlash = 59,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
     FinalGuard = 28,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
@@ -777,6 +777,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     SwapSlash = 53,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    QuietVeil = 58,
     #endregion
 
     #region Nightingale
@@ -843,6 +846,13 @@ public enum SkillID
     RedHuskAttack = 50,
     RedHuskSurvive = 51,
     RedHuskSpecial = 52,
+    #endregion
+
+    #region War
+    WarAttack = 54,
+    WarSurvive = 55,
+    WarSpecial = 56,
+    WarThrallAttack = 57,
     #endregion
 
     #endregion

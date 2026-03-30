@@ -54,9 +54,9 @@ public partial class ShadowExecution : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, targetKey: KillTargetKey),
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: KillTargetKey),
             ConditionStep(
-                () => GetHostileTargetBind(KillTargetKey)?.State == Character.CharacterState.Dying,
+                () => GetStoredTarget(KillTargetKey)?.State == Character.CharacterState.Dying,
                 "击杀目标",
                 DoubleStrikeStep(baseDamage: DoubleStrikeBaseDamage)
             )

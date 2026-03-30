@@ -23,7 +23,14 @@ public partial class Relic
     {
         var ownedRelics = GameInfo.Relics;
         List<RelicID> result = new();
-        RelicID[] pool = { RelicID.Blessing, RelicID.Triangle };
+        RelicID[] pool =
+        {
+            RelicID.Blessing,
+            RelicID.Triangle,
+            RelicID.Square,
+            RelicID.Pentagon,
+            RelicID.Hexagon,
+        };
         for (int i = 0; i < pool.Length; i++)
         {
             var relicId = pool[i];
@@ -39,6 +46,9 @@ public partial class Relic
         {
             RelicID.Blessing => new Relic(RelicID.Blessing),
             RelicID.Triangle => new Relic(RelicID.Triangle),
+            RelicID.Square => new Relic(RelicID.Square),
+            RelicID.Pentagon => new Relic(RelicID.Pentagon),
+            RelicID.Hexagon => new Relic(RelicID.Hexagon),
             _ => new Relic(RelicID.curse),
         };
     }
@@ -58,6 +68,9 @@ public partial class Relic
         {
             RelicID.Blessing => "res://shader/Icon/RelicIcon/Point.gdshader",
             RelicID.Triangle => "res://shader/Icon/RelicIcon/Triangle.gdshader",
+            RelicID.Square => "res://shader/Icon/RelicIcon/Square.gdshader",
+            RelicID.Pentagon => "res://shader/Icon/RelicIcon/Pentagon.gdshader",
+            RelicID.Hexagon => "res://shader/Icon/RelicIcon/Hexagon.gdshader",
             _ => null,
         };
     }
@@ -106,17 +119,16 @@ public partial class Relic
                 Num--;
                 break;
             case RelicID.Triangle:
-
-                int survivabilityGain = 2;
-                int targetCount = Math.Min(2, battle.PlayersList.Count);
-                for (int i = 0; i < targetCount; i++)
-                {
-                    var player = battle.PlayersList[i];
-                    if (player == null || player.State == Character.CharacterState.Dying)
-                        continue;
-
-                    await player.IncreaseProperties(PropertyType.Survivability, survivabilityGain);
-                }
+                await ApplyEffectToFrontPlayers(battle, PropertyType.Survivability, 2);
+                break;
+            case RelicID.Square:
+                await ApplyEffectToFrontPlayers(battle, PropertyType.Power, 2);
+                break;
+            case RelicID.Pentagon:
+                await ApplyEffectToFrontPlayers(battle, PropertyType.Speed, 2);
+                break;
+            case RelicID.Hexagon:
+                await ApplyEffectToFrontPlayers(battle, PropertyType.MaxLife, 10);
                 break;
             case RelicID.curse:
                 break;
@@ -147,6 +159,9 @@ public partial class Relic
         {
             RelicID.Blessing => "祝福",
             RelicID.Triangle => "三角形",
+            RelicID.Square => "正方形",
+            RelicID.Pentagon => "正五边形",
+            RelicID.Hexagon => "正六边形",
             _ => "诅咒",
         };
     }
@@ -157,8 +172,24 @@ public partial class Relic
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{40}伤害。",
             RelicID.Triangle => $"战斗开始时第一位和第二位角色获得{2}点生存。",
+            RelicID.Square => $"战斗开始时第一位和第二位角色获得{2}点力量。",
+            RelicID.Pentagon => $"战斗开始时第一位和第二位角色获得{2}点速度。",
+            RelicID.Hexagon => $"战斗开始时第一位和第二位角色获得{10}点血量上限。",
             _ => "暂无效果。",
         };
+    }
+
+    private static async Task ApplyEffectToFrontPlayers(Battle battle, PropertyType propertyType, int amount)
+    {
+        int targetCount = Math.Min(2, battle.PlayersList.Count);
+        for (int i = 0; i < targetCount; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (player == null || player.State == Character.CharacterState.Dying)
+                continue;
+
+            await player.IncreaseProperties(propertyType, amount);
+        }
     }
 
     private string GetIconCountText()
@@ -290,5 +321,8 @@ public enum RelicID
 {
     Blessing,
     Triangle,
+    Square,
+    Pentagon,
+    Hexagon,
     curse,
 }

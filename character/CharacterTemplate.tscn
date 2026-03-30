@@ -12,6 +12,7 @@
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="15_eq06d"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
+[ext_resource type="Shader" uid="uid://kjsfn7cmaayt" path="res://shader/UI/CharacterHoverFrame.gdshader" id="17_hover"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
@@ -158,14 +159,24 @@ ProgressBar/styles/background = SubResource("StyleBoxFlat_lucsw")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_5ewuv")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ek3d4"]
-bg_color = Color(0.6, 0.6, 0.6, 0.38039216)
+bg_color = Color(0.6, 0.6, 0.6, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 1, 1, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yic7g"]
-bg_color = Color(1, 1, 1, 1)
+bg_color = Color(1, 1, 1, 0.95)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 1, 1, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -259,6 +270,26 @@ _data = {
 &"RESET": SubResource("Animation_ttcdc"),
 &"release": SubResource("Animation_c66ar")
 }
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hover"]
+shader = ExtResource("17_hover")
+shader_parameter/line_color = Color(0.9, 0.97, 1, 1)
+shader_parameter/accent_color = Color(0.34, 0.86, 1, 1)
+shader_parameter/fill_color = Color(0.03, 0.16, 0.24, 0.18)
+shader_parameter/border_size = 0.018
+shader_parameter/inner_line_offset = 0.06
+shader_parameter/inner_line_size = 0.004
+shader_parameter/corner_cut = 0.085
+shader_parameter/corner_length = 0.14
+shader_parameter/glow_size = 0.045
+shader_parameter/pulse_speed = 1.5
+shader_parameter/sweep_speed = 0.3
+shader_parameter/sweep_width = 0.09
+shader_parameter/ring_flow_speed = 0.55
+shader_parameter/ring_flow_width = 0.18
+shader_parameter/ring_trail_strength = 0.7
+shader_parameter/ring_glow_strength = 0.95
+shader_parameter/ring_aspect = 0.56
 
 [sub_resource type="Gradient" id="Gradient_kvlfx"]
 offsets = PackedFloat32Array(0, 0.8066667, 1)
@@ -545,10 +576,8 @@ show_percentage = false
 [node name="BufferBar" type="ProgressBar" parent="LifeBar" unique_id=2029478116]
 z_as_relative = false
 layout_mode = 0
-offset_left = 0.9500027
-offset_top = 2.5
-offset_right = 173.44998
-offset_bottom = 10.5
+offset_right = 174.69998
+offset_bottom = 13.75003
 theme = SubResource("Theme_yic7g")
 value = 50.0
 show_percentage = false
@@ -616,6 +645,7 @@ autoplay = &"RESET"
 
 [node name="Hoverframe" type="TextureRect" parent="." unique_id=777161530]
 self_modulate = Color(1, 1, 1, 0)
+material = SubResource("ShaderMaterial_hover")
 custom_minimum_size = Vector2(200, 400)
 offset_left = -100.0
 offset_top = -200.0
@@ -627,12 +657,20 @@ metadata/_edit_lock_ = true
 [node name="State" type="HBoxContainer" parent="." unique_id=134619418]
 z_index = 2
 material = SubResource("CanvasItemMaterial_yic7g")
-offset_left = -100.00001
-offset_top = -252.50002
-offset_right = 71.99999
-offset_bottom = -212.50002
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -78.75
+offset_top = -255.00002
+offset_right = 93.25
+offset_bottom = -215.00002
+grow_horizontal = 2
+grow_vertical = 2
 scale = Vector2(0.8, 0.8)
 theme_override_constants/separation = 3
+alignment = 1
 
 [node name="PowerIcon" type="ColorRect" parent="State" unique_id=1018149272]
 material = SubResource("ShaderMaterial_eq06d")

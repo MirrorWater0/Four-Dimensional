@@ -23,7 +23,7 @@ public static partial class GameInfo
 
     public static void InitNewGame()
     {
-        ElectricityCoin = 100;
+        ElectricityCoin = 999;
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();

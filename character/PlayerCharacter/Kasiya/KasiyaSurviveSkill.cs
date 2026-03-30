@@ -102,7 +102,7 @@ public partial class TauntingGuard : Skill
                 index: 0,
                 dyingFilter: false
             ),
-            BlockFriendlyByRelativeStep(0, BaseBlock)
+            BlockFriendlyByRelativeStep(0, BaseBlock, survivabilityMultiplier: 2)
         );
     }
 }

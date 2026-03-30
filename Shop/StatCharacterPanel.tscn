@@ -3,6 +3,7 @@
 [ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="1_sword"]
 [ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="2_rhomboid"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="3_wing"]
+[ext_resource type="Shader" uid="uid://dp04sa26lq3vp" path="res://shader/Icon/Heart.gdshader" id="4_heart"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0.06, 0.09, 0.14, 0.88)
@@ -67,6 +68,15 @@ shader_parameter/blade_count = 5
 shader_parameter/wing_span = 1.2
 shader_parameter/spine_thickness = 0.06
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_max_life"]
+resource_local_to_scene = true
+shader = ExtResource("4_heart")
+shader_parameter/heart_color = Color(0.98, 0.11760001, 0.31882647, 1)
+shader_parameter/highlight_color = Color(0.98, 0.11760001, 0.31882647, 1)
+shader_parameter/glow_color = Color(1, 0.56, 0.68, 0.28)
+shader_parameter/scale = 0.9
+shader_parameter/softness = 1.45
+
 [node name="StatCharacterPanel" type="PanelContainer" unique_id=1526595195]
 custom_minimum_size = Vector2(0, 238)
 size_flags_horizontal = 3
@@ -107,7 +117,7 @@ size_flags_vertical = 3
 mouse_filter = 2
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
-columns = 3
+columns = 4
 
 [node name="Power" type="PanelContainer" parent="Margin/VBox/Options" unique_id=1471266668]
 custom_minimum_size = Vector2(0, 128)
@@ -254,4 +264,53 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_font_sizes/font_size = 11
 text = "32 电力币"
+horizontal_alignment = 1
+
+[node name="MaxLife" type="PanelContainer" parent="Margin/VBox/Options" unique_id=1894091821]
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
+
+[node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/MaxLife" unique_id=758190421]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBox/Options/MaxLife/Margin" unique_id=366520141]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="IconCenter" type="CenterContainer" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=441928315]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="IconFrame" type="PanelContainer" parent="Margin/VBox/Options/MaxLife/Margin/VBox/IconCenter" unique_id=1973391008]
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
+
+[node name="Icon" type="ColorRect" parent="Margin/VBox/Options/MaxLife/Margin/VBox/IconCenter/IconFrame" unique_id=197991340]
+material = SubResource("ShaderMaterial_max_life")
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ValueLabel" type="Label" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=1442583187]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_font_sizes/font_size = 12
+text = "生命上限 +5"
+horizontal_alignment = 1
+
+[node name="PriceLabel" type="Label" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=127622601]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "30 电力币"
 horizontal_alignment = 1

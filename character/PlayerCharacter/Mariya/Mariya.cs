@@ -4,10 +4,21 @@ using Godot;
 
 public partial class Mariya : PlayerCharacter
 {
+    private const int PassiveHealBase = 4;
+
+    public const string PassiveNameText = "治愈";
+    public static string PassiveDescriptionText =>
+        $"自己回合结束时：回复最低生命队友{PassiveHealBase}点基础生命。";
+
     public override PackedScene CharaterScene { get; set; } = StartInterface._Mariya;
     public override string CharacterName { get; set; } = "Mariya";
 
-    private const int PassiveHealBase = 4;
+    public override void Initialize()
+    {
+        base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
+    }
 
     public override void EndAction()
     {
@@ -19,6 +30,8 @@ public partial class Mariya : PlayerCharacter
     {
         if (BattleNode == null)
             return;
+
+        using var _ = BeginEffectSource("被动");
 
         var allies = IsPlayer
             ? BattleNode.PlayersList.Cast<Character>()
@@ -32,6 +45,6 @@ public partial class Mariya : PlayerCharacter
         if (target == null)
             return;
 
-        target.Recover(PassiveHealBase);
+        target.Recover(PassiveHealBase, source: this);
     }
 }

@@ -21,10 +21,11 @@ public partial class MendSlash : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            HealFriendlyAbsolute(
+            HealFriendlyStep(
                 baseHeal: BaseHeal,
                 survivabilityMultiplier: 0,
-                selector: AbsoluteFriendlySelector.FrontMost,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
+                dyingFilter: false,
                 preferNonFull: true,
                 rebirth: false
             )
@@ -50,6 +51,39 @@ public partial class SwapSlash : Skill
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
             SwapPositionFriendlyStep(relativeIndexA: -1, relativeIndexB: 1)
+        );
+    }
+}
+
+public partial class SiphonSlash : Skill
+{
+    private const int BaseDamage = 10;
+    private const string AttackTargetKey = "siphon_target";
+
+    public SiphonSlash()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "汲生之刃";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: AttackTargetKey),
+            HealFriendlyStep(
+                baseHeal: _ =>
+                    (
+                        OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
+                            source: OwnerCharater,
+                            target: GetStoredTarget(AttackTargetKey)
+                        ) ?? 0
+                    ) / 2,
+                target: RelativeTarget(0),
+                descriptionOverride: $"回复等同于此次造成伤害一半+{X(StatX.Survivability)}的生命。"
+            )
         );
     }
 }

@@ -81,6 +81,7 @@ public partial class LevelNode : ColorRect
         {
             LevelType.Normal => GetNormalEnemies(),
             LevelType.Elite => GetEliteEnemies(),
+            LevelType.Boss => GetBossEnemies(),
             _ => GetEliteEnemies(),
         };
         return list;
@@ -350,12 +351,16 @@ public partial class LevelNode : ColorRect
         ];
         List<EnemyRegedit> list = new()
         {
-            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
-            enemyRegedits[rng.Next(0, 6)].GetRegedit(),
+            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
+            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
+            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
+            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
         };
         RandomPosition(list, RandomNum);
+        // var list = new List<EnemyRegedit>
+        // {
+        //     new WarRegedit(){ PositionIndex = 5 },
+        // };
         return list;
     }
 
@@ -363,6 +368,13 @@ public partial class LevelNode : ColorRect
     {
         var rng = new Random(RandomNum);
         List<EnemyRegedit> list = new() { new ArroganceRegedit() { PositionIndex = 5 } };
+        return list;
+    }
+
+    public List<EnemyRegedit> GetBossEnemies()
+    {
+        var rng = new Random(RandomNum);
+        List<EnemyRegedit> list = new() { new WarRegedit() { PositionIndex = 5 } };
         return list;
     }
 }

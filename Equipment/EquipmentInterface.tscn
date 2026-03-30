@@ -328,7 +328,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="EchoButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=521799248]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
@@ -338,7 +338,7 @@ text = "Echo"
 flat = true
 
 [node name="KasiyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=493690773]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
@@ -348,7 +348,7 @@ text = "Kasiya"
 flat = true
 
 [node name="MariyaButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=978871022]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
@@ -358,7 +358,7 @@ text = "Mariya"
 flat = true
 
 [node name="NightingaleButton" type="Button" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1808269257]
-custom_minimum_size = Vector2(0, 48)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = ExtResource("4_buttontheme")
@@ -416,7 +416,7 @@ text = "Nightingale"
 modulate = Color(0.94, 0.86, 0.58, 0.9)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "游击 / 追击"
+text = "追击"
 
 [node name="CharacterHintLabel" type="Label" parent="RootMargin/MainVBox/ContentRow/LeftPanel/LeftVBox/CharacterCard/CharacterRow/CharacterInfo" unique_id=1900560451]
 modulate = Color(0.86, 0.9, 0.98, 0.84)

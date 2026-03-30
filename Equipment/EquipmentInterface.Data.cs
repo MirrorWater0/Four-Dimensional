@@ -84,13 +84,73 @@ public partial class EquipmentInterface
         return baseValue + SumEquipment(equipments, selector);
     }
 
+    private static int CountEquippedItems(Equipment[] equips)
+    {
+        if (equips == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < Math.Min(SlotCount, equips.Length); i++)
+        {
+            if (HasValidEquipment(equips[i]))
+                count++;
+        }
+
+        return count;
+    }
+
     private static string BuildShortPassiveText(string passive)
     {
         if (string.IsNullOrWhiteSpace(passive))
             return "暂无被动描述。";
 
+        const int maxLines = 2;
+        const int maxCharsPerLine = 18;
+
         // Accept escaped "\\n" as line breaks in data.
-        return passive.Replace("\\n", "\n");
+        string normalized = passive.Replace("\\n", "\n").Replace("\r\n", "\n").Trim();
+        var sourceLines = normalized
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        List<string> previewLines = new(maxLines);
+        bool truncated = false;
+
+        foreach (string sourceLine in sourceLines)
+        {
+            string remaining = sourceLine;
+            while (!string.IsNullOrEmpty(remaining))
+            {
+                if (previewLines.Count >= maxLines)
+                {
+                    truncated = true;
+                    break;
+                }
+
+                int takeCount = Math.Min(maxCharsPerLine, remaining.Length);
+                previewLines.Add(remaining[..takeCount]);
+                remaining = remaining[takeCount..];
+                if (!string.IsNullOrEmpty(remaining))
+                    truncated = true;
+            }
+
+            if (previewLines.Count >= maxLines)
+            {
+                if (sourceLine.Length > maxCharsPerLine || sourceLine != sourceLines[^1])
+                    truncated = true;
+                break;
+            }
+        }
+
+        if (previewLines.Count == 0)
+            return "暂无被动描述。";
+
+        if (truncated)
+        {
+            string lastLine = previewLines[^1];
+            previewLines[^1] = lastLine.Length >= 3 ? $"{lastLine[..^3]}..." : $"{lastLine}...";
+        }
+
+        return string.Join("\n", previewLines);
     }
 
     private static string BuildEquipmentBonusInline(Equipment equip)

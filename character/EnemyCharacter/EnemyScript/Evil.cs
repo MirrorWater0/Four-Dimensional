@@ -4,7 +4,15 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
+    private const int StartEnergyGain = 1;
+    private const int StartRebirthStacks = 1;
     private const int TriggerCount = 3;
+
+    public const string PassiveNameText = "重生律动";
+    public static string PassiveBaseDescriptionText =>
+        $"初始：获得{StartEnergyGain}点能量。获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。\n"
+        + $"每行动{TriggerCount}次：获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
+
     private int Count = 0;
     private string _basePassiveDescription;
     public override string CharacterName { get; set; } = "Evil";
@@ -18,10 +26,13 @@ public partial class Evil : EnemyCharacter
     public override void Initialize()
     {
         base.Initialize();
-        _basePassiveDescription ??= PassiveDescription ?? string.Empty;
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveBaseDescriptionText;
+        _basePassiveDescription = PassiveBaseDescriptionText;
         UpdatePassiveDescription();
-        UpdataEnergy(1);
-        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
+        using var _ = BeginEffectSource("被动");
+        UpdataEnergy(StartEnergyGain, this);
+        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
     }
 
     public override void StartAction()
@@ -34,10 +45,11 @@ public partial class Evil : EnemyCharacter
 
     public override void Passive(Skill skill)
     {
+        using var _ = BeginEffectSource("被动");
         if (Count >= TriggerCount)
         {
             Count = 0;
-            DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, 1);
+            DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
         }
     }
 
@@ -103,7 +115,7 @@ public partial class EvilTermin : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { set; get; } = "回响时刻";
+    public override string SkillName { set; get; } = "虚空回响";
 
     protected override SkillPlan BuildPlan()
     {
@@ -113,7 +125,8 @@ public partial class EvilTermin : Skill
             EnergyTimesWhileStep(
                 energyCost: EnergyCostPerHit,
                 loopSteps: [AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999)]
-            )
+            ),
+            EnergyStep(1)
         );
     }
 }

@@ -580,9 +580,11 @@ public partial class EquipmentInterface : Control
                 continue;
 
             var info = players[i];
-            CharacterButtons[i].Text = string.IsNullOrWhiteSpace(info.CharacterName)
+            string characterName = string.IsNullOrWhiteSpace(info.CharacterName)
                 ? $"角色 {i + 1}"
                 : info.CharacterName;
+            int equippedCount = CountEquippedItems(info.Equipments);
+            CharacterButtons[i].Text = $"{characterName}\n装备 {equippedCount}/{SlotCount}";
 
             bool selected = i == _selectedCharacterIndex;
             CharacterButtons[i].SetPressedNoSignal(selected);

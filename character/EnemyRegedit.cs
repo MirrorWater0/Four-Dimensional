@@ -51,9 +51,8 @@ public partial class EvilRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
-        PassiveName = "重生律动";
-        PassiveDescription =
-            $"初始：获得{1}点能量。获得一层{Buff.BuffName.RebirthI.GetDescription()}。\n每行动{3}次：获得1层{Buff.BuffName.RebirthI.GetDescription()}。";
+        PassiveName = global::Evil.PassiveNameText;
+        PassiveDescription = global::Evil.PassiveBaseDescriptionText;
     }
 }
 
@@ -75,10 +74,8 @@ public partial class FearWormRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
-        PassiveName = "蜕皮";
-        PassiveDescription =
-            $"初始：获得1层{Buff.BuffName.DebuffImmunity.GetDescription()}。"
-            + $"\n回合结束时：获得{2}点力量。";
+        PassiveName = global::FearWorm.PassiveNameText;
+        PassiveDescription = global::FearWorm.PassiveDescriptionText;
     }
 }
 
@@ -100,9 +97,8 @@ public partial class ArmonRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
-        PassiveName = "矩阵核心";
-        PassiveDescription =
-            $"回合开始时全阵获得格挡。" + $"\n回合结束时：全阵获得格挡，数值为自身生存。";
+        PassiveName = global::Armon.PassiveNameText;
+        PassiveDescription = global::Armon.PassiveDescriptionText;
     }
 }
 
@@ -124,8 +120,8 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
 
-        PassiveName = "寄生馈赠";
-        PassiveDescription = "回合结束时：上一位非濒死队友获得3点力量。";
+        PassiveName = global::AlienBody.PassiveNameText;
+        PassiveDescription = global::AlienBody.PassiveDescriptionText;
     }
 }
 
@@ -147,8 +143,8 @@ public partial class ArroganceRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
-        PassiveName = "傲慢";
-        PassiveDescription = $"战斗开始时：获得{2}层{Buff.BuffName.Stun.GetDescription()}。";
+        PassiveName = global::Arrogance.PassiveNameText;
+        PassiveDescription = global::Arrogance.PassiveDescriptionText;
     }
 }
 
@@ -170,8 +166,30 @@ public partial class RedHuskRegedit : EnemyRegedit
 
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
-        PassiveName = "赤壳护盾";
-        PassiveDescription = $"战斗开始时：获得{12}层{Buff.BuffName.AutoArmor.GetDescription()}。";
+        PassiveName = global::RedHusk.PassiveNameText;
+        PassiveDescription = global::RedHusk.PassiveDescriptionText;
+    }
+}
+
+public partial class WarRegedit : EnemyRegedit
+{
+    public WarRegedit()
+    {
+        CharacterName = "War";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/War.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
+
+        MaxLife = 325;
+        Power = 20;
+        Survivability = 20;
+        Speed = 15;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
+
+        PassiveName = global::War.PassiveNameText;
+        PassiveDescription = global::War.PassiveDescriptionText;
     }
 }
 
@@ -183,4 +201,5 @@ public enum EnemiesEnum
     Arrogance,
     AlienBody,
     RedHusk,
+    War,
 }

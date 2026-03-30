@@ -8,6 +8,8 @@ using Godot;
 
 public partial class Character : Node2D
 {
+    private const ulong IncreasePropertyEffectCooldownMsec = 300;
+
     [Export]
     public bool WarmupMode { get; set; }
 
@@ -98,6 +100,16 @@ public partial class Character : Node2D
         "res://battle/Effect/CharacterEffect.tscn"
     );
     public bool IsPlayer;
+    public virtual bool IsSummon => false;
+    public virtual bool IsFullCharacter => true;
+    public virtual bool ParticipatesInTurnRotation => true;
+    public virtual bool CountsTowardTeamSpeed => true;
+    public virtual bool TriggersSkillUseEvents => true;
+    public virtual bool ClearsBlockOnActionStart => true;
+    public List<SummonCharacter> Summons { get; } = new();
+
+    public IDisposable BeginEffectSource(string actionName = null) =>
+        BattleNode?.PushEffectSource(this, actionName);
 
     //buff
 
@@ -110,6 +122,15 @@ public partial class Character : Node2D
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     public Vector2 OriginalPosition;
+    private Tween _hurtMoveTween;
+    private Tween _bufferBarTween;
+    private Tween _lifeBarTween;
+    private Tween _lifeBarMaxTween;
+    private ulong _lastIncreasePropertyEffectTickMsec;
+    private bool _isHoverframeHovered;
+    private bool _isFramePreviewVisible;
+    private bool _isTargetPreviewVisible;
+    private Color _targetPreviewColor = Colors.White;
 
     protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
     {
@@ -136,24 +157,21 @@ public partial class Character : Node2D
 
         BlockLabel.Text = Block.ToString();
         Life = BattleMaxLife;
-
-        LifeBar.MaxValue = BattleMaxLife;
-        BufferBar.MaxValue = BattleMaxLife;
-        LifeBar.MinValue = 0;
-        BufferBar.MinValue = 0;
-        LifeBar.Value = Life;
-        BufferBar.Value = Life;
+        SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
         EnergeIconLabel.Text = Energy.ToString();
         SpeedIconLabel.Text = Speed.ToString();
-        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
 
         Block = 0;
         BlockLabel.Text = Block.ToString();
 
-        Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
         Hoverframe.PivotOffset = Hoverframe.Size / 2;
+        _isHoverframeHovered = false;
+        _isFramePreviewVisible = false;
+        _isTargetPreviewVisible = false;
+        _targetPreviewColor = Colors.White;
+        RefreshHoverframeVisual();
     }
 
     public override async void _Ready()
@@ -190,6 +208,7 @@ public partial class Character : Node2D
 
     private void OnHoverEntered()
     {
+        _isHoverframeHovered = true;
         Hover();
         if (State == CharacterState.Dying)
             return;
@@ -198,7 +217,8 @@ public partial class Character : Node2D
 
     private void OnHoverExited()
     {
-        Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+        _isHoverframeHovered = false;
+        RefreshHoverframeVisual();
         HideHoverTooltips();
     }
 
@@ -412,8 +432,13 @@ public partial class Character : Node2D
 
     public virtual async void StartAction()
     {
-        Block = 0;
-        UpdataBlock(0);
+        BattleNode?.SetCurrentActionCharacter(this);
+        if (ClearsBlockOnActionStart)
+        {
+            Block = 0;
+            UpdataBlock(0);
+            ClearOwnedSummonsBlock();
+        }
         UpdataEnergy(1);
         OnTurnStart();
         TrailAnimation.Play("trail");
@@ -430,6 +455,23 @@ public partial class Character : Node2D
         }
     }
 
+    private void ClearOwnedSummonsBlock()
+    {
+        if (Summons == null || Summons.Count == 0)
+            return;
+
+        var ownedSummons = Summons
+            .Where(x =>
+                x != null && GodotObject.IsInstanceValid(x) && x.State != CharacterState.Dying
+            )
+            .ToArray();
+        for (int i = 0; i < ownedSummons.Length; i++)
+        {
+            ownedSummons[i].Block = 0;
+            ownedSummons[i].UpdataBlock(0);
+        }
+    }
+
     public virtual async void EndAction()
     {
         if (EndActionBuffs != null)
@@ -439,13 +481,13 @@ public partial class Character : Node2D
                 await buff.Trigger();
             }
         }
-        await BattleNode.EmitS(this);
+        await BattleNode.EndEmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         TrailAnimation.Stop();
     }
 
-    public virtual async Task GetHurt(float damage)
+    public virtual async Task GetHurt(float damage, Character source = null)
     {
         Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
         HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
@@ -466,32 +508,64 @@ public partial class Character : Node2D
 
         BattleNode.BattleAnimationPlayer.Play("hit");
 
+        int incomingDamage = Math.Max((int)damage, 0);
+        int previousBlock = Block;
+        int previousLife = Life;
+        int blockedDamage = Math.Clamp(Math.Min(incomingDamage, previousBlock), 0, incomingDamage);
+        int actualDamage = Math.Clamp(incomingDamage - previousBlock, 0, previousLife);
+
         Life -= Math.Clamp((int)damage - Block, 0, Life);
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
         UpdataBlock(0);
+        AnimateLifeBarsAfterDamage();
+        BattleNode?.RecordDamage(this, actualDamage, blockedDamage, source);
 
+        PlayHurtMoveTween();
         Tween tween = CreateTween();
-        tween.TweenProperty(BufferBar, "value", Life, 0.2f);
-        LifeBar.Value = Life;
-        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
-
+        tween.TweenInterval(0.2f);
         tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
         if (Life == 0)
         {
-            await Dying();
+            await Dying(source);
         }
     }
 
-    public virtual void Recover(int num, bool rebirth = false)
+    private void PlayHurtMoveTween()
+    {
+        Vector2 hurtOffset = IsPlayer ? 20 * Vector2.Left : 20 * Vector2.Right;
+        Vector2 hurtTarget = OriginalPosition + hurtOffset;
+        Vector2 currentPosition = Position;
+        float maxOffsetDistance = Math.Max(hurtOffset.Length(), 0.001f);
+        float moveDistance = currentPosition.DistanceTo(hurtTarget);
+        float moveDuration = 0.3f * Mathf.Clamp(moveDistance / maxOffsetDistance, 0.12f, 1.0f);
+
+        _hurtMoveTween?.Kill();
+        _hurtMoveTween = CreateTween();
+        _hurtMoveTween.SetTrans(Tween.TransitionType.Sine);
+
+        if (moveDistance > 0.01f)
+        {
+            _hurtMoveTween
+                .TweenProperty(this, "position", hurtTarget, moveDuration)
+                .SetEase(Tween.EaseType.Out);
+        }
+
+        _hurtMoveTween
+            .TweenProperty(this, "position", OriginalPosition, 0.2f)
+            .SetEase(Tween.EaseType.In);
+        _hurtMoveTween.Finished += () => _hurtMoveTween = null;
+    }
+
+    public virtual void Recover(int num, bool rebirth = false, Character source = null)
     {
         if (State == CharacterState.Dying && !rebirth)
             return;
 
         int heal = Math.Clamp(num + BattleSurvivability, 0, 999);
+        int previousLife = Life;
         Life = Math.Clamp(Life + heal, 0, BattleMaxLife);
-        CreateTween().TweenProperty(BufferBar, "value", Life, 0.2f);
-        CreateTween().TweenProperty(LifeBar, "value", Life, 0.2f);
-        LifeLabel.Text = Life.ToString() + "/" + BattleMaxLife.ToString();
+        int actualHeal = Life - previousLife;
+        AnimateLifeBarsAfterRecover();
         var numlabel = Number.Instantiate<Number>();
         AddChild(numlabel);
         numlabel.NumberLabel.Text = heal.ToString("+0;-0;0");
@@ -505,11 +579,14 @@ public partial class Character : Node2D
             State = CharacterState.Normal;
             CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);
         }
+
+        BattleNode?.RecordHeal(this, actualHeal, source);
     }
 
-    public virtual async Task Dying()
+    public virtual async Task Dying(Character source = null)
     {
         State = CharacterState.Dying;
+        BattleNode?.RecordDying(this, source);
 
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.4f);
         if (DyingBuffs != null)
@@ -519,11 +596,30 @@ public partial class Character : Node2D
             {
                 await buff.Trigger();
             }
+
+        if (State == CharacterState.Dying)
+            TriggerOwnedSummonsDying();
+    }
+
+    private void TriggerOwnedSummonsDying()
+    {
+        if (Summons == null || Summons.Count == 0)
+            return;
+
+        var ownedSummons = Summons
+            .Where(x =>
+                x != null && GodotObject.IsInstanceValid(x) && x.State != CharacterState.Dying
+            )
+            .ToArray();
+        for (int i = 0; i < ownedSummons.Length; i++)
+        {
+            _ = ownedSummons[i].DyingFromSummoner();
+        }
     }
 
     public virtual void DisableSkill() { }
 
-    public virtual void UpdataEnergy(int num)
+    public virtual void UpdataEnergy(int num, Character source = null)
     {
         Energy += num;
         EnergeIconLabel.Text = Energy.ToString();
@@ -535,9 +631,12 @@ public partial class Character : Node2D
         hint.Text = $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}";
         hint.TargetPosition = GlobalPosition;
         AddChild(hint);
+
+        if (source != null || BattleNode?.HasEffectSourceContext == true)
+            BattleNode?.RecordEnergyChange(this, num, source);
     }
 
-    public void UpdataBlock(int num)
+    public void UpdataBlock(int num, bool record = true, Character source = null)
     {
         if (State == CharacterState.Dying)
             return;
@@ -556,10 +655,12 @@ public partial class Character : Node2D
             AddChild(number);
             number.NumberLabel.Text = "+" + num.ToString();
             number.SetNumberColor(new Color(180, 220, 255, 255) / 255);
+            if (record)
+                BattleNode?.RecordBlockGain(this, num, source);
         }
     }
 
-    public async Task DescendingProperties(PropertyType type, int value)
+    public async Task DescendingProperties(PropertyType type, int value, Character source = null)
     {
         if (value == 0)
             return;
@@ -593,14 +694,7 @@ public partial class Character : Node2D
             case PropertyType.MaxLife:
                 BattleMaxLife -= value;
                 Life = Math.Min(Life, BattleMaxLife);
-                LifeLabel.Text = $"{Life}/{BattleMaxLife}";
-                CreateTween()
-                    .TweenMethod(
-                        Callable.From((int x) => LifeBar.MaxValue = x),
-                        LifeBar.MaxValue,
-                        BattleMaxLife,
-                        0.5f
-                    );
+                AnimateLifeBarCapacityChange();
                 break;
         }
 
@@ -621,52 +715,41 @@ public partial class Character : Node2D
         hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         AddChild(hint);
+        BattleNode?.RecordPropertyChange(this, type, -value, source);
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
-    public async Task IncreaseProperties(PropertyType type, int value)
+    public async Task IncreaseProperties(PropertyType type, int value, Character source = null)
     {
+        int appliedValue = value;
         ColorRect icon = null;
         switch (type)
         {
             case PropertyType.Power:
-                value +=
+                appliedValue +=
                     SpecialBuffs.Find(x => x.ThisBuffName == Buff.BuffName.ExtraPower)?.Stack ?? 0;
-                BattlePower += value;
+                BattlePower += appliedValue;
                 icon = PowerIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Survivability:
-                value +=
+                appliedValue +=
                     SpecialBuffs
                         .Find(x => x.ThisBuffName == Buff.BuffName.ExtraSurvivability)
                         ?.Stack ?? 0;
-                BattleSurvivability += value;
+                BattleSurvivability += appliedValue;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Speed:
-                Speed += value;
+                Speed += appliedValue;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.MaxLife:
-                BattleMaxLife += value;
-                LifeLabel.Text = $"{Life}/{BattleMaxLife}";
-                CreateTween()
-                    .TweenMethod(
-                        Callable.From((int x) => LifeBar.MaxValue = x),
-                        LifeBar.MaxValue,
-                        BattleMaxLife,
-                        0.5f
-                    );
+                BattleMaxLife += appliedValue;
+                AnimateLifeBarCapacityChange();
                 break;
         }
 
-        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(characterEffect);
-        characterEffect.Animation.Play("absorb");
-        if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
-        {
-            BattleNode.BattleAnimationPlayer.Play("blue");
-        }
+        TryPlayIncreasePropertyEffect();
 
         if (icon != null)
         {
@@ -677,16 +760,202 @@ public partial class Character : Node2D
         }
 
         var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} +{value}";
+        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} +{appliedValue}";
         hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
         hint.RandomOffset = true;
         AddChild(hint);
+        BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
+    }
+
+    private void TryPlayIncreasePropertyEffect()
+    {
+        ulong now = Time.GetTicksMsec();
+        if (
+            _lastIncreasePropertyEffectTickMsec != 0
+            && now - _lastIncreasePropertyEffectTickMsec < IncreasePropertyEffectCooldownMsec
+        )
+        {
+            return;
+        }
+
+        _lastIncreasePropertyEffectTickMsec = now;
+
+        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(characterEffect);
+        characterEffect.Animation.Play("absorb");
+        if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
+        {
+            BattleNode.BattleAnimationPlayer.Play("blue");
+        }
     }
 
     public virtual void Passive(Skill skill) { }
 
     protected virtual void OnTurnStart() { }
+
+    private void StopTween(ref Tween tween)
+    {
+        if (tween == null)
+            return;
+
+        if (GodotObject.IsInstanceValid(tween))
+            tween.Kill();
+        tween = null;
+    }
+
+    private void SyncLifeBarsToCurrent(bool syncBufferValue)
+    {
+        if (LifeBar == null || BufferBar == null)
+            return;
+
+        double clampedLife = Math.Clamp(Life, 0, BattleMaxLife);
+        LifeBar.MinValue = 0;
+        BufferBar.MinValue = 0;
+        LifeBar.MaxValue = BattleMaxLife;
+        BufferBar.MaxValue = BattleMaxLife;
+        LifeBar.Value = clampedLife;
+        BufferBar.Value = syncBufferValue
+            ? clampedLife
+            : Math.Clamp(BufferBar.Value, 0, BattleMaxLife);
+        LifeLabel.Text = $"{Life}/{BattleMaxLife}";
+    }
+
+    private void AnimateLifeBarsAfterDamage(double duration = 0.2)
+    {
+        StopTween(ref _lifeBarTween);
+        StopTween(ref _bufferBarTween);
+        SyncLifeBarsToCurrent(syncBufferValue: false);
+        LifeBar.Value = Life;
+
+        _bufferBarTween = CreateTween();
+        _bufferBarTween.TweenProperty(BufferBar, "value", Life, duration);
+        _bufferBarTween.TweenCallback(
+            Callable.From(() =>
+            {
+                BufferBar.Value = Life;
+                _bufferBarTween = null;
+            })
+        );
+    }
+
+    private void AnimateLifeBarsAfterRecover(double duration = 0.2)
+    {
+        StopTween(ref _lifeBarTween);
+        StopTween(ref _bufferBarTween);
+        SyncLifeBarsToCurrent(syncBufferValue: false);
+
+        _lifeBarTween = CreateTween();
+        _lifeBarTween.TweenProperty(LifeBar, "value", Life, duration);
+        _lifeBarTween.TweenCallback(
+            Callable.From(() =>
+            {
+                LifeBar.Value = Life;
+                _lifeBarTween = null;
+            })
+        );
+
+        _bufferBarTween = CreateTween();
+        _bufferBarTween.TweenProperty(BufferBar, "value", Life, duration);
+        _bufferBarTween.TweenCallback(
+            Callable.From(() =>
+            {
+                BufferBar.Value = Life;
+                _bufferBarTween = null;
+            })
+        );
+    }
+
+    private void AnimateLifeBarCapacityChange(double duration = 0.5)
+    {
+        StopTween(ref _lifeBarTween);
+        StopTween(ref _bufferBarTween);
+        StopTween(ref _lifeBarMaxTween);
+
+        double startMax = LifeBar?.MaxValue ?? BattleMaxLife;
+        SyncLifeBarsToCurrent(syncBufferValue: true);
+        if (LifeBar == null || BufferBar == null)
+            return;
+
+        LifeBar.MaxValue = startMax;
+        BufferBar.MaxValue = startMax;
+        LifeBar.Value = Math.Clamp(Life, 0, BattleMaxLife);
+        BufferBar.Value = Math.Clamp(Life, 0, BattleMaxLife);
+        LifeLabel.Text = $"{Life}/{BattleMaxLife}";
+
+        _lifeBarMaxTween = CreateTween();
+        _lifeBarMaxTween.TweenMethod(
+            Callable.From(
+                (double value) =>
+                {
+                    LifeBar.MaxValue = value;
+                    BufferBar.MaxValue = value;
+                    LifeBar.Value = Math.Clamp(Life, 0, value);
+                    BufferBar.Value = Math.Clamp(Life, 0, value);
+                }
+            ),
+            startMax,
+            BattleMaxLife,
+            duration
+        );
+        _lifeBarMaxTween.TweenCallback(
+            Callable.From(() =>
+            {
+                SyncLifeBarsToCurrent(syncBufferValue: true);
+                _lifeBarMaxTween = null;
+            })
+        );
+    }
+
+    public void ShowTargetPreview(Color color)
+    {
+        _isTargetPreviewVisible = true;
+        _targetPreviewColor = color;
+        Hover();
+        RefreshHoverframeVisual();
+    }
+
+    public void HideTargetPreview()
+    {
+        _isTargetPreviewVisible = false;
+        RefreshHoverframeVisual();
+    }
+
+    public void ShowFramePreview()
+    {
+        _isFramePreviewVisible = true;
+        Hover();
+        RefreshHoverframeVisual();
+    }
+
+    public void HideFramePreview()
+    {
+        _isFramePreviewVisible = false;
+        RefreshHoverframeVisual();
+    }
+
+    private void RefreshHoverframeVisual()
+    {
+        if (_isHoverframeHovered)
+        {
+            Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
+            return;
+        }
+
+        if (_isFramePreviewVisible)
+        {
+            Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
+            return;
+        }
+
+        if (_isTargetPreviewVisible)
+        {
+            Hoverframe.SelfModulate = _targetPreviewColor;
+            return;
+        }
+
+        Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+    }
 
     public void Hover()
     {

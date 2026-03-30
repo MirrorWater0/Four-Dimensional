@@ -79,25 +79,10 @@ public partial class PlayerCharacter : Character
     public override void EndAction()
     {
         SelfFrame.Selected.Visible = false;
-        if (BattleNode?.SuppressSpeedGainThisTurn != true)
-        {
-            BattleNode.PlayerSpeed += BattleNode
-                .PlayersList.Where(x => x.State != CharacterState.Dying)
-                .Sum(x => x.Speed);
-        }
-
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
         base.EndAction();
-    }
-
-    public override async Task GetHurt(float damage)
-    {
-        await base.GetHurt(damage);
-        Tween tween = CreateTween();
-        tween.TweenProperty(this, "position", OriginalPosition + 20 * Vector2.Left, 0.3f);
-        tween.TweenProperty(this, "position", OriginalPosition, 0.2f);
     }
 
     public override void DisableSkill()

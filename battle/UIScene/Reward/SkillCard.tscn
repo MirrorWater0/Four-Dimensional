@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://cpj08hfffou4g"]
+[gd_scene format=3 uid="uid://tstwg1ja8lsd"]
 
 [ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_hfhot"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
@@ -21,10 +21,10 @@ shader_parameter/line_speed = 8.0
 shader_parameter/aberration_amount = 0.03
 shader_parameter/beam_color = Color(0, 1, 1, 1)
 
-[sub_resource type="Theme" id="Theme_7a0j3"]
+[sub_resource type="Theme" id="Theme_5iaav"]
 Panel/styles/panel = ExtResource("2_hfhot")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hfhot"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l0m1e"]
 bg_color = Color(0.105882354, 0.105882354, 0.105882354, 0)
 border_width_left = 2
 border_width_top = 2
@@ -32,13 +32,24 @@ border_width_right = 2
 border_width_bottom = 2
 border_color = Color(1, 1, 1, 0.8627451)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ornament"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.627451, 0.81960785, 1, 0.2)
+
+[sub_resource type="Theme" id="Theme_7a0j3"]
+Panel/styles/panel = ExtResource("2_hfhot")
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5iaav"]
 bg_color = Color(0, 0, 0, 1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(1, 1, 1, 0.8627451)
+border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0g0qh"]
 content_margin_left = 10.0
@@ -50,6 +61,7 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
+border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
 
 [sub_resource type="Theme" id="Theme_0g0qh"]
 RichTextLabel/styles/normal = SubResource("StyleBoxFlat_0g0qh")
@@ -142,17 +154,25 @@ handle_input_locally = false
 size = Vector2i(250, 400)
 render_target_update_mode = 4
 
-[node name="BG" type="Panel" parent="SubViewport" unique_id=1338387624]
+[node name="BG" type="Panel" parent="SubViewport" unique_id=1048061845]
 custom_minimum_size = Vector2(250, 400)
 offset_right = 250.0
 offset_bottom = 400.0
-theme = SubResource("Theme_7a0j3")
-theme_override_styles/panel = SubResource("StyleBoxFlat_hfhot")
+theme = SubResource("Theme_5iaav")
+theme_override_styles/panel = SubResource("StyleBoxFlat_l0m1e")
+
+[node name="InnerFrame" type="Panel" parent="SubViewport" unique_id=181530201]
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 244.0
+offset_bottom = 394.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ornament")
 
 [node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
-offset_left = 9.166666
+offset_left = 8.333333
 offset_top = 310.8333
-offset_right = 242.5
+offset_right = 242.49998
 offset_bottom = 390.0
 theme = SubResource("Theme_7a0j3")
 theme_override_styles/panel = SubResource("StyleBoxFlat_5iaav")
@@ -181,6 +201,14 @@ bbcode_enabled = true
 text = "none"
 scroll_active = false
 
+[node name="TopAccent" type="ColorRect" parent="SubViewport" unique_id=128579300]
+offset_left = 18.0
+offset_top = 10.0
+offset_right = 232.0
+offset_bottom = 12.0
+mouse_filter = 2
+color = Color(0.7058824, 0.87058824, 1, 0.3)
+
 [node name="SkillIcon" parent="SubViewport" unique_id=429305689 instance=ExtResource("3_i77dj")]
 offset_left = 93.0
 offset_top = 10.0
@@ -207,6 +235,14 @@ material = SubResource("ShaderMaterial_laerk")
 
 [node name="SparkLight" parent="SubViewport/SkillIcon" index="6" unique_id=1133246718]
 material = SubResource("ShaderMaterial_g23ta")
+
+[node name="BottomAccent" type="ColorRect" parent="SubViewport" unique_id=162930117]
+offset_left = 20.0
+offset_top = 308.0
+offset_right = 230.0
+offset_bottom = 310.0
+mouse_filter = 2
+color = Color(0.7058824, 0.87058824, 1, 0.2)
 
 [node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
 custom_minimum_size = Vector2(220, 30)

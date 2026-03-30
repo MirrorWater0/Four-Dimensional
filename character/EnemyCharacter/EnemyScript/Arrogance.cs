@@ -5,17 +5,24 @@ public partial class Arrogance : EnemyCharacter
 {
     private const int StartStunStacks = 2;
 
+    public const string PassiveNameText = "傲慢";
+    public static string PassiveDescriptionText =>
+        $"战斗开始时：获得{StartStunStacks}层{Buff.BuffName.Stun.GetDescription()}。";
+
     public override string CharacterName { get; set; } = "Arrogance";
 
     public override void Initialize()
     {
         base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
         BattleNode.StartEffectList.Add(StartPassive);
     }
 
     public Task StartPassive()
     {
-        SkillBuff.BuffAdd(Buff.BuffName.Stun, this, StartStunStacks);
+        using var _ = BeginEffectSource("被动");
+        SkillBuff.BuffAdd(Buff.BuffName.Stun, this, StartStunStacks, this);
         return Task.CompletedTask;
     }
 }
@@ -88,7 +95,7 @@ public partial class ArroganceSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealFriendlyRelative(10),
+            HealFriendlyStep(baseHeal: 10, target: RelativeTarget(0)),
             BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, 3),
             EnergyTimesGateStep(
