@@ -7,7 +7,7 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 14;
     private const int PowerGain = 4;
 
     public FinalGuard()
@@ -22,12 +22,11 @@ public partial class FinalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock),
+            BlockStep(0, BaseBlock),
             ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
-                dyingFilter: true
+                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost)
             )
         );
     }
@@ -50,9 +49,9 @@ public partial class CrystalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: BaseBlock),
-            BlockFriendlyByRelativeStep(relativeIndex: -1, baseBlock: BaseBlock),
-            BlockFriendlyByRelativeStep(relativeIndex: 1, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: 1, baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }
@@ -80,12 +79,39 @@ public partial class QuietVeil : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             ),
             ModifyPropertyStep(PropertyType.MaxLife, MaxLifeGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            HealFriendlyStep(baseHeal: BaseHeal, target: RelativeTarget(0))
+            HealStep(baseHeal: BaseHeal, target: RelativeTarget(0))
+        );
+    }
+}
+
+public partial class EnergyTransfer : Skill
+{
+    private const int BaseBlock = 14;
+    private const int AllyEnergyGain = 2;
+    private const int SelfEnergyLoss = 1;
+
+    public EnergyTransfer()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "能量传输";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            EnergyStep(
+                delta: AllyEnergyGain,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost)
+            ),
+            EnergyStep(-SelfEnergyLoss)
         );
     }
 }

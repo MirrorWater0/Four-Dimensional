@@ -113,7 +113,7 @@ public partial class WarSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock),
+            BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
             SummonStep(9, War.ThrallScene),
             BlockSummonsStep(baseBlock: ThrallBlock)
@@ -138,7 +138,7 @@ public partial class WarSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealFriendlyStep(baseHeal: 10, target: RelativeTarget(0)),
+            HealStep(baseHeal: 10, target: RelativeTarget(0)),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
             EnergyTimesGateStep(

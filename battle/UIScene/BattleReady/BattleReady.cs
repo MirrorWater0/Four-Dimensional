@@ -1195,6 +1195,18 @@ public partial class BattleReady : Control
             ClearFenceChildren(GetSkillFence(i));
     }
 
+    public async void RefreshFromExternalChange()
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || players.Length == 0)
+            return;
+
+        _selectedCharacterIndex = Math.Clamp(_selectedCharacterIndex, 0, players.Length - 1);
+        UpdateCharacterButtonState(false);
+        await ClearSkillContainer();
+        PopulateSkillButtons(_selectedCharacterIndex);
+    }
+
     public void ComfirmTactics()
     {
         var map = new System.Collections.Generic.Dictionary<int, int>()

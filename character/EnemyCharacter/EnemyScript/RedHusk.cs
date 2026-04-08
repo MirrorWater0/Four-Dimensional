@@ -73,7 +73,7 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock, 2),
+            BlockStep(0, BaseBlock, 2),
             LowerTargetPropertyStep(
                 PropertyType.Power,
                 PowerDown,
@@ -113,8 +113,7 @@ public partial class RedHuskSpecial : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             ),
             EnergyTimesGateStep(
                 energyCost: RebirthEnergyCost,
@@ -123,8 +122,7 @@ public partial class RedHuskSpecial : Skill
                     ApplyBuffFriendly(
                         buffName: Buff.BuffName.RebirthI,
                         stacks: RebirthStacks,
-                        index: 0,
-                        dyingFilter: false
+                        target: RelativeTarget(0)
                     ),
                     ModifyPropertyStep(PropertyType.Survivability, 5),
                 ]

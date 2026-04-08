@@ -61,7 +61,7 @@ public partial class Armon : EnemyCharacter
 public partial class ArmonAttack : Skill
 {
     private const int BaseDamage = 20;
-    private const int SelfPowerGain = 2;
+    private const int SelfPowerGain = 3;
     private const int SelfSurvivabilityGain = 2;
 
     public ArmonAttack()
@@ -77,8 +77,8 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseDamage),
-            BlockFriendlyByRelativeStep(-1, dyingFilter: false),
-            BlockFriendlyByRelativeStep(1, dyingFilter: false),
+            BlockStep(-1, excludeSelf: true),
+            BlockStep(1, excludeSelf: true),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
@@ -103,7 +103,7 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock, 2),
+            BlockStep(0, BaseBlock, 2),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
             EnergyStep(EnergyGain)
         );
@@ -112,9 +112,9 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int BaseBlock = 13;
+    private const int BaseBlock = 5;
     private const int PowerGainPerEnergy = 4;
-    private const int SurvivabilityGainPerEnergy = 7;
+    private const int SurvivabilityGainPerEnergy = 5;
 
     public ArmonSpecial()
         : base(SkillTypes.Special)
@@ -129,7 +129,6 @@ public partial class ArmonSpecial : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseBlock),
-            BlockFriendlyByRelativeStep(0, BaseBlock),
             EnergyTimesWhileStep(
                 energyCost: 2,
                 loopSteps: new[]

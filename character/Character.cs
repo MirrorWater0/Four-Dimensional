@@ -233,24 +233,20 @@ public partial class Character : Node2D
         if (SkillTooltip != null)
         {
             SkillTooltip.FollowMouse = true;
-            SkillTooltip.Description.Text = BuildSkillTooltipText();
-            SkillTooltip.Visible = true;
+            SkillTooltip.SetText(BuildSkillTooltipText());
         }
 
         if (BuffTooltip != null)
         {
             BuffTooltip.FollowMouse = true;
-            BuffTooltip.Description.Text = BuildBuffTooltipText();
-            BuffTooltip.Visible = true;
+            BuffTooltip.SetText(BuildBuffTooltipText());
         }
     }
 
     private void HideHoverTooltips()
     {
-        if (SkillTooltip != null)
-            SkillTooltip.Visible = false;
-        if (BuffTooltip != null)
-            BuffTooltip.Visible = false;
+        SkillTooltip?.HideTooltip();
+        BuffTooltip?.HideTooltip();
     }
 
     private string BuildSkillTooltipText()
@@ -487,7 +483,11 @@ public partial class Character : Node2D
         TrailAnimation.Stop();
     }
 
-    public virtual async Task GetHurt(float damage, Character source = null)
+    public virtual async Task GetHurt(
+        float damage,
+        Character source = null,
+        bool canTriggerThorn = true
+    )
     {
         Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
         HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
@@ -498,7 +498,7 @@ public partial class Character : Node2D
             // Iterate over a snapshot to ensure later buffs (e.g. DamageImmune) still trigger.
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                buff.Trigger(ref damage);
+                damage = await buff.Trigger(damage, source, canTriggerThorn);
             }
         }
 
@@ -558,10 +558,15 @@ public partial class Character : Node2D
 
     public virtual void Recover(int num, bool rebirth = false, Character source = null)
     {
+        int heal = Math.Clamp(num + BattleSurvivability, 0, 999);
+        ApplyRecover(heal, rebirth, source, canRevive: num > 0);
+    }
+
+    private void ApplyRecover(int heal, bool rebirth, Character source, bool canRevive)
+    {
         if (State == CharacterState.Dying && !rebirth)
             return;
 
-        int heal = Math.Clamp(num + BattleSurvivability, 0, 999);
         int previousLife = Life;
         Life = Math.Clamp(Life + heal, 0, BattleMaxLife);
         int actualHeal = Life - previousLife;
@@ -574,7 +579,7 @@ public partial class Character : Node2D
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
         effect.Animation.Play("recover");
-        if (State == CharacterState.Dying && num > 0)
+        if (State == CharacterState.Dying && canRevive)
         {
             State = CharacterState.Normal;
             CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);

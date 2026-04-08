@@ -44,6 +44,9 @@ public partial class PlayerResourceState : CanvasLayer
     public VBoxContainer RelicContainer => field ??= GetNode<VBoxContainer>("RelicContainer");
     public List<ConsumeItem> Items = new();
     public HBoxContainer ItemContainer => field ??= GetNode<HBoxContainer>("ItemsHContainer");
+    private Button MenuButton => field ??= GetNodeOrNull<Button>("MenuButton");
+    private DebugConsole DebugConsoleNode =>
+        field ??= GetNodeOrNull<DebugConsole>("/root/Map/DebugConsole");
 
     public override void _Ready()
     {
@@ -52,6 +55,8 @@ public partial class PlayerResourceState : CanvasLayer
         TransitionEnergy = GameInfo.TransitionEnergy;
         InitRelic();
         InitItems();
+        if (MenuButton != null)
+            MenuButton.Pressed += OnMenuButtonPressed;
     }
 
     public void InitRelic()
@@ -109,6 +114,58 @@ public partial class PlayerResourceState : CanvasLayer
         {
             if (slots.GetChild(i) is ProgressBar slot)
                 slot.Value = i < value ? 100 : 0;
+        }
+    }
+
+    public void RefreshDebugView()
+    {
+        ElectricityCoinIcon.GetChild<Label>(0).Text = GameInfo.ElectricityCoin.ToString();
+        InitTransitionEnergyMax();
+        TransitionEnergy = GameInfo.TransitionEnergy;
+        ClearRelicIcons();
+        InitRelic();
+        ClearItemIcons();
+        InitItems();
+    }
+
+    private void OnMenuButtonPressed()
+    {
+        DebugConsoleNode?.ToggleOpen();
+    }
+
+    private void ClearRelicIcons()
+    {
+        RelicList.Clear();
+        if (RelicContainer == null)
+            return;
+
+        for (int i = RelicContainer.GetChildCount() - 1; i >= 0; i--)
+        {
+            Node child = RelicContainer.GetChild(i);
+            if (child is Label)
+                continue;
+            RelicContainer.RemoveChild(child);
+            child.QueueFree();
+        }
+    }
+
+    private void ClearItemIcons()
+    {
+        Items.Clear();
+        if (ItemContainer == null)
+            return;
+
+        for (int i = 0; i < ItemContainer.GetChildCount(); i++)
+        {
+            if (ItemContainer.GetChild(i) is not ItemContainer container)
+                continue;
+
+            for (int j = container.GetChildCount() - 1; j >= 0; j--)
+            {
+                Node child = container.GetChild(j);
+                container.RemoveChild(child);
+                child.QueueFree();
+            }
         }
     }
 }

@@ -20,6 +20,8 @@ public static partial class GameInfo
     public static int ItemsMaxCount = 3;
     public static List<ItemID> Items = new();
     public static List<Equipment> OwnedEquipments = new();
+    public static int BattleItemDropChance = BaseBattleItemDropChance;
+    public static int BattleEquipmentDropChance = BaseBattleEquipmentDropChance;
 
     public static void InitNewGame()
     {
@@ -27,6 +29,8 @@ public static partial class GameInfo
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();
+        ResetLevelNodeCompletionRecords();
+        ResetBattleRewardDropState();
         Items.Clear();
         GameInfo.Items.Add(ItemID.Explosion);
         Relics.Add(RelicID.Blessing, 3);

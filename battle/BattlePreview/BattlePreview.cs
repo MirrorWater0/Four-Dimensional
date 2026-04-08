@@ -575,25 +575,21 @@ public partial class BattlePreview : Control
         {
             SkillTooltip.FollowMouse = true;
             SkillTooltip.AnchorOffset = new Vector2(20f, 20f);
-            SkillTooltip.Description.Text = skillText ?? string.Empty;
-            SkillTooltip.Visible = true;
+            SkillTooltip.SetText(skillText ?? string.Empty);
         }
 
         if (PropertyTooltip != null)
         {
             PropertyTooltip.FollowMouse = true;
             PropertyTooltip.AnchorOffset = new Vector2(-20f, 20f);
-            PropertyTooltip.Description.Text = propertyText ?? string.Empty;
-            PropertyTooltip.Visible = true;
+            PropertyTooltip.SetText(propertyText ?? string.Empty);
         }
     }
 
     private void HidePortraitTooltips()
     {
-        if (SkillTooltip != null)
-            SkillTooltip.Visible = false;
-        if (PropertyTooltip != null)
-            PropertyTooltip.Visible = false;
+        SkillTooltip?.HideTooltip();
+        PropertyTooltip?.HideTooltip();
     }
 
     public void Close()

@@ -13,7 +13,7 @@ public static class SaveSystem
     public static void SaveAll()
     {
         var config = new ConfigFile();
-        FieldInfo[] fields = typeof(GameInfo).GetFields(BindingFlags.Public | BindingFlags.Static);
+        FieldInfo[] fields = GetSavableGameInfoFields();
 
         foreach (var field in fields)
         {
@@ -35,7 +35,7 @@ public static class SaveSystem
         if (config.Load(SavePath) != Error.Ok)
             return;
 
-        FieldInfo[] fields = typeof(GameInfo).GetFields(BindingFlags.Public | BindingFlags.Static);
+        FieldInfo[] fields = GetSavableGameInfoFields();
 
         foreach (var field in fields)
         {
@@ -67,6 +67,14 @@ public static class SaveSystem
         }
         GameInfo.NormalizePlayerCharacters();
         GD.Print("存档已自动加载。");
+    }
+
+    private static FieldInfo[] GetSavableGameInfoFields()
+    {
+        return typeof(GameInfo)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Where(field => !field.IsLiteral && !field.IsInitOnly)
+            .ToArray();
     }
 
     // --- 辅助方法：处理复杂结构转换为 Godot 类型 ---

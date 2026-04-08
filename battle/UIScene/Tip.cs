@@ -42,11 +42,9 @@ public partial class Tip : Control
 
     private void OnDescriptionResized()
     {
-        // Update background size when description size changes
-        if (bg != null && Description != null)
-        {
-            bg.Size = Description.Size + BackgroundPadding;
-        }
+        UpdateTooltipLayout();
+        if (Visible)
+            UpdateTooltipPosition();
     }
 
     public override void _Process(double delta)
@@ -57,19 +55,8 @@ public partial class Tip : Control
         if (!Visible)
             return;
 
-        // Get mouse position in viewport coordinates
-        Viewport viewport = GetViewport();
-        if (viewport == null)
-            return;
-
-        Vector2 anchorPos = FollowMouse ? viewport.GetMousePosition() : _manualAnchorPosition;
-        Vector2 tooltipSize = GetTooltipSize();
-        Vector2 viewportSize = viewport.GetVisibleRect().Size;
-
-        Vector2 targetPosition = CalculateAnchorPosition(anchorPos, tooltipSize, viewportSize);
-
-        // Set the calculated position
-        Position = targetPosition;
+        UpdateTooltipLayout();
+        UpdateTooltipPosition();
     }
 
     /// <summary>
@@ -121,12 +108,7 @@ public partial class Tip : Control
     /// </summary>
     public void SetText(string text)
     {
-        if (Description != null)
-        {
-            FollowMouse = true;
-            Description.Text = text;
-            Visible = true;
-        }
+        ShowTooltip(text, followMouse: true, manualAnchorPosition: default);
     }
 
     /// <summary>
@@ -142,13 +124,67 @@ public partial class Tip : Control
     /// </summary>
     public void ShowAtPosition(string text, Vector2 position)
     {
-        if (Description != null)
-        {
-            Description.Text = text;
+        ShowTooltip(text, followMouse: false, manualAnchorPosition: position);
+    }
 
-            FollowMouse = false;
-            _manualAnchorPosition = position;
-            Visible = true;
-        }
+    private void ShowTooltip(string text, bool followMouse, Vector2 manualAnchorPosition)
+    {
+        if (Description == null)
+            return;
+
+        FollowMouse = followMouse;
+        _manualAnchorPosition = manualAnchorPosition;
+        Description.Text = text ?? string.Empty;
+
+        UpdateTooltipLayout();
+        UpdateTooltipPosition();
+        Visible = true;
+        CallDeferred(nameof(RefreshTooltipAfterShow));
+    }
+
+    private void RefreshTooltipAfterShow()
+    {
+        if (!Visible)
+            return;
+
+        UpdateTooltipLayout();
+        UpdateTooltipPosition();
+    }
+
+    private void UpdateTooltipLayout()
+    {
+        if (Description == null)
+            return;
+
+        float contentWidth = Math.Max(
+            Description.CustomMinimumSize.X,
+            Description.GetCombinedMinimumSize().X
+        );
+        float contentHeight = Math.Max(
+            Description.GetCombinedMinimumSize().Y,
+            Description.GetContentHeight()
+        );
+
+        if (contentWidth <= 0f)
+            contentWidth = Description.Size.X;
+        if (contentHeight <= 0f)
+            contentHeight = Description.Size.Y;
+
+        Description.Size = new Vector2(contentWidth, contentHeight);
+
+        if (bg != null)
+            bg.Size = new Vector2(contentWidth, contentHeight) + BackgroundPadding;
+    }
+
+    private void UpdateTooltipPosition()
+    {
+        Viewport viewport = GetViewport();
+        if (viewport == null)
+            return;
+
+        Vector2 anchorPos = FollowMouse ? viewport.GetMousePosition() : _manualAnchorPosition;
+        Vector2 tooltipSize = GetTooltipSize();
+        Vector2 viewportSize = viewport.GetVisibleRect().Size;
+        Position = CalculateAnchorPosition(anchorPos, tooltipSize, viewportSize);
     }
 }

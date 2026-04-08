@@ -64,7 +64,7 @@ public partial class Evil : EnemyCharacter
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 5;
+    private const int HitDamage = 4;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -98,7 +98,7 @@ public partial class EvilSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock),
+            BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
             LowerTargetPropertyStep(PropertyType.Power, DescendingNum)
         );
@@ -125,8 +125,7 @@ public partial class EvilTermin : Skill
             EnergyTimesWhileStep(
                 energyCost: EnergyCostPerHit,
                 loopSteps: [AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999)]
-            ),
-            EnergyStep(1)
+            )
         );
     }
 }

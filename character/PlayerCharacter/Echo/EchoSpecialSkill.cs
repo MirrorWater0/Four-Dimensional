@@ -66,7 +66,7 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 20;
+    int damage = 22;
     int PowerGain = -4;
     int EnergyCost = 1;
 

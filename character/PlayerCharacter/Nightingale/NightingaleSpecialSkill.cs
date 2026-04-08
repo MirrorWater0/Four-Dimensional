@@ -26,7 +26,7 @@ public partial class TempoSurge : Skill
                 cost,
                 null,
                 null,
-                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1, dyingFilter: true)
+                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
             )
         );
     }
@@ -55,8 +55,8 @@ public partial class LongNight : Skill
                 energyCost1,
                 null,
                 null,
-                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 2, dyingFilter: false),
-                CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 2, dyingFilter: false),
+                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 2),
+                CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 2),
                 ModifyPropertyStep(PropertyType.Survivability, -DeSurvive),
                 ModifyPropertyStep(PropertyType.Speed, -deSpeed)
             ),

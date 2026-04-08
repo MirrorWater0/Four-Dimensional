@@ -13,6 +13,22 @@ public partial class Buff
     public static PackedScene HintScene = GD.Load<PackedScene>(
         "res://LabelNode/BuffHintLabel.tscn"
     );
+    private static readonly Dictionary<BuffName, string> IconScenePaths = new()
+    {
+        [BuffName.RebirthI] = "res://battle/buff/StateIcon/Rebirth.tscn",
+        [BuffName.DamageImmune] = "res://battle/buff/StateIcon/Buffer.tscn",
+        [BuffName.Vulnerable] = "res://battle/buff/StateIcon/Vulnerable.tscn",
+        [BuffName.Taunt] = "res://battle/buff/StateIcon/Aim.tscn",
+        [BuffName.Thorn] = "res://battle/buff/StateIcon/Thorn.tscn",
+        [BuffName.Stun] = "res://battle/buff/StateIcon/Stun.tscn",
+        [BuffName.Pursuit] = "res://battle/buff/StateIcon/Pursuit.tscn",
+        [BuffName.DebuffImmunity] = "res://battle/buff/StateIcon/DebuffImmunity.tscn",
+        [BuffName.Invisible] = "res://battle/buff/StateIcon/Invisible.tscn",
+        [BuffName.ExtraPower] = "res://battle/buff/StateIcon/ExtraPower.tscn",
+        [BuffName.ExtraSurvivability] =
+            "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
+        [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
+    };
 
     public static string GetBuffEffectText(BuffName name)
     {
@@ -22,6 +38,7 @@ public partial class Buff
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到伤害时，伤害提高40%，消耗1层。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
+            BuffName.Thorn => "受到伤害时，对攻击者造成等同层数的伤害。",
             BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
             BuffName.Pursuit => "回合结束时：造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
@@ -123,6 +140,9 @@ public partial class Buff
         [Description("嘲讽")]
         Taunt,
 
+        [Description("荆棘")]
+        Thorn,
+
         [Description("眩晕")]
         Stun,
 
@@ -167,6 +187,7 @@ public partial class Buff
             BuffName.DamageImmune => Nature.positive,
             BuffName.Vulnerable => Nature.negative,
             BuffName.Taunt => Nature.positive,
+            BuffName.Thorn => Nature.positive,
             BuffName.Stun => Nature.negative,
             BuffName.Pursuit => Nature.positive,
             BuffName.DebuffImmunity => Nature.positive,
@@ -230,6 +251,83 @@ public partial class Buff
         label.Position = Vector2.Zero;
         Owner.AddChild(label);
     }
+
+    protected Label GetStackLabel() =>
+        BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon) ? BuffIcon.GetChildOrNull<Label>(0) : null;
+
+    protected void UpdateStackLabel()
+    {
+        var label = GetStackLabel();
+        if (label != null)
+            label.Text = Stack.ToString();
+    }
+
+    protected static ColorRect CreateBuffIcon(BuffName name)
+    {
+        if (!IconScenePaths.TryGetValue(name, out var scenePath))
+            return null;
+
+        return GD.Load<PackedScene>(scenePath).Instantiate() as ColorRect;
+    }
+
+    protected static bool TryStackExisting<TBuff>(
+        List<TBuff> buffs,
+        BuffName name,
+        int stack,
+        Character target,
+        Character source = null
+    )
+        where TBuff : Buff
+    {
+        var existingBuff = buffs?.FirstOrDefault(x => x != null && x.ThisBuffName == name);
+        if (existingBuff == null)
+            return false;
+
+        existingBuff.Stack += stack;
+        existingBuff.UpdateStackLabel();
+        existingBuff.TweenLabel();
+        existingBuff.Hint(existingBuff.ThisBuffName, BuffHintLabel.Which.gain);
+        existingBuff.BuffAddAnimation();
+        RecordBuffGain(target, name, stack, source);
+        return true;
+    }
+
+    protected static void FinalizeBuffAdd(
+        Buff buff,
+        Character target,
+        Character source = null
+    )
+    {
+        if (buff?.BuffIcon == null || target?.StateIconContainer == null)
+            return;
+
+        buff.TweenLabel();
+        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
+        buff.UpdateStackLabel();
+        target.StateIconContainer.AddChild(buff.BuffIcon);
+        buff.BuffAddAnimation();
+        RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
+    }
+
+    protected bool TryRemoveIfEmpty<TBuff>(List<TBuff> buffs, bool showVanishHint = true)
+        where TBuff : Buff
+    {
+        if (Stack != 0)
+            return false;
+
+        if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
+        {
+            BuffIcon.QueueFree();
+        }
+
+        BuffIcon = null;
+        buffs?.Remove((TBuff)this);
+
+        if (showVanishHint)
+            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
+
+        return true;
+    }
 }
 
 public class DyingBuff : Buff
@@ -251,54 +349,24 @@ public class DyingBuff : Buff
                 break;
         }
         TweenLabel();
-        if (Stack == 0)
-        {
-            // Check if BuffIcon is still valid before queuing for deletion
-            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-            {
-                BuffIcon.QueueFree();
-            }
-            Owner.DyingBuffs.Remove(this);
-        }
+        TryRemoveIfEmpty(Owner.DyingBuffs, showVanishHint: false);
         return Task.CompletedTask;
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (target.DyingBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.DyingBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
+        if (TryStackExisting(target?.DyingBuffs, name, stack, target, source))
             return;
-        }
-        DyingBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.RebirthI:
-                buff = new DyingBuff(target, BuffName.RebirthI, stack);
-                target.DyingBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Rebirth.tscn").Instantiate()
-                    as ColorRect;
 
-                break;
-            default:
-                return;
-        }
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        target.StateIconContainer.AddChild(icon);
+        if (name != BuffName.RebirthI || target?.DyingBuffs == null)
+            return;
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        var buff = new DyingBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.DyingBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 
@@ -307,24 +375,40 @@ public partial class HurtBuff : Buff
     public HurtBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public void Trigger(ref float damage)
+    public async Task<float> Trigger(
+        float damage,
+        Character attacker = null,
+        bool canTriggerThorn = true
+    )
     {
         switch (ThisBuffName)
         {
             case BuffName.DamageImmune:
                 damage = 0;
                 Stack--;
-
-                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                UpdateStackLabel();
                 break;
             case BuffName.Vulnerable:
                 damage *= 1.4f;
                 Stack--;
-
-                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                UpdateStackLabel();
                 break;
             case BuffName.Taunt:
                 Stack--;
+                break;
+            case BuffName.Thorn:
+                if (
+                    canTriggerThorn
+                    && Owner != null
+                    && attacker != null
+                    && attacker != Owner
+                    && attacker.State != Character.CharacterState.Dying
+                    && Stack > 0
+                )
+                {
+                    using var _ = Owner.BeginEffectSource(ThisBuffName.GetDescription());
+                    await attacker.GetHurt(Stack, Owner, canTriggerThorn: false);
+                }
                 break;
             case BuffName.AutoArmor:
                 if (Owner != null && Stack > 0)
@@ -334,17 +418,8 @@ public partial class HurtBuff : Buff
                 break;
         }
         TweenLabel();
-        if (Stack == 0)
-        {
-            // Check if BuffIcon is still valid before queuing for deletion
-            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-            {
-                BuffIcon.QueueFree();
-            }
-            BuffIcon = null;
-            Owner.HurtBuffs.Remove(this);
-            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
-        }
+        TryRemoveIfEmpty(Owner.HurtBuffs);
+        return damage;
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -352,60 +427,27 @@ public partial class HurtBuff : Buff
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
             return;
 
-        if (target.HurtBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.HurtBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
+        if (TryStackExisting(target?.HurtBuffs, name, stack, target, source))
             return;
-        }
-        HurtBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.DamageImmune:
-                buff = new HurtBuff(target, BuffName.DamageImmune, stack);
-                target.HurtBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Buffer.tscn").Instantiate()
-                    as ColorRect;
-                break;
-            case BuffName.Vulnerable:
-                buff = new HurtBuff(target, BuffName.Vulnerable, stack);
-                target.HurtBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Vulnerable.tscn")
-                        .Instantiate() as ColorRect;
-                break;
-            case BuffName.Taunt:
-                buff = new HurtBuff(target, BuffName.Taunt, stack);
-                target.HurtBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Aim.tscn").Instantiate()
-                    as ColorRect;
-                break;
-            case BuffName.AutoArmor:
-                buff = new HurtBuff(target, BuffName.AutoArmor, stack);
-                target.HurtBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/AutoArmor.tscn")
-                        .Instantiate() as ColorRect;
-                break;
-            default:
-                return;
-        }
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        target.StateIconContainer.AddChild(icon);
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        if (
+            target?.HurtBuffs == null
+            || (
+                name != BuffName.DamageImmune
+                && name != BuffName.Vulnerable
+                && name != BuffName.Taunt
+                && name != BuffName.Thorn
+                && name != BuffName.AutoArmor
+            )
+        )
+            return;
+
+        var buff = new HurtBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.HurtBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 
@@ -423,21 +465,12 @@ public partial class StartActionBuff : Buff
         {
             case BuffName.Invisible:
                 Stack--;
-                BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                UpdateStackLabel();
                 break;
         }
 
         TweenLabel();
-        if (Stack == 0)
-        {
-            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-            {
-                BuffIcon.QueueFree();
-            }
-            BuffIcon = null;
-            Owner.StartActionBuffs.Remove(this);
-            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
-        }
+        TryRemoveIfEmpty(Owner.StartActionBuffs);
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -445,43 +478,18 @@ public partial class StartActionBuff : Buff
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
             return;
 
-        if (target.StartActionBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.StartActionBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
-            return;
-        }
-        StartActionBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.Invisible:
-                buff = new StartActionBuff(target, BuffName.Invisible, stack);
-                target.StartActionBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Invisible.tscn").Instantiate()
-                    as ColorRect;
-                break;
-            default:
-                return;
-        }
-
-        if (buff == null || icon == null)
+        if (TryStackExisting(target?.StartActionBuffs, name, stack, target, source))
             return;
 
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        target.StateIconContainer.AddChild(icon);
+        if (name != BuffName.Invisible || target?.StartActionBuffs == null)
+            return;
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        var buff = new StartActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.StartActionBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 
@@ -499,8 +507,7 @@ public partial class SkillBuff : Buff
         {
             case BuffName.Stun:
                 Stack--;
-                if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-                    BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                UpdateStackLabel();
 
                 if (Owner != null)
                 {
@@ -523,16 +530,7 @@ public partial class SkillBuff : Buff
         }
 
         TweenLabel();
-        if (Stack == 0)
-        {
-            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-            {
-                BuffIcon.QueueFree();
-            }
-            BuffIcon = null;
-            Owner.SkillBuffs.Remove(this);
-            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
-        }
+        TryRemoveIfEmpty(Owner.SkillBuffs);
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -543,44 +541,18 @@ public partial class SkillBuff : Buff
         if (target?.SkillBuffs == null)
             return;
 
-        if (target.SkillBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.SkillBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
-            return;
-        }
-
-        SkillBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.Stun:
-                buff = new SkillBuff(target, BuffName.Stun, stack);
-                target.SkillBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Stun.tscn").Instantiate()
-                    as ColorRect;
-                break;
-            default:
-                return;
-        }
-
-        if (buff == null || icon == null)
+        if (TryStackExisting(target.SkillBuffs, name, stack, target, source))
             return;
 
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        target.StateIconContainer.AddChild(icon);
+        if (name != BuffName.Stun)
+            return;
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        var buff = new SkillBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.SkillBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 
@@ -600,8 +572,7 @@ public partial class EndActionBuff : Buff
         {
             case BuffName.Pursuit:
                 Stack--;
-                if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-                    BuffIcon.GetChild<Label>(0).Text = Stack.ToString();
+                UpdateStackLabel();
 
                 var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = Owner };
                 await skill.Attack1(Owner.BattlePower);
@@ -609,16 +580,7 @@ public partial class EndActionBuff : Buff
         }
 
         TweenLabel();
-        if (Stack == 0)
-        {
-            if (BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon))
-            {
-                BuffIcon.QueueFree();
-            }
-            BuffIcon = null;
-            Owner.EndActionBuffs.Remove(this);
-            Hint(ThisBuffName, BuffHintLabel.Which.vanish);
-        }
+        TryRemoveIfEmpty(Owner.EndActionBuffs);
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -626,44 +588,18 @@ public partial class EndActionBuff : Buff
         if (target?.EndActionBuffs == null)
             return;
 
-        if (target.EndActionBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.EndActionBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
-            return;
-        }
-
-        EndActionBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.Pursuit:
-                buff = new EndActionBuff(target, BuffName.Pursuit, stack);
-                target.EndActionBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/Pursuit.tscn").Instantiate()
-                    as ColorRect;
-                break;
-            default:
-                return;
-        }
-
-        if (buff == null || icon == null)
+        if (TryStackExisting(target.EndActionBuffs, name, stack, target, source))
             return;
 
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        target.StateIconContainer.AddChild(icon);
+        if (name != BuffName.Pursuit)
+            return;
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        var buff = new EndActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.EndActionBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 
@@ -684,20 +620,10 @@ public partial class SpecialBuff : Buff
             return false;
 
         immunity.Stack--;
-        if (immunity.BuffIcon != null && GodotObject.IsInstanceValid(immunity.BuffIcon))
-            immunity.BuffIcon.GetChild<Label>(0).Text = immunity.Stack.ToString();
+        immunity.UpdateStackLabel();
 
         immunity.TweenLabel();
-        if (immunity.Stack == 0)
-        {
-            if (immunity.BuffIcon != null && GodotObject.IsInstanceValid(immunity.BuffIcon))
-            {
-                immunity.BuffIcon.QueueFree();
-            }
-            immunity.BuffIcon = null;
-            target.SpecialBuffs.Remove(immunity);
-            immunity.Hint(immunity.ThisBuffName, BuffHintLabel.Which.vanish);
-        }
+        immunity.TryRemoveIfEmpty(target.SpecialBuffs);
 
         return true;
     }
@@ -707,58 +633,22 @@ public partial class SpecialBuff : Buff
         if (target?.SpecialBuffs == null)
             return;
 
-        if (target.SpecialBuffs.Any(x => x.ThisBuffName == name))
-        {
-            Buff buff0 = target.SpecialBuffs.First(x => x.ThisBuffName == name);
-            buff0.Stack += stack;
-            buff0.BuffIcon.GetChild<Label>(0).Text = buff0.Stack.ToString();
-            buff0.TweenLabel();
-            buff0.Hint(buff0.ThisBuffName, BuffHintLabel.Which.gain);
-            buff0.BuffAddAnimation();
-            RecordBuffGain(target, name, stack, source);
-            return;
-        }
-
-        SpecialBuff buff = null;
-        ColorRect icon = null;
-        switch (name)
-        {
-            case BuffName.DebuffImmunity:
-                buff = new SpecialBuff(target, BuffName.DebuffImmunity, stack);
-                target.SpecialBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/DebuffImmunity.tscn")
-                        .Instantiate() as ColorRect;
-                break;
-            case BuffName.ExtraPower:
-                buff = new SpecialBuff(target, BuffName.ExtraPower, stack);
-                target.SpecialBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/ExtraPower.tscn")
-                        .Instantiate() as ColorRect;
-                break;
-            case BuffName.ExtraSurvivability:
-                buff = new SpecialBuff(target, BuffName.ExtraSurvivability, stack);
-                target.SpecialBuffs.Add(buff);
-                icon =
-                    GD.Load<PackedScene>("res://battle/buff/StateIcon/ExtraSurvivability.tscn")
-                        .Instantiate() as ColorRect;
-                break;
-            default:
-                return;
-        }
-
-        if (buff == null || icon == null)
+        if (TryStackExisting(target.SpecialBuffs, name, stack, target, source))
             return;
 
-        buff.BuffIcon = icon;
-        buff.TweenLabel();
-        buff.Hint(buff.ThisBuffName, BuffHintLabel.Which.gain);
-        buff.BuffIcon.GetChild<Label>(0).Text = stack.ToString();
-        target.StateIconContainer.AddChild(icon);
+        if (
+            name != BuffName.DebuffImmunity
+            && name != BuffName.ExtraPower
+            && name != BuffName.ExtraSurvivability
+        )
+            return;
 
-        buff.BuffAddAnimation();
-        RecordBuffGain(target, name, stack, source);
+        var buff = new SpecialBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.SpecialBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
     }
 }
 

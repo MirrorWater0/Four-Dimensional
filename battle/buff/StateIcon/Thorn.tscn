@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://dbfeikjldnlrn"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_lt05h"]
+[ext_resource type="Shader" uid="uid://drra7ykqokf6u" path="res://shader/Icon/BuffIcon/Thorn.gdshader" id="2_6u216"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_r2q3y"]
+shader = ExtResource("2_6u216")
+shader_parameter/color = Color(0.75, 0.65, 0.2, 1)
+shader_parameter/spike_count = 15
+shader_parameter/inner_radius = 0.32500001217762
+shader_parameter/outer_radius = 0.43500001740262
+shader_parameter/smoothing = 0.0370000017575
+
+[node name="Thorn" unique_id=1043864828 instance=ExtResource("1_lt05h")]
+material = SubResource("ShaderMaterial_r2q3y")

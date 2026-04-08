@@ -26,8 +26,7 @@ public class TerminateLight : Skill
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 3),
             EnergyTimesGateStep(
                 EnergyCost,
-                () => UsedTimes,
-                value => UsedTimes = value,
+                UsedTimes,
                 ModifyPropertyStep(PropertyType.Power, PowerGain)
             ),
             HurtFriendly(8, 0),
@@ -58,8 +57,7 @@ public class HolySeal : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             EnergyTimesGateStep(
                 EnergyCost,
-                () => times,
-                value => times = value,
+                times,
                 ApplyBuffHostile(buffName: Buff.BuffName.Stun, stacks: StunStacks, maxTargets: 1)
             )
         );

@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://durqa4egvd14v"]
+
+[ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="1_fq7v2"]
+[ext_resource type="Texture2D" uid="uid://b28sftxfjjsso" path="res://asset/EnemyCharater/Ferociouess.png" id="2_j0whl"]
+[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="3_8qa4f"]
+[ext_resource type="Script" uid="uid://dr3u3de57dv5" path="res://character/EnemyCharacter/EnemyScript/Ferociouess.cs" id="3_fero"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j0whl"]
+resource_local_to_scene = true
+shader = ExtResource("3_8qa4f")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 1.5
+
+[node name="Ferociouess" unique_id=1123852147 instance=ExtResource("1_fq7v2")]
+script = ExtResource("3_fero")
+
+[node name="Sprite" parent="." index="7" unique_id=968479023]
+texture = ExtResource("2_j0whl")
+
+[node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
+material = SubResource("ShaderMaterial_j0whl")

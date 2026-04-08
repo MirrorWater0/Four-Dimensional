@@ -1,7 +1,6 @@
 using System;
 using Godot;
 
-
 public partial class Frame : ColorRect
 {
     public Label NameLabel => field ??= GetNode<Label>("Name");
@@ -160,7 +159,8 @@ public partial class Frame : ColorRect
 
     public void UIShaderRotate(double delta)
     {
-		if (_mat == null) return;
+        if (_mat == null)
+            return;
         float fDelta = (float)delta;
 
         // 1. 平滑插值速度 (防止速度突变)

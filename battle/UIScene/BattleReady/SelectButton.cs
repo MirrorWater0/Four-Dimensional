@@ -58,8 +58,7 @@ public partial class SelectButton : Control
         MySkill.UpdateDescription();
         GlobalTooltip.FollowMouse = true;
         GlobalTooltip.AnchorOffset = new Vector2(24f, 20f);
-        GlobalTooltip.Description.Text = BuildSkillTooltipText(MySkill);
-        GlobalTooltip.Visible = true;
+        GlobalTooltip.SetText(BuildSkillTooltipText(MySkill));
     }
 
     public void mouse_exited()
@@ -67,8 +66,7 @@ public partial class SelectButton : Control
         CreateTween().TweenProperty(this, "scale", OriginalScale, 0.2f);
         Border.Visible = false;
 
-        if (GlobalTooltip != null)
-            GlobalTooltip.Visible = false;
+        GlobalTooltip?.HideTooltip();
     }
 
     public async void StartAnimation(float delay)

@@ -6,6 +6,12 @@ using Godot;
 
 public partial class LevelNode : ColorRect
 {
+    private const int WeakEnemyStageCount = 5;
+    private static readonly PackedScene TipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+    private static readonly Vector2 HoverTipOffset = new Vector2(36f, 28f);
+    private static Tip s_sharedHoverTip;
+    private static LevelNode s_hoverTipOwner;
+
     [Export]
     bool BarVisible = true;
 
@@ -45,9 +51,11 @@ public partial class LevelNode : ColorRect
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public int RandomNum;
+    private string _lastHoverTipText;
 
     public override void _Ready()
     {
+        MouseFilter = MouseFilterEnum.Pass;
         mat = Material.Duplicate() as ShaderMaterial;
         mat.ResourceLocalToScene = true;
         Material = mat;
@@ -73,6 +81,44 @@ public partial class LevelNode : ColorRect
             CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
         };
         Button.Pressed += PressButton;
+    }
+
+    public override void _Process(double delta)
+    {
+        if (State != LevelState.Completed || !IsVisibleInTree())
+        {
+            ReleaseHoverTipOwnership();
+            return;
+        }
+
+        if (!IsPointerOverNode())
+        {
+            ReleaseHoverTipOwnership();
+            return;
+        }
+
+        string text = BuildHoverTipText();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ReleaseHoverTipOwnership();
+            return;
+        }
+
+        var tip = EnsureHoverTip();
+        if (tip == null)
+            return;
+
+        s_hoverTipOwner = this;
+        if (!tip.Visible || !string.Equals(_lastHoverTipText, text, StringComparison.Ordinal))
+        {
+            tip.SetText(text);
+            _lastHoverTipText = text;
+        }
+    }
+
+    public override void _ExitTree()
+    {
+        ReleaseHoverTipOwnership();
     }
 
     public List<EnemyRegedit> ProduceEnemies()
@@ -162,6 +208,8 @@ public partial class LevelNode : ColorRect
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;
         ApplyCompletedVisuals();
+        GameInfo.CompleteLevelNodeTracking(this);
+        UpdateHoverTipIfVisible();
 
         SaveSystem.SaveAll();
     }
@@ -214,6 +262,9 @@ public partial class LevelNode : ColorRect
 
     public void PressButton()
     {
+        if (State != LevelState.Unlocked)
+            return;
+
         GetParent()?.GetParent<LevelProgress>()?.LockAllNodes();
         switch (Type)
         {
@@ -237,8 +288,8 @@ public partial class LevelNode : ColorRect
 
     public void GotoBattlePreview()
     {
+        GameInfo.BeginLevelNodeTracking(this);
         var tween = ExplodeAnimation();
-
         EnemiesRegeditList = ProduceEnemies();
         var preview = BattlePreviewScene.Instantiate() as BattlePreview;
         preview.WhichNode = this;
@@ -256,6 +307,7 @@ public partial class LevelNode : ColorRect
 
     public void GotoEvent()
     {
+        GameInfo.BeginLevelNodeTracking(this);
         var gameEventInterface = EventScene.Instantiate() as EventInterface;
         gameEventInterface.WhichNode = this;
         gameEventInterface.ThisEvent = GameEvent.Catalog[
@@ -274,6 +326,7 @@ public partial class LevelNode : ColorRect
 
     public void GotoShop()
     {
+        GameInfo.BeginLevelNodeTracking(this);
         GetParent()?.GetParent<LevelProgress>()?.OnNodeSelected(this);
 
         var tween = ExplodeAnimation();
@@ -340,15 +393,24 @@ public partial class LevelNode : ColorRect
     public List<EnemyRegedit> GetNormalEnemies()
     {
         var rng = new Random(RandomNum);
-        EnemyRegedit[] enemyRegedits =
+        EnemyRegedit[] weakEnemyRegedits =
         [
             new EvilRegedit(),
             new FearWormRegedit(),
             new ArmonRegedit(),
             new EvilRegedit(),
             new AlienBodyRegedit(),
-            new RedHuskRegedit(),
         ];
+        EnemyRegedit[] strongEnemyRegedits =
+        [
+            new FearWormRegedit(),
+            new ArmonRegedit(),
+            new AlienBodyRegedit(),
+            new RedHuskRegedit(),
+            new FerociouessRegedit(),
+        ];
+        EnemyRegedit[] enemyRegedits =
+            SelfCoordinate.X < WeakEnemyStageCount ? weakEnemyRegedits : strongEnemyRegedits;
         List<EnemyRegedit> list = new()
         {
             enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
@@ -367,7 +429,15 @@ public partial class LevelNode : ColorRect
     public List<EnemyRegedit> GetEliteEnemies()
     {
         var rng = new Random(RandomNum);
-        List<EnemyRegedit> list = new() { new ArroganceRegedit() { PositionIndex = 5 } };
+        EnemyRegedit[] eliteRegedits =
+            SelfCoordinate.X < WeakEnemyStageCount
+                ? [new ArroganceRegedit()]
+                : [new ArroganceRegedit(), new FerociouessRegedit()];
+        List<EnemyRegedit> list = new()
+        {
+            eliteRegedits[rng.Next(eliteRegedits.Length)].GetRegedit(),
+        };
+        list[0].PositionIndex = 5;
         return list;
     }
 
@@ -376,5 +446,98 @@ public partial class LevelNode : ColorRect
         var rng = new Random(RandomNum);
         List<EnemyRegedit> list = new() { new WarRegedit() { PositionIndex = 5 } };
         return list;
+    }
+
+    private void UpdateHoverTipIfVisible()
+    {
+        if (s_hoverTipOwner != this || s_sharedHoverTip == null || !s_sharedHoverTip.Visible)
+            return;
+
+        string text = BuildHoverTipText();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ReleaseHoverTipOwnership();
+            return;
+        }
+
+        s_sharedHoverTip.SetText(text);
+        _lastHoverTipText = text;
+    }
+
+    private string BuildHoverTipText()
+    {
+        string summary = GameInfo.GetLevelNodeCompletionSummary(SelfCoordinate);
+        string dropPreview = GameInfo.BuildBattleRewardDropPreviewText();
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            string emptyRecordText = "[b]节点记录[/b]\n该节点暂无完成记录。";
+            if (!string.IsNullOrWhiteSpace(dropPreview))
+                emptyRecordText += $"\n\n{dropPreview}";
+            emptyRecordText = GlobalFunction.ColorizeNumbers(emptyRecordText);
+            return GlobalFunction.ColorizeKeywords(emptyRecordText);
+        }
+
+        string text = $"[b]节点记录[/b]\n{summary}";
+        if (!string.IsNullOrWhiteSpace(dropPreview))
+            text += $"\n\n{dropPreview}";
+
+        text = GlobalFunction.ColorizeNumbers(text);
+        text = GlobalFunction.ColorizeKeywords(text);
+        return text;
+    }
+
+    private Tip EnsureHoverTip()
+    {
+        if (s_sharedHoverTip != null && GodotObject.IsInstanceValid(s_sharedHoverTip))
+            return s_sharedHoverTip;
+
+        var root = GetTree()?.Root;
+        if (root == null || TipScene == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer == null)
+        {
+            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            root.AddChild(layer);
+        }
+
+        s_sharedHoverTip =
+            layer.GetNodeOrNull<Tip>("LevelNodeTip")
+            ?? layer.GetNodeOrNull<Tip>("MapLevelNodeTip");
+        if (s_sharedHoverTip != null)
+        {
+            s_sharedHoverTip.Name = "LevelNodeTip";
+            s_sharedHoverTip.FollowMouse = true;
+            s_sharedHoverTip.AnchorOffset = HoverTipOffset;
+            return s_sharedHoverTip;
+        }
+
+        s_sharedHoverTip = TipScene.Instantiate<Tip>();
+        s_sharedHoverTip.Name = "LevelNodeTip";
+        s_sharedHoverTip.FollowMouse = true;
+        s_sharedHoverTip.AnchorOffset = HoverTipOffset;
+        layer.AddChild(s_sharedHoverTip);
+        return s_sharedHoverTip;
+    }
+
+    private void ReleaseHoverTipOwnership()
+    {
+        if (s_hoverTipOwner != this)
+            return;
+
+        if (s_sharedHoverTip != null && GodotObject.IsInstanceValid(s_sharedHoverTip))
+            s_sharedHoverTip.HideTooltip();
+
+        s_hoverTipOwner = null;
+        _lastHoverTipText = null;
+    }
+
+    private bool IsPointerOverNode()
+    {
+        if (Size.X <= 0 || Size.Y <= 0)
+            return false;
+
+        return new Rect2(Vector2.Zero, Size).HasPoint(GetLocalMousePosition());
     }
 }

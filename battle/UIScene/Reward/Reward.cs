@@ -835,9 +835,25 @@ public partial class Reward : CanvasLayer
         if (node.State == LevelNode.LevelState.Completed)
             return;
 
-        var rngN = new Random(node.RandomNum).Next(-10, 10);
-        MapNode.PlayerResourceState.ElectricityCoin += 30 + rngN;
+        int rewardCoin = GetElectricityCoinReward(node);
+        if (MapNode?.PlayerResourceState != null)
+        {
+            MapNode.PlayerResourceState.ElectricityCoin += rewardCoin;
+        }
+
         node.Completed();
+    }
+
+    private static int GetElectricityCoinReward(LevelNode node)
+    {
+        int baseReward = node.Type switch
+        {
+            LevelNode.LevelType.Boss => 150,
+            LevelNode.LevelType.Elite => 60,
+            _ => 40,
+        };
+        int offset = new Random(node.RandomNum).Next(-10, 11);
+        return Math.Max(0, baseReward + offset);
     }
 
     private static string BuildEquipmentBonusInline(Equipment equip)

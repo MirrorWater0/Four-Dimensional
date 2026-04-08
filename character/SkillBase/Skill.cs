@@ -297,6 +297,12 @@ public partial class Skill
         return targets.Length > 0 ? targets : [OwnerCharater.BattleNode.dummy];
     }
 
+    private static bool IsDummyTarget(Skill skill, Character target)
+    {
+        Character dummy = skill?.OwnerCharater?.BattleNode?.dummy;
+        return target != null && dummy != null && target == dummy;
+    }
+
     public Character GetAllyByRelative(int Where, bool dyingFilter = false)
     {
         Character[] ally = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
@@ -529,7 +535,7 @@ public partial class Skill
     {
         damage = Math.Clamp(damage, 0, 9999);
         Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
-        if (targets.Length == 0)
+        if (targets.Length == 0 || IsDummyTarget(this, targets[0]))
             return;
 
         await AttackAnimation(targets[0]);
@@ -542,7 +548,7 @@ public partial class Skill
     {
         damage = Math.Clamp(damage, 0, 9999);
         Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
-        if (targets.Length == 0)
+        if (targets.Length == 0 || IsDummyTarget(this, targets[0]))
             return;
         await AttackAnimation(targets[0]);
         await targets[0].GetHurt(damage, OwnerCharater);
@@ -560,7 +566,7 @@ public partial class Skill
 
     public async Task Attack3(int damage, Character target, int times)
     {
-        if (target == null)
+        if (target == null || IsDummyTarget(this, target))
             return;
 
         damage = Math.Clamp(damage, 0, 9999);
@@ -590,13 +596,20 @@ public partial class Skill
         List<Task> tasks = new();
         for (int i = 0; i < count; i++)
         {
+            if (IsDummyTarget(this, targets[i]))
+                continue;
             tasks.Add(Attack3(damage, targets[i], times));
         }
+        if (tasks.Count == 0)
+            return;
         await Task.WhenAll(tasks);
     }
 
     public async Task AttackAnimation(Character target)
     {
+        if (target == null || IsDummyTarget(this, target))
+            return;
+
         AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
         OwnerCharater.AddChild(attack);
         var effect = OwnerCharater.CharacterEffectScene.Instantiate() as CharacterEffect;
@@ -648,11 +661,13 @@ public partial class Skill
             SkillID.MendSlash => new MendSlash(),
             SkillID.SiphonSlash => new SiphonSlash(),
             SkillID.SwapSlash => new SwapSlash(),
+            SkillID.ShatterSlash => new ShatterSlash(),
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
             SkillID.Sacrifice => new Sacrifice(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
             SkillID.ShadowExecution => new ShadowExecution(),
+            SkillID.StasisBlade => new StasisBlade(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
@@ -660,6 +675,7 @@ public partial class Skill
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
             SkillID.QuietVeil => new QuietVeil(),
+            SkillID.EnergyTransfer => new EnergyTransfer(),
             SkillID.Swift => new Swift(),
             SkillID.StarWard => new StarWard(),
             SkillID.ArmonAttack => new ArmonAttack(),
@@ -678,6 +694,9 @@ public partial class Skill
             SkillID.WarSurvive => new WarSurvive(),
             SkillID.WarSpecial => new WarSpecial(),
             SkillID.WarThrallAttack => new WarThrallAttack(),
+            SkillID.FerociouessAttack => new FerociouessAttack(),
+            SkillID.FerociouessSurvive => new FerociouessSurvive(),
+            SkillID.FerociouessSpecial => new FerociouessSpecial(),
             _ => null,
         };
     }
@@ -697,7 +716,7 @@ public enum SkillID
     [PlayerSkill(PlayerCharacterKey.Echo)]
     EchoPuncture = 7,
 
-    [PlayerSkill(PlayerCharacterKey.Echo)]
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
     BreakStrike = 8,
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
@@ -764,6 +783,9 @@ public enum SkillID
     SiphonSlash = 59,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
+    ShatterSlash = 60,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
     FinalGuard = 28,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
@@ -780,6 +802,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     QuietVeil = 58,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    EnergyTransfer = 61,
     #endregion
 
     #region Nightingale
@@ -788,6 +813,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     ShadowExecution = 31,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    StasisBlade = 65,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     VeilStep = 32,
@@ -853,6 +881,12 @@ public enum SkillID
     WarSurvive = 55,
     WarSpecial = 56,
     WarThrallAttack = 57,
+    #endregion
+
+    #region Ferociouess
+    FerociouessAttack = 62,
+    FerociouessSurvive = 63,
+    FerociouessSpecial = 64,
     #endregion
 
     #endregion

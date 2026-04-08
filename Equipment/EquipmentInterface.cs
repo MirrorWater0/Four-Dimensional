@@ -1015,4 +1015,9 @@ public partial class EquipmentInterface : Control
         return result;
     }
 
+    public void RefreshFromExternalChange()
+    {
+        RefreshAll();
+    }
+
 }

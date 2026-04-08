@@ -92,8 +92,7 @@ public partial class SkillButton : Button
         {
             globalTooltip.FollowMouse = true;
             SelfSkill.UpdateDescription();
-            globalTooltip.Description.Text = SelfSkill.Description;
-            globalTooltip.Visible = true;
+            globalTooltip.SetText(SelfSkill.Description);
         }
 
         ShowTargetPreview();
@@ -104,10 +103,7 @@ public partial class SkillButton : Button
         Modulate -= changeColor;
 
         // Hide tooltip
-        if (globalTooltip != null)
-        {
-            globalTooltip.Visible = false;
-        }
+        globalTooltip?.HideTooltip();
 
         HideTargetPreview();
     }

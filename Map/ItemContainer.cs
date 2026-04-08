@@ -183,14 +183,12 @@ public partial class ItemContainer : PanelContainer
             return;
 
         tip.FollowMouse = true;
-        tip.Description.Text = item.BuildTooltipText();
-        tip.Visible = true;
+        tip.SetText(item.BuildTooltipText());
     }
 
     private void HideItemTip()
     {
-        if (_itemTip != null)
-            _itemTip.Visible = false;
+        _itemTip?.HideTooltip();
     }
 
     private Tip GetOrCreateItemTip()

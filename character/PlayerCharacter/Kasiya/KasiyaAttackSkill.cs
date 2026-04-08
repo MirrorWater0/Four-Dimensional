@@ -25,8 +25,7 @@ public partial class Determination : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             )
         );
     }
@@ -54,8 +53,7 @@ public partial class Smite : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             EnergyTimesGateStep(
                 0,
-                () => times,
-                value => times = value,
+                times,
                 LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown)
             )
         );
@@ -79,7 +77,7 @@ public partial class Charge : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, storeAs: "charge_target"),
-            BlockFriendlyByRelativeStep(
+            BlockStep(
                 relativeIndex: 0,
                 baseBlock: _ =>
                     OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
@@ -113,8 +111,7 @@ public partial class Vower : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             EnergyTimesGateStep(
                 0,
-                () => times,
-                value => times = value,
+                times,
                 CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
             )
         );

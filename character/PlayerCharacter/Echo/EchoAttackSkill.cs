@@ -81,9 +81,9 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 10;
     private const int VulnerableStacks = 2;
-
+    int times = 1;
     public EchoPuncture()
         : base(SkillTypes.Attack)
     {
@@ -97,44 +97,16 @@ public partial class EchoPuncture : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
+            EnergyTimesGateStep(
+                0,
+                times,
+                DoubleStrikeStep(baseDamage: 0)
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
                 maxTargets: 1
             )
-        );
-    }
-}
-
-public partial class BreakStrike : Skill
-{
-    private const int BaseDamage = 5;
-
-    public BreakStrike()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "破击";
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            CustomStep(
-                _ =>
-                {
-                    var targets = ChosetargetByOrder(byBehindRow: false);
-                    var target = targets[0];
-                    if (target.Block > 0)
-                        target.UpdataBlock(-target.Block, source: OwnerCharater);
-
-                    return Task.CompletedTask;
-                },
-                _ => new[] { "去掉目标的格挡。" }
-            ),
-            AttackPrimaryStep(baseDamage: BaseDamage)
         );
     }
 }

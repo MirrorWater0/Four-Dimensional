@@ -84,11 +84,10 @@ public partial class FearWormSurvive : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             ),
-            BlockFriendlyByRelativeStep(0, BaseBlock),
-            CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0, dyingFilter: false)
+            BlockStep(0, BaseBlock),
+            CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0)
         );
     }
 }

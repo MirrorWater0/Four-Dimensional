@@ -23,11 +23,9 @@ public partial class VeilStep : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             ),
-            BlockFriendlyByRelativeStep(relativeIndex: 1, baseBlock: BaseBlock, dyingFilter: true),
-            HealFriendlyStep(baseHeal: 5, target: RelativeTarget(0))
+            BlockStep(relativeIndex: 1, baseBlock: BaseBlock, survivabilityMultiplier: 2)
         );
     }
 }
@@ -55,7 +53,7 @@ public partial class FlashOfLight : Skill
                 stacks: VulnerableStacks,
                 maxTargets: 1
             ),
-            BlockFriendlyByRelativeStep(0, BaseBlock),
+            BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Power, Inpower)
         );
     }
@@ -82,8 +80,7 @@ public partial class Swift : Skill
             ModifyPropertyStep(
                 type: PropertyType.Survivability,
                 value: SurvivabilityGain,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
-                dyingFilter: true
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
             )
         );
     }
@@ -106,16 +103,11 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(
-                relativeIndex: -1,
-                baseBlock: BaseBlock,
-                survivabilityMultiplier: 0
-            ),
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 0),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             )
         );
     }

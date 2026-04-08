@@ -132,7 +132,7 @@ public partial class PlayerCharacterRegistry
         Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
-        TakenSkills = [SkillID.BreakStrike, SkillID.SoundBarrier, SkillID.EchonicResonance],
+        TakenSkills = [SkillID.EchoPuncture, SkillID.SoundBarrier, SkillID.EchonicResonance],
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {

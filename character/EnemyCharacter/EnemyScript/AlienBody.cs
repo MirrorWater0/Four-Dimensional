@@ -8,7 +8,7 @@ public partial class AlienBody : EnemyCharacter
 
     public const string PassiveNameText = "寄生馈赠";
     public static string PassiveDescriptionText =>
-        $"回合结束时：上一位非濒死队友获得{PassivePowerGain}点力量。";
+        $"回合结束时：上一位队友获得{PassivePowerGain}点力量。";
 
     public override string CharacterName { get; set; } = "AlienBody";
 
@@ -85,7 +85,7 @@ public partial class AlienBodySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, BaseBlock),
+            BlockStep(0, BaseBlock),
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, permanent: true)
         );
     }
@@ -109,7 +109,7 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
-            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1, dyingFilter: true),
+            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1),
             EnergyTimesGateStep(
                 energyCost: EnergyCost,
                 onPassSteps:

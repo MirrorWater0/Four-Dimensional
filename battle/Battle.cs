@@ -1245,28 +1245,19 @@ public partial class Battle : Node2D
         reward.AddSkillRewardEntry();
 
         var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
-        var (addRelic, equipCount) = GetRewardConfig(
-            CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal,
-            rng
-        );
+        var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
+        bool addRelic = ShouldAddRelicReward(levelType);
+        int equipCount = GameInfo.RollBattleEquipmentDropCount(levelType, rng);
+        bool addItem = GameInfo.RollBattleItemDrop(rng);
 
         TryAddRelicReward(reward, rng, addRelic);
         AddEquipmentRewards(reward, rng, equipCount);
-        TryAddItemReward(reward, rng);
+        TryAddItemReward(reward, rng, addItem);
     }
 
-    private static (bool AddRelic, int EquipCount) GetRewardConfig(
-        LevelNode.LevelType levelType,
-        Random rng
-    )
+    private static bool ShouldAddRelicReward(LevelNode.LevelType levelType)
     {
-        return levelType switch
-        {
-            LevelNode.LevelType.Boss => (true, 2),
-            LevelNode.LevelType.Elite => (true, 1),
-            LevelNode.LevelType.Event => (rng.Next(100) < 50, rng.Next(100) < 50 ? 1 : 0),
-            _ => (false, rng.Next(100) < 10 ? 1 : 0),
-        };
+        return levelType is LevelNode.LevelType.Boss or LevelNode.LevelType.Elite;
     }
 
     private static void TryAddRelicReward(Reward reward, Random rng, bool addRelic)
@@ -1291,9 +1282,9 @@ public partial class Battle : Node2D
         }
     }
 
-    private static void TryAddItemReward(Reward reward, Random rng)
+    private static void TryAddItemReward(Reward reward, Random rng, bool addItem)
     {
-        if (rng.Next(100) >= 30)
+        if (!addItem)
         {
             return;
         }

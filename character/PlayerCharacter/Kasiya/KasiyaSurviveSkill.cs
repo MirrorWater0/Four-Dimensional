@@ -25,9 +25,9 @@ public partial class ShockWave : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 0
+                maxTargets: 9
             ),
-            BlockFriendlyByRelativeStep(0, BaseBlock)
+            BlockStep(0, BaseBlock)
         );
     }
 }
@@ -49,18 +49,17 @@ public partial class ReNewedSpirit : Skill
     {
         return new SkillPlan(
             this,
+            BlockStep(relativeIndex: 0, baseBlock: 12),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            BlockFriendlyByRelativeStep(relativeIndex: 0, baseBlock: 0)
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }
 }
 
 public partial class AbsouluteDefense : Skill
 {
-    private int GainPower = 3;
     public override string SkillName { get; set; } = "绝对防御";
-    int basisBlock = 4;
+    int basisBlock = 0;
 
     public AbsouluteDefense()
         : base(SkillTypes.Survive)
@@ -72,9 +71,8 @@ public partial class AbsouluteDefense : Skill
     {
         return new SkillPlan(
             this,
-            BlockFriendlyByRelativeStep(0, basisBlock),
-            BlockFriendlyByRelativeStep(0, basisBlock),
-            ModifyPropertyStep(PropertyType.Power, GainPower)
+            BlockStep(0, basisBlock, survivabilityMultiplier: 3),
+            ApplyBuffFriendly(buffName: Buff.BuffName.Taunt, stacks: 1, target: RelativeTarget(0))
         );
     }
 }
@@ -99,11 +97,9 @@ public partial class TauntingGuard : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Taunt,
                 stacks: TauntStacks,
-                index: 0,
-                dyingFilter: false
+                target: RelativeTarget(0)
             ),
-            BlockFriendlyByRelativeStep(0, BaseBlock, survivabilityMultiplier: 2)
+            BlockStep(0, BaseBlock, survivabilityMultiplier: 2)
         );
     }
 }
-

@@ -23,11 +23,12 @@ public partial class RebirthPrayer : Skill
     {
         return new SkillPlan(
             this,
+            BlockStep(relativeIndex: 0, baseBlock: 15),
             EnergyTimesGateStep(
                 EnergyCost,
                 null,
                 null,
-                HealFriendlyStep(
+                HealStep(
                     baseHeal: BaseRebirthHeal,
                     survivabilityMultiplier: 0,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
@@ -36,10 +37,10 @@ public partial class RebirthPrayer : Skill
                     rebirth: true,
                     storeAs: SharedTargetKey
                 ),
-                FriendlyEnergyStep(
-                    delta: GainEnergy,
-                    target: StoredTarget(SharedTargetKey),
-                    dyingFilter: true
+                ModifyPropertyStep(
+                    type: PropertyType.MaxLife,
+                    value: 10,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost)
                 )
             )
         );
@@ -72,8 +73,7 @@ public partial class Sacrifice : Skill
                 ModifyPropertyStep(
                     type: PropertyType.MaxLife,
                     value: -DeMax,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
-                    dyingFilter: false
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
                 ),
                 AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, maxTargets: 0)
             )

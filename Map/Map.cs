@@ -45,6 +45,7 @@ public partial class Map : Control
     private ReadyButton ReadyButtonNode => field ??= GetNodeOrNull<ReadyButton>("UI/ReadyButton");
     private EquipmentButton EquipmentButtonNode =>
         field ??= GetNodeOrNull<EquipmentButton>("UI/EquipmentButton");
+    private DebugConsole DebugConsoleNode => field ??= GetNodeOrNull<DebugConsole>("DebugConsole");
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
 
@@ -211,6 +212,7 @@ public partial class Map : Control
         _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
         SetCameraPosition(_targetPos);
         BlackMask.Modulate = new Color(1, 1, 1, 0);
+        EnsureDebugConsole();
         DragButton.ButtonDown += () =>
         {
             _isDrag = true;
@@ -314,7 +316,9 @@ public partial class Map : Control
 
     private bool HasBlockingOverlay()
     {
-        return LayerHasVisibleChildren(SiteUiLayer) || LayerHasVisibleChildren(FrontUiLayer);
+        return LayerHasVisibleChildren(SiteUiLayer)
+            || LayerHasVisibleChildren(FrontUiLayer)
+            || DebugConsoleNode?.IsOpen == true;
     }
 
     private static bool LayerHasVisibleChildren(CanvasLayer layer)
@@ -338,5 +342,14 @@ public partial class Map : Control
         }
 
         return false;
+    }
+
+    private void EnsureDebugConsole()
+    {
+        if (GetNodeOrNull<DebugConsole>("DebugConsole") != null)
+            return;
+
+        var console = new DebugConsole { Name = "DebugConsole" };
+        AddChild(console);
     }
 }

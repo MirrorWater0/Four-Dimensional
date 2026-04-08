@@ -44,7 +44,7 @@ public partial class EvilRegedit : EnemyRegedit
 
         // Base stats (used for preview / original properties)
         MaxLife = 70;
-        Power = 14;
+        Power = 13;
         Survivability = 13;
         Speed = 8;
         SpecialIntentThreshold = 3;
@@ -69,7 +69,7 @@ public partial class FearWormRegedit : EnemyRegedit
         MaxLife = 70;
         Power = 15;
         Survivability = 9;
-        Speed = 13;
+        Speed = 12;
         SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
@@ -91,8 +91,8 @@ public partial class ArmonRegedit : EnemyRegedit
         // Base stats (used for preview / original properties)
         MaxLife = 75;
         Power = 10;
-        Survivability = 8;
-        Speed = 8;
+        Survivability = 11;
+        Speed = 9;
         SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
@@ -193,6 +193,33 @@ public partial class WarRegedit : EnemyRegedit
     }
 }
 
+public partial class FerociouessRegedit : EnemyRegedit
+{
+    public FerociouessRegedit()
+    {
+        CharacterName = "Ferociouess";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
+
+        MaxLife = 60;
+        Power = 10;
+        Survivability = 14;
+        Speed = 10;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs =
+        [
+            SkillID.FerociouessAttack,
+            SkillID.FerociouessSurvive,
+            SkillID.FerociouessSpecial,
+        ];
+
+        PassiveName = global::Ferociouess.PassiveNameText;
+        PassiveDescription = global::Ferociouess.PassiveDescriptionText;
+    }
+}
+
 public enum EnemiesEnum
 {
     Evil,
@@ -202,4 +229,5 @@ public enum EnemiesEnum
     AlienBody,
     RedHusk,
     War,
+    Ferociouess,
 }

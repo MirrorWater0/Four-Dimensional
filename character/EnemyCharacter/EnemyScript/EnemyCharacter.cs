@@ -40,6 +40,13 @@ public partial class EnemyCharacter : Character
         base._ExitTree();
     }
 
+    public override async Task Dying(Character source = null)
+    {
+        _intentionPreviewHoverDepth = 0;
+        HideIntentionTargetPreview();
+        await base.Dying(source);
+    }
+
     public override void Initialize()
     {
         if (Registry != null)
@@ -169,6 +176,9 @@ public partial class EnemyCharacter : Character
 
     private void OnIntentionPreviewHoverEntered()
     {
+        if (State == CharacterState.Dying)
+            return;
+
         _intentionPreviewHoverDepth++;
         if (_intentionPreviewHoverDepth == 1)
             ShowIntentionTargetPreview();
@@ -184,6 +194,8 @@ public partial class EnemyCharacter : Character
     private void ShowIntentionTargetPreview()
     {
         HideIntentionTargetPreview();
+        if (State == CharacterState.Dying)
+            return;
 
         var skill = GetCurrentIntentionSkill();
         if (skill == null)
