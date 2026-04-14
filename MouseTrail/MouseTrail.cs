@@ -2,7 +2,8 @@ using Godot;
 
 public partial class MouseTrail : CanvasLayer
 {
-    private static readonly Vector2 CursorHotspot = new(7.0f, 7.0f);
+    [Export]
+    private Vector2 _cursorHotspot = Vector2.Zero;
     private const float PressLerpSpeed = 14.0f;
     private const float BurstDecaySpeed = 2.8f;
     private const float MotionResponse = 0.02f;
@@ -71,9 +72,9 @@ public partial class MouseTrail : CanvasLayer
     private void UpdateCursorPosition(Vector2 mousePosition)
     {
         if (_targetNode != null)
-            _targetNode.Position = mousePosition;
+            _targetNode.GlobalPosition = mousePosition;
 
         if (_cursor != null)
-            _cursor.Position = mousePosition - CursorHotspot;
+            _cursor.GlobalPosition = mousePosition - _cursorHotspot;
     }
 }

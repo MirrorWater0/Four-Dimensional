@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/Barricade.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_barricade"]
+shader = ExtResource("2_shd")
+shader_parameter/bg_color = Color(0, 0, 0, 0)
+shader_parameter/fill_color = Color(0.42, 0.72, 1, 1)
+shader_parameter/edge_color = Color(0.88, 0.95, 1, 1)
+shader_parameter/card_size = 0.58
+shader_parameter/edge_width = 0.02
+shader_parameter/offset_step = 0.09
+
+[node name="Icon" instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_barricade")
+

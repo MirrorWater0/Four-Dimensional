@@ -1,11 +1,15 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 
 public partial class Number : Node2D
 {
     public Label NumberLabel => field ??= GetNode<Label>("Label");
+    private static readonly PackedScene NumberScene = GD.Load<PackedScene>("res://LabelNode/Number.tscn");
+    private static readonly Stack<Number> Pool = new();
+    private const int MaxPoolSize = 160;
 
-    private static readonly System.Collections.Generic.List<Number> ActiveNumbers = new();
+    private static readonly List<Number> ActiveNumbers = new();
     private const float BaseLift = 120f;
     private const float OffsetMin = -60f;
     private const float OffsetMax = 60f;
@@ -18,16 +22,61 @@ public partial class Number : Node2D
     private const float ViewportPadding = 12f;
     private Rect2 _hoverRect;
     private bool _registered;
+    private int _playVersion;
+    private readonly List<Tween> _runningTweens = new();
 
-    public override async void _Ready()
+    public static Number Spawn(Node parent, string text, Color? color = null)
     {
-        GlobalPosition += new Vector2(0, -BaseLift);
+        if (parent == null || !GodotObject.IsInstanceValid(parent))
+            return null;
+
+        Number number;
+        while (Pool.Count > 0)
+        {
+            number = Pool.Pop();
+            if (number != null && GodotObject.IsInstanceValid(number))
+                goto Found;
+        }
+
+        number = NumberScene.Instantiate<Number>();
+
+    Found:
+        number.StopRunningTweens();
+        number._playVersion++;
+        number.ResetStateForSpawn(text, color);
+        parent.AddChild(number);
+        if (parent is Node2D parent2D)
+            number.GlobalPosition = parent2D.GlobalPosition;
+        number.CallDeferred(nameof(BeginDisplay), number._playVersion);
+        return number;
+    }
+
+    private void ResetStateForSpawn(string text, Color? color)
+    {
+        Visible = false;
+        ProcessMode = ProcessModeEnum.Inherit;
+        Position = Vector2.Zero;
         Scale = new Vector2(0.2f, 0.2f);
         Modulate = new Color(1, 1, 1, 0);
+        NumberLabel.Text = text ?? string.Empty;
+        NumberLabel.RemoveThemeColorOverride("font_color");
+        NumberLabel.RemoveThemeColorOverride("outline_color");
+        if (color.HasValue)
+            SetNumberColor(color.Value);
+        else
+            ApplyOutlineFromFontColor(NumberLabel.GetThemeColor("font_color"));
+    }
 
+    private async void BeginDisplay(int version)
+    {
+        if (version != _playVersion || !IsInsideTree())
+            return;
+
+        GlobalPosition += new Vector2(0, -BaseLift);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (version != _playVersion || !IsInsideTree())
+            return;
 
-        ApplyOutlineFromFontColor(NumberLabel.GetThemeColor("font_color"));
         GlobalPosition = ClampToViewport(GlobalPosition);
         Vector2 startPos = GlobalPosition;
         Vector2 labelSize = GetLabelSize();
@@ -45,8 +94,9 @@ public partial class Number : Node2D
         GlobalPosition = startPos;
         Rect2 baseRect = BuildBaseRectAt(startPos, labelSize);
         RegisterHoverRect(OffsetRectForHover(baseRect, offset, padding));
+        Visible = true;
 
-        Tween pop = CreateTween();
+        Tween pop = CreateManagedTween();
         pop.SetParallel(true);
         pop.TweenProperty(this, "modulate", new Color(1, 1, 1, 1f), 0.06f)
             .SetEase(Tween.EaseType.Out);
@@ -74,9 +124,11 @@ public partial class Number : Node2D
             .SetEase(Tween.EaseType.Out);
 
         await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
+        if (version != _playVersion || !IsInsideTree())
+            return;
 
         Vector2 fallPos = ClampToViewport(startPos + new Vector2(offset * 0.4f, FallDrop));
-        Tween fall = CreateTween();
+        Tween fall = CreateManagedTween();
         fall.SetParallel(true);
         fall.TweenProperty(this, "global_position", fallPos, 0.4f)
             .SetEase(Tween.EaseType.In)
@@ -92,7 +144,51 @@ public partial class Number : Node2D
             .SetDelay(0.18f);
 
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
-        QueueFree();
+        if (version != _playVersion)
+            return;
+        ReturnToPool();
+    }
+
+    private void ReturnToPool()
+    {
+        StopRunningTweens();
+        if (_registered)
+        {
+            ActiveNumbers.Remove(this);
+            _registered = false;
+        }
+
+        if (GetParent() != null)
+            GetParent().RemoveChild(this);
+
+        Visible = false;
+        Position = Vector2.Zero;
+        GlobalPosition = Vector2.Zero;
+        _hoverRect = default;
+
+        if (Pool.Count < MaxPoolSize)
+            Pool.Push(this);
+        else
+            QueueFree();
+    }
+
+    private Tween CreateManagedTween()
+    {
+        Tween tween = CreateTween();
+        _runningTweens.Add(tween);
+        tween.Finished += () => _runningTweens.Remove(tween);
+        return tween;
+    }
+
+    private void StopRunningTweens()
+    {
+        for (int i = _runningTweens.Count - 1; i >= 0; i--)
+        {
+            Tween tween = _runningTweens[i];
+            if (tween != null && GodotObject.IsInstanceValid(tween))
+                tween.Kill();
+        }
+        _runningTweens.Clear();
     }
 
     public override void _ExitTree()

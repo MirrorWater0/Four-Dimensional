@@ -911,7 +911,10 @@ public partial class Battle : Node2D
             await EmitList[i](character);
         }
 
-        if (SuppressSpeedGainThisTurn != true && character?.ParticipatesInTurnRotation == true)
+        if (
+            SuppressSpeedGainThisTurn != true
+            && character?.ParticipatesInTurnRotation == true
+        )
         {
             if (character.IsPlayer)
                 PlayerSpeed += GetAliveTeamSpeed(isPlayer: true);
@@ -975,6 +978,7 @@ public partial class Battle : Node2D
         actingCharacter.StartAction();
         RotateFrontToBack(characterlist);
         await WaitForNextFrom(actingCharacter);
+
         if (!await DelayOrCancel(PostActionDelayMs, token) || await HandleBattleOver(token))
         {
             return;
@@ -1118,7 +1122,7 @@ public partial class Battle : Node2D
             return;
         }
 
-        team[0].AddChild(CreateSpeedTriggerHint());
+        BuffHintLabel.Spawn(team[0], SpeedTriggerText, Vector2.Zero);
         SuppressSpeedGainThisTurn = true;
         try
         {
@@ -1128,14 +1132,6 @@ public partial class Battle : Node2D
         {
             SuppressSpeedGainThisTurn = false;
         }
-    }
-
-    private static BuffHintLabel CreateSpeedTriggerHint()
-    {
-        var label = Buff.HintScene.Instantiate<BuffHintLabel>();
-        label.TargetPosition = Vector2.Zero;
-        label.Text = SpeedTriggerText;
-        return label;
     }
 
     private static void RotateFrontToBack<T>(List<T> characters)

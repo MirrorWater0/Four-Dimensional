@@ -4,6 +4,10 @@ using Godot;
 
 public partial class Map : Control
 {
+    private static readonly PackedScene DebugConsoleScene = GD.Load<PackedScene>(
+        "res://Map/DebugConsole.tscn"
+    );
+
     [Export]
     public bool WarmupMode { get; set; }
 
@@ -349,7 +353,8 @@ public partial class Map : Control
         if (GetNodeOrNull<DebugConsole>("DebugConsole") != null)
             return;
 
-        var console = new DebugConsole { Name = "DebugConsole" };
+        var console = DebugConsoleScene?.Instantiate<DebugConsole>() ?? new DebugConsole();
+        console.Name = "DebugConsole";
         AddChild(console);
     }
 }

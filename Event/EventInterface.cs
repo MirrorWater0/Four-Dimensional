@@ -365,7 +365,6 @@ public partial class EventInterface : Control
         if (!IsValidPlayerIndex(playerIndex) || changes == null || changes.Count == 0)
             return;
 
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
         var info = GameInfo.PlayerCharacters[playerIndex];
         string name = string.IsNullOrWhiteSpace(info.CharacterName)
             ? $"角色{playerIndex + 1}"
@@ -380,10 +379,12 @@ public partial class EventInterface : Control
         foreach (var kv in changes)
             sb.Append($"{Skill.GetColoredPropertyLabel(kv.Key)} {FormatSigned(kv.Value)}\n");
 
-        hint.Text = GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd());
-        hint.TargetPosition = new Vector2(960, 640);
-        hint.RandomOffset = true;
-        AddChild(hint);
+        BuffHintLabel.Spawn(
+            this,
+            GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd()),
+            new Vector2(960, 640),
+            randomOffset: true
+        );
     }
 
     private void ApplyNonPropertyOptionEffects(EventOption option)
@@ -737,3 +738,5 @@ public partial class EventInterface : Control
         control.Modulate = control.Modulate with { A = alpha };
     }
 }
+
+

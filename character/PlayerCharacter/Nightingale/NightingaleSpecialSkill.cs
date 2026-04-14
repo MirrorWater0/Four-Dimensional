@@ -69,3 +69,36 @@ public partial class LongNight : Skill
         );
     }
 }
+
+public partial class RequiemBloom : Skill
+{
+    private const int PowerLoss = 1;
+    private const int RebirthStacks = 1;
+    private const int ExtraTurnStacks = 1;
+
+    public RequiemBloom()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "安魂花";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, -PowerLoss),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.RebirthI,
+                stacks: RebirthStacks,
+                target: RelativeTarget(0)
+            ),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraTurn,
+                stacks: ExtraTurnStacks,
+                target: RelativeTarget(1)
+            )
+        );
+    }
+}

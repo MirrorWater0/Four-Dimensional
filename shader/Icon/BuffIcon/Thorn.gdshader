@@ -30,5 +30,5 @@ void fragment() {
     float mask = smoothstep(radius_at_angle, radius_at_angle - smoothing, dist);
     
     // 5. 输出纯色
-    COLOR = vec4(color.rgb, mask * color.a);
+    COLOR *= vec4(color.rgb, mask * color.a);
 }

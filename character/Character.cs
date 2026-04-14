@@ -426,20 +426,27 @@ public partial class Character : Node2D
         }
     }
 
-    public virtual async void StartAction()
+    public virtual void StartAction()
     {
         BattleNode?.SetCurrentActionCharacter(this);
         if (ClearsBlockOnActionStart)
         {
-            Block = 0;
-            UpdataBlock(0);
+            bool keepBlock =
+                StartActionBuffs != null
+                && StartActionBuffs.Any(x =>
+                    x != null && x.ThisBuffName == Buff.BuffName.Barricade && x.Stack > 0
+                );
+
+            if (!keepBlock)
+            {
+                Block = 0;
+                UpdataBlock(0);
+            }
+
             ClearOwnedSummonsBlock();
         }
         UpdataEnergy(1);
         OnTurnStart();
-        TrailAnimation.Play("trail");
-        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
-
         if (StartActionBuffs != null)
         {
             // Buffs can remove themselves from the list when triggered (Stack reaches 0).
@@ -449,6 +456,8 @@ public partial class Character : Node2D
                 buff.Trigger();
             }
         }
+        TrailAnimation.Play("trail");
+        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
     }
 
     private void ClearOwnedSummonsBlock()
@@ -502,9 +511,7 @@ public partial class Character : Node2D
             }
         }
 
-        var attacknum = Number.Instantiate<Number>();
-        AddChild(attacknum);
-        attacknum.NumberLabel.Text = (-(int)damage).ToString();
+        global::Number.Spawn(this, (-(int)damage).ToString(), Colors.Red);
 
         BattleNode.BattleAnimationPlayer.Play("hit");
 
@@ -571,10 +578,7 @@ public partial class Character : Node2D
         Life = Math.Clamp(Life + heal, 0, BattleMaxLife);
         int actualHeal = Life - previousLife;
         AnimateLifeBarsAfterRecover();
-        var numlabel = Number.Instantiate<Number>();
-        AddChild(numlabel);
-        numlabel.NumberLabel.Text = heal.ToString("+0;-0;0");
-        numlabel.SetNumberColor(heal >= 0 ? Colors.Green : Colors.Red);
+        global::Number.Spawn(this, heal.ToString("+0;-0;0"), heal >= 0 ? Colors.Green : Colors.Red);
 
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
@@ -632,10 +636,7 @@ public partial class Character : Node2D
         Effect.Position = new Vector2(0, -50);
         AddChild(Effect);
         Effect.Animation.Play("energe");
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}";
-        hint.TargetPosition = GlobalPosition;
-        AddChild(hint);
+        BuffHintLabel.Spawn(this, $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}", GlobalPosition);
 
         if (source != null || BattleNode?.HasEffectSourceContext == true)
             BattleNode?.RecordEnergyChange(this, num, source);
@@ -656,10 +657,7 @@ public partial class Character : Node2D
 
         if (num > 0)
         {
-            Number number = Number.Instantiate<Number>();
-            AddChild(number);
-            number.NumberLabel.Text = "+" + num.ToString();
-            number.SetNumberColor(new Color(180, 220, 255, 255) / 255);
+            global::Number.Spawn(this, "+" + num.ToString(), new Color(180, 220, 255, 255) / 255);
             if (record)
                 BattleNode?.RecordBlockGain(this, num, source);
         }
@@ -672,12 +670,12 @@ public partial class Character : Node2D
 
         if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(this))
         {
-            var immunityHint = Buff.HintScene.Instantiate<BuffHintLabel>();
-            immunityHint.Text =
-                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]";
-            immunityHint.TargetPosition = GlobalPosition + new Vector2(0, 150);
-            immunityHint.RandomOffset = true;
-            AddChild(immunityHint);
+            BuffHintLabel.Spawn(
+                this,
+                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]",
+                GlobalPosition + new Vector2(0, 150),
+                randomOffset: true
+            );
             return;
         }
 
@@ -715,11 +713,12 @@ public partial class Character : Node2D
         AddChild(characterEffect);
         characterEffect.Animation.Play("lightning");
 
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} -{value}";
-        hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
-        hint.RandomOffset = true;
-        AddChild(hint);
+        BuffHintLabel.Spawn(
+            this,
+            $"{Skill.GetColoredPropertyLabel(type)} -{value}",
+            GlobalPosition + new Vector2(0, 150),
+            randomOffset: true
+        );
         BattleNode?.RecordPropertyChange(this, type, -value, source);
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
@@ -764,11 +763,12 @@ public partial class Character : Node2D
             Buff.GhostExplode(icon, new Vector2(2f, 2f));
         }
 
-        var hint = Buff.HintScene.Instantiate<BuffHintLabel>();
-        hint.Text = $"{Skill.GetColoredPropertyLabel(type)} +{appliedValue}";
-        hint.TargetPosition = GlobalPosition + new Vector2(0, 150);
-        hint.RandomOffset = true;
-        AddChild(hint);
+        BuffHintLabel.Spawn(
+            this,
+            $"{Skill.GetColoredPropertyLabel(type)} +{appliedValue}",
+            GlobalPosition + new Vector2(0, 150),
+            randomOffset: true
+        );
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
@@ -797,7 +797,7 @@ public partial class Character : Node2D
 
     public virtual void Passive(Skill skill) { }
 
-    protected virtual void OnTurnStart() { }
+    public virtual void OnTurnStart() { }
 
     private void StopTween(ref Tween tween)
     {

@@ -25,9 +25,10 @@ public partial class Buff
         [BuffName.DebuffImmunity] = "res://battle/buff/StateIcon/DebuffImmunity.tscn",
         [BuffName.Invisible] = "res://battle/buff/StateIcon/Invisible.tscn",
         [BuffName.ExtraPower] = "res://battle/buff/StateIcon/ExtraPower.tscn",
-        [BuffName.ExtraSurvivability] =
-            "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
+        [BuffName.ExtraSurvivability] = "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
+        [BuffName.ExtraTurn] = "res://battle/buff/StateIcon/ExtraTurn.tscn",
         [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
+        [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
     };
 
     public static string GetBuffEffectText(BuffName name)
@@ -36,7 +37,7 @@ public partial class Buff
         {
             BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
-            BuffName.Vulnerable => "受到伤害时，伤害提高40%，消耗1层。",
+            BuffName.Vulnerable => "受到伤害时，伤害提高50%，消耗1层。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
             BuffName.Thorn => "受到伤害时，对攻击者造成等同层数的伤害。",
             BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
@@ -45,7 +46,9 @@ public partial class Buff
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
             BuffName.ExtraPower => "获得力量或生存时额外获得等同层数的力量。",
             BuffName.ExtraSurvivability => "获得力量或生存时额外获得等同层数的生存。",
+            BuffName.ExtraTurn => "回合结束时消耗1层，触发一次额外行动（仅触发行动开始效果）。",
             BuffName.AutoArmor => "受到伤害后获得等同层数的格挡。",
+            BuffName.Barricade => "回合开始时，保留你的格挡。",
             _ => string.Empty,
         };
 
@@ -161,8 +164,14 @@ public partial class Buff
         [Description("额外生存")]
         ExtraSurvivability,
 
+        [Description("额外行动")]
+        ExtraTurn,
+
         [Description("自动护盾")]
         AutoArmor,
+
+        [Description("壁垒")]
+        Barricade,
     }
 
     public Character Owner;
@@ -193,7 +202,9 @@ public partial class Buff
             BuffName.DebuffImmunity => Nature.positive,
             BuffName.ExtraPower => Nature.positive,
             BuffName.ExtraSurvivability => Nature.positive,
+            BuffName.ExtraTurn => Nature.positive,
             BuffName.AutoArmor => Nature.positive,
+            BuffName.Barricade => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -245,15 +256,19 @@ public partial class Buff
 
     public void Hint(BuffName name, BuffHintLabel.Which which)
     {
-        BuffHintLabel label = HintScene.Instantiate() as BuffHintLabel;
-        label.TargetPosition = Owner.GlobalPosition;
-        label.Initialize(which, name.GetDescription());
-        label.Position = Vector2.Zero;
-        Owner.AddChild(label);
+        string suffix = which switch
+        {
+            BuffHintLabel.Which.vanish => "[color=yellow]消失[/color]",
+            BuffHintLabel.Which.gain => "[color=yellow]获得[/color]",
+            _ => string.Empty,
+        };
+        BuffHintLabel.Spawn(Owner, $"{name.GetDescription()}{suffix}", Owner.GlobalPosition);
     }
 
     protected Label GetStackLabel() =>
-        BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon) ? BuffIcon.GetChildOrNull<Label>(0) : null;
+        BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon)
+            ? BuffIcon.GetChildOrNull<Label>(0)
+            : null;
 
     protected void UpdateStackLabel()
     {
@@ -292,11 +307,7 @@ public partial class Buff
         return true;
     }
 
-    protected static void FinalizeBuffAdd(
-        Buff buff,
-        Character target,
-        Character source = null
-    )
+    protected static void FinalizeBuffAdd(Buff buff, Character target, Character source = null)
     {
         if (buff?.BuffIcon == null || target?.StateIconContainer == null)
             return;
@@ -389,7 +400,7 @@ public partial class HurtBuff : Buff
                 UpdateStackLabel();
                 break;
             case BuffName.Vulnerable:
-                damage *= 1.4f;
+                damage *= 1.5f;
                 Stack--;
                 UpdateStackLabel();
                 break;
@@ -467,6 +478,9 @@ public partial class StartActionBuff : Buff
                 Stack--;
                 UpdateStackLabel();
                 break;
+            case BuffName.Barricade:
+                // Passive effect: checked by Character.StartAction before block reset.
+                break;
         }
 
         TweenLabel();
@@ -481,7 +495,10 @@ public partial class StartActionBuff : Buff
         if (TryStackExisting(target?.StartActionBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Invisible || target?.StartActionBuffs == null)
+        if (
+            target?.StartActionBuffs == null
+            || (name != BuffName.Invisible && name != BuffName.Barricade)
+        )
             return;
 
         var buff = new StartActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -511,11 +528,12 @@ public partial class SkillBuff : Buff
 
                 if (Owner != null)
                 {
-                    var hint = HintScene.Instantiate<BuffHintLabel>();
-                    hint.Text = "[color=yellow]无法行动[/color]";
-                    hint.TargetPosition = Owner.GlobalPosition;
-                    hint.RandomOffset = true;
-                    Owner.AddChild(hint);
+                    BuffHintLabel.Spawn(
+                        Owner,
+                        "[color=yellow]\u65e0\u6cd5\u884c\u52a8[/color]",
+                        Owner.GlobalPosition,
+                        randomOffset: true
+                    );
                 }
 
                 if (skill?.OwnerCharater?.CharacterEffectScene != null)
@@ -577,6 +595,11 @@ public partial class EndActionBuff : Buff
                 var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = Owner };
                 await skill.Attack1(Owner.BattlePower);
                 break;
+            case BuffName.ExtraTurn:
+                Stack--;
+                UpdateStackLabel();
+                Owner.OnTurnStart();
+                break;
         }
 
         TweenLabel();
@@ -591,7 +614,7 @@ public partial class EndActionBuff : Buff
         if (TryStackExisting(target.EndActionBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Pursuit)
+        if (name != BuffName.Pursuit && name != BuffName.ExtraTurn)
             return;
 
         var buff = new EndActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };

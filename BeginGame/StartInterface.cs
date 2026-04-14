@@ -132,7 +132,7 @@ public partial class PlayerCharacterRegistry
         Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
-        TakenSkills = [SkillID.EchoPuncture, SkillID.SoundBarrier, SkillID.EchonicResonance],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
     };
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
@@ -145,7 +145,7 @@ public partial class PlayerCharacterRegistry
         Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
-        TakenSkills = [SkillID.Determination, SkillID.ReNewedSpirit, SkillID.TerminateLight],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
     };
     public PlayerInfoStructure Mariya = new PlayerInfoStructure()
     {
@@ -158,7 +158,7 @@ public partial class PlayerCharacterRegistry
         Speed = 9,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
-        TakenSkills = [SkillID.MendSlash, SkillID.FinalGuard, SkillID.RebirthPrayer],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
     };
 
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
@@ -172,6 +172,6 @@ public partial class PlayerCharacterRegistry
         Speed = 11,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
-        TakenSkills = [SkillID.ShadowAmbush, SkillID.VeilStep, SkillID.TempoSurge],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
     };
 }

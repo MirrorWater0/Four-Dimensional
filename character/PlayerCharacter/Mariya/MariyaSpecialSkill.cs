@@ -40,7 +40,7 @@ public partial class RebirthPrayer : Skill
                 ModifyPropertyStep(
                     type: PropertyType.MaxLife,
                     value: 10,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost)
+                    target: StoredTarget(SharedTargetKey)
                 )
             )
         );

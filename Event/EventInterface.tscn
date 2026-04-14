@@ -19,6 +19,8 @@ shader_parameter/line_weight = 0.6
 shader_parameter/line_softness = 1.2
 shader_parameter/drift_speed = 0.32
 shader_parameter/drift_dist = 0.2
+shader_parameter/flow_strength = 0.18
+shader_parameter/line_breath = 0.22
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_event_frame"]
 bg_color = Color(0.04, 0.06, 0.09, 0.94)
@@ -108,6 +110,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_event_script")
 IntroAnimationSpeed = 1.5
+metadata/_edit_lock_ = true
 
 [node name="BG" type="ColorRect" parent="." unique_id=2010976170]
 material = SubResource("ShaderMaterial_yci0a")

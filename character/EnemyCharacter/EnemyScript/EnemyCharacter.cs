@@ -71,7 +71,6 @@ public partial class EnemyCharacter : Character
     {
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
         base.StartAction();
-
         await DisappearIntention();
         await Skills[IntentionIndex].Effect();
         EndAction();

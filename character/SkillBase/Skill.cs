@@ -27,19 +27,6 @@ public partial class Skill
     private int _previewSurvivability;
     private int _previewEnergy = 1;
 
-    protected const string UnfixedPlaceholder = "x";
-    protected const int TooltipTotalMax = 999;
-
-    protected enum StatX
-    {
-        Power,
-        Survivability,
-        Speed,
-        Energy,
-        Life,
-        MaxLife,
-    }
-
     public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/AttackEffect.tscn"
     );
@@ -119,129 +106,30 @@ public partial class Skill
     protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
     protected bool IsInBattle => OwnerCharater?.BattleNode != null;
 
-    public static string GetPropertyLabel(PropertyType type) => type.GetDescription();
-
-    public static string GetColoredPropertyLabel(PropertyType type)
+    protected int DamageFromPower(int baseDamage = 0, int powerMultiplier = 1, int clampMax = 9999)
     {
-        return $"[color={GetPropertyColor(type)}]{GetPropertyLabel(type)}[/color]";
+        int damage = baseDamage + OwnerPower * powerMultiplier;
+        return Math.Clamp(damage, 0, clampMax);
     }
 
-    private static string GetPropertyColor(PropertyType type)
+    protected int BlockFromSurvivability(
+        int baseBlock = 0,
+        int survivabilityMultiplier = 1,
+        int clampMax = 999
+    )
     {
-        return type switch
-        {
-            PropertyType.Power => "#ff0000",
-            PropertyType.Survivability => "#89fffd",
-            PropertyType.Speed => "#b56bff",
-            _ => "white",
-        };
+        int block = baseBlock + OwnerSurvivability * survivabilityMultiplier;
+        return Math.Clamp(block, 0, clampMax);
     }
 
-    private static string GetStatLabel(StatX stat)
+    protected bool TrySpendEnergy(int cost)
     {
-        return stat switch
-        {
-            StatX.Power => GetPropertyLabel(PropertyType.Power),
-            StatX.Survivability => GetPropertyLabel(PropertyType.Survivability),
-            StatX.Speed => "速度",
-            StatX.Energy => "能量",
-            StatX.Life => "生命",
-            StatX.MaxLife => "最大生命",
-            _ => string.Empty,
-        };
-    }
-
-    private static string GetStatColor(StatX stat)
-    {
-        return stat switch
-        {
-            StatX.Power => GetPropertyColor(PropertyType.Power),
-            StatX.Survivability => GetPropertyColor(PropertyType.Survivability),
-            StatX.Speed => "#b56bff",
-            StatX.Energy => "#5353ff",
-            StatX.Life => "#6bff6b",
-            StatX.MaxLife => "#6bff6b",
-            _ => "white",
-        };
-    }
-
-    protected void SetDescriptionText(string text)
-    {
-        string output = GlobalFunction.ColorizeNumbers(text ?? string.Empty);
-        Description = GlobalFunction.ColorizeKeywords(output);
-    }
-
-    protected void SetDescriptionLines(params string[] lines)
-    {
-        var filtered = lines.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
-        string text = string.Join("\n", filtered);
-        SetDescriptionText(text);
-    }
-
-    protected static string X(StatX stat)
-    {
-        string label = GetStatLabel(stat);
-        if (string.IsNullOrWhiteSpace(label))
-            return UnfixedPlaceholder;
-
-        string color = GetStatColor(stat);
-        return $"[color={color}]{UnfixedPlaceholder}({label})[/color]";
-    }
-
-    protected static string FormatBasePlusX(int baseValue, StatX stat, int xMultiplier = 1)
-    {
-        string x = X(stat);
-        string xPart = xMultiplier switch
-        {
-            1 => x,
-            -1 => $"-{x}",
-            _ => $"{xMultiplier}{x}",
-        };
-
-        if (baseValue == 0)
-            return xPart;
-
-        if (xPart.StartsWith("-", StringComparison.Ordinal))
-            return $"{baseValue}{xPart}";
-
-        return $"{baseValue}+{xPart}";
-    }
-
-    protected string WithBattleTotal(string basisText, int total, int clampMax = TooltipTotalMax)
-    {
-        if (!IsInBattle)
-            return basisText;
-
-        int clamped = Math.Clamp(total, 0, clampMax);
-        return $"{basisText}（总计：{clamped}）";
-    }
-
-    protected string WithBattleTotal(string basisText, string totalText)
-    {
-        if (!IsInBattle)
-            return basisText;
-
-        return $"{basisText}（总计：{totalText}）";
-    }
-
-    protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>
-        WithBattleTotal(X(stat), total, clampMax);
-
-    protected string BasePlusXWithBattleTotal(
-        int baseValue,
-        int total,
-        StatX stat,
-        int xMultiplier = 1,
-        int clampMax = TooltipTotalMax
-    ) => WithBattleTotal(FormatBasePlusX(baseValue, stat, xMultiplier), total, clampMax);
-
-    public virtual void UpdateDescription()
-    {
-        var plan = GetPlan();
-        if (plan != null)
-        {
-            SetDescriptionLines(plan.DescribeLines());
-        }
+        if (OwnerCharater == null)
+            return false;
+        if (OwnerCharater.Energy < cost)
+            return false;
+        OwnerCharater.UpdataEnergy(-cost, OwnerCharater);
+        return true;
     }
 
     public Character[] ChosetargetByOrder(bool byBehindRow = false)
@@ -342,8 +230,8 @@ public partial class Skill
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
     {
-        var allies = OwnerCharater.BattleNode
-            .GetOrderedTeamCharacters(OwnerCharater.IsPlayer, includeSummons: false)
+        var allies = OwnerCharater
+            .BattleNode.GetOrderedTeamCharacters(OwnerCharater.IsPlayer, includeSummons: false)
             .ToList();
         if (allies.Count == 0)
             return null;
@@ -531,59 +419,93 @@ public partial class Skill
         );
     }
 
-    public async Task Attack1(int damage, bool byBehindRow = false) //顺位一段攻击
+    private static bool CanContinueAttack(Character target)
     {
-        damage = Math.Clamp(damage, 0, 9999);
-        Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
-        if (targets.Length == 0 || IsDummyTarget(this, targets[0]))
-            return;
-
-        await AttackAnimation(targets[0]);
-
-        await targets[0].GetHurt(damage, OwnerCharater);
-        await Task.Delay(100);
+        return target != null && target.State == Character.CharacterState.Normal;
     }
 
-    public async Task Attack2(int damage, bool byBehindRow = false) //顺位二段攻击
+    private Character ResolvePrimaryTarget(bool byBehindRow)
     {
-        damage = Math.Clamp(damage, 0, 9999);
         Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
         if (targets.Length == 0 || IsDummyTarget(this, targets[0]))
-            return;
-        await AttackAnimation(targets[0]);
-        await targets[0].GetHurt(damage, OwnerCharater);
-        await Task.Delay(100);
-        // Only apply second hit if target is still alive
-        if (targets[0].State == Character.CharacterState.Normal)
-        {
-            var attack2 = AttackScene.Instantiate() as AttackEffect;
-            targets[0].AddChild(attack2);
-            attack2.AnimationPlayer0.Play("Attack1");
-            attack2.GlobalPosition = targets[0].GlobalPosition;
-            await targets[0].GetHurt(damage, OwnerCharater);
-        }
+            return null;
+        return targets[0];
     }
 
-    public async Task Attack3(int damage, Character target, int times)
+    private void SpawnAttackHitEffect(Character target)
+    {
+        var attack = AttackScene.Instantiate() as AttackEffect;
+        target.AddChild(attack);
+        attack.AnimationPlayer0.Play("Attack1");
+        attack.GlobalPosition = target.GlobalPosition;
+    }
+
+    private async Task ExecuteAttackSequence(
+        Character target,
+        int damage,
+        int times,
+        bool playHitEffectForFirstHit,
+        bool delayAfterLastHit
+    )
     {
         if (target == null || IsDummyTarget(this, target))
             return;
 
         damage = Math.Clamp(damage, 0, 9999);
+        times = Math.Max(0, times);
+        if (times <= 0)
+            return;
+
         await AttackAnimation(target);
 
         for (int i = 0; i < times; i++)
         {
-            // Stop attacking if target has died
-            if (target.State != Character.CharacterState.Normal)
+            if (!CanContinueAttack(target))
                 break;
-            var attack = AttackScene.Instantiate() as AttackEffect;
-            target.AddChild(attack);
-            attack.AnimationPlayer0.Play("Attack1");
-            attack.GlobalPosition = target.GlobalPosition;
+
+            if (playHitEffectForFirstHit || i > 0)
+                SpawnAttackHitEffect(target);
+
             await target.GetHurt(damage, OwnerCharater);
-            await Task.Delay(100);
+
+            if (delayAfterLastHit || i < times - 1)
+                await Task.Delay(100);
         }
+    }
+
+    public async Task Attack1(int damage, bool byBehindRow = false) //顺位一段攻击
+    {
+        Character target = ResolvePrimaryTarget(byBehindRow);
+        await ExecuteAttackSequence(
+            target,
+            damage,
+            times: 1,
+            playHitEffectForFirstHit: false,
+            delayAfterLastHit: true
+        );
+    }
+
+    public async Task Attack2(int damage, bool byBehindRow = false) //顺位二段攻击
+    {
+        Character target = ResolvePrimaryTarget(byBehindRow);
+        await ExecuteAttackSequence(
+            target,
+            damage,
+            times: 2,
+            playHitEffectForFirstHit: false,
+            delayAfterLastHit: false
+        );
+    }
+
+    public async Task Attack3(int damage, Character target, int times)
+    {
+        await ExecuteAttackSequence(
+            target,
+            damage,
+            times,
+            playHitEffectForFirstHit: true,
+            delayAfterLastHit: true
+        );
     }
 
     public async Task AOE(int damage, int Num, int times, bool byBehindRow = false)
@@ -622,7 +544,11 @@ public partial class Skill
 
     public async Task Carry(Character target, int skillIndex)
     {
-        if (target == null || !target.IsFullCharacter || target.State == Character.CharacterState.Dying)
+        if (
+            target == null
+            || !target.IsFullCharacter
+            || target.State == Character.CharacterState.Dying
+        )
             return;
         await target.Skills[skillIndex].Effect();
     }
@@ -655,6 +581,7 @@ public partial class Skill
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
             SkillID.HolySeal => new HolySeal(),
+            SkillID.AegisPledge => new AegisPledge(),
             SkillID.FearWormAttack => new FearWormAttack(),
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
@@ -671,6 +598,7 @@ public partial class Skill
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
+            SkillID.RequiemBloom => new RequiemBloom(),
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
@@ -697,6 +625,12 @@ public partial class Skill
             SkillID.FerociouessAttack => new FerociouessAttack(),
             SkillID.FerociouessSurvive => new FerociouessSurvive(),
             SkillID.FerociouessSpecial => new FerociouessSpecial(),
+            SkillID.TurbineAttack => new TurbineAttack(),
+            SkillID.TurbineSurvive => new TurbineSurvive(),
+            SkillID.TurbineSpecial => new TurbineSpecial(),
+            SkillID.BasicAttack => new BasicAttack(),
+            SkillID.BasicDefense => new BasicDefense(),
+            SkillID.BasicSpecial => new BasicSpecial(),
             _ => null,
         };
     }
@@ -773,6 +707,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     Vower = 36,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    AegisPledge = 70,
     #endregion
 
     #region Mariya
@@ -825,6 +762,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     LongNight = 35,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    RequiemBloom = 66,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     FlashOfLight = 37,
@@ -887,6 +827,18 @@ public enum SkillID
     FerociouessAttack = 62,
     FerociouessSurvive = 63,
     FerociouessSpecial = 64,
+    #endregion
+
+    #region Turbine
+    TurbineAttack = 67,
+    TurbineSurvive = 68,
+    TurbineSpecial = 69,
+    #endregion
+
+    #region Basis
+    BasicAttack = 71,
+    BasicDefense = 72,
+    BasicSpecial = 73,
     #endregion
 
     #endregion

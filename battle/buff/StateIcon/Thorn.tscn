@@ -5,8 +5,8 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_r2q3y"]
 shader = ExtResource("2_6u216")
-shader_parameter/color = Color(0.75, 0.65, 0.2, 1)
-shader_parameter/spike_count = 15
+shader_parameter/color = Color(2.0214916e-06, 0.76772594, 0.57115364, 1)
+shader_parameter/spike_count = 9
 shader_parameter/inner_radius = 0.32500001217762
 shader_parameter/outer_radius = 0.43500001740262
 shader_parameter/smoothing = 0.0370000017575

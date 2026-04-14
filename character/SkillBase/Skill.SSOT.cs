@@ -1369,9 +1369,11 @@ public partial class Skill
                 SkillBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Pursuit:
+            case Buff.BuffName.ExtraTurn:
                 EndActionBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Invisible:
+            case Buff.BuffName.Barricade:
                 StartActionBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.DebuffImmunity:
@@ -1991,17 +1993,31 @@ public partial class Skill
                 _survivabilityMultiplier,
                 _clampMax
             );
-            string line = $"使{targetText}回复{healText}点生命。";
+
+            if (_rebirth)
+            {
+                string rebirthTargetText = _preferNonFull ? "濒死或非满血目标" : "濒死目标";
+                string rebirthLine = $"使{rebirthTargetText}复生{healText}点生命。";
+                if (
+                    _target.Kind == TargetReferenceKind.Absolute
+                    && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
+                )
+                    rebirthLine += $"（目标：{targetText}）";
+                yield return rebirthLine;
+                yield break;
+            }
+
+            string normalLine = $"使{targetText}回复{healText}点生命。";
             string priorityText =
                 _target.Kind == TargetReferenceKind.Absolute
                 && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
                     ? AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth)
                     : null;
             if (!string.IsNullOrWhiteSpace(priorityText))
-                line += $"（{priorityText}）";
+                normalLine += $"（{priorityText}）";
             if (_rebirth && string.IsNullOrWhiteSpace(priorityText))
-                line += "（可对濒死目标生效）";
-            yield return line;
+                normalLine += "（可对濒死目标生效）";
+            yield return normalLine;
         }
     }
 

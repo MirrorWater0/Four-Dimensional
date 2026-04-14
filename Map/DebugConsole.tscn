@@ -1,0 +1,132 @@
+[gd_scene format=3 uid="uid://dwr8doqwh4r5q"]
+
+[ext_resource type="Script" uid="uid://m0ujdj0xy0gs" path="res://Map/DebugConsole.cs" id="1_dbgcs"]
+
+[node name="DebugConsole" type="CanvasLayer" unique_id=1851257481]
+layer = 30
+script = ExtResource("1_dbgcs")
+
+[node name="Root" type="Control" parent="." unique_id=387014937]
+modulate = Color(1, 1, 1, 0.6039216)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="Backdrop" type="ColorRect" parent="Root" unique_id=843741261]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0.02, 0.05, 0.08, 0.78)
+
+[node name="Center" type="CenterContainer" parent="Root" unique_id=50196799]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Root/Center" unique_id=1730238813]
+custom_minimum_size = Vector2(1460, 780)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Margin" type="MarginContainer" parent="Root/Center/Panel" unique_id=1734582262]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="Layout" type="VBoxContainer" parent="Root/Center/Panel/Margin" unique_id=1270151957]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Header" type="VBoxContainer" parent="Root/Center/Panel/Margin/Layout" unique_id=1449178022]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Root/Center/Panel/Margin/Layout/Header" unique_id=1615955791]
+layout_mode = 2
+text = "GM Console"
+
+[node name="Subtitle" type="Label" parent="Root/Center/Panel/Margin/Layout/Header" unique_id=674749605]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+text = "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。"
+autowrap_mode = 3
+
+[node name="InputRow" type="HBoxContainer" parent="Root/Center/Panel/Margin/Layout" unique_id=1487777799]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CommandInput" type="LineEdit" parent="Root/Center/Panel/Margin/Layout/InputRow" unique_id=770303401]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20"
+clear_button_enabled = true
+
+[node name="RunButton" type="Button" parent="Root/Center/Panel/Margin/Layout/InputRow" unique_id=1642546545]
+custom_minimum_size = Vector2(108, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "执行"
+
+[node name="ClearButton" type="Button" parent="Root/Center/Panel/Margin/Layout/InputRow" unique_id=1478615854]
+custom_minimum_size = Vector2(108, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "清屏"
+
+[node name="HelpButton" type="Button" parent="Root/Center/Panel/Margin/Layout/InputRow" unique_id=264735804]
+custom_minimum_size = Vector2(108, 0)
+layout_mode = 2
+mouse_filter = 1
+text = "帮助"
+
+[node name="AssistSection" type="VBoxContainer" parent="Root/Center/Panel/Margin/Layout" unique_id=115540710]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AssistHint" type="RichTextLabel" parent="Root/Center/Panel/Margin/Layout/AssistSection" unique_id=652118661]
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="CompletionList" type="RichTextLabel" parent="Root/Center/Panel/Margin/Layout/AssistSection" unique_id=1979300959]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="Help" type="RichTextLabel" parent="Root/Center/Panel/Margin/Layout" unique_id=515657363]
+custom_minimum_size = Vector2(0, 228)
+layout_mode = 2
+focus_mode = 2
+mouse_filter = 1
+bbcode_enabled = true
+selection_enabled = true
+
+[node name="Log" type="RichTextLabel" parent="Root/Center/Panel/Margin/Layout" unique_id=1651593687]
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+mouse_filter = 1
+bbcode_enabled = true
+scroll_following = true
+selection_enabled = true

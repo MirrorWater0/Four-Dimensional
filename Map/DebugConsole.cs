@@ -57,12 +57,18 @@ public partial class DebugConsole : CanvasLayer
 
     private const float PanelWidth = 1460f;
     private const float PanelHeight = 780f;
-    private const string AccentColor = "#72d2ff";
-    private const string SuccessColor = "#8dffb3";
-    private const string ErrorColor = "#ff9a9a";
-    private const string NeutralColor = "#d8e6f3";
-    private const string DimColor = "#88a1b7";
-    private const int MaxVisibleCompletions = 8;
+    private const string AccentColor = "#3794ff";
+    private const string SuccessColor = "#89d185";
+    private const string ErrorColor = "#f48771";
+    private const string NeutralColor = "#d4d4d4";
+    private const string DimColor = "#858585";
+    private const string EditorBorderColor = "#3c3c3c";
+    private const string EditorSelectionColor = "#264f78";
+    private const string EditorSelectionAccent = "#3794ff";
+    private const string EditorMutedColor = "#808080";
+    private const string EditorKeywordColor = "#4fc1ff";
+    private const string EditorSymbolColor = "#c586c0";
+    private const int MaxVisibleCompletions = 10;
 
     private static readonly CommandDefinition[] CommandDefinitions =
     [
@@ -137,17 +143,21 @@ public partial class DebugConsole : CanvasLayer
     ];
 
     private Control _root;
+    private ColorRect _backdrop;
     private PanelContainer _panel;
+    private PanelContainer _completionPopup;
     private LineEdit _input;
     private RichTextLabel _help;
     private RichTextLabel _assistHint;
     private RichTextLabel _completionList;
+    private RichTextLabel _completionDetails;
     private RichTextLabel _log;
     private readonly List<string> _history = new();
     private readonly List<CompletionItem> _visibleCompletions = new();
     private int _historyIndex = -1;
     private int _selectedCompletionIndex = -1;
     private string _lastObservedInput = string.Empty;
+    private InputContext _lastInputContext = new(string.Empty, Array.Empty<string>(), false);
 
     public bool IsOpen => Visible;
     private Map MapNode => field ??= GetParent() as Map ?? GetNodeOrNull<Map>("/root/Map");
@@ -158,7 +168,10 @@ public partial class DebugConsole : CanvasLayer
     {
         Layer = 30;
         ProcessMode = ProcessModeEnum.Always;
-        BuildUi();
+        if (!TryBindSceneUi())
+            BuildUi();
+
+        ApplySharedUiState();
         CloseImmediate();
         AppendInfo("调试控制台已就绪。按 ~ 或右上角齿轮打开。");
     }
@@ -186,6 +199,8 @@ public partial class DebugConsole : CanvasLayer
     {
         if (!Visible || _input == null)
             return;
+
+        UpdateCompletionPopupLayout();
 
         string current = _input.Text ?? string.Empty;
         if (!string.Equals(current, _lastObservedInput, StringComparison.Ordinal))
@@ -231,6 +246,146 @@ public partial class DebugConsole : CanvasLayer
             _input.ReleaseFocus();
     }
 
+    private bool TryBindSceneUi()
+    {
+        _root = GetNodeOrNull<Control>("Root");
+        _backdrop = GetNodeOrNull<ColorRect>("Root/Backdrop");
+        _panel = GetNodeOrNull<PanelContainer>("Root/Center/Panel");
+        _completionPopup = GetNodeOrNull<PanelContainer>("Root/SuggestPopup");
+        _input = GetNodeOrNull<LineEdit>("Root/Center/Panel/Margin/Layout/InputRow/CommandInput");
+        _assistHint = GetNodeOrNull<RichTextLabel>(
+            "Root/Center/Panel/Margin/Layout/AssistSection/AssistHint"
+        );
+        _completionList = GetNodeOrNull<RichTextLabel>(
+            "Root/SuggestPopup/PopupLayout/CompletionList"
+        );
+        _completionDetails = GetNodeOrNull<RichTextLabel>(
+            "Root/SuggestPopup/PopupLayout/CompletionDetails"
+        );
+        _help = GetNodeOrNull<RichTextLabel>("Root/Center/Panel/Margin/Layout/Help");
+        _log = GetNodeOrNull<RichTextLabel>("Root/Center/Panel/Margin/Layout/Log");
+
+        Button runButton = GetNodeOrNull<Button>("Root/Center/Panel/Margin/Layout/InputRow/RunButton");
+        Button clearButton = GetNodeOrNull<Button>(
+            "Root/Center/Panel/Margin/Layout/InputRow/ClearButton"
+        );
+        Button helpButton = GetNodeOrNull<Button>("Root/Center/Panel/Margin/Layout/InputRow/HelpButton");
+        Label title = GetNodeOrNull<Label>("Root/Center/Panel/Margin/Layout/Header/Title");
+        Label subtitle = GetNodeOrNull<Label>("Root/Center/Panel/Margin/Layout/Header/Subtitle");
+
+        if (
+            _root == null
+            || _panel == null
+            || _completionPopup == null
+            || _input == null
+            || _assistHint == null
+            || _completionList == null
+            || _completionDetails == null
+            || _help == null
+            || _log == null
+            || runButton == null
+            || clearButton == null
+            || helpButton == null
+            || title == null
+            || subtitle == null
+        )
+        {
+            return false;
+        }
+
+        _panel.CustomMinimumSize = new Vector2(PanelWidth, PanelHeight);
+        _panel.AddThemeStyleboxOverride("panel", BuildPanelStyle());
+
+        title.Text = "GM Console";
+        title.AddThemeFontSizeOverride("font_size", 34);
+        title.Modulate = new Color(0.84f, 0.95f, 1f, 1f);
+
+        subtitle.Text = "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。";
+        subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        subtitle.AddThemeFontSizeOverride("font_size", 18);
+        subtitle.Modulate = new Color(0.72f, 0.82f, 0.92f, 0.92f);
+
+        _input.PlaceholderText = "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20";
+        _input.ClearButtonEnabled = true;
+        _input.AddThemeFontSizeOverride("font_size", 20);
+        _input.AddThemeColorOverride("font_color", new Color(NeutralColor));
+        _input.AddThemeColorOverride("caret_color", new Color(AccentColor));
+        _input.AddThemeColorOverride("font_placeholder_color", new Color("#6a9955"));
+        _input.AddThemeStyleboxOverride("normal", BuildInputStyle());
+        _input.AddThemeStyleboxOverride("focus", BuildInputStyle(focused: true));
+        _input.TextSubmitted -= OnInputSubmitted;
+        _input.TextSubmitted += OnInputSubmitted;
+        _input.GuiInput -= OnInputGuiInput;
+        _input.GuiInput += OnInputGuiInput;
+
+        runButton.Text = "执行";
+        runButton.Pressed -= ExecuteCurrentInput;
+        runButton.Pressed += ExecuteCurrentInput;
+        runButton.AddThemeFontSizeOverride("font_size", 19);
+        ApplyButtonTheme(runButton);
+
+        clearButton.Text = "清屏";
+        clearButton.Pressed -= ClearLog;
+        clearButton.Pressed += ClearLog;
+        clearButton.AddThemeFontSizeOverride("font_size", 19);
+        ApplyButtonTheme(clearButton);
+
+        helpButton.Text = "帮助";
+        helpButton.Pressed -= RefreshHelp;
+        helpButton.Pressed += RefreshHelp;
+        helpButton.AddThemeFontSizeOverride("font_size", 19);
+        ApplyButtonTheme(helpButton);
+
+        return true;
+    }
+
+    private void ApplySharedUiState()
+    {
+        if (_backdrop != null)
+            _backdrop.Color = new Color(0.02f, 0.05f, 0.08f, 0.46f);
+
+        _help?.AddThemeFontSizeOverride("normal_font_size", 18);
+        _help?.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#252526")));
+        if (_help != null)
+            _help.Text = BuildHelpText();
+
+        _log?.AddThemeFontSizeOverride("normal_font_size", 18);
+        _log?.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#1e1e1e")));
+
+        _assistHint?.AddThemeFontSizeOverride("normal_font_size", 17);
+        _assistHint?.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#252526")));
+
+        _completionList?.AddThemeFontSizeOverride("normal_font_size", 16);
+        _completionList?.AddThemeStyleboxOverride("normal", BuildPopupColumnStyle(withLeftDivider: false));
+
+        _completionDetails?.AddThemeFontSizeOverride("normal_font_size", 15);
+        _completionDetails?.AddThemeStyleboxOverride("normal", BuildPopupColumnStyle(withLeftDivider: true));
+
+        if (_completionPopup != null)
+        {
+            _completionPopup.AddThemeStyleboxOverride("panel", BuildPopupStyle());
+            _completionPopup.Visible = false;
+        }
+    }
+
+    private void OnInputSubmitted(string _)
+    {
+        ExecuteCurrentInput();
+    }
+
+    private void ClearLog()
+    {
+        if (_log != null)
+            _log.Text = string.Empty;
+    }
+
+    private void RefreshHelp()
+    {
+        if (_help != null)
+            _help.Text = BuildHelpText();
+        AppendInfo("帮助已刷新。");
+    }
+
     private void BuildUi()
     {
         _root = new Control
@@ -242,14 +397,14 @@ public partial class DebugConsole : CanvasLayer
         _root.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
         AddChild(_root);
 
-        var backdrop = new ColorRect
+        _backdrop = new ColorRect
         {
             Name = "Backdrop",
-            Color = new Color(0.02f, 0.05f, 0.08f, 0.78f),
+            Color = new Color(0.02f, 0.05f, 0.08f, 0.46f),
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
-        backdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-        _root.AddChild(backdrop);
+        _backdrop.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+        _root.AddChild(_backdrop);
 
         var center = new CenterContainer
         {
@@ -312,6 +467,61 @@ public partial class DebugConsole : CanvasLayer
         _log.AddThemeFontSizeOverride("normal_font_size", 18);
         _log.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#09131d")));
         layout.AddChild(_log);
+
+        BuildSuggestPopupUi();
+    }
+
+    private void BuildSuggestPopupUi()
+    {
+        if (_root == null)
+            return;
+
+        _completionPopup = new PanelContainer
+        {
+            Name = "SuggestPopup",
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        var popupLayout = new HBoxContainer
+        {
+            Name = "PopupLayout",
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        popupLayout.AddThemeConstantOverride("separation", 0);
+        _completionPopup.AddChild(popupLayout);
+
+        _completionList = new RichTextLabel
+        {
+            Name = "CompletionList",
+            BbcodeEnabled = true,
+            ScrollActive = true,
+            FitContent = false,
+            SelectionEnabled = true,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            CustomMinimumSize = new Vector2(280f, 0f),
+        };
+        popupLayout.AddChild(_completionList);
+
+        _completionDetails = new RichTextLabel
+        {
+            Name = "CompletionDetails",
+            BbcodeEnabled = true,
+            ScrollActive = true,
+            FitContent = false,
+            SelectionEnabled = true,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            CustomMinimumSize = new Vector2(250f, 0f),
+        };
+        popupLayout.AddChild(_completionDetails);
+
+        _root.AddChild(_completionPopup);
     }
 
     private Control BuildAssistSection()
@@ -330,18 +540,6 @@ public partial class DebugConsole : CanvasLayer
         _assistHint.AddThemeFontSizeOverride("normal_font_size", 17);
         _assistHint.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#0d1c2a")));
         section.AddChild(_assistHint);
-
-        _completionList = new RichTextLabel
-        {
-            BbcodeEnabled = true,
-            ScrollActive = false,
-            FitContent = true,
-            CustomMinimumSize = new Vector2(0f, 40f),
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        _completionList.AddThemeFontSizeOverride("normal_font_size", 17);
-        _completionList.AddThemeStyleboxOverride("normal", BuildInnerPanelStyle(new Color("#0a1622")));
-        section.AddChild(_completionList);
 
         return section;
     }
@@ -380,6 +578,11 @@ public partial class DebugConsole : CanvasLayer
             ClearButtonEnabled = true,
         };
         _input.AddThemeFontSizeOverride("font_size", 20);
+        _input.AddThemeColorOverride("font_color", new Color(NeutralColor));
+        _input.AddThemeColorOverride("caret_color", new Color(AccentColor));
+        _input.AddThemeColorOverride("font_placeholder_color", new Color("#6a9955"));
+        _input.AddThemeStyleboxOverride("normal", BuildInputStyle());
+        _input.AddThemeStyleboxOverride("focus", BuildInputStyle(focused: true));
         _input.TextSubmitted += _ => ExecuteCurrentInput();
         _input.GuiInput += OnInputGuiInput;
         row.AddChild(_input);
@@ -412,26 +615,41 @@ public partial class DebugConsole : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
         button.AddThemeFontSizeOverride("font_size", 19);
+        ApplyButtonTheme(button);
         return button;
+    }
+
+    private static void ApplyButtonTheme(Button button)
+    {
+        if (button == null)
+            return;
+
+        button.AddThemeColorOverride("font_color", new Color(NeutralColor));
+        button.AddThemeColorOverride("font_pressed_color", new Color("#ffffff"));
+        button.AddThemeColorOverride("font_hover_color", new Color("#ffffff"));
+        button.AddThemeStyleboxOverride("normal", BuildButtonStyle(new Color("#2d2d30")));
+        button.AddThemeStyleboxOverride("hover", BuildButtonStyle(new Color("#37373d")));
+        button.AddThemeStyleboxOverride("pressed", BuildButtonStyle(new Color("#094771")));
+        button.AddThemeStyleboxOverride("focus", BuildButtonStyle(new Color("#37373d"), true));
     }
 
     private static StyleBoxFlat BuildPanelStyle()
     {
         return new StyleBoxFlat
         {
-            BgColor = new Color("#0e1723"),
-            BorderColor = new Color("#50b8e8"),
+            BgColor = new Color(0.118f, 0.118f, 0.118f, 0.84f),
+            BorderColor = new Color("#3c3c3c"),
             BorderWidthLeft = 2,
             BorderWidthTop = 2,
             BorderWidthRight = 2,
             BorderWidthBottom = 2,
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomRight = 12,
-            CornerRadiusBottomLeft = 12,
-            ShadowColor = new Color(0f, 0f, 0f, 0.35f),
-            ShadowSize = 10,
-            ShadowOffset = new Vector2(0f, 3f),
+            CornerRadiusTopLeft = 6,
+            CornerRadiusTopRight = 6,
+            CornerRadiusBottomRight = 6,
+            CornerRadiusBottomLeft = 6,
+            ShadowColor = new Color(0f, 0f, 0f, 0.45f),
+            ShadowSize = 16,
+            ShadowOffset = new Vector2(0f, 6f),
         };
     }
 
@@ -445,14 +663,97 @@ public partial class DebugConsole : CanvasLayer
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 8,
-            CornerRadiusTopRight = 8,
-            CornerRadiusBottomRight = 8,
-            CornerRadiusBottomLeft = 8,
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomRight = 4,
+            CornerRadiusBottomLeft = 4,
             ContentMarginLeft = 10,
             ContentMarginTop = 8,
             ContentMarginRight = 10,
             ContentMarginBottom = 8,
+        };
+    }
+
+    private static StyleBoxFlat BuildButtonStyle(Color bg, bool focused = false)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = bg,
+            BorderColor = focused ? new Color(AccentColor) : new Color(EditorBorderColor),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomRight = 4,
+            CornerRadiusBottomLeft = 4,
+            ContentMarginLeft = 12,
+            ContentMarginTop = 8,
+            ContentMarginRight = 12,
+            ContentMarginBottom = 8,
+        };
+    }
+
+    private static StyleBoxFlat BuildInputStyle(bool focused = false)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color("#181818"),
+            BorderColor = focused ? new Color(AccentColor) : new Color(EditorBorderColor),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomRight = 4,
+            CornerRadiusBottomLeft = 4,
+            ContentMarginLeft = 12,
+            ContentMarginTop = 10,
+            ContentMarginRight = 12,
+            ContentMarginBottom = 10,
+        };
+    }
+
+    private static StyleBoxFlat BuildPopupStyle()
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(0.118f, 0.118f, 0.118f, 0.78f),
+            BorderColor = new Color(0.31f, 0.31f, 0.31f, 0.95f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 5,
+            CornerRadiusTopRight = 5,
+            CornerRadiusBottomRight = 5,
+            CornerRadiusBottomLeft = 5,
+            ContentMarginLeft = 6,
+            ContentMarginTop = 6,
+            ContentMarginRight = 6,
+            ContentMarginBottom = 6,
+            ShadowColor = new Color(0f, 0f, 0f, 0.62f),
+            ShadowSize = 14,
+            ShadowOffset = new Vector2(0f, 6f),
+        };
+    }
+
+    private static StyleBoxFlat BuildPopupColumnStyle(bool withLeftDivider)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(0f, 0f, 0f, 0f),
+            BorderColor = withLeftDivider ? new Color(0.26f, 0.26f, 0.26f, 0.95f) : new Color(0f, 0f, 0f, 0f),
+            BorderWidthLeft = withLeftDivider ? 1 : 0,
+            BorderWidthTop = 0,
+            BorderWidthRight = 0,
+            BorderWidthBottom = 0,
+            ContentMarginLeft = withLeftDivider ? 12 : 6,
+            ContentMarginTop = 4,
+            ContentMarginRight = 8,
+            ContentMarginBottom = 4,
         };
     }
 
@@ -547,7 +848,7 @@ public partial class DebugConsole : CanvasLayer
                 (_selectedCompletionIndex + direction + _visibleCompletions.Count)
                 % _visibleCompletions.Count;
 
-        RenderCompletions();
+        RenderCompletionPopup();
     }
 
     private bool HasVisibleCompletions() => _visibleCompletions.Count > 0;
@@ -596,17 +897,54 @@ public partial class DebugConsole : CanvasLayer
     {
         string raw = _input?.Text ?? string.Empty;
         InputContext context = BuildInputContext(raw);
+        _lastInputContext = context;
 
         RenderAssistHint(BuildAssistHint(context));
         UpdateCompletionItems(context);
-        RenderCompletions();
+        RenderCompletionPopup();
     }
 
     private void ClearCompletionState()
     {
         _visibleCompletions.Clear();
         _selectedCompletionIndex = -1;
-        RenderCompletions();
+        RenderCompletionPopup();
+    }
+
+    private void UpdateCompletionPopupLayout()
+    {
+        if (_completionPopup == null || _input == null || _root == null)
+            return;
+
+        Rect2 inputRect = _input.GetGlobalRect();
+        Vector2 inputPositionInRoot = inputRect.Position - _root.GlobalPosition;
+        Vector2 rootSize = _root.Size;
+
+        const float horizontalMargin = 12f;
+        const float verticalSpacing = 2f;
+        const float bottomMargin = 12f;
+        const float minPopupWidth = 460f;
+        const float maxPopupHeight = 320f;
+        const float minPopupHeight = 120f;
+
+        float maxWidth = Math.Max(minPopupWidth, rootSize.X - horizontalMargin * 2f);
+        float popupWidth = Mathf.Clamp(inputRect.Size.X + 220f, minPopupWidth, maxWidth);
+
+        float popupX = inputPositionInRoot.X;
+        float maxX = Math.Max(horizontalMargin, rootSize.X - popupWidth - horizontalMargin);
+        popupX = Mathf.Clamp(popupX, horizontalMargin, maxX);
+
+        float popupY = inputPositionInRoot.Y + inputRect.Size.Y + verticalSpacing;
+        float availableHeight = rootSize.Y - popupY - bottomMargin;
+        int visibleCount = Math.Max(1, _visibleCompletions.Count);
+        float desiredHeight = 44f + visibleCount * 28f;
+        float popupHeight = Mathf.Clamp(desiredHeight, minPopupHeight, maxPopupHeight);
+        popupHeight = Mathf.Min(popupHeight, availableHeight);
+        if (availableHeight < minPopupHeight)
+            popupHeight = Mathf.Max(52f, availableHeight);
+
+        _completionPopup.Position = new Vector2(popupX, popupY);
+        _completionPopup.Size = new Vector2(popupWidth, popupHeight);
     }
 
     private static InputContext BuildInputContext(string raw)
@@ -645,9 +983,112 @@ public partial class DebugConsole : CanvasLayer
             _selectedCompletionIndex = 0;
     }
 
+    private void RenderCompletionPopup()
+    {
+        if (_completionList == null || _completionDetails == null || _completionPopup == null)
+            return;
+
+        bool hasInput = !string.IsNullOrWhiteSpace(_input?.Text);
+        if (!hasInput || _visibleCompletions.Count == 0)
+        {
+            _completionPopup.Visible = false;
+            _completionList.Text = string.Empty;
+            _completionDetails.Text = string.Empty;
+            return;
+        }
+
+        _completionPopup.Visible = Visible;
+        UpdateCompletionPopupLayout();
+
+        var builder = new StringBuilder();
+        for (int i = 0; i < _visibleCompletions.Count; i++)
+        {
+            CompletionItem item = _visibleCompletions[i];
+            bool selected = i == _selectedCompletionIndex;
+            string detail = BuildCompletionInlineDetail(item);
+            if (selected)
+            {
+                builder.Append(
+                    $"[bgcolor={EditorSelectionColor}][color=#ffffff]  {EscapeBbcode(item.InsertText)}[/color]"
+                        + $"[color=#9cdcfe]    {EscapeBbcode(detail)}[/color][/bgcolor]"
+                );
+            }
+            else
+            {
+                builder.Append(
+                    $"[color=#d4d4d4]  {EscapeBbcode(item.InsertText)}[/color]"
+                        + $"[color=#808080]    {EscapeBbcode(detail)}[/color]"
+                );
+            }
+
+            if (i < _visibleCompletions.Count - 1)
+                builder.Append('\n');
+        }
+
+        _completionList.Text = builder.ToString();
+        int selectedIndex = _selectedCompletionIndex < 0 ? 0 : _selectedCompletionIndex;
+        selectedIndex = Math.Clamp(selectedIndex, 0, _visibleCompletions.Count - 1);
+        _completionDetails.Text = BuildCompletionDetails(_visibleCompletions[selectedIndex]);
+    }
+
+    private static string BuildCompletionInlineDetail(CompletionItem item)
+    {
+        if (item == null)
+            return string.Empty;
+
+        string detail = item.DisplayText ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(detail))
+            return string.Empty;
+
+        if (
+            !string.IsNullOrWhiteSpace(item.InsertText)
+            && detail.StartsWith(item.InsertText, StringComparison.OrdinalIgnoreCase)
+        )
+        {
+            detail = detail[item.InsertText.Length..].TrimStart();
+            if (detail.StartsWith("·", StringComparison.Ordinal))
+                detail = detail[1..].TrimStart();
+        }
+
+        return detail;
+    }
+
+    private string BuildCompletionDetails(CompletionItem item)
+    {
+        if (item == null)
+            return string.Empty;
+
+        var builder = new StringBuilder();
+        builder.Append($"[color={EditorMutedColor}]Completion[/color]\n");
+        builder.Append($"[color=#ffffff]{EscapeBbcode(item.InsertText)}[/color]\n");
+        builder.Append($"[color={DimColor}]{EscapeBbcode(BuildCompletionInlineDetail(item))}[/color]");
+
+        if (item.SearchTerms.Length > 0)
+        {
+            builder.Append("\n\n");
+            builder.Append($"[color={EditorKeywordColor}]Matches[/color]\n");
+            builder.Append(
+                $"[color={EditorMutedColor}]{EscapeBbcode(string.Join(", ", item.SearchTerms.Take(6)))}[/color]"
+            );
+        }
+
+        if (_lastInputContext.Tokens.Length > 0)
+        {
+            CommandDefinition definition = ResolveCommandDefinition(_lastInputContext.Tokens[0]);
+            if (definition != null)
+            {
+                builder.Append("\n\n");
+                builder.Append($"[color={EditorSymbolColor}]Context[/color]\n");
+                builder.Append($"[color={NeutralColor}]{EscapeBbcode(definition.Usage)}[/color]");
+            }
+        }
+
+        return builder.ToString();
+    }
+
     private void RenderCompletions()
     {
-        if (_completionList == null)
+        if (_completionList == null || _completionDetails == null || _completionPopup == null)
             return;
 
         if (_visibleCompletions.Count == 0)

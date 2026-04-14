@@ -19,7 +19,7 @@ public partial class Armon : EnemyCharacter
         BattleNode.StartEffectList.Add(StartPassive);
     }
 
-    protected override void OnTurnStart()
+    public override void OnTurnStart()
     {
         base.OnTurnStart();
     }

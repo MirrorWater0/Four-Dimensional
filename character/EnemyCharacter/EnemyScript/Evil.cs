@@ -35,12 +35,12 @@ public partial class Evil : EnemyCharacter
         DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
     }
 
-    public override void StartAction()
+    public override void OnTurnStart()
     {
+        base.OnTurnStart();
         Count++;
         Passive(null);
         UpdatePassiveDescription();
-        base.StartAction();
     }
 
     public override void Passive(Skill skill)

@@ -7,7 +7,9 @@ using Godot;
 public partial class LevelNode : ColorRect
 {
     private const int WeakEnemyStageCount = 5;
-    private static readonly PackedScene TipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+    private static readonly PackedScene TipScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/Tip.tscn"
+    );
     private static readonly Vector2 HoverTipOffset = new Vector2(36f, 28f);
     private static Tip s_sharedHoverTip;
     private static LevelNode s_hoverTipOwner;
@@ -86,6 +88,12 @@ public partial class LevelNode : ColorRect
     public override void _Process(double delta)
     {
         if (State != LevelState.Completed || !IsVisibleInTree())
+        {
+            ReleaseHoverTipOwnership();
+            return;
+        }
+
+        if (HasVisibleBlockingSiteUi())
         {
             ReleaseHoverTipOwnership();
             return;
@@ -400,24 +408,34 @@ public partial class LevelNode : ColorRect
             new ArmonRegedit(),
             new EvilRegedit(),
             new AlienBodyRegedit(),
+            new TurbineRegedit(),
         ];
-        EnemyRegedit[] strongEnemyRegedits =
-        [
-            new FearWormRegedit(),
-            new ArmonRegedit(),
-            new AlienBodyRegedit(),
-            new RedHuskRegedit(),
-            new FerociouessRegedit(),
-        ];
-        EnemyRegedit[] enemyRegedits =
-            SelfCoordinate.X < WeakEnemyStageCount ? weakEnemyRegedits : strongEnemyRegedits;
+        EnemyRegedit[] strongEnemyRegedits = [new FerociouessRegedit()];
+
         List<EnemyRegedit> list = new()
         {
-            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
-            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
-            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
-            enemyRegedits[rng.Next(enemyRegedits.Length)].GetRegedit(),
+            weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit(),
         };
+        if (SelfCoordinate.X >= WeakEnemyStageCount)
+        {
+            int strongEnemyCount = rng.Next(0, 3);
+            for (int i = 0; i < strongEnemyCount; i++)
+            {
+                list.Add(strongEnemyRegedits[rng.Next(strongEnemyRegedits.Length)].GetRegedit());
+            }
+
+            for (int i = 0; i < (2 - strongEnemyCount) * 2; i++)
+            {
+                list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
+            }
+        }
+        else
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
+            }
+        }
         RandomPosition(list, RandomNum);
         // var list = new List<EnemyRegedit>
         // {
@@ -503,8 +521,7 @@ public partial class LevelNode : ColorRect
         }
 
         s_sharedHoverTip =
-            layer.GetNodeOrNull<Tip>("LevelNodeTip")
-            ?? layer.GetNodeOrNull<Tip>("MapLevelNodeTip");
+            layer.GetNodeOrNull<Tip>("LevelNodeTip") ?? layer.GetNodeOrNull<Tip>("MapLevelNodeTip");
         if (s_sharedHoverTip != null)
         {
             s_sharedHoverTip.Name = "LevelNodeTip";
@@ -539,5 +556,44 @@ public partial class LevelNode : ColorRect
             return false;
 
         return new Rect2(Vector2.Zero, Size).HasPoint(GetLocalMousePosition());
+    }
+
+    private bool HasVisibleBlockingSiteUi()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return false;
+
+        var siteUiLayer =
+            root.GetNodeOrNull<CanvasLayer>("Map/SiteUI")
+            ?? root.GetNodeOrNull<CanvasLayer>("/root/Map/SiteUI");
+        var frontUiLayer =
+            root.GetNodeOrNull<CanvasLayer>("Map/BattleReadyLayer")
+            ?? root.GetNodeOrNull<CanvasLayer>("/root/Map/BattleReadyLayer");
+
+        return LayerHasVisibleChildren(siteUiLayer) || LayerHasVisibleChildren(frontUiLayer);
+    }
+
+    private static bool LayerHasVisibleChildren(CanvasLayer layer)
+    {
+        if (layer == null)
+            return false;
+
+        foreach (Node child in layer.GetChildren())
+        {
+            if (child == null || child.IsQueuedForDeletion())
+                continue;
+
+            if (child is CanvasItem canvasItem)
+            {
+                if (canvasItem.Visible)
+                    return true;
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 }

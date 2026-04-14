@@ -220,6 +220,28 @@ public partial class FerociouessRegedit : EnemyRegedit
     }
 }
 
+public partial class TurbineRegedit : EnemyRegedit
+{
+    public TurbineRegedit()
+    {
+        CharacterName = "Turbine";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Turbine.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
+
+        MaxLife = 85;
+        Power = 12;
+        Survivability = 12;
+        Speed = 9;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
+
+        PassiveName = global::Turbine.PassiveNameText;
+        PassiveDescription = global::Turbine.PassiveDescriptionText;
+    }
+}
+
 public enum EnemiesEnum
 {
     Evil,
@@ -230,4 +252,5 @@ public enum EnemiesEnum
     RedHusk,
     War,
     Ferociouess,
+    Turbine,
 }

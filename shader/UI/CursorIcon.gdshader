@@ -10,7 +10,8 @@ uniform float shape_length : hint_range(0.1, 1.0) = 0.7;
 
 void fragment() {
     // 1. 坐标变换与旋转（1.5倍缩放防止切边）
-    vec2 uv = (UV - 0.5) * 0.6;
+    vec2 uv = (UV - 0.36) * 0.6;
+	uv.x += 0.05;
     float s = sin(tilt_angle);
     float c = cos(tilt_angle);
     uv = mat2(vec2(c, -s), vec2(s, c)) * uv;

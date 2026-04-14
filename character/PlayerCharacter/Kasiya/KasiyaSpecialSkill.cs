@@ -63,3 +63,36 @@ public class HolySeal : Skill
         );
     }
 }
+
+public class AegisPledge : Skill
+{
+    private const int PowerGain = 3;
+    private const int EnergyCost = 3;
+    private const int BarricadeStacks = 1;
+
+    public AegisPledge()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "壁垒誓约";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Barricade,
+                    stacks: BarricadeStacks,
+                    target: RelativeTarget(0)
+                )
+            )
+        );
+    }
+}

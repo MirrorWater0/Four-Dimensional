@@ -41,8 +41,8 @@ public partial class SoundBarrier : Skill
 
 public partial class SonicDeflection : Skill
 {
-    private const int DamageImmuneStacks = 1;
-    private const int BaseBlock = 6;
+    private const int DamageImmuneStacks = 2;
+    private const int BaseBlock = 3;
 
     public SonicDeflection()
         : base(SkillTypes.Survive)
@@ -56,12 +56,13 @@ public partial class SonicDeflection : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
                 target: RelativeTarget(0)
-            )
+            ),
+            ModifyPropertyStep(PropertyType.Survivability, -2, RelativeTarget(0))
         );
     }
 }
@@ -117,4 +118,3 @@ public partial class ResonantWard : Skill
         );
     }
 }
-
