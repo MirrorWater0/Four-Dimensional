@@ -140,6 +140,7 @@ public partial class EquipmentInterface : Control
     private CardSlot[] _inventoryCards = Array.Empty<CardSlot>();
     private Tween _characterSelectorTween;
     private bool _characterSelectorPositioned;
+    private int _pendingCharacterSelectorIndex = -1;
     public bool HasEquipmentChanges { get; private set; }
 
     public override void _Ready()
@@ -161,6 +162,7 @@ public partial class EquipmentInterface : Control
         for (int i = 0; i < CharacterButtons.Length; i++)
         {
             int captured = i;
+            CharacterButtons[i].ButtonDown += () => OnCharacterButtonPressed(captured);
             CharacterButtons[i].Pressed += () => OnCharacterButtonPressed(captured);
             CharacterButtons[i].ToggleMode = true;
         }
@@ -200,6 +202,11 @@ public partial class EquipmentInterface : Control
         if (characterIndex == _selectedCharacterIndex)
             return;
 
+        // Immediate visual response: move selector thumb/highlight on press,
+        // while the detailed character switch animation continues asynchronously.
+        _pendingCharacterSelectorIndex = characterIndex;
+        RefreshCharacterButtons();
+
         await SwitchCharacterWithAnimationAsync(characterIndex);
     }
 
@@ -238,6 +245,7 @@ public partial class EquipmentInterface : Control
                 _isCharacterSwitchSlotInsertPending = false;
                 RefreshSlots();
             }
+            _pendingCharacterSelectorIndex = -1;
             SetEquipAnimating(false);
         }
     }
@@ -249,15 +257,19 @@ public partial class EquipmentInterface : Control
 
     private void UpdateCharacterSelectorPosition(bool animate)
     {
+        int selectorIndex =
+            _pendingCharacterSelectorIndex >= 0
+                ? _pendingCharacterSelectorIndex
+                : _selectedCharacterIndex;
         if (
             CharacterButtons == null
             || CharacterButtons.Length == 0
-            || _selectedCharacterIndex < 0
-            || _selectedCharacterIndex >= CharacterButtons.Length
+            || selectorIndex < 0
+            || selectorIndex >= CharacterButtons.Length
         )
             return;
 
-        var button = CharacterButtons[_selectedCharacterIndex];
+        var button = CharacterButtons[selectorIndex];
         if (button == null || !button.Visible || !GodotObject.IsInstanceValid(button))
             return;
 
@@ -571,6 +583,10 @@ public partial class EquipmentInterface : Control
 
     private void RefreshCharacterButtons()
     {
+        int selectorIndex =
+            _pendingCharacterSelectorIndex >= 0
+                ? _pendingCharacterSelectorIndex
+                : _selectedCharacterIndex;
         var players = GameInfo.PlayerCharacters;
         for (int i = 0; i < CharacterButtons.Length; i++)
         {
@@ -586,7 +602,7 @@ public partial class EquipmentInterface : Control
             int equippedCount = CountEquippedItems(info.Equipments);
             CharacterButtons[i].Text = $"{characterName}\n装备 {equippedCount}/{SlotCount}";
 
-            bool selected = i == _selectedCharacterIndex;
+            bool selected = i == selectorIndex;
             CharacterButtons[i].SetPressedNoSignal(selected);
             CharacterButtons[i].Modulate = selected
                 ? Colors.White

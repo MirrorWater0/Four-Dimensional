@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
-[ext_resource type="Texture2D" uid="uid://dfgi24opauw8h" path="res://asset/0.jpg" id="4_r4boa"]
 [ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
@@ -39,9 +38,9 @@ code = "shader_type canvas_item;
 
 #define zoom   1.800
 #define tile   0.850
-#define speed  0.010 
+#define speed  0.006 
 
-#define brightness 0.0015
+#define brightness 0.0010
 #define darkmatter 0.300
 #define distfading 0.730
 #define saturation 0.850
@@ -89,7 +88,7 @@ void fragment()
 		s+=stepsize;
 	}
 	v=mix(vec3(length(v)),v,saturation); //color adjust
-	fragColor = vec4(v*.01,1.)*moduate;	
+	fragColor = vec4(v*.0085,1.)*moduate;	
 	
 }"
 
@@ -436,13 +435,12 @@ script = ExtResource("1_n3ui2")
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1636278870]
 environment = SubResource("Environment_ttuon")
 
-[node name="bg" type="TextureRect" parent="." unique_id=1303530490]
+[node name="bg" type="ColorRect" parent="." unique_id=2102393615]
 material = SubResource("ShaderMaterial_ts8fe")
 offset_left = -257.0
 offset_top = -225.0
 offset_right = 2303.0
 offset_bottom = 1215.0
-texture = ExtResource("4_r4boa")
 metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="." unique_id=489797672]

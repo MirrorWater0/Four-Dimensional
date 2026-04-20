@@ -1,5 +1,5 @@
 using System;
-using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Godot;
@@ -34,8 +34,8 @@ public partial class BattlePreview : Control
     ExitButton exitButton => field ??= GetNode<ExitButton>("ExitButton");
     Map MapNode => field ??= GetNode<Map>("/root/Map");
     public int RandomNum;
-    public static System.Collections.Generic.Dictionary<int, int> remapEnemy { get; } =
-        new System.Collections.Generic.Dictionary<int, int>()
+    public static Dictionary<int, int> remapEnemy { get; } =
+        new Dictionary<int, int>()
         {
             // 第一行 (子节点 0, 1, 2)
             [7] = 3, // 对应子节点 0
@@ -53,16 +53,28 @@ public partial class BattlePreview : Control
             [3] = 7, // 对应子节点 8
         };
 
-    private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
-    private Tip PropertyTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
     private bool _isTransitioning;
-    private readonly System.Collections.Generic.Dictionary<Control, Vector2> _basePositions = [];
+    private readonly Dictionary<Control, Vector2> _basePositions = [];
+    private readonly List<Tip> _previewPortraitTips = [];
+    private CanvasLayer _tipLayer;
+    private PackedScene _tipScene;
+    private int _previewTipCounter;
+    private bool _hidePortraitTipsQueued;
+    private PortraitTipPair _activePortraitTips;
 
     private readonly struct AssemblyItem(Control control, Vector2 offset, float delay)
     {
         public Control Control { get; } = control;
         public Vector2 Offset { get; } = offset;
         public float Delay { get; } = delay;
+    }
+
+    private sealed class PortraitTipPair
+    {
+        public string SkillText;
+        public string PropertyText;
+        public Tip SkillTip;
+        public Tip PropertyTip;
     }
 
     public override void _Ready()
@@ -103,6 +115,12 @@ public partial class BattlePreview : Control
             GlobalFunction.TweenShader(tex, "cut_x", 0.6f, 0.2f);
             GlobalFunction.TweenShader(tex, "cut_y", 0.6f, 0.2f);
         };
+    }
+
+    public override void _ExitTree()
+    {
+        HidePortraitTooltipsImmediate();
+        DisposePreviewPortraitTips();
     }
 
     private void UpdateBrushButtonMaterialSize()
@@ -233,40 +251,95 @@ public partial class BattlePreview : Control
 
     private void EnsureTipLayer()
     {
-        var root = GetTree().Root;
-        var existingLayer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
-
-        if (existingLayer == null)
-        {
-            existingLayer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
-            root.CallDeferred(Node.MethodName.AddChild, existingLayer);
-        }
-
-        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
-        if (tipScene == null)
+        var root = GetTree()?.Root;
+        if (root == null)
             return;
 
-        if (!existingLayer.HasNode("Tip"))
+        _tipLayer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (_tipLayer == null)
         {
-            var tip = tipScene.Instantiate<Tip>();
-            tip.Name = "Tip";
-            tip.FollowMouse = true;
-            tip.AnchorOffset = new Vector2(20f, 20f);
-            existingLayer.AddChild(tip);
+            _tipLayer = new CanvasLayer { Layer = 8, Name = "TipLayer" };
+            root.AddChild(_tipLayer);
         }
 
-        if (!existingLayer.HasNode("BuffTip"))
+        _tipScene ??= GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+    }
+
+    private Tip CreatePreviewPortraitTip(string text, Vector2 anchorOffset)
+    {
+        EnsureTipLayer();
+        if (_tipLayer == null || _tipScene == null)
+            return null;
+
+        var tip = _tipScene.Instantiate<Tip>();
+        tip.Name = $"PreviewTip_{++_previewTipCounter}";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = anchorOffset;
+        tip.FadeOutDuration = 0f;
+        _tipLayer.AddChild(tip);
+        tip.PreloadText(text ?? string.Empty);
+        _previewPortraitTips.Add(tip);
+        return tip;
+    }
+
+    private PortraitTipPair CreatePortraitTipPair(string skillText, string propertyText)
+    {
+        return new PortraitTipPair
         {
-            var buffTip = tipScene.Instantiate<Tip>();
-            buffTip.Name = "BuffTip";
-            buffTip.FollowMouse = true;
-            buffTip.AnchorOffset = new Vector2(-20f, 20f);
-            existingLayer.AddChild(buffTip);
+            SkillText = skillText ?? string.Empty,
+            PropertyText = propertyText ?? string.Empty,
+        };
+    }
+
+    private bool EnsurePortraitTipPairReady(PortraitTipPair tips)
+    {
+        if (tips == null)
+            return false;
+
+        bool hasSkillTip = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
+        bool hasPropertyTip =
+            tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
+        if (hasSkillTip && hasPropertyTip)
+            return true;
+
+        if (!hasSkillTip)
+            tips.SkillTip = CreatePreviewPortraitTip(tips.SkillText, new Vector2(20f, 20f));
+        if (!hasPropertyTip)
+            tips.PropertyTip = CreatePreviewPortraitTip(tips.PropertyText, new Vector2(-20f, 20f));
+
+        bool readySkill = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
+        bool readyProperty =
+            tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
+
+        if (readySkill && readyProperty)
+            return true;
+
+        if (readySkill)
+            tips.SkillTip.QueueFree();
+        if (readyProperty)
+            tips.PropertyTip.QueueFree();
+        tips.SkillTip = null;
+        tips.PropertyTip = null;
+        return false;
+    }
+
+    private void DisposePreviewPortraitTips()
+    {
+        for (int i = 0; i < _previewPortraitTips.Count; i++)
+        {
+            var tip = _previewPortraitTips[i];
+            if (tip != null && GodotObject.IsInstanceValid(tip))
+                tip.QueueFree();
         }
+
+        _previewPortraitTips.Clear();
+        _activePortraitTips = null;
+        _previewTipCounter = 0;
     }
 
     public void SetPortraitPostion()
     {
+        DisposePreviewPortraitTips();
         ClearGrid();
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
@@ -565,36 +638,69 @@ public partial class BattlePreview : Control
         if (portrait?.PortaitButton == null)
             return;
 
-        portrait.PortaitButton.MouseEntered += () => ShowPortraitTooltips(skillText, propertyText);
-        portrait.PortaitButton.MouseExited += HidePortraitTooltips;
+        var tips = CreatePortraitTipPair(skillText, propertyText);
+        if (tips == null)
+            return;
+
+        portrait.PortaitButton.MouseEntered += () => ShowPortraitTooltips(tips);
+        portrait.PortaitButton.MouseExited += () => QueueHidePortraitTooltips(tips);
     }
 
-    private void ShowPortraitTooltips(string skillText, string propertyText)
+    private void ShowPortraitTooltips(PortraitTipPair tips)
     {
-        if (SkillTooltip != null)
+        if (tips == null)
+            return;
+        if (!EnsurePortraitTipPairReady(tips))
+            return;
+
+        _hidePortraitTipsQueued = false;
+
+        if (_activePortraitTips != null && _activePortraitTips != tips)
         {
-            SkillTooltip.FollowMouse = true;
-            SkillTooltip.AnchorOffset = new Vector2(20f, 20f);
-            SkillTooltip.SetText(skillText ?? string.Empty);
+            _activePortraitTips.SkillTip?.HideTooltip();
+            _activePortraitTips.PropertyTip?.HideTooltip();
         }
 
-        if (PropertyTooltip != null)
-        {
-            PropertyTooltip.FollowMouse = true;
-            PropertyTooltip.AnchorOffset = new Vector2(-20f, 20f);
-            PropertyTooltip.SetText(propertyText ?? string.Empty);
-        }
+        tips.SkillTip?.ShowPreloaded(followMouse: true);
+        tips.PropertyTip?.ShowPreloaded(followMouse: true);
+        _activePortraitTips = tips;
     }
 
-    private void HidePortraitTooltips()
+    private void QueueHidePortraitTooltips(PortraitTipPair tips)
     {
-        SkillTooltip?.HideTooltip();
-        PropertyTooltip?.HideTooltip();
+        if (tips == null || _activePortraitTips != tips)
+            return;
+
+        if (_hidePortraitTipsQueued)
+            return;
+
+        _hidePortraitTipsQueued = true;
+        CallDeferred(nameof(HidePortraitTooltipsDeferred));
+    }
+
+    private void HidePortraitTooltipsDeferred()
+    {
+        if (!_hidePortraitTipsQueued)
+            return;
+
+        _hidePortraitTipsQueued = false;
+        HidePortraitTooltipsImmediate();
+    }
+
+    private void HidePortraitTooltipsImmediate()
+    {
+        _hidePortraitTipsQueued = false;
+        if (_activePortraitTips == null)
+            return;
+
+        _activePortraitTips.SkillTip?.HideTooltip();
+        _activePortraitTips.PropertyTip?.HideTooltip();
+        _activePortraitTips = null;
     }
 
     public void Close()
     {
-        HidePortraitTooltips();
+        HidePortraitTooltipsImmediate();
         _ = CloseAsync();
     }
 

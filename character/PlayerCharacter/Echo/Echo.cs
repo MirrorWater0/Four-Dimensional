@@ -3,13 +3,13 @@ using Godot;
 
 public partial class Echo : PlayerCharacter
 {
-    private const int PassiveSurviveEnergyGain = 1;
-    private const int PassiveNonSurvivePowerGain = 2;
+    private const int PassiveSurvivePowerGain = 2;
+    private const int PassiveNonSurviveEnergyGain = 1;
 
     public const string PassiveNameText = "余响";
     public static string PassiveDescriptionText =>
-        $"使用生存技能时：获得{PassiveSurviveEnergyGain}点能量。\n"
-        + $"使用非生存技能时：获得{PassiveNonSurvivePowerGain}点力量。";
+        $"使用生存技能时：获得{PassiveSurvivePowerGain}点力量。\n"
+        + $"使用非生存技能时：获得{PassiveNonSurviveEnergyGain}点能量。";
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
@@ -47,10 +47,10 @@ public partial class Echo : PlayerCharacter
 
         if (skill.SkillType != Skill.SkillTypes.Survive)
         {
-            await IncreaseProperties(PropertyType.Power, PassiveNonSurvivePowerGain, this);
+            UpdataEnergy(PassiveNonSurviveEnergyGain, this);
             return;
         }
 
-        UpdataEnergy(PassiveSurviveEnergyGain, this);
+        await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
     }
 }

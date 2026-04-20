@@ -1,8 +1,8 @@
 shader_type canvas_item;
 
-uniform vec4 base_color : source_color = vec4(0.18, 0.78, 1.0, 1.0);
-uniform vec4 accent_color : source_color = vec4(0.82, 0.96, 1.0, 1.0);
-uniform vec4 glow_color : source_color = vec4(0.20, 0.55, 1.0, 1.0);
+uniform vec4 main_color : source_color = vec4(0.16, 0.78, 1.0, 1.0);
+uniform vec4 accent_color : source_color = vec4(0.84, 0.97, 1.0, 1.0);
+uniform vec4 glow_color : source_color = vec4(0.24, 0.58, 1.0, 1.0);
 
 float sdHexagon(vec2 p, float r) {
     const vec3 k = vec3(-0.8660254, 0.5, 0.57735027);
@@ -20,35 +20,36 @@ float sdSegment(vec2 p, vec2 a, vec2 b) {
 }
 
 void fragment() {
-    vec2 uv = UV - 0.5;
-    uv.y += 0.02;
-    uv *= 2.0;
+    vec2 uv = (UV - 0.5) * 2.0;
+    uv.y += 0.04;
     uv.x *= 0.92;
-    uv.y *= 1.06;
 
-    float aa = max(fwidth(uv.x), fwidth(uv.y)) * 1.5;
+    float aa = max(fwidth(uv.x), fwidth(uv.y)) * 1.4;
+    float pulse = 0.5 + 0.5 * sin(TIME * 2.6);
 
-    float outer_hex = sdHexagon(uv + vec2(0.0, -0.03), 0.52);
-    float inner_hex = sdHexagon(uv + vec2(0.0, -0.03), 0.34);
+    float outer_hex = sdHexagon(uv + vec2(0.0, -0.05), 0.58);
+    float mid_hex = sdHexagon(uv + vec2(0.0, -0.03), 0.42);
+    float inner_hex = sdHexagon(uv + vec2(0.0, 0.00), 0.22);
 
-    float crest = 1.0 - smoothstep(aa, -aa, max(abs(uv.x) - 0.12, abs(uv.y + 0.02) - 0.24));
-    float spine = 1.0 - smoothstep(aa, -aa, sdSegment(uv, vec2(0.0, -0.30), vec2(0.0, 0.20)) - 0.05);
-    float cross = max(crest, spine);
+    float shell = smoothstep(aa, -aa, outer_hex) * (1.0 - smoothstep(aa, -aa, mid_hex));
+    float core = smoothstep(aa, -aa, mid_hex) * (1.0 - smoothstep(aa, -aa, inner_hex));
+    float node = smoothstep(aa, -aa, inner_hex);
 
-    float ring = smoothstep(aa, -aa, outer_hex) * (1.0 - smoothstep(aa, -aa, inner_hex));
-    float core = smoothstep(aa, -aa, inner_hex);
+    float brace_left = 1.0 - smoothstep(0.03, 0.06, sdSegment(uv, vec2(-0.34, -0.06), vec2(-0.06, 0.28)));
+    float brace_right = 1.0 - smoothstep(0.03, 0.06, sdSegment(uv, vec2(0.34, -0.06), vec2(0.06, 0.28)));
+    float brace_top = 1.0 - smoothstep(0.03, 0.06, sdSegment(uv, vec2(-0.18, -0.26), vec2(0.18, -0.26)));
+    float braces = max(brace_top, max(brace_left, brace_right));
 
-    float sweep = clamp(0.5 + 0.5 * sin(TIME * 2.8 + uv.y * 14.0), 0.0, 1.0);
-    float scan = smoothstep(-0.26, -0.02, uv.y) * (1.0 - smoothstep(-0.02, 0.22, uv.y));
-    float shine = scan * sweep;
+    float sweep = smoothstep(-0.42, -0.06, uv.y) * (1.0 - smoothstep(-0.06, 0.24, uv.y));
+    sweep *= 0.55 + 0.45 * pulse;
 
-    vec3 color = base_color.rgb * (0.48 + 0.16 * shine);
-    color = mix(color, glow_color.rgb, ring * 0.55);
-    color = mix(color, accent_color.rgb, cross * 0.85);
-    color += ring * shine * 0.22;
+    vec3 color = main_color.rgb * (0.54 + 0.16 * pulse);
+    color = mix(color, glow_color.rgb, shell * 0.72 + core * 0.30);
+    color = mix(color, accent_color.rgb, braces * 0.85 + node * 0.80);
+    color += shell * sweep * 0.16;
 
-    float alpha = max(ring, core * 0.28 + cross * 0.85);
-    alpha += ring * 0.16 + shine * ring * 0.12;
+    float alpha = shell * 0.95 + core * 0.48 + braces * 0.92 + node * 0.70;
+    alpha += shell * sweep * 0.18;
     alpha = clamp(alpha, 0.0, 1.0);
 
     COLOR = vec4(color, alpha);

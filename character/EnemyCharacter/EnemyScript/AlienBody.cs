@@ -19,10 +19,10 @@ public partial class AlienBody : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void EndAction()
+    public override void OnTurnEnd()
     {
-        base.EndAction();
         Passive(null);
+        base.OnTurnEnd();
     }
 
     public override async void Passive(Skill skill)

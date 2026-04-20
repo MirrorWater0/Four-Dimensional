@@ -241,6 +241,7 @@ public partial class Map : Control
                 _targetPos = Camera.GlobalPosition;
             }
         };
+
     }
 
     public void CloseWindow()
@@ -322,7 +323,37 @@ public partial class Map : Control
     {
         return LayerHasVisibleChildren(SiteUiLayer)
             || LayerHasVisibleChildren(FrontUiLayer)
+            || HasVisibleBattleOverlay()
             || DebugConsoleNode?.IsOpen == true;
+    }
+
+    public bool IsMapInteractionBlocked()
+    {
+        return HasBlockingOverlay();
+    }
+
+    private bool HasVisibleBattleOverlay()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return false;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child == null || child.IsQueuedForDeletion() || child is not CanvasLayer layer)
+                continue;
+
+            foreach (Node layerChild in layer.GetChildren())
+            {
+                if (layerChild == null || layerChild.IsQueuedForDeletion())
+                    continue;
+
+                if (layerChild is Battle battle && battle.IsVisibleInTree())
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool LayerHasVisibleChildren(CanvasLayer layer)

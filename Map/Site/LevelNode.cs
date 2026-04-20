@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using Godot;
 
 public partial class LevelNode : ColorRect
@@ -11,8 +10,7 @@ public partial class LevelNode : ColorRect
         "res://battle/UIScene/Tip.tscn"
     );
     private static readonly Vector2 HoverTipOffset = new Vector2(36f, 28f);
-    private static Tip s_sharedHoverTip;
-    private static LevelNode s_hoverTipOwner;
+    private Tip _hoverTip;
 
     [Export]
     bool BarVisible = true;
@@ -53,6 +51,7 @@ public partial class LevelNode : ColorRect
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public int RandomNum;
+    private bool _isNodeHovered;
     private string _lastHoverTipText;
 
     public override void _Ready()
@@ -83,50 +82,31 @@ public partial class LevelNode : ColorRect
             CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
         };
         Button.Pressed += PressButton;
+
+        MouseEntered += OnNodeMouseEntered;
+        MouseExited += OnNodeMouseExited;
     }
 
     public override void _Process(double delta)
     {
-        if (State != LevelState.Completed || !IsVisibleInTree())
+        if (!_isNodeHovered)
+            return;
+
+        if (State != LevelState.Completed || !IsVisibleInTree() || HasVisibleBlockingSiteUi())
         {
-            ReleaseHoverTipOwnership();
+            HideHoverTip();
             return;
         }
 
-        if (HasVisibleBlockingSiteUi())
-        {
-            ReleaseHoverTipOwnership();
-            return;
-        }
-
-        if (!IsPointerOverNode())
-        {
-            ReleaseHoverTipOwnership();
-            return;
-        }
-
-        string text = BuildHoverTipText();
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            ReleaseHoverTipOwnership();
-            return;
-        }
-
-        var tip = EnsureHoverTip();
-        if (tip == null)
-            return;
-
-        s_hoverTipOwner = this;
-        if (!tip.Visible || !string.Equals(_lastHoverTipText, text, StringComparison.Ordinal))
-        {
-            tip.SetText(text);
-            _lastHoverTipText = text;
-        }
+        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Visible)
+            TryShowHoverTip();
     }
 
     public override void _ExitTree()
     {
-        ReleaseHoverTipOwnership();
+        _isNodeHovered = false;
+        HideHoverTip();
+        DisposeHoverTip();
     }
 
     public List<EnemyRegedit> ProduceEnemies()
@@ -220,6 +200,18 @@ public partial class LevelNode : ColorRect
         UpdateHoverTipIfVisible();
 
         SaveSystem.SaveAll();
+    }
+
+    private void OnNodeMouseEntered()
+    {
+        _isNodeHovered = true;
+        TryShowHoverTip();
+    }
+
+    private void OnNodeMouseExited()
+    {
+        _isNodeHovered = false;
+        HideHoverTip();
     }
 
     public void StartAnimation()
@@ -408,12 +400,14 @@ public partial class LevelNode : ColorRect
             new ArmonRegedit(),
             new EvilRegedit(),
             new AlienBodyRegedit(),
+            new RedHuskRegedit(),
             new TurbineRegedit(),
         ];
         EnemyRegedit[] strongEnemyRegedits = [new FerociouessRegedit()];
 
         List<EnemyRegedit> list = new()
         {
+            weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit(),
             weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit(),
         };
         if (SelfCoordinate.X >= WeakEnemyStageCount)
@@ -468,17 +462,17 @@ public partial class LevelNode : ColorRect
 
     private void UpdateHoverTipIfVisible()
     {
-        if (s_hoverTipOwner != this || s_sharedHoverTip == null || !s_sharedHoverTip.Visible)
+        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Visible)
             return;
 
         string text = BuildHoverTipText();
         if (string.IsNullOrWhiteSpace(text))
         {
-            ReleaseHoverTipOwnership();
+            HideHoverTip();
             return;
         }
 
-        s_sharedHoverTip.SetText(text);
+        _hoverTip.SetText(text);
         _lastHoverTipText = text;
     }
 
@@ -506,8 +500,8 @@ public partial class LevelNode : ColorRect
 
     private Tip EnsureHoverTip()
     {
-        if (s_sharedHoverTip != null && GodotObject.IsInstanceValid(s_sharedHoverTip))
-            return s_sharedHoverTip;
+        if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
+            return _hoverTip;
 
         var root = GetTree()?.Root;
         if (root == null || TipScene == null)
@@ -520,42 +514,70 @@ public partial class LevelNode : ColorRect
             root.AddChild(layer);
         }
 
-        s_sharedHoverTip =
-            layer.GetNodeOrNull<Tip>("LevelNodeTip") ?? layer.GetNodeOrNull<Tip>("MapLevelNodeTip");
-        if (s_sharedHoverTip != null)
+        string tipName = $"LevelNodeTip_{GetInstanceId()}";
+        _hoverTip = layer.GetNodeOrNull<Tip>(tipName);
+        if (_hoverTip == null)
         {
-            s_sharedHoverTip.Name = "LevelNodeTip";
-            s_sharedHoverTip.FollowMouse = true;
-            s_sharedHoverTip.AnchorOffset = HoverTipOffset;
-            return s_sharedHoverTip;
+            _hoverTip = TipScene.Instantiate<Tip>();
+            _hoverTip.Name = tipName;
+            layer.AddChild(_hoverTip);
         }
 
-        s_sharedHoverTip = TipScene.Instantiate<Tip>();
-        s_sharedHoverTip.Name = "LevelNodeTip";
-        s_sharedHoverTip.FollowMouse = true;
-        s_sharedHoverTip.AnchorOffset = HoverTipOffset;
-        layer.AddChild(s_sharedHoverTip);
-        return s_sharedHoverTip;
+        _hoverTip.FollowMouse = true;
+        _hoverTip.AnchorOffset = HoverTipOffset;
+        return _hoverTip;
     }
 
-    private void ReleaseHoverTipOwnership()
+    private void TryShowHoverTip()
     {
-        if (s_hoverTipOwner != this)
+        if (!_isNodeHovered || State != LevelState.Completed || !IsVisibleInTree())
+        {
+            HideHoverTip();
+            return;
+        }
+
+        if (HasVisibleBlockingSiteUi())
+        {
+            HideHoverTip();
+            return;
+        }
+
+        var tip = EnsureHoverTip();
+        if (tip == null)
             return;
 
-        if (s_sharedHoverTip != null && GodotObject.IsInstanceValid(s_sharedHoverTip))
-            s_sharedHoverTip.HideTooltip();
+        if (tip.Visible)
+            return;
 
-        s_hoverTipOwner = null;
+        string text = BuildHoverTipText();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            HideHoverTip();
+            return;
+        }
+
+        if (!string.Equals(_lastHoverTipText, text, StringComparison.Ordinal))
+        {
+            tip.SetText(text);
+            _lastHoverTipText = text;
+        }
+    }
+
+    private void HideHoverTip()
+    {
+        if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
+            _hoverTip.HideTooltip();
+
         _lastHoverTipText = null;
     }
 
-    private bool IsPointerOverNode()
+    private void DisposeHoverTip()
     {
-        if (Size.X <= 0 || Size.Y <= 0)
-            return false;
+        if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
+            _hoverTip.QueueFree();
 
-        return new Rect2(Vector2.Zero, Size).HasPoint(GetLocalMousePosition());
+        _hoverTip = null;
+        _lastHoverTipText = null;
     }
 
     private bool HasVisibleBlockingSiteUi()
@@ -563,6 +585,10 @@ public partial class LevelNode : ColorRect
         var root = GetTree()?.Root;
         if (root == null)
             return false;
+
+        var map = root.GetNodeOrNull<Map>("Map") ?? root.GetNodeOrNull<Map>("/root/Map");
+        if (map?.IsMapInteractionBlocked() == true)
+            return true;
 
         var siteUiLayer =
             root.GetNodeOrNull<CanvasLayer>("Map/SiteUI")

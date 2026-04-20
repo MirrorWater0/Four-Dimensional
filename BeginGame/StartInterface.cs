@@ -108,8 +108,19 @@ public partial class StartInterface : CanvasLayer
 
     public void continueGame()
     {
-        SaveSystem.LoadAll();
-        GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+        try
+        {
+            SaveSystem.LoadAll();
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"ContinueGame load failed: {e}");
+            return;
+        }
+
+        var err = GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+        if (err != Error.Ok)
+            GD.PushError($"ContinueGame scene switch failed: {err}");
     }
 
     public void falseTest()

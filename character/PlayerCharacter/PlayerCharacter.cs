@@ -62,9 +62,9 @@ public partial class PlayerCharacter : Character
         return value;
     }
 
-    public override void StartAction()
+    public override void OnActionStart()
     {
-        base.StartAction();
+        base.OnActionStart();
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {
             var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
@@ -76,13 +76,13 @@ public partial class PlayerCharacter : Character
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
     }
 
-    public override void EndAction()
+    public override void OnActionEnd()
     {
         SelfFrame.Selected.Visible = false;
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
-        base.EndAction();
+        base.OnActionEnd();
     }
 
     public override void DisableSkill()

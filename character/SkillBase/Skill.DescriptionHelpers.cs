@@ -161,14 +161,23 @@ public partial class Skill
         int clampMax = 9999
     )
     {
-        int totalDamage = baseDamage + OwnerPower * powerMultiplier;
-        return BasePlusXWithBattleTotal(
-            baseDamage,
-            totalDamage,
-            StatX.Power,
-            xMultiplier: powerMultiplier,
-            clampMax: clampMax
+        int rawDamage = baseDamage + OwnerPower * powerMultiplier;
+        string basisText = FormatBasePlusX(baseDamage, StatX.Power, powerMultiplier);
+
+        if (!IsInBattle)
+            return basisText;
+
+        int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax);
+        int modifiedDamage = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(OwnerCharater, rawDamage),
+            0,
+            clampMax
         );
+
+        if (modifiedDamage == rawClampedDamage)
+            return WithBattleTotal(basisText, rawClampedDamage, clampMax);
+
+        return WithBattleTotal(basisText, $"{rawClampedDamage}→{modifiedDamage}");
     }
 
     protected string BlockFromSurvivabilityText(

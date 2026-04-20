@@ -103,3 +103,49 @@ public partial class TauntingGuard : Skill
         );
     }
 }
+
+public partial class WeakpointBulwark : Skill
+{
+    private const int BaseBlock = 15;
+    private int _capturedVulnerableStacks;
+
+    public override string SkillName { get; set; } = "弱点壁垒";
+
+    public WeakpointBulwark()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(0, BaseBlock),
+            CustomStep(
+                _ =>
+                {
+                    var target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
+                    _capturedVulnerableStacks =
+                        target == null || target == OwnerCharater?.BattleNode?.dummy
+                            ? 0
+                            : target
+                                .HurtBuffs?.FirstOrDefault(buff =>
+                                    buff != null
+                                    && buff.ThisBuffName == Buff.BuffName.Vulnerable
+                                    && buff.Stack > 0
+                                )
+                                ?.Stack ?? 0;
+
+                    return Task.CompletedTask;
+                },
+                _ => new[] { $"令目标的{Buff.BuffName.Vulnerable.GetDescription()}层数翻倍。" }
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: _ => _capturedVulnerableStacks,
+                maxTargets: 1
+            )
+        );
+    }
+}

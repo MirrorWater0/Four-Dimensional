@@ -884,6 +884,10 @@ public partial class Reward : CanvasLayer
         return itemId switch
         {
             ItemID.Health => "医疗包",
+            ItemID.Guard => "脉冲护盾",
+            ItemID.Fury => "肾上腺素",
+            ItemID.Haste => "迅捷之翼",
+            ItemID.Vitality => "全息装甲",
             ItemID.Explosion => "爆裂弹",
             _ => "未知道具",
         };
@@ -891,11 +895,6 @@ public partial class Reward : CanvasLayer
 
     private static string GetItemDescription(ItemID itemId)
     {
-        return itemId switch
-        {
-            ItemID.Health => "点击后选择角色，回复15生命。",
-            ItemID.Explosion => "点击后选择角色，造成30伤害。",
-            _ => string.Empty,
-        };
+        return ConsumeItem.GetItemDescription(itemId, "点击后选择角色");
     }
 }

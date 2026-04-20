@@ -20,10 +20,10 @@ public partial class Mariya : PlayerCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void EndAction()
+    public override void OnTurnEnd()
     {
         TryHealLowestAlly();
-        base.EndAction();
+        base.OnTurnEnd();
     }
 
     private void TryHealLowestAlly()

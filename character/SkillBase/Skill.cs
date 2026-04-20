@@ -419,9 +419,13 @@ public partial class Skill
         );
     }
 
-    private static bool CanContinueAttack(Character target)
+    private static bool CanContinueAttack(Character owner, Character target)
     {
-        return target != null && target.State == Character.CharacterState.Normal;
+        return
+            owner != null
+            && owner.State != Character.CharacterState.Dying
+            && target != null
+            && target.State == Character.CharacterState.Normal;
     }
 
     private Character ResolvePrimaryTarget(bool byBehindRow)
@@ -460,51 +464,45 @@ public partial class Skill
 
         for (int i = 0; i < times; i++)
         {
-            if (!CanContinueAttack(target))
+            if (!CanContinueAttack(OwnerCharater, target))
                 break;
 
             if (playHitEffectForFirstHit || i > 0)
                 SpawnAttackHitEffect(target);
 
-            await target.GetHurt(damage, OwnerCharater);
+            int modifiedDamage = Math.Clamp(
+                AttackBuff.ApplyOutgoingDamageModifiers(
+                    OwnerCharater,
+                    damage,
+                    target,
+                    consumeStacks: true
+                ),
+                0,
+                9999
+            );
+            await target.GetHurt(modifiedDamage, OwnerCharater);
 
             if (delayAfterLastHit || i < times - 1)
                 await Task.Delay(100);
         }
     }
 
-    public async Task Attack1(int damage, bool byBehindRow = false) //顺位一段攻击
+    public async Task Attack(
+        int damage,
+        int times = 1,
+        bool byBehindRow = false,
+        Character target = null,
+        bool playHitEffectForFirstHit = false,
+        bool delayAfterLastHit = true
+    )
     {
-        Character target = ResolvePrimaryTarget(byBehindRow);
+        Character resolvedTarget = target ?? ResolvePrimaryTarget(byBehindRow);
         await ExecuteAttackSequence(
-            target,
-            damage,
-            times: 1,
-            playHitEffectForFirstHit: false,
-            delayAfterLastHit: true
-        );
-    }
-
-    public async Task Attack2(int damage, bool byBehindRow = false) //顺位二段攻击
-    {
-        Character target = ResolvePrimaryTarget(byBehindRow);
-        await ExecuteAttackSequence(
-            target,
-            damage,
-            times: 2,
-            playHitEffectForFirstHit: false,
-            delayAfterLastHit: false
-        );
-    }
-
-    public async Task Attack3(int damage, Character target, int times)
-    {
-        await ExecuteAttackSequence(
-            target,
+            resolvedTarget,
             damage,
             times,
-            playHitEffectForFirstHit: true,
-            delayAfterLastHit: true
+            playHitEffectForFirstHit,
+            delayAfterLastHit
         );
     }
 
@@ -520,7 +518,15 @@ public partial class Skill
         {
             if (IsDummyTarget(this, targets[i]))
                 continue;
-            tasks.Add(Attack3(damage, targets[i], times));
+            tasks.Add(
+                Attack(
+                    damage,
+                    times: times,
+                    target: targets[i],
+                    playHitEffectForFirstHit: true,
+                    delayAfterLastHit: true
+                )
+            );
         }
         if (tasks.Count == 0)
             return;
@@ -562,6 +568,8 @@ public partial class Skill
             SkillID.TerminateLight => new TerminateLight(),
             SkillID.Smite => new Smite(),
             SkillID.Charge => new Charge(),
+            SkillID.VulnerablePurge => new VulnerablePurge(),
+            SkillID.VulnerabilityStrike => new VulnerabilityStrike(),
             SkillID.DeSurviveSkill => new ShockWave(),
             SkillID.SacredOnslaught => new SacredOnslaught(),
             SkillID.ResonantSlash => new ResonantSlash(),
@@ -574,14 +582,18 @@ public partial class Skill
             SkillID.SonicDeflection => new SonicDeflection(),
             SkillID.TuningStance => new TuningStance(),
             SkillID.ResonantWard => new ResonantWard(),
+            SkillID.DissonantField => new DissonantField(),
+            SkillID.ReverbChain => new ReverbChain(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
             SkillID.ShockWave => new ShockWave(),
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
+            SkillID.WeakpointBulwark => new WeakpointBulwark(),
             SkillID.HolySeal => new HolySeal(),
             SkillID.AegisPledge => new AegisPledge(),
+            SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
             SkillID.FearWormAttack => new FearWormAttack(),
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
@@ -592,6 +604,7 @@ public partial class Skill
             SkillID.FinalGuard => new FinalGuard(),
             SkillID.RebirthPrayer => new RebirthPrayer(),
             SkillID.Sacrifice => new Sacrifice(),
+            SkillID.RearlineRevival => new RearlineRevival(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
             SkillID.ShadowExecution => new ShadowExecution(),
             SkillID.StasisBlade => new StasisBlade(),
@@ -604,8 +617,10 @@ public partial class Skill
             SkillID.CrystalGuard => new CrystalGuard(),
             SkillID.QuietVeil => new QuietVeil(),
             SkillID.EnergyTransfer => new EnergyTransfer(),
+            SkillID.EnergyRelay => new EnergyRelay(),
             SkillID.Swift => new Swift(),
             SkillID.StarWard => new StarWard(),
+            SkillID.TwilightParadox => new TwilightParadox(),
             SkillID.ArmonAttack => new ArmonAttack(),
             SkillID.ArmonSurvive => new ArmonSurvive(),
             SkillID.ArmonSpecial => new ArmonSpecial(),
@@ -673,6 +688,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     ResonantWard = 15,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    DissonantField = 74,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    ReverbChain = 75,
     #endregion
 
     #region Kasiya
@@ -691,6 +712,12 @@ public enum SkillID
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     Charge = 4,
 
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    VulnerablePurge = 76,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    VulnerabilityStrike = 77,
+
     DeSurviveSkill = 19,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
@@ -703,6 +730,9 @@ public enum SkillID
     TauntingGuard = 22,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    WeakpointBulwark = 82,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
     HolySeal = 23,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
@@ -710,6 +740,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     AegisPledge = 70,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    VulnerabilityConversion = 78,
     #endregion
 
     #region Mariya
@@ -742,6 +775,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     EnergyTransfer = 61,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    RearlineRevival = 80,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    EnergyRelay = 81,
     #endregion
 
     #region Nightingale
@@ -774,6 +813,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     StarWard = 40,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    TwilightParadox = 79,
     #endregion
 
     #endregion

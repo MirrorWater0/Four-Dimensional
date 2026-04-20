@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://battle/buff/IconTemplate.tscn" id="1"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/Weaken.gdshader" id="2"]
+
+[sub_resource type="ShaderMaterial" id="1"]
+shader = ExtResource("2")
+shader_parameter/base_color = Color(0.654902, 0.537255, 0.211765, 1)
+shader_parameter/shadow_color = Color(0.286275, 0.176471, 0.0431373, 1)
+shader_parameter/crack_color = Color(0.980392, 0.866667, 0.490196, 1)
+
+[node name="Weaken" instance=ExtResource("1")]
+material = SubResource("1")

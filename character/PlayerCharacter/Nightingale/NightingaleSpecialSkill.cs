@@ -72,7 +72,8 @@ public partial class LongNight : Skill
 
 public partial class RequiemBloom : Skill
 {
-    private const int PowerLoss = 1;
+    private const int PowerGain = 3;
+    private const int SurvivabilityLoss = 4;
     private const int RebirthStacks = 1;
     private const int ExtraTurnStacks = 1;
 
@@ -88,16 +89,29 @@ public partial class RequiemBloom : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, -PowerLoss),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.RebirthI,
-                stacks: RebirthStacks,
-                target: RelativeTarget(0)
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss),
+            ConditionStep(
+                condition: () => GetAllAllyWithOrder(dyingFilter: true).Length >= 3,
+                conditionDescription: "己方有3个角色存活",
+                onPassSteps:
+                [
+                    ApplyBuffFriendly(
+                        buffName: Buff.BuffName.RebirthI,
+                        stacks: RebirthStacks,
+                        target: RelativeTarget(0)
+                    ),
+                ]
             ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.ExtraTurn,
-                stacks: ExtraTurnStacks,
-                target: RelativeTarget(1)
+            EnergyTimesGateStep(
+                3,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.ExtraTurn,
+                    stacks: ExtraTurnStacks,
+                    target: RelativeTarget(0)
+                )
             )
         );
     }

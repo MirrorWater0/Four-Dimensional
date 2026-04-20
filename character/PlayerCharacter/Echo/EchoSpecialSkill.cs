@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Godot;
 
 public partial class EchoSpecialSkill : Node { }
@@ -93,4 +92,40 @@ public class PhaseEcho : Skill
             )
         );
     }
+}
+
+public class ReverbChain : Skill
+{
+    private const int EnergyCost = 3;
+    private const int BaseDamage = -2;
+
+    public ReverbChain()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "回声连奏";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                energyCost: EnergyCost,
+                onPassSteps:
+                [
+                    TextStep("释放x次（x为本场战斗中除自己外的己方行动次数）。"),
+                    EnergyTimesWhileStep(
+                        energyCost: 0,
+                        times: GetLoopTimes,
+                        loopSteps: [AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1)]
+                    ),
+                ]
+            )
+        );
+    }
+
+    private int GetLoopTimes() =>
+        OwnerCharater?.BattleNode?.GetAlliedActionCountExcludingSelf(OwnerCharater) ?? 0;
 }

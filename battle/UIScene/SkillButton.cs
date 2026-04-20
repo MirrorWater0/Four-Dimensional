@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 
@@ -24,7 +25,11 @@ public partial class SkillButton : Button
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
     private Character[] _previewTargets = Array.Empty<Character>();
+    private readonly List<Label> _previewDamageLabels = new();
     private static readonly Color TargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
+    private static readonly Color DamagePreviewColor = new(1f, 0.84f, 0.63f, 1f);
+    private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
     public Tip globalTooltip => field ??= EnsureGlobalTooltip();
 
@@ -96,6 +101,7 @@ public partial class SkillButton : Button
         }
 
         ShowTargetPreview();
+        ShowDamagePreview();
     }
 
     public void mouse_exited()
@@ -105,12 +111,15 @@ public partial class SkillButton : Button
         // Hide tooltip
         globalTooltip?.HideTooltip();
 
+        HideDamagePreview();
         HideTargetPreview();
     }
 
     public override void _ExitTree()
     {
+        HideDamagePreview();
         HideTargetPreview();
+        FreeDamagePreviewLabels();
         base._ExitTree();
     }
 
@@ -193,6 +202,31 @@ public partial class SkillButton : Button
         }
     }
 
+    private void ShowDamagePreview()
+    {
+        HideDamagePreview();
+        if (SelfSkill == null)
+            return;
+
+        var entries = SelfSkill.GetPreviewHostileDamageEntries();
+        if (entries == null || entries.Length == 0)
+            return;
+
+        var layer = EnsureTipLayer();
+        if (layer == null)
+            return;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            var entry = entries[i];
+            if (entry.Target == null || !GodotObject.IsInstanceValid(entry.Target))
+                continue;
+
+            var label = GetOrCreateDamageLabel(layer, i);
+            ShowDamageLabel(label, entry, GetTargetScreenPosition(entry.Target));
+        }
+    }
+
     private void HideTargetPreview()
     {
         if (_previewTargets == null || _previewTargets.Length == 0)
@@ -207,5 +241,109 @@ public partial class SkillButton : Button
         }
 
         _previewTargets = Array.Empty<Character>();
+    }
+
+    private void HideDamagePreview()
+    {
+        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
+                _previewDamageLabels[i].Visible = false;
+        }
+    }
+
+    private void FreeDamagePreviewLabels()
+    {
+        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
+                _previewDamageLabels[i].QueueFree();
+        }
+        _previewDamageLabels.Clear();
+    }
+
+    private Label GetOrCreateDamageLabel(CanvasLayer layer, int index)
+    {
+        while (_previewDamageLabels.Count <= index)
+        {
+            var label = CreateDamageLabel();
+            layer.AddChild(label);
+            _previewDamageLabels.Add(label);
+        }
+
+        var pooledLabel = _previewDamageLabels[index];
+        if (!GodotObject.IsInstanceValid(pooledLabel))
+        {
+            pooledLabel = CreateDamageLabel();
+            layer.AddChild(pooledLabel);
+            _previewDamageLabels[index] = pooledLabel;
+        }
+        else if (pooledLabel.GetParent() == null)
+        {
+            layer.AddChild(pooledLabel);
+        }
+
+        return pooledLabel;
+    }
+
+    private static Label CreateDamageLabel()
+    {
+        var label = new Label
+        {
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            ClipText = false,
+        };
+        label.AddThemeFontSizeOverride("font_size", 28);
+        label.AddThemeConstantOverride("outline_size", 5);
+        label.AddThemeColorOverride("font_color", DamagePreviewColor);
+        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
+        return label;
+    }
+
+    private void ShowDamageLabel(Label label, Skill.PreviewDamageEntry entry, Vector2 targetScreenPosition)
+    {
+        label.Text =
+            entry.HitCount > 1
+                ? $"{entry.Damage}（{entry.HitCount}次）"
+                : entry.Damage.ToString();
+        label.AddThemeColorOverride("font_color", DamagePreviewColor);
+        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
+        label.Modulate = Colors.White;
+        label.Scale = Vector2.One;
+        label.Visible = true;
+
+        Vector2 size = label.GetCombinedMinimumSize();
+        if (size == Vector2.Zero)
+            size = new Vector2(120f, 44f);
+        label.Size = size;
+
+        Vector2 anchor = targetScreenPosition + DamagePreviewLabelOffset;
+        label.Position = anchor - size / 2f;
+    }
+
+    private CanvasLayer EnsureTipLayer()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var existingLayer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (existingLayer != null)
+            return existingLayer;
+
+        existingLayer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+        root.AddChild(existingLayer);
+        return existingLayer;
+    }
+
+    private static Vector2 GetTargetScreenPosition(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return Vector2.Zero;
+
+        return target.GetGlobalTransformWithCanvas().Origin;
     }
 }

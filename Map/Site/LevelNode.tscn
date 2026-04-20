@@ -90,12 +90,14 @@ material = SubResource("ShaderMaterial_40022")
 custom_minimum_size = Vector2(80, 80)
 color = Color(0.7, 0.7, 0.7, 0.9)
 script = ExtResource("2_40022")
+metadata/_edit_lock_ = true
 
 [node name="Button" type="Button" parent="." unique_id=1781697508]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
 offset_right = 80.0
 offset_bottom = 80.0
+mouse_filter = 1
 disabled = true
 
 [node name="ghost" type="ColorRect" parent="." unique_id=543561013]

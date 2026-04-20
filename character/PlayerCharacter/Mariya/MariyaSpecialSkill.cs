@@ -30,7 +30,6 @@ public partial class RebirthPrayer : Skill
                 null,
                 HealStep(
                     baseHeal: BaseRebirthHeal,
-                    survivabilityMultiplier: 0,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
                     dyingFilter: false,
                     preferNonFull: true,
@@ -76,6 +75,41 @@ public partial class Sacrifice : Skill
                     target: AbsoluteTarget(AbsoluteFriendlySelector.All)
                 ),
                 AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, maxTargets: 0)
+            )
+        );
+    }
+}
+
+public partial class RearlineRevival : Skill
+{
+    private const int EnergyCost = 3;
+    private const int BaseRebirthHeal = 1;
+    private const int TargetCount = 2;
+
+    public RearlineRevival()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "末位苏生";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                HealStep(
+                    baseHeal: BaseRebirthHeal,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
+                    dyingFilter: false,
+                    preferNonFull: true,
+                    rebirth: true,
+                    repeatCount: TargetCount
+                )
             )
         );
     }

@@ -1,5 +1,5 @@
 using System;
-using System.Threading.Tasks;
+using System.Linq;
 using Godot;
 
 public partial class KasiyaAttackSkill { }
@@ -109,10 +109,95 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(
-                0,
-                times,
-                CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)
+            EnergyTimesGateStep(0, times, CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1))
+        );
+    }
+}
+
+public partial class VulnerablePurge : Skill
+{
+    private const int BaseDamage = 20;
+
+    public VulnerablePurge()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "破绽清算";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AoeDamageStep(
+                baseDamage: BaseDamage,
+                powerMultiplier: 1,
+                maxTargets: 0,
+                targetCondition: character =>
+                    character?.HurtBuffs?.Any(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Vulnerable
+                        && buff.Stack > 0
+                    ) == true,
+                targetConditionDescription: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
+            )
+        );
+    }
+}
+
+public partial class VulnerabilityStrike : Skill
+{
+    private const int BaseDamage = 10;
+    private const string TargetKey = "vulnerability_strike_target";
+    private bool _targetHadVulnerable;
+
+    public VulnerabilityStrike()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "易伤追击";
+
+    private bool ConsumeVulnerableSnapshotOrCheckCurrentTarget()
+    {
+        if (_targetHadVulnerable)
+        {
+            _targetHadVulnerable = false;
+            return true;
+        }
+
+        return TargetHasVulnerable(GetStoredTarget(TargetKey));
+    }
+
+    private static bool TargetHasVulnerable(Character target) =>
+        target?.HurtBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
+        ) == true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            CustomStep(
+                _ =>
+                {
+                    var target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
+                    _targetHadVulnerable = TargetHasVulnerable(target);
+                    return System.Threading.Tasks.Task.CompletedTask;
+                },
+                _ => Array.Empty<string>()
+            ),
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: TargetKey),
+            ConditionStep(
+                ConsumeVulnerableSnapshotOrCheckCurrentTarget,
+                $"出手前目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
+                AttackPrimaryStep(
+                    baseDamage: BaseDamage,
+                    prefix: "额外造成",
+                    target: StoredTarget(TargetKey)
+                )
             )
         );
     }

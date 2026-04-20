@@ -1,5 +1,5 @@
 using System;
-using System.Threading.Tasks;
+using System.Linq;
 using Godot;
 
 public partial class KasiyaSpecialSkill : Node { }
@@ -92,6 +92,46 @@ public class AegisPledge : Skill
                     stacks: BarricadeStacks,
                     target: RelativeTarget(0)
                 )
+            )
+        );
+    }
+}
+
+public class VulnerabilityConversion : Skill
+{
+    private const int EnergyCost = 2;
+    private const string TargetKey = "vulnerability_conversion_target";
+
+    public VulnerabilityConversion()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "易伤转化";
+
+    private static int GetVulnerableStacks(Character target) =>
+        target
+            ?.HurtBuffs?.FirstOrDefault(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
+            )
+            ?.Stack ?? 0;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 2, storeAs: TargetKey),
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ModifyPropertyStep(
+                    PropertyType.Power,
+                    _ => GetVulnerableStacks(GetStoredTarget(TargetKey)),
+                    RelativeTarget(0)
+                ),
+                TextStep($"获得等同于目标{Buff.BuffName.Vulnerable.GetDescription()}层数的力量。")
             )
         );
     }

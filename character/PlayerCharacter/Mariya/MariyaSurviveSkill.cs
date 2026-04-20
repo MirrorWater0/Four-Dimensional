@@ -115,3 +115,49 @@ public partial class EnergyTransfer : Skill
         );
     }
 }
+
+public partial class EnergyRelay : Skill
+{
+    private int _cachedTransferEnergy;
+
+    public EnergyRelay()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "能量接续";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            CustomStep(
+                _ =>
+                {
+                    _cachedTransferEnergy = ResolveTransferEnergyAmount();
+                    return Task.CompletedTask;
+                },
+                _ => Array.Empty<string>()
+            ),
+            BlockStep(relativeIndex: 0, baseBlock: 10),
+            BlockStep(relativeIndex: -1, baseBlock: 10),
+            EnergyStep(delta: _ => _cachedTransferEnergy, target: RelativeTarget(1)),
+            EnergyStep(delta: _ => -_cachedTransferEnergy, target: RelativeTarget(-1)),
+            TextStep("将上一位角色的全部能量转移给下一位。")
+        );
+    }
+
+    private int ResolveTransferEnergyAmount()
+    {
+        if (OwnerCharater?.BattleNode == null)
+            return 0;
+
+        Character previous = GetAllyByRelative(-1, dyingFilter: true);
+        Character next = GetAllyByRelative(1, dyingFilter: true);
+        if (previous == null || next == null || previous == next)
+            return 0;
+
+        return Math.Max(0, previous.Energy);
+    }
+}

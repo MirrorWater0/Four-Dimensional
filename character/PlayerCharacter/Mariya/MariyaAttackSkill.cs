@@ -24,7 +24,6 @@ public partial class MendSlash : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             HealStep(
                 baseHeal: BaseHeal,
-                survivabilityMultiplier: 0,
                 target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
                 dyingFilter: false,
                 preferNonFull: true,
@@ -82,8 +81,8 @@ public partial class SiphonSlash : Skill
                             target: GetStoredTarget(AttackTargetKey)
                         ) ?? 0
                     ) / 2,
-                target: RelativeTarget(0),
-                descriptionOverride: $"回复等同于此次造成伤害一半+{X(StatX.Survivability)}的生命。"
+                target: AbsoluteTarget(AbsoluteFriendlySelector.LowestLife),
+                descriptionOverride: $"回复生命值最低的己方角色等同于此次造成伤害一半的生命。"
             )
         );
     }

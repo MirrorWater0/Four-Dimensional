@@ -35,6 +35,66 @@ using Godot;
 // - CustomStep: 自定义执行/描述兜底步骤。
 public partial class Skill
 {
+    public readonly struct PreviewDamageEntry
+    {
+        public PreviewDamageEntry(Character target, int damage, int hitCount)
+        {
+            Target = target;
+            Damage = damage;
+            HitCount = hitCount;
+        }
+
+        public Character Target { get; }
+        public int Damage { get; }
+        public int HitCount { get; }
+    }
+
+    protected sealed class PreviewDamageContext
+    {
+        private readonly Character _attacker;
+        private readonly AttackBuff.PreviewState _attackBuffState = new();
+        private readonly Dictionary<Character, int> _vulnerableStacks = new();
+
+        public PreviewDamageContext(Character attacker)
+        {
+            _attacker = attacker;
+        }
+
+        public int PredictDamage(Character target, int baseDamage)
+        {
+            int damage = Math.Max(
+                AttackBuff.ApplyOutgoingDamageModifiers(
+                    _attacker,
+                    baseDamage,
+                    target,
+                    consumeStacks: true,
+                    previewState: _attackBuffState
+                ),
+                0
+            );
+
+            if (target != null)
+            {
+                if (!_vulnerableStacks.TryGetValue(target, out int vulnerableStacks))
+                {
+                    vulnerableStacks = target.HurtBuffs?.FirstOrDefault(x =>
+                        x != null && x.ThisBuffName == Buff.BuffName.Vulnerable && x.Stack > 0
+                    )?.Stack ?? 0;
+                }
+
+                if (vulnerableStacks > 0)
+                {
+                    damage = Math.Max((int)MathF.Floor(damage * 1.5f), 0);
+                    vulnerableStacks--;
+                }
+
+                _vulnerableStacks[target] = vulnerableStacks;
+            }
+
+            return damage;
+        }
+    }
+
     private SkillPlan _cachedPlan;
     private bool _stopRemainingPlanExecution;
     private readonly Dictionary<string, Character> _storedTargets = new();
@@ -103,6 +163,12 @@ public partial class Skill
     {
         var plan = GetPlan();
         return plan?.GetPreviewHostileTargets() ?? Array.Empty<Character>();
+    }
+
+    public PreviewDamageEntry[] GetPreviewHostileDamageEntries()
+    {
+        var plan = GetPlan();
+        return plan?.GetPreviewHostileDamageEntries() ?? Array.Empty<PreviewDamageEntry>();
     }
 
     protected static TargetReference RelativeTarget(int relativeIndex = 0) =>
@@ -251,9 +317,11 @@ public partial class Skill
             _skill._storedTargets.Clear();
             for (int i = 0; i < _steps.Length; i++)
             {
-                if (_skill._stopRemainingPlanExecution)
+                if (ShouldAbortStepExecution(_skill))
                     break;
                 await _steps[i].Execute(_skill);
+                if (ShouldAbortStepExecution(_skill))
+                    break;
             }
             _skill._stopRemainingPlanExecution = false;
             _skill._storedTargets.Clear();
@@ -288,6 +356,54 @@ public partial class Skill
             _skill._storedTargets.Clear();
             return targets;
         }
+
+        public PreviewDamageEntry[] GetPreviewHostileDamageEntries()
+        {
+            _skill._storedTargets.Clear();
+
+            Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
+            var context = new PreviewDamageContext(_skill.OwnerCharater);
+            var aggregated = new Dictionary<Character, (int damage, int hits)>();
+            var orderedTargets = new List<Character>();
+
+            for (int i = 0; i < _steps.Length; i++)
+            {
+                IEnumerable<PreviewDamageEntry> entries =
+                    _steps[i]?.PreviewDamage(_skill, context) ?? Array.Empty<PreviewDamageEntry>();
+                foreach (PreviewDamageEntry entry in entries)
+                {
+                    if (
+                        entry.Target == null
+                        || entry.Target == dummy
+                        || entry.Target.State != Character.CharacterState.Normal
+                    )
+                    {
+                        continue;
+                    }
+
+                    if (!aggregated.TryGetValue(entry.Target, out var current))
+                    {
+                        aggregated[entry.Target] = (entry.Damage, entry.HitCount);
+                        orderedTargets.Add(entry.Target);
+                        continue;
+                    }
+
+                    aggregated[entry.Target] = (
+                        current.damage + entry.Damage,
+                        current.hits + entry.HitCount
+                    );
+                }
+            }
+
+            _skill._storedTargets.Clear();
+            return orderedTargets
+                .Select(target =>
+                {
+                    var data = aggregated[target];
+                    return new PreviewDamageEntry(target, data.damage, data.hits);
+                })
+                .ToArray();
+        }
     }
 
     protected abstract class SkillStep
@@ -299,6 +415,14 @@ public partial class Skill
         public virtual IEnumerable<Character> PreviewTargets(Skill skill)
         {
             return Array.Empty<Character>();
+        }
+
+        public virtual IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            return Array.Empty<PreviewDamageEntry>();
         }
     }
 
@@ -448,7 +572,9 @@ public partial class Skill
         int maxTargets = 0,
         int times = 1,
         int clampMax = 9999,
-        bool byBehindRow = false
+        bool byBehindRow = false,
+        Func<Character, bool> targetCondition = null,
+        string targetConditionDescription = null
     ) =>
         AoeDamageStepCore(
             baseDamage,
@@ -457,7 +583,9 @@ public partial class Skill
             times,
             clampMax,
             byBehindRow,
-            null
+            null,
+            targetCondition,
+            targetConditionDescription
         );
 
     protected SkillStep AoeDamageStep(
@@ -466,7 +594,9 @@ public partial class Skill
         int maxTargets = 0,
         int times = 1,
         int clampMax = 9999,
-        bool byBehindRow = false
+        bool byBehindRow = false,
+        Func<Character, bool> targetCondition = null,
+        string targetConditionDescription = null
     ) =>
         AoeDamageStepCore(
             0,
@@ -475,7 +605,9 @@ public partial class Skill
             times,
             clampMax,
             byBehindRow,
-            baseDamage
+            baseDamage,
+            targetCondition,
+            targetConditionDescription
         );
 
     private SkillStep AoeDamageStepCore(
@@ -485,7 +617,9 @@ public partial class Skill
         int times,
         int clampMax,
         bool byBehindRow,
-        Func<Skill, int> baseDamageProvider
+        Func<Skill, int> baseDamageProvider,
+        Func<Character, bool> targetCondition,
+        string targetConditionDescription
     ) =>
         new AoeDamageSkillStep(
             baseDamage,
@@ -494,7 +628,9 @@ public partial class Skill
             times,
             clampMax,
             byBehindRow,
-            baseDamageProvider
+            baseDamageProvider,
+            targetCondition,
+            targetConditionDescription
         );
 
     protected SkillStep ApplyBuffHostile(
@@ -503,6 +639,13 @@ public partial class Skill
         int maxTargets = 1,
         bool byBehindRow = false
     ) => new ApplyBuffHostileSkillStep(buffName, stacks, maxTargets, byBehindRow);
+
+    protected SkillStep ApplyBuffHostile(
+        Buff.BuffName buffName,
+        Func<Skill, int> stacks,
+        int maxTargets = 1,
+        bool byBehindRow = false
+    ) => new ApplyBuffHostileSkillStep(buffName, 0, maxTargets, byBehindRow, stacks);
 
     /// <param name="slotSelector">
     /// 召唤位置选择器。
@@ -516,6 +659,12 @@ public partial class Skill
 
     protected SkillStep ApplyBuffSummonsStep(Buff.BuffName buffName, int stacks, int count = 0) =>
         new ApplyBuffSummonsSkillStep(buffName, stacks, count);
+
+    protected SkillStep ApplyBuffSummonsStep(
+        Buff.BuffName buffName,
+        Func<Skill, int> stacks,
+        int count = 0
+    ) => new ApplyBuffSummonsSkillStep(buffName, 0, count, stacks);
 
     protected SkillStep ModifySummonPropertyStep(PropertyType type, int value, int count = 0) =>
         new ModifySummonPropertySkillStep(type, value, count);
@@ -601,9 +750,15 @@ public partial class Skill
         bool includeSummonsWhenAll = false
     ) => new ApplyBuffFriendlySkillStep(buffName, stacks, target, includeSummonsWhenAll);
 
+    protected SkillStep ApplyBuffFriendly(
+        Buff.BuffName buffName,
+        Func<Skill, int> stacks,
+        TargetReference target,
+        bool includeSummonsWhenAll = false
+    ) => new ApplyBuffFriendlySkillStep(buffName, 0, target, includeSummonsWhenAll, stacks);
+
     protected SkillStep HealStep(
         int baseHeal = 0,
-        int survivabilityMultiplier = 1,
         TargetReference target = default,
         bool dyingFilter = true,
         bool preferNonFull = false,
@@ -611,11 +766,11 @@ public partial class Skill
         int clampMax = 999,
         string descriptionOverride = null,
         string storeAs = null,
-        bool includeSummonsWhenAll = false
+        bool includeSummonsWhenAll = false,
+        int repeatCount = 1
     ) =>
         HealFriendlyCore(
             baseHeal,
-            survivabilityMultiplier,
             target,
             dyingFilter,
             preferNonFull,
@@ -624,12 +779,12 @@ public partial class Skill
             null,
             descriptionOverride,
             storeAs,
-            includeSummonsWhenAll
+            includeSummonsWhenAll,
+            repeatCount
         );
 
     protected SkillStep HealStep(
         Func<Skill, int> baseHeal,
-        int survivabilityMultiplier = 1,
         TargetReference target = default,
         bool dyingFilter = true,
         bool preferNonFull = false,
@@ -637,11 +792,11 @@ public partial class Skill
         int clampMax = 999,
         string descriptionOverride = null,
         string storeAs = null,
-        bool includeSummonsWhenAll = false
+        bool includeSummonsWhenAll = false,
+        int repeatCount = 1
     ) =>
         HealFriendlyCore(
             0,
-            survivabilityMultiplier,
             target,
             dyingFilter,
             preferNonFull,
@@ -650,94 +805,94 @@ public partial class Skill
             baseHeal,
             descriptionOverride,
             storeAs,
-            includeSummonsWhenAll
+            includeSummonsWhenAll,
+            repeatCount
         );
 
     protected SkillStep HealFriendlyRelative(
         int baseHeal = 0,
-        int survivabilityMultiplier = 1,
         int index = 0,
         bool dyingFilter = true,
         bool rebirth = false,
         int clampMax = 999,
-        string descriptionOverride = null
+        string descriptionOverride = null,
+        int repeatCount = 1
     ) =>
         HealStep(
             baseHeal,
-            survivabilityMultiplier,
             RelativeTarget(index),
             dyingFilter,
             preferNonFull: false,
             rebirth,
             clampMax,
-            descriptionOverride
+            descriptionOverride,
+            repeatCount: repeatCount
         );
 
     protected SkillStep HealFriendlyRelative(
         Func<Skill, int> baseHeal,
-        int survivabilityMultiplier = 1,
         int index = 0,
         bool dyingFilter = true,
         bool rebirth = false,
         int clampMax = 999,
-        string descriptionOverride = null
+        string descriptionOverride = null,
+        int repeatCount = 1
     ) =>
         HealStep(
             baseHeal,
-            survivabilityMultiplier,
             RelativeTarget(index),
             dyingFilter,
             preferNonFull: false,
             rebirth,
             clampMax,
-            descriptionOverride
+            descriptionOverride,
+            repeatCount: repeatCount
         );
 
     protected SkillStep HealFriendlyAbsolute(
         int baseHeal = 0,
-        int survivabilityMultiplier = 1,
         AbsoluteFriendlySelector selector = AbsoluteFriendlySelector.FrontMost,
         bool preferNonFull = true,
         bool rebirth = false,
         int clampMax = 999,
-        string storeAs = null
+        string storeAs = null,
+        int repeatCount = 1
     ) =>
         HealStep(
             baseHeal,
-            survivabilityMultiplier,
             AbsoluteTarget(selector),
             dyingFilter: false,
             preferNonFull,
             rebirth,
             clampMax,
             storeAs: storeAs,
-            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All
+            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All,
+            repeatCount: repeatCount
         );
 
     protected SkillStep HealFriendlyAbsolute(
         Func<Skill, int> baseHeal,
-        int survivabilityMultiplier = 1,
         AbsoluteFriendlySelector selector = AbsoluteFriendlySelector.FrontMost,
         bool preferNonFull = true,
         bool rebirth = false,
         int clampMax = 999,
-        string storeAs = null
+        string storeAs = null,
+        int repeatCount = 1
     ) =>
         HealStep(
             baseHeal,
-            survivabilityMultiplier,
             AbsoluteTarget(selector),
             dyingFilter: false,
             preferNonFull,
             rebirth,
             clampMax,
             storeAs: storeAs,
-            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All
+            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All,
+            repeatCount: repeatCount
         );
 
     private SkillStep HealFriendlyCore(
         int baseHeal,
-        int survivabilityMultiplier,
         TargetReference target,
         bool dyingFilter,
         bool preferNonFull,
@@ -746,11 +901,11 @@ public partial class Skill
         Func<Skill, int> baseHealProvider,
         string descriptionOverride,
         string storeAs,
-        bool includeSummonsWhenAll
+        bool includeSummonsWhenAll,
+        int repeatCount
     ) =>
         new HealFriendlySkillStep(
             baseHeal,
-            survivabilityMultiplier,
             target,
             dyingFilter,
             preferNonFull,
@@ -759,7 +914,8 @@ public partial class Skill
             baseHealProvider,
             descriptionOverride,
             storeAs,
-            includeSummonsWhenAll
+            includeSummonsWhenAll,
+            repeatCount
         );
 
     protected SkillStep HurtFriendly(int damage, int index = 0, bool all = false) =>
@@ -767,8 +923,15 @@ public partial class Skill
 
     protected SkillStep EnergyStep(int delta) => new EnergySkillStep(delta);
 
+    protected SkillStep EnergyStep(Func<Skill, int> delta) => new EnergySkillStep(delta);
+
     protected SkillStep EnergyStep(
         int delta,
+        TargetReference target
+    ) => new EnergySkillStep(delta, target);
+
+    protected SkillStep EnergyStep(
+        Func<Skill, int> delta,
         TargetReference target
     ) => new EnergySkillStep(delta, target);
 
@@ -780,10 +943,23 @@ public partial class Skill
 
     protected SkillStep ModifyPropertyStep(
         PropertyType type,
+        Func<Skill, int> value,
+        int index = 0
+    ) => ModifyPropertyStep(type, value, RelativeTarget(index));
+
+    protected SkillStep ModifyPropertyStep(
+        PropertyType type,
         int value,
         TargetReference target,
         bool includeSummonsWhenAll = false
     ) => new ModifyFriendlyPropertySkillStep(type, value, target, includeSummonsWhenAll);
+
+    protected SkillStep ModifyPropertyStep(
+        PropertyType type,
+        Func<Skill, int> value,
+        TargetReference target,
+        bool includeSummonsWhenAll = false
+    ) => new ModifyFriendlyPropertySkillStep(type, 0, target, includeSummonsWhenAll, value);
 
     protected SkillStep BlockStep(
         int relativeIndex = 0,
@@ -1025,7 +1201,12 @@ public partial class Skill
             int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
             if (_target.Kind == TargetReferenceKind.DefaultRule && string.IsNullOrWhiteSpace(_storeAs))
             {
-                await skill.Attack1(damage, _byBehindRow);
+                await skill.Attack(
+                    damage,
+                    times: 1,
+                    byBehindRow: _byBehindRow,
+                    delayAfterLastHit: true
+                );
                 return;
             }
 
@@ -1060,6 +1241,21 @@ public partial class Skill
             Character target = skill.ResolveHostileTarget(_target, _byBehindRow);
             skill.StoreTarget(_storeAs, target);
             return SingleTargetArray(target);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            int baseDamage = ResolveStepBaseValue(skill, _baseDamage, _baseDamageProvider);
+            int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
+            Character[] targets = PreviewTargets(skill).Where(x => x != null).ToArray();
+            if (targets.Length == 0)
+                yield break;
+
+            int predictedDamage = context.PredictDamage(targets[0], damage);
+            yield return new PreviewDamageEntry(targets[0], predictedDamage, 1);
         }
     }
 
@@ -1107,7 +1303,12 @@ public partial class Skill
             int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
             if (_target.Kind == TargetReferenceKind.DefaultRule && string.IsNullOrWhiteSpace(_storeAs))
             {
-                await skill.Attack2(damage, _byBehindRow);
+                await skill.Attack(
+                    damage,
+                    times: 2,
+                    byBehindRow: _byBehindRow,
+                    delayAfterLastHit: false
+                );
                 return;
             }
 
@@ -1146,6 +1347,28 @@ public partial class Skill
             skill.StoreTarget(_storeAs, target);
             return SingleTargetArray(target);
         }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            int baseDamage = ResolveStepBaseValue(skill, _baseDamage, _baseDamageProvider);
+            int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
+            Character[] targets = PreviewTargets(skill).Where(x => x != null).ToArray();
+            if (targets.Length == 0)
+                yield break;
+
+            int totalDamage = 0;
+            int totalHits = 0;
+            for (int i = 0; i < 2; i++)
+            {
+                totalDamage += context.PredictDamage(targets[0], damage);
+                totalHits++;
+            }
+
+            yield return new PreviewDamageEntry(targets[0], totalDamage, totalHits);
+        }
     }
 
     private sealed class AoeDamageSkillStep : SkillStep
@@ -1157,6 +1380,8 @@ public partial class Skill
         private readonly int _times;
         private readonly int _clampMax;
         private readonly bool _byBehindRow;
+        private readonly Func<Character, bool> _targetCondition;
+        private readonly string _targetConditionDescription;
 
         public AoeDamageSkillStep(
             int baseDamage,
@@ -1165,7 +1390,9 @@ public partial class Skill
             int times,
             int clampMax,
             bool byBehindRow,
-            Func<Skill, int> baseDamageProvider
+            Func<Skill, int> baseDamageProvider,
+            Func<Character, bool> targetCondition,
+            string targetConditionDescription
         )
         {
             _baseDamage = baseDamage;
@@ -1175,31 +1402,62 @@ public partial class Skill
             _times = times;
             _clampMax = clampMax;
             _byBehindRow = byBehindRow;
+            _targetCondition = targetCondition;
+            _targetConditionDescription = targetConditionDescription;
         }
 
         public override async Task Execute(Skill skill)
         {
-            var targets = skill.ChosetargetByOrder(byBehindRow: _byBehindRow);
-            int count = _maxTargets <= 0 ? targets.Length : Math.Min(_maxTargets, targets.Length);
-            if (count <= 0)
+            Character[] targets = SelectTargets(skill);
+            if (targets.Length == 0)
                 return;
 
             int times = Math.Max(1, _times);
             int baseDamage = ResolveStepBaseValue(skill, _baseDamage, _baseDamageProvider);
             int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
-            await skill.AOE(damage, count, times, _byBehindRow);
+
+            List<Task> tasks = new(targets.Length);
+            for (int i = 0; i < targets.Length; i++)
+            {
+                tasks.Add(
+                    skill.Attack(
+                        damage,
+                        times: times,
+                        target: targets[i],
+                        playHitEffectForFirstHit: true,
+                        delayAfterLastHit: true
+                    )
+                );
+            }
+
+            await Task.WhenAll(tasks);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
             int baseDamage = ResolveStepBaseValue(skill, _baseDamage, _baseDamageProvider);
             string damageText = skill.DamageFromPowerText(baseDamage, _powerMultiplier, _clampMax);
-            if (_maxTargets <= 0)
-                yield return $"对所有目标造成{damageText}点伤害。";
+            if (_targetCondition != null)
+            {
+                string conditionText = string.IsNullOrWhiteSpace(_targetConditionDescription)
+                    ? "符合条件"
+                    : _targetConditionDescription;
+                string enemyText = _byBehindRow ? "后排敌人" : "敌人";
+
+                if (_maxTargets <= 0)
+                    yield return $"对所有{conditionText}的{enemyText}造成{damageText}点伤害。";
+                else
+                    yield return $"对最多{_maxTargets}个{conditionText}的{enemyText}造成{damageText}点伤害。";
+            }
             else
             {
-                string targetText = _byBehindRow ? "后排目标" : "目标";
-                yield return $"对至多{_maxTargets}名{targetText}造成{damageText}点伤害。";
+                if (_maxTargets <= 0)
+                    yield return $"对所有目标造成{damageText}点伤害。";
+                else
+                {
+                    string targetText = _byBehindRow ? "后排目标" : "目标";
+                    yield return $"对至多{_maxTargets}名{targetText}造成{damageText}点伤害。";
+                }
             }
 
             if (_times > 1)
@@ -1208,7 +1466,51 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            return PreviewHostileTargets(skill, _maxTargets, _byBehindRow);
+            return SelectTargets(skill);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            int baseDamage = ResolveStepBaseValue(skill, _baseDamage, _baseDamageProvider);
+            int damage = skill.DamageFromPower(baseDamage, _powerMultiplier, _clampMax);
+            Character[] targets = PreviewTargets(skill).Where(x => x != null).ToArray();
+            if (targets.Length == 0)
+                yield break;
+
+            int times = Math.Max(1, _times);
+            for (int i = 0; i < targets.Length; i++)
+            {
+                int totalDamage = 0;
+                for (int hit = 0; hit < times; hit++)
+                    totalDamage += context.PredictDamage(targets[i], damage);
+
+                yield return new PreviewDamageEntry(targets[i], totalDamage, times);
+            }
+        }
+
+        private Character[] SelectTargets(Skill skill)
+        {
+            Character[] ordered = skill?.ChosetargetByOrder(byBehindRow: _byBehindRow)
+                ?? Array.Empty<Character>();
+            Character[] matched = ordered.Where(MatchesCondition).ToArray();
+            int count = _maxTargets <= 0 ? matched.Length : Math.Min(_maxTargets, matched.Length);
+            if (count <= 0)
+                return Array.Empty<Character>();
+
+            return matched.Take(count).ToArray();
+        }
+
+        private bool MatchesCondition(Character target)
+        {
+            if (target == null)
+                return false;
+            if (_targetCondition == null)
+                return true;
+
+            return _targetCondition(target);
         }
     }
 
@@ -1240,6 +1542,9 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             int loss = Math.Abs(_value);
             if (loss == 0)
                 return;
@@ -1250,6 +1555,8 @@ public partial class Skill
 
             for (int i = 0; i < targets.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
                 if (targets[i] == null)
                     continue;
                 bool tryPermanent = _permanent && targets[i] is PlayerCharacter;
@@ -1365,6 +1672,9 @@ public partial class Skill
             case Buff.BuffName.AutoArmor:
                 HurtBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
+            case Buff.BuffName.Weaken:
+                AttackBuff.BuffAdd(buffName, target, stacks, source);
+                return true;
             case Buff.BuffName.Stun:
                 SkillBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
@@ -1448,6 +1758,21 @@ public partial class Skill
             await target.DescendingProperties(type, -value, source);
     }
 
+    private static bool ShouldAbortStepExecution(Skill skill)
+    {
+        if (skill == null)
+            return true;
+
+        if (skill._stopRemainingPlanExecution)
+            return true;
+
+        if (skill.OwnerCharater?.State != Character.CharacterState.Dying)
+            return false;
+
+        skill._stopRemainingPlanExecution = true;
+        return true;
+    }
+
     private static int ResolveStepBaseValue(
         Skill skill,
         int fixedValue,
@@ -1457,7 +1782,6 @@ public partial class Skill
     private static int ResolveFriendlyHealAmount(
         Skill skill,
         int baseHeal,
-        int survivabilityMultiplier,
         int clampMax
     )
     {
@@ -1467,9 +1791,8 @@ public partial class Skill
     private static string FriendlyHealAmountText(
         Skill skill,
         int baseHeal,
-        int survivabilityMultiplier,
         int clampMax
-    ) => ResolveFriendlyHealAmount(skill, baseHeal, survivabilityMultiplier, clampMax).ToString();
+    ) => ResolveFriendlyHealAmount(skill, baseHeal, clampMax).ToString();
 
     private static string PropertyDeltaActionText(PropertyType type, int value)
     {
@@ -1522,13 +1845,17 @@ public partial class Skill
         Skill skill,
         AbsoluteFriendlySelector selector,
         bool preferNonFull,
-        bool rebirth
+        bool rebirth,
+        ISet<Character> excludedTargets = null
     )
     {
         if (skill?.OwnerCharater?.BattleNode == null)
             return null;
 
-        Character[] allies = skill.GetAllAllyWithOrder(false).Where(x => x != null).ToArray();
+        Character[] allies = skill
+            .GetAllAllyWithOrder(false)
+            .Where(x => x != null && (excludedTargets == null || !excludedTargets.Contains(x)))
+            .ToArray();
         if (allies.Length == 0)
             return null;
 
@@ -1603,9 +1930,7 @@ public partial class Skill
                 .ToArray();
         }
 
-        return SingleTargetArray(
-            SelectAbsoluteFriendlyTarget(skill, selector, preferNonFull, rebirth)
-        );
+        return SingleTargetArray(SelectAbsoluteFriendlyTarget(skill, selector, preferNonFull, rebirth));
     }
 
     private static SummonCharacter[] GetOwnedSummons(Skill skill, bool dyingFilter = true)
@@ -1671,22 +1996,26 @@ public partial class Skill
         private readonly int _stacks;
         private readonly int _maxTargets;
         private readonly bool _byBehindRow;
+        private readonly Func<Skill, int> _stacksProvider;
 
         public ApplyBuffHostileSkillStep(
             Buff.BuffName buffName,
             int stacks,
             int maxTargets,
-            bool byBehindRow
+            bool byBehindRow,
+            Func<Skill, int> stacksProvider = null
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _maxTargets = maxTargets;
             _byBehindRow = byBehindRow;
+            _stacksProvider = stacksProvider;
         }
 
         public override Task Execute(Skill skill)
         {
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
             Character[] targets;
             int count;
             if (_maxTargets >= 9)
@@ -1702,7 +2031,7 @@ public partial class Skill
 
             for (int i = 0; i < count; i++)
             {
-                TryApplyBuffToTarget(_buffName, targets[i], _stacks, skill?.OwnerCharater);
+                TryApplyBuffToTarget(_buffName, targets[i], stacks, skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -1710,7 +2039,8 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            string stacksText = BuffStacksText(_buffName, _stacks);
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
+            string stacksText = BuffStacksText(_buffName, stacks);
             if (_maxTargets == 1)
             {
                 string targetText = _byBehindRow ? "后排目标" : "目标";
@@ -1780,20 +2110,28 @@ public partial class Skill
         private readonly Buff.BuffName _buffName;
         private readonly int _stacks;
         private readonly int _count;
+        private readonly Func<Skill, int> _stacksProvider;
 
-        public ApplyBuffSummonsSkillStep(Buff.BuffName buffName, int stacks, int count)
+        public ApplyBuffSummonsSkillStep(
+            Buff.BuffName buffName,
+            int stacks,
+            int count,
+            Func<Skill, int> stacksProvider = null
+        )
         {
             _buffName = buffName;
             _stacks = stacks;
             _count = count;
+            _stacksProvider = stacksProvider;
         }
 
         public override Task Execute(Skill skill)
         {
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
             SummonCharacter[] targets = SelectOwnedSummons(skill, _count);
             for (int i = 0; i < targets.Length; i++)
             {
-                TryApplyBuffToTarget(_buffName, targets[i], _stacks, skill?.OwnerCharater);
+                TryApplyBuffToTarget(_buffName, targets[i], stacks, skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -1802,7 +2140,8 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             string targetText = SummonSelectionText(_count);
-            string stacksText = BuffStacksText(_buffName, _stacks);
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
+            string stacksText = BuffStacksText(_buffName, stacks);
             yield return $"使{targetText}获得{stacksText}。";
         }
     }
@@ -1813,22 +2152,26 @@ public partial class Skill
         private readonly int _stacks;
         private readonly TargetReference _target;
         private readonly bool _includeSummonsWhenAll;
+        private readonly Func<Skill, int> _stacksProvider;
 
         public ApplyBuffFriendlySkillStep(
             Buff.BuffName buffName,
             int stacks,
             TargetReference target,
-            bool includeSummonsWhenAll
+            bool includeSummonsWhenAll,
+            Func<Skill, int> stacksProvider = null
         )
         {
             _buffName = buffName;
             _stacks = stacks;
             _target = target;
             _includeSummonsWhenAll = includeSummonsWhenAll;
+            _stacksProvider = stacksProvider;
         }
 
         public override Task Execute(Skill skill)
         {
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
             Character[] targets = skill.ResolveFriendlyTargets(
                 _target,
                 dyingFilter: true,
@@ -1836,7 +2179,7 @@ public partial class Skill
             );
             for (int i = 0; i < targets.Length; i++)
             {
-                TryApplyBuffToTarget(_buffName, targets[i], _stacks, skill?.OwnerCharater);
+                TryApplyBuffToTarget(_buffName, targets[i], stacks, skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -1845,7 +2188,8 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             string targetText = FriendlyTargetText(_target);
-            string stacksText = BuffStacksText(_buffName, _stacks);
+            int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
+            string stacksText = BuffStacksText(_buffName, stacks);
             yield return $"使{targetText}获得{stacksText}。";
         }
     }
@@ -1906,13 +2250,43 @@ public partial class Skill
             string targetText = RelativeFriendlyTargetText(_index);
             yield return $"对{targetText}造成{_damage}点伤害。";
         }
+
+        public override IEnumerable<Character> PreviewTargets(Skill skill)
+        {
+            if (_damage <= 0)
+                return Array.Empty<Character>();
+
+            if (_all)
+            {
+                return skill
+                    .GetAllAllyWithOrder(dyingFilter: true, includeSummons: true)
+                    .Where(x => x != null);
+            }
+
+            var target = skill.GetAllyByRelative(_index, dyingFilter: true);
+            return target == null ? Array.Empty<Character>() : [target];
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            if (_damage <= 0)
+                return Array.Empty<PreviewDamageEntry>();
+
+            var targets = PreviewTargets(skill).Where(x => x != null).ToArray();
+            if (targets.Length == 0)
+                return Array.Empty<PreviewDamageEntry>();
+
+            return targets.Select(target => new PreviewDamageEntry(target, _damage, 1));
+        }
     }
 
     private sealed class HealFriendlySkillStep : SkillStep
     {
         private readonly int _baseHeal;
         private readonly Func<Skill, int> _baseHealProvider;
-        private readonly int _survivabilityMultiplier;
         private readonly TargetReference _target;
         private readonly bool _dyingFilter;
         private readonly bool _preferNonFull;
@@ -1921,10 +2295,10 @@ public partial class Skill
         private readonly string _descriptionOverride;
         private readonly string _storeAs;
         private readonly bool _includeSummonsWhenAll;
+        private readonly int _repeatCount;
 
         public HealFriendlySkillStep(
             int baseHeal,
-            int survivabilityMultiplier,
             TargetReference target,
             bool dyingFilter,
             bool preferNonFull,
@@ -1933,12 +2307,12 @@ public partial class Skill
             Func<Skill, int> baseHealProvider,
             string descriptionOverride,
             string storeAs,
-            bool includeSummonsWhenAll
+            bool includeSummonsWhenAll,
+            int repeatCount
         )
         {
             _baseHeal = baseHeal;
             _baseHealProvider = baseHealProvider;
-            _survivabilityMultiplier = survivabilityMultiplier;
             _target = target;
             _dyingFilter = dyingFilter;
             _preferNonFull = preferNonFull;
@@ -1947,31 +2321,56 @@ public partial class Skill
             _descriptionOverride = descriptionOverride;
             _storeAs = storeAs;
             _includeSummonsWhenAll = includeSummonsWhenAll;
+            _repeatCount = Math.Max(1, repeatCount);
         }
 
         public override Task Execute(Skill skill)
         {
-            Character[] targets = skill.ResolveFriendlyTargets(
-                _target,
-                _dyingFilter,
-                _preferNonFull,
-                _rebirth,
-                _includeSummonsWhenAll
-            );
-            skill.StoreTarget(_storeAs, targets.FirstOrDefault());
-            if (targets.Length == 0)
-                return Task.CompletedTask;
-
-            int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealProvider);
-            int heal = ResolveFriendlyHealAmount(
-                skill,
-                baseHeal,
-                _survivabilityMultiplier,
-                _clampMax
-            );
-            for (int i = 0; i < targets.Length; i++)
+            HashSet<Character> selectedTargets = _repeatCount > 1 ? new() : null;
+            for (int repeat = 0; repeat < _repeatCount; repeat++)
             {
-                targets[i].Recover(heal, rebirth: _rebirth, source: skill?.OwnerCharater);
+                Character[] targets;
+                bool useUniqueAbsoluteTarget =
+                    selectedTargets != null
+                    && _target.Kind == TargetReferenceKind.Absolute
+                    && _target.AbsoluteSelector != AbsoluteFriendlySelector.All;
+                if (useUniqueAbsoluteTarget)
+                {
+                    Character uniqueTarget = SelectAbsoluteFriendlyTarget(
+                        skill,
+                        _target.AbsoluteSelector,
+                        _preferNonFull,
+                        _rebirth,
+                        selectedTargets
+                    );
+                    if (uniqueTarget == null)
+                        break;
+
+                    selectedTargets.Add(uniqueTarget);
+                    targets = SingleTargetArray(uniqueTarget);
+                }
+                else
+                {
+                    targets = skill.ResolveFriendlyTargets(
+                        _target,
+                        _dyingFilter,
+                        _preferNonFull,
+                        _rebirth,
+                        _includeSummonsWhenAll
+                    );
+                }
+                skill.StoreTarget(_storeAs, targets.FirstOrDefault());
+                if (targets.Length == 0)
+                    continue;
+
+                int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealProvider);
+                int heal = ResolveFriendlyHealAmount(
+                    skill,
+                    baseHeal,
+                    _clampMax
+                );
+                for (int i = 0; i < targets.Length; i++)
+                    targets[i].Recover(heal, rebirth: _rebirth, source: skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -1990,19 +2389,37 @@ public partial class Skill
             string healText = FriendlyHealAmountText(
                 skill,
                 baseHeal,
-                _survivabilityMultiplier,
                 _clampMax
             );
 
             if (_rebirth)
             {
-                string rebirthTargetText = _preferNonFull ? "濒死或非满血目标" : "濒死目标";
-                string rebirthLine = $"使{rebirthTargetText}复生{healText}点生命。";
+                string rebirthTargetText = _preferNonFull
+                    ? "濒死或非满血己方角色"
+                    : "濒死己方角色";
+                string rebirthLine;
                 if (
                     _target.Kind == TargetReferenceKind.Absolute
                     && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
                 )
-                    rebirthLine += $"（目标：{targetText}）";
+                {
+                    string selectorPrefix = targetText.EndsWith("队友")
+                        ? targetText.Substring(0, targetText.Length - 2)
+                        : targetText;
+                    rebirthLine = $"使{selectorPrefix}的{rebirthTargetText}复生{healText}点生命。";
+                }
+                else
+                {
+                    rebirthLine = $"使{rebirthTargetText}复生{healText}点生命。";
+                }
+                bool showDyingPriorityNote =
+                    _target.Kind == TargetReferenceKind.Absolute
+                    && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
+                    && _rebirth;
+                if (showDyingPriorityNote)
+                    rebirthLine += "（优先濒死目标）";
+                if (_repeatCount > 1)
+                    rebirthLine += $"（重复{_repeatCount}次）";
                 yield return rebirthLine;
                 yield break;
             }
@@ -2017,6 +2434,8 @@ public partial class Skill
                 normalLine += $"（{priorityText}）";
             if (_rebirth && string.IsNullOrWhiteSpace(priorityText))
                 normalLine += "（可对濒死目标生效）";
+            if (_repeatCount > 1)
+                normalLine += $"（重复{_repeatCount}次）";
             yield return normalLine;
         }
     }
@@ -2025,6 +2444,7 @@ public partial class Skill
     {
         private readonly PropertyType _type;
         private readonly int _value;
+        private readonly Func<Skill, int> _valueProvider;
         private readonly TargetReference _target;
         private readonly bool _includeSummonsWhenAll;
 
@@ -2032,17 +2452,26 @@ public partial class Skill
             PropertyType type,
             int value,
             TargetReference target,
-            bool includeSummonsWhenAll
+            bool includeSummonsWhenAll,
+            Func<Skill, int> valueProvider = null
         )
         {
             _type = type;
             _value = value;
+            _valueProvider = valueProvider;
             _target = target;
             _includeSummonsWhenAll = includeSummonsWhenAll;
         }
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
+            int value = ResolveStepBaseValue(skill, _value, _valueProvider);
+            if (value == 0)
+                return;
+
             Character[] targets = skill.ResolveFriendlyTargets(
                 _target,
                 dyingFilter: true,
@@ -2050,17 +2479,20 @@ public partial class Skill
             );
             for (int i = 0; i < targets.Length; i++)
             {
-                await ApplyPropertyDelta(targets[i], _type, _value, skill?.OwnerCharater);
+                if (ShouldAbortStepExecution(skill))
+                    return;
+                await ApplyPropertyDelta(targets[i], _type, value, skill?.OwnerCharater);
             }
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_value == 0)
+            int value = ResolveStepBaseValue(skill, _value, _valueProvider);
+            if (value == 0)
                 yield break;
 
             string targetText = FriendlyTargetText(_target);
-            string deltaText = PropertyDeltaActionText(_type, _value);
+            string deltaText = PropertyDeltaActionText(_type, value);
             yield return $"使{targetText}{deltaText}。";
         }
     }
@@ -2080,9 +2512,14 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             SummonCharacter[] targets = SelectOwnedSummons(skill, _count);
             for (int i = 0; i < targets.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
                 await ApplyPropertyDelta(targets[i], _type, _value, skill?.OwnerCharater);
             }
         }
@@ -2417,12 +2854,22 @@ public partial class Skill
     private sealed class EnergySkillStep : SkillStep
     {
         private readonly int _delta;
+        private readonly Func<Skill, int> _deltaProvider;
         private readonly TargetReference _target;
         private readonly bool _useFriendlyTarget;
 
         public EnergySkillStep(int delta)
         {
             _delta = delta;
+            _deltaProvider = null;
+            _target = default;
+            _useFriendlyTarget = false;
+        }
+
+        public EnergySkillStep(Func<Skill, int> delta)
+        {
+            _delta = 0;
+            _deltaProvider = delta;
             _target = default;
             _useFriendlyTarget = false;
         }
@@ -2430,13 +2877,23 @@ public partial class Skill
         public EnergySkillStep(int delta, TargetReference target)
         {
             _delta = delta;
+            _deltaProvider = null;
+            _target = target;
+            _useFriendlyTarget = true;
+        }
+
+        public EnergySkillStep(Func<Skill, int> delta, TargetReference target)
+        {
+            _delta = 0;
+            _deltaProvider = delta;
             _target = target;
             _useFriendlyTarget = true;
         }
 
         public override Task Execute(Skill skill)
         {
-            if (_delta == 0)
+            int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
+            if (delta == 0)
                 return Task.CompletedTask;
 
             if (_useFriendlyTarget)
@@ -2445,23 +2902,24 @@ public partial class Skill
                 if (target == null)
                     return Task.CompletedTask;
 
-                target.UpdataEnergy(_delta, skill?.OwnerCharater);
+                target.UpdataEnergy(delta, skill?.OwnerCharater);
                 return Task.CompletedTask;
             }
 
             if (skill.OwnerCharater == null)
                 return Task.CompletedTask;
 
-            skill.OwnerCharater.UpdataEnergy(_delta, skill.OwnerCharater);
+            skill.OwnerCharater.UpdataEnergy(delta, skill.OwnerCharater);
             return Task.CompletedTask;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            if (_delta == 0)
+            int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
+            if (delta == 0)
                 yield break;
 
-            string energyText = _delta > 0 ? $"恢复{_delta}点能量" : $"消耗{-_delta}点能量";
+            string energyText = delta > 0 ? $"恢复{delta}点能量" : $"消耗{-delta}点能量";
             if (_useFriendlyTarget)
             {
                 string targetText = FriendlyTargetText(_target);
@@ -2469,10 +2927,10 @@ public partial class Skill
                 yield break;
             }
 
-            if (_delta > 0)
-                yield return $"恢复{_delta}点能量。";
+            if (delta > 0)
+                yield return $"恢复{delta}点能量。";
             else
-                yield return $"消耗{-_delta}点能量。";
+                yield return $"消耗{-delta}点能量。";
         }
     }
 
@@ -2498,13 +2956,18 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             if (!TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
                 return;
 
             for (int i = 0; i < _onPassSteps.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
                 await _onPassSteps[i].Execute(skill);
-                if (skill._stopRemainingPlanExecution)
+                if (ShouldAbortStepExecution(skill))
                     return;
             }
         }
@@ -2564,18 +3027,53 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             if (_loopSteps.Length == 0)
                 return;
 
             if (_energyCost <= 0 && _times == null)
                 return;
 
+            // Delegate-only times mode: snapshot once, then consume locally.
+            // This keeps WhileStep compatible with read-only Func<int> providers.
+            if (_times != null && _setTimes == null)
+            {
+                int remainingTimes = Math.Max(0, _times());
+                while (remainingTimes > 0)
+                {
+                    if (ShouldAbortStepExecution(skill))
+                        return;
+
+                    if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
+                        break;
+
+                    remainingTimes--;
+                    for (int i = 0; i < _loopSteps.Length; i++)
+                    {
+                        if (ShouldAbortStepExecution(skill))
+                            return;
+                        await _loopSteps[i].Execute(skill);
+                        if (ShouldAbortStepExecution(skill))
+                            return;
+                    }
+                }
+
+                return;
+            }
+
             while (TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
+
                 for (int i = 0; i < _loopSteps.Length; i++)
                 {
+                    if (ShouldAbortStepExecution(skill))
+                        return;
                     await _loopSteps[i].Execute(skill);
-                    if (skill._stopRemainingPlanExecution)
+                    if (ShouldAbortStepExecution(skill))
                         return;
                 }
             }
@@ -2624,7 +3122,7 @@ public partial class Skill
 
     private static bool CanPassEnergyTimesGate(Skill skill, int energyCost, Func<int> times)
     {
-        if (skill?.OwnerCharater == null)
+        if (ShouldAbortStepExecution(skill) || skill?.OwnerCharater == null)
             return false;
 
         bool hasTimes = times != null;
@@ -2643,7 +3141,7 @@ public partial class Skill
         Action<int> setTimes
     )
     {
-        if (skill?.OwnerCharater == null)
+        if (ShouldAbortStepExecution(skill) || skill?.OwnerCharater == null)
             return false;
 
         bool hasTimes = times != null;
@@ -2668,31 +3166,69 @@ public partial class Skill
 
     private static async Task AttackTargetOnce(Skill skill, Character target, int damage)
     {
-        if (skill == null || target == null || IsDummyTarget(skill, target))
+        if (ShouldAbortStepExecution(skill) || target == null || IsDummyTarget(skill, target))
             return;
 
-        int clamped = Math.Clamp(damage, 0, 9999);
+        int clamped = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                skill.OwnerCharater,
+                damage,
+                target,
+                consumeStacks: true
+            ),
+            0,
+            9999
+        );
         await skill.AttackAnimation(target);
+        if (ShouldAbortStepExecution(skill))
+            return;
         await target.GetHurt(clamped, skill?.OwnerCharater);
+        if (ShouldAbortStepExecution(skill))
+            return;
         await Task.Delay(100);
     }
 
     private static async Task AttackTargetDoubleStrike(Skill skill, Character target, int damage)
     {
-        if (skill == null || target == null || IsDummyTarget(skill, target))
+        if (ShouldAbortStepExecution(skill) || target == null || IsDummyTarget(skill, target))
             return;
 
-        int clamped = Math.Clamp(damage, 0, 9999);
+        int clamped = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                skill.OwnerCharater,
+                damage,
+                target,
+                consumeStacks: true
+            ),
+            0,
+            9999
+        );
         await skill.AttackAnimation(target);
+        if (ShouldAbortStepExecution(skill))
+            return;
         await target.GetHurt(clamped, skill?.OwnerCharater);
+        if (ShouldAbortStepExecution(skill))
+            return;
         await Task.Delay(100);
-        if (target.State != Character.CharacterState.Normal)
+        if (ShouldAbortStepExecution(skill) || target.State != Character.CharacterState.Normal)
             return;
 
         var attack2 = AttackScene.Instantiate() as AttackEffect;
         target.AddChild(attack2);
         attack2.AnimationPlayer0.Play("Attack1");
         attack2.GlobalPosition = target.GlobalPosition;
+        clamped = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                skill.OwnerCharater,
+                damage,
+                target,
+                consumeStacks: true
+            ),
+            0,
+            9999
+        );
+        if (ShouldAbortStepExecution(skill))
+            return;
         await target.GetHurt(clamped, skill?.OwnerCharater);
     }
 
@@ -2715,6 +3251,9 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             if (_onPassSteps.Length == 0)
                 return;
 
@@ -2724,8 +3263,10 @@ public partial class Skill
 
             for (int i = 0; i < _onPassSteps.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
                 await _onPassSteps[i].Execute(skill);
-                if (skill._stopRemainingPlanExecution)
+                if (ShouldAbortStepExecution(skill))
                     return;
             }
         }
@@ -2778,14 +3319,19 @@ public partial class Skill
 
         public override async Task Execute(Skill skill)
         {
+            if (ShouldAbortStepExecution(skill))
+                return;
+
             SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
             if (activeSteps.Length == 0)
                 return;
 
             for (int i = 0; i < activeSteps.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    return;
                 await activeSteps[i].Execute(skill);
-                if (skill._stopRemainingPlanExecution)
+                if (ShouldAbortStepExecution(skill))
                     return;
             }
         }
@@ -2877,3 +3423,5 @@ public partial class Skill
         }
     }
 }
+
+

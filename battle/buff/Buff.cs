@@ -10,6 +10,23 @@ using Godot;
 
 public partial class Buff
 {
+    private sealed class VisualBudgetState
+    {
+        public ulong WindowStartMsec;
+        public int HintCount;
+        public int GhostCount;
+    }
+
+    private const ulong VisualBudgetWindowMsec = 90;
+    private const int MaxHintsPerWindow = 5;
+    private const int MaxGhostBurstsPerWindow = 3;
+    private const ulong GhostExplodeBudgetWindowMsec = 90;
+    private const int MaxGhostExplodesPerWindowGlobal = 8;
+    private static readonly Dictionary<ulong, VisualBudgetState> VisualBudgetByOwner = new();
+    private static readonly Dictionary<Rid, Shader> AdditiveGhostShaderCache = new();
+    private static ulong _ghostExplodeWindowStartMsec;
+    private static int _ghostExplodeCountInWindow;
+
     public static PackedScene HintScene = GD.Load<PackedScene>(
         "res://LabelNode/BuffHintLabel.tscn"
     );
@@ -18,6 +35,7 @@ public partial class Buff
         [BuffName.RebirthI] = "res://battle/buff/StateIcon/Rebirth.tscn",
         [BuffName.DamageImmune] = "res://battle/buff/StateIcon/Buffer.tscn",
         [BuffName.Vulnerable] = "res://battle/buff/StateIcon/Vulnerable.tscn",
+        [BuffName.Weaken] = "res://battle/buff/StateIcon/Weaken.tscn",
         [BuffName.Taunt] = "res://battle/buff/StateIcon/Aim.tscn",
         [BuffName.Thorn] = "res://battle/buff/StateIcon/Thorn.tscn",
         [BuffName.Stun] = "res://battle/buff/StateIcon/Stun.tscn",
@@ -46,81 +64,190 @@ public partial class Buff
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
             BuffName.ExtraPower => "获得力量或生存时额外获得等同层数的力量。",
             BuffName.ExtraSurvivability => "获得力量或生存时额外获得等同层数的生存。",
-            BuffName.ExtraTurn => "回合结束时消耗1层，触发一次额外行动（仅触发行动开始效果）。",
+            BuffName.ExtraTurn => "回合结束时消耗1层，触发1次额外出手（不触发回合开始/结束效果）。",
             BuffName.AutoArmor => "受到伤害后获得等同层数的格挡。",
             BuffName.Barricade => "回合开始时，保留你的格挡。",
+            BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
             _ => string.Empty,
         };
 
         return string.IsNullOrWhiteSpace(key) ? string.Empty : TranslationServer.Translate(key);
     }
 
-    public static void GhostExplode(Control node, Vector2 scale, Node parent = null)
+    private static bool TryConsumeGhostExplodeBudget()
     {
-        // 1. 克隆节点
-        var ghost = node.Duplicate() as Control;
-        ghost.GetChild(0).QueueFree();
-        ghost.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        if (ghost == null)
+        ulong now = Time.GetTicksMsec();
+        if (
+            _ghostExplodeWindowStartMsec == 0
+            || now - _ghostExplodeWindowStartMsec > GhostExplodeBudgetWindowMsec
+        )
+        {
+            _ghostExplodeWindowStartMsec = now;
+            _ghostExplodeCountInWindow = 0;
+        }
+
+        if (_ghostExplodeCountInWindow >= MaxGhostExplodesPerWindowGlobal)
+            return false;
+
+        _ghostExplodeCountInWindow++;
+        return true;
+    }
+
+    public static void GhostExplode(
+        Control node,
+        Vector2 scale,
+        Node parent = null,
+        bool useOffsetMotion = false
+    )
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node))
+            return;
+        if (!TryConsumeGhostExplodeBudget())
             return;
 
-        // 2. 处理 Shader，将其变为 Add 模式
-        // 注意：哪怕是普通的 Control，只要带 ShaderMaterial 就可以处理
-        if (ghost.Material is ShaderMaterial originalMat)
+        var ghost = node.Duplicate() as Control;
+        if (ghost == null)
+            return;
+        if (ghost.GetChildCount() > 0)
+            ghost.GetChild(0).QueueFree();
+        ghost.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+
+        if (ghost.Material is ShaderMaterial originalMat && originalMat.Shader != null)
         {
-            // 必须 Duplicate 材质和 Shader 资源，否则会修改到原始节点
             var newMat = (ShaderMaterial)originalMat.Duplicate();
-            newMat.Shader = (Shader)newMat.Shader.Duplicate();
-
-            string code = newMat.Shader.Code;
-            // 注入混合模式：blend_add
-            if (code.Contains("render_mode"))
+            Rid sourceShaderRid = originalMat.Shader.GetRid();
+            if (
+                !AdditiveGhostShaderCache.TryGetValue(sourceShaderRid, out Shader additiveShader)
+                || additiveShader == null
+                || !GodotObject.IsInstanceValid(additiveShader)
+            )
             {
-                if (!code.Contains("blend_add"))
-                    code = code.Replace("render_mode ", "render_mode blend_add, ");
-            }
-            else
-            {
-                code = code.Replace(
-                    "shader_type canvas_item;",
-                    "shader_type canvas_item;\nrender_mode blend_add;"
-                );
+                additiveShader = (Shader)originalMat.Shader.Duplicate();
+                string code = additiveShader.Code;
+                if (code.Contains("render_mode"))
+                {
+                    if (!code.Contains("blend_add"))
+                        code = code.Replace("render_mode ", "render_mode blend_add, ");
+                }
+                else
+                {
+                    code = code.Replace(
+                        "shader_type canvas_item;",
+                        "shader_type canvas_item;\nrender_mode blend_add;"
+                    );
+                }
+
+                additiveShader.Code = code;
+                AdditiveGhostShaderCache[sourceShaderRid] = additiveShader;
             }
 
-            newMat.Shader.Code = code;
+            newMat.Shader = additiveShader;
             ghost.Material = newMat;
         }
 
-        // 3. 设置层级与位置
         if (parent != null)
             parent.AddChild(ghost);
         else
             node.AddChild(ghost);
 
-        // 设置缩放中心
         ghost.PivotOffset = ghost.Size / 2;
+        Vector2 centeredPos = -ghost.Size / 2;
+        Vector2 basePos = centeredPos;
+        Vector2 jitterPos = basePos;
+        Vector2 arcPos = basePos;
+        Vector2 endPos = basePos;
 
-        ghost.Position = -ghost.Size / 2 + new Vector2(0, -40);
+        if (useOffsetMotion)
+        {
+            basePos = centeredPos + new Vector2(0, -22);
+            float lateral = (float)GD.RandRange(-28.0, 28.0);
+            float lift = (float)GD.RandRange(20.0, 34.0);
+            float settle = (float)GD.RandRange(-10.0, 10.0);
+            float jitterX = (float)GD.RandRange(-8.0, 8.0);
+            float jitterY = (float)GD.RandRange(-4.0, 4.0);
 
-        // 4. 动画效果
-        var tween = ghost.CreateTween(); // 建议直接由 ghost 创建
+            jitterPos = basePos + new Vector2(jitterX, jitterY);
+            arcPos = basePos + new Vector2(lateral * 0.55f, -lift);
+            endPos = basePos + new Vector2(lateral + settle, -lift - 24f);
+        }
 
-        // 并行执行：缩放变大 + 变透明
+        float spinDeg = (float)GD.RandRange(-14.0, 14.0);
+        float spinRad = Mathf.DegToRad(spinDeg);
+        float settleSpinRad = spinRad * 0.28f;
+
+        // Brighter than white to emphasize additive glow.
+        Godot.Color flashColor = new Godot.Color(1.35f, 1.28f, 1.55f, 1.0f);
+        Godot.Color midColor = new Godot.Color(1.1f, 1.08f, 1.28f, 0.76f);
+        Godot.Color fadeColor = new Godot.Color(0.8f, 0.86f, 1.12f, 0.0f);
+
+        ghost.Position = basePos;
+        ghost.Rotation = 0f;
+        ghost.Modulate = new Godot.Color(1.1f, 1.1f, 1.2f, 0.95f);
+        ghost.Scale = Vector2.One;
+
+        var tween = ghost.CreateTween();
+
+        // Stage 1: small jitter + flash pop.
         tween.SetParallel(true);
         tween
-            .TweenProperty(ghost, "scale", scale, 0.7f)
-            .SetTrans(Tween.TransitionType.Quad)
+            .TweenProperty(ghost, "position", jitterPos, 0.06f)
+            .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
-
-        // 注意：Add 模式下，Alpha 也会参与叠加，modulate 依然有效
         tween
-            .TweenProperty(ghost, "modulate:a", 0.0f, 0.7f)
+            .TweenProperty(ghost, "rotation", spinRad * 0.35f, 0.06f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "modulate", flashColor, 0.06f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "scale", scale * 0.92f, 0.06f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+
+        // Stage 2: arc lift with slight rotation and glow.
+        tween.SetParallel(false);
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(ghost, "position", arcPos, 0.22f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "rotation", spinRad, 0.22f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "modulate", midColor, 0.22f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "scale", scale * 1.08f, 0.22f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+
+        // Stage 3: curved drift + fade out.
+        tween.SetParallel(false);
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(ghost, "position", endPos, 0.44f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(ghost, "rotation", settleSpinRad, 0.44f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        tween
+            .TweenProperty(ghost, "modulate", fadeColor, 0.44f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.In);
+        tween
+            .TweenProperty(ghost, "scale", scale * 1.22f, 0.44f)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
 
-        // 5. 结束后自动销毁
         tween.SetParallel(false);
-        tween.Chain().TweenCallback(Callable.From(ghost.QueueFree));
+        tween.TweenCallback(Callable.From(ghost.QueueFree));
     }
 
     public enum BuffType
@@ -139,6 +266,9 @@ public partial class Buff
 
         [Description("易伤")]
         Vulnerable,
+
+        [Description("虚弱")]
+        Weaken,
 
         [Description("嘲讽")]
         Taunt,
@@ -195,6 +325,7 @@ public partial class Buff
             BuffName.RebirthI => Nature.positive,
             BuffName.DamageImmune => Nature.positive,
             BuffName.Vulnerable => Nature.negative,
+            BuffName.Weaken => Nature.negative,
             BuffName.Taunt => Nature.positive,
             BuffName.Thorn => Nature.positive,
             BuffName.Stun => Nature.negative,
@@ -224,6 +355,63 @@ public partial class Buff
         target.BattleNode.RecordBuffGain(target, name, stack, source);
     }
 
+    private static void CleanupVisualBudget(ulong now)
+    {
+        if (VisualBudgetByOwner.Count <= 96)
+            return;
+
+        const ulong staleThresholdMsec = VisualBudgetWindowMsec * 12;
+        var staleKeys = new List<ulong>();
+        foreach (var pair in VisualBudgetByOwner)
+        {
+            bool invalidOwner = !GodotObject.IsInstanceIdValid(pair.Key);
+            bool stale = now - pair.Value.WindowStartMsec > staleThresholdMsec;
+            if (invalidOwner || stale)
+                staleKeys.Add(pair.Key);
+        }
+
+        for (int i = 0; i < staleKeys.Count; i++)
+            VisualBudgetByOwner.Remove(staleKeys[i]);
+    }
+
+    private static bool TryConsumeVisualBudget(Character owner, bool consumeHint)
+    {
+        if (owner == null || !GodotObject.IsInstanceValid(owner))
+            return false;
+
+        ulong now = Time.GetTicksMsec();
+        ulong ownerId = owner.GetInstanceId();
+        if (!VisualBudgetByOwner.TryGetValue(ownerId, out var state))
+        {
+            state = new VisualBudgetState { WindowStartMsec = now };
+            VisualBudgetByOwner[ownerId] = state;
+        }
+
+        if (now - state.WindowStartMsec > VisualBudgetWindowMsec)
+        {
+            state.WindowStartMsec = now;
+            state.HintCount = 0;
+            state.GhostCount = 0;
+        }
+
+        bool allow;
+        if (consumeHint)
+        {
+            allow = state.HintCount < MaxHintsPerWindow;
+            if (allow)
+                state.HintCount++;
+        }
+        else
+        {
+            allow = state.GhostCount < MaxGhostBurstsPerWindow;
+            if (allow)
+                state.GhostCount++;
+        }
+
+        CleanupVisualBudget(now);
+        return allow;
+    }
+
     public void TweenLabel()
     {
         if (Stack == 0)
@@ -240,6 +428,9 @@ public partial class Buff
 
     public void BuffAddAnimation()
     {
+        if (!TryConsumeVisualBudget(Owner, consumeHint: false))
+            return;
+
         if (BuffIcon == null || !GodotObject.IsInstanceValid(BuffIcon))
             return;
 
@@ -250,12 +441,15 @@ public partial class Buff
         // Avoid Godot warning: setting Size on Controls with stretched anchors gets overridden after _Ready.
         depIcon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         depIcon.Size = new Vector2(200, 200);
-        GhostExplode(depIcon, new Vector2(2f, 2f), Owner);
+        GhostExplode(depIcon, new Vector2(2f, 2f), Owner, useOffsetMotion: false);
         depIcon.Free();
     }
 
     public void Hint(BuffName name, BuffHintLabel.Which which)
     {
+        if (!TryConsumeVisualBudget(Owner, consumeHint: true))
+            return;
+
         string suffix = which switch
         {
             BuffHintLabel.Which.vanish => "[color=yellow]消失[/color]",
@@ -275,6 +469,7 @@ public partial class Buff
         var label = GetStackLabel();
         if (label != null)
             label.Text = Stack.ToString();
+        Owner?.InvalidateBuffTooltipCache();
     }
 
     protected static ColorRect CreateBuffIcon(BuffName name)
@@ -303,6 +498,7 @@ public partial class Buff
         existingBuff.TweenLabel();
         existingBuff.Hint(existingBuff.ThisBuffName, BuffHintLabel.Which.gain);
         existingBuff.BuffAddAnimation();
+        target?.InvalidateBuffTooltipCache();
         RecordBuffGain(target, name, stack, source);
         return true;
     }
@@ -317,6 +513,7 @@ public partial class Buff
         buff.UpdateStackLabel();
         target.StateIconContainer.AddChild(buff.BuffIcon);
         buff.BuffAddAnimation();
+        target.InvalidateBuffTooltipCache();
         RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
     }
 
@@ -333,6 +530,7 @@ public partial class Buff
 
         BuffIcon = null;
         buffs?.Remove((TBuff)this);
+        Owner?.InvalidateBuffTooltipCache();
 
         if (showVanishHint)
             Hint(ThisBuffName, BuffHintLabel.Which.vanish);
@@ -356,6 +554,7 @@ public class DyingBuff : Buff
                 {
                     Owner.Recover(Owner.BattleMaxLife / 2, true, Owner);
                     Stack--;
+                    UpdateStackLabel();
                 }
                 break;
         }
@@ -406,6 +605,7 @@ public partial class HurtBuff : Buff
                 break;
             case BuffName.Taunt:
                 Stack--;
+                UpdateStackLabel();
                 break;
             case BuffName.Thorn:
                 if (
@@ -510,6 +710,132 @@ public partial class StartActionBuff : Buff
     }
 }
 
+public partial class AttackBuff : Buff
+{
+    private const float WeakenMultiplier = 0.75f;
+
+    public sealed class PreviewState
+    {
+        private readonly Dictionary<AttackBuff, int> _stacks = new();
+
+        public int GetStack(AttackBuff buff)
+        {
+            if (buff == null)
+                return 0;
+
+            return _stacks.TryGetValue(buff, out int stack) ? stack : buff.Stack;
+        }
+
+        public void SetStack(AttackBuff buff, int stack)
+        {
+            if (buff == null)
+                return;
+
+            _stacks[buff] = Math.Max(stack, 0);
+        }
+    }
+
+    public struct TriggerContext
+    {
+        public int Damage;
+        public Character Target;
+        public bool ConsumeStack;
+        public PreviewState State;
+    }
+
+    public AttackBuff(Character owner, BuffName name, int stack)
+        : base(owner, name, stack) { }
+
+    private int GetCurrentStack(PreviewState state) => state?.GetStack(this) ?? Stack;
+
+    private void SetCurrentStack(ref TriggerContext context, int stack)
+    {
+        stack = Math.Max(stack, 0);
+        if (context.State != null)
+        {
+            context.State.SetStack(this, stack);
+            return;
+        }
+
+        Stack = stack;
+        UpdateStackLabel();
+        TweenLabel();
+        TryRemoveIfEmpty(Owner.AttackBuffs);
+    }
+
+    public void Trigger(ref TriggerContext context)
+    {
+        int currentStack = GetCurrentStack(context.State);
+        if (currentStack <= 0)
+            return;
+
+        switch (ThisBuffName)
+        {
+            case BuffName.Weaken:
+                context.Damage = Math.Max(
+                    (int)MathF.Floor(context.Damage * WeakenMultiplier),
+                    0
+                );
+                if (context.ConsumeStack)
+                {
+                    SetCurrentStack(ref context, currentStack - 1);
+                }
+                break;
+        }
+    }
+
+    public static void Trigger(Character attacker, ref TriggerContext context)
+    {
+        if (attacker?.AttackBuffs == null)
+            return;
+
+        foreach (var buff in attacker.AttackBuffs.Where(x => x != null).ToArray())
+        {
+            buff.Trigger(ref context);
+        }
+
+        context.Damage = Math.Max(context.Damage, 0);
+    }
+
+    public static int ApplyOutgoingDamageModifiers(
+        Character attacker,
+        int damage,
+        Character target = null,
+        bool consumeStacks = false,
+        PreviewState previewState = null
+    )
+    {
+        var context = new TriggerContext
+        {
+            Damage = damage,
+            Target = target,
+            ConsumeStack = consumeStacks,
+            State = previewState,
+        };
+        Trigger(attacker, ref context);
+        return context.Damage;
+    }
+
+    public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
+    {
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+            return;
+
+        if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
+            return;
+
+        if (target?.AttackBuffs == null || name != BuffName.Weaken)
+            return;
+
+        var buff = new AttackBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
+        if (buff.BuffIcon == null)
+            return;
+
+        target.AttackBuffs.Add(buff);
+        FinalizeBuffAdd(buff, target, source);
+    }
+}
+
 public partial class SkillBuff : Buff
 {
     public SkillBuff(Character owner, BuffName name, int stack)
@@ -593,12 +919,12 @@ public partial class EndActionBuff : Buff
                 UpdateStackLabel();
 
                 var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = Owner };
-                await skill.Attack1(Owner.BattlePower);
+                await skill.Attack(Owner.BattlePower);
                 break;
             case BuffName.ExtraTurn:
                 Stack--;
                 UpdateStackLabel();
-                Owner.OnTurnStart();
+                Owner.BattleNode?.RequestExtraAction(Owner);
                 break;
         }
 
@@ -680,3 +1006,5 @@ public enum Nature
     positive,
     negative,
 }
+
+

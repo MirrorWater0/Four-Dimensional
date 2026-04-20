@@ -6,15 +6,16 @@ using Godot;
 
 public partial class SpaceStationShop : Control
 {
+    private const string PrewarmMetaKey = "__shop_prewarm_hidden";
     private const int ShopCharacterCount = 4;
     private const int SkillOffersPerCharacter = 2;
     private const int SkillOfferCount = ShopCharacterCount * SkillOffersPerCharacter;
-    private const int SkillOfferPrice = 42;
+    private const int SkillOfferBasePrice = 40;
+    private const int SkillOfferPriceVariance = 10;
     private const float ModuleSelectorTweenDuration = 0.1f;
-    private const float ModuleShaderTransitionHalfDuration = 0.12f;
-    private const float ModuleContentFadeOutDuration = 0.045f;
-    private const float ModuleContentFadeInDuration = 0.08f;
-    private const float ModuleItemTweenDuration = 0.11f;
+    private const float ModuleContentFadeOutDuration = 0.18f;
+    private const float ModuleContentFadeInDuration = 0.24f;
+    private const float ModuleItemTweenDuration = 0.16f;
     private const float ModuleItemStagger = 0.01f;
     private const float ModuleItemEnterOffsetX = 64f;
     private const float ModuleItemEnterOffsetY = 10f;
@@ -37,6 +38,15 @@ public partial class SpaceStationShop : Control
 
     [Export(PropertyHint.Range, "0.35,0.80,0.01")]
     public float ShopSkillCardScale { get; set; } = 0.80f;
+
+    [Export]
+    public bool EnableBackgroundOfferWarmup { get; set; } = false;
+
+    [Export(PropertyHint.Range, "0.1,8,0.1")]
+    public float OfferWarmupDelaySeconds { get; set; } = 0.8f;
+
+    [Export(PropertyHint.Range, "1,8,1")]
+    public int OfferBuildYieldFrames { get; set; } = 1;
 
     private static readonly PackedScene ShopScene = GD.Load<PackedScene>(
         "res://Shop/SpaceStationShop.tscn"
@@ -154,8 +164,6 @@ public partial class SpaceStationShop : Control
     private Label StatusLabel => field ??= GetNode<Label>("Panel/Decor/FooterHint");
     private Label CatalogTitle => field ??= GetNode<Label>("Panel/Decor/CatalogTitle");
     private Label CatalogHint => field ??= GetNode<Label>("Panel/Decor/CatalogHint");
-    private ColorRect ModuleTransitionOverlay =>
-        field ??= GetNode<ColorRect>("Panel/Decor/ModuleTransitionOverlay");
     private Control TopLine => field ??= GetNode<Control>("Panel/Decor/TopLine");
     private Control FooterLine => field ??= GetNode<Control>("Panel/Decor/FooterLine");
     private Control StatPanel =>
@@ -198,6 +206,13 @@ public partial class SpaceStationShop : Control
     private readonly Dictionary<Control, Vector2> _assemblyBasePositions = new();
     private readonly Dictionary<Control, Tween> _statPanelHoverTweens = new();
     private Vector2 _panelBasePosition;
+    private bool _catalogOffersBuilt;
+    private bool _skillOffersBuilt;
+    private bool _statOffersBuilt;
+    private bool _offerWarmupQueued;
+    private Task _catalogBuildTask;
+    private Task _skillBuildTask;
+    private Task _statBuildTask;
 
     public static SpaceStationShop Show(Node caller)
     {
@@ -220,6 +235,33 @@ public partial class SpaceStationShop : Control
         else
             root.AddChild(shop);
         return shop;
+    }
+
+    public static void Prewarm(Node caller)
+    {
+        if (caller == null || !GodotObject.IsInstanceValid(caller))
+            return;
+
+        var tree = caller.GetTree();
+        var root = tree?.Root;
+        if (root == null)
+            return;
+
+        var existing =
+            root.GetNodeOrNull<SpaceStationShop>("Map/SiteUI/SpaceStationShop")
+            ?? root.GetNodeOrNull<SpaceStationShop>("SpaceStationShop");
+        if (existing != null)
+            return;
+
+        var shop = ShopScene.Instantiate<SpaceStationShop>();
+        shop.Name = "SpaceStationShop";
+        shop.SetMeta(PrewarmMetaKey, true);
+
+        var siteUi = root.GetNodeOrNull<Node>("Map/SiteUI");
+        if (siteUi != null)
+            siteUi.AddChild(shop);
+        else
+            root.AddChild(shop);
     }
 
     private void ReopenFromHidden()
@@ -254,6 +296,11 @@ public partial class SpaceStationShop : Control
 
     public override void _Ready()
     {
+        bool startHidden =
+            HasMeta(PrewarmMetaKey) && GetMeta(PrewarmMetaKey).AsBool();
+        if (HasMeta(PrewarmMetaKey))
+            RemoveMeta(PrewarmMetaKey);
+
         MouseFilter = MouseFilterEnum.Stop;
         CloseButton.Pressed += Close;
         HideButton.Pressed += HideOnly;
@@ -266,8 +313,18 @@ public partial class SpaceStationShop : Control
         NormalizeModuleContentLayouts();
         UpdateModuleTransitionBlockerLayout();
         UpdatePanelPivot();
-        ApplyPreIntroVisualState();
         EnsureInputBlocker();
+
+        if (startHidden)
+        {
+            _isHidden = true;
+            _isClosing = false;
+            SetUiInteractive(false);
+            Visible = false;
+            return;
+        }
+
+        ApplyPreIntroVisualState();
         SetUiInteractive(false);
         CallDeferred(nameof(BeginIntroAnimation));
     }
@@ -291,18 +348,116 @@ public partial class SpaceStationShop : Control
         _statOffers.Clear();
         _catalogOffers.Clear();
         _skillOffers.Clear();
+        _catalogOffersBuilt = false;
+        _skillOffersBuilt = false;
+        _statOffersBuilt = false;
+        _offerWarmupQueued = false;
+        _catalogBuildTask = null;
+        _skillBuildTask = null;
+        _statBuildTask = null;
 
-        BuildStatOffers();
-        BuildEquipmentOffers();
-        BuildRelicOffers();
-        BuildPotionOffers();
-        BuildSkillOffers();
+        StartStatOfferBuild();
 
         NormalizeModuleContentLayouts();
         SetModule(ShopModule.Stat, animateSelector: false);
         SnapModuleContentVisualState();
         SetStatus("浏览空间站补给目录。");
         RefreshShopState();
+        if (EnableBackgroundOfferWarmup)
+            CallDeferred(nameof(BeginOfferWarmup));
+    }
+
+    private void BeginOfferWarmup()
+    {
+        if (_offerWarmupQueued || !IsInsideTree() || _isClosing)
+            return;
+
+        _offerWarmupQueued = true;
+        _ = WarmupRemainingOffersAsync();
+    }
+
+    private async Task WarmupRemainingOffersAsync()
+    {
+        float delay = Mathf.Max(0.05f, OfferWarmupDelaySeconds);
+        await ToSignal(GetTree().CreateTimer(delay), "timeout");
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await EnsureCatalogOffersBuiltAsync();
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await EnsureSkillOffersBuiltAsync();
+    }
+
+    private async Task EnsureModuleOffersBuiltAsync(ShopModule module)
+    {
+        switch (module)
+        {
+            case ShopModule.Stat:
+                await EnsureStatOffersBuiltAsync();
+                break;
+            case ShopModule.Skill:
+                await EnsureSkillOffersBuiltAsync();
+                break;
+            case ShopModule.Equipment:
+            case ShopModule.Relic:
+            case ShopModule.Potion:
+                await EnsureCatalogOffersBuiltAsync();
+                break;
+        }
+    }
+
+    private Task EnsureCatalogOffersBuiltAsync()
+    {
+        if (_catalogOffersBuilt)
+            return Task.CompletedTask;
+
+        _catalogBuildTask ??= BuildCatalogOffersAsync();
+        return _catalogBuildTask;
+    }
+
+    private async Task BuildCatalogOffersAsync()
+    {
+        try
+        {
+            if (_catalogOffersBuilt || !IsInsideTree() || _isClosing)
+                return;
+
+            await BuildEquipmentOffersAsync();
+            if (!IsInsideTree() || _isClosing)
+                return;
+
+            await BuildRelicOffersAsync();
+            if (!IsInsideTree() || _isClosing)
+                return;
+
+            await BuildPotionOffersAsync();
+            _catalogOffersBuilt = true;
+
+            NormalizeModuleContentLayouts();
+            ApplyModuleVisibility();
+            SnapModuleContentVisualState();
+            if (_currentModule is ShopModule.Equipment or ShopModule.Relic or ShopModule.Potion)
+                RefreshCurrentModuleState();
+        }
+        finally
+        {
+            _catalogBuildTask = null;
+        }
+    }
+
+    private Task EnsureSkillOffersBuiltAsync()
+    {
+        if (_skillOffersBuilt)
+            return Task.CompletedTask;
+
+        _skillBuildTask ??= BuildSkillOffersAsync();
+        return _skillBuildTask;
     }
 
     private void NormalizeModuleContentLayouts()
@@ -340,124 +495,200 @@ public partial class SpaceStationShop : Control
         target.GrowVertical = source.GrowVertical;
     }
 
-    private void BuildStatOffers()
+    private void StartStatOfferBuild()
     {
-        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+        _statBuildTask ??= BuildStatOffersAsync();
+    }
 
-        for (int i = 0; i < ShopCharacterCount; i++)
+    private Task EnsureStatOffersBuiltAsync()
+    {
+        if (_statOffersBuilt)
+            return Task.CompletedTask;
+
+        StartStatOfferBuild();
+        return _statBuildTask ?? Task.CompletedTask;
+    }
+
+    private async Task BuildStatOffersAsync()
+    {
+        try
         {
-            string characterName =
-                i < players.Length && !string.IsNullOrWhiteSpace(players[i].CharacterName)
-                    ? players[i].CharacterName
-                    : $"角色 {i + 1}";
+            if (_statOffersBuilt || !IsInsideTree() || _isClosing)
+                return;
 
-            var panel = CreateStatCharacterPanel(characterName);
-            StatOffersContainer.AddChild(panel);
+            var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
 
-            var optionGrid = panel.GetNode<GridContainer>("Margin/VBox/Options");
-            AddStatOffer(
-                optionGrid.GetNode<PanelContainer>("Power"),
-                i,
-                characterName,
-                PropertyType.Power,
-                1,
-                26
-            );
-            AddStatOffer(
-                optionGrid.GetNode<PanelContainer>("Survivability"),
-                i,
-                characterName,
-                PropertyType.Survivability,
-                1,
-                26
-            );
-            AddStatOffer(
-                optionGrid.GetNode<PanelContainer>("Speed"),
-                i,
-                characterName,
-                PropertyType.Speed,
-                1,
-                32
-            );
-            AddStatOffer(
-                optionGrid.GetNode<PanelContainer>("MaxLife"),
-                i,
-                characterName,
-                PropertyType.MaxLife,
-                5,
-                30
-            );
+            for (int i = 0; i < ShopCharacterCount; i++)
+            {
+                string characterName =
+                    i < players.Length && !string.IsNullOrWhiteSpace(players[i].CharacterName)
+                        ? players[i].CharacterName
+                        : $"角色 {i + 1}";
+
+                var panel = CreateStatCharacterPanel(characterName);
+                StatOffersContainer.AddChild(panel);
+
+                var optionGrid = panel.GetNode<GridContainer>("Margin/VBox/Options");
+                AddStatOffer(
+                    optionGrid.GetNode<PanelContainer>("Power"),
+                    i,
+                    characterName,
+                    PropertyType.Power,
+                    1,
+                    26
+                );
+                AddStatOffer(
+                    optionGrid.GetNode<PanelContainer>("Survivability"),
+                    i,
+                    characterName,
+                    PropertyType.Survivability,
+                    1,
+                    26
+                );
+                AddStatOffer(
+                    optionGrid.GetNode<PanelContainer>("Speed"),
+                    i,
+                    characterName,
+                    PropertyType.Speed,
+                    1,
+                    32
+                );
+                AddStatOffer(
+                    optionGrid.GetNode<PanelContainer>("MaxLife"),
+                    i,
+                    characterName,
+                    PropertyType.MaxLife,
+                    5,
+                    30
+                );
+
+                if (i + 1 < ShopCharacterCount)
+                    await YieldOfferBuildFramesAsync();
+                if (!IsInsideTree() || _isClosing)
+                    return;
+            }
+
+            _statOffersBuilt = true;
+            NormalizeModuleContentLayouts();
+            ApplyModuleVisibility();
+            SnapModuleContentVisualState();
+            if (_currentModule == ShopModule.Stat)
+                RefreshCurrentModuleState();
+        }
+        finally
+        {
+            _statBuildTask = null;
         }
     }
 
-    private void BuildEquipmentOffers()
+    private async Task BuildEquipmentOffersAsync()
     {
-        var rng = new Random(GameInfo.Seed ^ 0x51A7);
+        var rng = CreateShopRandom(0x51A7);
         var equipmentPool = Equipment.GetCatalogClones().OrderBy(_ => rng.Next()).Take(4).ToArray();
         for (int i = 0; i < equipmentPool.Length; i++)
         {
             var equipment = equipmentPool[i];
             AddEquipmentOffer(equipment, ComputeEquipmentPrice(equipment));
+            if (i + 1 < equipmentPool.Length)
+                await YieldOfferBuildFramesAsync();
         }
     }
 
-    private void BuildRelicOffers()
+    private async Task BuildRelicOffersAsync()
     {
         var relicPool = Relic.GetUnownedOfferPool();
         for (int i = 0; i < relicPool.Length; i++)
         {
             AddRelicOffer(relicPool[i], 88);
+            if (i + 1 < relicPool.Length)
+                await YieldOfferBuildFramesAsync();
         }
     }
 
-    private void BuildPotionOffers()
+    private async Task BuildPotionOffersAsync()
     {
         for (int i = 0; i < PotionCatalog.Length; i++)
         {
             var stock = PotionCatalog[i];
             AddPotionOffer(stock.ItemId, stock.Price);
+            if (i + 1 < PotionCatalog.Length)
+                await YieldOfferBuildFramesAsync();
         }
     }
 
-    private void BuildSkillOffers()
+    private async Task YieldOfferBuildFramesAsync()
     {
-        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
-        var rng = new Random(GameInfo.Seed ^ 0x7E11);
-        Vector2 scale = GetShopSkillCardScaleVector();
-        Vector2 cardSize = GetShopSkillCardDisplaySize();
+        if (!IsInsideTree() || _isClosing)
+            return;
 
-        for (int playerIndex = 0; playerIndex < ShopCharacterCount; playerIndex++)
+        int frames = Mathf.Clamp(OfferBuildYieldFrames, 1, 8);
+        for (int i = 0; i < frames; i++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private async Task BuildSkillOffersAsync()
+    {
+        try
         {
-            int offerPlayerIndex = playerIndex < players.Length ? playerIndex : -1;
-            var pickedSkills = PickSkillOffersForPlayer(players, playerIndex, rng);
+            if (_skillOffersBuilt || !IsInsideTree() || _isClosing)
+                return;
 
-            for (int slotIndex = 0; slotIndex < SkillOffersPerCharacter; slotIndex++)
+            var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+            var rng = CreateShopRandom(0x7E11);
+            Vector2 scale = GetShopSkillCardScaleVector();
+            Vector2 cardSize = GetShopSkillCardDisplaySize();
+
+            for (int playerIndex = 0; playerIndex < ShopCharacterCount; playerIndex++)
             {
-                var card = SkillCardScene.Instantiate<SkillCard>();
-                card.Name = $"SkillOffer{_skillOffers.Count + 1}";
-                card.ConfigureDisplayScale(scale);
+                int offerPlayerIndex = playerIndex < players.Length ? playerIndex : -1;
+                var pickedSkills = PickSkillOffersForPlayer(players, playerIndex, rng);
 
-                var cardHolder = CreateSkillOfferCardHolder(card, cardSize, scale);
-
-                var priceLabel = CreateSkillOfferPriceLabel();
-                var tile = CreateSkillOfferTile(cardHolder, priceLabel, cardSize);
-                SkillOffersContainer.AddChild(tile);
-
-                int animationIndex = _skillOffers.Count;
-                card.CallDeferred(nameof(SkillCard.StartAnimation), 0.04f * animationIndex + 0.08f);
-
-                var offer = new SkillOffer
+                for (int slotIndex = 0; slotIndex < SkillOffersPerCharacter; slotIndex++)
                 {
-                    PlayerIndex = offerPlayerIndex,
-                    SkillId = pickedSkills[slotIndex],
-                    Price = SkillOfferPrice,
-                    View = tile,
-                    Card = card,
-                    PriceLabel = priceLabel,
-                };
-                _skillOffers.Add(offer);
-                card.Button.Pressed += () => OnSkillOfferPressed(offer);
+                    var card = SkillCardScene.Instantiate<SkillCard>();
+                    card.Name = $"SkillOffer{_skillOffers.Count + 1}";
+                    card.ConfigureDisplayScale(scale);
+
+                    var cardHolder = CreateSkillOfferCardHolder(card, cardSize, scale);
+
+                    var priceLabel = CreateSkillOfferPriceLabel();
+                    var tile = CreateSkillOfferTile(cardHolder, priceLabel, cardSize);
+                    SkillOffersContainer.AddChild(tile);
+
+                    int animationIndex = _skillOffers.Count;
+                    card.CallDeferred(
+                        nameof(SkillCard.StartAnimation),
+                        0.04f * animationIndex + 0.08f
+                    );
+
+                    var offer = new SkillOffer
+                    {
+                        PlayerIndex = offerPlayerIndex,
+                        SkillId = pickedSkills[slotIndex],
+                        Price = ComputeSkillOfferPrice(rng),
+                        View = tile,
+                        Card = card,
+                        PriceLabel = priceLabel,
+                    };
+                    _skillOffers.Add(offer);
+                    card.Button.Pressed += () => OnSkillOfferPressed(offer);
+                    RefreshSkillOfferCard(offer);
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (!IsInsideTree() || _isClosing)
+                        return;
+                }
             }
+
+            _skillOffersBuilt = true;
+            NormalizeModuleContentLayouts();
+            ApplyModuleVisibility();
+            SnapModuleContentVisualState();
+            if (_currentModule == ShopModule.Skill)
+                RefreshCurrentModuleState();
+        }
+        finally
+        {
+            _skillBuildTask = null;
         }
     }
 
@@ -1109,6 +1340,30 @@ public partial class SpaceStationShop : Control
             RefreshSkillOfferCard(_skillOffers[i]);
     }
 
+    private void RefreshCurrentModuleState()
+    {
+        switch (_currentModule)
+        {
+            case ShopModule.Stat:
+                for (int i = 0; i < _statOffers.Count; i++)
+                    RefreshStatOfferCard(_statOffers[i]);
+                break;
+            case ShopModule.Skill:
+                for (int i = 0; i < _skillOffers.Count; i++)
+                    RefreshSkillOfferCard(_skillOffers[i]);
+                break;
+            default:
+                for (int i = 0; i < _catalogOffers.Count; i++)
+                {
+                    var offer = _catalogOffers[i];
+                    if (offer == null || !ModuleMatchesOffer(_currentModule, offer.Kind))
+                        continue;
+                    RefreshCatalogOfferCard(offer);
+                }
+                break;
+        }
+    }
+
     private void RefreshStatOfferCard(StatOffer offer)
     {
         if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
@@ -1404,16 +1659,17 @@ public partial class SpaceStationShop : Control
         var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
         if (layer == null)
         {
-            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            layer = new CanvasLayer { Layer = 8, Name = "TipLayer" };
             root.AddChild(layer);
         }
 
-        _shopRelicTip =
-            layer.GetNodeOrNull<Tip>("RelicTip")
-            ?? layer.GetNodeOrNull<Tip>("Tip")
-            ?? layer.GetNodeOrNull<Tip>("ShopRelicTip");
-        if (_shopRelicTip != null)
+        _shopRelicTip = layer.GetNodeOrNull<Tip>("ShopRelicTip");
+        if (_shopRelicTip != null && GodotObject.IsInstanceValid(_shopRelicTip))
+        {
+            _shopRelicTip.FollowMouse = true;
+            _shopRelicTip.AnchorOffset = new Vector2(20f, 20f);
             return _shopRelicTip;
+        }
 
         var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
         if (tipScene == null)
@@ -1433,11 +1689,10 @@ public partial class SpaceStationShop : Control
         string title = $"[color=#b78cff]{relic.RelicName}[/color]";
         string effect = GlobalFunction.ColorizeNumbers(relic.RelicDescription);
         string price = offer.Sold
-            ? "[color=#aab6c6]已售罄[/color]"
-            : $"[color=#ffd24a]价格 {offer.Price} 电力币[/color]";
+            ? "[color=#aab6c6]Sold[/color]"
+            : $"[color=#ffd24a]Price {offer.Price} EC[/color]";
         return $"{title}\n{effect}\n{price}";
     }
-
     private static string BuildItemTooltip(CatalogOffer offer)
     {
         string title = $"[color=#84d8ff]{ConsumeItem.GetItemName(offer.ItemId)}[/color]";
@@ -1445,13 +1700,12 @@ public partial class SpaceStationShop : Control
             ConsumeItem.GetItemDescription(offer.ItemId)
         );
         string price = offer.Sold
-            ? "[color=#aab6c6]已售罄[/color]"
-            : $"[color=#ffd24a]价格 {offer.Price} 电力币[/color]";
+            ? "[color=#aab6c6]Sold[/color]"
+            : $"[color=#ffd24a]Price {offer.Price} EC[/color]";
         string carryHint =
-            $"[color=#9cdacf]购买后进入战斗道具栏，最多携带 {GameInfo.ItemsMaxCount} 个[/color]";
+            $"[color=#9cdacf]Can carry up to {GameInfo.ItemsMaxCount} items[/color]";
         return $"{title}\n{effect}\n{price}\n{carryHint}";
     }
-
     private static int GetRelicAddAmount(RelicID relicId)
     {
         return Relic.GetAcquireAmount(relicId);
@@ -1579,7 +1833,11 @@ public partial class SpaceStationShop : Control
         HideRelicTip();
         try
         {
-            await PlayModuleShaderTransitionAsync(module);
+            await EnsureModuleOffersBuiltAsync(module);
+            if (!IsInsideTree() || _isClosing || _currentModule == module)
+                return;
+
+            await PlayModuleBattleReadyTransitionAsync(module);
         }
         finally
         {
@@ -1589,68 +1847,18 @@ public partial class SpaceStationShop : Control
         }
     }
 
-    private async Task PlayModuleShaderTransitionAsync(ShopModule module)
+    private async Task PlayModuleBattleReadyTransitionAsync(ShopModule module)
     {
-        KillModuleContentTween();
+        ShopModule outgoingModule = _currentModule;
+        int transitionDirection = GetModuleTransitionDirection(outgoingModule, module);
+        Control outgoingRoot = GetModuleContentRoot(outgoingModule);
 
-        var overlay = ModuleTransitionOverlay;
-        if (
-            overlay == null
-            || !GodotObject.IsInstanceValid(overlay)
-            || overlay.Material is not ShaderMaterial shader
-        )
-        {
-            SetModule(module, animateSelector: true);
-            RestoreModuleTransitionVisualState(_currentModule);
-            return;
-        }
-
-        overlay.Visible = true;
-        shader.SetShaderParameter("progress", 0.0f);
-
-        var coverTween = CreateTween();
-        _moduleContentTween = coverTween;
-        coverTween
-            .TweenMethod(
-                Callable.From<float>(value => shader.SetShaderParameter("progress", value)),
-                0.0f,
-                1.0f,
-                ModuleShaderTransitionHalfDuration
-            )
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-
-        await ToSignal(GetTree().CreateTimer(ModuleShaderTransitionHalfDuration), "timeout");
-        if (_moduleContentTween != coverTween || !IsInsideTree() || _isClosing)
-            return;
-
-        SetModule(module, animateSelector: true);
-        RestoreModuleTransitionVisualState(_currentModule);
-        await AwaitModuleContentLayoutStabilizedAsync();
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-        if (_moduleContentTween != coverTween || !IsInsideTree() || _isClosing)
-            return;
-
-        var revealTween = CreateTween();
-        _moduleContentTween = revealTween;
-        revealTween
-            .TweenMethod(
-                Callable.From<float>(value => shader.SetShaderParameter("progress", value)),
-                1.0f,
-                0.0f,
-                ModuleShaderTransitionHalfDuration
-            )
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.In);
-
-        await ToSignal(GetTree().CreateTimer(ModuleShaderTransitionHalfDuration), "timeout");
-        if (_moduleContentTween != revealTween)
-            return;
-
-        ResetModuleTransitionOverlay();
-        if (_moduleContentTween == revealTween)
-            _moduleContentTween = null;
+        await AnimateSequentialModuleTransitionAsync(
+            outgoingModule,
+            module,
+            outgoingRoot,
+            transitionDirection
+        );
     }
 
     private async Task AwaitModuleContentLayoutStabilizedAsync()
@@ -1677,16 +1885,16 @@ public partial class SpaceStationShop : Control
                 entering: false,
                 horizontalDirection: -transitionDirection,
                 duration: ModuleContentFadeOutDuration,
-                animateRootPosition: false
+                animateRootPosition: true
             );
         }
 
         if (!IsInsideTree() || _isClosing)
             return;
 
-        SetModule(targetModule, animateSelector: true);
+        SetModule(targetModule, animateSelector: true, snapVisualState: false);
         RestoreModuleTransitionVisualState(_currentModule);
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await AwaitModuleContentLayoutStabilizedAsync();
 
         if (!IsInsideTree() || _isClosing)
             return;
@@ -1698,7 +1906,7 @@ public partial class SpaceStationShop : Control
             entering: true,
             horizontalDirection: transitionDirection,
             duration: ModuleContentFadeInDuration,
-            animateRootPosition: false
+            animateRootPosition: true
         );
     }
 
@@ -1809,20 +2017,33 @@ public partial class SpaceStationShop : Control
             .ToArray();
         Vector2 rootBasePosition =
             root != null && GodotObject.IsInstanceValid(root) ? root.Position : Vector2.Zero;
-
-        SetControlAlpha(CatalogTitle, 1.0f);
-        SetControlAlpha(CatalogHint, 1.0f);
-        if (root != null && GodotObject.IsInstanceValid(root))
-            SetControlAlpha(root, 1.0f);
+        Vector2 titleBasePosition = CatalogTitle.Position;
+        Vector2 hintBasePosition = CatalogHint.Position;
+        Vector2 titleEnterPosition = titleBasePosition + GetModuleEnterOffset(horizontalDirection) * 0.45f;
+        Vector2 hintEnterPosition = hintBasePosition + GetModuleEnterOffset(horizontalDirection) * 0.3f;
+        Vector2 titleExitPosition = titleBasePosition + GetModuleExitOffset(horizontalDirection) * 0.4f;
+        Vector2 hintExitPosition = hintBasePosition + GetModuleExitOffset(horizontalDirection) * 0.26f;
 
         if (entering)
         {
-            if (animateRootPosition && root != null && GodotObject.IsInstanceValid(root))
-                root.Position = rootBasePosition + GetModuleEnterOffset(horizontalDirection);
+            SetControlAlpha(CatalogTitle, 0.0f);
+            SetControlAlpha(CatalogHint, 0.0f);
+            CatalogTitle.Position = titleEnterPosition;
+            CatalogHint.Position = hintEnterPosition;
+            if (root != null && GodotObject.IsInstanceValid(root))
+            {
+                SetControlAlpha(root, 0.0f);
+            }
             PrepareModuleItemsForTransition(items, entering: true);
         }
         else
         {
+            SetControlAlpha(CatalogTitle, 1.0f);
+            SetControlAlpha(CatalogHint, 1.0f);
+            CatalogTitle.Position = titleBasePosition;
+            CatalogHint.Position = hintBasePosition;
+            if (root != null && GodotObject.IsInstanceValid(root))
+                SetControlAlpha(root, 1.0f);
             PrepareModuleItemsForTransition(items, entering: false);
         }
 
@@ -1833,14 +2054,27 @@ public partial class SpaceStationShop : Control
         tween.SetTrans(Tween.TransitionType.Cubic);
         bool hasTweener = false;
 
-        if (animateRootPosition && root != null && GodotObject.IsInstanceValid(root))
+        if (root != null && GodotObject.IsInstanceValid(root))
         {
-            Vector2 rootTargetPosition = entering
-                ? rootBasePosition
-                : rootBasePosition + GetModuleExitOffset(horizontalDirection);
-            tween.TweenProperty(root, "position", rootTargetPosition, duration);
+            tween.TweenProperty(root, "modulate:a", entering ? 1.0f : 0.0f, duration * 0.92f);
             hasTweener = true;
         }
+
+        tween.TweenProperty(
+            CatalogTitle,
+            "position",
+            entering ? titleBasePosition : titleExitPosition,
+            duration
+        );
+        tween.TweenProperty(
+            CatalogHint,
+            "position",
+            entering ? hintBasePosition : hintExitPosition,
+            duration
+        );
+        tween.TweenProperty(CatalogTitle, "modulate:a", entering ? 1.0f : 0.0f, duration * 0.84f);
+        tween.TweenProperty(CatalogHint, "modulate:a", entering ? 1.0f : 0.0f, duration * 0.84f);
+        hasTweener = true;
 
         for (int i = 0; i < items.Length; i++)
         {
@@ -1863,8 +2097,15 @@ public partial class SpaceStationShop : Control
         if (!hasTweener)
         {
             tween.Kill();
+            SetControlAlpha(CatalogTitle, entering ? 1.0f : 0.0f);
+            SetControlAlpha(CatalogHint, entering ? 1.0f : 0.0f);
+            CatalogTitle.Position = titleBasePosition;
+            CatalogHint.Position = hintBasePosition;
             if (root != null && GodotObject.IsInstanceValid(root))
+            {
                 root.Position = rootBasePosition;
+                SetControlAlpha(root, entering ? 1.0f : 0.0f);
+            }
             ResetModuleItemsToBase(
                 items,
                 entering
@@ -1877,8 +2118,15 @@ public partial class SpaceStationShop : Control
         }
 
         await ToSignal(tween, Tween.SignalName.Finished);
+        SetControlAlpha(CatalogTitle, entering ? 1.0f : 0.0f);
+        SetControlAlpha(CatalogHint, entering ? 1.0f : 0.0f);
+        CatalogTitle.Position = titleBasePosition;
+        CatalogHint.Position = hintBasePosition;
         if (root != null && GodotObject.IsInstanceValid(root))
+        {
             root.Position = rootBasePosition;
+            SetControlAlpha(root, entering ? 1.0f : 0.0f);
+        }
         ResetModuleItemsToBase(
             items,
             entering ? itemTargetAlphas : Enumerable.Repeat(0.0f, itemTargetAlphas.Length).ToArray()
@@ -1888,14 +2136,19 @@ public partial class SpaceStationShop : Control
             _moduleContentTween = null;
     }
 
-    private void SetModule(ShopModule module, bool animateSelector = false)
+    private void SetModule(
+        ShopModule module,
+        bool animateSelector = false,
+        bool snapVisualState = true
+    )
     {
         _currentModule = module;
         ApplyModuleVisibility();
-        SnapModuleContentVisualState();
+        if (snapVisualState)
+            SnapModuleContentVisualState();
         UpdateModuleButtons();
         UpdateModuleSelectorPosition(animateSelector);
-        RefreshShopState();
+        RefreshCurrentModuleState();
     }
 
     private void ApplyModuleVisibility()
@@ -2480,18 +2733,6 @@ public partial class SpaceStationShop : Control
             _moduleContentTween.Kill();
 
         _moduleContentTween = null;
-        ResetModuleTransitionOverlay();
-    }
-
-    private void ResetModuleTransitionOverlay()
-    {
-        var overlay = GetNodeOrNull<ColorRect>("Panel/Decor/ModuleTransitionOverlay");
-        if (overlay == null || !GodotObject.IsInstanceValid(overlay))
-            return;
-
-        overlay.Visible = false;
-        if (overlay.Material is ShaderMaterial shader)
-            shader.SetShaderParameter("progress", 0.0f);
     }
 
     private void Close()
@@ -2536,6 +2777,25 @@ public partial class SpaceStationShop : Control
             + Math.Abs(equipment.Speed) * 12
             + Math.Abs(equipment.MaxLife) * 2;
         return Math.Clamp(28 + score, 36, 72);
+    }
+
+    private static int ComputeSkillOfferPrice(Random rng)
+    {
+        if (rng == null)
+            return SkillOfferBasePrice;
+
+        return Math.Clamp(
+            SkillOfferBasePrice
+                + rng.Next(-SkillOfferPriceVariance, SkillOfferPriceVariance + 1),
+            0,
+            int.MaxValue
+        );
+    }
+
+    private Random CreateShopRandom(int salt)
+    {
+        int seed = WhichNode?.RandomNum ?? GameInfo.Seed;
+        return new Random(seed ^ salt);
     }
 
     private static string BuildEquipmentBonusInline(Equipment equipment)

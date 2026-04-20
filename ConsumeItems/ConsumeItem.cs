@@ -6,6 +6,36 @@ using Godot;
 
 public partial class ConsumeItem
 {
+    private enum ItemEffectType
+    {
+        Recover,
+        Block,
+        PropertyIncrease,
+        Damage,
+    }
+
+    private readonly record struct ItemConfig(
+        string Name,
+        ItemEffectType EffectType,
+        int Value,
+        PropertyType PropertyType = default
+    );
+
+    private static readonly Dictionary<ItemID, ItemConfig> ItemConfigs = new()
+    {
+        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 15),
+        [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 40),
+        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 3, PropertyType.Power),
+        [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
+        [ItemID.Vitality] = new(
+            "全息装甲",
+            ItemEffectType.PropertyIncrease,
+            4,
+            PropertyType.Survivability
+        ),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 30),
+    };
+
     public static PackedScene IconSence = GD.Load<PackedScene>(
         "res://ConsumeItems/ItemTemplate.tscn"
     );
@@ -57,27 +87,9 @@ public partial class ConsumeItem
         target = await AimTarget.AimTargetTask(battle);
         if (target == null)
             return;
-        switch (item)
-        {
-            case ItemID.Health:
-                target.Recover(15);
-                break;
-            case ItemID.Guard:
-                target.UpdataBlock(12);
-                break;
-            case ItemID.Fury:
-                await target.IncreaseProperties(PropertyType.Power, 3);
-                break;
-            case ItemID.Haste:
-                await target.IncreaseProperties(PropertyType.Speed, 2);
-                break;
-            case ItemID.Vitality:
-                await target.IncreaseProperties(PropertyType.Survivability, 3);
-                break;
-            case ItemID.Explosion:
-                await target.GetHurt(30);
-                break;
-        }
+
+        await ApplyItemEffectAsync(target, item);
+
         playerResource.Items.Remove(this);
         GameInfo.Items?.Remove(item);
         Icon.QueueFree();
@@ -93,28 +105,27 @@ public partial class ConsumeItem
 
     public static string GetItemName(ItemID itemId)
     {
-        return itemId switch
-        {
-            ItemID.Health => "治疗道具",
-            ItemID.Guard => "护盾道具",
-            ItemID.Fury => "狂怒道具",
-            ItemID.Haste => "迅捷道具",
-            ItemID.Vitality => "坚韧道具",
-            ItemID.Explosion => "爆裂弹",
-            _ => "未知道具",
-        };
+        return TryGetItemConfig(itemId, out var config) ? config.Name : "未知道具";
     }
 
     public static string GetItemDescription(ItemID itemId)
     {
-        return itemId switch
+        return GetItemDescription(itemId, "选择角色");
+    }
+
+    public static string GetItemDescription(ItemID itemId, string targetPrefix)
+    {
+        if (!TryGetItemConfig(itemId, out var config))
+            return string.Empty;
+
+        targetPrefix = string.IsNullOrWhiteSpace(targetPrefix) ? "选择角色" : targetPrefix;
+        return config.EffectType switch
         {
-            ItemID.Health => "选择角色，回复15生命。",
-            ItemID.Guard => "选择角色，获得12点格挡。",
-            ItemID.Fury => "选择角色，获得3点力量。",
-            ItemID.Haste => "选择角色，获得2点速度。",
-            ItemID.Vitality => "选择角色，获得3点生存。",
-            ItemID.Explosion => "选择角色，造成30伤害。",
+            ItemEffectType.Recover => $"{targetPrefix}，回复{config.Value}生命。",
+            ItemEffectType.Block => $"{targetPrefix}，获得{config.Value}点格挡。",
+            ItemEffectType.PropertyIncrease =>
+                $"{targetPrefix}，获得{config.Value}点{GetPropertyDisplayName(config.PropertyType)}。",
+            ItemEffectType.Damage => $"{targetPrefix}，造成{config.Value}伤害。",
             _ => string.Empty,
         };
     }
@@ -147,6 +158,50 @@ public partial class ConsumeItem
             ItemID.Explosion => "res://shader/Icon/ComsumeItems/ExplosionItem.gdshader",
             _ => null,
         };
+    }
+
+    public static int GetItemValue(ItemID itemId)
+    {
+        return TryGetItemConfig(itemId, out var config) ? config.Value : 0;
+    }
+
+    private static bool TryGetItemConfig(ItemID itemId, out ItemConfig config)
+    {
+        return ItemConfigs.TryGetValue(itemId, out config);
+    }
+
+    private static string GetPropertyDisplayName(PropertyType propertyType)
+    {
+        return propertyType switch
+        {
+            PropertyType.Power => "力量",
+            PropertyType.Speed => "速度",
+            PropertyType.Survivability => "生存",
+            PropertyType.MaxLife => "生命",
+            _ => "属性",
+        };
+    }
+
+    private static async Task ApplyItemEffectAsync(Character target, ItemID itemId)
+    {
+        if (target == null || !TryGetItemConfig(itemId, out var config))
+            return;
+
+        switch (config.EffectType)
+        {
+            case ItemEffectType.Recover:
+                target.Recover(config.Value);
+                break;
+            case ItemEffectType.Block:
+                target.UpdataBlock(config.Value);
+                break;
+            case ItemEffectType.PropertyIncrease:
+                await target.IncreaseProperties(config.PropertyType, config.Value);
+                break;
+            case ItemEffectType.Damage:
+                await target.GetHurt(config.Value);
+                break;
+        }
     }
 }
 

@@ -27,7 +27,7 @@ public partial class Nightingale : PlayerCharacter
             using var _ = BeginEffectSource("追击");
             await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
             var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = this };
-            await skill.Attack1(BattlePower);
+            await skill.Attack(BattlePower);
         }
     }
 }

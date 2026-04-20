@@ -70,10 +70,23 @@ public partial class Battle : Node2D
     [Export]
     public bool WarmupMode { get; set; }
 
+    [Export]
+    public bool HoverPerfLogEnabled { get; set; } = true;
+
+    [Export]
+    public double HoverPerfFrameSpikeMs { get; set; } = 28.0;
+
+    [Export]
+    public double HoverPerfWorkSpikeMs { get; set; } = 2.0;
+
     public Random BattleIntentionRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private ulong _battleInstanceId;
     private bool _retreating;
+    private ulong _lastHoverPerfTickMsec;
+    private ulong _lastHoverFrameSpikeLogTickMsec;
+    private string _lastHoverPerfLabel = string.Empty;
+    private string _lastHoverPerfCharacter = string.Empty;
 
     [Signal]
     public delegate void NextEventHandler(Character character);
@@ -99,6 +112,11 @@ public partial class Battle : Node2D
 
     private int _playerSpeed = 0;
     private int _enemySpeed = 0;
+    private int _playerActionCount = 0;
+    private int _enemyActionCount = 0;
+    private readonly Dictionary<ulong, int> _characterActionCounts = new();
+    private readonly Dictionary<ulong, int> _pendingExtraActions = new();
+    private readonly HashSet<ulong> _activeExtraActionCharacters = new();
 
     public int PlayerSpeed
     {
@@ -169,6 +187,8 @@ public partial class Battle : Node2D
     private const int PlayerSpeedHintDelayMs = 200;
     private const int EnemySpeedHintDelayMs = 400;
     private const int SpeedTriggerThreshold = 100;
+    private const int EarlyBattleBonusSkillRewardBattles = 3;
+    private const int EarlyBattleExtraSkillRewardGroups = 1;
     private const string SpeedTriggerText = "[color=yellow]超速触发[/color]";
 
     public Character CurrentActionCharacter { get; private set; }
@@ -214,6 +234,82 @@ public partial class Battle : Node2D
         EnemySpeed = 0;
         await ApplyRelicBattleEffects(token);
         await BattleBegin1(token);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!HoverPerfLogEnabled || WarmupMode)
+            return;
+
+        double frameMs = delta * 1000.0;
+        if (frameMs < HoverPerfFrameSpikeMs)
+            return;
+
+        ulong now = Time.GetTicksMsec();
+        ulong elapsedFromHover = _lastHoverPerfTickMsec == 0
+            ? ulong.MaxValue
+            : now - _lastHoverPerfTickMsec;
+        if (elapsedFromHover > 500)
+            return;
+
+        if (now - _lastHoverFrameSpikeLogTickMsec < 120)
+            return;
+
+        _lastHoverFrameSpikeLogTickMsec = now;
+        LogHoverPerf(
+            $"frame spike {frameMs:F1}ms, {elapsedFromHover}ms after {_lastHoverPerfLabel} on {_lastHoverPerfCharacter}"
+        );
+    }
+
+    public void MarkHoverPerfEvent(Character character, string label)
+    {
+        if (!HoverPerfLogEnabled)
+            return;
+
+        _lastHoverPerfTickMsec = Time.GetTicksMsec();
+        _lastHoverPerfLabel = label ?? "hover";
+        _lastHoverPerfCharacter = GetCharacterLogName(character);
+    }
+
+    public void LogHoverPerfWork(Character character, string label, ulong startUsec)
+    {
+        if (!HoverPerfLogEnabled)
+            return;
+
+        double elapsedMs = (Time.GetTicksUsec() - startUsec) / 1000.0;
+        MarkHoverPerfEvent(character, label);
+        if (elapsedMs < HoverPerfWorkSpikeMs)
+            return;
+
+        LogHoverPerf($"{label} work {elapsedMs:F2}ms on {GetCharacterLogName(character)}");
+    }
+
+    public void LogHoverPerfDuration(Character character, string label, double elapsedMs)
+    {
+        if (!HoverPerfLogEnabled)
+            return;
+
+        MarkHoverPerfEvent(character, label);
+        if (elapsedMs < HoverPerfWorkSpikeMs)
+            return;
+
+        LogHoverPerf($"{label} work {elapsedMs:F2}ms on {GetCharacterLogName(character)}");
+    }
+
+    private void LogHoverPerf(string text)
+    {
+        string line = $"[HoverPerf] {text}";
+        GD.Print(line);
+    }
+
+    private static string GetCharacterLogName(Character character)
+    {
+        if (character == null)
+            return "<null>";
+
+        return string.IsNullOrWhiteSpace(character.CharacterName)
+            ? character.Name
+            : character.CharacterName;
     }
 
     private void DisableBattleProcessing()
@@ -262,6 +358,11 @@ public partial class Battle : Node2D
         UsedSkills.Clear();
         UsedSkills.ItemAdded -= OnSkillUsed;
         UsedSkills.ItemAdded += OnSkillUsed;
+        _playerActionCount = 0;
+        _enemyActionCount = 0;
+        _characterActionCounts.Clear();
+        _pendingExtraActions.Clear();
+        _activeExtraActionCharacters.Clear();
         _recordIndex = 0;
         _nextEffectSourceContextId = 0;
         _damageRecords.Clear();
@@ -551,6 +652,100 @@ public partial class Battle : Node2D
             .Where(x => x.CountsTowardTeamSpeed)
             .Sum(x => x.Speed);
 
+    private void RegisterAction(Character character)
+    {
+        if (character == null)
+            return;
+
+        if (character.IsPlayer)
+            _playerActionCount++;
+        else
+            _enemyActionCount++;
+
+        ulong id = character.GetInstanceId();
+        _characterActionCounts[id] = _characterActionCounts.TryGetValue(id, out int currentCount)
+            ? currentCount + 1
+            : 1;
+    }
+
+    public void RequestExtraAction(Character character, int count = 1)
+    {
+        if (
+            count <= 0
+            || character == null
+            || !GodotObject.IsInstanceValid(character)
+            || !character.ParticipatesInTurnRotation
+            || !IsCharacterAlive(character)
+        )
+        {
+            return;
+        }
+
+        ulong id = character.GetInstanceId();
+        _pendingExtraActions[id] = _pendingExtraActions.TryGetValue(id, out int currentCount)
+            ? currentCount + count
+            : count;
+    }
+
+    public bool IsResolvingExtraAction(Character character)
+    {
+        if (character == null || !GodotObject.IsInstanceValid(character))
+            return false;
+
+        return _activeExtraActionCharacters.Contains(character.GetInstanceId());
+    }
+
+    private void SetExtraActionState(Character character, bool active)
+    {
+        if (character == null || !GodotObject.IsInstanceValid(character))
+            return;
+
+        ulong id = character.GetInstanceId();
+        if (active)
+            _activeExtraActionCharacters.Add(id);
+        else
+            _activeExtraActionCharacters.Remove(id);
+    }
+
+    private bool TryConsumeExtraAction(Character character)
+    {
+        if (character == null || !GodotObject.IsInstanceValid(character))
+            return false;
+
+        ulong id = character.GetInstanceId();
+        if (!_pendingExtraActions.TryGetValue(id, out int pendingCount) || pendingCount <= 0)
+            return false;
+
+        if (!IsCharacterAlive(character))
+        {
+            _pendingExtraActions.Remove(id);
+            return false;
+        }
+
+        pendingCount--;
+        if (pendingCount <= 0)
+            _pendingExtraActions.Remove(id);
+        else
+            _pendingExtraActions[id] = pendingCount;
+
+        return true;
+    }
+
+    public int GetAlliedActionCountExcludingSelf(Character character)
+    {
+        if (character == null)
+            return 0;
+
+        int teamTotal = character.IsPlayer ? _playerActionCount : _enemyActionCount;
+        int selfActions = _characterActionCounts.TryGetValue(
+            character.GetInstanceId(),
+            out int actionCount
+        )
+            ? actionCount
+            : 0;
+        return Math.Max(0, teamTotal - selfActions);
+    }
+
     private async Task<bool> InitializeEnemyIntentions(CancellationToken token)
     {
         foreach (var enemy in EnemiesList)
@@ -737,11 +932,13 @@ public partial class Battle : Node2D
     {
         if (character.GetParent() == container)
         {
+            character.PrepareHoverTooltipInstances();
             return;
         }
 
         character.GetParent()?.RemoveChild(character);
         container.AddChild(character);
+        character.PrepareHoverTooltipInstances();
     }
 
     private static Vector2 GetFormationPosition(int positionIndex, int side)
@@ -911,6 +1108,8 @@ public partial class Battle : Node2D
             await EmitList[i](character);
         }
 
+        RegisterAction(character);
+
         if (
             SuppressSpeedGainThisTurn != true
             && character?.ParticipatesInTurnRotation == true
@@ -925,6 +1124,20 @@ public partial class Battle : Node2D
         await TriggerSummonsAfterOwner(character);
         EmitSignal(SignalName.Next, character);
         ClearCurrentActionCharacter(character);
+    }
+
+    public Task EndEmitExtraActionS(Character character)
+    {
+        if (character?.IsSummon == true)
+        {
+            ClearCurrentActionCharacter(character);
+            EmitSignal(SignalName.Next, character);
+            return Task.CompletedTask;
+        }
+
+        EmitSignal(SignalName.Next, character);
+        ClearCurrentActionCharacter(character);
+        return Task.CompletedTask;
     }
 
     public List<Func<Task>> StartEffectList = new();
@@ -974,10 +1187,37 @@ public partial class Battle : Node2D
 
         DyingDetector(characterlist);
         Character actingCharacter = characterlist[0];
-        SetCurrentActionCharacter(actingCharacter);
-        actingCharacter.StartAction();
         RotateFrontToBack(characterlist);
-        await WaitForNextFrom(actingCharacter);
+        bool isExtraAction = false;
+        while (true)
+        {
+            if (
+                !CanContinue(token)
+                || actingCharacter == null
+                || !GodotObject.IsInstanceValid(actingCharacter)
+                || actingCharacter.State == Character.CharacterState.Dying
+            )
+            {
+                break;
+            }
+
+            SetExtraActionState(actingCharacter, isExtraAction);
+            try
+            {
+                SetCurrentActionCharacter(actingCharacter);
+                actingCharacter.StartAction();
+                await WaitForNextFrom(actingCharacter);
+            }
+            finally
+            {
+                SetExtraActionState(actingCharacter, false);
+            }
+
+            if (!CanContinue(token) || !TryConsumeExtraAction(actingCharacter))
+                break;
+
+            isExtraAction = true;
+        }
 
         if (!await DelayOrCancel(PostActionDelayMs, token) || await HandleBattleOver(token))
         {
@@ -1238,7 +1478,9 @@ public partial class Battle : Node2D
             return;
 
         reward.ClearRewardItems();
-        reward.AddSkillRewardEntry();
+        int skillRewardGroups = GetSkillRewardGroupCount();
+        for (int i = 0; i < skillRewardGroups; i++)
+            reward.AddSkillRewardEntry();
 
         var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
         var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
@@ -1249,6 +1491,23 @@ public partial class Battle : Node2D
         TryAddRelicReward(reward, rng, addRelic);
         AddEquipmentRewards(reward, rng, equipCount);
         TryAddItemReward(reward, rng, addItem);
+    }
+
+    private static int GetSkillRewardGroupCount()
+    {
+        int completedBattleCount =
+            GameInfo.CompletedLevelNodeRecords?.Values.Count(record =>
+                record != null
+                && record.NodeType
+                    is LevelNode.LevelType.Normal
+                        or LevelNode.LevelType.Elite
+                        or LevelNode.LevelType.Boss
+            ) ?? 0;
+
+        int bonusGroups = completedBattleCount < EarlyBattleBonusSkillRewardBattles
+            ? EarlyBattleExtraSkillRewardGroups
+            : 0;
+        return 1 + bonusGroups;
     }
 
     private static bool ShouldAddRelicReward(LevelNode.LevelType levelType)

@@ -7,7 +7,7 @@ public partial class Armon : EnemyCharacter
 {
     public const string PassiveNameText = "矩阵核心";
     public const string PassiveDescriptionText =
-        "回合开始时：全阵获得等同于自身生存的格挡。\n回合结束时：全阵获得等同于自身生存的格挡。";
+        "战斗开始时：全阵获得等同于自身生存的格挡。\n回合结束时：全阵获得等同于自身生存的格挡。";
 
     public override string CharacterName { get; set; } = "Armon";
 
@@ -19,15 +19,10 @@ public partial class Armon : EnemyCharacter
         BattleNode.StartEffectList.Add(StartPassive);
     }
 
-    public override void OnTurnStart()
+    public override void OnTurnEnd()
     {
-        base.OnTurnStart();
-    }
-
-    public override void EndAction()
-    {
-        base.EndAction();
         GrantFormationBlock();
+        base.OnTurnEnd();
     }
 
     private void GrantFormationBlock()
@@ -88,7 +83,7 @@ public partial class ArmonAttack : Skill
 public partial class ArmonSurvive : Skill
 {
     private const int BaseBlock = 10;
-    private const int SelfSurvivabilityGain = 5;
+    private const int PowerGain = 5;
     private const int EnergyGain = 1;
 
     public ArmonSurvive()
@@ -104,7 +99,7 @@ public partial class ArmonSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(0, BaseBlock, 2),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
             EnergyStep(EnergyGain)
         );
     }

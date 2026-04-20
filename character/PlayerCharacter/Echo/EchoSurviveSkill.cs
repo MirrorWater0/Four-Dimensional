@@ -23,18 +23,7 @@ public partial class SoundBarrier : Skill
             this,
             EnergyStep(EnergyGain),
             BlockStep(0, BaseBlock),
-            EnergyTimesGateStep(
-                0,
-                times,
-                CustomStep(
-                    async skill =>
-                    {
-                        await Task.Delay(200);
-                        await skill.Carry(skill.GetAllyByRelative(1), 0);
-                    },
-                    _ => new[] { "连携下一位角色使用攻击技能。" }
-                )
-            )
+            EnergyTimesGateStep(0, times, CarryRelativeAllyStep(1, 0))
         );
     }
 }
@@ -115,6 +104,34 @@ public partial class ResonantWard : Skill
             ),
             BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
+        );
+    }
+}
+
+public partial class DissonantField : Skill
+{
+    private const int BaseBlock = 7;
+    private const int WeakenStacks = 2;
+    private const int MaxTargets = 2;
+
+    public DissonantField()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "失谐力场";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Weaken,
+                stacks: WeakenStacks,
+                maxTargets: MaxTargets
+            )
         );
     }
 }

@@ -112,3 +112,37 @@ public partial class StarWard : Skill
         );
     }
 }
+
+public partial class TwilightParadox : Skill
+{
+    private const int BaseBlock = 14;
+    private const int VulnerableStacks = 15;
+    private const int DamageImmuneStacks = 5;
+
+    public TwilightParadox()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "暮光悖论";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: -2, baseBlock: BaseBlock),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: VulnerableStacks,
+                maxTargets: 1
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.DamageImmune,
+                stacks: DamageImmuneStacks,
+                maxTargets: 1
+            )
+        );
+    }
+}

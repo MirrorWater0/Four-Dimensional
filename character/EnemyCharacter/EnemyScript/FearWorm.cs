@@ -27,10 +27,10 @@ public partial class FearWorm : EnemyCharacter
         await IncreaseProperties(PropertyType.Power, PassiveEndActionPowerGain, this);
     }
 
-    public override void EndAction()
+    public override void OnTurnEnd()
     {
-        base.EndAction();
         Passive(new Skill(Skill.SkillTypes.Survive));
+        base.OnTurnEnd();
     }
 }
 

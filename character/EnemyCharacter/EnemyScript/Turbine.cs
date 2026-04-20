@@ -4,9 +4,9 @@ using Godot;
 
 public partial class Turbine : EnemyCharacter
 {
-    private const int StartThornStacks = 5;
-    private const int ActionTriggerCount = 3;
-    private const int TriggerThornStacks = 3;
+    private const int StartThornStacks = 7;
+    private const int ActionTriggerCount = 2;
+    private const int TriggerThornStacks = 4;
 
     public const string PassiveNameText = "棘轮增压";
     public static string PassiveDescriptionText =>
@@ -112,50 +112,13 @@ public partial class TurbineSurvive : Skill
 
     public override string SkillName { get; set; } = "护压循环";
 
-    public override async Task Effect()
+    protected override SkillPlan BuildPlan()
     {
-        using var _ = OwnerCharater?.BattleNode?.PushEffectSource(OwnerCharater, SkillName);
-        if (OwnerCharater?.SkillBuffs != null)
-        {
-            var stun = OwnerCharater.SkillBuffs.Find(x =>
-                x != null && x.ThisBuffName == Buff.BuffName.Stun && x.Stack > 0
-            );
-            if (stun != null)
-            {
-                await stun.Trigger(this);
-                return;
-            }
-        }
-
-        OwnerCharater.DisableSkill();
-        if (OwnerCharater?.TriggersSkillUseEvents != false)
-            OwnerCharater.BattleNode.UsedSkills.Add(this);
-        foreach (var buff in OwnerCharater.SkillBuffs)
-        {
-            await buff.Trigger(this);
-        }
-
-        int gain = Math.Clamp(
-            BaseSurvivabilityGain + OwnerSurvivability * SurvivabilityMultiplier,
-            0,
-            999
-        );
-        await OwnerCharater.IncreaseProperties(PropertyType.Survivability, gain, OwnerCharater);
-
-        Character nextAlly = GetAllyByRelative(1, dyingFilter: true);
-        if (nextAlly != null)
-        {
-            await nextAlly.IncreaseProperties(PropertyType.Power, AllyPowerGain, OwnerCharater);
-            nextAlly.UpdataEnergy(AllyEnergyGain, OwnerCharater);
-        }
-    }
-
-    public override void UpdateDescription()
-    {
-        SetDescriptionLines(
-            $"获得{BasePlusXWithBattleTotal(BaseSurvivabilityGain, BaseSurvivabilityGain + OwnerSurvivability * SurvivabilityMultiplier, StatX.Survivability, SurvivabilityMultiplier)}点{GetColoredPropertyLabel(PropertyType.Survivability)}。",
-            $"使下一位队友{GainPropertyText(PropertyType.Power, AllyPowerGain)}。",
-            $"使下一位队友恢复{AllyEnergyGain}点能量。"
+        return new SkillPlan(
+            this,
+            BlockStep(0, BaseSurvivabilityGain, SurvivabilityMultiplier),
+            ModifyPropertyStep(PropertyType.Power, AllyPowerGain, RelativeTarget(1)),
+            EnergyStep(AllyEnergyGain, RelativeTarget(1))
         );
     }
 }
@@ -163,8 +126,7 @@ public partial class TurbineSurvive : Skill
 public partial class TurbineSpecial : Skill
 {
     private const int SelfPowerGain = 3;
-    private const int SelfSurvivabilityGain = 3;
-    private const int ThornEnergyCost = 3;
+    private const int EnergyCost = 3;
     private const int ThornStacks = 8;
 
     public TurbineSpecial()
@@ -180,14 +142,14 @@ public partial class TurbineSpecial : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
+            HealStep(0, RelativeTarget(0)),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Thorn,
                 stacks: ThornStacks,
                 target: RelativeTarget(0)
             ),
             EnergyTimesGateStep(
-                energyCost: ThornEnergyCost,
+                energyCost: EnergyCost,
                 onPassSteps: [CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)]
             )
         );

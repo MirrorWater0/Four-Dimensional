@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://dovi0x3pg0hv4" path="res://Shop/SpaceStationShop.cs" id="1_shop"]
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="2_bxft0"]
 [ext_resource type="Shader" uid="uid://d87jvnuogxn0" path="res://shader/UI/SpaceStationShopAccent.gdshader" id="3_shop_accent"]
-[ext_resource type="Shader" uid="uid://s56rkocps40w" path="res://shader/UI/ShopModuleTransition.gdshader" id="4_module_transition"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_bxft0")
@@ -120,18 +119,6 @@ shader_parameter/corner_size = 0.09
 shader_parameter/slant = 0.32
 shader_parameter/alpha_scale = 0.66
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_module_transition"]
-shader = ExtResource("4_module_transition")
-shader_parameter/progress = 0.0
-shader_parameter/veil_color = Color(0.03, 0.08, 0.12, 1)
-shader_parameter/accent_color = Color(0.32, 0.82, 0.92, 1)
-shader_parameter/glow_color = Color(0.98, 0.86, 0.62, 1)
-shader_parameter/veil_strength = 0.9
-shader_parameter/frame_strength = 0.16
-shader_parameter/core_strength = 0.08
-shader_parameter/pattern_strength = 0.02
-shader_parameter/edge_width = 0.018
-shader_parameter/edge_softness = 0.028
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
 bg_color = Color(0.08, 0.11, 0.14, 0.38)
@@ -509,21 +496,6 @@ theme_override_colors/font_color = Color(0.72, 0.84, 0.88, 0.62)
 theme_override_font_sizes/font_size = 14
 text = "通过模块按钮切换商店区块。"
 
-[node name="ModuleTransitionOverlay" type="ColorRect" parent="Panel/Decor" unique_id=1205031783]
-visible = false
-z_index = 3
-material = SubResource("ShaderMaterial_module_transition")
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 144.6
-offset_top = 148.4
-offset_right = -18.0
-offset_bottom = -50.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
 
 [node name="CloseButton" type="Button" parent="Panel/Decor" unique_id=1471276139]
 layout_mode = 1
