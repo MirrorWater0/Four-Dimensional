@@ -13,8 +13,8 @@ colors = PackedColorArray(10.811581, 10.811581, 10.811581, 0.7294118, 0.47435445
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cpg7l"]
 shader = ExtResource("3_ecg7h")
-shader_parameter/color_left = Color(0.586583, 0.80877894, 0.9999996, 1)
-shader_parameter/color_right = Color(0.7420778, 0.92605776, 0.9999998, 1)
+shader_parameter/color_left = Color(0.92, 0.82309335, 0.19319998, 1)
+shader_parameter/color_right = Color(0.92, 0.82309335, 0.19319998, 1)
 shader_parameter/color_rim = Color(1, 1, 1, 1)
 shader_parameter/tilt_angle = -0.6129999578675
 shader_parameter/rim_width = 0.0150000007125

@@ -638,7 +638,9 @@ public partial class Character : Node2D
             bool keepBlock =
                 StartActionBuffs != null
                 && StartActionBuffs.Any(x =>
-                    x != null && x.ThisBuffName == Buff.BuffName.Barricade && x.Stack > 0
+                    x != null
+                    && x.Stack > 0
+                    && StartActionBuff.KeepsBlockOnTurnStart(x.ThisBuffName)
                 );
 
             if (!keepBlock)
@@ -1014,6 +1016,14 @@ public partial class Character : Node2D
         {
             BattleNode.BattleAnimationPlayer.Play("blue");
         }
+    }
+
+    public void TriggerPassive(Skill skill, bool allowWhenDying = false)
+    {
+        if (!allowWhenDying && State == CharacterState.Dying)
+            return;
+
+        Passive(skill);
     }
 
     public virtual void Passive(Skill skill) { }

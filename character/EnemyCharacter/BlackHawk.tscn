@@ -1,0 +1,30 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://character/CharacterTemplate.tscn" id="1_template"]
+[ext_resource type="Shader" path="res://shader/Icon/TerminateSkill.gdshader" id="2_special_shader"]
+[ext_resource type="Script" path="res://character/EnemyCharacter/EnemyScript/BlackHawk.cs" id="3_script"]
+[ext_resource type="Texture2D" path="res://asset/EnemyCharater/BlackHawk.png" id="4_texture"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_special"]
+resource_local_to_scene = true
+shader = ExtResource("2_special_shader")
+shader_parameter/symbol_color = Color(1, 1, 1, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.4
+shader_parameter/main_width = 1.1
+shader_parameter/small_length = 0.5
+shader_parameter/small_width = 0.7
+shader_parameter/petal_overall_size = 0.5
+shader_parameter/petal_pinch = 0.6
+shader_parameter/ring_radius = 0.72
+shader_parameter/glow_intensity = 0.6
+shader_parameter/tip_softness = 1.5
+
+[node name="BlackHawk" instance=ExtResource("1_template")]
+script = ExtResource("3_script")
+
+[node name="Sprite" parent="." index="7"]
+texture = ExtResource("4_texture")
+
+[node name="Special" parent="Intention" index="1"]
+material = SubResource("ShaderMaterial_special")

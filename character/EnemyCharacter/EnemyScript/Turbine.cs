@@ -55,7 +55,7 @@ public partial class Turbine : EnemyCharacter
             return Task.CompletedTask;
 
         Count++;
-        Passive(null);
+        TriggerPassive(null);
         return Task.CompletedTask;
     }
 

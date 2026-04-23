@@ -58,7 +58,7 @@ public partial class ShadowExecution : Skill
             ConditionStep(
                 () => GetStoredTarget(KillTargetKey)?.State == Character.CharacterState.Dying,
                 "击杀目标",
-                DoubleStrikeStep(baseDamage: DoubleStrikeBaseDamage)
+                AttackPrimaryStep(baseDamage: DoubleStrikeBaseDamage, times: 2)
             )
         );
     }
@@ -130,6 +130,37 @@ public partial class StasisBlade : Skill
                     FirstCastExtraSpeedDown,
                     target: StoredTarget(TargetKey)
                 )
+            )
+        );
+    }
+}
+
+public partial class ContinuousPierce : Skill
+{
+    private const int BaseDamage = 5;
+    private const int SelfDamage = 10;
+
+    private bool IsAtFullLife =>
+        OwnerCharater != null && OwnerCharater.Life >= OwnerCharater.BattleMaxLife;
+
+    public ContinuousPierce()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "连续贯穿";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ConditionStep(
+                () => IsAtFullLife,
+                "自身满血",
+                AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, prefix: "额外造成", times: 2),
+                HurtFriendly(SelfDamage, 0)
             )
         );
     }

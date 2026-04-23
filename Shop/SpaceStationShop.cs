@@ -12,11 +12,11 @@ public partial class SpaceStationShop : Control
     private const int SkillOfferCount = ShopCharacterCount * SkillOffersPerCharacter;
     private const int SkillOfferBasePrice = 40;
     private const int SkillOfferPriceVariance = 10;
-    private const float ModuleSelectorTweenDuration = 0.1f;
-    private const float ModuleContentFadeOutDuration = 0.18f;
-    private const float ModuleContentFadeInDuration = 0.24f;
-    private const float ModuleItemTweenDuration = 0.16f;
-    private const float ModuleItemStagger = 0.01f;
+    private const float ModuleSelectorTweenDuration = 0.06f;
+    private const float ModuleContentFadeOutDuration = 0.10f;
+    private const float ModuleContentFadeInDuration = 0.14f;
+    private const float ModuleItemTweenDuration = 0.10f;
+    private const float ModuleItemStagger = 0.006f;
     private const float ModuleItemEnterOffsetX = 64f;
     private const float ModuleItemEnterOffsetY = 10f;
     private const float ModuleItemExitOffsetX = 28f;
@@ -1831,6 +1831,7 @@ public partial class SpaceStationShop : Control
         _isTransitioning = true;
         SetModuleTransitionInteractive(false);
         HideRelicTip();
+        UpdateModuleSelectorPosition(module, animate: true);
         try
         {
             await EnsureModuleOffersBuiltAsync(module);
@@ -1892,7 +1893,7 @@ public partial class SpaceStationShop : Control
         if (!IsInsideTree() || _isClosing)
             return;
 
-        SetModule(targetModule, animateSelector: true, snapVisualState: false);
+        SetModule(targetModule, animateSelector: false, snapVisualState: false);
         RestoreModuleTransitionVisualState(_currentModule);
         await AwaitModuleContentLayoutStabilizedAsync();
 
@@ -2358,10 +2359,15 @@ public partial class SpaceStationShop : Control
 
     private void UpdateModuleSelectorPosition(bool animate)
     {
+        UpdateModuleSelectorPosition(_currentModule, animate);
+    }
+
+    private void UpdateModuleSelectorPosition(ShopModule module, bool animate)
+    {
         if (!IsInsideTree())
             return;
 
-        var targetButton = GetModuleButton(_currentModule);
+        var targetButton = GetModuleButton(module);
         if (targetButton == null || !GodotObject.IsInstanceValid(targetButton))
             return;
 

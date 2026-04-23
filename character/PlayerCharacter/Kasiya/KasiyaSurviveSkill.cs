@@ -149,3 +149,32 @@ public partial class WeakpointBulwark : Skill
         );
     }
 }
+
+public partial class BarrierDuplication : Skill
+{
+    public override string SkillName { get; set; } = "固守";
+
+    public BarrierDuplication()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            CustomStep(
+                _ =>
+                {
+                    int currentBlock = OwnerCharater?.Block ?? 0;
+                    if (currentBlock > 0)
+                        OwnerCharater?.UpdataBlock(currentBlock, source: OwnerCharater);
+
+                    return Task.CompletedTask;
+                },
+                _ => new[] { "令自己的格挡翻倍。" }
+            )
+        );
+    }
+}

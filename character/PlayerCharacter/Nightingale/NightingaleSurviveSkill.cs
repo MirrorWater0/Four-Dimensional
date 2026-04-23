@@ -86,6 +86,39 @@ public partial class Swift : Skill
     }
 }
 
+public partial class AfterimageWard : Skill
+{
+    private const int BaseBlock = 13;
+    private const int AfterimageStacks = 1;
+
+    public AfterimageWard()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "月落残影";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: 1, baseBlock: BaseBlock),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Afterimage,
+                stacks: AfterimageStacks,
+                target: RelativeTarget(0)
+            ),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Afterimage,
+                stacks: AfterimageStacks,
+                target: RelativeTarget(1)
+            )
+        );
+    }
+}
+
 public partial class StarWard : Skill
 {
     private const int BaseBlock = 15;

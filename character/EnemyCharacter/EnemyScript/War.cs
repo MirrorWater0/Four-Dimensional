@@ -73,7 +73,7 @@ public partial class War : EnemyCharacter
 public partial class WarAttack : Skill
 {
     private const int BaseDamage = -10;
-    private const int ThrallPowerGain = 3;
+    private const int ThrallPowerGain = 2;
 
     public WarAttack()
         : base(SkillTypes.Attack)

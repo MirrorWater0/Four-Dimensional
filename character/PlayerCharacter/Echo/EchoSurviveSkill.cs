@@ -6,7 +6,7 @@ public partial class EchoDefenceSkill { }
 
 public partial class SoundBarrier : Skill
 {
-    public override string SkillName { get; set; } = "音障防护";
+    public override string SkillName { get; set; } = "音墙";
     private const int EnergyGain = 1;
     private const int BaseBlock = 10;
     int times = 2;
@@ -59,7 +59,7 @@ public partial class SonicDeflection : Skill
 public partial class TuningStance : Skill
 {
     private const int PowerGain = 5;
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 12;
 
     public TuningStance()
         : base(SkillTypes.Survive)
@@ -102,7 +102,7 @@ public partial class ResonantWard : Skill
                 stacks: DebuffImmunityStacks,
                 target: RelativeTarget(0)
             ),
-            BlockStep(0, BaseBlock),
+            BlockStep(0, BaseBlock, 2),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -110,7 +110,7 @@ public partial class ResonantWard : Skill
 
 public partial class DissonantField : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 10;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;
 
@@ -132,6 +132,29 @@ public partial class DissonantField : Skill
                 stacks: WeakenStacks,
                 maxTargets: MaxTargets
             )
+        );
+    }
+}
+
+public partial class RelayShift : Skill
+{
+    private const int BaseBlock = 7;
+
+    public RelayShift()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "后撤步";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            SwapPositionFriendlyStep(relativeIndexA: 0, relativeIndexB: 1),
+            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1),
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock)
         );
     }
 }

@@ -57,7 +57,7 @@ public partial class Ferociouess : EnemyCharacter
             return Task.CompletedTask;
 
         Count++;
-        Passive(null);
+        TriggerPassive(null);
         UpdatePassiveDescription();
         return Task.CompletedTask;
     }

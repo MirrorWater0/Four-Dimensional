@@ -70,7 +70,7 @@ public partial class Charge : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "无畏冲锋";
+    public override string SkillName { get; set; } = "冲锋";
 
     protected override SkillPlan BuildPlan()
     {
@@ -124,7 +124,7 @@ public partial class VulnerablePurge : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "破绽清算";
+    public override string SkillName { get; set; } = "致命弱点";
 
     protected override SkillPlan BuildPlan()
     {

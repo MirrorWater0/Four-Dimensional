@@ -26,7 +26,7 @@ public partial class Echo : PlayerCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        BattleNode.UsedSkills.ItemAdded += Passive;
+        BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
     }
 
     public override void StartAction()

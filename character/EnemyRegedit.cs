@@ -180,9 +180,9 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 325;
-        Power = 20;
-        Survivability = 20;
+        MaxLife = 425;
+        Power = 17;
+        Survivability = 17;
         Speed = 15;
         SpecialIntentThreshold = 2;
 
@@ -242,6 +242,28 @@ public partial class TurbineRegedit : EnemyRegedit
     }
 }
 
+public partial class BlackHawkRegedit : EnemyRegedit
+{
+    public BlackHawkRegedit()
+    {
+        CharacterName = "BlackHawk";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
+
+        MaxLife = 72;
+        Power = 11;
+        Survivability = 8;
+        Speed = 14;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
+
+        PassiveName = global::BlackHawk.PassiveNameText;
+        PassiveDescription = global::BlackHawk.PassiveDescriptionText;
+    }
+}
+
 public enum EnemiesEnum
 {
     Evil,
@@ -253,4 +275,5 @@ public enum EnemiesEnum
     War,
     Ferociouess,
     Turbine,
+    BlackHawk,
 }

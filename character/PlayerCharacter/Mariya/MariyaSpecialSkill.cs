@@ -92,7 +92,7 @@ public partial class RearlineRevival : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "末位苏生";
+    public override string SkillName { get; set; } = "死者苏生";
 
     protected override SkillPlan BuildPlan()
     {
@@ -109,6 +109,39 @@ public partial class RearlineRevival : Skill
                     preferNonFull: true,
                     rebirth: true,
                     repeatCount: TargetCount
+                )
+            )
+        );
+    }
+}
+
+public partial class GroupHealing : Skill
+{
+    private const int EnergyCost = 3;
+    private const int BaseHeal = 5;
+
+    public GroupHealing()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "圣光沐浴";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                HealStep(
+                    baseHeal: BaseHeal,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                    dyingFilter: false,
+                    preferNonFull: false,
+                    includeSummonsWhenAll: false
                 )
             )
         );

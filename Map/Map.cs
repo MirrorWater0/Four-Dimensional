@@ -15,6 +15,10 @@ public partial class Map : Control
     public TextureRect GameMap => field ??= GetNode("GameMap") as TextureRect;
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
+    private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
+    private TextureRect MiniMapPreview => field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
+    private Control MiniMapPlayerIndicator =>
+        field ??= GetNodeOrNull<Control>("UI/MiniMap/MapPreview/PlayerIndicator");
 
     [Export(PropertyHint.Range, "0,40,1")]
     public float DragStartThreshold = 16.0f;
@@ -67,6 +71,7 @@ public partial class Map : Control
             _velocity = Vector2.Zero;
             _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
             _wheelHandledFrame = frame;
+            UpdateMiniMapIndicator();
             return;
         }
 
@@ -171,6 +176,8 @@ public partial class Map : Control
             SetCameraPosition(desiredTarget);
             _velocity = Vector2.Zero;
         }
+
+        UpdateMiniMapIndicator();
     }
 
     public override void _Input(InputEvent @event)
@@ -215,6 +222,7 @@ public partial class Map : Control
         DragButton.Disabled = false;
         _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
         SetCameraPosition(_targetPos);
+        UpdateMiniMapIndicator();
         BlackMask.Modulate = new Color(1, 1, 1, 0);
         EnsureDebugConsole();
         DragButton.ButtonDown += () =>
@@ -387,5 +395,55 @@ public partial class Map : Control
         var console = DebugConsoleScene?.Instantiate<DebugConsole>() ?? new DebugConsole();
         console.Name = "DebugConsole";
         AddChild(console);
+    }
+
+    private void UpdateMiniMapIndicator()
+    {
+        if (MiniMapRoot == null || MiniMapPreview == null || MiniMapPlayerIndicator == null || Camera == null)
+            return;
+
+        Vector2 previewSize = MiniMapPreview.Size;
+        if (previewSize.X <= 0.001f || previewSize.Y <= 0.001f)
+            return;
+
+        GetCameraHorizontalCenterBoundary(out float minX, out float maxX);
+
+        float progress = 0.5f;
+        if (!Mathf.IsEqualApprox(maxX, minX))
+            progress = Mathf.Clamp((Camera.GlobalPosition.X - minX) / (maxX - minX), 0.0f, 1.0f);
+
+        Vector2 indicatorSize = MiniMapPlayerIndicator.Size;
+        if (indicatorSize.X <= 0.001f || indicatorSize.Y <= 0.001f)
+            indicatorSize = new Vector2(8.0f, 8.0f);
+
+        float targetCenterX = progress * previewSize.X;
+        float targetCenterY = previewSize.Y * 0.5f;
+
+        Vector2 localPosition = new(
+            targetCenterX - indicatorSize.X * 0.5f,
+            targetCenterY - indicatorSize.Y * 0.5f
+        );
+
+        localPosition.X = Mathf.Clamp(localPosition.X, 0.0f, Mathf.Max(0.0f, previewSize.X - indicatorSize.X));
+        localPosition.Y = Mathf.Clamp(localPosition.Y, 0.0f, Mathf.Max(0.0f, previewSize.Y - indicatorSize.Y));
+
+        MiniMapPlayerIndicator.Position = localPosition;
+    }
+
+    private void GetCameraHorizontalCenterBoundary(out float minX, out float maxX)
+    {
+        float left = Mathf.Min(Camera.WorldLeftBoundary, Camera.WorldRightBoundary);
+        float right = Mathf.Max(Camera.WorldLeftBoundary, Camera.WorldRightBoundary);
+        float halfViewWidth = Mathf.Max(0.0f, Camera.HalfViewportWidth);
+
+        minX = left + halfViewWidth;
+        maxX = right - halfViewWidth;
+
+        if (minX > maxX)
+        {
+            float centerX = (left + right) * 0.5f;
+            minX = centerX;
+            maxX = centerX;
+        }
     }
 }

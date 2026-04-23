@@ -403,7 +403,7 @@ public partial class LevelNode : ColorRect
             new RedHuskRegedit(),
             new TurbineRegedit(),
         ];
-        EnemyRegedit[] strongEnemyRegedits = [new FerociouessRegedit()];
+        EnemyRegedit[] strongEnemyRegedits = [new FerociouessRegedit(), new BlackHawkRegedit()];
 
         List<EnemyRegedit> list = new()
         {

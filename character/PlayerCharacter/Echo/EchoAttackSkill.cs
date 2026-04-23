@@ -74,7 +74,7 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            DoubleStrikeStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus))
+            AttackPrimaryStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2)
         );
     }
 }
@@ -100,7 +100,7 @@ public partial class EchoPuncture : Skill
             EnergyTimesGateStep(
                 0,
                 times,
-                DoubleStrikeStep(baseDamage: 0)
+                AttackPrimaryStep(baseDamage: 0, times: 2)
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,

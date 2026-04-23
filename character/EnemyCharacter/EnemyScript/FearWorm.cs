@@ -29,7 +29,7 @@ public partial class FearWorm : EnemyCharacter
 
     public override void OnTurnEnd()
     {
-        Passive(new Skill(Skill.SkillTypes.Survive));
+        TriggerPassive(new Skill(Skill.SkillTypes.Survive));
         base.OnTurnEnd();
     }
 }

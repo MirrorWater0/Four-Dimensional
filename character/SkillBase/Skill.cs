@@ -554,6 +554,7 @@ public partial class Skill
             target == null
             || !target.IsFullCharacter
             || target.State == Character.CharacterState.Dying
+            || target == OwnerCharater
         )
             return;
         await target.Skills[skillIndex].Effect();
@@ -584,6 +585,7 @@ public partial class Skill
             SkillID.ResonantWard => new ResonantWard(),
             SkillID.DissonantField => new DissonantField(),
             SkillID.ReverbChain => new ReverbChain(),
+            SkillID.RelayShift => new RelayShift(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
@@ -591,6 +593,7 @@ public partial class Skill
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
             SkillID.WeakpointBulwark => new WeakpointBulwark(),
+            SkillID.BarrierDuplication => new BarrierDuplication(),
             SkillID.HolySeal => new HolySeal(),
             SkillID.AegisPledge => new AegisPledge(),
             SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
@@ -605,9 +608,11 @@ public partial class Skill
             SkillID.RebirthPrayer => new RebirthPrayer(),
             SkillID.Sacrifice => new Sacrifice(),
             SkillID.RearlineRevival => new RearlineRevival(),
+            SkillID.GroupHealing => new GroupHealing(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
             SkillID.ShadowExecution => new ShadowExecution(),
             SkillID.StasisBlade => new StasisBlade(),
+            SkillID.ContinuousPierce => new ContinuousPierce(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
@@ -619,6 +624,7 @@ public partial class Skill
             SkillID.EnergyTransfer => new EnergyTransfer(),
             SkillID.EnergyRelay => new EnergyRelay(),
             SkillID.Swift => new Swift(),
+            SkillID.AfterimageWard => new AfterimageWard(),
             SkillID.StarWard => new StarWard(),
             SkillID.TwilightParadox => new TwilightParadox(),
             SkillID.ArmonAttack => new ArmonAttack(),
@@ -643,6 +649,9 @@ public partial class Skill
             SkillID.TurbineAttack => new TurbineAttack(),
             SkillID.TurbineSurvive => new TurbineSurvive(),
             SkillID.TurbineSpecial => new TurbineSpecial(),
+            SkillID.BlackHawkAttack => new BlackHawkAttack(),
+            SkillID.BlackHawkSurvive => new BlackHawkSurvive(),
+            SkillID.BlackHawkSpecial => new BlackHawkSpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicSpecial => new BasicSpecial(),
@@ -694,6 +703,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     ReverbChain = 75,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    RelayShift = 86,
     #endregion
 
     #region Kasiya
@@ -731,6 +743,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     WeakpointBulwark = 82,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    BarrierDuplication = 85,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     HolySeal = 23,
@@ -781,6 +796,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     EnergyRelay = 81,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    GroupHealing = 83,
     #endregion
 
     #region Nightingale
@@ -792,6 +810,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     StasisBlade = 65,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    ContinuousPierce = 87,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     VeilStep = 32,
@@ -810,6 +831,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     Swift = 39,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    AfterimageWard = 84,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     StarWard = 40,
@@ -875,6 +899,12 @@ public enum SkillID
     TurbineAttack = 67,
     TurbineSurvive = 68,
     TurbineSpecial = 69,
+    #endregion
+
+    #region BlackHawk
+    BlackHawkAttack = 88,
+    BlackHawkSurvive = 89,
+    BlackHawkSpecial = 90,
     #endregion
 
     #region Basis

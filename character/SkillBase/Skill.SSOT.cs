@@ -431,6 +431,7 @@ public partial class Skill
         int powerMultiplier = 1,
         string prefix = "造成",
         string suffix = "点伤害。",
+        int times = 1,
         int clampMax = 9999,
         bool byBehindRow = false,
         TargetReference target = default,
@@ -441,6 +442,7 @@ public partial class Skill
             powerMultiplier,
             prefix,
             suffix,
+            times,
             clampMax,
             byBehindRow,
             target,
@@ -453,6 +455,7 @@ public partial class Skill
         int powerMultiplier = 1,
         string prefix = "造成",
         string suffix = "点伤害。",
+        int times = 1,
         int clampMax = 9999,
         bool byBehindRow = false,
         TargetReference target = default,
@@ -463,6 +466,7 @@ public partial class Skill
             powerMultiplier,
             prefix,
             suffix,
+            times,
             clampMax,
             byBehindRow,
             target,
@@ -475,6 +479,7 @@ public partial class Skill
         int powerMultiplier,
         string prefix,
         string suffix,
+        int times,
         int clampMax,
         bool byBehindRow,
         TargetReference target,
@@ -486,6 +491,7 @@ public partial class Skill
             powerMultiplier,
             prefix,
             suffix,
+            times,
             clampMax,
             byBehindRow,
             target,
@@ -553,13 +559,13 @@ public partial class Skill
         string storeAs,
         Func<Skill, int> baseDamageProvider
     ) =>
-        new DoubleStrikeSkillStep(
+        new AttackPrimarySkillStep(
             baseDamage,
             powerMultiplier,
             prefix,
             suffix,
+            2,
             clampMax,
-            includeTwoHitText,
             byBehindRow,
             target,
             storeAs,
@@ -1167,6 +1173,7 @@ public partial class Skill
         private readonly int _powerMultiplier;
         private readonly string _prefix;
         private readonly string _suffix;
+        private readonly int _times;
         private readonly int _clampMax;
         private readonly bool _byBehindRow;
         private readonly TargetReference _target;
@@ -1177,6 +1184,7 @@ public partial class Skill
             int powerMultiplier,
             string prefix,
             string suffix,
+            int times,
             int clampMax,
             bool byBehindRow,
             TargetReference target,
@@ -1189,6 +1197,7 @@ public partial class Skill
             _powerMultiplier = powerMultiplier;
             _prefix = prefix;
             _suffix = suffix;
+            _times = Math.Max(1, times);
             _clampMax = clampMax;
             _byBehindRow = byBehindRow;
             _target = target;
@@ -1203,9 +1212,9 @@ public partial class Skill
             {
                 await skill.Attack(
                     damage,
-                    times: 1,
+                    times: _times,
                     byBehindRow: _byBehindRow,
-                    delayAfterLastHit: true
+                    delayAfterLastHit: _times == 1
                 );
                 return;
             }
@@ -1214,7 +1223,7 @@ public partial class Skill
             skill.StoreTarget(_storeAs, target);
             if (target == null)
                 return;
-            await AttackTargetOnce(skill, target, damage);
+            await AttackTargetTimes(skill, target, damage, _times);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -1229,6 +1238,9 @@ public partial class Skill
             );
             if (_byBehindRow && !line.Contains("后排", StringComparison.Ordinal))
                 line = $"对后排目标{line}";
+
+            if (_times > 1 && !string.IsNullOrWhiteSpace(_suffix) && line.EndsWith(_suffix))
+                line = $"{line[..^_suffix.Length]}*{_times}{_suffix}";
 
             yield return line;
         }
@@ -1254,8 +1266,11 @@ public partial class Skill
             if (targets.Length == 0)
                 yield break;
 
-            int predictedDamage = context.PredictDamage(targets[0], damage);
-            yield return new PreviewDamageEntry(targets[0], predictedDamage, 1);
+            int totalDamage = 0;
+            for (int i = 0; i < _times; i++)
+                totalDamage += context.PredictDamage(targets[0], damage);
+
+            yield return new PreviewDamageEntry(targets[0], totalDamage, _times);
         }
     }
 
@@ -1316,7 +1331,7 @@ public partial class Skill
             skill.StoreTarget(_storeAs, target);
             if (target == null)
                 return;
-            await AttackTargetDoubleStrike(skill, target, damage);
+            await AttackTargetTimes(skill, target, damage, 2);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -1684,6 +1699,7 @@ public partial class Skill
                 return true;
             case Buff.BuffName.Invisible:
             case Buff.BuffName.Barricade:
+            case Buff.BuffName.Afterimage:
                 StartActionBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.DebuffImmunity:
@@ -3164,72 +3180,56 @@ public partial class Skill
         return true;
     }
 
-    private static async Task AttackTargetOnce(Skill skill, Character target, int damage)
+    private static async Task AttackTargetTimes(
+        Skill skill,
+        Character target,
+        int damage,
+        int times
+    )
     {
         if (ShouldAbortStepExecution(skill) || target == null || IsDummyTarget(skill, target))
             return;
 
-        int clamped = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(
-                skill.OwnerCharater,
-                damage,
-                target,
-                consumeStacks: true
-            ),
-            0,
-            9999
-        );
-        await skill.AttackAnimation(target);
-        if (ShouldAbortStepExecution(skill))
-            return;
-        await target.GetHurt(clamped, skill?.OwnerCharater);
-        if (ShouldAbortStepExecution(skill))
-            return;
-        await Task.Delay(100);
-    }
+        int totalHits = Math.Max(1, times);
+        for (int i = 0; i < totalHits; i++)
+        {
+            if (ShouldAbortStepExecution(skill) || target.State != Character.CharacterState.Normal)
+                return;
 
-    private static async Task AttackTargetDoubleStrike(Skill skill, Character target, int damage)
-    {
-        if (ShouldAbortStepExecution(skill) || target == null || IsDummyTarget(skill, target))
-            return;
+            int clamped = Math.Clamp(
+                AttackBuff.ApplyOutgoingDamageModifiers(
+                    skill.OwnerCharater,
+                    damage,
+                    target,
+                    consumeStacks: true
+                ),
+                0,
+                9999
+            );
 
-        int clamped = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(
-                skill.OwnerCharater,
-                damage,
-                target,
-                consumeStacks: true
-            ),
-            0,
-            9999
-        );
-        await skill.AttackAnimation(target);
-        if (ShouldAbortStepExecution(skill))
-            return;
-        await target.GetHurt(clamped, skill?.OwnerCharater);
-        if (ShouldAbortStepExecution(skill))
-            return;
-        await Task.Delay(100);
-        if (ShouldAbortStepExecution(skill) || target.State != Character.CharacterState.Normal)
-            return;
+            if (i == 0)
+            {
+                await skill.AttackAnimation(target);
+            }
+            else
+            {
+                var attackFx = AttackScene.Instantiate() as AttackEffect;
+                target.AddChild(attackFx);
+                attackFx.AnimationPlayer0.Play("Attack1");
+                attackFx.GlobalPosition = target.GlobalPosition;
+            }
 
-        var attack2 = AttackScene.Instantiate() as AttackEffect;
-        target.AddChild(attack2);
-        attack2.AnimationPlayer0.Play("Attack1");
-        attack2.GlobalPosition = target.GlobalPosition;
-        clamped = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(
-                skill.OwnerCharater,
-                damage,
-                target,
-                consumeStacks: true
-            ),
-            0,
-            9999
-        );
-        if (ShouldAbortStepExecution(skill))
-            return;
-        await target.GetHurt(clamped, skill?.OwnerCharater);
+            if (ShouldAbortStepExecution(skill))
+                return;
+
+            await target.GetHurt(clamped, skill?.OwnerCharater);
+
+            if (ShouldAbortStepExecution(skill))
+                return;
+
+            if (i < totalHits - 1)
+                await Task.Delay(100);
+        }
     }
 
     private sealed class ConditionSkillStep : SkillStep

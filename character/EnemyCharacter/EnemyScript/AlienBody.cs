@@ -21,7 +21,7 @@ public partial class AlienBody : EnemyCharacter
 
     public override void OnTurnEnd()
     {
-        Passive(null);
+        TriggerPassive(null);
         base.OnTurnEnd();
     }
 

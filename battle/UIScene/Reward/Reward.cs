@@ -429,7 +429,8 @@ public partial class Reward : CanvasLayer
         _offeredSkillIds = new SkillID?[count];
         _offeredPlayerIndexes = new int[count];
 
-        var rng = new Random(GameInfo.Seed);
+        int skillSeed = _completeNodeOnClose?.RandomNum ?? GameInfo.Seed;
+        var rng = new Random(skillSeed);
 
         for (int i = 0; i < _skillRewardSlots.Count; i++)
         {

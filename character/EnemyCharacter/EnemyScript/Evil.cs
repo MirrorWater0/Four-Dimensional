@@ -39,7 +39,7 @@ public partial class Evil : EnemyCharacter
     {
         base.OnTurnStart();
         Count++;
-        Passive(null);
+        TriggerPassive(null);
         UpdatePassiveDescription();
     }
 
@@ -76,7 +76,7 @@ public partial class EvilAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, DoubleStrikeStep(HitDamage));
+        return new SkillPlan(this, AttackPrimaryStep(HitDamage, times: 2));
     }
 }
 

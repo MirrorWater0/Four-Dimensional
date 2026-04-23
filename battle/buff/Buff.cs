@@ -47,10 +47,14 @@ public partial class Buff
         [BuffName.ExtraTurn] = "res://battle/buff/StateIcon/ExtraTurn.tscn",
         [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
         [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
+        [BuffName.Afterimage] = "res://battle/buff/StateIcon/Afterimage.tscn",
     };
 
     public static string GetBuffEffectText(BuffName name)
     {
+        if (name == BuffName.Afterimage)
+            return TranslationServer.Translate("回合开始时，格挡不会消失，减少1层。");
+
         string key = name switch
         {
             BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
@@ -302,6 +306,9 @@ public partial class Buff
 
         [Description("壁垒")]
         Barricade,
+
+        [Description("残影")]
+        Afterimage,
     }
 
     public Character Owner;
@@ -336,6 +343,7 @@ public partial class Buff
             BuffName.ExtraTurn => Nature.positive,
             BuffName.AutoArmor => Nature.positive,
             BuffName.Barricade => Nature.positive,
+            BuffName.Afterimage => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -667,6 +675,9 @@ public partial class StartActionBuff : Buff
     public StartActionBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
+    public static bool KeepsBlockOnTurnStart(BuffName name) =>
+        name == BuffName.Barricade || name == BuffName.Afterimage;
+
     public void Trigger()
     {
         if (Stack <= 0)
@@ -680,6 +691,10 @@ public partial class StartActionBuff : Buff
                 break;
             case BuffName.Barricade:
                 // Passive effect: checked by Character.StartAction before block reset.
+                break;
+            case BuffName.Afterimage:
+                Stack--;
+                UpdateStackLabel();
                 break;
         }
 
@@ -697,7 +712,11 @@ public partial class StartActionBuff : Buff
 
         if (
             target?.StartActionBuffs == null
-            || (name != BuffName.Invisible && name != BuffName.Barricade)
+            || (
+                name != BuffName.Invisible
+                && name != BuffName.Barricade
+                && name != BuffName.Afterimage
+            )
         )
             return;
 
