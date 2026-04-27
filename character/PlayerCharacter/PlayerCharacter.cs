@@ -62,6 +62,20 @@ public partial class PlayerCharacter : Character
         return value;
     }
 
+    protected override IEnumerable<Equipment> GetTooltipEquipments()
+    {
+        if (
+            GameInfo.PlayerCharacters == null
+            || CharacterIndex < 0
+            || CharacterIndex >= GameInfo.PlayerCharacters.Length
+        )
+        {
+            return null;
+        }
+
+        return GameInfo.PlayerCharacters[CharacterIndex].Equipments;
+    }
+
     public override void OnActionStart()
     {
         base.OnActionStart();

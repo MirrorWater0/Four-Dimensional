@@ -156,9 +156,20 @@ public partial class EquipmentInterface
     private static string BuildEquipmentBonusInline(Equipment equip)
     {
         if (equip == null)
-            return "力量 +0  生存 +0  速度 +0  生命 +0";
+            return "力量 0  生存 0  速度 0  生命 0";
 
-        return $"力量 +{equip.Power}  生存 +{equip.Survivability}  速度 +{equip.Speed}  生命 +{equip.MaxLife}";
+        string stats =
+            $"力量 {FormatSignedStat(equip.Power)}  生存 {FormatSignedStat(equip.Survivability)}  速度 {FormatSignedStat(equip.Speed)}  生命 {FormatSignedStat(equip.MaxLife)}";
+        string effectText = Equipment.GetSpecialEffectText(equip);
+        if (string.IsNullOrWhiteSpace(effectText))
+            return stats;
+
+        return $"{stats}\n{effectText}";
+    }
+
+    private static string FormatSignedStat(int value)
+    {
+        return value.ToString("+0;-0;0");
     }
 
     private static string FormatPreview(int current, int next)

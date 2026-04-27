@@ -54,11 +54,16 @@ public partial class FearWormAttack : Skill
         return new SkillPlan(
             this,
             EnergyStep(EnergyGain),
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: MaxTargets, times: 1, clampMax: 999),
+            AoeDamageStep(
+                baseDamage: BaseDamage,
+                target: HostileTargets(MaxTargets),
+                times: 1,
+                clampMax: 999
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: MaxTargets
+                target: HostileTargets(MaxTargets)
             )
         );
     }
@@ -87,7 +92,7 @@ public partial class FearWormSurvive : Skill
                 target: RelativeTarget(0)
             ),
             BlockStep(0, BaseBlock),
-            CarryRelativeAllyStep(relativeIndex: 1, skillIndex: 0)
+            CarryStep(target: RelativeTarget(1), skillIndex: 0)
         );
     }
 }
@@ -118,7 +123,7 @@ public partial class FearWormTermin : Skill
                     ApplyBuffHostile(
                         buffName: Buff.BuffName.Stun,
                         stacks: StunStacks,
-                        maxTargets: 1
+                        target: HostileTargets(1)
                     ),
                 ]
             ),

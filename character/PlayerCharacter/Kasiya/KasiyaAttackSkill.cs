@@ -109,7 +109,7 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(0, times, CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1))
+            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 1))
         );
     }
 }
@@ -133,7 +133,7 @@ public partial class VulnerablePurge : Skill
             AoeDamageStep(
                 baseDamage: BaseDamage,
                 powerMultiplier: 1,
-                maxTargets: 0,
+                target: HostileTargets(0),
                 targetCondition: character =>
                     character?.HurtBuffs?.Any(buff =>
                         buff != null

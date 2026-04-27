@@ -5,6 +5,8 @@ using Godot;
 
 public partial class Relic
 {
+    private const int BlessingDamage = 50;
+
     public RelicID ID;
     public string RelicName;
     public string RelicDescription;
@@ -113,7 +115,7 @@ public partial class Relic
                 List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
                 {
-                    list.Add(battle.EnemiesList[i].GetHurt(40));
+                    list.Add(battle.EnemiesList[i].GetHurt(BlessingDamage));
                 }
                 await Task.WhenAll(list);
                 Num--;
@@ -170,7 +172,7 @@ public partial class Relic
     {
         return relicID switch
         {
-            RelicID.Blessing => $"战斗开始时对所有敌人造成{40}伤害。",
+            RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
             RelicID.Triangle => $"战斗开始时第一位和第二位角色获得{2}点生存。",
             RelicID.Square => $"战斗开始时第一位和第二位角色获得{2}点力量。",
             RelicID.Pentagon => $"战斗开始时第一位和第二位角色获得{2}点速度。",
@@ -179,7 +181,11 @@ public partial class Relic
         };
     }
 
-    private static async Task ApplyEffectToFrontPlayers(Battle battle, PropertyType propertyType, int amount)
+    private static async Task ApplyEffectToFrontPlayers(
+        Battle battle,
+        PropertyType propertyType,
+        int amount
+    )
     {
         int targetCount = Math.Min(2, battle.PlayersList.Count);
         for (int i = 0; i < targetCount; i++)

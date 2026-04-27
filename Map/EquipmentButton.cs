@@ -11,6 +11,7 @@ public partial class EquipmentButton : Button
     private const float PartHideDuration = 0.16f;
     private const float PartStagger = 0.035f;
     private const float BackgroundFadeDuration = 0.26f;
+    private const float HoverShaderDuration = 0.2f;
 
     private static readonly PackedScene EquipmentInterfaceScene = ResourceLoader.Load<PackedScene>(
         "res://Equipment/EquipmentInterface.tscn"
@@ -26,12 +27,18 @@ public partial class EquipmentButton : Button
     [Export]
     private CanvasLayer SiteUILayer;
     private Map ThisMap => field ??= GetNodeOrNull<Map>("/root/Map");
+    private ColorRect FigureRect => field ??= GetNodeOrNull<ColorRect>("ColorRect");
+    private Label FigureLabel => field ??= GetNodeOrNull<Label>("Label");
     private EquipmentInterface CurrentUI;
     private Color _originalHoverColor;
     private List<PartState> _parts = new();
     private Tween _activeTween;
+    private Tween _figureHoverTween;
     private UiAnimPhase _phase = UiAnimPhase.Idle;
     private uint _showRequestVersion;
+    private ShaderMaterial _buttonMaterial;
+    private ShaderMaterial _figureMaterial;
+    private bool _isHovered;
 
     private readonly (string path, Vector2 offset)[] _partSpecs =
     [
@@ -60,8 +67,32 @@ public partial class EquipmentButton : Button
         Pressed += ToggleEquipmentInterface;
         MouseEntered += OnMouseEntered;
         MouseExited += OnMouseExited;
+        if (FigureRect != null)
+            FigureRect.MouseFilter = MouseFilterEnum.Ignore;
+        if (FigureLabel != null)
+            FigureLabel.MouseFilter = MouseFilterEnum.Ignore;
+
         if (Material is ShaderMaterial material)
-            _originalHoverColor = (Color)material.GetShaderParameter("color");
+        {
+            _buttonMaterial = material.Duplicate() as ShaderMaterial;
+            if (_buttonMaterial != null)
+            {
+                _buttonMaterial.ResourceLocalToScene = true;
+                Material = _buttonMaterial;
+                _originalHoverColor = (Color)_buttonMaterial.GetShaderParameter("color");
+            }
+        }
+
+        if (FigureRect?.Material is ShaderMaterial figureMaterial)
+        {
+            _figureMaterial = figureMaterial.Duplicate() as ShaderMaterial;
+            if (_figureMaterial != null)
+            {
+                _figureMaterial.ResourceLocalToScene = true;
+                FigureRect.Material = _figureMaterial;
+                _figureMaterial.SetShaderParameter("hover", 0.0f);
+            }
+        }
     }
 
     private async void ToggleEquipmentInterface()
@@ -379,30 +410,58 @@ public partial class EquipmentButton : Button
 
     private void OnMouseEntered()
     {
-        if (Material is not ShaderMaterial material)
+        if (_isHovered)
             return;
 
-        material.SetShaderParameter("color", _originalHoverColor);
-        GlobalFunction.TweenShader(this, "dist2", 1f, 0.2f);
-        material.SetShaderParameter("color", new Color(1, 1, 1, 1));
-        GlobalFunction.TweenShader(this, "dist1", 1f, 0.2f);
-        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.43f, 0.2f);
-        GlobalFunction.TweenShader(this, "triangle_dist", 0.45f, 0.2f);
-        GlobalFunction.TweenShader(this, "hover", 1f, 0.2f);
+        _isHovered = true;
+        if (_buttonMaterial == null)
+            return;
+
+        _buttonMaterial.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist2", 1f, HoverShaderDuration);
+        _buttonMaterial.SetShaderParameter("color", new Color(1, 1, 1, 1));
+        GlobalFunction.TweenShader(this, "dist1", 1f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.43f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.45f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "hover", 1f, HoverShaderDuration);
+        TweenFigureHover(1.0f);
     }
 
     private void OnMouseExited()
     {
-        if (Material is not ShaderMaterial material)
+        if (!_isHovered)
             return;
 
-        material.SetShaderParameter("color", _originalHoverColor);
-        GlobalFunction.TweenShader(this, "dist2", 0.5f, 0.2f);
-        material.SetShaderParameter("color", _originalHoverColor);
-        GlobalFunction.TweenShader(this, "dist1", 0.7f, 0.2f);
-        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.27f, 0.2f);
-        GlobalFunction.TweenShader(this, "triangle_dist", 0.28f, 0.2f);
-        GlobalFunction.TweenShader(this, "hover", 0f, 0.2f);
+        _isHovered = false;
+        if (_buttonMaterial == null)
+            return;
+
+        _buttonMaterial.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist2", 0.5f, HoverShaderDuration);
+        _buttonMaterial.SetShaderParameter("color", _originalHoverColor);
+        GlobalFunction.TweenShader(this, "dist1", 0.7f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "outer_ring_dist", 0.27f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "triangle_dist", 0.28f, HoverShaderDuration);
+        GlobalFunction.TweenShader(this, "hover", 0f, HoverShaderDuration);
+        TweenFigureHover(0.0f);
+    }
+
+    private void TweenFigureHover(float targetHover)
+    {
+        if (_figureMaterial == null)
+            return;
+
+        if (_figureHoverTween != null && GodotObject.IsInstanceValid(_figureHoverTween))
+            _figureHoverTween.Kill();
+
+        _figureHoverTween = CreateTween();
+        _figureHoverTween
+            .TweenMethod(
+                Callable.From<float>(value => _figureMaterial.SetShaderParameter("hover", value)),
+                (float)_figureMaterial.GetShaderParameter("hover"),
+                targetHover,
+                HoverShaderDuration
+            );
     }
 
     private void RefreshBattlePreviewIfNeeded()

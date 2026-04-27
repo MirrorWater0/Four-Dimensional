@@ -48,6 +48,8 @@ public partial class Buff
         [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
         [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
         [BuffName.Afterimage] = "res://battle/buff/StateIcon/Afterimage.tscn",
+        [BuffName.Disaster] = "res://battle/buff/StateIcon/Disaster.tscn",
+        [BuffName.Divinity] = "res://battle/buff/StateIcon/Divinity.tscn",
     };
 
     public static string GetBuffEffectText(BuffName name)
@@ -57,21 +59,23 @@ public partial class Buff
 
         string key = name switch
         {
-            BuffName.RebirthI => "生命归零时，回复最大生命的50%，消耗1层。",
+            BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
-            BuffName.Vulnerable => "受到伤害时，伤害提高50%，消耗1层。",
+            BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
-            BuffName.Thorn => "受到伤害时，对攻击者造成等同层数的伤害。",
+            BuffName.Thorn => "受到攻击时，对攻击者造成等同层数的伤害。",
             BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
             BuffName.Pursuit => "回合结束时：造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
-            BuffName.ExtraPower => "获得力量或生存时额外获得等同层数的力量。",
-            BuffName.ExtraSurvivability => "获得力量或生存时额外获得等同层数的生存。",
+            BuffName.ExtraPower => "获得力量时，额外获得等同层数的力量。",
+            BuffName.ExtraSurvivability => "获得生存时，额外获得等同层数的生存。",
             BuffName.ExtraTurn => "回合结束时消耗1层，触发1次额外出手（不触发回合开始/结束效果）。",
-            BuffName.AutoArmor => "受到伤害后获得等同层数的格挡。",
+            BuffName.AutoArmor => "受到攻击后，获得等同层数的格挡。",
             BuffName.Barricade => "回合开始时，保留你的格挡。",
             BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
+            BuffName.Disaster => "每过一轮，受到等同层数的伤害。",
+            BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
             _ => string.Empty,
         };
 
@@ -309,6 +313,12 @@ public partial class Buff
 
         [Description("残影")]
         Afterimage,
+
+        [Description("灾厄")]
+        Disaster,
+
+        [Description("神格")]
+        Divinity,
     }
 
     public Character Owner;
@@ -344,6 +354,8 @@ public partial class Buff
             BuffName.AutoArmor => Nature.positive,
             BuffName.Barricade => Nature.positive,
             BuffName.Afterimage => Nature.positive,
+            BuffName.Disaster => Nature.negative,
+            BuffName.Divinity => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -596,7 +608,8 @@ public partial class HurtBuff : Buff
     public async Task<float> Trigger(
         float damage,
         Character attacker = null,
-        bool canTriggerThorn = true
+        bool canTriggerThorn = true,
+        Character.DamageKind damageKind = Character.DamageKind.Other
     )
     {
         switch (ThisBuffName)
@@ -607,9 +620,12 @@ public partial class HurtBuff : Buff
                 UpdateStackLabel();
                 break;
             case BuffName.Vulnerable:
-                damage *= 1.5f;
-                Stack--;
-                UpdateStackLabel();
+                if (damageKind == Character.DamageKind.Attack)
+                {
+                    damage *= 1.5f;
+                    Stack--;
+                    UpdateStackLabel();
+                }
                 break;
             case BuffName.Taunt:
                 Stack--;
@@ -618,6 +634,7 @@ public partial class HurtBuff : Buff
             case BuffName.Thorn:
                 if (
                     canTriggerThorn
+                    && damageKind == Character.DamageKind.Attack
                     && Owner != null
                     && attacker != null
                     && attacker != Owner
@@ -630,7 +647,7 @@ public partial class HurtBuff : Buff
                 }
                 break;
             case BuffName.AutoArmor:
-                if (Owner != null && Stack > 0)
+                if (damageKind == Character.DamageKind.Attack && Owner != null && Stack > 0)
                 {
                     Owner.CallDeferred(nameof(Character.UpdataBlock), Stack, true, Owner);
                 }
@@ -696,6 +713,10 @@ public partial class StartActionBuff : Buff
                 Stack--;
                 UpdateStackLabel();
                 break;
+            case BuffName.Divinity:
+                Stack--;
+                UpdateStackLabel();
+                break;
         }
 
         TweenLabel();
@@ -716,6 +737,7 @@ public partial class StartActionBuff : Buff
                 name != BuffName.Invisible
                 && name != BuffName.Barricade
                 && name != BuffName.Afterimage
+                && name != BuffName.Divinity
             )
         )
             return;
@@ -791,10 +813,7 @@ public partial class AttackBuff : Buff
         switch (ThisBuffName)
         {
             case BuffName.Weaken:
-                context.Damage = Math.Max(
-                    (int)MathF.Floor(context.Damage * WeakenMultiplier),
-                    0
-                );
+                context.Damage = Math.Max((int)MathF.Floor(context.Damage * WeakenMultiplier), 0);
                 if (context.ConsumeStack)
                 {
                     SetCurrentStack(ref context, currentStack - 1);
@@ -803,8 +822,18 @@ public partial class AttackBuff : Buff
         }
     }
 
+    private static bool HasDivinity(Character attacker)
+    {
+        return attacker?.StartActionBuffs?.Any(x =>
+            x != null && x.ThisBuffName == BuffName.Divinity && x.Stack > 0
+        ) == true;
+    }
+
     public static void Trigger(Character attacker, ref TriggerContext context)
     {
+        if (HasDivinity(attacker))
+            context.Damage = Math.Max(context.Damage * 2, 0);
+
         if (attacker?.AttackBuffs == null)
             return;
 
@@ -959,7 +988,7 @@ public partial class EndActionBuff : Buff
         if (TryStackExisting(target.EndActionBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Pursuit && name != BuffName.ExtraTurn)
+        if (name != BuffName.Pursuit && name != BuffName.ExtraTurn && name != BuffName.Disaster)
             return;
 
         var buff = new EndActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -1025,5 +1054,3 @@ public enum Nature
     positive,
     negative,
 }
-
-

@@ -4,6 +4,8 @@ using Godot;
 
 public partial class PlayerResourceState : CanvasLayer
 {
+    private static readonly PackedScene MenuScene = GD.Load<PackedScene>("res://Menu/Menu.tscn");
+
     public int ElectricityCoin
     {
         get => GameInfo.ElectricityCoin;
@@ -45,11 +47,14 @@ public partial class PlayerResourceState : CanvasLayer
     public List<ConsumeItem> Items = new();
     public HBoxContainer ItemContainer => field ??= GetNode<HBoxContainer>("ItemsHContainer");
     private Button MenuButton => field ??= GetNodeOrNull<Button>("MenuButton");
+    private CanvasLayer FrontUiLayer => field ??= GetNodeOrNull<CanvasLayer>("/root/Map/BattleReadyLayer");
+    private Menu MenuOverlay => field ??= FrontUiLayer?.GetNodeOrNull<Menu>("Menu");
     private DebugConsole DebugConsoleNode =>
         field ??= GetNodeOrNull<DebugConsole>("/root/Map/DebugConsole");
 
     public override void _Ready()
     {
+        EnsureMenuOverlay();
         ElectricityCoin = GameInfo.ElectricityCoin;
         InitTransitionEnergyMax();
         TransitionEnergy = GameInfo.TransitionEnergy;
@@ -130,7 +135,20 @@ public partial class PlayerResourceState : CanvasLayer
 
     private void OnMenuButtonPressed()
     {
-        DebugConsoleNode?.ToggleOpen();
+        MenuOverlay?.Toggle();
+    }
+
+    private void EnsureMenuOverlay()
+    {
+        if (FrontUiLayer == null || MenuOverlay != null)
+            return;
+
+        var menu = MenuScene?.Instantiate<Menu>();
+        if (menu == null)
+            return;
+
+        menu.Name = "Menu";
+        FrontUiLayer.AddChild(menu);
     }
 
     private void ClearRelicIcons()

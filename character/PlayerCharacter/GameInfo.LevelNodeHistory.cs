@@ -21,6 +21,8 @@ public sealed class LevelNodeCompletionRecord
     public List<string> EquipmentChanges = new();
     public List<string> RelicChanges = new();
     public List<LevelNodePropertyChangeRecord> PermanentPropertyChanges = new();
+    public int NextBattleItemDropChance;
+    public int NextBattleEquipmentDropChance;
     public List<string> Notes = new();
     public string Summary;
 }
@@ -94,6 +96,8 @@ public static partial class GameInfo
                     PlayerProperties,
                     GameInfo.PlayerCharacters
                 ),
+                NextBattleItemDropChance = GameInfo.BattleItemDropChance,
+                NextBattleEquipmentDropChance = GameInfo.BattleEquipmentDropChance,
             };
 
             if (record.EnemyNames.Count == 0 && EnemyNames.Count > 0)
@@ -195,7 +199,11 @@ public static partial class GameInfo
             sb.Append($"\n电力币：{FormatSigned(record.ElectricityCoinChange)}");
 
         if (record.TransitionEnergyChange != 0)
-            sb.Append($"\n过渡能量：{FormatSigned(record.TransitionEnergyChange)}");
+            sb.Append($"\n跃迁能量：{FormatSigned(record.TransitionEnergyChange)}");
+
+        sb.Append(
+            $"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%；普通装备 {record.NextBattleEquipmentDropChance}%"
+        );
 
         AppendJoinedLines(sb, "技能", record.SkillChanges);
         AppendJoinedLines(sb, "获得物品", record.GainedItems);

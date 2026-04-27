@@ -23,7 +23,7 @@ public partial class ConsumeItem
 
     private static readonly Dictionary<ItemID, ItemConfig> ItemConfigs = new()
     {
-        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 15),
+        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 40),
         [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 40),
         [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 3, PropertyType.Power),
         [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
@@ -33,7 +33,7 @@ public partial class ConsumeItem
             4,
             PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 30),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 35),
     };
 
     public static PackedScene IconSence = GD.Load<PackedScene>(

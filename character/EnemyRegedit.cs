@@ -158,10 +158,10 @@ public partial class RedHuskRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
         // Base stats (used for preview / original properties)
-        MaxLife = 90;
-        Power = 14;
-        Survivability = 13;
-        Speed = 10;
+        MaxLife = 80;
+        Power = 15;
+        Survivability = 15;
+        Speed = 8;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
@@ -264,6 +264,33 @@ public partial class BlackHawkRegedit : EnemyRegedit
     }
 }
 
+public partial class InexorabilityRegedit : EnemyRegedit
+{
+    public InexorabilityRegedit()
+    {
+        CharacterName = "Inexorability";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
+
+        MaxLife = 92;
+        Power = 12;
+        Survivability = 12;
+        Speed = 11;
+        SpecialIntentThreshold = 4;
+
+        SkillIDs =
+        [
+            SkillID.InexorabilityAttack,
+            SkillID.InexorabilitySurvive,
+            SkillID.InexorabilitySpecial,
+        ];
+
+        PassiveName = global::Inexorability.PassiveNameText;
+        PassiveDescription = global::Inexorability.PassiveDescriptionText;
+    }
+}
+
 public enum EnemiesEnum
 {
     Evil,
@@ -276,4 +303,5 @@ public enum EnemiesEnum
     Ferociouess,
     Turbine,
     BlackHawk,
+    Inexorability,
 }

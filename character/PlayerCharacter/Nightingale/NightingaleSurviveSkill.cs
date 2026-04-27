@@ -32,9 +32,9 @@ public partial class VeilStep : Skill
 
 public partial class FlashOfLight : Skill
 {
-    private const int VulnerableStacks = 3;
+    private const int VulnerableStacks = 2;
     private const int BaseBlock = 8;
-    int Inpower = 4;
+    int Inpower = 3;
 
     public FlashOfLight()
         : base(SkillTypes.Survive)
@@ -51,7 +51,7 @@ public partial class FlashOfLight : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 1
+                target: HostileTargetsEachRowFirst()
             ),
             BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Power, Inpower)
@@ -169,12 +169,12 @@ public partial class TwilightParadox : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 1
+                target: HostileTargets(1)
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                maxTargets: 1
+                target: HostileTargets(1)
             )
         );
     }

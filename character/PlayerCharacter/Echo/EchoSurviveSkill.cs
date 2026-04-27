@@ -23,7 +23,7 @@ public partial class SoundBarrier : Skill
             this,
             EnergyStep(EnergyGain),
             BlockStep(0, BaseBlock),
-            EnergyTimesGateStep(0, times, CarryRelativeAllyStep(1, 0))
+            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(1), skillIndex: 0))
         );
     }
 }
@@ -130,7 +130,7 @@ public partial class DissonantField : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
-                maxTargets: MaxTargets
+                target: HostileTargets(MaxTargets)
             )
         );
     }
@@ -139,6 +139,7 @@ public partial class DissonantField : Skill
 public partial class RelayShift : Skill
 {
     private const int BaseBlock = 7;
+    int times = 3;
 
     public RelayShift()
         : base(SkillTypes.Survive)
@@ -153,8 +154,14 @@ public partial class RelayShift : Skill
         return new SkillPlan(
             this,
             SwapPositionFriendlyStep(relativeIndexA: 0, relativeIndexB: 1),
-            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1),
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock)
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
+            EnergyStep(1, RelativeTarget(-1)),
+            EnergyStep(-1, RelativeTarget(0)),
+            EnergyTimesGateStep(
+                0,
+                times,
+                CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+            )
         );
     }
 }

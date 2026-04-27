@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 12;
+    private const int StartAutoArmorStacks = 8;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -48,8 +48,7 @@ public partial class RedHuskAttack : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 1,
-                byBehindRow: true
+                target: HostileTargets(1, byBehindRow: true)
             )
         );
     }
@@ -77,16 +76,14 @@ public partial class RedHuskSurvive : Skill
             LowerTargetPropertyStep(
                 PropertyType.Power,
                 PowerDown,
-                maxTargets: 1,
-                permanent: false,
-                byBehindRow: true
+                target: HostileTargets(1, byBehindRow: true),
+                permanent: false
             ),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
-                maxTargets: 1,
-                permanent: false,
-                byBehindRow: true
+                target: HostileTargets(1, byBehindRow: true),
+                permanent: false
             )
         );
     }

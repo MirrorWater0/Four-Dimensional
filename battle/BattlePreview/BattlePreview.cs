@@ -73,8 +73,10 @@ public partial class BattlePreview : Control
     {
         public string SkillText;
         public string PropertyText;
+        public string EquipmentText;
         public Tip SkillTip;
         public Tip PropertyTip;
+        public Tip EquipmentTip;
     }
 
     public override void _Ready()
@@ -282,12 +284,17 @@ public partial class BattlePreview : Control
         return tip;
     }
 
-    private PortraitTipPair CreatePortraitTipPair(string skillText, string propertyText)
+    private PortraitTipPair CreatePortraitTipPair(
+        string skillText,
+        string propertyText,
+        string equipmentText
+    )
     {
         return new PortraitTipPair
         {
             SkillText = skillText ?? string.Empty,
             PropertyText = propertyText ?? string.Empty,
+            EquipmentText = equipmentText ?? string.Empty,
         };
     }
 
@@ -299,27 +306,42 @@ public partial class BattlePreview : Control
         bool hasSkillTip = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
         bool hasPropertyTip =
             tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
-        if (hasSkillTip && hasPropertyTip)
+        bool needsEquipmentTip = !string.IsNullOrWhiteSpace(tips.EquipmentText);
+        bool hasEquipmentTip =
+            !needsEquipmentTip
+            || (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip));
+        if (hasSkillTip && hasPropertyTip && hasEquipmentTip)
             return true;
 
         if (!hasSkillTip)
             tips.SkillTip = CreatePreviewPortraitTip(tips.SkillText, new Vector2(20f, 20f));
         if (!hasPropertyTip)
             tips.PropertyTip = CreatePreviewPortraitTip(tips.PropertyText, new Vector2(-20f, 20f));
+        if (needsEquipmentTip && !hasEquipmentTip)
+            tips.EquipmentTip = CreatePreviewPortraitTip(
+                tips.EquipmentText,
+                new Vector2(-20f, -20f)
+            );
 
         bool readySkill = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
         bool readyProperty =
             tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
+        bool readyEquipment =
+            !needsEquipmentTip
+            || (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip));
 
-        if (readySkill && readyProperty)
+        if (readySkill && readyProperty && readyEquipment)
             return true;
 
         if (readySkill)
             tips.SkillTip.QueueFree();
         if (readyProperty)
             tips.PropertyTip.QueueFree();
+        if (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip))
+            tips.EquipmentTip.QueueFree();
         tips.SkillTip = null;
         tips.PropertyTip = null;
+        tips.EquipmentTip = null;
         return false;
     }
 
@@ -352,7 +374,12 @@ public partial class BattlePreview : Control
 
             var tips = BuildPlayerPortraitTips(i);
             if (tips != null)
-                WirePortraitTooltips(portrait, tips.Value.skillText, tips.Value.propertyText);
+                WirePortraitTooltips(
+                    portrait,
+                    tips.Value.skillText,
+                    tips.Value.propertyText,
+                    tips.Value.equipmentText
+                );
 
             PlayerFormation.GetChild(BattleReady.remap[positionindex] - 1).AddChild(portrait);
         }
@@ -368,7 +395,12 @@ public partial class BattlePreview : Control
 
             var tips = BuildEnemyPortraitTips(i);
             if (tips != null)
-                WirePortraitTooltips(portrait, tips.Value.skillText, tips.Value.propertyText);
+                WirePortraitTooltips(
+                    portrait,
+                    tips.Value.skillText,
+                    tips.Value.propertyText,
+                    tips.Value.equipmentText
+                );
 
             EnemyFormation.GetChild(remapEnemy[positionindex] - 1).AddChild(portrait);
         }
@@ -428,7 +460,9 @@ public partial class BattlePreview : Control
         return sum;
     }
 
-    private (string skillText, string propertyText)? BuildPlayerPortraitTips(int characterIndex)
+    private (string skillText, string propertyText, string equipmentText)? BuildPlayerPortraitTips(
+        int characterIndex
+    )
     {
         if (characterIndex < 0 || characterIndex >= GameInfo.PlayerCharacters.Length)
             return null;
@@ -437,11 +471,14 @@ public partial class BattlePreview : Control
         string name = GuessNameFromScenePath(info.CharacterScenePath);
 
         string skillText = BuildPlayerSkillText(info, name);
-        string propertyText = BuildPlayerPropertyText(info, name);
-        return (skillText, propertyText);
+        string propertyText = BuildPlayerPropertyPreviewText(info, name);
+        string equipmentText = BuildPlayerEquipmentTipText(info);
+        return (skillText, propertyText, equipmentText);
     }
 
-    private (string skillText, string propertyText)? BuildEnemyPortraitTips(int enemyIndex)
+    private (string skillText, string propertyText, string equipmentText)? BuildEnemyPortraitTips(
+        int enemyIndex
+    )
     {
         if (WhichNode?.EnemiesRegeditList == null)
             return null;
@@ -454,7 +491,7 @@ public partial class BattlePreview : Control
 
         string skillText = BuildEnemySkillText(regedit);
         string propertyText = BuildEnemyPropertyText(regedit);
-        return (skillText, propertyText);
+        return (skillText, propertyText, string.Empty);
     }
 
     private static string BuildPlayerPropertyText(PlayerInfoStructure info, string name)
@@ -633,12 +670,17 @@ public partial class BattlePreview : Control
         return dot > 0 ? last[..dot] : last;
     }
 
-    private void WirePortraitTooltips(PortaitFrame portrait, string skillText, string propertyText)
+    private void WirePortraitTooltips(
+        PortaitFrame portrait,
+        string skillText,
+        string propertyText,
+        string equipmentText
+    )
     {
         if (portrait?.PortaitButton == null)
             return;
 
-        var tips = CreatePortraitTipPair(skillText, propertyText);
+        var tips = CreatePortraitTipPair(skillText, propertyText, equipmentText);
         if (tips == null)
             return;
 
@@ -659,10 +701,12 @@ public partial class BattlePreview : Control
         {
             _activePortraitTips.SkillTip?.HideTooltip();
             _activePortraitTips.PropertyTip?.HideTooltip();
+            _activePortraitTips.EquipmentTip?.HideTooltip();
         }
 
         tips.SkillTip?.ShowPreloaded(followMouse: true);
         tips.PropertyTip?.ShowPreloaded(followMouse: true);
+        tips.EquipmentTip?.ShowPreloaded(followMouse: true);
         _activePortraitTips = tips;
     }
 
@@ -695,6 +739,7 @@ public partial class BattlePreview : Control
 
         _activePortraitTips.SkillTip?.HideTooltip();
         _activePortraitTips.PropertyTip?.HideTooltip();
+        _activePortraitTips.EquipmentTip?.HideTooltip();
         _activePortraitTips = null;
     }
 

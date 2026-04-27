@@ -35,7 +35,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 20;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -118,7 +118,7 @@ public partial class ShatterSlash : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0),
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
             ConditionStep(
                 () => _recordedHitCount >= RequiredHitCount,
                 $"命中至少{RequiredHitCount}个敌人",

@@ -98,8 +98,16 @@ public partial class BlackHawkSurvive : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(HealAmount, RelativeTarget(0), descriptionOverride: $"自己治疗{HealAmount}点。"),
-            HealStep(HealAmount, RelativeTarget(-1), descriptionOverride: $"上一位角色治疗{HealAmount}点。"),
+            HealStep(
+                HealAmount,
+                RelativeTarget(0),
+                descriptionOverride: $"自己治疗{HealAmount}点。"
+            ),
+            HealStep(
+                HealAmount,
+                RelativeTarget(-1),
+                descriptionOverride: $"上一位角色治疗{HealAmount}点。"
+            ),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, RelativeTarget(0)),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, RelativeTarget(-1))
         );
@@ -109,7 +117,7 @@ public partial class BlackHawkSurvive : Skill
 public partial class BlackHawkSpecial : Skill
 {
     private const int SurvivabilityDown = 4;
-    private const int VulnerableStacks = 2;
+    private const int VulnerableStacks = 6;
     private const int EnergyCost = 3;
     private const int MaxTargets = 2;
 
@@ -131,9 +139,21 @@ public partial class BlackHawkSpecial : Skill
                 energyCost: EnergyCost,
                 onPassSteps:
                 [
-                    AoeDamageStep(baseDamage: 0, powerMultiplier: 1, maxTargets: MaxTargets),
-                    AoeDamageStep(baseDamage: 0, powerMultiplier: 1, maxTargets: MaxTargets),
-                    AoeDamageStep(baseDamage: 0, powerMultiplier: 1, maxTargets: MaxTargets),
+                    AoeDamageStep(
+                        baseDamage: 0,
+                        powerMultiplier: 1,
+                        target: HostileTargets(MaxTargets)
+                    ),
+                    AoeDamageStep(
+                        baseDamage: 0,
+                        powerMultiplier: 1,
+                        target: HostileTargets(MaxTargets)
+                    ),
+                    AoeDamageStep(
+                        baseDamage: 0,
+                        powerMultiplier: 1,
+                        target: HostileTargets(MaxTargets)
+                    ),
                 ]
             )
         );

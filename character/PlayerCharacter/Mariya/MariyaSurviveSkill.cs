@@ -161,3 +161,30 @@ public partial class EnergyRelay : Skill
         return Math.Max(0, previous.Energy);
     }
 }
+
+public partial class TouchOfGod : Skill
+{
+    private const int BaseBlock = 20;
+    private const int DivinityStacks = 1;
+
+    public TouchOfGod()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "上帝之触";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Divinity,
+                stacks: DivinityStacks,
+                target: RelativeTarget(0)
+            )
+        );
+    }
+}

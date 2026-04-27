@@ -8,6 +8,8 @@ public partial class Equipment
         LumenBadge,
         SilentPendant,
         FoldedBulwark,
+        ShockPendant,
+        OverloadMark,
     }
 
     // Keep these as public fields so SaveSystem can serialize/deserialize them via reflection.
@@ -87,6 +89,28 @@ public partial class Equipment
             Speed = 0,
             MaxLife = 12,
             Description = "展开后形成缓冲屏障，直接抬升生命上限。",
+        },
+        new Equipment
+        {
+            Name = EquipmentName.ShockPendant,
+            DisplayName = "震荡吊坠",
+            TypeLabel = "控制",
+            Power = -1,
+            Survivability = -1,
+            Speed = -1,
+            MaxLife = 0,
+            Description = "战斗开始时，如果敌方有与装备者站位相同的角色，令其获得1层眩晕。",
+        },
+        new Equipment
+        {
+            Name = EquipmentName.OverloadMark,
+            DisplayName = "过载印记",
+            TypeLabel = "爆发",
+            Power = -4,
+            Survivability = 0,
+            Speed = 0,
+            MaxLife = 0,
+            Description = "战斗开始时，获得2层额外力量。",
         },
     ];
 

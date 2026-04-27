@@ -652,7 +652,7 @@ public partial class EventInterface : Control
 
         if (option.TransitionEnergyChange != 0)
         {
-            sb.Append($"过渡能量 {FormatSigned(option.TransitionEnergyChange)}\n");
+            sb.Append($"跃迁能量 {FormatSigned(option.TransitionEnergyChange)}\n");
             hasAny = true;
         }
 

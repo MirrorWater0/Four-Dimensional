@@ -44,7 +44,7 @@ public partial class ArroganceAttack : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: MaxTargets),
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
             LowerTargetPropertyStep(PropertyType.Survivability, 5)
         );
     }
@@ -72,7 +72,7 @@ public partial class ArroganceSurvive : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 9
+                target: HostileTargets(9)
             )
         );
     }

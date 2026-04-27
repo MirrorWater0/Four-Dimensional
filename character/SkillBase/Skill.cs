@@ -213,10 +213,25 @@ public partial class Skill
         if (currentIndex == -1)
             currentIndex = 0;
 
-        int totalOffset = currentIndex + Where;
-        int targetIndex = (totalOffset % ally.Length + ally.Length) % ally.Length;
+        if (Where == 0)
+            return ally[currentIndex];
 
-        return ally[targetIndex];
+        if (ally.Length <= 1)
+            return null;
+
+        int direction = Math.Sign(Where);
+        int remainingSteps = Math.Abs(Where);
+        int targetIndex = currentIndex;
+        int guard = ally.Length * remainingSteps * 2;
+        while (remainingSteps > 0 && guard-- > 0)
+        {
+            targetIndex = (targetIndex + direction + ally.Length) % ally.Length;
+            if (targetIndex == currentIndex)
+                continue;
+            remainingSteps--;
+        }
+
+        return remainingSteps == 0 && targetIndex != currentIndex ? ally[targetIndex] : null;
     }
 
     public Character[] GetAllAllyWithOrder(bool dyingFilter = false, bool includeSummons = false)
@@ -480,7 +495,11 @@ public partial class Skill
                 0,
                 9999
             );
-            await target.GetHurt(modifiedDamage, OwnerCharater);
+            await target.GetHurt(
+                modifiedDamage,
+                OwnerCharater,
+                damageKind: Character.DamageKind.Attack
+            );
 
             if (delayAfterLastHit || i < times - 1)
                 await Task.Delay(100);
@@ -575,6 +594,9 @@ public partial class Skill
             SkillID.SacredOnslaught => new SacredOnslaught(),
             SkillID.ResonantSlash => new ResonantSlash(),
             SkillID.EchoPuncture => new EchoPuncture(),
+            SkillID.Extract => new Extract(),
+            SkillID.BladeOfSlaughter => new BladeOfSlaughter(),
+            SkillID.DisasterImpact => new DisasterImpact(),
             SkillID.BreakStrike => new BreakStrike(),
             SkillID.EchonicResonance => new EchonicResonance(),
             SkillID.SonicBoom => new SonicBoom(),
@@ -623,6 +645,8 @@ public partial class Skill
             SkillID.QuietVeil => new QuietVeil(),
             SkillID.EnergyTransfer => new EnergyTransfer(),
             SkillID.EnergyRelay => new EnergyRelay(),
+            SkillID.TouchOfGod => new TouchOfGod(),
+            SkillID.Ragnarok => new Ragnarok(),
             SkillID.Swift => new Swift(),
             SkillID.AfterimageWard => new AfterimageWard(),
             SkillID.StarWard => new StarWard(),
@@ -652,6 +676,9 @@ public partial class Skill
             SkillID.BlackHawkAttack => new BlackHawkAttack(),
             SkillID.BlackHawkSurvive => new BlackHawkSurvive(),
             SkillID.BlackHawkSpecial => new BlackHawkSpecial(),
+            SkillID.InexorabilityAttack => new InexorabilityAttack(),
+            SkillID.InexorabilitySurvive => new InexorabilitySurvive(),
+            SkillID.InexorabilitySpecial => new InexorabilitySpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicSpecial => new BasicSpecial(),
@@ -673,6 +700,15 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     EchoPuncture = 7,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    Extract = 98,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    BladeOfSlaughter = 97,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    DisasterImpact = 94,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     BreakStrike = 8,
@@ -799,6 +835,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     GroupHealing = 83,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    TouchOfGod = 95,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    Ragnarok = 96,
     #endregion
 
     #region Nightingale
@@ -905,6 +947,12 @@ public enum SkillID
     BlackHawkAttack = 88,
     BlackHawkSurvive = 89,
     BlackHawkSpecial = 90,
+    #endregion
+
+    #region Inexorability
+    InexorabilityAttack = 91,
+    InexorabilitySurvive = 92,
+    InexorabilitySpecial = 93,
     #endregion
 
     #region Basis

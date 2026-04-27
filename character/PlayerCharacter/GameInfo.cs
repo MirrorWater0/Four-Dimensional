@@ -8,7 +8,7 @@ using Godot;
 public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
-    public static int Seed = 3223;
+    public static int Seed = 4223;
     public static int ElectricityCoin;
     public static int TransitionEnergy;
     public static int TransitionEnergyMax;
@@ -25,7 +25,7 @@ public static partial class GameInfo
 
     public static void InitNewGame()
     {
-        ElectricityCoin = 999;
+        ElectricityCoin = 150;
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
         FirstLevelState.Clear();

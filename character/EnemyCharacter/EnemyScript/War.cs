@@ -99,7 +99,7 @@ public partial class WarSurvive : Skill
 {
     private const int BaseBlock = 15;
     private const int SelfSurvivabilityGain = 2;
-    private const int ThrallBlock = 8;
+    private const int ThrallBlock = 4;
 
     public WarSurvive()
         : base(SkillTypes.Survive)
@@ -124,7 +124,7 @@ public partial class WarSurvive : Skill
 public partial class WarSpecial : Skill
 {
     private const int EnergyCost = 3;
-    private const int ThrallPowerGain = 5;
+    private const int ThrallPowerGain = 3;
 
     public WarSpecial()
         : base(SkillTypes.Special)
@@ -138,7 +138,8 @@ public partial class WarSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: 10, target: RelativeTarget(0)),
+            AttackPrimaryStep(baseDamage: 0),
+            HealStep(baseHeal: 0, target: RelativeTarget(0)),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
             EnergyTimesGateStep(

@@ -150,7 +150,7 @@ public partial class TurbineSpecial : Skill
             ),
             EnergyTimesGateStep(
                 energyCost: EnergyCost,
-                onPassSteps: [CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1)]
+                onPassSteps: [CarryStep(target: RelativeTarget(-1), skillIndex: 1)]
             )
         );
     }

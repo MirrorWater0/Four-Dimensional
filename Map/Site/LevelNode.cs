@@ -398,12 +398,16 @@ public partial class LevelNode : ColorRect
             new EvilRegedit(),
             new FearWormRegedit(),
             new ArmonRegedit(),
-            new EvilRegedit(),
             new AlienBodyRegedit(),
-            new RedHuskRegedit(),
             new TurbineRegedit(),
         ];
-        EnemyRegedit[] strongEnemyRegedits = [new FerociouessRegedit(), new BlackHawkRegedit()];
+        EnemyRegedit[] strongEnemyRegedits =
+        [
+            new FerociouessRegedit(),
+            new BlackHawkRegedit(),
+            new InexorabilityRegedit(),
+            new RedHuskRegedit(),
+        ];
 
         List<EnemyRegedit> list = new()
         {
@@ -412,15 +416,18 @@ public partial class LevelNode : ColorRect
         };
         if (SelfCoordinate.X >= WeakEnemyStageCount)
         {
-            int strongEnemyCount = rng.Next(0, 3);
-            for (int i = 0; i < strongEnemyCount; i++)
-            {
-                list.Add(strongEnemyRegedits[rng.Next(strongEnemyRegedits.Length)].GetRegedit());
-            }
-
-            for (int i = 0; i < (2 - strongEnemyCount) * 2; i++)
+            bool useStrongFormation = rng.Next(0, 2) == 0;
+            if (useStrongFormation)
             {
                 list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
+                list.Add(strongEnemyRegedits[rng.Next(strongEnemyRegedits.Length)].GetRegedit());
+            }
+            else
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
+                }
             }
         }
         else
@@ -441,14 +448,7 @@ public partial class LevelNode : ColorRect
     public List<EnemyRegedit> GetEliteEnemies()
     {
         var rng = new Random(RandomNum);
-        EnemyRegedit[] eliteRegedits =
-            SelfCoordinate.X < WeakEnemyStageCount
-                ? [new ArroganceRegedit()]
-                : [new ArroganceRegedit(), new FerociouessRegedit()];
-        List<EnemyRegedit> list = new()
-        {
-            eliteRegedits[rng.Next(eliteRegedits.Length)].GetRegedit(),
-        };
+        List<EnemyRegedit> list = new() { new ArroganceRegedit() };
         list[0].PositionIndex = 5;
         return list;
     }
@@ -490,8 +490,6 @@ public partial class LevelNode : ColorRect
         }
 
         string text = $"[b]节点记录[/b]\n{summary}";
-        if (!string.IsNullOrWhiteSpace(dropPreview))
-            text += $"\n\n{dropPreview}";
 
         text = GlobalFunction.ColorizeNumbers(text);
         text = GlobalFunction.ColorizeKeywords(text);

@@ -8,6 +8,12 @@ using Godot;
 
 public partial class Character : Node2D
 {
+    public enum DamageKind
+    {
+        Other,
+        Attack,
+    }
+
     private const ulong IncreasePropertyEffectCooldownMsec = 300;
     private const int SkillTooltipDelayMs = 120;
     private static readonly PackedScene TooltipScene = ResourceLoader.Load<PackedScene>(
@@ -32,13 +38,7 @@ public partial class Character : Node2D
         set
         {
             _state = value;
-            if (BattleNode == null)
-                return;
-
-            if (IsPlayer)
-                BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
-            else
-                BattleNode.EnemySpeed = BattleNode.EnemySpeed;
+            RefreshBattleSpeedUi();
         }
     }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
@@ -126,6 +126,8 @@ public partial class Character : Node2D
     public List<SkillBuff> SkillBuffs = new List<SkillBuff>();
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
+    private Tip EquipmentTooltip =>
+        field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/EquipmentTip");
     private Tip _localSkillTooltip;
     public Vector2 OriginalPosition;
     private Tween _hurtMoveTween;
@@ -139,8 +141,10 @@ public partial class Character : Node2D
     private Color _targetPreviewColor = Colors.White;
     private string _cachedSkillTooltipText;
     private string _cachedBuffTooltipText;
+    private string _cachedEquipmentTooltipText;
     private bool _skillTooltipCacheDirty = true;
     private bool _buffTooltipCacheDirty = true;
+    private bool _equipmentTooltipCacheDirty = true;
     private int _skillTooltipHoverVersion;
 
     protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
@@ -186,8 +190,10 @@ public partial class Character : Node2D
         RefreshHoverframeVisual();
         _cachedSkillTooltipText = BuildSkillTooltipText();
         _cachedBuffTooltipText = BuildBuffTooltipText();
+        _cachedEquipmentTooltipText = BuildEquipmentTooltipText();
         _skillTooltipCacheDirty = false;
         _buffTooltipCacheDirty = false;
+        _equipmentTooltipCacheDirty = false;
     }
 
     public override async void _Ready()
@@ -264,6 +270,7 @@ public partial class Character : Node2D
         _localSkillTooltip?.HideTooltip();
         SkillTooltip?.HideTooltip();
         BuffTooltip?.HideTooltip();
+        EquipmentTooltip?.HideTooltip();
     }
 
     private async Task ShowHoverTooltipsDelayed(int hoverVersion)
@@ -356,6 +363,22 @@ public partial class Character : Node2D
             BuffTooltip.SetText(GetOrBuildBuffTooltipText());
             BattleNode?.LogHoverPerfWork(this, "character-hover-bufftip", stepStartUsec);
         }
+
+        if (hoverVersion != _skillTooltipHoverVersion || !_isHoverframeHovered)
+            return;
+
+        string equipmentTooltipText = GetOrBuildEquipmentTooltipText();
+        if (EquipmentTooltip != null && !string.IsNullOrWhiteSpace(equipmentTooltipText))
+        {
+            ulong stepStartUsec = Time.GetTicksUsec();
+            EquipmentTooltip.FollowMouse = true;
+            EquipmentTooltip.SetText(equipmentTooltipText);
+            BattleNode?.LogHoverPerfWork(this, "character-hover-equipmenttip", stepStartUsec);
+        }
+        else
+        {
+            EquipmentTooltip?.HideTooltip();
+        }
     }
 
     private string BuildSkillTooltipText()
@@ -428,12 +451,19 @@ public partial class Character : Node2D
         return GetOrBuildSkillTooltipText();
     }
 
+    protected virtual IEnumerable<Equipment> GetTooltipEquipments()
+    {
+        return null;
+    }
+
     public void InvalidateHoverTooltipCache()
     {
         _skillTooltipCacheDirty = true;
         _buffTooltipCacheDirty = true;
+        _equipmentTooltipCacheDirty = true;
         _cachedSkillTooltipText = null;
         _cachedBuffTooltipText = null;
+        _cachedEquipmentTooltipText = null;
     }
 
     public void InvalidateSkillTooltipCache()
@@ -446,6 +476,12 @@ public partial class Character : Node2D
     {
         _buffTooltipCacheDirty = true;
         _cachedBuffTooltipText = null;
+    }
+
+    public void InvalidateEquipmentTooltipCache()
+    {
+        _equipmentTooltipCacheDirty = true;
+        _cachedEquipmentTooltipText = null;
     }
 
     private string GetOrBuildSkillTooltipText()
@@ -468,6 +504,17 @@ public partial class Character : Node2D
         }
 
         return _cachedBuffTooltipText;
+    }
+
+    private string GetOrBuildEquipmentTooltipText()
+    {
+        if (_equipmentTooltipCacheDirty || _cachedEquipmentTooltipText == null)
+        {
+            _cachedEquipmentTooltipText = BuildEquipmentTooltipText();
+            _equipmentTooltipCacheDirty = false;
+        }
+
+        return _cachedEquipmentTooltipText;
     }
 
     private string BuildBuffTooltipText()
@@ -566,6 +613,11 @@ public partial class Character : Node2D
             sb.Append("None");
 
         return GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd());
+    }
+
+    private string BuildEquipmentTooltipText()
+    {
+        return Equipment.BuildSpecialEffectTooltipSection(GetTooltipEquipments());
     }
 
     public override void _Process(double delta)
@@ -715,7 +767,8 @@ public partial class Character : Node2D
     public virtual async Task GetHurt(
         float damage,
         Character source = null,
-        bool canTriggerThorn = true
+        bool canTriggerThorn = true,
+        DamageKind damageKind = DamageKind.Other
     )
     {
         Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
@@ -727,7 +780,7 @@ public partial class Character : Node2D
             // Iterate over a snapshot to ensure later buffs (e.g. DamageImmune) still trigger.
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                damage = await buff.Trigger(damage, source, canTriggerThorn);
+                damage = await buff.Trigger(damage, source, canTriggerThorn, damageKind);
             }
         }
 
@@ -816,6 +869,8 @@ public partial class Character : Node2D
     {
         State = CharacterState.Dying;
         BattleNode?.RecordDying(this, source);
+        if (BattleNode != null)
+            await BattleNode.EmitCharacterDying(this, source);
 
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.4f);
         if (DyingBuffs != null)
@@ -914,6 +969,7 @@ public partial class Character : Node2D
             case PropertyType.Speed:
                 Speed -= value;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
+                RefreshBattleSpeedUi();
                 break;
             case PropertyType.MaxLife:
                 BattleMaxLife -= value;
@@ -968,6 +1024,7 @@ public partial class Character : Node2D
             case PropertyType.Speed:
                 Speed += appliedValue;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
+                RefreshBattleSpeedUi();
                 break;
             case PropertyType.MaxLife:
                 BattleMaxLife += appliedValue;
@@ -994,6 +1051,17 @@ public partial class Character : Node2D
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
+    }
+
+    private void RefreshBattleSpeedUi()
+    {
+        if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
+            return;
+
+        if (IsPlayer)
+            BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
+        else
+            BattleNode.EnemySpeed = BattleNode.EnemySpeed;
     }
 
     private void TryPlayIncreasePropertyEffect()

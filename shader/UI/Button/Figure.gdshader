@@ -1,57 +1,104 @@
 shader_type canvas_item;
 
-// 可以在 Godot 右侧检查器中直接调整的参数
-uniform vec4 shape_color : source_color = vec4(0.0, 0.8, 1.0, 1.0); // 形状颜色 (默认赛博蓝)
-uniform float speed1 = 1.0;            // 内侧正方形旋转速度
-uniform float speed2 = -1.5;           // 外侧正方形旋转速度 (负数代表反向)
-uniform float square_size1 = 0.2;      // 内侧正方形大小
-uniform float square_size2 = 0.28;     // 外侧正方形大小
-uniform float ring_radius = 0.12;      // 中心圆环半径
-uniform float line_thickness = 0.01;   // 线条粗细
+uniform vec4 shape_color : source_color = vec4(0.0, 0.8, 1.0, 1.0);
+uniform float hover : hint_range(0.0, 1.0) = 0.0;
+uniform float line_thickness : hint_range(0.0, 0.05) = 0.01;
 
-// 2D 旋转矩阵函数
-mat2 rotate(float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
+// --- 速度与角度常量 ---
+const float ROT_SPEED_INNER = 0.6;
+const float ROT_SPEED_OUTER = -0.9;
+const float HOVER_ROT_OFFSET = 0.7; // Hover时旋转的冲劲
+
+mat2 rotate(float a) {
+    float s = sin(a), c = cos(a);
     return mat2(vec2(c, -s), vec2(s, c));
 }
 
-// 绘制空心正方形 (SDF 距离场算法)
-float box_outline(vec2 p, vec2 size, float thickness) {
-    vec2 d = abs(p) - size;
+float sdBoxOutline(vec2 p, vec2 b, float th) {
+    vec2 d = abs(p) - b;
     float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
-    return abs(dist) - thickness;
+    return abs(dist) - th;
 }
 
-// 绘制空心圆环 (SDF 距离场算法)
-float circle_outline(vec2 p, float radius, float thickness) {
-    return abs(length(p) - radius) - thickness;
+float sdSegment(vec2 p, vec2 a, vec2 b) {
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
 }
 
 void fragment() {
-    // 将 UV 坐标的中心点从左上角 (0,0) 移动到中心 (0.5, 0.5)
-    // 这样坐标范围就变成了 -0.5 到 0.5
-    vec2 uv = UV - 0.5;
+    // 1. 速度感逻辑：fast_t 让位移在前半段极快，产生“弹射”感
+    float t = hover;
+    float fast_t = 1.0 - pow(1.0 - t, 3.0); // 类似 EaseOutQuart，产生速度感
+    
+    vec2 uv = (UV - 0.5);
+    float aa = fwidth(uv.x) * 1.5;
+    float current_thick = line_thickness * mix(1.0, 1.2, t);
 
-    // 根据时间计算两个正方形的旋转 UV
-    vec2 uv_sq1 = uv * rotate(TIME * speed1);
-    vec2 uv_sq2 = uv * rotate(TIME * speed2);
+    float final_mask = 0.0;
 
-    // 获取三个形状的距离场数值
-    float d_sq1 = box_outline(uv_sq1, vec2(square_size1), line_thickness);
-    float d_sq2 = box_outline(uv_sq2, vec2(square_size2), line_thickness);
-    float d_ring = circle_outline(uv, ring_radius, line_thickness);
+    // ------------------------------------------------
+    // 【主体 A】：内层核心 (适度扩张)
+    // ------------------------------------------------
+    // 旋转带一点快慢偏移
+    float angle_in = TIME * ROT_SPEED_INNER + fast_t * HOVER_ROT_OFFSET;
+    vec2 uv_in = uv * rotate(angle_in);
+    
+    // 尺寸从 0.12 扩张到 0.18 (不再夸张)
+    float core_size = mix(0.12, 0.18, fast_t);
+    float d_core = sdBoxOutline(uv_in, vec2(core_size), current_thick);
+    
+    // 内部的小细节 (中心点)
+    float d_dot = length(uv) - current_thick * 1.5;
+    final_mask = max(final_mask, smoothstep(aa, 0.0, d_core));
+    final_mask = max(final_mask, smoothstep(aa, 0.0, d_dot));
 
-    // 使用 smoothstep 实现平滑抗锯齿边缘
-    float blur = 0.005; // 边缘模糊度，越小越锐利
-    float mask1 = smoothstep(blur, 0.0, d_sq1);
-    float mask2 = smoothstep(blur, 0.0, d_sq2);
-    float mask3 = smoothstep(blur, 0.0, d_ring);
+    // ------------------------------------------------
+    // 【主体 B】：外层圆环框架
+    // ------------------------------------------------
+    float angle_out = TIME * ROT_SPEED_OUTER - fast_t * HOVER_ROT_OFFSET;
+    vec2 uv_out = uv * rotate(angle_out);
+    
+    float orbit_rad = mix(0.18, 0.25, fast_t);
+    float d_orbit = abs(length(uv)) - orbit_rad;
+    
+    // 环切断效果：在旋转坐标系下切除，增加动态
+    float sector = step(0.4, sin(atan(uv_out.y, uv_out.x) * 4.0));
+    final_mask = max(final_mask, smoothstep(aa, 0.0, abs(d_orbit) - current_thick * 0.7) * sector);
 
-    // 将三个形状的遮罩合并起来
-    float final_mask = max(max(mask1, mask2), mask3);
+    // ------------------------------------------------
+    // 【零件 C】：四角 L 型支架 (重做的速度感零件)
+    // ------------------------------------------------
+    vec2 uv_corner = abs(uv);
+    
+    // 初始位置 0.18，弹出到 0.35
+    float spread = mix(0.18, 0.35, fast_t);
+    uv_corner -= vec2(spread);
+    
+    // 关键：弹出时伴随旋转，且旋转速度随 fast_t 变化
+    uv_corner *= rotate(mix(PI * 0.5, 0.0, fast_t));
+    
+    // 绘制上一版精良的 L 型零件
+    float arm = 0.04;
+    float d_bracket = sdSegment(uv_corner, vec2(-arm, 0.0), vec2(arm, 0.0));
+    d_bracket = min(d_bracket, sdSegment(uv_corner, vec2(arm, 0.0), vec2(arm, arm)));
+    
+    final_mask = max(final_mask, smoothstep(aa, 0.0, d_bracket - current_thick * 0.8));
 
-    // 输出最终颜色，利用遮罩控制透明度
-    COLOR = shape_color;
-    COLOR.a *= final_mask;
+    // ------------------------------------------------
+    // 视觉装饰：扫描线与亮度
+    // ------------------------------------------------
+    vec3 color = shape_color.rgb;
+    
+    // Hover时亮度提升，并在边缘产生轻微“过载”感
+    color *= mix(1.0, 1.6, fast_t);
+    
+    // 增加一个极细的对角线扫描光点
+    float scan = sin((uv.x + uv.y) * 10.0 - TIME * 4.0) * 0.1 * fast_t;
+    color += scan;
+    
+    // 简单的呼吸感
+    color *= (0.95 + 0.05 * sin(TIME * 3.0));
+
+    COLOR = vec4(color, final_mask * shape_color.a);
 }

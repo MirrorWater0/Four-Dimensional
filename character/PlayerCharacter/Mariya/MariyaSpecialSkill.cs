@@ -8,7 +8,6 @@ public partial class RebirthPrayer : Skill
 {
     private const int EnergyCost = 2;
     private const int BaseRebirthHeal = 12;
-    private const int GainEnergy = 1;
     private const string SharedTargetKey = "治疗目标";
 
     public RebirthPrayer()
@@ -23,7 +22,6 @@ public partial class RebirthPrayer : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: 15),
             EnergyTimesGateStep(
                 EnergyCost,
                 null,
@@ -36,6 +34,7 @@ public partial class RebirthPrayer : Skill
                     rebirth: true,
                     storeAs: SharedTargetKey
                 ),
+                BlockStep(StoredTarget(SharedTargetKey), baseBlock: 15),
                 ModifyPropertyStep(
                     type: PropertyType.MaxLife,
                     value: 10,
@@ -74,7 +73,7 @@ public partial class Sacrifice : Skill
                     value: -DeMax,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.All)
                 ),
-                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, maxTargets: 0)
+                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, target: HostileTargets(0))
             )
         );
     }
@@ -83,7 +82,7 @@ public partial class Sacrifice : Skill
 public partial class RearlineRevival : Skill
 {
     private const int EnergyCost = 3;
-    private const int BaseRebirthHeal = 1;
+    private const int BaseRebirthHeal = 10;
     private const int TargetCount = 2;
 
     public RearlineRevival()
@@ -142,6 +141,39 @@ public partial class GroupHealing : Skill
                     dyingFilter: false,
                     preferNonFull: false,
                     includeSummonsWhenAll: false
+                )
+            )
+        );
+    }
+}
+
+public partial class Ragnarok : Skill
+{
+    private const int PowerGain = 4;
+    private const int EnergyCost = 3;
+    private const int DivinityStacks = 2;
+
+    public Ragnarok()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "诸神黄昏";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Divinity,
+                    stacks: DivinityStacks,
+                    target: RelativeTarget(0)
                 )
             )
         );

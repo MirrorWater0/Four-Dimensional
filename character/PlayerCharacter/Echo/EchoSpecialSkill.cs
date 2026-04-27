@@ -7,7 +7,6 @@ public class EchonicResonance : Skill
 {
     private const int CostPerCast = 1;
     private const int PowerGainPerCast = 1;
-    int desurive = 1;
 
     public EchonicResonance()
         : base(SkillTypes.Special)
@@ -37,7 +36,7 @@ public class EchonicResonance : Skill
 public class SonicBoom : Skill
 {
     private const int BaseDamage = 0;
-    private const int EnergyCost = 6;
+    private const int EnergyCost = 4;
     private const int ExtraTimes = 2;
 
     public SonicBoom()
@@ -52,12 +51,12 @@ public class SonicBoom : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: 6, maxTargets: 0),
+            AoeDamageStep(baseDamage: 8, target: HostileTargets(0)),
             EnergyTimesGateStep(
                 EnergyCost,
                 null,
                 null,
-                AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0, times: ExtraTimes)
+                AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
             )
         );
     }

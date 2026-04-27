@@ -25,7 +25,12 @@ public partial class ShockWave : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 9
+                target: HostileTargets(9)
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Weaken,
+                stacks: VulnerableStacks,
+                target: HostileTargets(9)
             ),
             BlockStep(0, BaseBlock)
         );
@@ -109,7 +114,7 @@ public partial class WeakpointBulwark : Skill
     private const int BaseBlock = 15;
     private int _capturedVulnerableStacks;
 
-    public override string SkillName { get; set; } = "弱点壁垒";
+    public override string SkillName { get; set; } = "蓄势待发";
 
     public WeakpointBulwark()
         : base(SkillTypes.Survive)
@@ -144,7 +149,7 @@ public partial class WeakpointBulwark : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: _ => _capturedVulnerableStacks,
-                maxTargets: 1
+                target: HostileTargets(1)
             )
         );
     }

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -19,11 +20,19 @@ public partial class SacredOnslaught : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: 0, powerMultiplier: 1, maxTargets: MaxTargets, times: 1),
+            AoeDamageStep(
+                baseDamage: 0,
+                powerMultiplier: 1,
+                target: HostileTargets(MaxTargets),
+                times: 1
+            ),
             CustomStep(
                 async __ =>
                 {
-                    int hitCount = Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length);
+                    int hitCount = Math.Min(
+                        MaxTargets,
+                        ChosetargetByOrder(byBehindRow: false).Length
+                    );
                     OwnerCharater?.UpdataBlock(
                         Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999),
                         source: OwnerCharater
@@ -74,7 +83,8 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2)
+            AttackPrimaryStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2),
+            EnergyStep(1)
         );
     }
 }
@@ -84,6 +94,7 @@ public partial class EchoPuncture : Skill
     private const int BaseDamage = 10;
     private const int VulnerableStacks = 2;
     int times = 1;
+
     public EchoPuncture()
         : base(SkillTypes.Attack)
     {
@@ -97,15 +108,120 @@ public partial class EchoPuncture : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(
-                0,
-                times,
-                AttackPrimaryStep(baseDamage: 0, times: 2)
-            ),
+            EnergyTimesGateStep(0, times, AttackPrimaryStep(baseDamage: 0, times: 2)),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 1
+                target: HostileTargets(1)
+            )
+        );
+    }
+}
+
+public partial class Extract : Skill
+{
+    private const int BaseDamage = 17;
+    private const int EnergyGain = 2;
+    private const string PrimaryTargetKey = "萃取目标";
+
+    public Extract()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "萃取";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
+            ConditionStep(
+                condition: TargetHasWeaken,
+                conditionDescription: "攻击目标拥有虚弱",
+                EnergyStep(EnergyGain)
+            )
+        );
+    }
+
+    private bool TargetHasWeaken()
+    {
+        Character target = GetStoredTarget(PrimaryTargetKey);
+        return target?.AttackBuffs?.Any(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
+            ) == true;
+    }
+}
+
+public partial class BladeOfSlaughter : Skill
+{
+    private const int BaseDamage = 17;
+    private const int VulnerableStacks = 2;
+    private const string PrimaryTargetKey = "弑杀之刃目标";
+    int comboTimes = 3;
+
+    public BladeOfSlaughter()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "弑杀之刃";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: VulnerableStacks,
+                target: HostileTargets(1)
+            ),
+            ConditionStep(
+                condition: TargetHasWeaken,
+                conditionDescription: "攻击目标拥有虚弱",
+                EnergyTimesGateStep(
+                    0,
+                    comboTimes,
+                    CarryStep(target: RelativeTarget(-1), skillIndex: 0)
+                )
+            )
+        );
+    }
+
+    private bool TargetHasWeaken()
+    {
+        Character target = GetStoredTarget(PrimaryTargetKey);
+        return target?.AttackBuffs?.Any(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
+            ) == true;
+    }
+}
+
+public partial class DisasterImpact : Skill
+{
+    private const int BaseDamage = 2;
+    private const int DisasterStacks = 7;
+
+    public DisasterImpact()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "灾厄冲击";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Disaster,
+                stacks: DisasterStacks,
+                target: HostileTargets(1)
             )
         );
     }

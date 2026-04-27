@@ -56,11 +56,6 @@ Button/styles/hover = SubResource("StyleBoxTexture_fl2tk")
 Button/styles/normal = SubResource("StyleBoxTexture_hgu68")
 Button/styles/pressed = SubResource("StyleBoxTexture_7mxfi")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
-shader = ExtResource("12_jq5q4")
-shader_parameter/icon_scale = 1.20000004768372
-shader_parameter/base_thickness = 0.01400000031574
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_equipment_hover"]
 shader = ExtResource("8_vk5l4")
 shader_parameter/rotation_speed = 3.0
@@ -75,13 +70,14 @@ shader_parameter/hover = 0.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_b3jsu"]
 shader = ExtResource("12_0g0qh")
-shader_parameter/shape_color = Color(0, 0.8, 1, 1)
-shader_parameter/speed1 = 1.0
-shader_parameter/speed2 = 1.5
-shader_parameter/square_size1 = 0.28
-shader_parameter/square_size2 = 0.28
-shader_parameter/ring_radius = 0.12
+shader_parameter/shape_color = Color(0, 0.7999997, 1, 0.8862745)
+shader_parameter/hover = 0.0
 shader_parameter/line_thickness = 0.01
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
+shader = ExtResource("12_jq5q4")
+shader_parameter/icon_scale = 1.20000004768372
+shader_parameter/base_thickness = 0.01400000031574
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0g0qh"]
 shader = ExtResource("13_jq5q4")
@@ -199,10 +195,10 @@ horizontal_alignment = 2
 top_level = true
 z_index = 4
 material = SubResource("ShaderMaterial_cccvd")
-offset_left = 1704.0
-offset_top = 864.0
-offset_right = 1921.0
-offset_bottom = 1081.0
+offset_left = 1716.0
+offset_top = 861.0
+offset_right = 1910.0
+offset_bottom = 1055.0
 focus_mode = 0
 theme = SubResource("Theme_6uk3n")
 script = ExtResource("7_1svsv")
@@ -211,10 +207,10 @@ ChangeEffect = NodePath("../../MaskLayer/ChangeEffect")
 
 [node name="Label" type="Label" parent="UI/ReadyButton" unique_id=1771873845]
 layout_mode = 0
-offset_left = 74.0
-offset_top = 80.0
-offset_right = 144.0
-offset_bottom = 129.0
+offset_left = 63.0
+offset_top = 71.0
+offset_right = 133.0
+offset_bottom = 142.0
 theme = ExtResource("10_svc60")
 text = "战术"
 
@@ -225,26 +221,13 @@ offset_right = 1915.0
 offset_bottom = 91.0
 text = "x"
 
-[node name="Button2" type="Button" parent="UI" unique_id=1573518701]
-self_modulate = Color(1, 1, 1, 0)
-offset_left = 346.0
-offset_top = 15.0
-offset_right = 386.0
-offset_bottom = 55.0
-
-[node name="ColorRect" type="ColorRect" parent="UI/Button2" unique_id=1135027621]
-material = SubResource("ShaderMaterial_7a0j3")
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-
 [node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623 node_paths=PackedStringArray("SiteUILayer")]
 material = SubResource("ShaderMaterial_equipment_hover")
 custom_minimum_size = Vector2(130, 130)
-offset_left = 1752.0
-offset_top = 736.0
-offset_right = 1882.0
-offset_bottom = 866.0
+offset_left = 1750.0
+offset_top = 699.0
+offset_right = 1880.0
+offset_bottom = 829.0
 focus_mode = 0
 flat = true
 script = ExtResource("9_eqbtn")
@@ -253,8 +236,10 @@ SiteUILayer = NodePath("../../BattleReadyLayer")
 [node name="ColorRect" type="ColorRect" parent="UI/EquipmentButton" unique_id=425907821]
 material = SubResource("ShaderMaterial_b3jsu")
 layout_mode = 0
-offset_right = 130.0
-offset_bottom = 130.0
+offset_left = -32.0
+offset_top = -31.0
+offset_right = 163.0
+offset_bottom = 164.0
 mouse_filter = 1
 
 [node name="Label" type="Label" parent="UI/EquipmentButton" unique_id=1026316791]
@@ -280,28 +265,28 @@ metadata/_edit_lock_ = true
 layer = 5
 script = ExtResource("13_ehio4")
 
-[node name="TransitionEnergyControl" type="Control" parent="PlayerResourceState" unique_id=1551756892]
-layout_mode = 3
-anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+[node name="TransitionEnergyControl" type="HBoxContainer" parent="PlayerResourceState" unique_id=200816458]
+offset_right = 144.0
+offset_bottom = 49.0
 scale = Vector2(0.8, 0.8)
 
-[node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
-layout_mode = 0
-offset_left = 150.0
-offset_top = 18.0
-offset_right = 290.0
-offset_bottom = 58.0
-
 [node name="Label" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=923755580]
-layout_mode = 0
-offset_left = 22.0
-offset_top = 11.0
-offset_right = 137.0
-offset_bottom = 60.0
+layout_mode = 2
 theme = ExtResource("10_svc60")
-text = "Energy"
+text = "跃迁能量"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
+layout_mode = 2
+
+[node name="Button2" type="Button" parent="PlayerResourceState/TransitionEnergyControl" unique_id=524157967]
+self_modulate = Color(1, 1, 1, 0)
+layout_mode = 2
+
+[node name="ColorRect" type="ColorRect" parent="PlayerResourceState/TransitionEnergyControl/Button2" unique_id=1743479047]
+material = SubResource("ShaderMaterial_7a0j3")
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
 
 [node name="ElectricityCoin" type="ColorRect" parent="PlayerResourceState" unique_id=360590376]
 material = SubResource("ShaderMaterial_0g0qh")
@@ -333,6 +318,7 @@ custom_minimum_size = Vector2(50, 50)
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
+mouse_filter = 1
 
 [node name="RelicContainer" type="VBoxContainer" parent="PlayerResourceState" unique_id=1898816383]
 custom_minimum_size = Vector2(50, 50)

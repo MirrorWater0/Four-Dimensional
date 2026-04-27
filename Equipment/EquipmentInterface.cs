@@ -779,7 +779,7 @@ public partial class EquipmentInterface : Control
 
         DetailNameLabel.Text = _selectedEquipment.DisplayName;
         DetailTypeLabel.Text = _selectedEquipment.TypeLabel;
-        DetailDescLabel.Text = _selectedEquipment.Description;
+        DetailDescLabel.Text = BuildEquipmentDetailText(_selectedEquipment);
     }
 
     private void RefreshPreview()
@@ -807,6 +807,26 @@ public partial class EquipmentInterface : Control
         SpeedValueLabel.Text = FormatPreview(currentSpeed, nextSpeed);
         LifeValueLabel.Text = FormatPreview(currentLife, nextLife);
 
+    }
+
+    private static string BuildEquipmentDetailText(Equipment equipment)
+    {
+        if (equipment == null)
+            return "请从中间列表选择一件装备。";
+
+        string description = equipment.Description?.Trim() ?? string.Empty;
+        string effectText = Equipment.GetSpecialEffectText(equipment)?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(effectText))
+            return string.IsNullOrWhiteSpace(description) ? "暂无描述。" : description;
+
+        if (string.IsNullOrWhiteSpace(description))
+            return effectText;
+
+        if (description.Contains(effectText))
+            return description;
+
+        return $"{description}\n\n特殊效果：\n{effectText}";
     }
 
     private void RefreshActionButtons()

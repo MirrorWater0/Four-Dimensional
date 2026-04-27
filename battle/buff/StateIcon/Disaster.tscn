@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://bwbsiyv0jw1d0"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://cfytqb85ed25e" path="res://shader/Icon/BuffIcon/Disaster.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_disaster"]
+shader = ExtResource("2_shd")
+shader_parameter/bg_color = Color(0, 0, 0, 0)
+shader_parameter/core_color = Color(0.34, 0.02, 0.56, 1)
+shader_parameter/fissure_color = Color(0.98, 0.33, 0.82, 1)
+shader_parameter/ember_color = Color(1, 0.69, 0.28, 1)
+shader_parameter/rim_color = Color(0.95, 0.88, 1, 1)
+shader_parameter/radius = 0.33500000834465
+shader_parameter/ring_width = 0.068000003695488
+shader_parameter/crack_width = 0.041000001132488
+shader_parameter/pulse = 0.11500000208616
+shader_parameter/swirl = 1.3200000524521
+
+[node name="Disaster" unique_id=1832655390 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_disaster")

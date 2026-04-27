@@ -66,7 +66,7 @@ public partial class ShadowExecution : Skill
 
 public partial class BreakStrike : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 13;
 
     public BreakStrike()
         : base(SkillTypes.Attack)
@@ -103,9 +103,8 @@ public partial class BreakStrike : Skill
 public partial class StasisBlade : Skill
 {
     private const int BaseDamage = 17;
-    private const int SpeedDown = 4;
+    private const int SpeedDown = 5;
     private const int FirstCastExtraSpeedDown = 3;
-    private const string TargetKey = "攻击目标";
     int times = 1;
 
     public StasisBlade()
@@ -120,16 +119,12 @@ public partial class StasisBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: TargetKey),
-            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown, target: StoredTarget(TargetKey)),
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown),
             EnergyTimesGateStep(
                 0,
                 times,
-                LowerTargetPropertyStep(
-                    PropertyType.Speed,
-                    FirstCastExtraSpeedDown,
-                    target: StoredTarget(TargetKey)
-                )
+                LowerTargetPropertyStep(PropertyType.Speed, FirstCastExtraSpeedDown)
             )
         );
     }

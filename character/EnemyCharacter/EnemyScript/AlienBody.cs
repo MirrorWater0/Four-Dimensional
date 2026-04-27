@@ -109,7 +109,7 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
-            CarryRelativeAllyStep(relativeIndex: -1, skillIndex: 1),
+            CarryStep(target: RelativeTarget(-1), skillIndex: 1),
             EnergyTimesGateStep(
                 energyCost: EnergyCost,
                 onPassSteps:

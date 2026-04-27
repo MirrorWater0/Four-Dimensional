@@ -5,7 +5,7 @@ render_mode blend_add, unshaded;
 uniform float rotation_speed: hint_range(0.5, 5.0, 0.1) = 3.0;
 uniform float scale: hint_range(0.5, 3.0, 0.1) = 1.0;
 uniform vec3 color: source_color = vec3(0.0, 1.0, 1.0);
-uniform float thickness: hint_range(0.005, 0.05, 0.0001) = 0.004;
+uniform float thickness: hint_range(0.005, 0.05, 0.0001) = 0.019;
 uniform float dist2 : hint_range(0.0, 1.5, 0.1) = 1.;
 uniform float dist1 : hint_range(0.0, 1.5, 0.1) = 1.;
 
@@ -149,21 +149,40 @@ float circleUI(vec2 p) {
 }
 
 void fragment() {
+	// 1. 获取基础坐标
 	vec2 uv = (UV - 0.5) * 2.0;
 	float current_scale = scale + (hover * 0.1);
 	uv /= current_scale;
 
+	// 2. 获取距离场
 	float d = circleUI(uv);
 
-	// --- 核心抗锯齿改进 ---
-	// fwidth(d) 能自动计算出“一个像素”在当前坐标系下对应的距离值。
-	// 这保证了无论 UI 缩放多大、分辨率是多少，边缘模糊永远只有 1 个像素宽。
-	float aa = fwidth(d);
-
-	// 如果觉得边缘太锐利，可以稍微增加倍数，例如 fwidth(d) * 1.5;
+	// --- 核心优化部分 ---
+	
+	// A. 计算当前像素在 UV 空间中的实际大小
+	// length(fwidth(uv)) 比 fwidth(d) 稳定得多，因为它代表了坐标系的缩放比例
+	float unit = length(fwidth(uv)); 
+	
+	// B. 动态调整 AA 范围
+	// 在缩小时，我们需要稍微加宽 AA 边缘来模拟“光晕”，防止像素断裂
+	float aa = unit * 1.5; 
+	
+	// C. 改进的平滑处理
+	// 使用 -aa 到 aa 的映射，d=0 刚好处于 0.5 的透明度
 	float brightness = smoothstep(aa, -aa, d);
+	
+	// D. 针对“极细线条”的补偿 (可选)
+	// 当线条非常细时，为了防止消失，可以增加一个极小的环境亮度
+	// 或者直接对 alpha 进行增强
+	float alpha = brightness;
+	if (thickness < unit) {
+		alpha = pow(alpha, 0.8); // 稍微拉高低亮度区域的透明度
+	}
 
-	// 最终颜色输出
+	// 3. 最终颜色输出
+	// 使用原有的 color
 	vec3 final_color = color * brightness;
-	COLOR = vec4(final_color, brightness);
+	
+	// 注意：由于使用了 blend_add，Alpha 值会强烈影响发光强度
+	COLOR = vec4(final_color, alpha);
 }

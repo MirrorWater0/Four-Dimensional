@@ -98,7 +98,7 @@ public partial class FerociouessAttack : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0),
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
@@ -131,7 +131,7 @@ public partial class FerociouessSurvive : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                maxTargets: 9
+                target: HostileTargets(9)
             )
         );
     }
@@ -156,7 +156,7 @@ public partial class FerociouessSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, maxTargets: 0),
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
             EnergyTimesGateStep(
                 energyCost: GainEnergyCost,
                 onPassSteps: [ModifyPropertyStep(PropertyType.Power, 3)]
@@ -168,7 +168,7 @@ public partial class FerociouessSpecial : Skill
                     AoeDamageStep(
                         baseDamage: -5,
                         powerMultiplier: BurstPowerMultiplier,
-                        maxTargets: 0
+                        target: HostileTargets(0)
                     ),
                 ]
             )

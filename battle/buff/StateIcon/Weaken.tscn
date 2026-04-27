@@ -1,13 +1,15 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bb4crtkvtrm3o"]
 
-[ext_resource type="PackedScene" path="res://battle/buff/IconTemplate.tscn" id="1"]
-[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/Weaken.gdshader" id="2"]
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1"]
+[ext_resource type="Shader" uid="uid://lwa0uha2d74o" path="res://shader/Icon/BuffIcon/Weaken.gdshader" id="2"]
 
 [sub_resource type="ShaderMaterial" id="1"]
 shader = ExtResource("2")
-shader_parameter/base_color = Color(0.654902, 0.537255, 0.211765, 1)
-shader_parameter/shadow_color = Color(0.286275, 0.176471, 0.0431373, 1)
-shader_parameter/crack_color = Color(0.980392, 0.866667, 0.490196, 1)
+shader_parameter/sword_color = Color(0.8, 1, 0.8, 1)
+shader_parameter/break_y = 0.00100002379749997
+shader_parameter/break_offset = Vector2(0.06, -0.02)
+shader_parameter/cut_angle = -0.733999987365
+shader_parameter/gap = 0.018000000855
 
-[node name="Weaken" instance=ExtResource("1")]
+[node name="Weaken" unique_id=670444711 instance=ExtResource("1")]
 material = SubResource("1")

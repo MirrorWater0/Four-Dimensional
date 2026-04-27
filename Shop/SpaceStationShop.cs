@@ -2821,9 +2821,12 @@ public partial class SpaceStationShop : Control
     {
         if (value == 0)
             return;
+        parts.Add($"{FormatSignedStat(value)} {label}");
+    }
 
-        string prefix = value > 0 ? "+" : string.Empty;
-        parts.Add($"{prefix}{value} {label}");
+    private static string FormatSignedStat(int value)
+    {
+        return value.ToString("+0;-0;0");
     }
 
     private static bool CanApplyStatOffer(StatOffer offer)

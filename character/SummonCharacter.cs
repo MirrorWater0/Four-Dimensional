@@ -81,6 +81,9 @@ public partial class SummonCharacter : Character
             }
         }
 
+        if (BattleNode != null)
+            await BattleNode.TriggerGlobalTurnEndBuffs(this);
+
         EmitBattleNext();
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");

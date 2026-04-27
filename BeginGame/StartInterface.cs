@@ -40,6 +40,15 @@ public partial class StartInterface : CanvasLayer
                 buffTip0.AnchorOffset = new Vector2(-20f, 20f);
                 existingLayer.AddChild(buffTip0);
             }
+
+            if (!existingLayer.HasNode("EquipmentTip"))
+            {
+                var equipmentTip0 = TipScene.Instantiate<Tip>();
+                equipmentTip0.Name = "EquipmentTip";
+                equipmentTip0.FollowMouse = true;
+                equipmentTip0.AnchorOffset = new Vector2(-20f, -20f);
+                existingLayer.AddChild(equipmentTip0);
+            }
             return;
         }
 
@@ -54,8 +63,14 @@ public partial class StartInterface : CanvasLayer
         buffTip.FollowMouse = true;
         buffTip.AnchorOffset = new Vector2(-20f, 20f);
 
+        var equipmentTip = TipScene.Instantiate<Tip>();
+        equipmentTip.Name = "EquipmentTip";
+        equipmentTip.FollowMouse = true;
+        equipmentTip.AnchorOffset = new Vector2(-20f, -20f);
+
         layer.AddChild(tip);
         layer.AddChild(buffTip);
+        layer.AddChild(equipmentTip);
         GetTree().Root.CallDeferred(Node.MethodName.AddChild, layer);
     }
 

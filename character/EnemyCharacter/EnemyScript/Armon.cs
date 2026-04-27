@@ -72,8 +72,8 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(BaseDamage),
-            BlockStep(-1, excludeSelf: true),
-            BlockStep(1, excludeSelf: true),
+            BlockStep(-1),
+            BlockStep(1),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );

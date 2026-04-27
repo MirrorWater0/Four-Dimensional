@@ -876,8 +876,12 @@ public partial class Reward : CanvasLayer
     {
         if (value == 0)
             return;
-        string prefix = value > 0 ? "+" : string.Empty;
-        segments.Add($"{prefix}{value} {label}");
+        segments.Add($"{FormatSignedStat(value)} {label}");
+    }
+
+    private static string FormatSignedStat(int value)
+    {
+        return value.ToString("+0;-0;0");
     }
 
     private static string GetItemName(ItemID itemId)
