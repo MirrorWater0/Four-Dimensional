@@ -54,7 +54,7 @@ public partial class Smite : Skill
             EnergyTimesGateStep(
                 0,
                 times,
-                LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown)
+                LowerTargetPropertyStep(PropertyType.Survivability, 4, target: HostileTargets(0))
             )
         );
     }

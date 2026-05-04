@@ -62,6 +62,30 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_seed_button"]
+bg_color = Color(0.05, 0.08, 0.13, 0.34)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.72, 0.92, 0.46)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_seed_button_hover"]
+bg_color = Color(0.08, 0.13, 0.2, 0.58)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.84, 0.66, 0.78)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_blwrf"]
 shader = ExtResource("3_sdmw3")
 shader_parameter/icon_color = Color(1, 1, 1, 1)
@@ -355,6 +379,31 @@ theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 48
 text = "▶"
 flat = true
+
+[node name="SeedCopyButton" type="Button" parent="."]
+visible = false
+z_index = 4
+anchors_preset = -1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -292.0
+offset_top = 10.0
+offset_right = -28.0
+offset_bottom = 46.0
+grow_horizontal = 0
+focus_mode = 0
+theme_override_colors/font_color = Color(0.86, 0.94, 1, 0.9)
+theme_override_colors/font_hover_color = Color(1, 0.96, 0.84, 1)
+theme_override_colors/font_pressed_color = Color(0.94, 0.84, 0.66, 1)
+theme_override_colors/font_focus_color = Color(1, 0.96, 0.84, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_seed_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_seed_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_seed_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_seed_button_hover")
+text = "Seed: -"
+flat = false
 
 [node name="ExitButton" type="Button" parent="." unique_id=930503078]
 z_index = 2

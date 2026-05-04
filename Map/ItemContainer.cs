@@ -1,19 +1,24 @@
 using System;
 using Godot;
 
-public partial class ItemContainer : PanelContainer
+public partial class ItemContainer : Panel
 {
-    private static readonly Color SelectedBorderColor = new("#7fc8ff");
-    private static readonly Color HoverBorderColor = new("#5cff8a");
+    private static readonly Color SelectedBorderColor = new("#c9f4ff");
+    private static readonly Color HoverBorderColor = new("#63f2d4");
 
     private static ItemContainer _selected;
     private static bool _isUsing;
+    private static ItemContainer _openDiscardMenuOwner;
+
+    private Control IconHost => field ??= GetNodeOrNull<Control>("SlotRoot/IconHost");
+    private Button DiscardButton => field ??= GetNodeOrNull<Button>("DiscardButton");
 
     private StyleBoxFlat _runtimeStyle;
     private Color _defaultBorderColor = new("#ffffff");
     private bool _isHovered;
     private bool _enabled;
     private Tip _itemTip;
+    private ConsumeItem _discardMenuItem;
 
     public override void _Ready()
     {
@@ -21,22 +26,57 @@ public partial class ItemContainer : PanelContainer
         MouseEntered += () => SetHoverState(true);
         MouseExited += () => SetHoverState(false);
         GuiInput += OnGuiInput;
-        ChildExitingTree += child => OnChildExiting(child);
+        if (IconHost != null)
+            IconHost.ChildExitingTree += OnIconChildExiting;
+        if (DiscardButton != null)
+            DiscardButton.Pressed += OnDiscardButtonPressed;
         InitializeStyle();
+        HideDiscardMenuInstance();
         SetEnabled(false);
+    }
+
+    public override void _ExitTree()
+    {
+        if (_openDiscardMenuOwner == this)
+            _openDiscardMenuOwner = null;
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        if (_openDiscardMenuOwner != this || DiscardButton == null || !DiscardButton.Visible)
+            return;
+        if (@event is not InputEventMouseButton { Pressed: true } mouseButton)
+            return;
+        if (IsPointInsideSelfOrDiscardMenu(mouseButton.GlobalPosition))
+            return;
+
+        HideDiscardMenuInstance();
     }
 
     private void OnGuiInput(InputEvent @event)
     {
         if (@event is not InputEventMouseButton mouseButton)
             return;
-        if (!mouseButton.Pressed || mouseButton.ButtonIndex != MouseButton.Left)
+        if (!mouseButton.Pressed)
             return;
+
         if (_isUsing)
             return;
+
+        if (mouseButton.ButtonIndex == MouseButton.Right)
+        {
+            ShowDiscardMenu();
+            AcceptEvent();
+            return;
+        }
+
+        if (mouseButton.ButtonIndex != MouseButton.Left)
+            return;
+
         if (!_enabled)
             return;
 
+        HideOpenDiscardMenu();
         var item = GetAssignedItem();
         if (item == null)
         {
@@ -46,6 +86,60 @@ public partial class ItemContainer : PanelContainer
 
         SetSelected(this);
         _ = UseSelectedItemAsync(item);
+    }
+
+    private void ShowDiscardMenu()
+    {
+        var item = GetAssignedItem();
+        if (item == null)
+        {
+            HideOpenDiscardMenu();
+            return;
+        }
+
+        if (DiscardButton == null)
+            return;
+
+        HideOpenDiscardMenu();
+        HideItemTip();
+        _openDiscardMenuOwner = this;
+        _discardMenuItem = item;
+        DiscardButton.Visible = true;
+        DiscardButton.MoveToFront();
+    }
+
+    private bool IsPointInsideSelfOrDiscardMenu(Vector2 globalPosition)
+    {
+        if (GetGlobalRect().HasPoint(globalPosition))
+            return true;
+        return DiscardButton != null && DiscardButton.GetGlobalRect().HasPoint(globalPosition);
+    }
+
+    private void OnDiscardButtonPressed()
+    {
+        var item = _discardMenuItem;
+        HideDiscardMenuInstance();
+        if (item == null)
+            return;
+
+        HideItemTip();
+        item.Discard();
+        ClearSelection(this);
+    }
+
+    private static void HideOpenDiscardMenu()
+    {
+        _openDiscardMenuOwner?.HideDiscardMenuInstance();
+        _openDiscardMenuOwner = null;
+    }
+
+    private void HideDiscardMenuInstance()
+    {
+        if (DiscardButton != null && GodotObject.IsInstanceValid(DiscardButton))
+            DiscardButton.Visible = false;
+        _discardMenuItem = null;
+        if (_openDiscardMenuOwner == this)
+            _openDiscardMenuOwner = null;
     }
 
     private async System.Threading.Tasks.Task UseSelectedItemAsync(ConsumeItem item)
@@ -86,7 +180,48 @@ public partial class ItemContainer : PanelContainer
         MouseFilter = MouseFilterEnum.Stop;
         Modulate = enabled ? new Color(1, 1, 1, 1) : new Color(1, 1, 1, 0.55f);
         if (!enabled)
+        {
             ClearSelection(this);
+            HideDiscardMenuInstance();
+        }
+    }
+
+    public bool HasItemIcon()
+    {
+        return GetItemIcon() != null;
+    }
+
+    public void AddItemIcon(Node icon)
+    {
+        if (icon == null || IconHost == null)
+            return;
+
+        IconHost.AddChild(icon);
+        if (icon is Control control)
+        {
+            control.MouseFilter = MouseFilterEnum.Ignore;
+            control.SetAnchorsPreset(LayoutPreset.FullRect);
+            control.OffsetLeft = 0f;
+            control.OffsetTop = 0f;
+            control.OffsetRight = 0f;
+            control.OffsetBottom = 0f;
+        }
+    }
+
+    public void ClearItemIcon()
+    {
+        if (IconHost == null)
+            return;
+
+        for (int i = IconHost.GetChildCount() - 1; i >= 0; i--)
+        {
+            Node child = IconHost.GetChild(i);
+            IconHost.RemoveChild(child);
+            child.QueueFree();
+        }
+
+        HideItemTip();
+        HideDiscardMenuInstance();
     }
 
     private void SetHoverState(bool hovered)
@@ -134,7 +269,7 @@ public partial class ItemContainer : PanelContainer
             : (_isHovered ? HoverBorderColor : _defaultBorderColor);
     }
 
-    private void OnChildExiting(Node child)
+    private void OnIconChildExiting(Node child)
     {
         if (_selected != this)
             return;
@@ -143,9 +278,11 @@ public partial class ItemContainer : PanelContainer
 
     private void ClearIfEmpty()
     {
-        if (_selected == this && GetChildCount() == 0)
+        if (_selected == this && !HasItemIcon())
             ClearSelection(this);
         HideItemTip();
+        if (!HasItemIcon())
+            HideDiscardMenuInstance();
     }
 
     private ConsumeItem GetAssignedItem()
@@ -154,10 +291,8 @@ public partial class ItemContainer : PanelContainer
         if (playerResource == null)
             return null;
 
-        if (GetChildCount() == 0)
-            return null;
-
-        if (GetChild(0) is not Node icon)
+        var icon = GetItemIcon();
+        if (icon == null)
             return null;
 
         foreach (var item in playerResource.Items)
@@ -167,6 +302,14 @@ public partial class ItemContainer : PanelContainer
         }
 
         return null;
+    }
+
+    private Node GetItemIcon()
+    {
+        if (IconHost == null || IconHost.GetChildCount() == 0)
+            return null;
+
+        return IconHost.GetChild(0);
     }
 
     private void ShowItemTip()

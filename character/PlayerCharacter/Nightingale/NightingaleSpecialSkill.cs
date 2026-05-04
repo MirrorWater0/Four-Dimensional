@@ -119,7 +119,7 @@ public partial class RequiemBloom : Skill
 public partial class CurtainCallMoment : Skill
 {
     private const int WeakenStacks = 2;
-    private const int InvisibleStacks = 10;
+    private const int InvisibleStacks = 5;
     private const int EnergyCost = 3;
     private const int ExtraTurnStacks = 1;
 
@@ -180,6 +180,11 @@ public partial class ShadowForm : Skill
                 EnergyCost,
                 null,
                 null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Invisible,
+                    stacks: 5,
+                    target: RelativeTarget(0)
+                ),
                 ApplyBuffFriendly(
                     buffName: Buff.BuffName.Shadow,
                     stacks: ShadowStacks,

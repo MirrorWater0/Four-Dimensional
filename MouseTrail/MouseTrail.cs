@@ -22,6 +22,8 @@ public partial class MouseTrail : CanvasLayer
     private float _overlayRefreshSeconds = 0.15f;
 
     private const float PressLerpSpeed = 14.0f;
+    private const float CursorRotationSpeed = 9.0f;
+    private const float LeftPressCursorRotation = -0.24f;
     private const float BurstDecaySpeed = 2.8f;
     private const float MotionResponse = 0.02f;
 
@@ -33,6 +35,7 @@ public partial class MouseTrail : CanvasLayer
     private float _pressAmount;
     private float _burstAmount;
     private float _motionAmount;
+    private float _cursorRotation;
     private float _avgFrameMs = 16.7f;
     private float _peakFrameMs;
     private float _stutterLogCooldownLeft;
@@ -48,6 +51,11 @@ public partial class MouseTrail : CanvasLayer
         _targetNode = GetNodeOrNull<Node2D>("Node2D");
         _cursor = GetNodeOrNull<Control>("Cursor");
         _cursorMaterial = _cursor?.Material as ShaderMaterial;
+        if (_cursor != null)
+        {
+            UpdateCursorPivot();
+            _cursor.Resized += UpdateCursorPivot;
+        }
 
         Vector2 mousePosition = GetViewport().GetMousePosition();
         _previousMousePosition = mousePosition;
@@ -89,6 +97,7 @@ public partial class MouseTrail : CanvasLayer
         _pressAmount = Mathf.MoveToward(_pressAmount, pressed ? 1.0f : 0.0f, deltaF * PressLerpSpeed);
         _burstAmount = Mathf.MoveToward(_burstAmount, 0.0f, deltaF * BurstDecaySpeed);
         _motionAmount = Mathf.Lerp(_motionAmount, Mathf.Clamp(speed * MotionResponse, 0.0f, 1.0f), 0.18f);
+        UpdateCursorRotation(deltaF);
 
         if (_cursorMaterial != null)
         {
@@ -177,6 +186,30 @@ public partial class MouseTrail : CanvasLayer
 
         if (_cursor != null)
             _cursor.GlobalPosition = mousePosition - _cursorHotspot;
+    }
+
+    private void UpdateCursorPivot()
+    {
+        if (_cursor == null)
+            return;
+
+        _cursor.PivotOffset = _cursor.Size * 0.5f;
+    }
+
+    private void UpdateCursorRotation(float deltaSeconds)
+    {
+        if (_cursor == null)
+            return;
+
+        float targetRotation = Input.IsMouseButtonPressed(MouseButton.Left)
+            ? LeftPressCursorRotation
+            : 0.0f;
+        _cursorRotation = Mathf.Lerp(
+            _cursorRotation,
+            targetRotation,
+            1.0f - Mathf.Exp(-CursorRotationSpeed * deltaSeconds)
+        );
+        _cursor.Rotation = _cursorRotation;
     }
 
     private void UpdateStutterOverlayPosition()

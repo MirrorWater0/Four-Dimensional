@@ -39,14 +39,7 @@ public partial class AlienBody : EnemyCharacter
         if (BattleNode == null)
             return;
 
-        var target = BattleNode
-            .GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
-            .FirstOrDefault(x =>
-                x != null
-                && !x.StartActionBuffs.Any(buff =>
-                    buff != null && buff.ThisBuffName == Buff.BuffName.Invisible && buff.Stack > 0
-                )
-            );
+        var target = SelectPassiveTarget();
         if (target == null)
             return;
 
@@ -96,6 +89,46 @@ public partial class AlienBody : EnemyCharacter
 
         GameInfo.PlayerCharacters[index] = info;
     }
+
+    private Character SelectPassiveTarget()
+    {
+        if (BattleNode == null)
+            return null;
+
+        int ownerRow = GetBattleRow(PositionIndex);
+        Character[] ordered = BattleNode
+            .GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
+            .Where(x => x != null)
+            .OrderBy(x => Mathf.Abs(GetBattleRow(x.PositionIndex) - ownerRow))
+            .ThenBy(x => GetBattleRow(x.PositionIndex))
+            .ThenBy(x => GetBattleCol(x.PositionIndex))
+            .ToArray();
+        if (ordered.Length == 0)
+            return null;
+
+        Character[] visibleTargets = ordered.Where(x => !HasInvisibleBuff(x)).ToArray();
+        Character[] selectableTargets = visibleTargets.Length > 0 ? visibleTargets : ordered;
+        Character[] tauntTargets = selectableTargets.Where(HasTauntBuff).ToArray();
+        Character[] targets = tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
+
+        return targets.FirstOrDefault();
+    }
+
+    private static int GetBattleRow(int positionIndex) =>
+        positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
+
+    private static int GetBattleCol(int positionIndex) =>
+        positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
+
+    private static bool HasInvisibleBuff(Character target) =>
+        target?.StartActionBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Invisible && buff.Stack > 0
+        ) == true;
+
+    private static bool HasTauntBuff(Character target) =>
+        target?.HurtBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
+        ) == true;
 }
 
 public partial class AlienBodyRegedit : EnemyRegedit

@@ -45,6 +45,7 @@ public sealed class RunHistoryRecord
     public int RunIndex;
     public bool Victory;
     public int Seed;
+    public int Difficulty;
     public long StartedAtUtcTicks;
     public long EndedAtUtcTicks;
     public long SessionPlaySeconds;
@@ -281,6 +282,7 @@ public static partial class GameInfo
         {
             Victory = victory,
             Seed = Seed,
+            Difficulty = GameInfo.Difficulty,
             StartedAtUtcTicks = RunStartedAtUtcTicks == 0 ? now : RunStartedAtUtcTicks,
             EndedAtUtcTicks = now,
             SessionPlaySeconds = Math.Max(0, SessionPlaySeconds),
@@ -549,6 +551,7 @@ public static partial class GameInfo
         sb.Append($"\n本局结果：{result}");
         sb.Append($"\n游戏时长：{FormatRunDuration(record.SessionPlaySeconds)}");
         sb.Append($"\n种子：{record.Seed}");
+        sb.Append($"\n难度：{record.Difficulty}");
         sb.Append($"\n经历节点：{record.NodesVisited}");
         sb.Append(
             $"\n击败：敌人 {record.EnemiesDefeated} / 精英 {record.EliteDefeated} / Boss {record.BossDefeated}"
@@ -557,109 +560,28 @@ public static partial class GameInfo
             $"\n获得：电力币 {record.ElectricityCoinGained} / 装备 {record.EquipmentGained} / 遗物 {record.RelicGained}"
         );
 
-        if (nodes.Count == 0)
-        {
-            sb.Append("\n节点记录：暂无详细记录。");
-            return;
-        }
-
         sb.Append($"\n节点统计：{BuildNodeTypeSummary(nodes)}");
-        for (int i = 0; i < nodes.Count; i++)
-        {
-            var node = nodes[i];
-            string order = node.CompletionOrder > 0 ? node.CompletionOrder.ToString() : (i + 1).ToString();
-            sb.Append($"\n#{order} {GetLevelTypeLabel(node.NodeType)}");
-
-            string enemyText = BuildJoinedText(node.EnemyNames, "、");
-            if (!string.IsNullOrWhiteSpace(enemyText))
-                sb.Append($" - {enemyText}");
-
-            string nodeRecord = BuildCompactNodeRecordText(node);
-            if (!string.IsNullOrWhiteSpace(nodeRecord))
-                sb.Append($"\n    {nodeRecord}");
-        }
     }
 
     private static void AppendRunRelicSection(StringBuilder sb, RunHistoryRecord record)
     {
         var relics = record.RelicRecords ?? new List<RunHistoryRelicRecord>();
         sb.Append("\n\n[b]遗物[/b]");
-        if (relics.Count == 0)
-        {
-            sb.Append("\n无遗物记录。");
-            return;
-        }
-
         sb.Append($"\n总数：{CountRunRelics(relics)}");
-        sb.Append("\n");
-        sb.Append(
-            string.Join(
-                "  ",
-                relics.Select(relic =>
-                    relic.Count > 1 ? $"{relic.RelicName} x{relic.Count}" : relic.RelicName
-                )
-            )
-        );
     }
 
     private static void AppendRunEquipmentSection(StringBuilder sb, RunHistoryRecord record)
     {
         var equipments = record.EquipmentRecords ?? new List<RunHistoryEquipmentRecord>();
         sb.Append("\n\n[b]装备[/b]");
-        if (equipments.Count == 0)
-        {
-            sb.Append("\n无装备记录。");
-            return;
-        }
-
         sb.Append($"\n总数：{equipments.Sum(equipment => equipment.Count > 0 ? equipment.Count : 1)}");
-        sb.Append("\n");
-        sb.Append(
-            string.Join(
-                "  ",
-                equipments.Select(equipment =>
-                    equipment.Count > 1
-                        ? $"{equipment.DisplayName} x{equipment.Count}"
-                        : equipment.DisplayName
-                )
-            )
-        );
     }
 
     private static void AppendRunSkillSection(StringBuilder sb, RunHistoryRecord record)
     {
         var characters = record.CharacterSkillRecords ?? new List<RunHistoryCharacterSkillRecord>();
         sb.Append("\n\n[b]角色技能[/b]");
-        if (characters.Count == 0)
-        {
-            sb.Append("\n无技能记录。");
-            return;
-        }
-
-        foreach (var character in characters)
-        {
-            if (character == null)
-                continue;
-
-            int skillCount = CountRunSkills(new List<RunHistoryCharacterSkillRecord> { character });
-            sb.Append($"\n{character.CharacterName}({skillCount})");
-            var typeRecords = character.SkillTypeRecords ?? new List<RunHistorySkillTypeRecord>();
-            if (typeRecords.Count == 0)
-            {
-                sb.Append("\n  暂无技能。");
-                continue;
-            }
-
-            foreach (var typeRecord in typeRecords)
-            {
-                if (typeRecord == null || typeRecord.SkillNames == null || typeRecord.SkillNames.Count == 0)
-                    continue;
-
-                sb.Append(
-                    $"\n  {GetSkillTypeLabel(typeRecord.SkillType)}({typeRecord.SkillNames.Count})：{string.Join("、", typeRecord.SkillNames)}"
-                );
-            }
-        }
+        sb.Append($"\n总数：{CountRunSkills(characters)}");
     }
 
     private static void AppendHistoryNodeTotals(StringBuilder sb, RunHistoryRecord[] records)
@@ -693,7 +615,7 @@ public static partial class GameInfo
         string result = record.Victory ? "胜利" : "战败";
         int relicCount = CountRunRelics(record.RelicRecords);
         int skillCount = CountRunSkills(record.CharacterSkillRecords);
-        return $"#{index} {result}  节点 {record.NodesVisited}  遗物 {relicCount}  技能 {skillCount}  {FormatRunDuration(record.SessionPlaySeconds)}";
+        return $"#{index} {result}  难度 {record.Difficulty}  节点 {record.NodesVisited}  遗物 {relicCount}  技能 {skillCount}  {FormatRunDuration(record.SessionPlaySeconds)}";
     }
 
     private static string BuildNodeTypeSummary(IEnumerable<LevelNodeCompletionRecord> nodes)

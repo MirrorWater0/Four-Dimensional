@@ -29,7 +29,6 @@ public partial class RebirthPrayer : Skill
                 HealStep(
                     baseHeal: BaseRebirthHeal,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
-                    dyingFilter: false,
                     preferNonFull: true,
                     rebirth: true,
                     storeAs: SharedTargetKey
@@ -73,7 +72,11 @@ public partial class Sacrifice : Skill
                     value: -DeMax,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.All)
                 ),
-                AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, target: HostileTargets(0))
+                AoeDamageStep(
+                    baseDamage: basisDamage,
+                    powerMultiplier: 2,
+                    target: HostileTargets(0)
+                )
             )
         );
     }
@@ -104,7 +107,6 @@ public partial class RearlineRevival : Skill
                 HealStep(
                     baseHeal: BaseRebirthHeal,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
-                    dyingFilter: false,
                     preferNonFull: true,
                     rebirth: true,
                     repeatCount: TargetCount
@@ -135,10 +137,14 @@ public partial class GroupHealing : Skill
                 EnergyCost,
                 null,
                 null,
+                ModifyPropertyStep(
+                    type: PropertyType.MaxLife,
+                    value: 15,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+                ),
                 HealStep(
                     baseHeal: BaseHeal,
                     target: AbsoluteTarget(AbsoluteFriendlySelector.All),
-                    dyingFilter: false,
                     preferNonFull: false,
                     includeSummonsWhenAll: false
                 )
@@ -201,6 +207,12 @@ public partial class SanctuaryForm : Skill
                 EnergyCost,
                 null,
                 null,
+                HealStep(
+                    baseHeal: 10,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                    preferNonFull: true,
+                    rebirth: true
+                ),
                 ApplyBuffFriendly(
                     buffName: Buff.BuffName.Sanctuary,
                     stacks: SanctuaryStacks,

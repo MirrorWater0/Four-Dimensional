@@ -25,6 +25,7 @@ public partial class VeilStep : Skill
                 stacks: InvisibleStacks,
                 target: RelativeTarget(0)
             ),
+            EnergyStep(1),
             BlockStep(relativeIndex: 1, baseBlock: BaseBlock, survivabilityMultiplier: 2)
         );
     }
@@ -81,7 +82,8 @@ public partial class Swift : Skill
                 type: PropertyType.Survivability,
                 value: SurvivabilityGain,
                 target: AbsoluteTarget(AbsoluteFriendlySelector.All)
-            )
+            ),
+            EnergyStep(1)
         );
     }
 }

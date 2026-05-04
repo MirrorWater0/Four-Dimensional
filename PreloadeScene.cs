@@ -53,7 +53,6 @@ public partial class PreloadeScene : Node2D
 
     private Node _sceneHolder;
     private Node _warmupHolder;
-    private ColorRect _blackRect;
     private ColorRect _shaderWarmupRect;
     private readonly List<Node> _warmupInstances = new();
 
@@ -65,14 +64,10 @@ public partial class PreloadeScene : Node2D
     {
         _sceneHolder = GetNodeOrNull<Node>("SceneHolder");
         _warmupHolder = GetNodeOrNull<Node>("WarmupHolder");
-        _blackRect = GetNodeOrNull<ColorRect>("FadeLayer/Black");
         _shaderWarmupRect = GetNodeOrNull<ColorRect>("FadeLayer/ShaderWarmupRect");
+        var transitionLayer = SceneTransitionLayer.Ensure(this, deferAddToRoot: true);
 
-        if (_blackRect != null)
-        {
-            _blackRect.Visible = true;
-            _blackRect.Modulate = new Color(0, 0, 0, 1);
-        }
+        transitionLayer?.ShowBlackImmediate();
 
         // Ensure the black frame is rendered before heavy loading.
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -100,7 +95,8 @@ public partial class PreloadeScene : Node2D
 
         CleanupWarmupInstances();
 
-        await FadeOutBlackScreenAsync();
+        if (transitionLayer != null)
+            await transitionLayer.FadeFromBlackAsync(FadeOutDuration);
     }
 
     private void LoadMainSceneIntoHolder()
@@ -119,25 +115,6 @@ public partial class PreloadeScene : Node2D
 
         var instance = packed.Instantiate();
         _sceneHolder.AddChild(instance);
-    }
-
-    private async System.Threading.Tasks.Task FadeOutBlackScreenAsync()
-    {
-        if (_blackRect == null)
-            return;
-
-        if (FadeOutDuration <= 0f)
-        {
-            _blackRect.Visible = false;
-            return;
-        }
-
-        var tween = CreateTween();
-        tween.SetEase(Tween.EaseType.Out);
-        tween.SetTrans(Tween.TransitionType.Sine);
-        tween.TweenProperty(_blackRect, "modulate:a", 0.0f, FadeOutDuration);
-        await ToSignal(tween, Tween.SignalName.Finished);
-        _blackRect.Visible = false;
     }
 
     private async System.Threading.Tasks.Task WarmupInstantiateScenesAsync()

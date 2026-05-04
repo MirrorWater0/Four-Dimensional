@@ -293,12 +293,7 @@ public partial class PlayerResourceState : CanvasLayer
             if (itemContainer.GetChild(i) is not ItemContainer container)
                 continue;
 
-            for (int j = container.GetChildCount() - 1; j >= 0; j--)
-            {
-                Node child = container.GetChild(j);
-                container.RemoveChild(child);
-                child.QueueFree();
-            }
+            container.ClearItemIcon();
         }
     }
 

@@ -1,0 +1,465 @@
+[gd_scene format=3 uid="uid://bdvpffues8gu1"]
+
+[ext_resource type="Script" uid="uid://dfio134287t87" path="res://BeginGame/CharacterSelectionOverlay.cs" id="1_script"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.04, 0.06, 0.09, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.74, 0.84, 0.96, 0.26)
+shadow_color = Color(0, 0, 0, 0.28)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel"]
+bg_color = Color(0.08, 0.12, 0.18, 0.2)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.84, 0.96, 0.34)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
+bg_color = Color(0.08, 0.12, 0.18, 0.12)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.62, 0.7, 0.22)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel_hover"]
+bg_color = Color(0.08, 0.12, 0.18, 0.34)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.84, 0.96, 0.42)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm"]
+bg_color = Color(0.18, 0.27, 0.42, 0.52)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95, 0.86, 0.66, 0.86)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm_hover"]
+bg_color = Color(0.18, 0.27, 0.42, 0.66)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.98, 0.9, 0.74, 0.92)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.07, 0.1, 0.14, 0.2)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7, 0.8, 0.92, 0.24)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_hover"]
+bg_color = Color(0.07, 0.1, 0.14, 0.32)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.78, 0.86, 0.96, 0.3)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.2)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_portrait"]
+bg_color = Color(0.03, 0.05, 0.08, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7, 0.8, 0.92, 0.18)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="CharacterSelectionOverlay" type="Control" unique_id=755585865]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Shade" type="ColorRect" parent="." unique_id=130710203]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.01, 0.02, 0.04, 0.84)
+
+[node name="SafeArea" type="MarginContainer" parent="." unique_id=1658685177]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 30
+
+[node name="Center" type="MarginContainer" parent="SafeArea" unique_id=1025587981]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="SafeArea/Center" unique_id=1169914641]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="SafeArea/Center/Panel" unique_id=1253657225]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 46
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 46
+theme_override_constants/margin_bottom = 34
+
+[node name="VBox" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin" unique_id=337259187]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="Eyebrow" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1249833280]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 20
+text = "SQUAD SELECTION"
+
+[node name="Title" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=2084307780]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 64
+text = "选择 4 位出战角色"
+
+[node name="StatusLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=941368602]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.88, 0.72, 0.88)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 22
+text = "当前版本共有 4 名角色，已默认全选。"
+autowrap_mode = 3
+
+[node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1874506412]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.74, 0.84, 0.96, 0.18)
+
+[node name="CardGrid" type="HFlowContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=106678245]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/h_separation = 26
+theme_override_constants/v_separation = 20
+
+[node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1473406607]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.88, 0.94, 0.66)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 18
+text = "点击角色卡片可取消或重新选择。必须选满 4 位角色后才能开始。"
+autowrap_mode = 3
+
+[node name="Footer" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=927023461]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 16
+alignment = 2
+
+[node name="SeedBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=208974967]
+custom_minimum_size = Vector2(400, 30)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="SeedLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=29967614]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+text = "SEED"
+vertical_alignment = 1
+
+[node name="SeedInput" type="LineEdit" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=1213545331]
+custom_minimum_size = Vector2(270, 30)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.97, 1, 0.95)
+theme_override_colors/font_placeholder_color = Color(0.76, 0.84, 0.92, 0.48)
+theme_override_colors/caret_color = Color(0.98, 0.9, 0.74, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_styles/read_only = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+placeholder_text = "empty = random, 0-999999999"
+max_length = 9
+
+[node name="DifficultyBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1907724302]
+custom_minimum_size = Vector2(336, 30)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="DifficultyLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=350293572]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+text = "DIFFICULTY"
+vertical_alignment = 1
+
+[node name="DifficultyMinusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=781786446]
+custom_minimum_size = Vector2(44, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+text = "◀"
+
+[node name="DifficultyValueLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=754368392]
+custom_minimum_size = Vector2(98, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.96)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+text = "难度 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DifficultyPlusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=2138231347]
+custom_minimum_size = Vector2(44, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+text = "▶"
+
+[node name="Spacer" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=130679445]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="CancelButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=867892672]
+custom_minimum_size = Vector2(200, 62)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+text = "返回"
+
+[node name="ConfirmButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1176823235]
+custom_minimum_size = Vector2(240, 62)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.7, 0.74, 0.8, 0.7)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_confirm")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_confirm_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_confirm_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_confirm_hover")
+text = "确认并开始"
+
+[node name="Templates" type="Control" parent="." unique_id=779083912]
+visible = false
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+
+[node name="CharacterCardTemplate" type="Button" parent="Templates" unique_id=1904268749]
+clip_contents = true
+custom_minimum_size = Vector2(370, 620)
+layout_mode = 0
+offset_right = 370.0
+offset_bottom = 620.0
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_card_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_card_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_card_hover")
+
+[node name="Content" type="MarginContainer" parent="Templates/CharacterCardTemplate" unique_id=93008144]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="Stack" type="VBoxContainer" parent="Templates/CharacterCardTemplate/Content" unique_id=1778836994]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="PortraitFrame" type="PanelContainer" parent="Templates/CharacterCardTemplate/Content/Stack" unique_id=1218886132]
+custom_minimum_size = Vector2(0, 248)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_portrait")
+
+[node name="PortraitMargin" type="MarginContainer" parent="Templates/CharacterCardTemplate/Content/Stack/PortraitFrame" unique_id=1108332833]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Portrait" type="TextureRect" parent="Templates/CharacterCardTemplate/Content/Stack/PortraitFrame/PortraitMargin" unique_id=256332690]
+custom_minimum_size = Vector2(0, 228)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="Templates/CharacterCardTemplate/Content/Stack" unique_id=1604574797]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 34
+text = "Character"
+autowrap_mode = 3
+
+[node name="StatsLabel" type="Label" parent="Templates/CharacterCardTemplate/Content/Stack" unique_id=1346149924]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.9, 0.97, 0.82)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 18
+text = "生命 0   力量 0   生存 0   速度 0"
+autowrap_mode = 3
+
+[node name="PassiveNameLabel" type="Label" parent="Templates/CharacterCardTemplate/Content/Stack" unique_id=1146359247]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.86, 0.66, 0.96)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 24
+text = "被动"
+autowrap_mode = 3
+
+[node name="PassiveDescriptionLabel" type="RichTextLabel" parent="Templates/CharacterCardTemplate/Content/Stack" unique_id=633448016]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.9, 0.94, 0.98, 0.86)
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+text = "-"
+fit_content = true
+scroll_active = false
+
+[node name="SelectedBadge" type="Label" parent="Templates/CharacterCardTemplate" unique_id=79903801]
+visible = false
+layout_mode = 0
+offset_left = 248.0
+offset_top = 16.0
+offset_right = 346.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.05, 0.06, 0.88)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 16
+text = "已选 #1"
+horizontal_alignment = 1
+vertical_alignment = 1

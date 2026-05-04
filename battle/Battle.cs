@@ -959,7 +959,10 @@ public partial class Battle : Node2D
 
     public bool CanManualRetreat() =>
         !_retreating
-        && (MapNode?.PlayerResourceState?.TransitionEnergy ?? GameInfo.TransitionEnergy) > 0;
+        && (
+            GameInfo.IsDifficultyBonusActive(GameDifficultyBonus.FreeRetreat)
+            || (MapNode?.PlayerResourceState?.TransitionEnergy ?? GameInfo.TransitionEnergy) > 0
+        );
 
     public async void Retreat(bool consumeTransitionEnergy = false)
     {
@@ -981,7 +984,7 @@ public partial class Battle : Node2D
             RetreatButton.Disabled = true;
         }
 
-        if (consumeTransitionEnergy)
+        if (consumeTransitionEnergy && !GameInfo.IsDifficultyBonusActive(GameDifficultyBonus.FreeRetreat))
         {
             ConsumeRetreatTransitionEnergy();
         }
@@ -1060,6 +1063,11 @@ public partial class Battle : Node2D
             return;
 
         GameOverSummary.Show(this);
+
+        if (GetTree() != null)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        await (SceneTransitionLayer.Ensure(this)?.FadeFromBlackAsync(0.24f) ?? Task.CompletedTask);
 
         PlayersList?.Clear();
         EnemiesList?.Clear();

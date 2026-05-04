@@ -169,7 +169,11 @@ public partial class Skill
 
         int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax);
         int modifiedDamage = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(OwnerCharater, rawDamage),
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                OwnerCharater,
+                rawDamage,
+                previewState: new AttackBuff.PreviewState()
+            ),
             0,
             clampMax
         );

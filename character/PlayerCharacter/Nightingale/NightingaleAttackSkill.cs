@@ -29,7 +29,8 @@ public partial class ShadowAmbush : Skill
             ConditionStep(
                 () => hasInvisible,
                 $"拥有{Buff.BuffName.Invisible.GetDescription()}",
-                AttackPrimaryStep(baseDamage: BaseDamage, prefix: "额外造成")
+                AttackPrimaryStep(baseDamage: BaseDamage, prefix: "额外造成"),
+                EnergyStep(1)
             ),
             ModifyPropertyStep(PropertyType.Power, GainPower)
         );
@@ -132,8 +133,8 @@ public partial class StasisBlade : Skill
 
 public partial class ContinuousPierce : Skill
 {
-    private const int BaseDamage = 3;
-    private const int SelfDamage = 10;
+    private const int BaseDamage = 10;
+    private const int SelfDamage = 7;
 
     private bool IsAtFullLife =>
         OwnerCharater != null && OwnerCharater.Life >= OwnerCharater.BattleMaxLife;

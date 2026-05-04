@@ -104,7 +104,7 @@ public partial class ArmonAttack : Skill
 
 public partial class ArmonSurvive : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 0;
     private const int PowerGain = 5;
     private const int EnergyGain = 1;
 

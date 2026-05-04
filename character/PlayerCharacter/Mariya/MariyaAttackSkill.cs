@@ -25,7 +25,6 @@ public partial class MendSlash : Skill
             HealStep(
                 baseHeal: BaseHeal,
                 target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
-                dyingFilter: false,
                 preferNonFull: true,
                 rebirth: false
             )

@@ -6,6 +6,7 @@ using Godot;
 public partial class StartInterface : CanvasLayer
 {
     private const string AutosavePath = "user://autosave.cfg";
+    private const int RequiredCharacterSelectionCount = 4;
     private const float MenuButtonHoverTextOffset = 20f;
     private const float MenuButtonHoverDuration = 0.12f;
 
@@ -32,14 +33,21 @@ public partial class StartInterface : CanvasLayer
     public static PackedScene _Nightingale = ResourceLoader.Load<PackedScene>(
         "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
     );
-    private Button StartGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button");
-    private Button ContinueGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button2");
+    private const string CharacterSelectionOverlayScenePath =
+        "res://BeginGame/CharacterSelectionOverlay.tscn";
+    private Button StartGameButton =>
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button");
+    private Button ContinueGameButton =>
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button2");
     private Button StatisticsButton =>
         field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/StatisticsButton");
-    private Button ExitGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button3");
+    private Button ExitGameButton =>
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button3");
     private Label StatusLine =>
         field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/StatusLine");
     private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
+    private CharacterSelectionOverlay CharacterSelection =>
+        GetNodeOrNull<CharacterSelectionOverlay>("CharacterSelectionOverlay");
 
     public override void _Ready()
     {
@@ -48,6 +56,9 @@ public partial class StartInterface : CanvasLayer
         TryLoadAutosaveForMenu();
         RefreshContinueButtonState();
         SetupMenuButtonHoverAnimations();
+
+        if (StartGameButton != null)
+            StartGameButton.Pressed += OpenCharacterSelection;
 
         if (StatisticsButton != null)
             StatisticsButton.Pressed += ShowStatistics;
@@ -111,13 +122,7 @@ public partial class StartInterface : CanvasLayer
 
     public void NewStart()
     {
-        GameInfo.PlayerCharacters =
-        [
-            new PlayerCharacterRegistry().Echo,
-            new PlayerCharacterRegistry().Kasiya,
-            new PlayerCharacterRegistry().Mariya,
-            new PlayerCharacterRegistry().Nightingale,
-        ];
+        GameInfo.PlayerCharacters = BuildDefaultRoster();
         GameInfo.NormalizePlayerCharacters();
         GameInfo.SeedTakenSkillsAsGained();
         test();
@@ -125,9 +130,7 @@ public partial class StartInterface : CanvasLayer
 
     public void Start()
     {
-        NewStart();
-        GameInfo.InitNewGame();
-        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
+        OpenCharacterSelection();
     }
 
     public void test()
@@ -188,6 +191,107 @@ public partial class StartInterface : CanvasLayer
         GetTree().Quit();
     }
 
+    private void OpenCharacterSelection()
+    {
+        if (CharacterSelection != null)
+            return;
+
+        var scene = GD.Load<PackedScene>(CharacterSelectionOverlayScenePath);
+        if (scene == null)
+        {
+            if (StatusLine != null)
+                StatusLine.Text = "角色选择界面加载失败，请检查 CharacterSelectionOverlay.tscn。";
+            GD.PushError(
+                $"Character selection scene failed to load: {CharacterSelectionOverlayScenePath}"
+            );
+            return;
+        }
+
+        var overlay = scene.Instantiate<CharacterSelectionOverlay>();
+        if (overlay == null)
+        {
+            if (StatusLine != null)
+                StatusLine.Text = "角色选择界面实例化失败。";
+            GD.PushError("Character selection scene failed to instantiate.");
+            return;
+        }
+
+        overlay.Name = "CharacterSelectionOverlay";
+        AddChild(overlay);
+        overlay.Open(
+            BuildDefaultRoster(),
+            RequiredCharacterSelectionCount,
+            BeginNewRunFromSelection
+        );
+    }
+
+    private void BeginNewRunFromSelection(PlayerInfoStructure[] selectedCharacters, int seed, int difficulty)
+    {
+        if (selectedCharacters == null || selectedCharacters.Length == 0)
+            return;
+
+        GameInfo.Seed = seed;
+        GameInfo.Difficulty = difficulty;
+        GameInfo.PlayerCharacters = selectedCharacters;
+        GameInfo.NormalizePlayerCharacters();
+        GameInfo.SeedTakenSkillsAsGained();
+        test();
+        GameInfo.InitNewGame();
+        GameInfo.ApplyDifficultyStartBonuses();
+        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
+    }
+
+    private static PlayerInfoStructure[] BuildDefaultRoster()
+    {
+        var registry = new PlayerCharacterRegistry();
+        return
+        [
+            CloneStarterPlayerInfo(registry.Echo, 1),
+            CloneStarterPlayerInfo(registry.Kasiya, 2),
+            CloneStarterPlayerInfo(registry.Mariya, 3),
+            CloneStarterPlayerInfo(registry.Nightingale, 4),
+        ];
+    }
+
+    private static PlayerInfoStructure CloneStarterPlayerInfo(
+        PlayerInfoStructure source,
+        int positionIndex
+    )
+    {
+        return new PlayerInfoStructure
+        {
+            CharacterScenePath = source.CharacterScenePath,
+            LifeMax = source.LifeMax,
+            Power = source.Power,
+            Survivability = source.Survivability,
+            Speed = source.Speed,
+            GainedSkills =
+                source.GainedSkills != null
+                    ? new List<SkillID>(source.GainedSkills)
+                    : new List<SkillID>(),
+            TakenSkills = source.TakenSkills?.ToArray() ?? new SkillID[3],
+            AllSkills = source.AllSkills?.ToArray(),
+            PositionIndex = positionIndex,
+            PortaitPath = source.PortaitPath,
+            CharacterName = source.CharacterName,
+            PassiveName = source.PassiveName,
+            PassiveDescription = source.PassiveDescription,
+            Equipments = CloneStarterEquipments(source.Equipments),
+        };
+    }
+
+    private static Equipment[] CloneStarterEquipments(Equipment[] source)
+    {
+        if (source == null)
+            return new Equipment[2];
+
+        var result = new Equipment[source.Length];
+        for (int i = 0; i < source.Length; i++)
+            result[i] = Equipment.Clone(source[i]);
+
+        return result;
+    }
+
     private void ShowStatistics()
     {
         GameStatistics.Show(this);
@@ -219,11 +323,10 @@ public partial class StartInterface : CanvasLayer
         if (StatusLine == null)
             return;
 
-        StatusLine.Text = !hasAutosave
-            ? "未检测到自动存档，只能开始新游戏。"
-            : GameInfo.RunFinished
-                ? "当前自动存档已结算完成，请开始新一轮游戏。"
-                : "检测到自动存档，可以继续上一次游戏。";
+        StatusLine.Text =
+            !hasAutosave ? "未检测到自动存档，只能开始新游戏。"
+            : GameInfo.RunFinished ? "当前自动存档已结算完成，请开始新一轮游戏。"
+            : "检测到自动存档，可以继续上一次游戏。";
     }
 
     private void SetupMenuButtonHoverAnimations()
@@ -304,11 +407,8 @@ public partial class StartInterface : CanvasLayer
         if (tween == null || styleBox == null)
             return;
 
-        tween.Parallel().TweenProperty(
-            styleBox,
-            "content_margin_left",
-            targetMargin,
-            MenuButtonHoverDuration
-        );
+        tween
+            .Parallel()
+            .TweenProperty(styleBox, "content_margin_left", targetMargin, MenuButtonHoverDuration);
     }
 }

@@ -75,6 +75,7 @@ public partial class GameStatistics : CanvasLayer
     private Button PreviousHistoryButton =>
         field ??= GetNodeOrNull<Button>("PreviousHistoryButton");
     private Button NextHistoryButton => field ??= GetNodeOrNull<Button>("NextHistoryButton");
+    private Button SeedCopyButton => field ??= GetNodeOrNull<Button>("SeedCopyButton");
     private ExitButton ExitButton => field ??= GetNodeOrNull<ExitButton>("ExitButton");
 
     private readonly Skill.SkillTypes[] _skillTypes =
@@ -92,6 +93,7 @@ public partial class GameStatistics : CanvasLayer
     private Tween _historyPageTween;
     private bool _characterSelectorPositioned;
     private bool _isSwitchingHistoryPage;
+    private int _characterSelectorLayoutRequestId;
     private Tip _tooltip;
     private readonly List<Button> _characterButtons = new();
 
@@ -129,6 +131,8 @@ public partial class GameStatistics : CanvasLayer
             PreviousHistoryButton.Pressed += ShowPreviousHistoryRecord;
         if (NextHistoryButton != null)
             NextHistoryButton.Pressed += ShowNextHistoryRecord;
+        if (SeedCopyButton != null)
+            SeedCopyButton.Pressed += CopyCurrentSeedToClipboard;
     }
 
     public override void _ExitTree()
@@ -145,6 +149,7 @@ public partial class GameStatistics : CanvasLayer
         RefreshVisualStatistics();
         Visible = true;
         PlayIntro();
+        QueueCharacterSelectorSnapAfterLayout();
     }
 
     private void EnsureExitButtonAction()
@@ -177,6 +182,7 @@ public partial class GameStatistics : CanvasLayer
         ConfigureCharacterSelector();
         RefreshCharacterSkills();
         RefreshHistoryNavigationButtons();
+        RefreshSeedCopyButton();
     }
 
     private void SelectLatestHistoryRecord()
@@ -276,6 +282,32 @@ public partial class GameStatistics : CanvasLayer
             NextHistoryButton.Visible = hasHistory && _selectedHistoryIndex < records.Count - 1;
     }
 
+    private void RefreshSeedCopyButton()
+    {
+        if (SeedCopyButton == null)
+            return;
+
+        bool hasRecord = _currentRecord != null;
+        SeedCopyButton.Visible = hasRecord;
+        SeedCopyButton.Disabled = !hasRecord;
+        SeedCopyButton.Text = hasRecord ? $"Seed: {_currentRecord.Seed}" : "Seed: -";
+    }
+
+    private async void CopyCurrentSeedToClipboard()
+    {
+        if (_currentRecord == null || SeedCopyButton == null)
+            return;
+
+        string seedText = _currentRecord.Seed.ToString();
+        DisplayServer.ClipboardSet(seedText);
+
+        SeedCopyButton.Text = $"Copied: {seedText}";
+        await ToSignal(GetTree().CreateTimer(0.9f), SceneTreeTimer.SignalName.Timeout);
+
+        if (GodotObject.IsInstanceValid(this))
+            RefreshSeedCopyButton();
+    }
+
     private void SetHistoryNavigationButtonsEnabled(bool enabled)
     {
         if (PreviousHistoryButton != null)
@@ -331,6 +363,11 @@ public partial class GameStatistics : CanvasLayer
             _currentRecord.Victory
                 ? new Color(0.12f, 0.42f, 0.30f, 0.92f)
                 : new Color(0.48f, 0.18f, 0.16f, 0.92f)
+        );
+        AddSummaryChip(
+            $"难度 {_currentRecord.Difficulty}",
+            Colors.White,
+            new Color(0.22f, 0.18f, 0.36f, 0.92f)
         );
         AddSummaryChip($"节点 {_currentRecord.NodesVisited}", Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
         AddSummaryChip($"敌人 {_currentRecord.EnemiesDefeated}", Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
@@ -614,7 +651,7 @@ public partial class GameStatistics : CanvasLayer
 
         _selectedCharacterIndex = Mathf.Clamp(_selectedCharacterIndex, 0, characters.Count - 1);
         UpdateCharacterButtonState(false);
-        CallDeferred(nameof(SnapCharacterSelector));
+        QueueCharacterSelectorSnapAfterLayout();
     }
 
     private Button CreateCharacterButton(RunHistoryCharacterSkillRecord character, int index)
@@ -674,6 +711,36 @@ public partial class GameStatistics : CanvasLayer
     public void SnapCharacterSelector()
     {
         UpdateCharacterSelectorPosition(false);
+    }
+
+    private void QueueCharacterSelectorSnapAfterLayout()
+    {
+        if (!IsInsideTree())
+            return;
+
+        _characterSelectorLayoutRequestId++;
+        SnapCharacterSelectorAfterLayout(_characterSelectorLayoutRequestId);
+    }
+
+    private async void SnapCharacterSelectorAfterLayout(int requestId)
+    {
+        SceneTree tree = GetTree();
+        if (tree == null)
+            return;
+
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        if (!GodotObject.IsInstanceValid(this) || !IsInsideTree() || requestId != _characterSelectorLayoutRequestId)
+            return;
+
+        tree = GetTree();
+        if (tree == null)
+            return;
+
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        if (!GodotObject.IsInstanceValid(this) || !IsInsideTree() || requestId != _characterSelectorLayoutRequestId)
+            return;
+
+        SnapCharacterSelector();
     }
 
     private void UpdateCharacterSelectorPosition(bool animate)
@@ -764,7 +831,7 @@ public partial class GameStatistics : CanvasLayer
         title.VerticalAlignment = VerticalAlignment.Center;
         column.AddChild(title);
 
-        var flow = new HFlowContainer
+        var flow = new VFlowContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,

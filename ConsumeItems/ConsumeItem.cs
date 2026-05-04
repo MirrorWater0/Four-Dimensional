@@ -70,14 +70,27 @@ public partial class ConsumeItem
         bool syncGameInfo = true
     )
     {
+        TryAddItem(playerResource, item, syncGameInfo);
+    }
+
+    public static bool TryAddItem(
+        PlayerResourceState playerResource,
+        ItemID item,
+        bool syncGameInfo = true
+    )
+    {
         if (playerResource == null)
-            return;
+            return false;
 
         GameInfo.Items ??= new List<ItemID>();
 
         int currentCount = syncGameInfo ? GameInfo.Items.Count : playerResource.Items.Count;
         if (currentCount >= GameInfo.ItemsMaxCount)
-            return;
+            return false;
+
+        var slot = FindEmptyItemSlot(playerResource);
+        if (slot == null)
+            return false;
 
         if (syncGameInfo)
             GameInfo.Items.Add(item);
@@ -90,10 +103,8 @@ public partial class ConsumeItem
         ConfigureIcon(icon, item);
         icon.MouseFilter = Control.MouseFilterEnum.Ignore;
 
-        playerResource
-            .ItemContainer.GetChildren()
-            .First(x => x.GetChildCount() == 0)
-            .AddChild(icon);
+        slot.AddItemIcon(icon);
+        return true;
     }
 
     public async Task UseEffect(Battle battle)
@@ -104,9 +115,21 @@ public partial class ConsumeItem
 
         await ApplyItemEffectAsync(target, item);
 
-        playerResource.Items.Remove(this);
+        RemoveFromInventory();
+    }
+
+    public void Discard()
+    {
+        RemoveFromInventory();
+    }
+
+    private void RemoveFromInventory()
+    {
+        playerResource?.Items.Remove(this);
         GameInfo.Items?.Remove(item);
-        Icon.QueueFree();
+        if (Icon != null && GodotObject.IsInstanceValid(Icon))
+            Icon.QueueFree();
+        Icon = null;
     }
 
     public string BuildTooltipText()
@@ -188,6 +211,17 @@ public partial class ConsumeItem
     private static bool TryGetItemConfig(ItemID itemId, out ItemConfig config)
     {
         return ItemConfigs.TryGetValue(itemId, out config);
+    }
+
+    private static ItemContainer FindEmptyItemSlot(PlayerResourceState playerResource)
+    {
+        if (playerResource?.ItemContainer == null)
+            return null;
+
+        return playerResource
+            .ItemContainer.GetChildren()
+            .OfType<ItemContainer>()
+            .FirstOrDefault(slot => !slot.HasItemIcon());
     }
 
     private static string GetPropertyDisplayName(PropertyType propertyType)

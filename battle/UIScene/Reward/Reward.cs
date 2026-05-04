@@ -353,9 +353,15 @@ public partial class Reward : CanvasLayer
                 TryCloseIfDone();
                 break;
             case RewardKind.Item:
-                GrantItemReward(entry.ItemId);
-                RemoveRewardControlWithReflow(control);
-                TryCloseIfDone();
+                if (GrantItemReward(entry.ItemId))
+                {
+                    RemoveRewardControlWithReflow(control);
+                    TryCloseIfDone();
+                }
+                else
+                {
+                    PlayRewardRejected(control);
+                }
                 break;
         }
     }
@@ -580,13 +586,46 @@ public partial class Reward : CanvasLayer
         GameInfo.OwnedEquipments.Add(Equipment.Clone(equipment));
     }
 
-    private void GrantItemReward(ItemID itemId)
+    private bool GrantItemReward(ItemID itemId)
     {
         var resourceState = MapNode?.PlayerResourceState;
         if (resourceState == null)
+            return false;
+
+        return ConsumeItem.TryAddItem(resourceState, itemId, syncGameInfo: true);
+    }
+
+    private void PlayRewardRejected(Control control)
+    {
+        if (control == null || !GodotObject.IsInstanceValid(control))
             return;
 
-        ConsumeItem.AddItem(resourceState, itemId, syncGameInfo: true);
+        if (control is CardSlot card)
+        {
+            card.PlayRejectAnimation();
+            return;
+        }
+
+        Vector2 basePosition = control.Position;
+        Color baseModulate = control.Modulate;
+        var tween = CreateTween();
+        tween.SetTrans(Tween.TransitionType.Sine);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(control, "position", basePosition + new Vector2(-10f, 0f), 0.045f);
+        tween.TweenProperty(control, "position", basePosition + new Vector2(10f, 0f), 0.045f);
+        tween.TweenProperty(control, "position", basePosition + new Vector2(-5.5f, 0f), 0.045f);
+        tween.TweenProperty(control, "position", basePosition, 0.045f);
+        control.Modulate = new Color(1f, 0.45f, 0.45f, baseModulate.A);
+        tween.SetParallel(true);
+        tween.TweenProperty(control, "modulate", baseModulate, 0.16f);
+        tween.Finished += () =>
+        {
+            if (control != null && GodotObject.IsInstanceValid(control))
+            {
+                control.Position = basePosition;
+                control.Modulate = baseModulate;
+            }
+        };
     }
 
     private void RemoveRewardControlWithReflow(Control control)

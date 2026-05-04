@@ -15,7 +15,7 @@
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
 [ext_resource type="Script" uid="uid://ldty82sm2cbb" path="res://Map/DynamicCamera.cs" id="15_dcam"]
-[ext_resource type="Script" uid="uid://1xuby1ssicl4" path="res://Map/ItemContainer.cs" id="18_bl6si"]
+[ext_resource type="PackedScene" uid="uid://bm2xlnsg38ttk" path="res://Map/ItemContainer.tscn" id="18_bl6si"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -159,18 +159,6 @@ shader_parameter/teeth = 8
 shader_parameter/tooth_length = 0.1
 shader_parameter/radius_percent = 0.35
 shader_parameter/hole_percent = 0.2
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b3jsu"]
-bg_color = Color(0.105882354, 0.105882354, 0.105882354, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(1, 0.70980394, 0, 0.8627451)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jq5q4"]
 shader = ExtResource("12_cccvd")
@@ -641,28 +629,19 @@ layout_mode = 2
 text = "遗物"
 
 [node name="ItemsHContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
-offset_left = 1575.0
-offset_top = 7.0
-offset_right = 1733.0
+offset_left = 1569.0
+offset_top = 3.0
+offset_right = 1739.0
 offset_bottom = 57.0
 
-[node name="Panel" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1242127179]
-custom_minimum_size = Vector2(50, 50)
+[node name="Panel" parent="PlayerResourceState/ItemsHContainer" unique_id=1242127179 instance=ExtResource("18_bl6si")]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
-script = ExtResource("18_bl6si")
 
-[node name="Panel2" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1125941698]
-custom_minimum_size = Vector2(50, 50)
+[node name="Panel2" parent="PlayerResourceState/ItemsHContainer" unique_id=1125941698 instance=ExtResource("18_bl6si")]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
-script = ExtResource("18_bl6si")
 
-[node name="Panel3" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1306712741]
-custom_minimum_size = Vector2(50, 50)
+[node name="Panel3" parent="PlayerResourceState/ItemsHContainer" unique_id=1306712741 instance=ExtResource("18_bl6si")]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
-script = ExtResource("18_bl6si")
 
 [node name="MenuLayer" type="CanvasLayer" parent="." unique_id=1987654321]
 layer = 30
@@ -678,16 +657,6 @@ offset_top = -100.0
 offset_right = 1924.0
 offset_bottom = 1200.0
 mouse_filter = 2
-metadata/_edit_lock_ = true
-
-[node name="Mask" type="ColorRect" parent="MaskLayer" unique_id=1877623308]
-visible = false
-modulate = Color(1, 1, 1, 0)
-top_level = true
-z_index = 10
-offset_right = 1920.0
-offset_bottom = 1080.0
-color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1362092444]

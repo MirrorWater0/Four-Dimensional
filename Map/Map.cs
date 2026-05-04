@@ -50,8 +50,6 @@ public partial class Map : Control
     Vector2 _velocity = Vector2.Zero;
     private Vector2 _dragVelocity = Vector2.Zero;
     private ulong _wheelHandledFrame = ulong.MaxValue;
-    private Tween _blackMaskTween;
-    ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
     private CanvasLayer SiteUiLayer => field ??= GetNodeOrNull<CanvasLayer>("SiteUI");
     private CanvasLayer FrontUiLayer => field ??= GetNodeOrNull<CanvasLayer>("BattleReadyLayer");
     private CanvasLayer MenuLayer => field ??= GetNodeOrNull<CanvasLayer>("MenuLayer");
@@ -230,8 +228,7 @@ public partial class Map : Control
         _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
         SetCameraPosition(_targetPos);
         UpdateMiniMapIndicator();
-        BlackMask.MouseFilter = MouseFilterEnum.Ignore;
-        BlackMask.Modulate = new Color(1, 1, 1, 0);
+        SceneTransitionLayer.Ensure(this);
         EnsureDebugConsole();
         ConnectNodeTypeLegend(NodeTypeLegend);
         DragButton.ButtonDown += () =>
@@ -301,17 +298,7 @@ public partial class Map : Control
 
     public Tween BlackMaskAnimation(float duration, bool hideAfter = true)
     {
-        _blackMaskTween?.Kill();
-        BlackMask.Visible = true;
-        var tween = CreateTween();
-        _blackMaskTween = tween;
-        tween.TweenProperty(BlackMask, "modulate:a", 1, duration);
-        if (hideAfter)
-        {
-            tween.Chain().TweenProperty(BlackMask, "modulate:a", 0, duration);
-            tween.TweenCallback(Callable.From(() => BlackMask.Visible = false));
-        }
-        return tween;
+        return SceneTransitionLayer.Ensure(this)?.PulseBlack(duration, hideAfter);
     }
 
     public bool HasFrontUiChildren()

@@ -936,7 +936,6 @@ public partial class Skill
     protected SkillStep HealStep(
         int baseHeal = 0,
         TargetReference target = default,
-        bool dyingFilter = true,
         bool preferNonFull = false,
         bool rebirth = false,
         int clampMax = 999,
@@ -948,7 +947,6 @@ public partial class Skill
         HealFriendlyCore(
             baseHeal,
             target,
-            dyingFilter,
             preferNonFull,
             rebirth,
             clampMax,
@@ -962,7 +960,6 @@ public partial class Skill
     protected SkillStep HealStep(
         Func<Skill, int> baseHeal,
         TargetReference target = default,
-        bool dyingFilter = true,
         bool preferNonFull = false,
         bool rebirth = false,
         int clampMax = 999,
@@ -974,7 +971,6 @@ public partial class Skill
         HealFriendlyCore(
             0,
             target,
-            dyingFilter,
             preferNonFull,
             rebirth,
             clampMax,
@@ -985,92 +981,9 @@ public partial class Skill
             repeatCount
         );
 
-    protected SkillStep HealFriendlyRelative(
-        int baseHeal = 0,
-        int index = 0,
-        bool dyingFilter = true,
-        bool rebirth = false,
-        int clampMax = 999,
-        string descriptionOverride = null,
-        int repeatCount = 1
-    ) =>
-        HealStep(
-            baseHeal,
-            RelativeTarget(index),
-            dyingFilter,
-            preferNonFull: false,
-            rebirth,
-            clampMax,
-            descriptionOverride,
-            repeatCount: repeatCount
-        );
-
-    protected SkillStep HealFriendlyRelative(
-        Func<Skill, int> baseHeal,
-        int index = 0,
-        bool dyingFilter = true,
-        bool rebirth = false,
-        int clampMax = 999,
-        string descriptionOverride = null,
-        int repeatCount = 1
-    ) =>
-        HealStep(
-            baseHeal,
-            RelativeTarget(index),
-            dyingFilter,
-            preferNonFull: false,
-            rebirth,
-            clampMax,
-            descriptionOverride,
-            repeatCount: repeatCount
-        );
-
-    protected SkillStep HealFriendlyAbsolute(
-        int baseHeal = 0,
-        AbsoluteFriendlySelector selector = AbsoluteFriendlySelector.FrontMost,
-        bool preferNonFull = true,
-        bool rebirth = false,
-        int clampMax = 999,
-        string storeAs = null,
-        int repeatCount = 1
-    ) =>
-        HealStep(
-            baseHeal,
-            AbsoluteTarget(selector),
-            dyingFilter: false,
-            preferNonFull,
-            rebirth,
-            clampMax,
-            storeAs: storeAs,
-            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All,
-            repeatCount: repeatCount
-        );
-
-    protected SkillStep HealFriendlyAbsolute(
-        Func<Skill, int> baseHeal,
-        AbsoluteFriendlySelector selector = AbsoluteFriendlySelector.FrontMost,
-        bool preferNonFull = true,
-        bool rebirth = false,
-        int clampMax = 999,
-        string storeAs = null,
-        int repeatCount = 1
-    ) =>
-        HealStep(
-            baseHeal,
-            AbsoluteTarget(selector),
-            dyingFilter: false,
-            preferNonFull,
-            rebirth,
-            clampMax,
-            storeAs: storeAs,
-            includeSummonsWhenAll: selector == AbsoluteFriendlySelector.All,
-            repeatCount: repeatCount
-        );
-
     private SkillStep HealFriendlyCore(
         int baseHeal,
         TargetReference target,
-        bool dyingFilter,
         bool preferNonFull,
         bool rebirth,
         int clampMax,
@@ -1083,7 +996,6 @@ public partial class Skill
         new HealFriendlySkillStep(
             baseHeal,
             target,
-            dyingFilter,
             preferNonFull,
             rebirth,
             clampMax,
@@ -2536,7 +2448,6 @@ public partial class Skill
         private readonly int _baseHeal;
         private readonly Func<Skill, int> _baseHealProvider;
         private readonly TargetReference _target;
-        private readonly bool _dyingFilter;
         private readonly bool _preferNonFull;
         private readonly bool _rebirth;
         private readonly int _clampMax;
@@ -2548,7 +2459,6 @@ public partial class Skill
         public HealFriendlySkillStep(
             int baseHeal,
             TargetReference target,
-            bool dyingFilter,
             bool preferNonFull,
             bool rebirth,
             int clampMax,
@@ -2562,7 +2472,6 @@ public partial class Skill
             _baseHeal = baseHeal;
             _baseHealProvider = baseHealProvider;
             _target = target;
-            _dyingFilter = dyingFilter;
             _preferNonFull = preferNonFull;
             _rebirth = rebirth;
             _clampMax = clampMax;
@@ -2601,7 +2510,7 @@ public partial class Skill
                 {
                     targets = skill.ResolveFriendlyTargets(
                         _target,
-                        _dyingFilter,
+                        !_rebirth,
                         _preferNonFull,
                         _rebirth,
                         _includeSummonsWhenAll
@@ -2651,30 +2560,14 @@ public partial class Skill
                     yield break;
                 }
 
-                string rebirthTargetText = _preferNonFull
-                    ? "濒死或非满血己方角色"
-                    : "濒死己方角色";
-                string rebirthLine;
-                if (
+                string rebirthLine = $"使{targetText}复生{healText}点生命。";
+                string rebirthPriorityText =
                     _target.Kind == TargetReferenceKind.Absolute
                     && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
-                )
-                {
-                    string selectorPrefix = targetText.EndsWith("队友")
-                        ? targetText.Substring(0, targetText.Length - 2)
-                        : targetText;
-                    rebirthLine = $"使{selectorPrefix}的{rebirthTargetText}复生{healText}点生命。";
-                }
-                else
-                {
-                    rebirthLine = $"使{rebirthTargetText}复生{healText}点生命。";
-                }
-                bool showDyingPriorityNote =
-                    _target.Kind == TargetReferenceKind.Absolute
-                    && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
-                    && _rebirth;
-                if (showDyingPriorityNote)
-                    rebirthLine += "(优先濒死目标)";
+                        ? AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth)
+                        : null;
+                if (!string.IsNullOrWhiteSpace(rebirthPriorityText))
+                    rebirthLine += $"({rebirthPriorityText})";
                 if (_repeatCount > 1)
                     rebirthLine += $"(重复{_repeatCount}次)";
                 yield return rebirthLine;

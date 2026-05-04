@@ -7,8 +7,12 @@ public partial class CardSlot : Control
     private static readonly Color HoverBorderColor = new("#5cff8a");
     private static readonly Color SelectedBorderColor = Colors.Yellow;
     private static readonly Color DisabledBorderColor = new("#5e6f8670");
+    private static readonly Color RejectBorderColor = new("#ff465f");
+    private static readonly Color RejectModulate = new(1f, 0.45f, 0.45f, 1f);
     private static readonly Color EnabledModulate = Colors.White;
     private static readonly Color DisabledModulate = new(0.62f, 0.68f, 0.78f, 0.78f);
+    private const float RejectShakeOffset = 10f;
+    private const float RejectShakeStepDuration = 0.045f;
 
     [Export]
     public float HoverBorderTweenDuration = 0.12f;
@@ -173,6 +177,78 @@ public partial class CardSlot : Control
         SetAlpha(Panel, 0.0f);
     }
 
+    public void PlayRejectAnimation()
+    {
+        if (!Visible || Panel == null || !Panel.Visible)
+            return;
+
+        _rejectTween?.Kill();
+        _borderTween?.Kill();
+
+        SyncPanelSizeToCard();
+        Vector2 basePosition = Vector2.Zero;
+        Color baseModulate = new(1f, 1f, 1f, Panel.Modulate.A);
+        Color targetBorderColor = GetBorderStateColor();
+
+        Panel.Position = basePosition;
+        Panel.Modulate = RejectModulate with { A = baseModulate.A };
+        if (_runtimeStyleBox != null)
+        {
+            _runtimeStyleBox.BorderColor = RejectBorderColor;
+            _currentBorderColor = RejectBorderColor;
+        }
+
+        _rejectTween = CreateTween();
+        _rejectTween.SetTrans(Tween.TransitionType.Sine);
+        _rejectTween.SetEase(Tween.EaseType.Out);
+        _rejectTween.TweenProperty(
+            Panel,
+            "position",
+            basePosition + new Vector2(-RejectShakeOffset, 0),
+            RejectShakeStepDuration
+        );
+        _rejectTween.TweenProperty(
+            Panel,
+            "position",
+            basePosition + new Vector2(RejectShakeOffset, 0),
+            RejectShakeStepDuration
+        );
+        _rejectTween.TweenProperty(
+            Panel,
+            "position",
+            basePosition + new Vector2(-RejectShakeOffset * 0.55f, 0),
+            RejectShakeStepDuration
+        );
+        _rejectTween.TweenProperty(Panel, "position", basePosition, RejectShakeStepDuration);
+        _rejectTween.SetParallel(true);
+        _rejectTween.TweenProperty(Panel, "modulate", baseModulate, 0.16f);
+        if (_runtimeStyleBox != null)
+        {
+            Color startBorderColor = RejectBorderColor;
+            _rejectTween.TweenMethod(
+                Callable.From<float>(t =>
+                {
+                    _currentBorderColor = startBorderColor.Lerp(targetBorderColor, t);
+                    _runtimeStyleBox.BorderColor = _currentBorderColor;
+                }),
+                0.0f,
+                1.0f,
+                0.16f
+            );
+        }
+
+        _rejectTween.Finished += () =>
+        {
+            if (Panel != null && GodotObject.IsInstanceValid(Panel))
+            {
+                Panel.Position = basePosition;
+                Panel.Modulate = baseModulate;
+            }
+
+            ApplyBorderState();
+        };
+    }
+
     private static void SetAlpha(CanvasItem node, float alpha)
     {
         if (node == null)
@@ -215,11 +291,7 @@ public partial class CardSlot : Control
         if (_runtimeStyleBox == null)
             return;
 
-        Color targetColor = !_isInteractable
-            ? DisabledBorderColor
-            : _isSelected
-                ? SelectedBorderColor
-                : (_isHovered ? HoverBorderColor : DefaultBorderColor);
+        Color targetColor = GetBorderStateColor();
 
         if (!animate || _isSelected || !_isInteractable)
         {
@@ -244,6 +316,15 @@ public partial class CardSlot : Control
             1.0f,
             HoverBorderTweenDuration
         );
+    }
+
+    private Color GetBorderStateColor()
+    {
+        return !_isInteractable
+            ? DisabledBorderColor
+            : _isSelected
+                ? SelectedBorderColor
+                : (_isHovered ? HoverBorderColor : DefaultBorderColor);
     }
 
     private void TriggerParticles()
@@ -287,6 +368,7 @@ public partial class CardSlot : Control
 
     private StyleBoxFlat _runtimeStyleBox;
     private Tween _borderTween;
+    private Tween _rejectTween;
     private Color _currentBorderColor = DefaultBorderColor;
     private bool _isSelected;
     private bool _isHovered;
