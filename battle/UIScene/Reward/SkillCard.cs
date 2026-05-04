@@ -25,6 +25,7 @@ public partial class SkillCard : SubViewportContainer
     public override void _Ready()
     {
         ApplySkillToUi();
+        Description.AutowrapMode = TextServer.AutowrapMode.Arbitrary;
         HoverHint.Visible = false;
         CacheBaseFontSizes();
         ApplyConfiguredDisplayScale();

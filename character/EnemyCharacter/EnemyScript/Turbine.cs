@@ -70,9 +70,31 @@ public partial class Turbine : EnemyCharacter
     }
 }
 
+public partial class TurbineRegedit : EnemyRegedit
+{
+    public TurbineRegedit()
+    {
+        CharacterName = "Turbine";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Turbine.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
+
+        MaxLife = 85;
+        Power = 12;
+        Survivability = 12;
+        Speed = 9;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
+
+        PassiveName = global::Turbine.PassiveNameText;
+        PassiveDescription = global::Turbine.PassiveDescriptionText;
+    }
+}
+
 public partial class TurbineAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 18;
     private const int AllySurvivabilityGain = 5;
 
     public TurbineAttack()

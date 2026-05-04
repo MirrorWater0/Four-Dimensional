@@ -67,18 +67,36 @@ public partial class Reward : CanvasLayer
     {
         var tree = caller.GetTree();
         var root = tree.Root;
+        var siteUi = root.GetNodeOrNull<CanvasLayer>("Map/SiteUI")
+            ?? root.GetNodeOrNull<CanvasLayer>("/root/Map/SiteUI");
 
-        var existing = root.GetNodeOrNull<Reward>("Reward");
+        var existing = siteUi?.GetNodeOrNull<Reward>("Reward") ?? root.GetNodeOrNull<Reward>("Reward");
+        if (existing != null && existing.IsQueuedForDeletion())
+            existing = null;
+
         if (existing != null)
         {
+            if (siteUi != null && existing.GetParent() != siteUi)
+            {
+                existing.GetParent()?.RemoveChild(existing);
+                siteUi.AddChild(existing);
+                existing.Layer = 1;
+            }
+
             existing.CallDeferred(nameof(Open));
             return existing;
+        }
+
+        if (siteUi == null)
+        {
+            GD.PushError("Reward: SiteUI layer not found, cannot attach reward UI.");
+            return null;
         }
 
         var reward = RewardScene.Instantiate<Reward>();
         reward.Name = "Reward";
         reward.Layer = 1;
-        root.AddChild(reward);
+        siteUi.AddChild(reward);
         reward.CallDeferred(nameof(Open));
         return reward;
     }
@@ -666,6 +684,7 @@ public partial class Reward : CanvasLayer
                 BG.Modulate = new Color(1, 1, 1, 1);
             Visible = false;
             TryCompleteNodeOnClose();
+            QueueFree();
         });
     }
 
@@ -854,7 +873,7 @@ public partial class Reward : CanvasLayer
             _ => 40,
         };
         int offset = new Random(node.RandomNum).Next(-10, 11);
-        return Math.Max(0, baseReward + offset);
+        return Relic.ApplyElectricityCoinBonus(Math.Max(0, baseReward + offset));
     }
 
     private static string BuildEquipmentBonusInline(Equipment equip)
@@ -886,16 +905,7 @@ public partial class Reward : CanvasLayer
 
     private static string GetItemName(ItemID itemId)
     {
-        return itemId switch
-        {
-            ItemID.Health => "医疗包",
-            ItemID.Guard => "脉冲护盾",
-            ItemID.Fury => "肾上腺素",
-            ItemID.Haste => "迅捷之翼",
-            ItemID.Vitality => "全息装甲",
-            ItemID.Explosion => "爆裂弹",
-            _ => "未知道具",
-        };
+        return ConsumeItem.GetItemName(itemId);
     }
 
     private static string GetItemDescription(ItemID itemId)

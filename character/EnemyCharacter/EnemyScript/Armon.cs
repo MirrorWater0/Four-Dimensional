@@ -7,7 +7,7 @@ public partial class Armon : EnemyCharacter
 {
     public const string PassiveNameText = "矩阵核心";
     public const string PassiveDescriptionText =
-        "战斗开始时：全阵获得等同于自身生存的格挡。\n回合结束时：全阵获得等同于自身生存的格挡。";
+        "战斗开始时：全队获得等同于该角色生存的格挡。\n回合结束时：全队获得等同于该角色生存的格挡。";
 
     public override string CharacterName { get; set; } = "Armon";
 
@@ -53,9 +53,31 @@ public partial class Armon : EnemyCharacter
     }
 }
 
+public partial class ArmonRegedit : EnemyRegedit
+{
+    public ArmonRegedit()
+    {
+        CharacterName = "Armon";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Armon.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
+
+        MaxLife = 75;
+        Power = 10;
+        Survivability = 11;
+        Speed = 9;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
+
+        PassiveName = global::Armon.PassiveNameText;
+        PassiveDescription = global::Armon.PassiveDescriptionText;
+    }
+}
+
 public partial class ArmonAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 18;
     private const int SelfPowerGain = 3;
     private const int SelfSurvivabilityGain = 2;
 
@@ -82,7 +104,7 @@ public partial class ArmonAttack : Skill
 
 public partial class ArmonSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     private const int PowerGain = 5;
     private const int EnergyGain = 1;
 
@@ -107,7 +129,7 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 3;
     private const int PowerGainPerEnergy = 4;
     private const int SurvivabilityGainPerEnergy = 5;
 
@@ -135,3 +157,4 @@ public partial class ArmonSpecial : Skill
         );
     }
 }
+

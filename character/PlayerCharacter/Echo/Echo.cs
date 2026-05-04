@@ -54,3 +54,20 @@ public partial class Echo : PlayerCharacter
         await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
     }
 }
+
+public partial class PlayerCharacterRegistry
+{
+    public PlayerInfoStructure Echo = new PlayerInfoStructure()
+    {
+        CharacterName = "Echo",
+        PassiveName = global::Echo.PassiveNameText,
+        PassiveDescription = global::Echo.PassiveDescriptionText,
+        LifeMax = 53,
+        Power = 9,
+        Survivability = 11,
+        Speed = 10,
+        CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+    };
+}

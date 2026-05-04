@@ -6,7 +6,7 @@ public partial class NightingaleSurviveSkill { }
 public partial class VeilStep : Skill
 {
     private const int InvisibleStacks = 3;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 6;
 
     public VeilStep()
         : base(SkillTypes.Survive)
@@ -33,7 +33,7 @@ public partial class VeilStep : Skill
 public partial class FlashOfLight : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 6;
     int Inpower = 3;
 
     public FlashOfLight()
@@ -88,7 +88,7 @@ public partial class Swift : Skill
 
 public partial class AfterimageWard : Skill
 {
-    private const int BaseBlock = 13;
+    private const int BaseBlock = 11;
     private const int AfterimageStacks = 1;
 
     public AfterimageWard()
@@ -121,7 +121,7 @@ public partial class AfterimageWard : Skill
 
 public partial class StarWard : Skill
 {
-    private const int BaseBlock = 15;
+    private const int BaseBlock = 13;
     private const int ExtraPowerStacks = 2;
 
     public StarWard()
@@ -136,7 +136,7 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 0),
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
@@ -148,7 +148,7 @@ public partial class StarWard : Skill
 
 public partial class TwilightParadox : Skill
 {
-    private const int BaseBlock = 14;
+    private const int BaseBlock = 12;
     private const int VulnerableStacks = 15;
     private const int DamageImmuneStacks = 5;
 

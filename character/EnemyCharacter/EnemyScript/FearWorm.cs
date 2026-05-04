@@ -34,9 +34,31 @@ public partial class FearWorm : EnemyCharacter
     }
 }
 
+public partial class FearWormRegedit : EnemyRegedit
+{
+    public FearWormRegedit()
+    {
+        CharacterName = "FearWorm";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
+
+        MaxLife = 70;
+        Power = 15;
+        Survivability = 9;
+        Speed = 12;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
+
+        PassiveName = global::FearWorm.PassiveNameText;
+        PassiveDescription = global::FearWorm.PassiveDescriptionText;
+    }
+}
+
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 2;
+    private const int BaseDamage = 0;
     private const int VulnerableStacks = 1;
     private const int MaxTargets = 3;
     private const int EnergyGain = 1;
@@ -72,7 +94,7 @@ public partial class FearWormAttack : Skill
 public partial class FearWormSurvive : Skill
 {
     private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 4;
 
     public FearWormSurvive()
         : base(SkillTypes.Survive)
@@ -80,7 +102,7 @@ public partial class FearWormSurvive : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "蜕皮潜伏";
+    public override string SkillName { get; set; } = "潜伏";
 
     protected override SkillPlan BuildPlan()
     {
@@ -99,7 +121,7 @@ public partial class FearWormSurvive : Skill
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 6;
     private const int PowerDown = 3;
     private const int StunStacks = 1;
     private const int Cost = 2;

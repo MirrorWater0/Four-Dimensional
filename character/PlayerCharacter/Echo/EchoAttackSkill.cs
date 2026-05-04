@@ -68,7 +68,7 @@ public partial class SacredOnslaught : Skill
 
 public partial class ResonantSlash : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 1;
     private const int UpgradeDamageBonus = 2;
 
     public ResonantSlash()
@@ -91,9 +91,9 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 8;
     private const int VulnerableStacks = 2;
-    int times = 1;
+    private int times = 1;
 
     public EchoPuncture()
         : base(SkillTypes.Attack)
@@ -120,8 +120,9 @@ public partial class EchoPuncture : Skill
 
 public partial class Extract : Skill
 {
-    private const int BaseDamage = 17;
+    private const int BaseDamage = 15;
     private const int EnergyGain = 2;
+    private const int WeakenStacks = 3;
     private const string PrimaryTargetKey = "萃取目标";
 
     public Extract()
@@ -141,6 +142,15 @@ public partial class Extract : Skill
                 condition: TargetHasWeaken,
                 conditionDescription: "攻击目标拥有虚弱",
                 EnergyStep(EnergyGain)
+            ),
+            ConditionStep(
+                condition: () => !TargetHasWeaken(),
+                conditionDescription: "攻击目标没有虚弱",
+                ApplyBuffHostile(
+                    buffName: Buff.BuffName.Weaken,
+                    stacks: WeakenStacks,
+                    target: HostileTargets(1)
+                )
             )
         );
     }
@@ -156,10 +166,10 @@ public partial class Extract : Skill
 
 public partial class BladeOfSlaughter : Skill
 {
-    private const int BaseDamage = 17;
+    private const int BaseDamage = 15;
     private const int VulnerableStacks = 2;
     private const string PrimaryTargetKey = "弑杀之刃目标";
-    int comboTimes = 3;
+    private int comboTimes = 2;
 
     public BladeOfSlaughter()
         : base(SkillTypes.Attack)
@@ -202,8 +212,8 @@ public partial class BladeOfSlaughter : Skill
 
 public partial class DisasterImpact : Skill
 {
-    private const int BaseDamage = 2;
-    private const int DisasterStacks = 7;
+    private const int BaseDamage = 0;
+    private const int DisasterStacks = 10;
 
     public DisasterImpact()
         : base(SkillTypes.Attack)

@@ -81,9 +81,36 @@ public partial class Ferociouess : EnemyCharacter
     }
 }
 
+public partial class FerociouessRegedit : EnemyRegedit
+{
+    public FerociouessRegedit()
+    {
+        CharacterName = "Ferociouess";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
+
+        MaxLife = 60;
+        Power = 10;
+        Survivability = 14;
+        Speed = 10;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs =
+        [
+            SkillID.FerociouessAttack,
+            SkillID.FerociouessSurvive,
+            SkillID.FerociouessSpecial,
+        ];
+
+        PassiveName = global::Ferociouess.PassiveNameText;
+        PassiveDescription = global::Ferociouess.PassiveDescriptionText;
+    }
+}
+
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 16;
     private const int SelfPowerGain = 2;
 
     public FerociouessAttack()
@@ -106,7 +133,7 @@ public partial class FerociouessAttack : Skill
 
 public partial class FerociouessSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     private const int DamageImmuneStacks = 1;
     private const int VulnerableStacks = 1;
 
@@ -139,7 +166,7 @@ public partial class FerociouessSurvive : Skill
 
 public partial class FerociouessSpecial : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 5;
     private const int GainEnergyCost = 1;
     private const int BurstEnergyCost = 2;
     private const int BurstPowerMultiplier = 2;

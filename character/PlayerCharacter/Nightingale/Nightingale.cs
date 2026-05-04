@@ -31,3 +31,20 @@ public partial class Nightingale : PlayerCharacter
         }
     }
 }
+
+public partial class PlayerCharacterRegistry
+{
+    public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
+    {
+        CharacterName = "Nightingale",
+        PassiveName = global::Nightingale.PassiveNameText,
+        PassiveDescription = global::Nightingale.PassiveDescriptionText,
+        LifeMax = 50,
+        Power = 11,
+        Survivability = 10,
+        Speed = 11,
+        CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+    };
+}

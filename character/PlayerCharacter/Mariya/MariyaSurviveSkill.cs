@@ -7,7 +7,7 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 14;
+    private const int BaseBlock = 12;
     private const int PowerGain = 4;
 
     public FinalGuard()
@@ -34,7 +34,7 @@ public partial class FinalGuard : Skill
 
 public partial class CrystalGuard : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 5;
     private const int SurvivabilityGain = 4;
 
     public CrystalGuard()
@@ -90,7 +90,7 @@ public partial class QuietVeil : Skill
 
 public partial class EnergyTransfer : Skill
 {
-    private const int BaseBlock = 14;
+    private const int BaseBlock = 12;
     private const int AllyEnergyGain = 2;
     private const int SelfEnergyLoss = 1;
 
@@ -140,8 +140,8 @@ public partial class EnergyRelay : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            BlockStep(relativeIndex: 0, baseBlock: 10),
-            BlockStep(relativeIndex: -1, baseBlock: 10),
+            BlockStep(relativeIndex: 0, baseBlock: 8),
+            BlockStep(relativeIndex: -1, baseBlock: 8),
             EnergyStep(delta: _ => _cachedTransferEnergy, target: RelativeTarget(1)),
             EnergyStep(delta: _ => -_cachedTransferEnergy, target: RelativeTarget(-1)),
             TextStep("将上一位角色的全部能量转移给下一位。")
@@ -164,7 +164,7 @@ public partial class EnergyRelay : Skill
 
 public partial class TouchOfGod : Skill
 {
-    private const int BaseBlock = 20;
+    private const int BaseBlock = 18;
     private const int DivinityStacks = 1;
 
     public TouchOfGod()
@@ -180,6 +180,7 @@ public partial class TouchOfGod : Skill
         return new SkillPlan(
             this,
             BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            ModifyPropertyStep(PropertyType.Power, 3),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Divinity,
                 stacks: DivinityStacks,

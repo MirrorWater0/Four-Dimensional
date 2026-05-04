@@ -1,6 +1,6 @@
 public partial class BasicAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 16;
     private const int PowerMultiplier = 1;
 
     public BasicAttack()
@@ -22,7 +22,7 @@ public partial class BasicAttack : Skill
 
 public partial class BasicDefense : Skill
 {
-    private const int BaseBlock = 20;
+    private const int BaseBlock = 18;
     private const int SurvivabilityMultiplier = 1;
 
     public BasicDefense()
@@ -48,8 +48,8 @@ public partial class BasicDefense : Skill
 
 public partial class BasicSpecial : Skill
 {
-    private const int PowerGain = 3;
-    private const int DeSur = 3;
+    private const int PowerGain = 2;
+    private const int DeSur = 5;
     private const int EnergyCost = 3;
 
     public BasicSpecial()

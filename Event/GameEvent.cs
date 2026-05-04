@@ -19,12 +19,12 @@ public partial class GameEvent
                 + "你可以让系统随机校准一名队员，也可以手动指定目标。",
             Option(
                 "启动随机校准",
-                propertyChange: Stats((PropertyType.Power, 2), (PropertyType.Survivability, -1)),
+                propertyChange: Stats((PropertyType.Power, 4), (PropertyType.Survivability, -1)),
                 randomChange: true
             ),
             Option(
                 "手动指定校准对象",
-                propertyChange: Stats((PropertyType.Power, -2), (PropertyType.Survivability, 2))
+                propertyChange: Stats((PropertyType.Power, -1), (PropertyType.Survivability, 3))
             )
         ),
         Event(
@@ -32,12 +32,12 @@ public partial class GameEvent
             "一具漂浮在舱壁缺口旁的黑匣仍在循环广播事故录音。\n"
                 + "加密芯片尚未烧毁，只是供能极不稳定。\n"
                 + "你可以读取残存记录，也可以直接拆下还能用的模块。",
-            Option("解码事故航迹", electricityChange: 36, transitionEnergyChange: -1),
+            Option("解码事故航迹", electricityChange: 90, transitionEnergyChange: -1),
             Option(
                 "拆下完整模块",
                 equipmentReward: RewardList(Equipment.EquipmentName.EchoCore)
             ),
-            Option("写入伪装日志后离开", electricityChange: 12)
+            Option("写入伪装日志后离开", electricityChange: 30)
         ),
         Event(
             "观测阵列",
@@ -46,18 +46,18 @@ public partial class GameEvent
                 + "若直接接管阵列，则有机会把整段星图卖给空间站。",
             Option(
                 "为一名角色进行轨迹校准",
-                propertyChange: Stats((PropertyType.Speed, 2), (PropertyType.Power, 1))
+                propertyChange: Stats((PropertyType.Speed, 3), (PropertyType.Power, 1))
             ),
             Option(
                 "让系统随机分配观测增益",
                 propertyChange: Stats(
-                    (PropertyType.Survivability, 1),
-                    (PropertyType.MaxLife, 4),
+                    (PropertyType.Survivability, 4),
+                    (PropertyType.MaxLife, 5),
                     (PropertyType.Speed, -1)
                 ),
                 randomChange: true
             ),
-            Option("打包星图数据出售", electricityChange: 40)
+            Option("打包星图数据出售", electricityChange: 90)
         ),
         Event(
             "废弃军械舱",
@@ -72,7 +72,7 @@ public partial class GameEvent
                 "取走相位肩甲",
                 equipmentReward: RewardList(Equipment.EquipmentName.PhaseShoulder)
             ),
-            Option("拆解剩余零件", electricityChange: 48)
+            Option("拆解剩余零件", electricityChange: 90)
         ),
         Event(
             "低温休眠仓",
@@ -81,14 +81,14 @@ public partial class GameEvent
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option(
                 "为一名角色执行修补程序",
-                propertyChange: Stats((PropertyType.MaxLife, 6), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.MaxLife, 15), (PropertyType.Speed, -1))
             ),
             Option(
                 "随机唤醒一具维修躯体协助强化",
-                propertyChange: Stats((PropertyType.Survivability, 2), (PropertyType.Power, 1)),
+                propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.Power, 1)),
                 randomChange: true
             ),
-            Option("抽走休眠仓备用电池", transitionEnergyChange: 1, electricityChange: -20)
+            Option("抽走休眠仓备用电池", transitionEnergyChange: 2, electricityChange: -20)
         ),
         Event(
             "引力透镜井",
@@ -102,13 +102,13 @@ public partial class GameEvent
             Option(
                 "随机暴露于焦点中心",
                 propertyChange: Stats(
-                    (PropertyType.Power, 2),
-                    (PropertyType.Speed, 2),
+                    (PropertyType.Power, 3),
+                    (PropertyType.Speed, 3),
                     (PropertyType.MaxLife, -4)
                 ),
                 randomChange: true
             ),
-            Option("收束透镜并导出实验数据", electricityChange: 32, transitionEnergyChange: -1)
+            Option("收束透镜并导出实验数据", electricityChange: 90, transitionEnergyChange: -1)
         ),
         Event(
             "静默圣所",
@@ -123,7 +123,7 @@ public partial class GameEvent
                 "展开折叠护壁并收纳",
                 equipmentReward: RewardList(Equipment.EquipmentName.FoldedBulwark)
             ),
-            Option("遵循守则静坐片刻", transitionEnergyChange: 1)
+            Option("遵循守则静坐片刻", transitionEnergyChange: 2)
         ),
     ];
 

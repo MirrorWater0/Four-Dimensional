@@ -12,6 +12,9 @@ public partial class Battle : Node2D
     [Export]
     public bool WarmupMode { get; set; }
 
+    [Export]
+    public bool TestBattleTutorial { get; set; }
+
     public Random BattleIntentionRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
     private ulong _battleInstanceId;
@@ -37,49 +40,59 @@ public partial class Battle : Node2D
 
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
     public Button RetreatButton => field ??= GetNode<Button>("Retreat");
-    public bool SuppressSpeedGainThisTurn { get; set; }
+    public bool SuppressActionPoinGainThisTurn { get; set; }
 
-    private int _playerSpeed = 0;
-    private int _enemySpeed = 0;
+    private int _playerActionPoin = 0;
+    private int _enemyActionPoin = 0;
     private int _playerActionCount = 0;
     private int _enemyActionCount = 0;
     private readonly Dictionary<ulong, int> _characterActionCounts = new();
     private readonly Dictionary<ulong, int> _pendingExtraActions = new();
     private readonly HashSet<ulong> _activeExtraActionCharacters = new();
+    private bool _actionPoinUiRefreshScheduled;
+    private bool _pendingPlayerActionPoinUiRefresh;
+    private bool _pendingEnemyActionPoinUiRefresh;
 
-    public int PlayerSpeed
+    public int PlayerActionPoin
     {
-        get => _playerSpeed;
+        get => _playerActionPoin;
         set =>
-            SetSpeedValue(
-                ref _playerSpeed,
+            SetActionPoinValue(
+                ref _playerActionPoin,
                 value,
-                PlayerSpeedLabel,
-                PlayerSpeedBar,
+                PlayerActionPoinLabel,
+                PlayerTotalSpeedLabel,
+                PlayerActionPoinBar,
                 GetTeamCharacters(true)
             );
     }
 
-    public int EnemySpeed
+    public int EnemyActionPoin
     {
-        get => _enemySpeed;
+        get => _enemyActionPoin;
         set =>
-            SetSpeedValue(
-                ref _enemySpeed,
+            SetActionPoinValue(
+                ref _enemyActionPoin,
                 value,
-                EnemySpeedLabel,
-                EnemySpeedBar,
+                EnemyActionPoinLabel,
+                EnemyTotalSpeedLabel,
+                EnemyActionPoinBar,
                 GetTeamCharacters(false)
             );
     }
 
-    public GlowLabel PlayerSpeedLabel =>
-        field ??= GetNodeOrNull<GlowLabel>("SpeedBox/PlayerSpeed/Label");
-    public GlowLabel EnemySpeedLabel =>
-        field ??= GetNodeOrNull<GlowLabel>("SpeedBox/EnemySpeed/Label");
-    public ProgressBar PlayerSpeedBar =>
-        field ??= GetNodeOrNull<ProgressBar>("SpeedBox/PlayerSpeed");
-    public ProgressBar EnemySpeedBar => field ??= GetNodeOrNull<ProgressBar>("SpeedBox/EnemySpeed");
+    public GlowLabel PlayerActionPoinLabel =>
+        field ??= GetNodeOrNull<GlowLabel>("ActionPoinBox/PlayerActionPoin/Label");
+    public GlowLabel EnemyActionPoinLabel =>
+        field ??= GetNodeOrNull<GlowLabel>("ActionPoinBox/EnemyActionPoin/Label");
+    public Label PlayerTotalSpeedLabel =>
+        field ??= GetNodeOrNull<Label>("ActionPoinBox/PlayerActionPoin/TotalLabel");
+    public Label EnemyTotalSpeedLabel =>
+        field ??= GetNodeOrNull<Label>("ActionPoinBox/EnemyActionPoin/TotalLabel");
+    public ProgressBar PlayerActionPoinBar =>
+        field ??= GetNodeOrNull<ProgressBar>("ActionPoinBox/PlayerActionPoin");
+    public ProgressBar EnemyActionPoinBar =>
+        field ??= GetNodeOrNull<ProgressBar>("ActionPoinBox/EnemyActionPoin");
     public LevelNode CurrentLevelNode;
     public Character dummy => field ??= GetNode<Character>("Dummy");
     private const float FormationGapY = 140f;
@@ -90,12 +103,13 @@ public partial class Battle : Node2D
     private const int MaxBattleTurns = 100;
     private const int PostActionDelayMs = 800;
     private const int BattleOverDelayMs = 5000;
-    private const int PlayerSpeedHintDelayMs = 200;
-    private const int EnemySpeedHintDelayMs = 400;
-    private const int SpeedTriggerThreshold = 100;
+    private const int PlayerActionPoinHintDelayMs = 200;
+    private const int EnemyActionPoinHintDelayMs = 400;
+    private const int ActionPoinTriggerThreshold = 100;
     private const int EarlyBattleBonusSkillRewardBattles = 3;
     private const int EarlyBattleExtraSkillRewardGroups = 1;
-    private const string SpeedTriggerText = "[color=yellow]超速触发[/color]";
+    private const int RegionalBonusRelicBattleNumber = 5;
+    private const string ActionPoinTriggerText = "[color=yellow]行动点数触发[/color]";
 
     public Character CurrentActionCharacter { get; private set; }
 
@@ -125,7 +139,7 @@ public partial class Battle : Node2D
         StartEffectList.Insert(0, ApplyEquipmentBattleStartEffects);
         SetCharaterPostion();
         CharacterControl.Connect();
-        if (!await DelayOrCancel(PlayerSpeedHintDelayMs, token))
+        if (!await DelayOrCancel(PlayerActionPoinHintDelayMs, token))
         {
             return;
         }
@@ -136,13 +150,15 @@ public partial class Battle : Node2D
             return;
         }
 
-        int playerOpeningSpeed = GetAliveTeamSpeed(isPlayer: true);
-        int enemyOpeningSpeed = GetAliveTeamSpeed(isPlayer: false);
+        if (!await ShowFirstBattleTutorialIfNeeded(token))
+        {
+            return;
+        }
 
-        PlayerSpeed = 0;
-        EnemySpeed = 0;
+        PlayerActionPoin = 0;
+        EnemyActionPoin = 0;
         await ApplyRelicBattleEffects(token);
-        await BattleBegin1(token, playerOpeningSpeed, enemyOpeningSpeed);
+        await BattleBegin1(token);
     }
 
     private void DisableBattleProcessing()
@@ -150,6 +166,29 @@ public partial class Battle : Node2D
         SetProcess(false);
         SetProcessInput(false);
         SetPhysicsProcess(false);
+    }
+
+    private async Task<bool> ShowFirstBattleTutorialIfNeeded(CancellationToken token)
+    {
+        if (
+            !TestBattleTutorial
+            && (GameInfo.HasSeenBattleTutorial || BattleTutorialOverlay.HasSeenTutorial())
+        )
+        {
+            GameInfo.HasSeenBattleTutorial = true;
+            return true;
+        }
+
+        await BattleTutorialOverlay.ShowAsync(this);
+        if (!CanContinue(token))
+            return false;
+
+        if (TestBattleTutorial)
+            return true;
+
+        GameInfo.HasSeenBattleTutorial = true;
+        BattleTutorialOverlay.MarkTutorialSeen();
+        return true;
     }
 
     private void InitializeBattleCharacters()
@@ -378,92 +417,21 @@ public partial class Battle : Node2D
 
     private Task ApplyEquipmentBattleStartEffects()
     {
-        if (PlayersList == null || PlayersList.Count == 0 || EnemiesList == null)
-            return Task.CompletedTask;
-
-        foreach (var player in PlayersList)
-        {
-            if (player == null || player.State == Character.CharacterState.Dying)
-                continue;
-
-            if (
-                player.CharacterIndex < 0
-                || GameInfo.PlayerCharacters == null
-                || player.CharacterIndex >= GameInfo.PlayerCharacters.Length
-            )
-            {
-                continue;
-            }
-
-            var info = GameInfo.PlayerCharacters[player.CharacterIndex];
-            ApplyOverloadMarkEffect(player, info.Equipments);
-
-            if (!HasShockPendant(info.Equipments))
-                continue;
-
-            foreach (var enemy in EnemiesList)
-            {
-                if (
-                    enemy == null
-                    || enemy.State == Character.CharacterState.Dying
-                    || enemy.PositionIndex != player.PositionIndex
-                )
-                {
-                    continue;
-                }
-
-                SkillBuff.BuffAdd(Buff.BuffName.Stun, enemy, 1, player);
-            }
-        }
-
-        return Task.CompletedTask;
+        return Equipment.ApplyBattleStartEffects(this);
     }
 
-    private static void ApplyOverloadMarkEffect(PlayerCharacter player, Equipment[] equipments)
-    {
-        if (player == null || !HasOverloadMark(equipments))
-            return;
-
-        SpecialBuff.BuffAdd(Buff.BuffName.ExtraPower, player, 2, player);
-    }
-
-    private static bool HasShockPendant(Equipment[] equipments)
-    {
-        if (equipments == null || equipments.Length == 0)
-            return false;
-
-        foreach (var equipment in equipments)
-        {
-            if (equipment?.Name == Equipment.EquipmentName.ShockPendant)
-                return true;
-        }
-
-        return false;
-    }
-
-    private static bool HasOverloadMark(Equipment[] equipments)
-    {
-        if (equipments == null || equipments.Length == 0)
-            return false;
-
-        foreach (var equipment in equipments)
-        {
-            if (equipment?.Name == Equipment.EquipmentName.OverloadMark)
-                return true;
-        }
-
-        return false;
-    }
-
-    private void SetSpeedValue(
+    private void SetActionPoinValue(
         ref int currentValue,
         int nextValue,
         GlowLabel label,
+        Label totalLabel,
         ProgressBar bar,
         IEnumerable<Character> characters
     )
     {
-        currentValue = Math.Max(nextValue, 0);
+        int clampedValue = Math.Max(nextValue, 0);
+        bool speedValueChanged = currentValue != clampedValue;
+        currentValue = clampedValue;
         if (!IsBattleAlive())
         {
             return;
@@ -471,18 +439,66 @@ public partial class Battle : Node2D
 
         if (GodotObject.IsInstanceValid(label))
         {
-            label.Text = $"{currentValue}({SumAliveSpeed(characters)})";
+            if (speedValueChanged)
+                label.Text = currentValue.ToString();
+        }
+
+        if (GodotObject.IsInstanceValid(totalLabel))
+        {
+            totalLabel.Text = $"({SumAliveSpeed(characters)})";
         }
 
         if (GodotObject.IsInstanceValid(bar))
         {
-            CreateTween().TweenProperty(bar, "value", currentValue, 0.3f);
+            if (speedValueChanged)
+                CreateTween().TweenProperty(bar, "value", currentValue, 0.3f);
+            else
+                bar.Value = currentValue;
         }
     }
 
     private static int SumAliveSpeed(IEnumerable<Character> characters) =>
         characters?.Where(IsCharacterAlive).Where(x => x.CountsTowardTeamSpeed).Sum(x => x.Speed)
         ?? 0;
+
+    public void RequestActionPoinUiRefresh(bool isPlayer)
+    {
+        if (isPlayer)
+            _pendingPlayerActionPoinUiRefresh = true;
+        else
+            _pendingEnemyActionPoinUiRefresh = true;
+
+        if (_actionPoinUiRefreshScheduled)
+            return;
+
+        _actionPoinUiRefreshScheduled = true;
+        _ = FlushActionPoinUiRefreshNextFrameAsync();
+    }
+
+    private async Task FlushActionPoinUiRefreshNextFrameAsync()
+    {
+        if (!IsInsideTree())
+        {
+            _actionPoinUiRefreshScheduled = false;
+            return;
+        }
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        bool refreshPlayer = _pendingPlayerActionPoinUiRefresh;
+        bool refreshEnemy = _pendingEnemyActionPoinUiRefresh;
+        _pendingPlayerActionPoinUiRefresh = false;
+        _pendingEnemyActionPoinUiRefresh = false;
+        _actionPoinUiRefreshScheduled = false;
+
+        if (!IsBattleAlive())
+            return;
+
+        if (refreshPlayer)
+            PlayerActionPoin = PlayerActionPoin;
+        if (refreshEnemy)
+            EnemyActionPoin = EnemyActionPoin;
+    }
 
 
     public void SetCharaterPostion()
@@ -696,12 +712,12 @@ public partial class Battle : Node2D
         await TriggerGlobalTurnEndBuffs(character);
         RegisterAction(character);
 
-        if (SuppressSpeedGainThisTurn != true && character?.ParticipatesInTurnRotation == true)
+        if (SuppressActionPoinGainThisTurn != true && character?.ParticipatesInTurnRotation == true)
         {
             if (character.IsPlayer)
-                PlayerSpeed += GetAliveTeamSpeed(isPlayer: true);
+                PlayerActionPoin += GetAliveTeamSpeed(isPlayer: true);
             else
-                EnemySpeed += GetAliveTeamSpeed(isPlayer: false);
+                EnemyActionPoin += GetAliveTeamSpeed(isPlayer: false);
         }
 
         await TriggerSummonsAfterOwner(character);
@@ -734,6 +750,65 @@ public partial class Battle : Node2D
 
             using var _ = target.BeginEffectSource(Buff.BuffName.Disaster.GetDescription());
             await target.GetHurt(disaster.Stack, target);
+            disaster.ConsumeOneStack();
+
+            if (HasBattleEnded() || !IsBattleAlive())
+                return;
+        }
+
+        TriggerSanctuaryTurnEndBuffs(actingCharacter, targets);
+        await TriggerVoidTurnEndBuffs(actingCharacter, targets);
+    }
+
+    private void TriggerSanctuaryTurnEndBuffs(Character actingCharacter, Character[] targets)
+    {
+        if (actingCharacter == null || targets == null || targets.Length == 0)
+            return;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (target == null || target.IsPlayer != actingCharacter.IsPlayer)
+                continue;
+
+            EndActionBuff sanctuaryBuff = target.EndActionBuffs?.FirstOrDefault(x =>
+                x != null && x.ThisBuffName == Buff.BuffName.Sanctuary && x.Stack > 0
+            );
+            if (sanctuaryBuff == null)
+                continue;
+
+            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Sanctuary));
+            for (int triggerCount = 0; triggerCount < sanctuaryBuff.Stack; triggerCount++)
+            {
+                target.Recover(0, source: target);
+            }
+        }
+    }
+
+    private async Task TriggerVoidTurnEndBuffs(Character actingCharacter, Character[] targets)
+    {
+        if (actingCharacter == null || targets == null || targets.Length == 0)
+            return;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (
+                target == null
+                || target == actingCharacter
+                || target.IsPlayer != actingCharacter.IsPlayer
+                || target.State == Character.CharacterState.Dying
+            )
+                continue;
+
+            EndActionBuff voidBuff = target.EndActionBuffs?.FirstOrDefault(x =>
+                x != null && x.ThisBuffName == Buff.BuffName.Void && x.Stack > 0
+            );
+            if (voidBuff == null)
+                continue;
+
+            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
+            await target.IncreaseProperties(PropertyType.Power, voidBuff.Stack, target);
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;
@@ -756,11 +831,7 @@ public partial class Battle : Node2D
 
     public List<Func<Task>> StartEffectList = new();
 
-    public async Task BattleBegin1(
-        CancellationToken token,
-        int playerOpeningSpeed,
-        int enemyOpeningSpeed
-    )
+    public async Task BattleBegin1(CancellationToken token)
     {
         for (int i = 0; i < StartEffectList.Count; i++)
         {
@@ -771,6 +842,9 @@ public partial class Battle : Node2D
         {
             return;
         }
+
+        int playerOpeningSpeed = GetAliveTeamSpeed(isPlayer: true);
+        int enemyOpeningSpeed = GetAliveTeamSpeed(isPlayer: false);
 
         if (playerOpeningSpeed < enemyOpeningSpeed)
         {
@@ -842,20 +916,20 @@ public partial class Battle : Node2D
             return;
         }
 
-        await TryTriggerSpeedBurst(
+        await TryTriggerActionPoinBurst(
             PlayersList,
-            () => PlayerSpeed,
-            value => PlayerSpeed = value,
-            PlayerSpeedHintDelayMs,
+            () => PlayerActionPoin,
+            value => PlayerActionPoin = value,
+            PlayerActionPoinHintDelayMs,
             token
         );
         if (CanContinue(token))
         {
-            await TryTriggerSpeedBurst(
+            await TryTriggerActionPoinBurst(
                 EnemiesList,
-                () => EnemySpeed,
-                value => EnemySpeed = value,
-                EnemySpeedHintDelayMs,
+                () => EnemyActionPoin,
+                value => EnemyActionPoin = value,
+                EnemyActionPoinHintDelayMs,
                 token
             );
         }
@@ -934,11 +1008,72 @@ public partial class Battle : Node2D
         PlayersList?.Clear();
         EnemiesList?.Clear();
         ClearSummons(queueFree: true);
+        UnlockMapNodes();
 
         if (IsBattleInstanceValid())
         {
             GetParent()?.QueueFree();
         }
+    }
+
+    public void AbortBattle(bool unlockMapNodes = true)
+    {
+        if (_retreating)
+            return;
+
+        _retreating = true;
+        TryCancelLifetime();
+        TryEmitNextToUnblock();
+
+        if (!IsBattleInstanceValid())
+            return;
+
+        PlayersList?.Clear();
+        EnemiesList?.Clear();
+        ClearSummons(queueFree: true);
+        if (unlockMapNodes)
+            UnlockMapNodes();
+
+        if (IsBattleInstanceValid())
+            GetParent()?.QueueFree();
+    }
+
+    private async Task HandleDefeatAsync()
+    {
+        if (_retreating)
+            return;
+
+        _retreating = true;
+        TryCancelLifetime();
+        TryEmitNextToUnblock();
+
+        if (RetreatButton != null)
+            RetreatButton.Disabled = true;
+
+        GameInfo.RecordCurrentRunHistory(victory: false);
+        SaveSystem.SaveAll();
+
+        MapNode?.BlackMaskAnimation(0.55f, hideAfter: false);
+        await Task.Delay(PostActionDelayMs);
+
+        if (!IsBattleInstanceValid())
+            return;
+
+        GameOverSummary.Show(this);
+
+        PlayersList?.Clear();
+        EnemiesList?.Clear();
+        ClearSummons(queueFree: true);
+
+        if (IsBattleInstanceValid())
+            GetParent()?.QueueFree();
+    }
+
+    private void UnlockMapNodes()
+    {
+        var levelProgress = MapNode?.GetNodeOrNull<LevelProgress>("LevelProgress");
+        levelProgress ??= CurrentLevelNode?.GetParent()?.GetParent() as LevelProgress;
+        levelProgress?.UnlockAllNodes();
     }
 
     private bool CanContinue(CancellationToken token) =>
@@ -949,46 +1084,52 @@ public partial class Battle : Node2D
 
     private async Task<bool> HandleBattleOver(CancellationToken token)
     {
-        if (!IsTeamDefeated(PlayersList) && !IsTeamDefeated(EnemiesList))
+        bool playersDefeated = IsTeamDefeated(PlayersList);
+        bool enemiesDefeated = IsTeamDefeated(EnemiesList);
+        if (!playersDefeated && !enemiesDefeated)
         {
             return false;
         }
 
         GD.Print("over");
-        Retreat();
+        if (enemiesDefeated && HasLivingMember(PlayersList))
+            Retreat();
+        else
+            await HandleDefeatAsync();
+
         await DelayOrCancel(BattleOverDelayMs, token);
         return true;
     }
 
-    private async Task TryTriggerSpeedBurst<T>(
+    private async Task TryTriggerActionPoinBurst<T>(
         List<T> team,
-        Func<int> getSpeed,
-        Action<int> setSpeed,
+        Func<int> getActionPoin,
+        Action<int> setActionPoin,
         int delayMs,
         CancellationToken token
     )
         where T : Character
     {
-        if (team == null || team.Count == 0 || getSpeed() < SpeedTriggerThreshold)
+        if (team == null || team.Count == 0 || getActionPoin() < ActionPoinTriggerThreshold)
         {
             return;
         }
 
-        setSpeed(getSpeed() - SpeedTriggerThreshold);
+        setActionPoin(getActionPoin() - ActionPoinTriggerThreshold);
         if (!await DelayOrCancel(delayMs, token) || !CanContinue(token))
         {
             return;
         }
 
-        BuffHintLabel.Spawn(team[0], SpeedTriggerText, Vector2.Zero);
-        SuppressSpeedGainThisTurn = true;
+        BuffHintLabel.Spawn(team[0], ActionPoinTriggerText, Vector2.Zero);
+        SuppressActionPoinGainThisTurn = true;
         try
         {
             await CharacterAction(team, token);
         }
         finally
         {
-            SuppressSpeedGainThisTurn = false;
+            SuppressActionPoinGainThisTurn = false;
         }
     }
 
@@ -1103,10 +1244,13 @@ public partial class Battle : Node2D
         var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
         var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
         bool addRelic = ShouldAddRelicReward(levelType);
+        bool addRegionalBonusRelic = ShouldAddRegionalBonusRelicReward(levelType);
         int equipCount = GameInfo.RollBattleEquipmentDropCount(levelType, rng);
         bool addItem = GameInfo.RollBattleItemDrop(rng);
+        var pendingRelics = new HashSet<RelicID>();
 
-        TryAddRelicReward(reward, rng, addRelic);
+        TryAddRelicReward(reward, rng, addRelic, pendingRelics);
+        TryAddRelicReward(reward, rng, addRegionalBonusRelic, pendingRelics);
         AddEquipmentRewards(reward, rng, equipCount);
         TryAddItemReward(reward, rng, addItem);
     }
@@ -1134,17 +1278,52 @@ public partial class Battle : Node2D
         return levelType is LevelNode.LevelType.Boss or LevelNode.LevelType.Elite;
     }
 
-    private static void TryAddRelicReward(Reward reward, Random rng, bool addRelic)
+    private bool ShouldAddRegionalBonusRelicReward(LevelNode.LevelType levelType)
+    {
+        if (!IsBattleNode(levelType))
+            return false;
+
+        return GetCurrentRegionalBattleNumber() == RegionalBonusRelicBattleNumber;
+    }
+
+    private int GetCurrentRegionalBattleNumber()
+    {
+        int completedBattleCount =
+            GameInfo.CompletedLevelNodeRecords?.Values.Count(record =>
+                record != null && record.MapLevel == GameInfo.CurrentLevel && IsBattleNode(record.NodeType)
+            ) ?? 0;
+
+        return completedBattleCount + 1;
+    }
+
+    private static bool IsBattleNode(LevelNode.LevelType levelType)
+    {
+        return levelType
+            is LevelNode.LevelType.Normal
+                or LevelNode.LevelType.Elite
+                or LevelNode.LevelType.Boss;
+    }
+
+    private static void TryAddRelicReward(
+        Reward reward,
+        Random rng,
+        bool addRelic,
+        HashSet<RelicID> pendingRelics = null
+    )
     {
         if (!addRelic)
         {
             return;
         }
 
-        var relicDropPool = Relic.GetUnownedOfferPool();
+        var relicDropPool = Relic.GetUnownedOfferPool()
+            .Where(relicId => pendingRelics == null || !pendingRelics.Contains(relicId))
+            .ToArray();
         if (relicDropPool.Length > 0)
         {
-            reward.AddRelicRewardEntry(PickRandom(relicDropPool, rng));
+            RelicID relicId = PickRandom(relicDropPool, rng);
+            reward.AddRelicRewardEntry(relicId);
+            pendingRelics?.Add(relicId);
         }
     }
 
@@ -1163,7 +1342,13 @@ public partial class Battle : Node2D
             return;
         }
 
-        ItemID[] itemPool = [ItemID.Health, ItemID.Explosion];
+        ItemID[] itemPool =
+        [
+            ItemID.Health,
+            ItemID.Explosion,
+            ItemID.ElectromagneticInterference,
+            ItemID.SpaceOscillation,
+        ];
         reward.AddItemRewardEntry(PickRandom(itemPool, rng));
     }
 

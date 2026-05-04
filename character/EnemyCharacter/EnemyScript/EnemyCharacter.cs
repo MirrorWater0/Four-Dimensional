@@ -350,7 +350,7 @@ public partial class EnemyCharacter : Character
     {
         label.Text =
             entry.HitCount > 1
-                ? $"{entry.Damage}（{entry.HitCount}次）"
+                ? $"{entry.Damage}({entry.HitCount}次)"
                 : entry.Damage.ToString();
         label.AddThemeColorOverride("font_color", IntentionDamageColor);
         label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);

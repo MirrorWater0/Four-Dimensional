@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://cgpmcjgic6wbb" path="res://Map/Map.cs" id="1_exof5"]
 [ext_resource type="Texture2D" uid="uid://dumj1lsd56obi" path="res://asset/Map/pandemos_empire_krita.jpg" id="1_we4l4"]
-[ext_resource type="PackedScene" uid="uid://dmqc0oaqsktsg" path="res://Map/SiteButton.tscn" id="5_soa74"]
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
@@ -24,6 +23,56 @@ glow_enabled = true
 glow_intensity = 3.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_panel"]
+bg_color = Color(0.017500002, 0.034833334, 0.05, 0.42352942)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.44, 0.8, 1, 0.42)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.28)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button"]
+bg_color = Color(0.04, 0.075, 0.105, 0.78)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.88, 1, 0.22)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_pressed"]
+bg_color = Color(0.035, 0.065, 0.09, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.88, 1, 0.28)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_hover"]
+bg_color = Color(0.09, 0.16, 0.2, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.88, 1, 0.36)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
@@ -73,6 +122,20 @@ shader = ExtResource("12_0g0qh")
 shader_parameter/shape_color = Color(0, 0.7999997, 1, 0.8862745)
 shader_parameter/hover = 0.0
 shader_parameter/line_thickness = 0.01
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status_panel"]
+bg_color = Color(0.03529412, 0.0627451, 0.09411765, 0.83137256)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.46666667, 0.85490197, 1, 0.72156864)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0, 0, 0, 0.3137255)
+shadow_size = 6
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
 shader = ExtResource("12_jq5q4")
@@ -151,32 +214,248 @@ offset_bottom = 1970.0
 disabled = true
 metadata/_edit_lock_ = true
 
-[node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
-position = Vector2(960, 540)
-limit_enabled = false
-limit_left = 0
-limit_top = 0
-limit_right = 3500
-limit_bottom = 1082
-position_smoothing_enabled = true
-script = ExtResource("15_dcam")
-
-[node name="SiteManagement" type="Control" parent="." unique_id=511334120]
-visible = false
-anchors_preset = 0
-offset_left = 1920.0
-offset_top = 1080.0
-offset_right = 1920.0
-offset_bottom = 1080.0
-
-[node name="Button" parent="SiteManagement" unique_id=302682044 instance=ExtResource("5_soa74")]
+[node name="LevelProgress" parent="." unique_id=102309754 instance=ExtResource("11_vk5l4")]
 layout_mode = 0
-offset_left = 1448.0
-offset_top = 1249.0
-offset_right = 1548.0
-offset_bottom = 1349.0
-scale = Vector2(1.5, 1.5)
-Where = ExtResource("11_vk5l4")
+mouse_filter = 1
+metadata/_edit_lock_ = true
+
+[node name="MapLabel" type="CanvasLayer" parent="." unique_id=1947191991]
+
+[node name="RegionLabel" type="Label" parent="MapLabel" unique_id=1932745801]
+modulate = Color(1, 1, 1, 0.78431374)
+layout_direction = 3
+offset_left = 1016.0
+offset_top = 14.0
+offset_right = 1088.0
+offset_bottom = 60.0
+theme = ExtResource("10_svc60")
+theme_override_font_sizes/font_size = 28
+text = "区域1"
+horizontal_alignment = 2
+
+[node name="NodeTypeLegend" type="PanelContainer" parent="MapLabel" unique_id=886855187]
+offset_left = 1757.0
+offset_top = 173.0
+offset_right = 1917.0
+offset_bottom = 475.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_node_legend_panel")
+
+[node name="Margin" type="MarginContainer" parent="MapLabel/NodeTypeLegend" unique_id=13944]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="LegendList" type="VBoxContainer" parent="MapLabel/NodeTypeLegend/Margin" unique_id=101949173]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=1391801946]
+modulate = Color(0.78, 0.92, 1, 0.92)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "节点图式"
+
+[node name="Normal" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=973285010]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
+metadata/level_type = 0
+
+[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal" unique_id=918914470]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 7.0
+offset_right = -10.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row" unique_id=2075448356]
+modulate = Color(0.9, 0.96, 1, 1)
+custom_minimum_size = Vector2(22, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row" unique_id=1573805867]
+modulate = Color(0.9, 0.97, 1, 0.94)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "普通战斗"
+vertical_alignment = 1
+
+[node name="Event" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=636747628]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
+metadata/level_type = 1
+
+[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event" unique_id=366562713]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 7.0
+offset_right = -10.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row" unique_id=1154787538]
+modulate = Color(0.12, 0.7, 1, 1)
+custom_minimum_size = Vector2(22, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row" unique_id=1140877608]
+modulate = Color(0.9, 0.97, 1, 0.94)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "事件"
+vertical_alignment = 1
+
+[node name="Shop" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=435770708]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
+metadata/level_type = 2
+
+[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop" unique_id=292925196]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 7.0
+offset_right = -10.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row" unique_id=237807838]
+modulate = Color(1, 0.84, 0.18, 1)
+custom_minimum_size = Vector2(22, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row" unique_id=360384259]
+modulate = Color(0.9, 0.97, 1, 0.94)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "商店"
+vertical_alignment = 1
+
+[node name="Elite" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=252471536]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
+metadata/level_type = 3
+
+[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite" unique_id=1618190482]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 7.0
+offset_right = -10.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row" unique_id=4588641]
+modulate = Color(1, 0.18, 0.18, 1)
+custom_minimum_size = Vector2(22, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row" unique_id=582479519]
+modulate = Color(0.9, 0.97, 1, 0.94)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "精英"
+vertical_alignment = 1
+
+[node name="Boss" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=1636216690]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
+metadata/level_type = 4
+
+[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss" unique_id=806406197]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 7.0
+offset_right = -10.0
+offset_bottom = -7.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row" unique_id=705156581]
+modulate = Color(0.72, 0.22, 1, 1)
+custom_minimum_size = Vector2(22, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "◆"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row" unique_id=1505722067]
+modulate = Color(0.9, 0.97, 1, 0.94)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "首领"
+vertical_alignment = 1
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1220601355]
 layer = 3
@@ -256,14 +535,41 @@ layer = 2
 
 [node name="SiteUI" type="CanvasLayer" parent="." unique_id=1303699608]
 
-[node name="LevelProgress" parent="." unique_id=102309754 instance=ExtResource("11_vk5l4")]
-layout_mode = 0
-mouse_filter = 1
-metadata/_edit_lock_ = true
-
 [node name="PlayerResourceState" type="CanvasLayer" parent="." unique_id=1054898308]
 layer = 5
 script = ExtResource("13_ehio4")
+
+[node name="StatusPanel" type="PanelContainer" parent="PlayerResourceState" unique_id=1703500274]
+modulate = Color(1, 1, 1, 0.827451)
+offset_left = 1740.0
+offset_top = 3.0
+offset_right = 1867.0
+offset_bottom = 57.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_status_panel")
+
+[node name="StatusMargin" type="MarginContainer" parent="PlayerResourceState/StatusPanel" unique_id=1795688238]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 8
+
+[node name="StatusRow" type="HBoxContainer" parent="PlayerResourceState/StatusPanel/StatusMargin" unique_id=1921807102]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TimerBlock" type="VBoxContainer" parent="PlayerResourceState/StatusPanel/StatusMargin/StatusRow" unique_id=837675892]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Value" type="Label" parent="PlayerResourceState/StatusPanel/StatusMargin/StatusRow/TimerBlock" unique_id=1256083058]
+layout_mode = 2
+theme = ExtResource("10_svc60")
+theme_override_font_sizes/font_size = 24
+text = "00:00:00"
+
+[node name="SessionTimer" type="Timer" parent="PlayerResourceState" unique_id=1531783413]
 
 [node name="TransitionEnergyControl" type="HBoxContainer" parent="PlayerResourceState" unique_id=200816458]
 offset_right = 144.0
@@ -306,6 +612,8 @@ text = "0"
 
 [node name="MenuButton" type="Button" parent="PlayerResourceState" unique_id=1744181871]
 self_modulate = Color(1, 1, 1, 0)
+top_level = true
+z_index = 20
 custom_minimum_size = Vector2(50, 50)
 offset_left = 1867.0
 offset_top = 2.0
@@ -333,10 +641,10 @@ layout_mode = 2
 text = "遗物"
 
 [node name="ItemsHContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
-offset_left = 1696.0
-offset_top = 8.0
-offset_right = 1854.0
-offset_bottom = 58.0
+offset_left = 1575.0
+offset_top = 7.0
+offset_right = 1733.0
+offset_bottom = 57.0
 
 [node name="Panel" type="PanelContainer" parent="PlayerResourceState/ItemsHContainer" unique_id=1242127179]
 custom_minimum_size = Vector2(50, 50)
@@ -356,12 +664,8 @@ layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_b3jsu")
 script = ExtResource("18_bl6si")
 
-[node name="Label" type="Label" parent="PlayerResourceState" unique_id=409693065]
-offset_left = 1656.0
-offset_top = 8.0
-offset_right = 1696.0
-offset_bottom = 31.0
-text = "道具"
+[node name="MenuLayer" type="CanvasLayer" parent="." unique_id=1987654321]
+layer = 30
 
 [node name="MaskLayer" type="CanvasLayer" parent="." unique_id=2006589008]
 layer = 7
@@ -385,5 +689,15 @@ offset_right = 1920.0
 offset_bottom = 1080.0
 color = Color(0, 0, 0, 1)
 metadata/_edit_lock_ = true
+
+[node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
+position = Vector2(960, 540)
+limit_enabled = false
+limit_left = 0
+limit_top = 0
+limit_right = 3500
+limit_bottom = 1082
+position_smoothing_enabled = true
+script = ExtResource("15_dcam")
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]

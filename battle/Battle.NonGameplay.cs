@@ -288,7 +288,7 @@ public partial class Battle
                 : $"{sourceText} -> {targetText}  未造成伤害";
 
         if (blockedDamage > 0)
-            line += $"（格挡吸收 [color={RecordNeutralColor}]{blockedDamage}[/color]）";
+            line += $"(格挡吸收 [color={RecordNeutralColor}]{blockedDamage}[/color])";
 
         AppendRecordLine(line, indent: true);
     }

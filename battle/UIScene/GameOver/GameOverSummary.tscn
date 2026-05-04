@@ -1,0 +1,357 @@
+[gd_scene format=3 uid="uid://cgmhy46bkodys"]
+
+[ext_resource type="Script" uid="uid://cls4l0h3mx4ac" path="res://battle/UIScene/GameOver/GameOverSummary.cs" id="1_script"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
+[ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+shader = ExtResource("3_shader")
+shader_parameter/color_top = Color(0.055999998, 0.091000006, 0.14, 1)
+shader_parameter/color_mid = Color(0.04, 0.05, 0.09, 1)
+shader_parameter/color_bot = Color(0.01, 0.01, 0.02, 1)
+shader_parameter/star_color = Color(0.88, 0.82, 0.68, 0.82)
+shader_parameter/line_color = Color(0.42, 0.56, 0.72, 0.24)
+shader_parameter/spacing = 172.0
+shader_parameter/density = 0.22
+shader_parameter/star_base_size = 1.8
+shader_parameter/line_weight = 0.7
+shader_parameter/line_softness = 1.2
+shader_parameter/drift_speed = 0.42
+shader_parameter/drift_dist = 0.18
+shader_parameter/flow_strength = 0.15
+shader_parameter/line_breath = 0.18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.06, 0.1, 0.15, 0.26)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.78, 0.84, 0.92, 0.28)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.08, 0.12, 0.18, 0.56)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.94, 0.88, 0.72, 0.74)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+bg_color = Color(0.11, 0.18, 0.26, 0.48)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.86, 0.68, 0.56)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip"]
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.05, 0.07, 0.11, 0.34)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.84, 0.86, 0.72, 0.18)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[node name="GameOverSummary" type="CanvasLayer" unique_id=1139270327]
+layer = 50
+script = ExtResource("1_script")
+
+[node name="BG" type="ColorRect" parent="." unique_id=396331205]
+material = SubResource("ShaderMaterial_bg")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.7607843)
+
+[node name="CenterPanel" type="Control" parent="." unique_id=1098810687]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel" unique_id=1878792910]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 72.0
+offset_top = 52.0
+offset_right = -72.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin" unique_id=822322663]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Eyebrow" type="Label" parent="CenterPanel/Margin/VBox" unique_id=390361239]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.88, 0.96, 0.68)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 24
+text = "RUN TERMINATED"
+
+[node name="HeaderRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox" unique_id=117078213]
+custom_minimum_size = Vector2(0, 104)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="TitleBlock" type="VBoxContainer" parent="CenterPanel/Margin/VBox/HeaderRow" unique_id=792851234]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="CenterPanel/Margin/VBox/HeaderRow/TitleBlock" unique_id=653602179]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.68)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 58
+text = "战败结算"
+
+[node name="Description" type="Label" parent="CenterPanel/Margin/VBox/HeaderRow/TitleBlock" unique_id=303868031]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.76)
+theme_override_font_sizes/font_size = 19
+text = "终局数据会完整铺开，路线、战利品与技能快照都在这里。"
+
+[node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/HeaderRow" unique_id=1640347617]
+custom_minimum_size = Vector2(180, 52)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.94, 0.97, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.9, 0.95, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
+text = "返回标题"
+
+[node name="Divider" type="ColorRect" parent="CenterPanel/Margin/VBox" unique_id=1324699257]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.78, 0.88, 0.98, 0.18)
+
+[node name="StatRow" type="HFlowContainer" parent="CenterPanel/Margin/VBox" unique_id=595023413]
+custom_minimum_size = Vector2(0, 84)
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="ResultChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=644365186]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/ResultChip" unique_id=103224814]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/ResultChip/Margin" unique_id=824101598]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/ResultChip/Margin/VBox" unique_id=972163144]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "结果"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/ResultChip/Margin/VBox" unique_id=1085277176]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="DurationChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=1569512698]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/DurationChip" unique_id=278166292]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/DurationChip/Margin" unique_id=1452813232]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/DurationChip/Margin/VBox" unique_id=1183216943]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "时长"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/DurationChip/Margin/VBox" unique_id=1734261552]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="NodeChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=1075104681]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/NodeChip" unique_id=292616564]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/NodeChip/Margin" unique_id=2022789119]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/NodeChip/Margin/VBox" unique_id=1809684168]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "节点"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/NodeChip/Margin/VBox" unique_id=1085478036]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="EnemyChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=132911495]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/EnemyChip" unique_id=1342626195]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/EnemyChip/Margin" unique_id=1772837122]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/EnemyChip/Margin/VBox" unique_id=2032990498]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "敌 / 精 / Boss"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/EnemyChip/Margin/VBox" unique_id=1716398927]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="CoinChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=1120600158]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/CoinChip" unique_id=781176555]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/CoinChip/Margin" unique_id=1533045398]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/CoinChip/Margin/VBox" unique_id=592702252]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "电力币"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/CoinChip/Margin/VBox" unique_id=948962898]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="LootChip" type="PanelContainer" parent="CenterPanel/Margin/VBox/StatRow" unique_id=2039269561]
+custom_minimum_size = Vector2(176, 72)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/VBox/StatRow/LootChip" unique_id=999835535]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/StatRow/LootChip/Margin" unique_id=1945285295]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="CenterPanel/Margin/VBox/StatRow/LootChip/Margin/VBox" unique_id=304347186]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.89, 0.75, 0.54)
+theme_override_font_sizes/font_size = 14
+text = "遗物 / 装备"
+
+[node name="Value" type="Label" parent="CenterPanel/Margin/VBox/StatRow/LootChip/Margin/VBox" unique_id=171961077]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.55)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 28
+text = "-"
+
+[node name="SummaryText" type="RichTextLabel" parent="CenterPanel/Margin/VBox" unique_id=66447223]
+layout_mode = 2
+size_flags_vertical = 3
+focus_mode = 2
+theme_override_colors/default_color = Color(0.9, 0.94, 0.99, 0.94)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.7)
+theme_override_constants/line_separation = 8
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/normal_font_size = 20
+bbcode_enabled = true
+selection_enabled = true

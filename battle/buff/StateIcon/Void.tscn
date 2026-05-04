@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://v01dbuff1c0n" path="res://shader/Icon/BuffIcon/Void.gdshader" id="2_void"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_void"]
+shader = ExtResource("2_void")
+shader_parameter/void_color = Color(0.14, 0.06, 0.28, 1)
+shader_parameter/rim_color = Color(0.42, 0.26, 0.88, 1)
+shader_parameter/star_color = Color(0.84, 0.78, 1, 1)
+shader_parameter/core_color = Color(0.02, 0.01, 0.06, 1)
+shader_parameter/animation_speed = 1
+shader_parameter/swirl_strength = 2.2
+shader_parameter/halo_strength = 0.9
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_void")

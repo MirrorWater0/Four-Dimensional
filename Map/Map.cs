@@ -15,10 +15,13 @@ public partial class Map : Control
     public TextureRect GameMap => field ??= GetNode("GameMap") as TextureRect;
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
+    public Label RegionLabel => field ??= GetNodeOrNull<Label>("UI/RegionLabel");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
     private TextureRect MiniMapPreview => field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
     private Control MiniMapPlayerIndicator =>
         field ??= GetNodeOrNull<Control>("UI/MiniMap/MapPreview/PlayerIndicator");
+    private LevelProgress LevelProgressNode => field ??= GetNodeOrNull<LevelProgress>("LevelProgress");
+    private Control NodeTypeLegend => field ??= GetNodeOrNull<Control>("MapLabel/NodeTypeLegend");
 
     [Export(PropertyHint.Range, "0,40,1")]
     public float DragStartThreshold = 16.0f;
@@ -47,9 +50,11 @@ public partial class Map : Control
     Vector2 _velocity = Vector2.Zero;
     private Vector2 _dragVelocity = Vector2.Zero;
     private ulong _wheelHandledFrame = ulong.MaxValue;
+    private Tween _blackMaskTween;
     ColorRect BlackMask => field ??= GetNode<ColorRect>("/root/Map/MaskLayer/Mask");
     private CanvasLayer SiteUiLayer => field ??= GetNodeOrNull<CanvasLayer>("SiteUI");
     private CanvasLayer FrontUiLayer => field ??= GetNodeOrNull<CanvasLayer>("BattleReadyLayer");
+    private CanvasLayer MenuLayer => field ??= GetNodeOrNull<CanvasLayer>("MenuLayer");
     private ReadyButton ReadyButtonNode => field ??= GetNodeOrNull<ReadyButton>("UI/ReadyButton");
     private EquipmentButton EquipmentButtonNode =>
         field ??= GetNodeOrNull<EquipmentButton>("UI/EquipmentButton");
@@ -61,6 +66,7 @@ public partial class Map : Control
     {
         float dt = (float)delta;
         ulong frame = Engine.GetProcessFrames();
+        UpdateRegionLabel();
 
         if (HasBlockingOverlay())
         {
@@ -214,6 +220,7 @@ public partial class Map : Control
         }
 
         SeedLabel.Text = $"Seed: {GameInfo.Seed}";
+        UpdateRegionLabel();
         Camera.LimitEnabled = false;
         Camera.PositionSmoothingEnabled = false;
         Camera.Zoom = Vector2.One;
@@ -223,8 +230,10 @@ public partial class Map : Control
         _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
         SetCameraPosition(_targetPos);
         UpdateMiniMapIndicator();
+        BlackMask.MouseFilter = MouseFilterEnum.Ignore;
         BlackMask.Modulate = new Color(1, 1, 1, 0);
         EnsureDebugConsole();
+        ConnectNodeTypeLegend(NodeTypeLegend);
         DragButton.ButtonDown += () =>
         {
             _isDrag = true;
@@ -252,18 +261,56 @@ public partial class Map : Control
 
     }
 
+    private void ConnectNodeTypeLegend(Control legend)
+    {
+        if (legend == null)
+            return;
+
+        foreach (Node child in legend.GetChildren())
+            ConnectLegendButtonsRecursive(child);
+    }
+
+    private void ConnectLegendButtonsRecursive(Node node)
+    {
+        if (node is Button button && button.HasMeta("level_type"))
+        {
+            var variant = button.GetMeta("level_type");
+            var type = (LevelNode.LevelType)(int)variant;
+            button.MouseEntered += () => SetNodeTypeLegendHighlight(type);
+            button.MouseExited += ClearNodeTypeLegendHighlight;
+        }
+
+        foreach (Node child in node.GetChildren())
+            ConnectLegendButtonsRecursive(child);
+    }
+
+    private void SetNodeTypeLegendHighlight(LevelNode.LevelType type)
+    {
+        LevelProgressNode?.SetNodeTypeLegendHighlight(type);
+    }
+
+    private void ClearNodeTypeLegendHighlight()
+    {
+        LevelProgressNode?.SetNodeTypeLegendHighlight(null);
+    }
+
     public void CloseWindow()
     {
         GetTree().Quit();
     }
 
-    public Tween BlackMaskAnimation(float duration)
+    public Tween BlackMaskAnimation(float duration, bool hideAfter = true)
     {
+        _blackMaskTween?.Kill();
         BlackMask.Visible = true;
         var tween = CreateTween();
+        _blackMaskTween = tween;
         tween.TweenProperty(BlackMask, "modulate:a", 1, duration);
-        tween.Chain().TweenProperty(BlackMask, "modulate:a", 0, duration);
-        tween.TweenCallback(Callable.From(() => BlackMask.Visible = false));
+        if (hideAfter)
+        {
+            tween.Chain().TweenProperty(BlackMask, "modulate:a", 0, duration);
+            tween.TweenCallback(Callable.From(() => BlackMask.Visible = false));
+        }
         return tween;
     }
 
@@ -320,6 +367,18 @@ public partial class Map : Control
         return clamped;
     }
 
+    public void ResetCameraToStart()
+    {
+        _isDrag = false;
+        _isDragActive = false;
+        _isWheelPanning = false;
+        _dragVelocity = Vector2.Zero;
+        _velocity = Vector2.Zero;
+        _targetPos = Camera.ClampToBoundary(new Vector2(Camera.WorldLeftBoundary, Camera.FixedCenterY));
+        SetCameraPosition(_targetPos);
+        UpdateMiniMapIndicator();
+    }
+
     private void ApplyWheelMove(float deltaX)
     {
         _targetPos = Camera.ClampToBoundary(_targetPos + new Vector2(deltaX, 0));
@@ -331,6 +390,9 @@ public partial class Map : Control
     {
         return LayerHasVisibleChildren(SiteUiLayer)
             || LayerHasVisibleChildren(FrontUiLayer)
+            || LayerHasVisibleChildren(MenuLayer)
+            || HasVisibleRootOverlay("GameOverSummary")
+            || HasVisibleRootOverlay("GameStatistics")
             || HasVisibleBattleOverlay()
             || DebugConsoleNode?.IsOpen == true;
     }
@@ -374,14 +436,19 @@ public partial class Map : Control
             if (child == null || child.IsQueuedForDeletion())
                 continue;
 
-            if (child is CanvasItem canvasItem)
+            if (child is CanvasLayer canvasLayer)
             {
-                if (canvasItem.Visible)
+                if (canvasLayer.Visible)
                     return true;
                 continue;
             }
 
-            return true;
+            if (child is CanvasItem canvasItem)
+            {
+                if (canvasItem.IsVisibleInTree())
+                    return true;
+                continue;
+            }
         }
 
         return false;
@@ -430,6 +497,18 @@ public partial class Map : Control
         MiniMapPlayerIndicator.Position = localPosition;
     }
 
+    private void UpdateRegionLabel()
+    {
+        if (RegionLabel == null)
+            return;
+
+        bool regionTwoUnlocked = GameInfo.IsRegionTwoUnlocked();
+        RegionLabel.Text = regionTwoUnlocked ? "区域 2" : "区域 1";
+        RegionLabel.Modulate = regionTwoUnlocked
+            ? new Color(1f, 0.88f, 0.38f, 0.96f)
+            : new Color(0.7f, 0.92f, 1f, 0.92f);
+    }
+
     private void GetCameraHorizontalCenterBoundary(out float minX, out float maxX)
     {
         float left = Mathf.Min(Camera.WorldLeftBoundary, Camera.WorldRightBoundary);
@@ -445,5 +524,17 @@ public partial class Map : Control
             minX = centerX;
             maxX = centerX;
         }
+    }
+
+    private bool HasVisibleRootOverlay(string nodeName)
+    {
+        var root = GetTree()?.Root;
+        if (root == null || string.IsNullOrWhiteSpace(nodeName))
+            return false;
+
+        if (root.GetNodeOrNull(nodeName) is not CanvasLayer overlay)
+            return false;
+
+        return overlay.Visible && overlay.IsInsideTree();
     }
 }

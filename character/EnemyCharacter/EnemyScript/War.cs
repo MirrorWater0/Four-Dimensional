@@ -13,7 +13,7 @@ public partial class War : EnemyCharacter
 
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
-        $"战斗开始时：在自己的上一个空位和下一个空位各召唤{PassiveSummonsPerSide}个召唤物。";
+        $"战斗开始时：在上一空位和下一空位各召唤{PassiveSummonsPerSide}个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -70,6 +70,28 @@ public partial class War : EnemyCharacter
     }
 }
 
+public partial class WarRegedit : EnemyRegedit
+{
+    public WarRegedit()
+    {
+        CharacterName = "War";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/War.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
+
+        MaxLife = 425;
+        Power = 16;
+        Survivability = 11;
+        Speed = 15;
+        SpecialIntentThreshold = 2;
+
+        SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
+
+        PassiveName = global::War.PassiveNameText;
+        PassiveDescription = global::War.PassiveDescriptionText;
+    }
+}
+
 public partial class WarAttack : Skill
 {
     private const int BaseDamage = -10;
@@ -97,9 +119,9 @@ public partial class WarAttack : Skill
 
 public partial class WarSurvive : Skill
 {
-    private const int BaseBlock = 15;
+    private const int BaseBlock = 13;
     private const int SelfSurvivabilityGain = 2;
-    private const int ThrallBlock = 4;
+    private const int ThrallBlock = 0;
 
     public WarSurvive()
         : base(SkillTypes.Survive)
@@ -114,9 +136,9 @@ public partial class WarSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(0, BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
             SummonStep(9, War.ThrallScene),
-            BlockSummonsStep(baseBlock: ThrallBlock)
+            BlockSummonsStep(baseBlock: ThrallBlock),
+            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
 }

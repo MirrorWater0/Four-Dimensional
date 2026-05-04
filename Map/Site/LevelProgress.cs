@@ -34,10 +34,12 @@ public partial class LevelProgress : Control
     // Using a separate container for nodes to separate them from other potential children
     private Control _nodeContainer;
     private Control _connectionContainer;
-    private readonly Random rng = new Random(GameInfo.Seed);
+    private Random rng = new Random(GameInfo.Seed);
     private CanvasLayer _siteUiLayer;
+    private Map _map;
     private bool _manualLock;
-    private bool _siteUiHasChildren;
+    private bool _manualLockSawBlockingUi;
+    private bool _interactionBlocked;
 
     private Vector2[] GetStageNodePositions(int stageIndex, int nodeCount, bool isBoss = false)
     {
@@ -380,45 +382,69 @@ public partial class LevelProgress : Control
         _nodeContainer.MouseFilter = MouseFilterEnum.Ignore; // Pass events through
         AddChild(_nodeContainer);
 
+        _map = GetParent() as Map;
         _siteUiLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("Map/SiteUI");
         GenerateMap();
         RefreshNodeInteractivity();
+        if (HasCompletedBossNode())
+            CallDeferred(nameof(AdvanceToNextRegion));
         // CallDeferred("StartAnimation");
     }
 
     public override void _Process(double delta)
     {
-        if (_siteUiLayer == null)
+        bool interactionBlocked = IsInteractionBlockedByUi();
+        if (_manualLock && interactionBlocked)
+            _manualLockSawBlockingUi = true;
+
+        bool releasedManualLock = false;
+        if (_manualLock && _manualLockSawBlockingUi && !interactionBlocked)
+        {
+            _manualLock = false;
+            _manualLockSawBlockingUi = false;
+            releasedManualLock = true;
+        }
+
+        bool needsRefresh = HasStaleNodeInteractivity(interactionBlocked);
+        if (interactionBlocked == _interactionBlocked && !releasedManualLock && !needsRefresh)
             return;
 
-        bool hasChildren = HasVisibleSiteUi();
-        if (hasChildren == _siteUiHasChildren)
-            return;
-
-        _siteUiHasChildren = hasChildren;
+        _interactionBlocked = interactionBlocked;
         RefreshNodeInteractivity();
     }
 
     public void LockAllNodes()
     {
         _manualLock = true;
+        _manualLockSawBlockingUi = false;
         RefreshNodeInteractivity();
+    }
+
+    public void UnlockAllNodes()
+    {
+        _manualLock = false;
+        _manualLockSawBlockingUi = false;
+        RefreshNodeInteractivity();
+        CallDeferred(nameof(RefreshNodeInteractivity));
     }
 
     private void RefreshNodeInteractivity()
     {
         bool hasChildren = HasVisibleSiteUi();
+        bool interactionBlocked = IsInteractionBlockedByUi();
+        if (_manualLock && interactionBlocked)
+            _manualLockSawBlockingUi = true;
+
         if (hasChildren)
         {
             _manualLock = false;
-            _siteUiHasChildren = true;
         }
-        else
-        {
-            _siteUiHasChildren = false;
-        }
+        if (!_manualLock)
+            _manualLockSawBlockingUi = false;
 
-        bool shouldDisable = _manualLock || hasChildren;
+        _interactionBlocked = interactionBlocked;
+
+        bool shouldDisable = _manualLock || interactionBlocked;
         foreach (var layer in _mapNodes)
         {
             foreach (var node in layer)
@@ -430,6 +456,32 @@ public partial class LevelProgress : Control
         }
     }
 
+    private bool HasStaleNodeInteractivity(bool interactionBlocked)
+    {
+        bool shouldDisable = _manualLock || interactionBlocked;
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (node == null)
+                    continue;
+
+                bool expectedDisabled =
+                    shouldDisable || node.State != LevelNode.LevelState.Unlocked;
+                if (node.Button.Disabled != expectedDisabled)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsInteractionBlockedByUi()
+    {
+        _map ??= GetParent() as Map;
+        return _map?.IsMapInteractionBlocked() == true || HasVisibleSiteUi();
+    }
+
     private bool HasVisibleSiteUi()
     {
         if (_siteUiLayer == null)
@@ -437,17 +489,28 @@ public partial class LevelProgress : Control
 
         foreach (Node child in _siteUiLayer.GetChildren())
         {
-            if (child == null || child.IsQueuedForDeletion())
-                continue;
+            if (IsVisibleBlockingUiNode(child))
+                return true;
+        }
 
-            if (child is CanvasItem canvasItem)
-            {
-                if (canvasItem.Visible)
-                    return true;
-                continue;
-            }
+        return false;
+    }
 
-            return true;
+    private static bool IsVisibleBlockingUiNode(Node node)
+    {
+        if (node == null || node.IsQueuedForDeletion())
+            return false;
+
+        if (node is CanvasLayer canvasLayer)
+            return canvasLayer.Visible;
+
+        if (node is CanvasItem canvasItem)
+            return canvasItem.IsVisibleInTree();
+
+        foreach (Node child in node.GetChildren())
+        {
+            if (IsVisibleBlockingUiNode(child))
+                return true;
         }
 
         return false;
@@ -455,6 +518,7 @@ public partial class LevelProgress : Control
 
     private void GenerateMap()
     {
+        rng = new Random(BuildMapSeed());
         _mapNodes.Clear();
         _paths.Clear();
 
@@ -543,6 +607,56 @@ public partial class LevelProgress : Control
         }
     }
 
+    public void AdvanceToNextRegion()
+    {
+        GameInfo.CurrentLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
+        GameInfo.FirstLevelState.Clear();
+        _manualLock = false;
+        _manualLockSawBlockingUi = false;
+        _interactionBlocked = false;
+
+        GenerateMap();
+        RefreshNodeInteractivity();
+
+        _map ??= GetParent() as Map;
+        _map?.ResetCameraToStart();
+        SaveSystem.SaveAll();
+    }
+
+    private static int BuildMapSeed()
+    {
+        if (GameInfo.CurrentLevel <= 0)
+            return GameInfo.Seed;
+
+        unchecked
+        {
+            return (GameInfo.Seed * 397) ^ (GameInfo.CurrentLevel * 7919);
+        }
+    }
+
+    private bool HasCompletedBossNode()
+    {
+        if (_mapNodes == null || _mapNodes.Count == 0)
+            return false;
+
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (
+                    node != null
+                    && node.Type == LevelNode.LevelType.Boss
+                    && node.State == LevelNode.LevelState.Completed
+                )
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private void ConnectNodes(LevelNode from, LevelNode to)
     {
         if (!from.NextNodes.Contains(to))
@@ -586,6 +700,20 @@ public partial class LevelProgress : Control
     {
         LockSiblings(selectedNode);
         AnimatePathTo(selectedNode);
+    }
+
+    public void SetNodeTypeLegendHighlight(LevelNode.LevelType? highlightedType)
+    {
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (node == null || !GodotObject.IsInstanceValid(node))
+                    continue;
+
+                node.SetTypeLegendHighlighted(highlightedType.HasValue && node.Type == highlightedType.Value);
+            }
+        }
     }
 
     private void AnimatePathTo(LevelNode node)
@@ -675,8 +803,6 @@ public partial class LevelProgress : Control
                     node.Type = LevelNode.LevelType.Normal;
                 else if (x == MapLength - 1)
                     node.Type = LevelNode.LevelType.Boss;
-                else if (x == MapLength / 2 && x > 2) // Elite only after first 3 stages
-                    node.Type = LevelNode.LevelType.Elite;
                 else
                 {
                     int roll = rng.Next(100);

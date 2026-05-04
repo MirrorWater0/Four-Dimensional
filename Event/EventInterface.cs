@@ -544,8 +544,22 @@ public partial class EventInterface : Control
         HideTargetSelection();
         await PlayDisassembleAnimationAsync();
         if (callComplete)
+        {
             WhichNode?.Completed();
-        QueueFree();
+            QueueFree();
+            return;
+        }
+        else
+        {
+            QueueFree();
+            ReleaseMapNodeLock();
+        }
+    }
+
+    private void ReleaseMapNodeLock()
+    {
+        var levelProgress = WhichNode?.GetParent()?.GetParent<LevelProgress>();
+        levelProgress?.UnlockAllNodes();
     }
 
     private AssemblyItem[] GetDisassemblyItems()

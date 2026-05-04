@@ -7,7 +7,7 @@ public partial class NightingaleAttackSkill { }
 
 public partial class ShadowAmbush : Skill
 {
-    private const int BaseDamage = 14;
+    private const int BaseDamage = 12;
     int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
@@ -28,7 +28,7 @@ public partial class ShadowAmbush : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             ConditionStep(
                 () => hasInvisible,
-                $"自身拥有{Buff.BuffName.Invisible.GetDescription()}",
+                $"拥有{Buff.BuffName.Invisible.GetDescription()}",
                 AttackPrimaryStep(baseDamage: BaseDamage, prefix: "额外造成")
             ),
             ModifyPropertyStep(PropertyType.Power, GainPower)
@@ -38,8 +38,8 @@ public partial class ShadowAmbush : Skill
 
 public partial class ShadowExecution : Skill
 {
-    private const int BaseDamage = 15;
-    private const int DoubleStrikeBaseDamage = 5;
+    private const int BaseDamage = 20;
+    private const int DoubleStrikeBaseDamage = 0;
     private const string KillTargetKey = "目标";
 
     public ShadowExecution()
@@ -48,7 +48,7 @@ public partial class ShadowExecution : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "影处决";
+    public override string SkillName { get; set; } = "处决";
 
     protected override SkillPlan BuildPlan()
     {
@@ -66,7 +66,7 @@ public partial class ShadowExecution : Skill
 
 public partial class BreakStrike : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 11;
 
     public BreakStrike()
         : base(SkillTypes.Attack)
@@ -102,7 +102,7 @@ public partial class BreakStrike : Skill
 
 public partial class StasisBlade : Skill
 {
-    private const int BaseDamage = 17;
+    private const int BaseDamage = 15;
     private const int SpeedDown = 5;
     private const int FirstCastExtraSpeedDown = 3;
     int times = 1;
@@ -132,7 +132,7 @@ public partial class StasisBlade : Skill
 
 public partial class ContinuousPierce : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 3;
     private const int SelfDamage = 10;
 
     private bool IsAtFullLife =>
@@ -153,10 +153,33 @@ public partial class ContinuousPierce : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             ConditionStep(
                 () => IsAtFullLife,
-                "自身满血",
+                "满血",
                 AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, prefix: "额外造成", times: 2),
                 HurtFriendly(SelfDamage, 0)
             )
+        );
+    }
+}
+
+public partial class RuinBlade : Skill
+{
+    private const int BaseDamage = 6;
+    private int times = 1;
+
+    public RuinBlade()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "破灭之刃";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, times: 2),
+            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 0))
         );
     }
 }

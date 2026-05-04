@@ -12,6 +12,14 @@ public partial class SpaceStationShop : Control
     private const int SkillOfferCount = ShopCharacterCount * SkillOffersPerCharacter;
     private const int SkillOfferBasePrice = 40;
     private const int SkillOfferPriceVariance = 10;
+    private const int StatOfferBasePrice = 20;
+    private const int StatOfferPriceVariance = 5;
+    private const int EquipmentOfferBasePrice = 100;
+    private const int EquipmentOfferPriceVariance = 20;
+    private const int PotionOfferBasePrice = 25;
+    private const int PotionOfferPriceVariance = 5;
+    private const int RelicOfferBasePrice = 120;
+    private const int RelicOfferPriceVariance = 20;
     private const float ModuleSelectorTweenDuration = 0.06f;
     private const float ModuleContentFadeOutDuration = 0.10f;
     private const float ModuleContentFadeInDuration = 0.14f;
@@ -22,18 +30,20 @@ public partial class SpaceStationShop : Control
     private const float ModuleItemExitOffsetX = 28f;
     private const float ModuleItemExitOffsetY = 8f;
     private const float StatPanelHoverDuration = 0.14f;
+    private static readonly Vector2 CompactCatalogTileSize = new(118f, 138f);
+    private static readonly Vector2 CompactCatalogIconFrameSize = new(82f, 82f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(250f, 400f);
-    private static readonly (ItemID ItemId, int Price)[] PotionCatalog =
+    private static readonly ItemID[] PotionCatalog =
     [
-        (ItemID.Health, 18),
-        (ItemID.Guard, 20),
-        (ItemID.Haste, 22),
-        (ItemID.Fury, 24),
-        (ItemID.Vitality, 24),
-        (ItemID.Health, 18),
-        (ItemID.Guard, 20),
-        (ItemID.Haste, 22),
-        (ItemID.Fury, 24),
+        ItemID.Health,
+        ItemID.Guard,
+        ItemID.Haste,
+        ItemID.Fury,
+        ItemID.Vitality,
+        ItemID.Health,
+        ItemID.Guard,
+        ItemID.ElectromagneticInterference,
+        ItemID.SpaceOscillation,
     ];
 
     [Export(PropertyHint.Range, "0.35,0.80,0.01")]
@@ -222,7 +232,7 @@ public partial class SpaceStationShop : Control
             ?? root.GetNodeOrNull<SpaceStationShop>("SpaceStationShop");
         if (existing != null)
         {
-            if (existing._isHidden)
+            if (existing._isHidden || !existing.Visible)
                 existing.ReopenFromHidden();
             return existing;
         }
@@ -266,7 +276,7 @@ public partial class SpaceStationShop : Control
 
     private void ReopenFromHidden()
     {
-        if (!IsInsideTree() || !_isHidden)
+        if (!IsInsideTree())
             return;
 
         _isHidden = false;
@@ -517,6 +527,7 @@ public partial class SpaceStationShop : Control
                 return;
 
             var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+            var priceRng = CreateShopRandom(0x57A7);
 
             for (int i = 0; i < ShopCharacterCount; i++)
             {
@@ -535,7 +546,7 @@ public partial class SpaceStationShop : Control
                     characterName,
                     PropertyType.Power,
                     1,
-                    26
+                    ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("Survivability"),
@@ -543,7 +554,7 @@ public partial class SpaceStationShop : Control
                     characterName,
                     PropertyType.Survivability,
                     1,
-                    26
+                    ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("Speed"),
@@ -551,7 +562,7 @@ public partial class SpaceStationShop : Control
                     characterName,
                     PropertyType.Speed,
                     1,
-                    32
+                    ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("MaxLife"),
@@ -559,7 +570,7 @@ public partial class SpaceStationShop : Control
                     characterName,
                     PropertyType.MaxLife,
                     5,
-                    30
+                    ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
 
                 if (i + 1 < ShopCharacterCount)
@@ -588,7 +599,10 @@ public partial class SpaceStationShop : Control
         for (int i = 0; i < equipmentPool.Length; i++)
         {
             var equipment = equipmentPool[i];
-            AddEquipmentOffer(equipment, ComputeEquipmentPrice(equipment));
+            AddEquipmentOffer(
+                equipment,
+                ComputeShopPrice(rng, EquipmentOfferBasePrice, EquipmentOfferPriceVariance)
+            );
             if (i + 1 < equipmentPool.Length)
                 await YieldOfferBuildFramesAsync();
         }
@@ -596,10 +610,14 @@ public partial class SpaceStationShop : Control
 
     private async Task BuildRelicOffersAsync()
     {
+        var rng = CreateShopRandom(0x6E11);
         var relicPool = Relic.GetUnownedOfferPool();
         for (int i = 0; i < relicPool.Length; i++)
         {
-            AddRelicOffer(relicPool[i], 88);
+            AddRelicOffer(
+                relicPool[i],
+                ComputeShopPrice(rng, RelicOfferBasePrice, RelicOfferPriceVariance)
+            );
             if (i + 1 < relicPool.Length)
                 await YieldOfferBuildFramesAsync();
         }
@@ -607,10 +625,13 @@ public partial class SpaceStationShop : Control
 
     private async Task BuildPotionOffersAsync()
     {
+        var rng = CreateShopRandom(0x7091);
         for (int i = 0; i < PotionCatalog.Length; i++)
         {
-            var stock = PotionCatalog[i];
-            AddPotionOffer(stock.ItemId, stock.Price);
+            AddPotionOffer(
+                PotionCatalog[i],
+                ComputeShopPrice(rng, PotionOfferBasePrice, PotionOfferPriceVariance)
+            );
             if (i + 1 < PotionCatalog.Length)
                 await YieldOfferBuildFramesAsync();
         }
@@ -804,12 +825,30 @@ public partial class SpaceStationShop : Control
         var frame = new PanelContainer
         {
             Name = $"RelicOffer{_catalogOffers.Count}",
-            CustomMinimumSize = new Vector2(72f, 72f),
+            CustomMinimumSize = CompactCatalogTileSize,
             MouseFilter = MouseFilterEnum.Stop,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
-        frame.AddThemeStyleboxOverride("panel", CreateRelicIconFrameStyle());
+        frame.AddThemeStyleboxOverride("panel", CreateRelicTileStyle());
+
+        var center = new CenterContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        frame.AddChild(center);
+
+        var iconFrame = new PanelContainer
+        {
+            CustomMinimumSize = CompactCatalogIconFrameSize,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        iconFrame.AddThemeStyleboxOverride("panel", CreateRelicIconFrameStyle());
+        center.AddChild(iconFrame);
 
         var icon = Relic.IconScene.Instantiate<ColorRect>();
         icon.Name = "RelicIcon";
@@ -826,7 +865,7 @@ public partial class SpaceStationShop : Control
         var panel = icon.GetNodeOrNull<Panel>("Panel");
         if (panel != null)
             panel.Visible = false;
-        frame.AddChild(icon);
+        iconFrame.AddChild(icon);
 
         ApplyRelicIconShader(icon, offer.RelicId);
 
@@ -843,7 +882,7 @@ public partial class SpaceStationShop : Control
 
         CatalogGrid.AddChild(frame);
         offer.View = frame;
-        offer.IconFrame = frame;
+        offer.IconFrame = iconFrame;
         offer.IconRect = icon;
     }
 
@@ -855,9 +894,9 @@ public partial class SpaceStationShop : Control
         var frame = new PanelContainer
         {
             Name = $"PotionOffer{_catalogOffers.Count}",
-            CustomMinimumSize = new Vector2(0f, 138f),
+            CustomMinimumSize = CompactCatalogTileSize,
             MouseFilter = MouseFilterEnum.Stop,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
         frame.AddThemeStyleboxOverride("panel", CreatePotionTileStyle());
@@ -894,7 +933,7 @@ public partial class SpaceStationShop : Control
 
         var iconFrame = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(82f, 82f),
+            CustomMinimumSize = CompactCatalogIconFrameSize,
             MouseFilter = MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
@@ -1564,6 +1603,23 @@ public partial class SpaceStationShop : Control
         };
     }
 
+    private static StyleBoxFlat CreateRelicTileStyle()
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(0.07f, 0.1f, 0.15f, 0.9f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            BorderColor = new Color(0.78f, 0.66f, 0.34f, 0.44f),
+            CornerRadiusTopLeft = 12,
+            CornerRadiusTopRight = 12,
+            CornerRadiusBottomLeft = 12,
+            CornerRadiusBottomRight = 12,
+        };
+    }
+
     private static StyleBoxFlat CreateStatOfferHoverStyle()
     {
         return new StyleBoxFlat
@@ -2156,6 +2212,8 @@ public partial class SpaceStationShop : Control
     {
         bool statModule = _currentModule == ShopModule.Stat;
         bool skillModule = _currentModule == ShopModule.Skill;
+        bool compactCatalogModule =
+            _currentModule == ShopModule.Relic || _currentModule == ShopModule.Potion;
         bool catalogModule =
             _currentModule == ShopModule.Equipment
             || _currentModule == ShopModule.Relic
@@ -2165,10 +2223,15 @@ public partial class SpaceStationShop : Control
         SkillPanel.Visible = true;
         CatalogGrid.Columns = _currentModule switch
         {
-            ShopModule.Relic => 9,
-            ShopModule.Potion => 3,
+            ShopModule.Relic or ShopModule.Potion => 3,
             _ => 2,
         };
+        CatalogGrid.SizeFlagsHorizontal = compactCatalogModule
+            ? SizeFlags.ShrinkCenter
+            : SizeFlags.ExpandFill;
+        CatalogGrid.SizeFlagsVertical = compactCatalogModule
+            ? SizeFlags.ShrinkCenter
+            : SizeFlags.ExpandFill;
 
         for (int i = 0; i < _catalogOffers.Count; i++)
         {
@@ -2201,11 +2264,11 @@ public partial class SpaceStationShop : Control
                 break;
             case ShopModule.Relic:
                 CatalogTitle.Text = "遗物模块";
-                CatalogHint.Text = "遗物以图标矩阵展示，悬停查看效果，点击图标购买。";
+                CatalogHint.Text = "遗物与道具共用 3x3 居中网格展示，悬停查看效果，点击图标购买。";
                 break;
             case ShopModule.Potion:
                 CatalogTitle.Text = "道具模块";
-                CatalogHint.Text = "3x3 网格陈列战斗道具，价格写在图标下方，购买后进入道具栏。";
+                CatalogHint.Text = "3x3 居中网格陈列战斗道具，价格写在图标下方，购买后进入道具栏。";
                 break;
         }
     }
@@ -2769,20 +2832,15 @@ public partial class SpaceStationShop : Control
             _isHidden = true;
             SetUiInteractive(false);
             Visible = false;
+            WhichNode?.Unlock();
+            ReleaseMapNodeLock();
         });
     }
 
-    private static int ComputeEquipmentPrice(Equipment equipment)
+    private void ReleaseMapNodeLock()
     {
-        if (equipment == null)
-            return 0;
-
-        int score =
-            Math.Abs(equipment.Power) * 10
-            + Math.Abs(equipment.Survivability) * 8
-            + Math.Abs(equipment.Speed) * 12
-            + Math.Abs(equipment.MaxLife) * 2;
-        return Math.Clamp(28 + score, 36, 72);
+        var levelProgress = WhichNode?.GetParent()?.GetParent<LevelProgress>();
+        levelProgress?.UnlockAllNodes();
     }
 
     private static int ComputeSkillOfferPrice(Random rng)
@@ -2790,12 +2848,15 @@ public partial class SpaceStationShop : Control
         if (rng == null)
             return SkillOfferBasePrice;
 
-        return Math.Clamp(
-            SkillOfferBasePrice
-                + rng.Next(-SkillOfferPriceVariance, SkillOfferPriceVariance + 1),
-            0,
-            int.MaxValue
-        );
+        return ComputeShopPrice(rng, SkillOfferBasePrice, SkillOfferPriceVariance);
+    }
+
+    private static int ComputeShopPrice(Random rng, int basePrice, int variance)
+    {
+        if (rng == null || variance <= 0)
+            return Math.Max(0, basePrice);
+
+        return Math.Clamp(basePrice + rng.Next(-variance, variance + 1), 0, int.MaxValue);
     }
 
     private Random CreateShopRandom(int salt)
@@ -2814,7 +2875,16 @@ public partial class SpaceStationShop : Control
         AddStat(parts, equipment.Survivability, "生存");
         AddStat(parts, equipment.Speed, "速度");
         AddStat(parts, equipment.MaxLife, "生命");
-        return string.Join("  ", parts);
+        string stats = string.Join("  ", parts);
+        string effectText = Equipment.GetSpecialEffectText(equipment)?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(effectText))
+            return stats;
+
+        if (string.IsNullOrWhiteSpace(stats))
+            return effectText;
+
+        return $"{stats}\n{effectText}";
     }
 
     private static void AddStat(List<string> parts, int value, string label)

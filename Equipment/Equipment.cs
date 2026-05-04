@@ -10,6 +10,9 @@ public partial class Equipment
         FoldedBulwark,
         ShockPendant,
         OverloadMark,
+        TauntBadge,
+        PhantomFeather,
+        ReserveCore,
     }
 
     // Keep these as public fields so SaveSystem can serialize/deserialize them via reflection.
@@ -30,7 +33,7 @@ public partial class Equipment
             DisplayName = "裂隙短刃",
             TypeLabel = "输出",
             Power = 3,
-            Survivability = -2,
+            Survivability = -1,
             Speed = 0,
             MaxLife = 0,
             Description = "高频切割型武装，强化先手与追击。",
@@ -65,7 +68,7 @@ public partial class Equipment
             Power = 0,
             Survivability = 0,
             Speed = 2,
-            MaxLife = 5,
+            MaxLife = 0,
             Description = "压缩行动间隔，强化循环速度与续战能力。",
         },
         new Equipment
@@ -111,6 +114,39 @@ public partial class Equipment
             Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，获得2层额外力量。",
+        },
+        new Equipment
+        {
+            Name = EquipmentName.TauntBadge,
+            DisplayName = "闪耀徽章",
+            TypeLabel = "控制",
+            Power = 0,
+            Survivability = 0,
+            Speed = 0,
+            MaxLife = 0,
+            Description = "战斗开始时，获得3层嘲讽。",
+        },
+        new Equipment
+        {
+            Name = EquipmentName.PhantomFeather,
+            DisplayName = "幻影之羽",
+            TypeLabel = "力量 · 速度",
+            Power = 1,
+            Survivability = 0,
+            Speed = 1,
+            MaxLife = 0,
+            Description = "战斗开始时，获得1层隐身。",
+        },
+        new Equipment
+        {
+            Name = EquipmentName.ReserveCore,
+            DisplayName = "储能核心",
+            TypeLabel = "生存",
+            Power = -4,
+            Survivability = 1,
+            Speed = 0,
+            MaxLife = 0,
+            Description = "战斗开始时，获得1点能量。",
         },
     ];
 

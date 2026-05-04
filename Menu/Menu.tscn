@@ -130,6 +130,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.015999999, 0.024000002, 0.04, 0.3764706)
+metadata/_edit_lock_ = true
 
 [node name="GlowTopRight" type="ColorRect" parent="." unique_id=1591534101]
 layout_mode = 0
@@ -157,9 +158,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -222.0
-offset_top = -371.0
+offset_top = -414.0
 offset_right = 214.0
-offset_bottom = 255.0
+offset_bottom = 316.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
@@ -205,6 +206,20 @@ color = Color(0.8, 0.878431, 0.956863, 0.16)
 layout_mode = 2
 theme_override_constants/separation = 30
 
+[node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1415863781]
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945098, 0.980392, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.909804, 0.952941, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
+text = "返回"
+
 [node name="SaveQuitButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=734518770]
 custom_minimum_size = Vector2(0, 66)
 layout_mode = 2
@@ -219,20 +234,6 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "保存退出"
 
-[node name="AbandonGameButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1702612736]
-custom_minimum_size = Vector2(0, 66)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.945098, 0.952941, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.917647, 0.929412, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
-theme_override_styles/normal = SubResource("StyleBoxFlat_danger_normal")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_danger_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_danger_hover")
-theme_override_styles/focus = SubResource("StyleBoxFlat_danger_hover")
-text = "放弃游戏"
-
 [node name="SettingsButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=173383107]
 custom_minimum_size = Vector2(0, 66)
 layout_mode = 2
@@ -246,3 +247,31 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "设置"
+
+[node name="EncyclopediaButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons"]
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945098, 0.980392, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.909804, 0.952941, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
+text = "百科"
+
+[node name="AbandonGameButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1702612736]
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.945098, 0.952941, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.917647, 0.929412, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("StyleBoxFlat_danger_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_danger_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_danger_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_danger_hover")
+text = "放弃游戏"

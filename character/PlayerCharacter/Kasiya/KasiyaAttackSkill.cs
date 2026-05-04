@@ -7,7 +7,7 @@ public partial class KasiyaAttackSkill { }
 public partial class Determination : Skill
 {
     private const int DamageImmuneStacks = 1;
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 8;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -33,7 +33,7 @@ public partial class Determination : Skill
 
 public partial class Smite : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 13;
     private const int SurvivalDown = 5;
     int times = 1;
 
@@ -62,7 +62,7 @@ public partial class Smite : Skill
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 8;
 
     public Charge()
         : base(Skill.SkillTypes.Attack)
@@ -84,7 +84,8 @@ public partial class Charge : Skill
                         source: OwnerCharater,
                         target: GetStoredTarget("charge_target")
                     ) ?? 0,
-                describe: false
+                describe: false,
+                survivabilityMultiplier: 0
             ),
             TextStep($"获得等同于此次造成伤害+{X(StatX.Survivability)}的格挡。")
         );
@@ -93,7 +94,7 @@ public partial class Charge : Skill
 
 public partial class Vower : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 15;
     int times = 2;
 
     public Vower()
@@ -116,7 +117,7 @@ public partial class Vower : Skill
 
 public partial class VulnerablePurge : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 16;
 
     public VulnerablePurge()
         : base(SkillTypes.Attack)
@@ -141,6 +142,11 @@ public partial class VulnerablePurge : Skill
                         && buff.Stack > 0
                     ) == true,
                 targetConditionDescription: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: 1,
+                target: HostileTargets(0)
             )
         );
     }
@@ -148,7 +154,7 @@ public partial class VulnerablePurge : Skill
 
 public partial class VulnerabilityStrike : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 14;
     private const string TargetKey = "vulnerability_strike_target";
     private bool _targetHadVulnerable;
 

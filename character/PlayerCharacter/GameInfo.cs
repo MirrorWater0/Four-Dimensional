@@ -8,11 +8,16 @@ using Godot;
 public static partial class GameInfo
 {
     public static PlayerInfoStructure[] PlayerCharacters;
-    public static int Seed = 4223;
+    public static int Seed = 4203;
     public static int ElectricityCoin;
     public static int TransitionEnergy;
     public static int TransitionEnergyMax;
     public static int CurrentLevel;
+    public static long SessionPlaySeconds;
+    public static long RunStartedAtUtcTicks;
+    public static bool RunFinished;
+    public static List<RunHistoryRecord> RunHistoryRecords = new();
+    public static bool HasSeenBattleTutorial;
     public static int IntentionRandomNum { get; private set; }
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
@@ -28,12 +33,18 @@ public static partial class GameInfo
         ElectricityCoin = 150;
         TransitionEnergy = 6;
         TransitionEnergyMax = 6;
+        CurrentLevel = 0;
+        SessionPlaySeconds = 0;
+        RunStartedAtUtcTicks = DateTime.UtcNow.Ticks;
+        RunFinished = false;
+        RunHistoryRecords ??= new List<RunHistoryRecord>();
         FirstLevelState.Clear();
         ResetLevelNodeCompletionRecords();
         ResetBattleRewardDropState();
         Items.Clear();
         GameInfo.Items.Add(ItemID.Explosion);
-        Relics.Add(RelicID.Blessing, 3);
+        Relics.Clear();
+        Relics[RelicID.Blessing] = 3;
         OwnedEquipments = CreateStarterOwnedEquipments();
     }
 

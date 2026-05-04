@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://d3m0nbuff1c0n" path="res://shader/Icon/BuffIcon/Demon.gdshader" id="2_demon"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_demon"]
+shader = ExtResource("2_demon")
+shader_parameter/ember_color = Color(0.95, 0.2, 0.28, 1)
+shader_parameter/horn_color = Color(0.56, 0.08, 0.16, 1)
+shader_parameter/eye_color = Color(1, 0.72, 0.22, 1)
+shader_parameter/void_color = Color(0.08, 0.01, 0.03, 1)
+shader_parameter/animation_speed = 1.1
+shader_parameter/glow_strength = 0.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_demon")

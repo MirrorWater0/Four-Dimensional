@@ -38,7 +38,7 @@ public partial class Character : Node2D
         set
         {
             _state = value;
-            RefreshBattleSpeedUi();
+            RefreshBattleActionPoinUi();
         }
     }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
@@ -529,7 +529,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -541,7 +541,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -553,7 +553,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in SkillBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -565,7 +565,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in AttackBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -577,7 +577,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -589,7 +589,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -601,7 +601,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{buff.ThisBuffName.GetDescription()} x{buff.Stack}\n");
+                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
                 var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
                 if (!string.IsNullOrWhiteSpace(effect))
                     sb.Append($"[color={colord}]{effect}[/color]\n");
@@ -739,13 +739,16 @@ public partial class Character : Node2D
     {
         bool isExtraAction = IsExtraActionPhase;
         OnActionEnd();
+        var battleNode = BattleNode;
+        if (battleNode == null || !GodotObject.IsInstanceValid(battleNode))
+            return;
         if (!isExtraAction)
             await ResolveTurnEndPhaseAsync();
 
         if (isExtraAction)
-            await BattleNode.EndEmitExtraActionS(this);
+            await battleNode.EndEmitExtraActionS(this);
         else
-            await BattleNode.EndEmitS(this);
+            await battleNode.EndEmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         TrailAnimation.Stop();
@@ -774,6 +777,7 @@ public partial class Character : Node2D
         Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
         HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
         AddChild(hitParticle);
+
         if (HurtBuffs != null)
         {
             // Hurt buffs can remove themselves from the list when triggered (Stack reaches 0).
@@ -804,6 +808,7 @@ public partial class Character : Node2D
         Tween tween = CreateTween();
         tween.TweenInterval(0.2f);
         tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
+
         if (Life == 0)
         {
             await Dying(source);
@@ -969,7 +974,7 @@ public partial class Character : Node2D
             case PropertyType.Speed:
                 Speed -= value;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
-                RefreshBattleSpeedUi();
+                RefreshBattleActionPoinUi();
                 break;
             case PropertyType.MaxLife:
                 BattleMaxLife -= value;
@@ -1024,7 +1029,7 @@ public partial class Character : Node2D
             case PropertyType.Speed:
                 Speed += appliedValue;
                 icon = SpeedIconLabel.GetParent() as ColorRect;
-                RefreshBattleSpeedUi();
+                RefreshBattleActionPoinUi();
                 break;
             case PropertyType.MaxLife:
                 BattleMaxLife += appliedValue;
@@ -1053,15 +1058,12 @@ public partial class Character : Node2D
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
-    private void RefreshBattleSpeedUi()
+    private void RefreshBattleActionPoinUi()
     {
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
-        if (IsPlayer)
-            BattleNode.PlayerSpeed = BattleNode.PlayerSpeed;
-        else
-            BattleNode.EnemySpeed = BattleNode.EnemySpeed;
+        BattleNode.RequestActionPoinUiRefresh(IsPlayer);
     }
 
     private void TryPlayIncreasePropertyEffect()

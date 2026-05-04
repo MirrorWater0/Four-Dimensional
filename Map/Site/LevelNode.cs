@@ -52,6 +52,8 @@ public partial class LevelNode : ColorRect
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public int RandomNum;
     private bool _isNodeHovered;
+    private bool _isButtonHovered;
+    private bool _isTypeLegendHighlighted;
     private string _lastHoverTipText;
 
     public override void _Ready()
@@ -70,13 +72,17 @@ public partial class LevelNode : ColorRect
         Ghost.PivotOffset = Ghost.Size / 2;
         Button.MouseEntered += () =>
         {
+            _isButtonHovered = true;
             Ghost.Modulate = new Color(1, 1, 1, 1);
             Ghost.Scale = new Vector2(1f, 1f);
             CreateTween().TweenProperty(this, "scale", new Vector2(1.2f, 1.2f), 0.2f);
         };
         Button.MouseExited += () =>
         {
+            _isButtonHovered = false;
             if (IsAnimate == true)
+                return;
+            if (_isTypeLegendHighlighted)
                 return;
             Ghost.Modulate = new Color(1, 1, 1, 0);
             CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
@@ -107,6 +113,42 @@ public partial class LevelNode : ColorRect
         _isNodeHovered = false;
         HideHoverTip();
         DisposeHoverTip();
+    }
+
+    public void SetTypeLegendHighlighted(bool highlighted)
+    {
+        _isTypeLegendHighlighted = highlighted;
+
+        if (IsAnimate)
+            return;
+
+        if (highlighted)
+        {
+            Ghost.Modulate = new Color(1f, 1f, 1f, 0.92f);
+            Ghost.Scale = new Vector2(1.1f, 1.1f);
+            Modulate = new Color(1.28f, 1.28f, 1.28f, 1f);
+            CreateTween()
+                .TweenProperty(this, "scale", new Vector2(1.1f, 1.1f), 0.16f)
+                .SetTrans(Tween.TransitionType.Back)
+                .SetEase(Tween.EaseType.Out);
+            return;
+        }
+
+        Modulate = Colors.White;
+        if (_isButtonHovered)
+        {
+            Ghost.Modulate = new Color(1, 1, 1, 1);
+            Ghost.Scale = Vector2.One;
+            CreateTween().TweenProperty(this, "scale", new Vector2(1.2f, 1.2f), 0.12f);
+            return;
+        }
+
+        Ghost.Modulate = new Color(1, 1, 1, 0);
+        Ghost.Scale = Vector2.One;
+        CreateTween()
+            .TweenProperty(this, "scale", Vector2.One, 0.16f)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
     }
 
     public List<EnemyRegedit> ProduceEnemies()
@@ -182,7 +224,10 @@ public partial class LevelNode : ColorRect
 
     public void Completed()
     {
-        if (Type != LevelType.Boss)
+        bool isBoss = Type == LevelType.Boss;
+        var levelProgress = GetParent().GetParent<LevelProgress>();
+
+        if (!isBoss)
         {
             foreach (var node in NextNodes)
             {
@@ -191,13 +236,23 @@ public partial class LevelNode : ColorRect
             }
         }
         ExplodeAnimation();
-        GetParent().GetParent<LevelProgress>().OnNodeSelected(this);
+        levelProgress?.OnNodeSelected(this);
         State = LevelState.Completed;
         GameInfo.FirstLevelState[SelfCoordinate] = LevelState.Completed;
         Button.Disabled = true;
         ApplyCompletedVisuals();
         GameInfo.CompleteLevelNodeTracking(this);
         UpdateHoverTipIfVisible();
+        levelProgress?.UnlockAllNodes();
+
+        if (isBoss)
+        {
+            if (levelProgress != null)
+                levelProgress.AdvanceToNextRegion();
+            else
+                SaveSystem.SaveAll();
+            return;
+        }
 
         SaveSystem.SaveAll();
     }
@@ -373,41 +428,34 @@ public partial class LevelNode : ColorRect
         Random random = new Random(RandomNum);
         var positions = Enumerable.Range(1, 9).ToList();
 
-        for (int i = positions.Count - 1; i > 0; i--)
+        foreach (var enemy in list)
         {
-            int k = random.Next(i + 1);
-            (positions[i], positions[k]) = (positions[k], positions[i]);
+            if (enemy == null || enemy.PositionIndex <= 0)
+                continue;
+
+            positions.Remove(enemy.PositionIndex);
         }
 
-        int posIndex = 0;
         foreach (var enemy in list)
         {
             if (enemy == null)
                 continue;
-            if (posIndex >= positions.Count)
+            if (enemy.PositionIndex > 0)
+                continue;
+            if (positions.Count == 0)
                 break;
-            enemy.PositionIndex = positions[posIndex++];
+
+            int posIndex = random.Next(positions.Count);
+            enemy.PositionIndex = positions[posIndex];
+            positions.RemoveAt(posIndex);
         }
     }
 
     public List<EnemyRegedit> GetNormalEnemies()
     {
         var rng = new Random(RandomNum);
-        EnemyRegedit[] weakEnemyRegedits =
-        [
-            new EvilRegedit(),
-            new FearWormRegedit(),
-            new ArmonRegedit(),
-            new AlienBodyRegedit(),
-            new TurbineRegedit(),
-        ];
-        EnemyRegedit[] strongEnemyRegedits =
-        [
-            new FerociouessRegedit(),
-            new BlackHawkRegedit(),
-            new InexorabilityRegedit(),
-            new RedHuskRegedit(),
-        ];
+        EnemyRegedit[] weakEnemyRegedits = BuildWeakEnemyCatalog();
+        EnemyRegedit[] strongEnemyRegedits = BuildStrongEnemyCatalog();
 
         List<EnemyRegedit> list = new()
         {
@@ -437,7 +485,10 @@ public partial class LevelNode : ColorRect
                 list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
             }
         }
-        RandomPosition(list, RandomNum);
+        if (GameInfo.IsRegionTwoUnlocked())
+            ApplyRegionTwoModifiers(list);
+        else
+            RandomPosition(list, RandomNum);
         // var list = new List<EnemyRegedit>
         // {
         //     new WarRegedit(){ PositionIndex = 5 },
@@ -447,17 +498,78 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> GetEliteEnemies()
     {
-        var rng = new Random(RandomNum);
         List<EnemyRegedit> list = new() { new ArroganceRegedit() };
         list[0].PositionIndex = 5;
+        if (GameInfo.IsRegionTwoUnlocked())
+            ApplyRegionTwoModifiers(list);
         return list;
     }
 
     public List<EnemyRegedit> GetBossEnemies()
     {
-        var rng = new Random(RandomNum);
         List<EnemyRegedit> list = new() { new WarRegedit() { PositionIndex = 5 } };
+        if (GameInfo.IsRegionTwoUnlocked())
+            ApplyRegionTwoModifiers(list);
         return list;
+    }
+
+    private void ApplyRegionTwoModifiers(List<EnemyRegedit> list)
+    {
+        if (list == null || list.Count == 0)
+            return;
+
+        list.Add(CreateRegionTwoWeakEnemy());
+
+        foreach (var enemy in list)
+            ApplyRegionTwoStatBonus(enemy);
+
+        RandomPosition(list, RandomNum);
+    }
+
+    private EnemyRegedit CreateRegionTwoWeakEnemy()
+    {
+        var weakEnemyRegedits = BuildWeakEnemyCatalog();
+        var rng = new Random(RandomNum ^ unchecked((int)0x5f3759df));
+        return weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit();
+    }
+
+    private static EnemyRegedit[] BuildWeakEnemyCatalog()
+    {
+        return
+        [
+            new EvilRegedit(),
+            new FearWormRegedit(),
+            new ArmonRegedit(),
+            new AlienBodyRegedit(),
+            new TurbineRegedit(),
+        ];
+    }
+
+    private static EnemyRegedit[] BuildStrongEnemyCatalog()
+    {
+        return
+        [
+            new FerociouessRegedit(),
+            new BlackHawkRegedit(),
+            new InexorabilityRegedit(),
+            new RedHuskRegedit(),
+        ];
+    }
+
+    private static void ApplyRegionTwoStatBonus(EnemyRegedit enemy)
+    {
+        if (enemy == null)
+            return;
+
+        enemy.MaxLife = ScaleDown(enemy.MaxLife, 1.2f);
+        enemy.Power = ScaleDown(enemy.Power, 1.1f);
+        enemy.Survivability = ScaleDown(enemy.Survivability, 1.1f);
+        enemy.Speed = ScaleDown(enemy.Speed, 1.1f);
+    }
+
+    private static int ScaleDown(int value, float multiplier)
+    {
+        return (int)MathF.Floor(value * multiplier);
     }
 
     private void UpdateHoverTipIfVisible()
@@ -608,14 +720,19 @@ public partial class LevelNode : ColorRect
             if (child == null || child.IsQueuedForDeletion())
                 continue;
 
-            if (child is CanvasItem canvasItem)
+            if (child is CanvasLayer canvasLayer)
             {
-                if (canvasItem.Visible)
+                if (canvasLayer.Visible)
                     return true;
                 continue;
             }
 
-            return true;
+            if (child is CanvasItem canvasItem)
+            {
+                if (canvasItem.IsVisibleInTree())
+                    return true;
+                continue;
+            }
         }
 
         return false;

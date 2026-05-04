@@ -12,20 +12,22 @@ public partial class ConsumeItem
         Block,
         PropertyIncrease,
         Damage,
+        Buff,
     }
 
     private readonly record struct ItemConfig(
         string Name,
         ItemEffectType EffectType,
         int Value,
-        PropertyType PropertyType = default
+        PropertyType PropertyType = default,
+        Buff.BuffName BuffName = default
     );
 
     private static readonly Dictionary<ItemID, ItemConfig> ItemConfigs = new()
     {
-        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 40),
-        [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 40),
-        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 3, PropertyType.Power),
+        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 35),
+        [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 60),
+        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 4, PropertyType.Power),
         [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
         [ItemID.Vitality] = new(
             "全息装甲",
@@ -33,7 +35,19 @@ public partial class ConsumeItem
             4,
             PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 35),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 40),
+        [ItemID.ElectromagneticInterference] = new(
+            "电磁干扰",
+            ItemEffectType.Buff,
+            10,
+            BuffName: Buff.BuffName.Weaken
+        ),
+        [ItemID.SpaceOscillation] = new(
+            "空间震荡",
+            ItemEffectType.Buff,
+            10,
+            BuffName: Buff.BuffName.Vulnerable
+        ),
     };
 
     public static PackedScene IconSence = GD.Load<PackedScene>(
@@ -126,6 +140,8 @@ public partial class ConsumeItem
             ItemEffectType.PropertyIncrease =>
                 $"{targetPrefix}，获得{config.Value}点{GetPropertyDisplayName(config.PropertyType)}。",
             ItemEffectType.Damage => $"{targetPrefix}，造成{config.Value}伤害。",
+            ItemEffectType.Buff =>
+                $"{targetPrefix}，给予{config.Value}层{Buff.GetBuffDisplayName(config.BuffName)}。",
             _ => string.Empty,
         };
     }
@@ -156,6 +172,10 @@ public partial class ConsumeItem
             ItemID.Haste => "res://shader/Icon/ComsumeItems/HasteItem.gdshader",
             ItemID.Vitality => "res://shader/Icon/ComsumeItems/VitalityItem.gdshader",
             ItemID.Explosion => "res://shader/Icon/ComsumeItems/ExplosionItem.gdshader",
+            ItemID.ElectromagneticInterference =>
+                "res://shader/Icon/ComsumeItems/ElectromagneticInterferenceItem.gdshader",
+            ItemID.SpaceOscillation =>
+                "res://shader/Icon/ComsumeItems/SpaceOscillationItem.gdshader",
             _ => null,
         };
     }
@@ -201,6 +221,22 @@ public partial class ConsumeItem
             case ItemEffectType.Damage:
                 await target.GetHurt(config.Value);
                 break;
+            case ItemEffectType.Buff:
+                ApplyBuffItemEffect(target, config);
+                break;
+        }
+    }
+
+    private static void ApplyBuffItemEffect(Character target, ItemConfig config)
+    {
+        switch (config.BuffName)
+        {
+            case Buff.BuffName.Weaken:
+                AttackBuff.BuffAdd(config.BuffName, target, config.Value);
+                break;
+            case Buff.BuffName.Vulnerable:
+                HurtBuff.BuffAdd(config.BuffName, target, config.Value);
+                break;
         }
     }
 }
@@ -214,4 +250,6 @@ public enum ItemID
     Haste,
     Vitality,
     Explosion,
+    ElectromagneticInterference,
+    SpaceOscillation,
 }

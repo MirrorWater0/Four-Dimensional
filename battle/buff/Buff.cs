@@ -30,6 +30,9 @@ public partial class Buff
     public static PackedScene HintScene = GD.Load<PackedScene>(
         "res://LabelNode/BuffHintLabel.tscn"
     );
+    public static PackedScene BuffGainParticleScene = GD.Load<PackedScene>(
+        "res://battle/Effect/BuffGainParticle.tscn"
+    );
     private static readonly Dictionary<BuffName, string> IconScenePaths = new()
     {
         [BuffName.RebirthI] = "res://battle/buff/StateIcon/Rebirth.tscn",
@@ -50,32 +53,53 @@ public partial class Buff
         [BuffName.Afterimage] = "res://battle/buff/StateIcon/Afterimage.tscn",
         [BuffName.Disaster] = "res://battle/buff/StateIcon/Disaster.tscn",
         [BuffName.Divinity] = "res://battle/buff/StateIcon/Divinity.tscn",
+        [BuffName.Echo] = "res://battle/buff/StateIcon/Echo.tscn",
+        [BuffName.Shadow] = "res://battle/buff/StateIcon/Shadow.tscn",
+        [BuffName.Demon] = "res://battle/buff/StateIcon/Demon.tscn",
+        [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
+        [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
     };
+
+    private static string GetBuffNameKey(BuffName name)
+    {
+        var field = typeof(BuffName).GetField(name.ToString());
+        return field?
+            .GetCustomAttributes(typeof(DescriptionAttribute), false)
+            .OfType<DescriptionAttribute>()
+            .FirstOrDefault()
+            ?.Description ?? name.ToString();
+    }
+
+    public static string GetBuffDisplayName(BuffName name) =>
+        TranslationServer.Translate(GetBuffNameKey(name));
 
     public static string GetBuffEffectText(BuffName name)
     {
-        if (name == BuffName.Afterimage)
-            return TranslationServer.Translate("回合开始时，格挡不会消失，减少1层。");
-
         string key = name switch
         {
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
-            BuffName.Thorn => "受到攻击时，对攻击者造成等同层数的伤害。",
+            BuffName.Thorn => "受到攻击时，对攻击者造成等同于层数的伤害。",
             BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
-            BuffName.Pursuit => "回合结束时：造成一次伤害。",
+            BuffName.Pursuit => "回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
-            BuffName.ExtraPower => "获得力量时，额外获得等同层数的力量。",
-            BuffName.ExtraSurvivability => "获得生存时，额外获得等同层数的生存。",
-            BuffName.ExtraTurn => "回合结束时消耗1层，触发1次额外出手（不触发回合开始/结束效果）。",
-            BuffName.AutoArmor => "受到攻击后，获得等同层数的格挡。",
+            BuffName.ExtraPower => "获得力量时，额外获得等同于层数的力量。",
+            BuffName.ExtraSurvivability => "获得生存时，额外获得等同于层数的生存。",
+            BuffName.ExtraTurn => "回合结束时消耗1层，触发1次额外出手(不触发回合开始/结束效果)。",
+            BuffName.AutoArmor => "受到攻击后，获得等同于层数的格挡。",
             BuffName.Barricade => "回合开始时，保留你的格挡。",
+            BuffName.Afterimage => "回合开始时，格挡不会消失，减少1层。",
             BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
-            BuffName.Disaster => "每过一轮，受到等同层数的伤害。",
+            BuffName.Disaster => "每过一轮，受到等同于层数的伤害，并消耗1层。",
             BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
+            BuffName.Shadow => "攻击时，获得等同于层数的力量。",
+            BuffName.Demon => "回合结束时，获得等同于层数的力量。",
+            BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
+            BuffName.Echo => "释放技能时，额外释放等同于层数的次数。",
+            BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
             _ => string.Empty,
         };
 
@@ -319,6 +343,21 @@ public partial class Buff
 
         [Description("神格")]
         Divinity,
+
+        [Description("暗影")]
+        Shadow,
+
+        [Description("恶魔")]
+        Demon,
+
+        [Description("虚无")]
+        Void,
+
+        [Description("回响")]
+        Echo,
+
+        [Description("圣域")]
+        Sanctuary,
     }
 
     public Character Owner;
@@ -356,6 +395,11 @@ public partial class Buff
             BuffName.Afterimage => Nature.positive,
             BuffName.Disaster => Nature.negative,
             BuffName.Divinity => Nature.positive,
+            BuffName.Echo => Nature.positive,
+            BuffName.Shadow => Nature.positive,
+            BuffName.Demon => Nature.positive,
+            BuffName.Void => Nature.positive,
+            BuffName.Sanctuary => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -462,7 +506,17 @@ public partial class Buff
         depIcon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         depIcon.Size = new Vector2(200, 200);
         GhostExplode(depIcon, new Vector2(2f, 2f), Owner, useOffsetMotion: false);
+        PlayBuffGainParticle();
         depIcon.Free();
+    }
+
+    private void PlayBuffGainParticle()
+    {
+        if (Owner == null || !GodotObject.IsInstanceValid(Owner) || BuffGainParticleScene == null)
+            return;
+
+        var particle = BuffGainParticleScene.Instantiate<Node2D>();
+        Owner.AddChild(particle);
     }
 
     public void Hint(BuffName name, BuffHintLabel.Which which)
@@ -476,7 +530,7 @@ public partial class Buff
             BuffHintLabel.Which.gain => "[color=yellow]获得[/color]",
             _ => string.Empty,
         };
-        BuffHintLabel.Spawn(Owner, $"{name.GetDescription()}{suffix}", Owner.GlobalPosition);
+        BuffHintLabel.Spawn(Owner, $"{GetBuffDisplayName(name)}{suffix}", Owner.GlobalPosition);
     }
 
     protected Label GetStackLabel() =>
@@ -537,6 +591,11 @@ public partial class Buff
         RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
     }
 
+    protected bool IsOwnerUnavailableForTrigger() =>
+        Owner == null
+        || !GodotObject.IsInstanceValid(Owner)
+        || Owner.State == Character.CharacterState.Dying;
+
     protected bool TryRemoveIfEmpty<TBuff>(List<TBuff> buffs, bool showVanishHint = true)
         where TBuff : Buff
     {
@@ -566,7 +625,10 @@ public class DyingBuff : Buff
 
     public Task Trigger()
     {
-        using var _ = Owner?.BeginEffectSource(ThisBuffName.GetDescription());
+        if (Owner == null || !GodotObject.IsInstanceValid(Owner))
+            return Task.CompletedTask;
+
+        using var _ = Owner?.BeginEffectSource(GetBuffDisplayName(ThisBuffName));
         switch (ThisBuffName)
         {
             case BuffName.RebirthI:
@@ -612,6 +674,9 @@ public partial class HurtBuff : Buff
         Character.DamageKind damageKind = Character.DamageKind.Other
     )
     {
+        if (IsOwnerUnavailableForTrigger())
+            return damage;
+
         switch (ThisBuffName)
         {
             case BuffName.DamageImmune:
@@ -642,7 +707,7 @@ public partial class HurtBuff : Buff
                     && Stack > 0
                 )
                 {
-                    using var _ = Owner.BeginEffectSource(ThisBuffName.GetDescription());
+                    using var _ = Owner.BeginEffectSource(GetBuffDisplayName(ThisBuffName));
                     await attacker.GetHurt(Stack, Owner, canTriggerThorn: false);
                 }
                 break;
@@ -697,7 +762,7 @@ public partial class StartActionBuff : Buff
 
     public void Trigger()
     {
-        if (Stack <= 0)
+        if (Stack <= 0 || IsOwnerUnavailableForTrigger())
             return;
 
         switch (ThisBuffName)
@@ -806,6 +871,9 @@ public partial class AttackBuff : Buff
 
     public void Trigger(ref TriggerContext context)
     {
+        if (IsOwnerUnavailableForTrigger())
+            return;
+
         int currentStack = GetCurrentStack(context.State);
         if (currentStack <= 0)
             return;
@@ -817,6 +885,12 @@ public partial class AttackBuff : Buff
                 if (context.ConsumeStack)
                 {
                     SetCurrentStack(ref context, currentStack - 1);
+                }
+                break;
+            case BuffName.Shadow:
+                if (context.State == null && Owner != null)
+                {
+                    _ = Owner.IncreaseProperties(PropertyType.Power, currentStack, Owner);
                 }
                 break;
         }
@@ -831,6 +905,9 @@ public partial class AttackBuff : Buff
 
     public static void Trigger(Character attacker, ref TriggerContext context)
     {
+        if (attacker == null || attacker.State == Character.CharacterState.Dying)
+            return;
+
         if (HasDivinity(attacker))
             context.Damage = Math.Max(context.Damage * 2, 0);
 
@@ -872,7 +949,7 @@ public partial class AttackBuff : Buff
         if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
             return;
 
-        if (target?.AttackBuffs == null || name != BuffName.Weaken)
+        if (target?.AttackBuffs == null || (name != BuffName.Weaken && name != BuffName.Shadow))
             return;
 
         var buff = new AttackBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -891,7 +968,7 @@ public partial class SkillBuff : Buff
 
     public async Task Trigger(Skill skill)
     {
-        if (Stack <= 0)
+        if (Stack <= 0 || IsOwnerUnavailableForTrigger())
             return;
 
         switch (ThisBuffName)
@@ -904,7 +981,7 @@ public partial class SkillBuff : Buff
                 {
                     BuffHintLabel.Spawn(
                         Owner,
-                        "[color=yellow]\u65e0\u6cd5\u884c\u52a8[/color]",
+                        "[color=yellow]无法行动[/color]",
                         Owner.GlobalPosition,
                         randomOffset: true
                     );
@@ -918,6 +995,9 @@ public partial class SkillBuff : Buff
                     effect.Animation.Play("stun");
                     await skill.OwnerCharater.ToSignal(effect.Animation, "animation_finished");
                 }
+                break;
+            case BuffName.Echo:
+                skill?.QueueExtraSkillExecutions(Stack);
                 break;
         }
 
@@ -936,7 +1016,7 @@ public partial class SkillBuff : Buff
         if (TryStackExisting(target.SkillBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Stun)
+        if (name != BuffName.Stun && name != BuffName.Echo)
             return;
 
         var buff = new SkillBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -953,31 +1033,39 @@ public partial class EndActionBuff : Buff
     public EndActionBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
+    public bool ConsumeOneStack(bool showVanishHint = true)
+    {
+        if (Stack <= 0)
+            return false;
+
+        Stack--;
+        UpdateStackLabel();
+        TweenLabel();
+        return TryRemoveIfEmpty(Owner.EndActionBuffs, showVanishHint);
+    }
+
     public async Task Trigger()
     {
-        if (Stack <= 0 || Owner == null)
+        if (Stack <= 0 || IsOwnerUnavailableForTrigger())
             return;
 
-        using var _ = Owner.BeginEffectSource(ThisBuffName.GetDescription());
+        using var _ = Owner.BeginEffectSource(GetBuffDisplayName(ThisBuffName));
 
         switch (ThisBuffName)
         {
             case BuffName.Pursuit:
-                Stack--;
-                UpdateStackLabel();
-
+                ConsumeOneStack();
                 var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = Owner };
                 await skill.Attack(Owner.BattlePower);
                 break;
             case BuffName.ExtraTurn:
-                Stack--;
-                UpdateStackLabel();
+                ConsumeOneStack();
                 Owner.BattleNode?.RequestExtraAction(Owner);
                 break;
+            case BuffName.Demon:
+                await Owner.IncreaseProperties(PropertyType.Power, Stack, Owner);
+                break;
         }
-
-        TweenLabel();
-        TryRemoveIfEmpty(Owner.EndActionBuffs);
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -988,7 +1076,14 @@ public partial class EndActionBuff : Buff
         if (TryStackExisting(target.EndActionBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Pursuit && name != BuffName.ExtraTurn && name != BuffName.Disaster)
+        if (
+            name != BuffName.Pursuit
+            && name != BuffName.ExtraTurn
+            && name != BuffName.Disaster
+            && name != BuffName.Demon
+            && name != BuffName.Void
+            && name != BuffName.Sanctuary
+        )
             return;
 
         var buff = new EndActionBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };

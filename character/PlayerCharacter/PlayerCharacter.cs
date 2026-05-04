@@ -79,6 +79,14 @@ public partial class PlayerCharacter : Character
     public override void OnActionStart()
     {
         base.OnActionStart();
+        if (
+            BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || BattleNode.MapNode == null
+            || !GodotObject.IsInstanceValid(BattleNode.MapNode)
+        )
+            return;
+
         for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
         {
             var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
@@ -92,10 +100,18 @@ public partial class PlayerCharacter : Character
 
     public override void OnActionEnd()
     {
+        if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
+        {
+            base.OnActionEnd();
+            return;
+        }
+
         SelfFrame.Selected.Visible = false;
         BattleNode.RetreatButton.Disabled = true;
         DisableSkill();
-        BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
+        var mapNode = BattleNode.MapNode;
+        if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
+            mapNode.PlayerResourceState?.SetItemsEnabled(false);
         base.OnActionEnd();
     }
 

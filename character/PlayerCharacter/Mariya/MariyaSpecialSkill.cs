@@ -34,7 +34,7 @@ public partial class RebirthPrayer : Skill
                     rebirth: true,
                     storeAs: SharedTargetKey
                 ),
-                BlockStep(StoredTarget(SharedTargetKey), baseBlock: 15),
+                BlockStep(StoredTarget(SharedTargetKey), baseBlock: 13),
                 ModifyPropertyStep(
                     type: PropertyType.MaxLife,
                     value: 10,
@@ -47,7 +47,7 @@ public partial class RebirthPrayer : Skill
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 30;
+    int basisDamage = 28;
     int allyHurt = 15;
     int DeMax = 15;
     int energyCost = 2;
@@ -174,6 +174,37 @@ public partial class Ragnarok : Skill
                     buffName: Buff.BuffName.Divinity,
                     stacks: DivinityStacks,
                     target: RelativeTarget(0)
+                )
+            )
+        );
+    }
+}
+
+public partial class SanctuaryForm : Skill
+{
+    private const int EnergyCost = 6;
+    private const int SanctuaryStacks = 1;
+
+    public SanctuaryForm()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "圣域形态";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Sanctuary,
+                    stacks: SanctuaryStacks,
+                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
                 )
             )
         );

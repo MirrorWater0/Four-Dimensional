@@ -4,6 +4,8 @@ using Godot;
 
 public partial class EquipmentInterface
 {
+    private const int EquipmentCardEffectPreviewLength = 24;
+
     private bool TryGetSelectedPlayerInfo(out PlayerInfoStructure info)
     {
         var players = GameInfo.PlayerCharacters;
@@ -164,7 +166,22 @@ public partial class EquipmentInterface
         if (string.IsNullOrWhiteSpace(effectText))
             return stats;
 
-        return $"{stats}\n{effectText}";
+        return $"{stats}\n{TruncateText(effectText, EquipmentCardEffectPreviewLength)}";
+    }
+
+    private static string TruncateText(string text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        string normalized = text.Replace("\\n", " ").Replace("\r\n", " ").Replace('\n', ' ').Trim();
+        if (normalized.Length <= maxLength)
+            return normalized;
+
+        if (maxLength <= 3)
+            return "...";
+
+        return $"{normalized[..(maxLength - 3)]}...";
     }
 
     private static string FormatSignedStat(int value)

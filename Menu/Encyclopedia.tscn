@@ -1,0 +1,280 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://Menu/Encyclopedia.cs" id="1_encyclopedia"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer_panel"]
+bg_color = Color(0.0352941, 0.0588235, 0.0901961, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.458824, 0.678431, 0.858824, 0.38)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.42)
+shadow_size = 28
+shadow_offset = Vector2(0, 12)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_panel"]
+bg_color = Color(0.0705882, 0.105882, 0.14902, 0.82)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.619608, 0.8, 0.94902, 0.18)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="Encyclopedia" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_encyclopedia")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0.0117647, 0.0196078, 0.0313726, 0.84)
+
+[node name="CenterPanel" type="PanelContainer" parent="."]
+offset_left = -760.0
+offset_top = -420.0
+offset_right = 760.0
+offset_bottom = 420.0
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+theme_override_styles/panel = SubResource("StyleBoxFlat_outer_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="TitleBox" type="VBoxContainer" parent="CenterPanel/Margin/Root/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ArchiveTag" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
+layout_mode = 2
+text = "ARCHIVE"
+theme_override_font_sizes/font_size = 18
+modulate = Color(0.58, 0.78, 0.94, 0.78)
+
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
+layout_mode = 2
+text = "百科"
+theme_override_font_sizes/font_size = 38
+modulate = Color(0.96, 0.99, 1, 1)
+
+[node name="CloseButton" type="Button" parent="CenterPanel/Margin/Root/Header"]
+custom_minimum_size = Vector2(110, 46)
+layout_mode = 2
+text = "关闭"
+clip_text = true
+
+[node name="Body" type="HBoxContainer" parent="CenterPanel/Margin/Root"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="ModulePanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body"]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="ModuleButtons" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="BuffButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buff"
+clip_text = true
+
+[node name="SkillsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "人物技能"
+clip_text = true
+
+[node name="RelicsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "遗物"
+clip_text = true
+
+[node name="ItemsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "道具"
+clip_text = true
+
+[node name="EnemiesButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "敌人"
+clip_text = true
+
+[node name="Content" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="SearchRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ModuleTitle" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+text = "Buff"
+theme_override_font_sizes/font_size = 26
+modulate = Color(0.92, 0.97, 1, 1)
+
+[node name="SearchBox" type="LineEdit" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "在当前模块内搜索名称、类型或描述"
+
+[node name="CountLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "0/0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 18
+modulate = Color(0.7, 0.82, 0.92, 0.82)
+
+[node name="CharacterFilterRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CharacterFilterLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+text = "人物"
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 20
+modulate = Color(0.76, 0.88, 0.98, 0.92)
+
+[node name="EchoButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Echo"
+clip_text = true
+
+[node name="KasiyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Kasiya"
+clip_text = true
+
+[node name="MariyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Mariya"
+clip_text = true
+
+[node name="NightingaleButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Nightingale"
+clip_text = true
+
+[node name="Split" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="ListPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split"]
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="ListScroll" type="ScrollContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ResultList" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel/Margin/ListScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="DetailPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="DetailLabel" type="RichTextLabel" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_active = true
+fit_content = false
+text = "请选择一个条目。"
+theme_override_font_sizes/normal_font_size = 19

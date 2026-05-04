@@ -62,9 +62,31 @@ public partial class Evil : EnemyCharacter
     }
 }
 
+public partial class EvilRegedit : EnemyRegedit
+{
+    public EvilRegedit()
+    {
+        CharacterName = "Evil";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Evil.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
+
+        MaxLife = 65;
+        Power = 13;
+        Survivability = 10;
+        Speed = 8;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
+
+        PassiveName = global::Evil.PassiveNameText;
+        PassiveDescription = global::Evil.PassiveBaseDescriptionText;
+    }
+}
+
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 4;
+    private const int HitDamage = 2;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -76,14 +98,18 @@ public partial class EvilAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackPrimaryStep(HitDamage, times: 2));
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(HitDamage, times: 2),
+            ModifyPropertyStep(PropertyType.Power, 1)
+        );
     }
 }
 
 public partial class EvilSurvive : Skill
 {
     private const int SurvivabilityGain = 3;
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     private const int DescendingNum = 3;
 
     public EvilSurvive()

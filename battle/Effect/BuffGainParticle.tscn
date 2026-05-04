@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://dtdx2hnar6rwv"]
+
+[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="1_texture"]
+[ext_resource type="Script" uid="uid://n7vv0vj5oovv" path="res://battle/Effect/BuffGainParticle.cs" id="2_script"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_hlx2d"]
+blend_mode = 1
+
+[sub_resource type="Curve" id="Curve_alpha"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.12, 1), 0.0, 0.0, 0, 0, Vector2(0.72, 0.42), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_alpha"]
+curve = SubResource("Curve_alpha")
+
+[sub_resource type="Gradient" id="Gradient_orbit"]
+offsets = PackedFloat32Array(0, 0.45, 1)
+colors = PackedColorArray(0.933333, 0.992157, 1, 0.96, 0.494118, 0.87451, 1, 0.88, 0.454902, 0.721569, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_orbit"]
+gradient = SubResource("Gradient_orbit")
+
+[sub_resource type="Curve" id="Curve_scale"]
+_data = [Vector2(0, 0.95), 0.0, 0.0, 0, 0, Vector2(0.35, 0.72), 0.0, 0.0, 0, 0, Vector2(1, 0.45), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_scale"]
+curve = SubResource("Curve_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_orbit"]
+lifetime_randomness = 0.5
+particle_flag_disable_z = true
+emission_shape = 6
+emission_ring_axis = Vector3(0, 0, 1)
+emission_ring_height = 833.33
+emission_ring_radius = 226.2
+emission_ring_inner_radius = 171.17
+emission_ring_cone_angle = 60.81
+direction = Vector3(0, -1, 0)
+spread = 0.0
+initial_velocity_min = 10.0
+initial_velocity_max = 18.0
+orbit_velocity_min = 1.6
+orbit_velocity_max = 2.4
+radial_velocity_min = -8.0
+radial_velocity_max = -2.0
+radial_accel_min = -6.0
+radial_accel_max = -2.0
+tangential_accel_min = 8.0
+tangential_accel_max = 14.0
+damping_min = 12.0
+damping_max = 18.0
+scale_min = 0.12
+scale_max = 0.22
+scale_curve = SubResource("CurveTexture_scale")
+color_ramp = SubResource("GradientTexture_orbit")
+alpha_curve = SubResource("CurveTexture_alpha")
+hue_variation_min = -0.02
+hue_variation_max = 0.03
+
+[node name="BuffGainParticle" type="Node2D" unique_id=1805963364]
+z_index = 1
+script = ExtResource("2_script")
+
+[node name="OrbitTrail" type="GPUParticles2D" parent="." unique_id=132930514]
+material = SubResource("CanvasItemMaterial_hlx2d")
+amount = 15
+texture = ExtResource("1_texture")
+lifetime = 0.7
+explosiveness = 0.88
+visibility_rect = Rect2(-96, -96, 192, 192)
+trail_enabled = true
+trail_lifetime = 0.22
+process_material = SubResource("ParticleProcessMaterial_orbit")

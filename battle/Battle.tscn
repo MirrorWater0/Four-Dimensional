@@ -563,46 +563,65 @@ offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
-[node name="SpeedBox" type="HBoxContainer" parent="." unique_id=209606245]
+[node name="ActionPoinBox" type="HBoxContainer" parent="." unique_id=209606245]
 offset_left = 563.0
 offset_top = 28.0
 offset_right = 1423.0
 offset_bottom = 39.0
 theme_override_constants/separation = 60
 
-[node name="PlayerSpeed" type="ProgressBar" parent="SpeedBox" unique_id=1651593436]
+[node name="PlayerActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1651593436]
 material = SubResource("ShaderMaterial_bim3i")
 custom_minimum_size = Vector2(400, 11)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
 
-[node name="Label" type="Label" parent="SpeedBox/PlayerSpeed" unique_id=803391610]
+[node name="Label" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=803391610]
 layout_direction = 3
 layout_mode = 0
-offset_left = 400.0
+offset_left = 408.0
 offset_top = -12.0
-offset_right = 451.0
+offset_right = 459.0
 offset_bottom = 23.0
 theme_override_font_sizes/font_size = 25
-text = "(0) "
+text = "100"
 script = ExtResource("11_d0b6a")
 
-[node name="EnemySpeed" type="ProgressBar" parent="SpeedBox" unique_id=1896319079]
+[node name="TotalLabel" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=861137895]
+layout_direction = 3
+layout_mode = 0
+offset_left = 453.0
+offset_top = -11.0
+offset_right = 517.0
+offset_bottom = 22.0
+theme_override_font_sizes/font_size = 22
+text = "(0)"
+
+[node name="EnemyActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1896319079]
 custom_minimum_size = Vector2(400, 11)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
 
-[node name="Label" type="Label" parent="SpeedBox/EnemySpeed" unique_id=1185441765]
+[node name="Label" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1185441765]
 layout_mode = 0
 offset_left = 415.0
 offset_top = -12.0
 offset_right = 459.0
 offset_bottom = 23.0
 theme_override_font_sizes/font_size = 25
-text = "(0)"
+text = "100"
 script = ExtResource("11_d0b6a")
+
+[node name="TotalLabel" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1032080647]
+layout_mode = 0
+offset_left = 462.0
+offset_top = -11.0
+offset_right = 526.0
+offset_bottom = 22.0
+theme_override_font_sizes/font_size = 22
+text = "(0)"
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
 z_index = 2

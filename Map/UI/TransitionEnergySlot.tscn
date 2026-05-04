@@ -7,20 +7,20 @@ content_margin_right = 4.0
 content_margin_bottom = 4.0
 bg_color = Color(0.050980393, 0.05882353, 0.07058824, 0)
 skew = Vector2(0.5, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
 border_color = Color(0.8983909, 0.89839107, 0.8983907, 1)
 anti_aliasing_size = 1.4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fill"]
 bg_color = Color(0.5310346, 0.76356995, 0.8728643, 0.9019608)
 skew = Vector2(0.5, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
 border_color = Color(0.9019608, 0.9411765, 0.98039216, 0)
 
 [sub_resource type="Theme" id="Theme_energy"]

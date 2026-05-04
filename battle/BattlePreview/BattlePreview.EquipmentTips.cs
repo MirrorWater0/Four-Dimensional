@@ -16,10 +16,10 @@ public partial class BattlePreview
         int speedBonus = SumEquipmentBonus(info, x => x.Speed);
 
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命：{info.LifeMax + lifeBonus}（{FormatPreviewBonus(lifeBonus)}）\n");
-        sb.Append($"力量：{info.Power + powerBonus}（{FormatPreviewBonus(powerBonus)}）\n");
-        sb.Append($"生存：{info.Survivability + surviveBonus}（{FormatPreviewBonus(surviveBonus)}）\n");
-        sb.Append($"速度：{info.Speed + speedBonus}（{FormatPreviewBonus(speedBonus)}）\n");
+        sb.Append($"生命：{info.LifeMax + lifeBonus}({FormatPreviewBonus(lifeBonus)})\n");
+        sb.Append($"力量：{info.Power + powerBonus}({FormatPreviewBonus(powerBonus)})\n");
+        sb.Append($"生存：{info.Survivability + surviveBonus}({FormatPreviewBonus(surviveBonus)})\n");
+        sb.Append($"速度：{info.Speed + speedBonus}({FormatPreviewBonus(speedBonus)})\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);

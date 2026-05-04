@@ -9,6 +9,13 @@ shader = ExtResource("2_f2bgc")
 shader_parameter/bg_color_top = Color(0.06, 0.08, 0.12, 1)
 shader_parameter/bg_color_bottom = Color(0.02, 0.02, 0.05, 1)
 shader_parameter/triangle_color = Color(0.2, 0.35, 0.6, 0.28)
+shader_parameter/triangle_size_near = 0.26
+shader_parameter/triangle_size_far = 0.1
+shader_parameter/triangle_flatten_min = 0.52
+shader_parameter/triangle_flatten_max = 1.18
+shader_parameter/triangle_drift = 0.14
+shader_parameter/triangle_perspective = 0.18
+shader_parameter/edge_softness = 0.006
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
 bg_color = Color(0.06, 0.08, 0.12, 0.95)
@@ -17,10 +24,6 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.56, 0.78, 0.96, 0.7)
-corner_radius_top_left = 16
-corner_radius_top_right = 16
-corner_radius_bottom_right = 16
-corner_radius_bottom_left = 16
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
 bg_color = Color(0.04, 0.06, 0.09, 0.7)
@@ -29,10 +32,6 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.3, 0.45, 0.6, 0.5)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
 bg_color = Color(0.1, 0.12, 0.16, 0.5)

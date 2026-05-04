@@ -134,7 +134,7 @@ bg_color = Color(1, 1, 1, 1)
 /styles/panel = SubResource("StyleBoxFlat_t64y5")
 Label/colors/font_color = Color(0.33809972, 0.3380997, 0.33809966, 1)
 Label/colors/font_outline_color = Color(0, 0, 0, 1)
-Label/constants/outline_size = 3
+Label/constants/outline_size = 1
 Label/styles/normal = SubResource("StyleBoxFlat_b3jsu")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bb6mt"]
@@ -199,6 +199,7 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 19
 bbcode_enabled = true
 text = "none"
+autowrap_mode = 1
 scroll_active = false
 
 [node name="TopAccent" type="ColorRect" parent="SubViewport" unique_id=128579300]

@@ -8,7 +8,7 @@ public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
     private const int EnergyGain = 1;
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     int times = 2;
 
     public SoundBarrier()
@@ -31,7 +31,7 @@ public partial class SoundBarrier : Skill
 public partial class SonicDeflection : Skill
 {
     private const int DamageImmuneStacks = 2;
-    private const int BaseBlock = 3;
+    private const int BaseBlock = 1;
 
     public SonicDeflection()
         : base(SkillTypes.Survive)
@@ -59,7 +59,7 @@ public partial class SonicDeflection : Skill
 public partial class TuningStance : Skill
 {
     private const int PowerGain = 5;
-    private const int BaseBlock = 12;
+    private const int BaseBlock = 10;
 
     public TuningStance()
         : base(SkillTypes.Survive)
@@ -82,7 +82,7 @@ public partial class TuningStance : Skill
 public partial class ResonantWard : Skill
 {
     private const int DebuffImmunityStacks = 2;
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 4;
     int PowerGain = 2;
 
     public ResonantWard()
@@ -110,7 +110,7 @@ public partial class ResonantWard : Skill
 
 public partial class DissonantField : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;
 
@@ -138,7 +138,7 @@ public partial class DissonantField : Skill
 
 public partial class RelayShift : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 5;
     int times = 3;
 
     public RelayShift()
@@ -157,11 +157,7 @@ public partial class RelayShift : Skill
             BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
             EnergyStep(1, RelativeTarget(-1)),
             EnergyStep(-1, RelativeTarget(0)),
-            EnergyTimesGateStep(
-                0,
-                times,
-                CarryStep(target: RelativeTarget(-1), skillIndex: 1)
-            )
+            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 1))
         );
     }
 }

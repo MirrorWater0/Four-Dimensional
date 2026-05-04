@@ -136,6 +136,7 @@ public partial class BattlePreview : Control
         if (_basePositions.Count == 0)
             CacheAssemblyBasePositions();
         await PlayAssembleAnimationAsync();
+        await BattlePreviewTutorialOverlay.ShowIfNeededAsync(this);
     }
 
     public async System.Threading.Tasks.Task PlayCloseAnimationAsync()
@@ -503,10 +504,10 @@ public partial class BattlePreview : Control
         int speedBonus = SumEquipmentBonus(info, x => x.Speed);
 
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命：{info.LifeMax + lifeBonus}（{FormatSigned(lifeBonus)}）\n");
-        sb.Append($"力量：{info.Power + powerBonus}（{FormatSigned(powerBonus)}）\n");
-        sb.Append($"生存：{info.Survivability + surviveBonus}（{FormatSigned(surviveBonus)}）\n");
-        sb.Append($"速度：{info.Speed + speedBonus}（{FormatSigned(speedBonus)}）\n");
+        sb.Append($"生命：{info.LifeMax + lifeBonus}({FormatSigned(lifeBonus)})\n");
+        sb.Append($"力量：{info.Power + powerBonus}({FormatSigned(powerBonus)})\n");
+        sb.Append($"生存：{info.Survivability + surviveBonus}({FormatSigned(surviveBonus)})\n");
+        sb.Append($"速度：{info.Speed + speedBonus}({FormatSigned(speedBonus)})\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
@@ -753,6 +754,13 @@ public partial class BattlePreview : Control
     {
         await PlayCloseAnimationAsync();
         QueueFree();
+        ReleaseMapNodeLock();
+    }
+
+    private void ReleaseMapNodeLock()
+    {
+        var levelProgress = WhichNode?.GetParent()?.GetParent<LevelProgress>();
+        levelProgress?.UnlockAllNodes();
     }
 
     public void ClearGrid()

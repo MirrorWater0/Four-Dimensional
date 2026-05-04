@@ -27,9 +27,31 @@ public partial class Arrogance : EnemyCharacter
     }
 }
 
+public partial class ArroganceRegedit : EnemyRegedit
+{
+    public ArroganceRegedit()
+    {
+        CharacterName = "Arrogance";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
+
+        MaxLife = 210;
+        Power = 24;
+        Survivability = 30;
+        Speed = 50;
+        SpecialIntentThreshold = 4;
+
+        SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
+
+        PassiveName = global::Arrogance.PassiveNameText;
+        PassiveDescription = global::Arrogance.PassiveDescriptionText;
+    }
+}
+
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 8;
     private const int MaxTargets = 2;
 
     public ArroganceAttack()
@@ -52,8 +74,8 @@ public partial class ArroganceAttack : Skill
 
 public partial class ArroganceSurvive : Skill
 {
-    private const int BaseBlock = 17;
-    private const int VulnerableStacks = 2;
+    private const int BaseBlock = 15;
+    private const int VulnerableStacks = 1;
 
     public ArroganceSurvive()
         : base(SkillTypes.Survive)
@@ -68,7 +90,8 @@ public partial class ArroganceSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, 5),
+            ModifyPropertyStep(PropertyType.Survivability, 4),
+            ModifyPropertyStep(PropertyType.Power, 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,

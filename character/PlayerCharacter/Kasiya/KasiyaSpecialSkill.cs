@@ -6,7 +6,7 @@ public partial class KasiyaSpecialSkill : Node { }
 
 public class TerminateLight : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 5;
     private int UsedTimes = 2;
     private const int EnergyCost = 2;
     private const int PowerGain = 5;
@@ -37,7 +37,7 @@ public class TerminateLight : Skill
 
 public class HolySeal : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 6;
     private const int StunStacks = 1;
     private const int EnergyCost = 2;
     public int times = 2;
@@ -104,7 +104,6 @@ public class AegisPledge : Skill
 public class VulnerabilityConversion : Skill
 {
     private const int EnergyCost = 2;
-    private const string TargetKey = "vulnerability_conversion_target";
 
     public VulnerabilityConversion()
         : base(SkillTypes.Special)
@@ -112,7 +111,7 @@ public class VulnerabilityConversion : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "易伤转化";
+    public override string SkillName { get; set; } = "万军取敌";
 
     private static int GetVulnerableStacks(Character target) =>
         target
@@ -121,21 +120,70 @@ public class VulnerabilityConversion : Skill
             )
             ?.Stack ?? 0;
 
+    private int GetTotalHostileVulnerableStacks()
+    {
+        return OwnerCharater
+                ?.BattleNode?.GetOrderedTeamCharacters(
+                    !OwnerCharater.IsPlayer,
+                    includeSummons: true,
+                    dyingFilter: true
+                )
+                ?.Sum(GetVulnerableStacks) ?? 0;
+    }
+
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 2, storeAs: TargetKey),
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 2),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: 1,
+                target: HostileTargets(1)
+            ),
             EnergyTimesGateStep(
                 EnergyCost,
                 null,
                 null,
                 ModifyPropertyStep(
                     PropertyType.Power,
-                    _ => GetVulnerableStacks(GetStoredTarget(TargetKey)),
+                    _ => GetTotalHostileVulnerableStacks(),
                     RelativeTarget(0)
                 ),
-                TextStep($"获得等同于目标{Buff.BuffName.Vulnerable.GetDescription()}层数的力量。")
+                TextStep(
+                    $"获得等同于敌方所有角色{Buff.BuffName.Vulnerable.GetDescription()}层数总和的力量。"
+                )
+            )
+        );
+    }
+}
+
+public class DemonForm : Skill
+{
+    private const int EnergyCost = 6;
+    private const int DemonStacks = 6;
+
+    public DemonForm()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "恶魔形态";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Demon,
+                    stacks: DemonStacks,
+                    target: RelativeTarget(0)
+                )
             )
         );
     }

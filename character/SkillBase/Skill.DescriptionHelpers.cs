@@ -110,7 +110,7 @@ public partial class Skill
             return basisText;
 
         int clamped = Math.Clamp(total, 0, clampMax);
-        return $"{basisText}（总计：{clamped}）";
+        return $"{basisText}(总计：{clamped})";
     }
 
     protected string WithBattleTotal(string basisText, string totalText)
@@ -118,7 +118,7 @@ public partial class Skill
         if (!IsInBattle)
             return basisText;
 
-        return $"{basisText}（总计：{totalText}）";
+        return $"{basisText}(总计：{totalText})";
     }
 
     protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>

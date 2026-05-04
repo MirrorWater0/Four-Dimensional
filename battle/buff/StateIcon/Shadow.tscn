@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://c1j2s0d0w1c0n" path="res://shader/Icon/BuffIcon/Shadow.gdshader" id="2_shadow"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_shadow"]
+shader = ExtResource("2_shadow")
+shader_parameter/shadow_color = Color(0.27, 0.07, 0.42, 1)
+shader_parameter/rim_color = Color(0.74, 0.55, 1, 1)
+shader_parameter/core_color = Color(0.04, 0.01, 0.08, 1)
+shader_parameter/animation_speed = 1.25
+shader_parameter/ring_radius = 0.27
+shader_parameter/ring_width = 0.038
+shader_parameter/crescent_offset = 0.12
+shader_parameter/swirl_strength = 1.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_shadow")

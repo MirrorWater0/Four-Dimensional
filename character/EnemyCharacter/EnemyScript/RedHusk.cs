@@ -26,9 +26,31 @@ public partial class RedHusk : EnemyCharacter
     }
 }
 
+public partial class RedHuskRegedit : EnemyRegedit
+{
+    public RedHuskRegedit()
+    {
+        CharacterName = "RedHusk";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
+
+        MaxLife = 80;
+        Power = 15;
+        Survivability = 15;
+        Speed = 8;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
+
+        PassiveName = global::RedHusk.PassiveNameText;
+        PassiveDescription = global::RedHusk.PassiveDescriptionText;
+    }
+}
+
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 18;
     private const int VulnerableStacks = 2;
 
     public RedHuskAttack()
@@ -56,7 +78,7 @@ public partial class RedHuskAttack : Skill
 
 public partial class RedHuskSurvive : Skill
 {
-    private const int BaseBlock = 3;
+    private const int BaseBlock = 1;
     private const int PowerDown = 3;
     private const int SurvivabilityDown = 3;
 

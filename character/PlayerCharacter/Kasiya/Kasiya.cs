@@ -47,3 +47,20 @@ public partial class Kasiya : PlayerCharacter
             await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
     }
 }
+
+public partial class PlayerCharacterRegistry
+{
+    public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
+    {
+        CharacterName = "Kasiya",
+        PassiveName = global::Kasiya.PassiveNameText,
+        PassiveDescription = global::Kasiya.PassiveDescriptionText,
+        LifeMax = 60,
+        Power = 12,
+        Survivability = 12,
+        Speed = 8,
+        CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+    };
+}

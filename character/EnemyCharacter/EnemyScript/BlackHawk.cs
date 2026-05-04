@@ -52,6 +52,28 @@ public partial class BlackHawk : EnemyCharacter
     }
 }
 
+public partial class BlackHawkRegedit : EnemyRegedit
+{
+    public BlackHawkRegedit()
+    {
+        CharacterName = "BlackHawk";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
+
+        MaxLife = 92;
+        Power = 11;
+        Survivability = 8;
+        Speed = 14;
+        SpecialIntentThreshold = 3;
+
+        SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
+
+        PassiveName = global::BlackHawk.PassiveNameText;
+        PassiveDescription = global::BlackHawk.PassiveDescriptionText;
+    }
+}
+
 public partial class BlackHawkAttack : Skill
 {
     private const int PowerMultiplier = 1;
@@ -98,11 +120,7 @@ public partial class BlackHawkSurvive : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(
-                HealAmount,
-                RelativeTarget(0),
-                descriptionOverride: $"自己治疗{HealAmount}点。"
-            ),
+            HealStep(HealAmount, RelativeTarget(0), descriptionOverride: $"治疗{HealAmount}点。"),
             HealStep(
                 HealAmount,
                 RelativeTarget(-1),
@@ -120,7 +138,7 @@ public partial class BlackHawkSpecial : Skill
     private const int VulnerableStacks = 6;
     private const int EnergyCost = 3;
     private const int MaxTargets = 2;
-
+    int rtimes = 3;
     public BlackHawkSpecial()
         : base(SkillTypes.Special)
     {
@@ -139,20 +157,17 @@ public partial class BlackHawkSpecial : Skill
                 energyCost: EnergyCost,
                 onPassSteps:
                 [
-                    AoeDamageStep(
-                        baseDamage: 0,
-                        powerMultiplier: 1,
-                        target: HostileTargets(MaxTargets)
-                    ),
-                    AoeDamageStep(
-                        baseDamage: 0,
-                        powerMultiplier: 1,
-                        target: HostileTargets(MaxTargets)
-                    ),
-                    AoeDamageStep(
-                        baseDamage: 0,
-                        powerMultiplier: 1,
-                        target: HostileTargets(MaxTargets)
+                    EnergyTimesWhileStep(
+                        energyCost: 0,
+                        times: () => rtimes,
+                        loopSteps:
+                        [
+                            AoeDamageStep(
+                                baseDamage: 0,
+                                powerMultiplier: 1,
+                                target: HostileTargets(MaxTargets)
+                            ),
+                        ]
                     ),
                 ]
             )

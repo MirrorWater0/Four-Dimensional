@@ -6,7 +6,7 @@ public partial class MariyaAttackSkill { }
 
 public partial class MendSlash : Skill
 {
-    private const int BaseDamage = 14;
+    private const int BaseDamage = 12;
     private const int BaseHeal = 10;
 
     public MendSlash()
@@ -35,7 +35,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 18;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -57,7 +57,7 @@ public partial class SwapSlash : Skill
 
 public partial class SiphonSlash : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 8;
     private const string AttackTargetKey = "siphon_target";
 
     public SiphonSlash()
@@ -90,7 +90,7 @@ public partial class SiphonSlash : Skill
 
 public partial class ShatterSlash : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 13;
     private const int RequiredHitCount = 5;
     private const int RebirthStacks = 1;
     private const int NextAllySelfDamage = 25;
@@ -129,6 +129,68 @@ public partial class ShatterSlash : Skill
                 )
             ),
             HurtFriendly(NextAllySelfDamage, index: 1)
+        );
+    }
+}
+
+public partial class ChargedBlade : Skill
+{
+    private const int BaseDamage = 14;
+    private const int MaxTargets = 2;
+    private const int SurvivabilityLoss = 3;
+    int times = 1;
+
+    public ChargedBlade()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "聚能之刃";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
+            EnergyTimesGateStep(
+                0,
+                () => times,
+                v => times = v,
+                AttackPrimaryStep(baseDamage: BaseDamage),
+                ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
+            )
+        );
+    }
+}
+
+public partial class CrescentWind : Skill
+{
+    private const int BaseDamage = 9;
+    private const int WeakenStacks = 2;
+
+    public CrescentWind()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "新月之风";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AoeDamageStep(
+                baseDamage: BaseDamage,
+                powerMultiplier: 1,
+                target: HostileTargetsEachRowFirst()
+            ),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Weaken,
+                stacks: WeakenStacks,
+                target: HostileTargetsEachRowFirst()
+            )
         );
     }
 }

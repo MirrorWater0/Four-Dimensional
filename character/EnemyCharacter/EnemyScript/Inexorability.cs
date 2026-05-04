@@ -80,9 +80,36 @@ public partial class Inexorability : EnemyCharacter
     }
 }
 
+public partial class InexorabilityRegedit : EnemyRegedit
+{
+    public InexorabilityRegedit()
+    {
+        CharacterName = "Inexorability";
+        PType = EnemyPositionType.BackRow;
+        PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
+
+        MaxLife = 110;
+        Power = 12;
+        Survivability = 12;
+        Speed = 11;
+        SpecialIntentThreshold = 4;
+
+        SkillIDs =
+        [
+            SkillID.InexorabilityAttack,
+            SkillID.InexorabilitySurvive,
+            SkillID.InexorabilitySpecial,
+        ];
+
+        PassiveName = global::Inexorability.PassiveNameText;
+        PassiveDescription = global::Inexorability.PassiveDescriptionText;
+    }
+}
+
 public partial class InexorabilityAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 18;
     private const int SelfEnergyGain = 2;
     private const int AdjacentEnergyLoss = 1;
 
@@ -108,7 +135,7 @@ public partial class InexorabilityAttack : Skill
 
 public partial class InexorabilitySurvive : Skill
 {
-    private const int BaseBlock = 18;
+    private const int BaseBlock = 16;
     private const int SurvivabilityDown = 3;
     private const int SelfEnergyGain = 1;
 
@@ -140,7 +167,7 @@ public partial class InexorabilitySpecial : Skill
 {
     private const int SelfPowerGain = 4;
     private const int EnergyCost = 4;
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 8;
     private const int PowerMultiplier = 2;
 
     public InexorabilitySpecial()
@@ -156,7 +183,7 @@ public partial class InexorabilitySpecial : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            BlockStep(0, 10),
+            BlockStep(0, 8),
             EnergyTimesGateStep(
                 energyCost: EnergyCost,
                 onPassSteps:

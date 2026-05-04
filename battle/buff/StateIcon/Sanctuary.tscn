@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/Sanctuary.gdshader" id="2_sanctuary"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sanctuary"]
+shader = ExtResource("2_sanctuary")
+shader_parameter/ring_color = Color(0.98, 0.82, 0.38, 1)
+shader_parameter/glow_color = Color(1, 0.97, 0.74, 1)
+shader_parameter/core_color = Color(0.29, 0.18, 0.04, 1)
+shader_parameter/animation_speed = 1
+shader_parameter/pulse_strength = 0.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_sanctuary")

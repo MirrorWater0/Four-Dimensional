@@ -8,7 +8,7 @@ public partial class KasiyaSurviveSkill { }
 public partial class ShockWave : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 0;
 
     public override string SkillName { get; set; } = "冲击波";
 
@@ -54,7 +54,7 @@ public partial class ReNewedSpirit : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: 12),
+            BlockStep(relativeIndex: 0, baseBlock: 10),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
@@ -85,7 +85,7 @@ public partial class AbsouluteDefense : Skill
 public partial class TauntingGuard : Skill
 {
     private const int TauntStacks = 2;
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 4;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
@@ -111,7 +111,7 @@ public partial class TauntingGuard : Skill
 
 public partial class WeakpointBulwark : Skill
 {
-    private const int BaseBlock = 15;
+    private const int BaseBlock = 13;
     private int _capturedVulnerableStacks;
 
     public override string SkillName { get; set; } = "蓄势待发";
@@ -178,7 +178,7 @@ public partial class BarrierDuplication : Skill
 
                     return Task.CompletedTask;
                 },
-                _ => new[] { "令自己的格挡翻倍。" }
+                _ => new[] { "格挡翻倍。" }
             )
         );
     }

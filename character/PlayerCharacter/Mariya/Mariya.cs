@@ -8,7 +8,7 @@ public partial class Mariya : PlayerCharacter
 
     public const string PassiveNameText = "治愈";
     public static string PassiveDescriptionText =>
-        $"自己回合结束时：回复最低生命队友{PassiveHealBase}点基础生命。";
+        $"回合结束时：回复最低生命队友{PassiveHealBase}点基础生命。";
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Mariya;
     public override string CharacterName { get; set; } = "Mariya";
@@ -47,4 +47,21 @@ public partial class Mariya : PlayerCharacter
 
         target.Recover(PassiveHealBase, source: this);
     }
+}
+
+public partial class PlayerCharacterRegistry
+{
+    public PlayerInfoStructure Mariya = new PlayerInfoStructure()
+    {
+        CharacterName = "Mariya",
+        PassiveName = global::Mariya.PassiveNameText,
+        PassiveDescription = global::Mariya.PassiveDescriptionText,
+        LifeMax = 45,
+        Power = 9,
+        Survivability = 10,
+        Speed = 9,
+        CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
+        PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+    };
 }

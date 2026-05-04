@@ -20,7 +20,7 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 5, powerMultiplier: 1),
+            AttackPrimaryStep(baseDamage: 3, powerMultiplier: 1),
             EnergyTimesWhileStep(
                 energyCost: CostPerCast,
                 loopSteps:
@@ -51,7 +51,7 @@ public class SonicBoom : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: 8, target: HostileTargets(0)),
+            AoeDamageStep(baseDamage: 6, target: HostileTargets(0)),
             EnergyTimesGateStep(
                 EnergyCost,
                 null,
@@ -64,7 +64,7 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 22;
+    int damage = 20;
     int PowerGain = -4;
     int EnergyCost = 1;
 
@@ -114,7 +114,7 @@ public class ReverbChain : Skill
                 energyCost: EnergyCost,
                 onPassSteps:
                 [
-                    TextStep("释放x次（x为本场战斗中除自己外的己方行动次数）。"),
+                    TextStep("释放x次(x为本场战斗中其他己方角色的行动次数)。"),
                     EnergyTimesWhileStep(
                         energyCost: 0,
                         times: GetLoopTimes,
@@ -127,4 +127,66 @@ public class ReverbChain : Skill
 
     private int GetLoopTimes() =>
         OwnerCharater?.BattleNode?.GetAlliedActionCountExcludingSelf(OwnerCharater) ?? 0;
+}
+
+public class VoidForm : Skill
+{
+    private const int EnergyCost = 6;
+    private const int VoidStacks = 2;
+
+    public VoidForm()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "虚无形态";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Void,
+                    stacks: VoidStacks,
+                    target: RelativeTarget(0)
+                )
+            )
+        );
+    }
+}
+
+public class EchoForm : Skill
+{
+    private const int EnergyCost = 6;
+    private const int EchoStacks = 1;
+
+    public EchoForm()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "回响形态";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            EnergyTimesGateStep(
+                EnergyCost,
+                null,
+                null,
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.Echo,
+                    stacks: EchoStacks,
+                    target: RelativeTarget(0)
+                )
+            )
+        );
+    }
 }

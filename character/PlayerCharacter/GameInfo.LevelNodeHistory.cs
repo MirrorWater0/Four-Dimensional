@@ -13,13 +13,17 @@ public sealed class LevelNodeCompletionRecord
     public LevelNode.LevelType NodeType;
     public int RandomNum;
     public List<string> EnemyNames = new();
+    public int EnemyDefeatCount;
     public int ElectricityCoinChange;
+    public int ElectricityCoinGained;
     public int TransitionEnergyChange;
     public List<string> SkillChanges = new();
     public List<string> GainedItems = new();
     public List<string> ConsumedItems = new();
     public List<string> EquipmentChanges = new();
+    public int EquipmentGainedCount;
     public List<string> RelicChanges = new();
+    public int RelicGainedCount;
     public List<LevelNodePropertyChangeRecord> PermanentPropertyChanges = new();
     public int NextBattleItemDropChance;
     public int NextBattleEquipmentDropChance;
@@ -34,6 +38,61 @@ public sealed class LevelNodePropertyChangeRecord
     public int SurvivabilityChange;
     public int SpeedChange;
     public int MaxLifeChange;
+}
+
+public sealed class RunHistoryRecord
+{
+    public int RunIndex;
+    public bool Victory;
+    public int Seed;
+    public long StartedAtUtcTicks;
+    public long EndedAtUtcTicks;
+    public long SessionPlaySeconds;
+    public int MapLevel;
+    public int NodesVisited;
+    public int EnemiesDefeated;
+    public int EliteDefeated;
+    public int BossDefeated;
+    public int ElectricityCoinGained;
+    public int EquipmentGained;
+    public int RelicGained;
+    public List<LevelNodeCompletionRecord> NodeRecords = new();
+    public List<RunHistoryRelicRecord> RelicRecords = new();
+    public List<RunHistoryEquipmentRecord> EquipmentRecords = new();
+    public List<RunHistoryCharacterSkillRecord> CharacterSkillRecords = new();
+}
+
+public sealed class RunHistoryRelicRecord
+{
+    public RelicID RelicID;
+    public string RelicName;
+    public int Count;
+}
+
+public sealed class RunHistoryEquipmentRecord
+{
+    public Equipment.EquipmentName EquipmentName;
+    public string DisplayName;
+    public string TypeLabel;
+    public int Power;
+    public int Survivability;
+    public int Speed;
+    public int MaxLife;
+    public string Description;
+    public int Count;
+}
+
+public sealed class RunHistorySkillTypeRecord
+{
+    public Skill.SkillTypes SkillType;
+    public List<string> SkillNames = new();
+    public List<SkillID> SkillIds = new();
+}
+
+public sealed class RunHistoryCharacterSkillRecord
+{
+    public string CharacterName;
+    public List<RunHistorySkillTypeRecord> SkillTypeRecords = new();
 }
 
 public static partial class GameInfo
@@ -96,12 +155,22 @@ public static partial class GameInfo
                     PlayerProperties,
                     GameInfo.PlayerCharacters
                 ),
+                EquipmentGainedCount = CountEquipmentGained(
+                    OwnedEquipmentNames,
+                    GameInfo.OwnedEquipments
+                ),
+                RelicGainedCount = CountRelicsGained(Relics, GameInfo.Relics),
                 NextBattleItemDropChance = GameInfo.BattleItemDropChance,
                 NextBattleEquipmentDropChance = GameInfo.BattleEquipmentDropChance,
             };
 
             if (record.EnemyNames.Count == 0 && EnemyNames.Count > 0)
                 record.EnemyNames = new List<string>(EnemyNames);
+
+            record.EnemyDefeatCount = IsBattleNode(record.NodeType)
+                ? record.EnemyNames?.Count ?? 0
+                : 0;
+            record.ElectricityCoinGained = Math.Max(0, record.ElectricityCoinChange);
 
             return record;
         }
@@ -124,6 +193,622 @@ public static partial class GameInfo
         CompletedLevelNodeRecords.Clear();
         CompletedLevelNodeRecordOrder = 0;
         _activeLevelNodeSnapshot = null;
+    }
+
+    public static RunHistoryRecord RecordCurrentRunHistory(bool victory, bool includeCurrentNode = true)
+    {
+        RunHistoryRecords ??= new List<RunHistoryRecord>();
+        if (RunFinished && RunHistoryRecords.Count > 0)
+            return RunHistoryRecords[^1];
+
+        var record = BuildCurrentRunHistoryRecord(victory, includeCurrentNode);
+        record.RunIndex = RunHistoryRecords.Count + 1;
+        RunHistoryRecords.Add(record);
+        RunFinished = true;
+        return record;
+    }
+
+    public static RunHistoryRecord GetLatestRunHistoryRecord()
+    {
+        RunHistoryRecords ??= new List<RunHistoryRecord>();
+        return RunHistoryRecords.Count > 0 ? RunHistoryRecords[^1] : null;
+    }
+
+    public static string BuildRunHistoryRecordText(RunHistoryRecord record)
+    {
+        if (record == null)
+            return "暂无本局结算记录。";
+
+        var sb = new StringBuilder(4096);
+        AppendRunNodeSection(sb, record);
+        AppendRunRelicSection(sb, record);
+        AppendRunEquipmentSection(sb, record);
+        AppendRunSkillSection(sb, record);
+        return sb.ToString();
+    }
+
+    public static string BuildRunHistoryStatisticsText(int recentLimit = 8)
+    {
+        RunHistoryRecords ??= new List<RunHistoryRecord>();
+        var records = RunHistoryRecords.Where(record => record != null).ToArray();
+        if (records.Length == 0)
+            return "暂无历史游戏记录。\n本局结束后会在这里留下结算。";
+
+        var sb = new StringBuilder(8192);
+        sb.Append(BuildRunHistoryRecordText(records[^1]));
+
+        sb.Append("\n\n[b]历史汇总[/b]");
+        sb.Append($"\n历史局数：{records.Length}");
+        sb.Append($"\n战败次数：{records.Count(record => !record.Victory)}");
+        sb.Append($"\n累计经历节点：{records.Sum(record => record.NodesVisited)}");
+        sb.Append($"\n累计击败敌人：{records.Sum(record => record.EnemiesDefeated)}");
+        sb.Append($"\n累计击败精英：{records.Sum(record => record.EliteDefeated)}");
+        sb.Append($"\n累计击败Boss：{records.Sum(record => record.BossDefeated)}");
+        sb.Append($"\n累计获得电力币：{records.Sum(record => record.ElectricityCoinGained)}");
+        sb.Append($"\n累计获得装备：{records.Sum(record => record.EquipmentGained)}");
+        sb.Append($"\n累计获得遗物：{records.Sum(record => record.RelicGained)}");
+        AppendHistoryNodeTotals(sb, records);
+        AppendHistorySkillTotals(sb, records);
+
+        if (records.Length > 1)
+        {
+            sb.Append("\n\n[b]历史记录[/b]");
+            foreach (var record in records.Reverse().Skip(1).Take(Math.Max(0, recentLimit - 1)))
+            {
+                sb.Append("\n");
+                sb.Append(BuildRunHistoryRecordBriefText(record));
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    private static RunHistoryRecord BuildCurrentRunHistoryRecord(
+        bool victory,
+        bool includeCurrentNode
+    )
+    {
+        long now = DateTime.UtcNow.Ticks;
+        var records =
+            CompletedLevelNodeRecords?.Values
+                .Where(record => record != null)
+                .OrderBy(record => record.CompletionOrder)
+                .ToArray()
+            ?? Array.Empty<LevelNodeCompletionRecord>();
+        var nodeRecords = BuildRunNodeRecords(records, includeCurrentNode);
+
+        return new RunHistoryRecord
+        {
+            Victory = victory,
+            Seed = Seed,
+            StartedAtUtcTicks = RunStartedAtUtcTicks == 0 ? now : RunStartedAtUtcTicks,
+            EndedAtUtcTicks = now,
+            SessionPlaySeconds = Math.Max(0, SessionPlaySeconds),
+            MapLevel = CurrentLevel,
+            NodesVisited = nodeRecords.Count,
+            EnemiesDefeated = records.Sum(record => record.EnemyDefeatCount),
+            EliteDefeated = records.Count(record => record.NodeType == LevelNode.LevelType.Elite),
+            BossDefeated = records.Count(record => record.NodeType == LevelNode.LevelType.Boss),
+            ElectricityCoinGained = records.Sum(record => record.ElectricityCoinGained),
+            EquipmentGained = records.Sum(record => record.EquipmentGainedCount),
+            RelicGained = records.Sum(record => record.RelicGainedCount),
+            NodeRecords = nodeRecords,
+            RelicRecords = BuildRunRelicRecords(GameInfo.Relics),
+            EquipmentRecords = BuildRunEquipmentRecords(
+                GameInfo.OwnedEquipments,
+                GameInfo.PlayerCharacters
+            ),
+            CharacterSkillRecords = BuildRunCharacterSkillRecords(GameInfo.PlayerCharacters),
+        };
+    }
+
+    private static List<LevelNodeCompletionRecord> BuildRunNodeRecords(
+        LevelNodeCompletionRecord[] completedRecords,
+        bool includeCurrentNode
+    )
+    {
+        var result = new List<LevelNodeCompletionRecord>();
+        if (completedRecords != null)
+        {
+            foreach (var record in completedRecords)
+            {
+                var clone = CloneLevelNodeCompletionRecord(record);
+                if (clone != null)
+                    result.Add(clone);
+            }
+        }
+
+        if (includeCurrentNode && _activeLevelNodeSnapshot != null)
+        {
+            var activeRecord = _activeLevelNodeSnapshot.BuildRecord(null);
+            activeRecord.CompletionOrder = result.Count + 1;
+            activeRecord.CompletedAtUtcTicks = DateTime.UtcNow.Ticks;
+            activeRecord.MapLevel = CurrentLevel;
+            activeRecord.Notes ??= new List<string>();
+            activeRecord.Notes.Add("本节点未完成。");
+            activeRecord.Summary = BuildLevelNodeSummary(activeRecord);
+            result.Add(activeRecord);
+        }
+
+        return result;
+    }
+
+    private static LevelNodeCompletionRecord CloneLevelNodeCompletionRecord(
+        LevelNodeCompletionRecord source
+    )
+    {
+        if (source == null)
+            return null;
+
+        return new LevelNodeCompletionRecord
+        {
+            CompletionOrder = source.CompletionOrder,
+            CompletedAtUtcTicks = source.CompletedAtUtcTicks,
+            MapLevel = source.MapLevel,
+            Coordinate = source.Coordinate,
+            NodeType = source.NodeType,
+            RandomNum = source.RandomNum,
+            EnemyNames = CopyStringList(source.EnemyNames),
+            EnemyDefeatCount = source.EnemyDefeatCount,
+            ElectricityCoinChange = source.ElectricityCoinChange,
+            ElectricityCoinGained = source.ElectricityCoinGained,
+            TransitionEnergyChange = source.TransitionEnergyChange,
+            SkillChanges = CopyStringList(source.SkillChanges),
+            GainedItems = CopyStringList(source.GainedItems),
+            ConsumedItems = CopyStringList(source.ConsumedItems),
+            EquipmentChanges = CopyStringList(source.EquipmentChanges),
+            EquipmentGainedCount = source.EquipmentGainedCount,
+            RelicChanges = CopyStringList(source.RelicChanges),
+            RelicGainedCount = source.RelicGainedCount,
+            PermanentPropertyChanges = ClonePropertyChangeRecords(source.PermanentPropertyChanges),
+            NextBattleItemDropChance = source.NextBattleItemDropChance,
+            NextBattleEquipmentDropChance = source.NextBattleEquipmentDropChance,
+            Notes = CopyStringList(source.Notes),
+            Summary = source.Summary,
+        };
+    }
+
+    private static List<string> CopyStringList(List<string> source) =>
+        source == null ? new List<string>() : new List<string>(source);
+
+    private static List<LevelNodePropertyChangeRecord> ClonePropertyChangeRecords(
+        List<LevelNodePropertyChangeRecord> source
+    )
+    {
+        var result = new List<LevelNodePropertyChangeRecord>();
+        if (source == null)
+            return result;
+
+        foreach (var change in source)
+        {
+            if (change == null)
+                continue;
+
+            result.Add(
+                new LevelNodePropertyChangeRecord
+                {
+                    CharacterName = change.CharacterName,
+                    PowerChange = change.PowerChange,
+                    SurvivabilityChange = change.SurvivabilityChange,
+                    SpeedChange = change.SpeedChange,
+                    MaxLifeChange = change.MaxLifeChange,
+                }
+            );
+        }
+
+        return result;
+    }
+
+    private static List<RunHistoryRelicRecord> BuildRunRelicRecords(
+        Dictionary<RelicID, int> relics
+    )
+    {
+        var result = new List<RunHistoryRelicRecord>();
+        if (relics == null || relics.Count == 0)
+            return result;
+
+        foreach (var pair in relics.OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal))
+        {
+            var relic = Relic.Create(pair.Key);
+            result.Add(
+                new RunHistoryRelicRecord
+                {
+                    RelicID = pair.Key,
+                    RelicName = relic == null || string.IsNullOrWhiteSpace(relic.RelicName)
+                        ? pair.Key.ToString()
+                        : relic.RelicName,
+                    Count = pair.Value,
+                }
+            );
+        }
+
+        return result;
+    }
+
+    private static List<RunHistoryEquipmentRecord> BuildRunEquipmentRecords(
+        List<Equipment> ownedEquipments,
+        PlayerInfoStructure[] players
+    )
+    {
+        var equipmentCounts = new Dictionary<Equipment.EquipmentName, (Equipment Equipment, int Count)>();
+        AddEquipmentRecords(equipmentCounts, ownedEquipments);
+
+        if (players != null)
+        {
+            foreach (var player in players)
+                AddEquipmentRecords(equipmentCounts, player.Equipments);
+        }
+
+        return equipmentCounts
+            .OrderBy(pair => GetEquipmentDisplayName(pair.Value.Equipment), StringComparer.Ordinal)
+            .Select(pair =>
+            {
+                var equipment = pair.Value.Equipment;
+                return new RunHistoryEquipmentRecord
+                {
+                    EquipmentName = pair.Key,
+                    DisplayName = GetEquipmentDisplayName(equipment),
+                    TypeLabel = equipment?.TypeLabel ?? string.Empty,
+                    Power = equipment?.Power ?? 0,
+                    Survivability = equipment?.Survivability ?? 0,
+                    Speed = equipment?.Speed ?? 0,
+                    MaxLife = equipment?.MaxLife ?? 0,
+                    Description = equipment?.Description ?? string.Empty,
+                    Count = pair.Value.Count,
+                };
+            })
+            .ToList();
+    }
+
+    private static void AddEquipmentRecords(
+        Dictionary<Equipment.EquipmentName, (Equipment Equipment, int Count)> equipmentCounts,
+        IEnumerable<Equipment> equipments
+    )
+    {
+        if (equipmentCounts == null || equipments == null)
+            return;
+
+        foreach (var equipment in equipments)
+        {
+            if (equipment == null)
+                continue;
+
+            if (!equipmentCounts.TryGetValue(equipment.Name, out var entry))
+            {
+                equipmentCounts[equipment.Name] = (Equipment.Clone(equipment), 1);
+                continue;
+            }
+
+            equipmentCounts[equipment.Name] = (entry.Equipment, entry.Count + 1);
+        }
+    }
+
+    private static List<RunHistoryCharacterSkillRecord> BuildRunCharacterSkillRecords(
+        PlayerInfoStructure[] players
+    )
+    {
+        var result = new List<RunHistoryCharacterSkillRecord>();
+        if (players == null || players.Length == 0)
+            return result;
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            var player = players[i];
+            var grouped = new Dictionary<Skill.SkillTypes, List<SkillID>>();
+            foreach (var skillId in (player.GainedSkills ?? new List<SkillID>()).Distinct())
+            {
+                var skill = Skill.GetSkill(skillId);
+                if (skill == null || skill.SkillType == Skill.SkillTypes.none)
+                    continue;
+
+                if (!grouped.TryGetValue(skill.SkillType, out var skillIds))
+                {
+                    skillIds = new List<SkillID>();
+                    grouped[skill.SkillType] = skillIds;
+                }
+
+                if (!skillIds.Contains(skillId))
+                    skillIds.Add(skillId);
+            }
+
+            var characterRecord = new RunHistoryCharacterSkillRecord
+            {
+                CharacterName = GetPlayerName(player, i),
+            };
+
+            foreach (var skillType in GetDisplaySkillTypes())
+            {
+                if (!grouped.TryGetValue(skillType, out var skillIds) || skillIds.Count == 0)
+                    continue;
+
+                characterRecord.SkillTypeRecords.Add(
+                    new RunHistorySkillTypeRecord
+                    {
+                        SkillType = skillType,
+                        SkillNames = skillIds.Select(GetSkillDisplayName).ToList(),
+                        SkillIds = new List<SkillID>(skillIds),
+                    }
+                );
+            }
+
+            result.Add(characterRecord);
+        }
+
+        return result;
+    }
+
+    private static Skill.SkillTypes[] GetDisplaySkillTypes() =>
+        [Skill.SkillTypes.Attack, Skill.SkillTypes.Survive, Skill.SkillTypes.Special];
+
+    private static void AppendRunNodeSection(StringBuilder sb, RunHistoryRecord record)
+    {
+        var nodes = record.NodeRecords ?? new List<LevelNodeCompletionRecord>();
+        string result = record.Victory ? "胜利" : "战败";
+
+        sb.Append("[b]节点路线[/b]");
+        sb.Append($"\n本局结果：{result}");
+        sb.Append($"\n游戏时长：{FormatRunDuration(record.SessionPlaySeconds)}");
+        sb.Append($"\n种子：{record.Seed}");
+        sb.Append($"\n经历节点：{record.NodesVisited}");
+        sb.Append(
+            $"\n击败：敌人 {record.EnemiesDefeated} / 精英 {record.EliteDefeated} / Boss {record.BossDefeated}"
+        );
+        sb.Append(
+            $"\n获得：电力币 {record.ElectricityCoinGained} / 装备 {record.EquipmentGained} / 遗物 {record.RelicGained}"
+        );
+
+        if (nodes.Count == 0)
+        {
+            sb.Append("\n节点记录：暂无详细记录。");
+            return;
+        }
+
+        sb.Append($"\n节点统计：{BuildNodeTypeSummary(nodes)}");
+        for (int i = 0; i < nodes.Count; i++)
+        {
+            var node = nodes[i];
+            string order = node.CompletionOrder > 0 ? node.CompletionOrder.ToString() : (i + 1).ToString();
+            sb.Append($"\n#{order} {GetLevelTypeLabel(node.NodeType)}");
+
+            string enemyText = BuildJoinedText(node.EnemyNames, "、");
+            if (!string.IsNullOrWhiteSpace(enemyText))
+                sb.Append($" - {enemyText}");
+
+            string nodeRecord = BuildCompactNodeRecordText(node);
+            if (!string.IsNullOrWhiteSpace(nodeRecord))
+                sb.Append($"\n    {nodeRecord}");
+        }
+    }
+
+    private static void AppendRunRelicSection(StringBuilder sb, RunHistoryRecord record)
+    {
+        var relics = record.RelicRecords ?? new List<RunHistoryRelicRecord>();
+        sb.Append("\n\n[b]遗物[/b]");
+        if (relics.Count == 0)
+        {
+            sb.Append("\n无遗物记录。");
+            return;
+        }
+
+        sb.Append($"\n总数：{CountRunRelics(relics)}");
+        sb.Append("\n");
+        sb.Append(
+            string.Join(
+                "  ",
+                relics.Select(relic =>
+                    relic.Count > 1 ? $"{relic.RelicName} x{relic.Count}" : relic.RelicName
+                )
+            )
+        );
+    }
+
+    private static void AppendRunEquipmentSection(StringBuilder sb, RunHistoryRecord record)
+    {
+        var equipments = record.EquipmentRecords ?? new List<RunHistoryEquipmentRecord>();
+        sb.Append("\n\n[b]装备[/b]");
+        if (equipments.Count == 0)
+        {
+            sb.Append("\n无装备记录。");
+            return;
+        }
+
+        sb.Append($"\n总数：{equipments.Sum(equipment => equipment.Count > 0 ? equipment.Count : 1)}");
+        sb.Append("\n");
+        sb.Append(
+            string.Join(
+                "  ",
+                equipments.Select(equipment =>
+                    equipment.Count > 1
+                        ? $"{equipment.DisplayName} x{equipment.Count}"
+                        : equipment.DisplayName
+                )
+            )
+        );
+    }
+
+    private static void AppendRunSkillSection(StringBuilder sb, RunHistoryRecord record)
+    {
+        var characters = record.CharacterSkillRecords ?? new List<RunHistoryCharacterSkillRecord>();
+        sb.Append("\n\n[b]角色技能[/b]");
+        if (characters.Count == 0)
+        {
+            sb.Append("\n无技能记录。");
+            return;
+        }
+
+        foreach (var character in characters)
+        {
+            if (character == null)
+                continue;
+
+            int skillCount = CountRunSkills(new List<RunHistoryCharacterSkillRecord> { character });
+            sb.Append($"\n{character.CharacterName}({skillCount})");
+            var typeRecords = character.SkillTypeRecords ?? new List<RunHistorySkillTypeRecord>();
+            if (typeRecords.Count == 0)
+            {
+                sb.Append("\n  暂无技能。");
+                continue;
+            }
+
+            foreach (var typeRecord in typeRecords)
+            {
+                if (typeRecord == null || typeRecord.SkillNames == null || typeRecord.SkillNames.Count == 0)
+                    continue;
+
+                sb.Append(
+                    $"\n  {GetSkillTypeLabel(typeRecord.SkillType)}({typeRecord.SkillNames.Count})：{string.Join("、", typeRecord.SkillNames)}"
+                );
+            }
+        }
+    }
+
+    private static void AppendHistoryNodeTotals(StringBuilder sb, RunHistoryRecord[] records)
+    {
+        var nodes = records
+            .SelectMany(record => record.NodeRecords ?? new List<LevelNodeCompletionRecord>())
+            .Where(node => node != null)
+            .ToList();
+        if (nodes.Count == 0)
+            return;
+
+        sb.Append($"\n累计节点记录：{nodes.Count}");
+        sb.Append($"\n累计节点类型：{BuildNodeTypeSummary(nodes)}");
+    }
+
+    private static void AppendHistorySkillTotals(StringBuilder sb, RunHistoryRecord[] records)
+    {
+        int skillCount = records.Sum(record => CountRunSkills(record.CharacterSkillRecords));
+        if (skillCount <= 0)
+            return;
+
+        sb.Append($"\n累计技能记录：{skillCount}");
+    }
+
+    private static string BuildRunHistoryRecordBriefText(RunHistoryRecord record)
+    {
+        if (record == null)
+            return string.Empty;
+
+        string index = record.RunIndex > 0 ? record.RunIndex.ToString() : "?";
+        string result = record.Victory ? "胜利" : "战败";
+        int relicCount = CountRunRelics(record.RelicRecords);
+        int skillCount = CountRunSkills(record.CharacterSkillRecords);
+        return $"#{index} {result}  节点 {record.NodesVisited}  遗物 {relicCount}  技能 {skillCount}  {FormatRunDuration(record.SessionPlaySeconds)}";
+    }
+
+    private static string BuildNodeTypeSummary(IEnumerable<LevelNodeCompletionRecord> nodes)
+    {
+        var nodeList = nodes?.Where(node => node != null).ToList() ?? new List<LevelNodeCompletionRecord>();
+        if (nodeList.Count == 0)
+            return "无";
+
+        LevelNode.LevelType[] order =
+        [
+            LevelNode.LevelType.Normal,
+            LevelNode.LevelType.Elite,
+            LevelNode.LevelType.Boss,
+            LevelNode.LevelType.Event,
+            LevelNode.LevelType.Shop,
+        ];
+
+        return string.Join(
+            " / ",
+            order.Select(type => $"{GetLevelTypeShortLabel(type)} {nodeList.Count(node => node.NodeType == type)}")
+        );
+    }
+
+    private static string BuildCompactNodeRecordText(LevelNodeCompletionRecord node)
+    {
+        if (node == null)
+            return string.Empty;
+
+        var parts = new List<string>();
+        if (node.ElectricityCoinChange != 0)
+            parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
+        if (node.TransitionEnergyChange != 0)
+            parts.Add($"跃迁能量 {FormatSigned(node.TransitionEnergyChange)}");
+
+        AddNodeRecordPart(parts, "技能", node.SkillChanges);
+        AddNodeRecordPart(parts, "物品", node.GainedItems);
+        AddNodeRecordPart(parts, "消耗", node.ConsumedItems);
+        AddNodeRecordPart(parts, "装备", node.EquipmentChanges);
+        AddNodeRecordPart(parts, "遗物", node.RelicChanges);
+
+        if (node.PermanentPropertyChanges != null && node.PermanentPropertyChanges.Count > 0)
+        {
+            var propertyLines = node
+                .PermanentPropertyChanges.Select(BuildPropertyChangeLine)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
+                .ToList();
+            AddNodeRecordPart(parts, "属性", propertyLines);
+        }
+
+        AddNodeRecordPart(parts, "备注", node.Notes);
+        return parts.Count == 0 ? "无额外记录" : string.Join("；", parts);
+    }
+
+    private static void AddNodeRecordPart(List<string> parts, string label, List<string> values)
+    {
+        if (parts == null || values == null || values.Count == 0)
+            return;
+
+        string text = BuildJoinedText(values, "、");
+        if (!string.IsNullOrWhiteSpace(text))
+            parts.Add($"{label}：{text}");
+    }
+
+    private static string BuildJoinedText(List<string> values, string separator)
+    {
+        if (values == null || values.Count == 0)
+            return string.Empty;
+
+        return string.Join(separator, values.Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private static int CountRunRelics(List<RunHistoryRelicRecord> relics)
+    {
+        if (relics == null || relics.Count == 0)
+            return 0;
+
+        return relics.Where(relic => relic != null).Sum(relic => relic.Count > 0 ? relic.Count : 1);
+    }
+
+    private static int CountRunSkills(List<RunHistoryCharacterSkillRecord> characters)
+    {
+        if (characters == null || characters.Count == 0)
+            return 0;
+
+        return characters
+            .Where(character => character != null)
+            .Sum(character =>
+                (character.SkillTypeRecords ?? new List<RunHistorySkillTypeRecord>())
+                    .Where(typeRecord => typeRecord != null)
+                    .Sum(typeRecord => typeRecord.SkillNames?.Count ?? 0)
+            );
+    }
+
+    private static string GetLevelTypeShortLabel(LevelNode.LevelType type)
+    {
+        return type switch
+        {
+            LevelNode.LevelType.Normal => "普通",
+            LevelNode.LevelType.Elite => "精英",
+            LevelNode.LevelType.Boss => "Boss",
+            LevelNode.LevelType.Event => "事件",
+            LevelNode.LevelType.Shop => "商店",
+            _ => "未知",
+        };
+    }
+
+    private static string GetSkillTypeLabel(Skill.SkillTypes type)
+    {
+        return type switch
+        {
+            Skill.SkillTypes.Attack => "攻击",
+            Skill.SkillTypes.Survive => "生存",
+            Skill.SkillTypes.Special => "特殊",
+            _ => "其它",
+        };
     }
 
     public static void BeginLevelNodeTracking(LevelNode node)
@@ -163,6 +848,14 @@ public static partial class GameInfo
 
         if (_activeLevelNodeSnapshot?.Coordinate == node.SelfCoordinate)
             _activeLevelNodeSnapshot = null;
+    }
+
+    public static bool IsRegionTwoUnlocked()
+    {
+        if (CurrentLevel > 0)
+            return true;
+
+        return CompletedLevelNodeRecords?.Values.Any(record => record?.NodeType == LevelNode.LevelType.Boss) == true;
     }
 
     public static string GetLevelNodeCompletionSummary(Vector2I coordinate)
@@ -288,7 +981,24 @@ public static partial class GameInfo
         };
     }
 
+    private static bool IsBattleNode(LevelNode.LevelType type) =>
+        type is LevelNode.LevelType.Normal or LevelNode.LevelType.Elite or LevelNode.LevelType.Boss;
+
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
+
+    private static string FormatRunDuration(long totalSeconds)
+    {
+        totalSeconds = Math.Max(0, totalSeconds);
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        if (hours > 0)
+            return $"{hours}小时{minutes}分{seconds}秒";
+        if (minutes > 0)
+            return $"{minutes}分{seconds}秒";
+        return $"{seconds}秒";
+    }
 
     private static List<string> CaptureEnemyNames(LevelNode node)
     {
@@ -437,6 +1147,16 @@ public static partial class GameInfo
         return BuildCountedChanges(after, before, value => value);
     }
 
+    private static int CountEquipmentGained(
+        List<string> beforeEquipmentNames,
+        List<Equipment> currentEquipments
+    )
+    {
+        var before = CountStrings(beforeEquipmentNames);
+        var after = CountStrings(CaptureOwnedEquipmentNames(currentEquipments));
+        return CountPositiveCountDifference(after, before);
+    }
+
     private static Dictionary<string, int> CountStrings(List<string> values)
     {
         var result = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -495,6 +1215,16 @@ public static partial class GameInfo
         return result;
     }
 
+    private static int CountRelicsGained(
+        Dictionary<RelicID, int> beforeRelics,
+        Dictionary<RelicID, int> afterRelics
+    )
+    {
+        beforeRelics ??= new Dictionary<RelicID, int>();
+        afterRelics ??= new Dictionary<RelicID, int>();
+        return CountPositiveCountDifference(afterRelics, beforeRelics);
+    }
+
     private static List<LevelNodePropertyChangeRecord> BuildPropertyChanges(
         PlayerPropertySnapshot[] before,
         PlayerInfoStructure[] currentPlayers
@@ -550,6 +1280,26 @@ public static partial class GameInfo
 
             string label = labelSelector(pair.Key);
             result.Add(diff > 1 ? $"{label} x{diff}" : label);
+        }
+
+        return result;
+    }
+
+    private static int CountPositiveCountDifference<T>(
+        Dictionary<T, int> larger,
+        Dictionary<T, int> smaller
+    )
+    {
+        int result = 0;
+        larger ??= new Dictionary<T, int>();
+        smaller ??= new Dictionary<T, int>();
+
+        foreach (var pair in larger)
+        {
+            smaller.TryGetValue(pair.Key, out int baseline);
+            int diff = pair.Value - baseline;
+            if (diff > 0)
+                result += diff;
         }
 
         return result;

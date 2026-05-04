@@ -462,6 +462,20 @@ public partial class Skill
         return steps.SelectMany(step => step?.PreviewTargets(skill) ?? Array.Empty<Character>());
     }
 
+    private static IEnumerable<PreviewDamageEntry> CollectPreviewDamage(
+        Skill skill,
+        IEnumerable<SkillStep> steps,
+        PreviewDamageContext context
+    )
+    {
+        if (steps == null)
+            return Array.Empty<PreviewDamageEntry>();
+
+        return steps.SelectMany(step =>
+            step?.PreviewDamage(skill, context) ?? Array.Empty<PreviewDamageEntry>()
+        );
+    }
+
     protected sealed class SkillPlan
     {
         private readonly Skill _skill;
@@ -1625,6 +1639,9 @@ public partial class Skill
             List<Task> tasks = new(targets.Length);
             for (int i = 0; i < targets.Length; i++)
             {
+                if (ShouldAbortStepExecution(skill))
+                    break;
+
                 tasks.Add(
                     skill.Attack(
                         damage,
@@ -1634,9 +1651,13 @@ public partial class Skill
                         delayAfterLastHit: true
                     )
                 );
+
+                if (i < targets.Length - 1)
+                    await skill.YieldBatchedCombatFrameAsync();
             }
 
-            await Task.WhenAll(tasks);
+            if (tasks.Count > 0)
+                await Task.WhenAll(tasks);
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -1808,7 +1829,7 @@ public partial class Skill
 
         private string PermanentTag()
         {
-            return _permanent ? "（永久）" : string.Empty;
+            return _permanent ? "(永久)" : string.Empty;
         }
     }
 
@@ -1886,14 +1907,19 @@ public partial class Skill
                 HurtBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Weaken:
+            case Buff.BuffName.Shadow:
                 AttackBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Stun:
+            case Buff.BuffName.Echo:
                 SkillBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Pursuit:
             case Buff.BuffName.ExtraTurn:
             case Buff.BuffName.Disaster:
+            case Buff.BuffName.Demon:
+            case Buff.BuffName.Void:
+            case Buff.BuffName.Sanctuary:
                 EndActionBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Invisible:
@@ -1935,27 +1961,33 @@ public partial class Skill
         };
     }
 
+    private static bool IsSelfFriendlyTarget(TargetReference target) =>
+        target.Kind == TargetReferenceKind.Relative && target.RelativeIndex == 0;
+
+    private static bool IsImplicitSelfFriendlyTarget(TargetReference target) =>
+        target.Kind == TargetReferenceKind.DefaultRule || IsSelfFriendlyTarget(target);
+
+    private static string FriendlyTargetTextForDescription(TargetReference target) =>
+        IsSelfFriendlyTarget(target) ? "当前角色" : FriendlyTargetText(target);
+
+    private static string RelativeFriendlyTargetTextForDescription(int index)
+    {
+        return index switch
+        {
+            0 => "当前角色",
+            -1 => "上一位队友",
+            1 => "下一位队友",
+            > 1 => $"下{index}位队友",
+            _ => $"上{-index}位队友",
+        };
+    }
+
     private static Character[] GetAllHostileWithOrder(Skill skill, bool dyingFilter)
     {
         if (skill?.OwnerCharater?.BattleNode == null)
             return Array.Empty<Character>();
 
-        Character[] ordered = skill.OwnerCharater.BattleNode.GetOrderedTeamCharacters(
-            !skill.OwnerCharater.IsPlayer,
-            includeSummons: true,
-            dyingFilter: dyingFilter
-        );
-
-        Character[] visible = ordered
-            .Where(x =>
-                x != null
-                && x.StartActionBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Invisible) == false
-            )
-            .ToArray();
-
-        // Match hostile targeting rules: if any non-invisible targets exist, full-team hostile buffs
-        // should not include invisible ones. If everyone is invisible, still allow targeting all.
-        return visible.Length > 0 ? visible : ordered;
+        return skill.GetHostileTargetsInTeamOrder(dyingFilter, returnDummyWhenEmpty: false);
     }
 
     private static async Task ApplyPropertyDelta(
@@ -2393,10 +2425,13 @@ public partial class Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            string targetText = FriendlyTargetText(_target);
+            string targetText = FriendlyTargetTextForDescription(_target);
             int stacks = ResolveStepBaseValue(skill, _stacks, _stacksProvider);
             string stacksText = BuffStacksText(_buffName, stacks);
-            yield return $"使{targetText}获得{stacksText}。";
+            if (IsSelfFriendlyTarget(_target))
+                yield return $"获得{stacksText}。";
+            else
+                yield return $"使{targetText}获得{stacksText}。";
         }
     }
 
@@ -2430,10 +2465,17 @@ public partial class Skill
                 List<Task> tasks = new(allies.Length);
                 for (int i = 0; i < allies.Length; i++)
                 {
+                    if (ShouldAbortStepExecution(skill))
+                        break;
+
                     tasks.Add(allies[i].GetHurt(_damage, skill?.OwnerCharater));
+
+                    if (i < allies.Length - 1)
+                        await skill.YieldBatchedCombatFrameAsync();
                 }
 
-                await Task.WhenAll(tasks);
+                if (tasks.Count > 0)
+                    await Task.WhenAll(tasks);
                 return;
             }
 
@@ -2453,7 +2495,7 @@ public partial class Skill
                 yield break;
             }
 
-            string targetText = RelativeFriendlyTargetText(_index);
+            string targetText = RelativeFriendlyTargetTextForDescription(_index);
             yield return $"对{targetText}造成{_damage}点伤害。";
         }
 
@@ -2590,7 +2632,7 @@ public partial class Skill
                 yield break;
             }
 
-            string targetText = FriendlyTargetText(_target);
+            string targetText = FriendlyTargetTextForDescription(_target);
             int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealProvider);
             string healText = FriendlyHealAmountText(
                 skill,
@@ -2600,6 +2642,15 @@ public partial class Skill
 
             if (_rebirth)
             {
+                if (IsImplicitSelfFriendlyTarget(_target))
+                {
+                    string selfRebirthLine = $"复生{healText}点生命。";
+                    if (_repeatCount > 1)
+                        selfRebirthLine += $"(重复{_repeatCount}次)";
+                    yield return selfRebirthLine;
+                    yield break;
+                }
+
                 string rebirthTargetText = _preferNonFull
                     ? "濒死或非满血己方角色"
                     : "濒死己方角色";
@@ -2623,25 +2674,27 @@ public partial class Skill
                     && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
                     && _rebirth;
                 if (showDyingPriorityNote)
-                    rebirthLine += "（优先濒死目标）";
+                    rebirthLine += "(优先濒死目标)";
                 if (_repeatCount > 1)
-                    rebirthLine += $"（重复{_repeatCount}次）";
+                    rebirthLine += $"(重复{_repeatCount}次)";
                 yield return rebirthLine;
                 yield break;
             }
 
-            string normalLine = $"使{targetText}回复{healText}点生命。";
+            string normalLine = IsImplicitSelfFriendlyTarget(_target)
+                ? $"回复{healText}点生命。"
+                : $"使{targetText}回复{healText}点生命。";
             string priorityText =
                 _target.Kind == TargetReferenceKind.Absolute
                 && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
                     ? AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth)
                     : null;
             if (!string.IsNullOrWhiteSpace(priorityText))
-                normalLine += $"（{priorityText}）";
+                normalLine += $"({priorityText})";
             if (_rebirth && string.IsNullOrWhiteSpace(priorityText))
-                normalLine += "（可对濒死目标生效）";
+                normalLine += "(可对濒死目标生效)";
             if (_repeatCount > 1)
-                normalLine += $"（重复{_repeatCount}次）";
+                normalLine += $"(重复{_repeatCount}次)";
             yield return normalLine;
         }
     }
@@ -2697,9 +2750,12 @@ public partial class Skill
             if (value == 0)
                 yield break;
 
-            string targetText = FriendlyTargetText(_target);
+            string targetText = FriendlyTargetTextForDescription(_target);
             string deltaText = PropertyDeltaActionText(_type, value);
-            yield return $"使{targetText}{deltaText}。";
+            if (IsSelfFriendlyTarget(_target))
+                yield return $"{deltaText}。";
+            else
+                yield return $"使{targetText}{deltaText}。";
         }
     }
 
@@ -2916,23 +2972,18 @@ public partial class Skill
 
             if (_target.Kind != TargetReferenceKind.Relative)
             {
-                string directTargetText = FriendlyTargetText(_target);
-                yield return $"\u4EE4{directTargetText}\u83B7\u5F97{blockText}\u70B9\u683C\u6321\u3002";
-                yield break;
-#pragma warning disable CS0162
-                yield return $"ä»¤{directTargetText}èŽ·å¾—{blockText}ç‚¹æ ¼æŒ¡ã€‚";
+                string directTargetText = FriendlyTargetTextForDescription(_target);
+                if (IsSelfFriendlyTarget(_target))
+                    yield return $"获得{blockText}点格挡。";
+                else
+                    yield return $"令{directTargetText}获得{blockText}点格挡。";
                 yield break;
             }
-#pragma warning restore CS0162
-            string targetText = _relativeIndex switch
-            {
-                0 => "自己",
-                -1 => "前一位队友",
-                1 => "后一位队友",
-                > 1 => $"后{_relativeIndex}位队友",
-                _ => $"前{-_relativeIndex}位队友",
-            };
-            yield return $"令{targetText}获得{blockText}点格挡。";
+            string targetText = RelativeFriendlyTargetTextForDescription(_relativeIndex);
+            if (_relativeIndex == 0)
+                yield return $"获得{blockText}点格挡。";
+            else
+                yield return $"令{targetText}获得{blockText}点格挡。";
         }
     }
 
@@ -3003,14 +3054,7 @@ public partial class Skill
                 yield break;
             }
 
-            string relativeText = _relativeIndex switch
-            {
-                0 => "自己",
-                1 => "下一位",
-                -1 => "上一位",
-                > 1 => $"下{_relativeIndex}位",
-                _ => $"上{-_relativeIndex}位",
-            };
+            string relativeText = RelativeFriendlyTargetTextForDescription(_relativeIndex);
             string skillText = _skillIndex switch
             {
                 0 => "攻击技能",
@@ -3018,7 +3062,7 @@ public partial class Skill
                 2 => "特殊技能",
                 _ => $"第{_skillIndex + 1}个技能",
             };
-            yield return $"连携{relativeText}角色使用{skillText}。";
+            yield return $"连携{relativeText}使用{skillText}。";
         }
     }
 
@@ -3066,22 +3110,8 @@ public partial class Skill
                 yield break;
             }
 
-            string firstText = _relativeIndexA switch
-            {
-                0 => "自己",
-                1 => "下一位",
-                -1 => "上一位",
-                > 1 => $"下{_relativeIndexA}位",
-                _ => $"上{-_relativeIndexA}位",
-            };
-            string secondText = _relativeIndexB switch
-            {
-                0 => "自己",
-                1 => "下一位",
-                -1 => "上一位",
-                > 1 => $"下{_relativeIndexB}位",
-                _ => $"上{-_relativeIndexB}位",
-            };
+            string firstText = RelativeFriendlyTargetTextForDescription(_relativeIndexA);
+            string secondText = RelativeFriendlyTargetTextForDescription(_relativeIndexB);
             yield return $"交换{firstText}与{secondText}的位置。";
         }
     }
@@ -3157,8 +3187,11 @@ public partial class Skill
             string energyText = delta > 0 ? $"获得{delta}点能量" : $"失去{-delta}点能量";
             if (_useFriendlyTarget)
             {
-                string targetText = FriendlyTargetText(_target);
-                yield return $"使{targetText}{energyText}。";
+                string targetText = FriendlyTargetTextForDescription(_target);
+                if (IsSelfFriendlyTarget(_target))
+                    yield return delta > 0 ? $"获得{delta}点能量。" : $"失去{-delta}点能量。";
+                else
+                    yield return $"使{targetText}{energyText}。";
                 yield break;
             }
 
@@ -3210,14 +3243,25 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             bool hasTimes = _times != null;
+            bool consumesTimes = hasTimes && _setTimes != null;
             int currentTimes = hasTimes ? Math.Max(0, _times?.Invoke() ?? 0) : 0;
 
             if (hasTimes)
             {
-                if (_energyCost > 0)
-                    yield return $"消耗{_energyCost}点能量并次数-1（当前次数：{currentTimes}）：";
+                if (consumesTimes)
+                {
+                    if (_energyCost > 0)
+                        yield return $"消耗{_energyCost}点能量并次数-1(当前次数：{currentTimes})：";
+                    else
+                        yield return $"次数-1(当前次数：{currentTimes})：";
+                }
                 else
-                    yield return $"次数-1（当前次数：{currentTimes}）：";
+                {
+                    if (_energyCost > 0)
+                        yield return $"消耗{_energyCost}点能量(当前次数：{currentTimes})：";
+                    else
+                        yield return $"当前次数：{currentTimes}：";
+                }
             }
             else if (_energyCost > 0)
                 yield return $"消耗{_energyCost}点能量：";
@@ -3237,6 +3281,17 @@ public partial class Skill
                 return Array.Empty<Character>();
 
             return CollectPreviewTargets(skill, _onPassSteps);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+                return Array.Empty<PreviewDamageEntry>();
+
+            return CollectPreviewDamage(skill, _onPassSteps, context);
         }
     }
 
@@ -3317,6 +3372,7 @@ public partial class Skill
         public override IEnumerable<string> Describe(Skill skill)
         {
             bool hasTimes = _times != null;
+            bool consumesTimes = hasTimes && _setTimes != null;
             int currentTimes = hasTimes ? Math.Max(0, _times?.Invoke() ?? 0) : 0;
             if (_energyCost <= 0 && !hasTimes)
             {
@@ -3326,10 +3382,20 @@ public partial class Skill
 
             if (hasTimes)
             {
-                if (_energyCost > 0)
-                    yield return $"循环每轮消耗{_energyCost}点能量并次数{-1}（当前次数：{currentTimes}）：";
+                if (consumesTimes)
+                {
+                    if (_energyCost > 0)
+                        yield return $"循环每轮消耗{_energyCost}点能量并次数-1(当前次数：{currentTimes})：";
+                    else
+                        yield return $"循环每轮次数-1(当前次数：{currentTimes})。";
+                }
                 else
-                    yield return $"循环每轮次数{-1}（当前次数：{currentTimes}）。";
+                {
+                    if (_energyCost > 0)
+                        yield return $"循环每轮消耗{_energyCost}点能量(当前次数：{currentTimes})：";
+                    else
+                        yield return $"循环当前次数：{currentTimes}。";
+                }
             }
             else
             {
@@ -3352,6 +3418,17 @@ public partial class Skill
                 return Array.Empty<Character>();
 
             return CollectPreviewTargets(skill, _loopSteps);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+                return Array.Empty<PreviewDamageEntry>();
+
+            return CollectPreviewDamage(skill, _loopSteps, context);
         }
     }
 
@@ -3441,7 +3518,11 @@ public partial class Skill
             if (ShouldAbortStepExecution(skill))
                 return;
 
-            await target.GetHurt(clamped, skill?.OwnerCharater);
+            await target.GetHurt(
+                clamped,
+                skill?.OwnerCharater,
+                damageKind: Character.DamageKind.Attack
+            );
 
             if (ShouldAbortStepExecution(skill))
                 return;
@@ -3513,6 +3594,17 @@ public partial class Skill
                 return Array.Empty<Character>();
 
             return CollectPreviewTargets(skill, _onPassSteps);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            if (_condition?.Invoke() != true)
+                return Array.Empty<PreviewDamageEntry>();
+
+            return CollectPreviewDamage(skill, _onPassSteps, context);
         }
     }
 
@@ -3590,6 +3682,15 @@ public partial class Skill
         {
             SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
             return CollectPreviewTargets(skill, activeSteps);
+        }
+
+        public override IEnumerable<PreviewDamageEntry> PreviewDamage(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
+            return CollectPreviewDamage(skill, activeSteps, context);
         }
     }
 

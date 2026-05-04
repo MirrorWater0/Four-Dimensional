@@ -5,6 +5,21 @@ using Godot;
 
 public partial class StartInterface : CanvasLayer
 {
+    private const string AutosavePath = "user://autosave.cfg";
+    private const float MenuButtonHoverTextOffset = 20f;
+    private const float MenuButtonHoverDuration = 0.12f;
+
+    private sealed class MenuButtonVisuals
+    {
+        public StyleBoxFlat Normal;
+        public StyleBoxFlat Hover;
+        public StyleBoxFlat Pressed;
+        public StyleBoxFlat Focus;
+        public StyleBoxFlat Disabled;
+        public float BaseLeftMargin;
+        public Tween Tween;
+    }
+
     public static PackedScene TipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
     public static PackedScene _Echo = (PackedScene)
         ResourceLoader.Load("res://character/PlayerCharacter/Echo/Echo.tscn");
@@ -17,9 +32,29 @@ public partial class StartInterface : CanvasLayer
     public static PackedScene _Nightingale = ResourceLoader.Load<PackedScene>(
         "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
     );
+    private Button StartGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button");
+    private Button ContinueGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button2");
+    private Button StatisticsButton =>
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/StatisticsButton");
+    private Button ExitGameButton => field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button3");
+    private Label StatusLine =>
+        field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/StatusLine");
+    private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
 
     public override void _Ready()
     {
+        GetTree().Root.GetNodeOrNull<GameOverSummary>("GameOverSummary")?.QueueFree();
+
+        TryLoadAutosaveForMenu();
+        RefreshContinueButtonState();
+        SetupMenuButtonHoverAnimations();
+
+        if (StatisticsButton != null)
+            StatisticsButton.Pressed += ShowStatistics;
+
+        if (ExitGameButton != null)
+            ExitGameButton.Pressed += ExitGame;
+
         var existingLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("TipLayer");
         if (existingLayer != null)
         {
@@ -92,7 +127,7 @@ public partial class StartInterface : CanvasLayer
     {
         NewStart();
         GameInfo.InitNewGame();
-        GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
     }
 
     public void test()
@@ -133,9 +168,13 @@ public partial class StartInterface : CanvasLayer
             return;
         }
 
-        var err = GetTree().ChangeSceneToFile("res://Map/Map.tscn");
-        if (err != Error.Ok)
-            GD.PushError($"ContinueGame scene switch failed: {err}");
+        if (GameInfo.RunFinished)
+        {
+            RefreshContinueButtonState();
+            return;
+        }
+
+        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
     }
 
     public void falseTest()
@@ -143,61 +182,133 @@ public partial class StartInterface : CanvasLayer
         Battle.Istest = false;
         Start();
     }
-}
 
-public partial class PlayerCharacterRegistry
-{
-    public PlayerInfoStructure Echo = new PlayerInfoStructure()
+    private void ExitGame()
     {
-        CharacterName = "Echo",
-        PassiveName = global::Echo.PassiveNameText,
-        PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 50,
-        Power = 9,
-        Survivability = 11,
-        Speed = 10,
-        CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
-    };
-    public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
-    {
-        CharacterName = "Kasiya",
-        PassiveName = global::Kasiya.PassiveNameText,
-        PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 60,
-        Power = 12,
-        Survivability = 12,
-        Speed = 8,
-        CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
-    };
-    public PlayerInfoStructure Mariya = new PlayerInfoStructure()
-    {
-        CharacterName = "Mariya",
-        PassiveName = global::Mariya.PassiveNameText,
-        PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 45,
-        Power = 9,
-        Survivability = 10,
-        Speed = 9,
-        CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
-    };
+        GetTree().Quit();
+    }
 
-    public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
+    private void ShowStatistics()
     {
-        CharacterName = "Nightingale",
-        PassiveName = global::Nightingale.PassiveNameText,
-        PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 50,
-        Power = 11,
-        Survivability = 10,
-        Speed = 11,
-        CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
-        PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
-    };
+        GameStatistics.Show(this);
+    }
+
+    private void TryLoadAutosaveForMenu()
+    {
+        if (!FileAccess.FileExists(AutosavePath))
+            return;
+
+        try
+        {
+            SaveSystem.LoadAll();
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"StartInterface autosave preload failed: {e}");
+        }
+    }
+
+    private void RefreshContinueButtonState()
+    {
+        if (ContinueGameButton == null)
+            return;
+
+        bool hasAutosave = FileAccess.FileExists(AutosavePath);
+        ContinueGameButton.Disabled = !hasAutosave || GameInfo.RunFinished;
+
+        if (StatusLine == null)
+            return;
+
+        StatusLine.Text = !hasAutosave
+            ? "未检测到自动存档，只能开始新游戏。"
+            : GameInfo.RunFinished
+                ? "当前自动存档已结算完成，请开始新一轮游戏。"
+                : "检测到自动存档，可以继续上一次游戏。";
+    }
+
+    private void SetupMenuButtonHoverAnimations()
+    {
+        SetupMenuButtonHoverAnimation(StartGameButton);
+        SetupMenuButtonHoverAnimation(ContinueGameButton);
+        SetupMenuButtonHoverAnimation(StatisticsButton);
+        SetupMenuButtonHoverAnimation(ExitGameButton);
+    }
+
+    private void SetupMenuButtonHoverAnimation(Button button)
+    {
+        if (button == null || _menuButtonVisuals.ContainsKey(button))
+            return;
+
+        var normal = DuplicateStyleBox(button, "normal");
+        var hover = DuplicateStyleBox(button, "hover");
+        var pressed = DuplicateStyleBox(button, "pressed");
+        var focus = DuplicateStyleBox(button, "focus");
+        var disabled = DuplicateStyleBox(button, "disabled");
+        if (normal == null || hover == null)
+            return;
+
+        var visuals = new MenuButtonVisuals
+        {
+            Normal = normal,
+            Hover = hover,
+            Pressed = pressed,
+            Focus = focus,
+            Disabled = disabled,
+            BaseLeftMargin = normal.ContentMarginLeft,
+        };
+
+        _menuButtonVisuals[button] = visuals;
+        button.MouseEntered += () => AnimateMenuButtonLabel(visuals, true);
+        button.MouseExited += () => AnimateMenuButtonLabel(visuals, false);
+        button.TreeExiting += () => visuals.Tween?.Kill();
+    }
+
+    private static StyleBoxFlat DuplicateStyleBox(Button button, string styleName)
+    {
+        if (button.GetThemeStylebox(styleName) is not StyleBoxFlat styleBox)
+            return null;
+
+        var duplicate = styleBox.Duplicate() as StyleBoxFlat;
+        if (duplicate == null)
+            return null;
+
+        button.AddThemeStyleboxOverride(styleName, duplicate);
+        return duplicate;
+    }
+
+    private void AnimateMenuButtonLabel(MenuButtonVisuals visuals, bool hovered)
+    {
+        if (visuals == null)
+            return;
+
+        visuals.Tween?.Kill();
+
+        float baseMargin = visuals.BaseLeftMargin;
+        float targetMargin = hovered ? baseMargin + MenuButtonHoverTextOffset : baseMargin;
+        if (!hovered && visuals.Normal != null && visuals.Hover != null)
+            visuals.Normal.ContentMarginLeft = visuals.Hover.ContentMarginLeft;
+
+        visuals.Tween = CreateTween();
+        visuals.Tween.SetEase(Tween.EaseType.Out);
+        visuals.Tween.SetTrans(Tween.TransitionType.Cubic);
+
+        TweenStyleMarginLeft(visuals.Tween, visuals.Normal, targetMargin);
+        TweenStyleMarginLeft(visuals.Tween, visuals.Hover, targetMargin);
+        TweenStyleMarginLeft(visuals.Tween, visuals.Pressed, targetMargin);
+        TweenStyleMarginLeft(visuals.Tween, visuals.Focus, targetMargin);
+        TweenStyleMarginLeft(visuals.Tween, visuals.Disabled, baseMargin);
+    }
+
+    private static void TweenStyleMarginLeft(Tween tween, StyleBoxFlat styleBox, float targetMargin)
+    {
+        if (tween == null || styleBox == null)
+            return;
+
+        tween.Parallel().TweenProperty(
+            styleBox,
+            "content_margin_left",
+            targetMargin,
+            MenuButtonHoverDuration
+        );
+    }
 }

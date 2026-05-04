@@ -55,6 +55,7 @@ public partial class Skill
     public bool Enable;
     public string Description;
     public bool Upgraded = false;
+    private int _queuedExtraSkillExecutions;
 
     public Skill(SkillTypes skillType)
     {
@@ -64,6 +65,7 @@ public partial class Skill
     public virtual async Task Effect()
     {
         using var _ = OwnerCharater?.BattleNode?.PushEffectSource(OwnerCharater, SkillName);
+        OwnerCharater?.DisableSkill();
         if (OwnerCharater?.SkillBuffs != null)
         {
             var stun = OwnerCharater.SkillBuffs.FirstOrDefault(x =>
@@ -75,10 +77,7 @@ public partial class Skill
                 return;
             }
         }
-
-        OwnerCharater.DisableSkill();
-        if (OwnerCharater?.TriggersSkillUseEvents != false)
-            OwnerCharater.BattleNode.UsedSkills.Add(this);
+        RecordSkillUse();
         foreach (var buff in OwnerCharater.SkillBuffs)
         {
             await buff.Trigger(this);
@@ -87,7 +86,39 @@ public partial class Skill
         if (plan != null)
         {
             await plan.Execute();
+            int extraSkillExecutions = ConsumeQueuedExtraSkillExecutions();
+            for (int i = 0; i < extraSkillExecutions; i++)
+            {
+                if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
+                    break;
+
+                RecordSkillUse();
+                await plan.Execute();
+            }
         }
+    }
+
+    private void RecordSkillUse()
+    {
+        if (OwnerCharater?.TriggersSkillUseEvents != true)
+            return;
+
+        OwnerCharater.BattleNode?.UsedSkills.Add(this);
+    }
+
+    internal void QueueExtraSkillExecutions(int count)
+    {
+        if (count <= 0)
+            return;
+
+        _queuedExtraSkillExecutions += count;
+    }
+
+    private int ConsumeQueuedExtraSkillExecutions()
+    {
+        int queuedCount = _queuedExtraSkillExecutions;
+        _queuedExtraSkillExecutions = 0;
+        return Math.Max(queuedCount, 0);
     }
 
     /// <summary>
@@ -132,15 +163,61 @@ public partial class Skill
         return true;
     }
 
+    private static int GetBattleRow(int positionIndex) => positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
+
+    private static int GetBattleCol(int positionIndex) => positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
+
+    private static bool HasInvisibleBuff(Character target) =>
+        target?.StartActionBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Invisible && buff.Stack > 0
+        ) == true;
+
+    private static bool HasTauntBuff(Character target) =>
+        target?.HurtBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
+        ) == true;
+
+    private Character[] FilterHostileTargetSequence(
+        IEnumerable<Character> orderedTargets,
+        bool returnDummyWhenEmpty
+    )
+    {
+        Character[] ordered = orderedTargets?.Where(target => target != null).ToArray()
+            ?? Array.Empty<Character>();
+        Character[] visibleTargets = ordered.Where(target => !HasInvisibleBuff(target)).ToArray();
+
+        // If everyone is invisible, fall back to the original ordered sequence and
+        // continue target selection normally to avoid clearing the target list.
+        Character[] selectableTargets = visibleTargets.Length > 0 ? visibleTargets : ordered;
+        Character[] tauntTargets = selectableTargets.Where(HasTauntBuff).ToArray();
+        Character[] targets = tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
+
+        if (targets.Length > 0 || !returnDummyWhenEmpty)
+            return targets;
+
+        Character dummy = OwnerCharater?.BattleNode?.dummy;
+        return dummy != null ? [dummy] : Array.Empty<Character>();
+    }
+
+    private Character[] GetHostileTargetsInTeamOrder(bool dyingFilter, bool returnDummyWhenEmpty = false)
+    {
+        if (OwnerCharater?.BattleNode == null)
+            return Array.Empty<Character>();
+
+        Character[] orderedTargets = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
+            !OwnerCharater.IsPlayer,
+            includeSummons: true,
+            dyingFilter: dyingFilter
+        );
+        return FilterHostileTargetSequence(orderedTargets, returnDummyWhenEmpty);
+    }
+
     public Character[] ChosetargetByOrder(bool byBehindRow = false)
     {
         if (OwnerCharater?.BattleNode == null)
             return [];
 
-        static int Row(int pos) => pos > 0 ? (pos - 1) % 3 : 0;
-        static int Col(int pos) => pos > 0 ? (pos - 1) / 3 : 0;
-
-        int attackerRow = Row(OwnerCharater.PositionIndex);
+        int attackerRow = GetBattleRow(OwnerCharater.PositionIndex);
 
         IEnumerable<Character> source = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
             !OwnerCharater.IsPlayer,
@@ -150,39 +227,20 @@ public partial class Skill
         var ordered = byBehindRow
             ? source
                 .Where(x => x != null)
-                .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
-                .ThenBy(x => Row(x.PositionIndex))
-                .ThenByDescending(x => Col(x.PositionIndex))
+                .OrderBy(x => Math.Abs(GetBattleRow(x.PositionIndex) - attackerRow))
+                .ThenBy(x => GetBattleRow(x.PositionIndex))
+                .ThenByDescending(x => GetBattleCol(x.PositionIndex))
                 .Where(x => x.State == Character.CharacterState.Normal)
                 .ToArray()
             : source
                 .Where(x => x != null)
-                .OrderBy(x => Math.Abs(Row(x.PositionIndex) - attackerRow))
-                .ThenBy(x => Row(x.PositionIndex))
-                .ThenBy(x => Col(x.PositionIndex))
+                .OrderBy(x => Math.Abs(GetBattleRow(x.PositionIndex) - attackerRow))
+                .ThenBy(x => GetBattleRow(x.PositionIndex))
+                .ThenBy(x => GetBattleCol(x.PositionIndex))
                 .Where(x => x.State == Character.CharacterState.Normal)
                 .ToArray();
 
-        var visible = ordered
-            .Where(x =>
-                x.StartActionBuffs.Any(b => b.ThisBuffName == Buff.BuffName.Invisible) == false
-            )
-            .ToArray();
-
-        // If everyone is invisible, still allow targeting to avoid soft-lock.
-        var targets = visible.Length > 0 ? visible : ordered;
-
-        var tauntTargets = targets
-            .Where(target =>
-                target.HurtBuffs.Any(buff =>
-                    buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
-                )
-            )
-            .ToArray();
-        if (tauntTargets.Length > 0)
-            targets = tauntTargets;
-
-        return targets.Length > 0 ? targets : [OwnerCharater.BattleNode.dummy];
+        return FilterHostileTargetSequence(ordered, returnDummyWhenEmpty: true);
     }
 
     private static bool IsDummyTarget(Skill skill, Character target)
@@ -537,6 +595,7 @@ public partial class Skill
         {
             if (IsDummyTarget(this, targets[i]))
                 continue;
+
             tasks.Add(
                 Attack(
                     damage,
@@ -546,10 +605,31 @@ public partial class Skill
                     delayAfterLastHit: true
                 )
             );
+
+            if (i < count - 1)
+                await YieldBatchedCombatFrameAsync();
         }
-        if (tasks.Count == 0)
+
+        if (tasks.Count > 0)
+            await Task.WhenAll(tasks);
+    }
+
+    private async Task YieldBatchedCombatFrameAsync()
+    {
+        if (
+            OwnerCharater != null
+            && GodotObject.IsInstanceValid(OwnerCharater)
+            && OwnerCharater.GetTree() != null
+        )
+        {
+            await OwnerCharater.ToSignal(
+                OwnerCharater.GetTree(),
+                SceneTree.SignalName.ProcessFrame
+            );
             return;
-        await Task.WhenAll(tasks);
+        }
+
+        await Task.Yield();
     }
 
     public async Task AttackAnimation(Character target)
@@ -608,6 +688,8 @@ public partial class Skill
             SkillID.DissonantField => new DissonantField(),
             SkillID.ReverbChain => new ReverbChain(),
             SkillID.RelayShift => new RelayShift(),
+            SkillID.VoidForm => new VoidForm(),
+            SkillID.EchoForm => new EchoForm(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
@@ -619,10 +701,13 @@ public partial class Skill
             SkillID.HolySeal => new HolySeal(),
             SkillID.AegisPledge => new AegisPledge(),
             SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
+            SkillID.DemonForm => new DemonForm(),
             SkillID.FearWormAttack => new FearWormAttack(),
             SkillID.FearWormSurvive => new FearWormSurvive(),
             SkillID.FearWormTermin => new FearWormTermin(),
             SkillID.MendSlash => new MendSlash(),
+            SkillID.ChargedBlade => new ChargedBlade(),
+            SkillID.CrescentWind => new CrescentWind(),
             SkillID.SiphonSlash => new SiphonSlash(),
             SkillID.SwapSlash => new SwapSlash(),
             SkillID.ShatterSlash => new ShatterSlash(),
@@ -635,10 +720,13 @@ public partial class Skill
             SkillID.ShadowExecution => new ShadowExecution(),
             SkillID.StasisBlade => new StasisBlade(),
             SkillID.ContinuousPierce => new ContinuousPierce(),
+            SkillID.RuinBlade => new RuinBlade(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
             SkillID.RequiemBloom => new RequiemBloom(),
+            SkillID.CurtainCallMoment => new CurtainCallMoment(),
+            SkillID.ShadowForm => new ShadowForm(),
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
@@ -647,6 +735,7 @@ public partial class Skill
             SkillID.EnergyRelay => new EnergyRelay(),
             SkillID.TouchOfGod => new TouchOfGod(),
             SkillID.Ragnarok => new Ragnarok(),
+            SkillID.SanctuaryForm => new SanctuaryForm(),
             SkillID.Swift => new Swift(),
             SkillID.AfterimageWard => new AfterimageWard(),
             SkillID.StarWard => new StarWard(),
@@ -742,6 +831,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     RelayShift = 86,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    VoidForm = 101,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    EchoForm = 102,
     #endregion
 
     #region Kasiya
@@ -794,11 +889,20 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     VulnerabilityConversion = 78,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    DemonForm = 100,
     #endregion
 
     #region Mariya
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     MendSlash = 27,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    ChargedBlade = 104,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    CrescentWind = 107,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     SiphonSlash = 59,
@@ -841,6 +945,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     Ragnarok = 96,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    SanctuaryForm = 103,
     #endregion
 
     #region Nightingale
@@ -857,6 +964,9 @@ public enum SkillID
     ContinuousPierce = 87,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    RuinBlade = 105,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
     VeilStep = 32,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
@@ -867,6 +977,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     RequiemBloom = 66,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    CurtainCallMoment = 106,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     FlashOfLight = 37,
@@ -882,6 +995,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     TwilightParadox = 79,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    ShadowForm = 99,
     #endregion
 
     #endregion
