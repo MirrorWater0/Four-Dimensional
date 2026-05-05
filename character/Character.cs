@@ -32,6 +32,7 @@ public partial class Character : Node2D
             ;
         }
     }
+    public int DyingSequence { get; private set; }
     public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
 
     //charater basic properties
@@ -103,6 +104,7 @@ public partial class Character : Node2D
         }
         //初始化数值
         State = CharacterState.Normal;
+        DyingSequence = 0;
 
         BlockLabel.Text = Block.ToString();
         Life = BattleLifemax;
@@ -202,6 +204,7 @@ public partial class Character : Node2D
 
     public virtual void Dying()
     {
+        DyingSequence++;
         State = CharacterState.Dying;
 
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), 0.5f);

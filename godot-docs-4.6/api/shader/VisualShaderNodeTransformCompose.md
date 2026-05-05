@@ -1,0 +1,16 @@
+# VisualShaderNodeTransformCompose
+
+## Meta
+
+- Name: VisualShaderNodeTransformCompose
+- Source: VisualShaderNodeTransformCompose.xml
+- Inherits: VisualShaderNode
+- Inheritance Chain: VisualShaderNodeTransformCompose -> VisualShaderNode -> Resource -> RefCounted -> Object
+
+## Brief Description
+
+Composes a Transform3D from four Vector3s within the visual shader graph.
+
+## Description
+
+Creates a 4×4 transform matrix using four vectors of type vec3. Each vector is one row in the matrix and the last column is a vec4(0, 0, 0, 1).

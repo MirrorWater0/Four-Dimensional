@@ -1,0 +1,36 @@
+# AnimatableBody3D
+
+## Meta
+
+- Name: AnimatableBody3D
+- Source: AnimatableBody3D.xml
+- Inherits: StaticBody3D
+- Inheritance Chain: AnimatableBody3D -> StaticBody3D -> PhysicsBody3D -> CollisionObject3D -> Node3D -> Node -> Object
+
+## Brief Description
+
+A 3D physics body that can't be moved by external forces. When moved manually, it affects other bodies in its path.
+
+## Description
+
+An animatable 3D physics body. It can't be moved by external forces or contacts, but can be moved manually by other means such as code, AnimationMixers (with AnimationMixer.callback_mode_process set to AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS), and RemoteTransform3D. When AnimatableBody3D is moved, its linear and angular velocity are estimated and used to affect other physics bodies in its path. This makes it useful for moving platforms, doors, and other moving objects.
+
+## Quick Reference
+
+```
+[properties]
+sync_to_physics: bool = true
+```
+
+## Tutorials
+
+- [Physics introduction]($DOCS_URL/tutorials/physics/physics_introduction.html)
+- [Troubleshooting physics issues]($DOCS_URL/tutorials/physics/troubleshooting_physics_issues.html)
+- [3D Physics Tests Demo](https://godotengine.org/asset-library/asset/2747)
+- [Third Person Shooter (TPS) Demo](https://godotengine.org/asset-library/asset/2710)
+- [3D Voxel Demo](https://godotengine.org/asset-library/asset/2755)
+
+## Properties
+
+- sync_to_physics: bool = true [set set_sync_to_physics; get is_sync_to_physics_enabled]
+  If true, the body's movement will be synchronized to the physics frame. This is useful when animating movement via AnimationPlayer, for example on moving platforms. Do **not** use together with PhysicsBody3D.move_and_collide().
