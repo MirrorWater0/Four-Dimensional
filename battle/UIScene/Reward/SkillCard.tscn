@@ -2,14 +2,6 @@
 
 [ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_hfhot"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
-[ext_resource type="StyleBox" uid="uid://bsks3e8p2c8iu" path="res://battle/UIScene/Reward/RewardPanel.tres" id="2_hfhot"]
-[ext_resource type="PackedScene" uid="uid://bvnftwrftpkc7" path="res://battle/UIScene/SkillButton.tscn" id="3_i77dj"]
-[ext_resource type="Shader" uid="uid://bjwq3ux2tr1an" path="res://shader/UI4.gdshader" id="4_3f2ir"]
-[ext_resource type="Shader" uid="uid://c6o74ni0dqd6d" path="res://shader/Icon/sword.gdshader" id="5_ycl6p"]
-[ext_resource type="Shader" uid="uid://dvg6fynd0x73y" path="res://shader/Icon/Rhomboid.gdshader" id="6_emx86"]
-[ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="7_u21a0"]
-[ext_resource type="Shader" uid="uid://d2x4imm7580bq" path="res://shader/shockwave.gdshader" id="8_pvbql"]
-[ext_resource type="Shader" uid="uid://cca31j43kxjx3" path="res://shader/Effect/SparkLight.gdshader" id="9_ydg12"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i77dj"]
 resource_local_to_scene = true
@@ -21,258 +13,323 @@ shader_parameter/line_speed = 8.0
 shader_parameter/aberration_amount = 0.03
 shader_parameter/beam_color = Color(0, 1, 1, 1)
 
-[sub_resource type="Theme" id="Theme_5iaav"]
-Panel/styles/panel = ExtResource("2_hfhot")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_l0m1e"]
-bg_color = Color(0.105882354, 0.105882354, 0.105882354, 0)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
+bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(1, 1, 1, 0.8627451)
+border_color = Color(0.96862745, 0.972549, 1, 0.78)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ornament"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_frame"]
 bg_color = Color(0, 0, 0, 0)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.627451, 0.81960785, 1, 0.2)
+border_color = Color(0.627451, 0.81960785, 1, 0.18)
 
-[sub_resource type="Theme" id="Theme_7a0j3"]
-Panel/styles/panel = ExtResource("2_hfhot")
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_art_frame"]
+bg_color = Color(0.07350001, 0.09389999, 0.15, 0.4509804)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.7058824, 0.8392157, 1, 0.34)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5iaav"]
-bg_color = Color(0, 0, 0, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_description_shell"]
+bg_color = Color(0.025, 0.03333334, 0.05, 0.6117647)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6039216, 0.7254902, 0.9019608, 0.12)
+shadow_color = Color(0, 0, 0, 0.5529412)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_description"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.06666667, 0.08627451, 0.13333334, 0.9490196)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0g0qh"]
-content_margin_left = 10.0
-content_margin_top = 60.0
-content_margin_right = 10.0
-content_margin_bottom = 4.0
-bg_color = Color(0.10524041, 0.10524041, 0.1052404, 0.827451)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
+bg_color = Color(0.050980393, 0.07058824, 0.10980392, 0.972549)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
 
-[sub_resource type="Theme" id="Theme_0g0qh"]
-RichTextLabel/styles/normal = SubResource("StyleBoxFlat_0g0qh")
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(1, 1, 1, 0.03529412)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_5iaav"]
-resource_local_to_scene = true
-shader = ExtResource("4_3f2ir")
-shader_parameter/speed = 1.0
-shader_parameter/ring_color = Color(1, 1, 1, 1)
-shader_parameter/inner_radius = 25.0
-shader_parameter/outer_radius = 30.0
-shader_parameter/glow_intensity = 0.5000000074506
-shader_parameter/glow_radius = 8.0
-shader_parameter/disable = false
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_l0m1e"]
-resource_local_to_scene = true
-shader = ExtResource("5_ycl6p")
-shader_parameter/sword_color = Color(1, 1, 1, 1)
-shader_parameter/blade_color = Color(1, 1, 1, 1)
-shader_parameter/handle_color = Color(1, 1, 1, 1)
-shader_parameter/glow_intensity = 0.5
-shader_parameter/angle = 0.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_t7rj0"]
-resource_local_to_scene = true
-shader = ExtResource("6_emx86")
-shader_parameter/color = Color(1.1801987, 1.1801987, 1.1801987, 1)
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_q0eru"]
-resource_local_to_scene = true
-shader = ExtResource("7_u21a0")
-shader_parameter/symbol_color = Color(1, 1, 1, 1)
-shader_parameter/thickness = 0.00499999988824
-shader_parameter/main_length = 1.4
-shader_parameter/main_width = 1.1
-shader_parameter/small_length = 0.5
-shader_parameter/small_width = 0.7
-shader_parameter/petal_overall_size = 0.5
-shader_parameter/petal_pinch = 0.6
-shader_parameter/ring_radius = 0.72
-shader_parameter/glow_intensity = 0.6
-shader_parameter/tip_softness = 0.5
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_laerk"]
-resource_local_to_scene = true
-shader = ExtResource("8_pvbql")
-shader_parameter/line_color = Color(1, 1, 1, 1)
-shader_parameter/glow_color = Color(1, 1, 1, 1)
-shader_parameter/progress = 1.0
-shader_parameter/base_thickness = 0.0050000002375
-shader_parameter/max_thickness = 0.0
-shader_parameter/glow_intensity = 19.0010009025475
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_g23ta"]
-resource_local_to_scene = true
-shader = ExtResource("9_ydg12")
-shader_parameter/main_color = Color(0.2, 0.6, 1, 1)
-shader_parameter/progress = 1.0
-shader_parameter/glow_intensity = 25.0
-shader_parameter/ray_count = 15.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_t64y5"]
-bg_color = Color(0.68804306, 0.68804306, 0.688043, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b3jsu"]
-bg_color = Color(1, 1, 1, 1)
-
-[sub_resource type="Theme" id="Theme_t64y5"]
-/styles/panel = SubResource("StyleBoxFlat_t64y5")
-Label/colors/font_color = Color(0.33809972, 0.3380997, 0.33809966, 1)
-Label/colors/font_outline_color = Color(0, 0, 0, 1)
-Label/constants/outline_size = 1
-Label/styles/normal = SubResource("StyleBoxFlat_b3jsu")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bb6mt"]
-content_margin_bottom = 2.0
-bg_color = Color(1, 1, 1, 1)
-
-[node name="SkillReward" type="SubViewportContainer" unique_id=1597769257]
+[node name="SkillCard" type="SubViewportContainer" unique_id=1597769257]
+texture_filter = 4
 material = SubResource("ShaderMaterial_i77dj")
-offset_right = 250.0
-offset_bottom = 400.0
+offset_right = 240.0
+offset_bottom = 370.0
 scale = Vector2(1.2, 1.2)
 script = ExtResource("1_td24b")
 
 [node name="SubViewport" type="SubViewport" parent="." unique_id=15917497]
 transparent_bg = true
 handle_input_locally = false
-size = Vector2i(250, 400)
+msaa_2d = 3
+size = Vector2i(240, 370)
 render_target_update_mode = 4
 
+[node name="BackShade" type="ColorRect" parent="SubViewport" unique_id=577549818]
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 236.0
+offset_bottom = 366.0
+mouse_filter = 2
+color = Color(0.0128999995, 0.017175, 0.03, 0.73333335)
+
 [node name="BG" type="Panel" parent="SubViewport" unique_id=1048061845]
-custom_minimum_size = Vector2(250, 400)
-offset_right = 250.0
-offset_bottom = 400.0
-theme = SubResource("Theme_5iaav")
-theme_override_styles/panel = SubResource("StyleBoxFlat_l0m1e")
+custom_minimum_size = Vector2(240, 370)
+offset_right = 240.0
+offset_bottom = 370.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card_bg")
 
 [node name="InnerFrame" type="Panel" parent="SubViewport" unique_id=181530201]
 offset_left = 6.0
 offset_top = 6.0
-offset_right = 244.0
-offset_bottom = 394.0
+offset_right = 234.0
+offset_bottom = 364.0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_ornament")
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_frame")
 
-[node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
-offset_left = 8.333333
-offset_top = 310.8333
-offset_right = 242.49998
-offset_bottom = 390.0
-theme = SubResource("Theme_7a0j3")
-theme_override_styles/panel = SubResource("StyleBoxFlat_5iaav")
+[node name="ArtFrame" type="Panel" parent="SubViewport" unique_id=2113042584]
+clip_contents = true
+offset_left = 12.0
+offset_top = 116.0
+offset_right = 228.0
+offset_bottom = 230.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_art_frame")
 
-[node name="HoverHint" type="Panel" parent="SubViewport" unique_id=904079227]
-visible = false
-custom_minimum_size = Vector2(240, 390)
+[node name="ArtFill" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=215832661]
+layout_mode = 0
+offset_right = 216.0
+offset_bottom = 114.0
+mouse_filter = 2
+color = Color(0.0627451, 0.078431375, 0.12156863, 0.96)
+
+[node name="SkillPicture" type="TextureRect" parent="SubViewport/ArtFrame" unique_id=679889421]
+texture_filter = 4
+layout_mode = 0
+offset_right = 216.0
+offset_bottom = 114.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="ArtBandTop" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=1996359254]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = 182.0
+offset_bottom = 20.0
+mouse_filter = 2
+color = Color(0.6901961, 0.84313726, 1, 0.24)
+
+[node name="ArtDiamondOuter" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=374914252]
+layout_mode = 0
+offset_left = 82.0
+offset_top = 18.0
+offset_right = 134.0
+offset_bottom = 70.0
+rotation = 0.7853982
+pivot_offset = Vector2(26, 26)
+mouse_filter = 2
+color = Color(0.6901961, 0.84313726, 1, 0.28)
+
+[node name="ArtDiamondInner" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=741467593]
+layout_mode = 0
+offset_left = 88.0
+offset_top = 24.0
+offset_right = 128.0
+offset_bottom = 64.0
+rotation = 0.7853982
+pivot_offset = Vector2(20, 20)
+mouse_filter = 2
+color = Color(0.6901961, 0.84313726, 1, 0.12)
+
+[node name="SkillIcon" type="TextureRect" parent="SubViewport/ArtFrame" unique_id=429305689]
+texture_filter = 4
+layout_mode = 0
+offset_left = 80.0
+offset_top = 18.0
+offset_right = 136.0
+offset_bottom = 74.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TypeLabel" type="Label" parent="SubViewport/ArtFrame" unique_id=381737532]
+custom_minimum_size = Vector2(168, 16)
+layout_mode = 0
+offset_left = 24.0
+offset_top = 84.0
+offset_right = 192.0
+offset_bottom = 102.0
+theme_override_colors/font_color = Color(0.7607843, 0.8117647, 0.8980392, 0.72)
+theme_override_font_sizes/font_size = 13
+text = "Type"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RarityPlate" type="Polygon2D" parent="SubViewport" unique_id=629383793]
+color = Color(0.6901961, 0.84313726, 1, 0.16)
+antialiased = true
+polygon = PackedVector2Array(8.000004, 90, 80, 90, 72, 114, 8.000004, 114)
+
+[node name="RarityBadge" type="Control" parent="SubViewport" unique_id=1653600046]
+layout_mode = 3
+anchors_preset = 0
 offset_left = 2.0
-offset_top = 2.0
-offset_right = 248.0
-offset_bottom = 398.0
-theme = SubResource("Theme_7a0j3")
-
-[node name="Description" type="RichTextLabel" parent="SubViewport" unique_id=574232235]
-custom_minimum_size = Vector2(234, 302)
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 242.0
-offset_bottom = 310.0
+offset_top = 90.0
+offset_right = 78.0
+offset_bottom = 114.0
 mouse_filter = 2
-theme = SubResource("Theme_0g0qh")
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/normal_font_size = 19
-bbcode_enabled = true
-text = "none"
-autowrap_mode = 1
-scroll_active = false
+
+[node name="RarityLabel" type="Label" parent="SubViewport/RarityBadge" unique_id=1519905069]
+layout_mode = 0
+offset_right = 76.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.95)
+theme_override_font_sizes/font_size = 14
+text = "Rare"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EnergyPlate" type="Polygon2D" parent="SubViewport" unique_id=656025175]
+color = Color(0.6901961, 0.84313726, 1, 0.16)
+antialiased = true
+polygon = PackedVector2Array(156, 90, 232.00002, 90, 232.00002, 114, 166, 114)
+
+[node name="EnergyBadge" type="Control" parent="SubViewport" unique_id=1300825066]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 162.0
+offset_top = 90.0
+offset_right = 236.0
+offset_bottom = 114.0
+mouse_filter = 2
+
+[node name="EnergyCost" type="Label" parent="SubViewport/EnergyBadge" unique_id=1575399771]
+layout_mode = 0
+offset_left = 2.0
+offset_right = 74.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.95)
+theme_override_font_sizes/font_size = 15
+text = "Energy"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="TopAccent" type="ColorRect" parent="SubViewport" unique_id=128579300]
-offset_left = 18.0
-offset_top = 10.0
-offset_right = 232.0
-offset_bottom = 12.0
-mouse_filter = 2
-color = Color(0.7058824, 0.87058824, 1, 0.3)
-
-[node name="SkillIcon" parent="SubViewport" unique_id=429305689 instance=ExtResource("3_i77dj")]
-offset_left = 93.0
-offset_top = 10.0
-offset_right = 153.0
-offset_bottom = 70.0
-
-[node name="AbleRing" parent="SubViewport/SkillIcon" index="0" unique_id=423852926]
-material = SubResource("ShaderMaterial_5iaav")
-
-[node name="ColorRect2" parent="SubViewport/SkillIcon" index="1" unique_id=1267468745]
-visible = false
-
-[node name="SwordIcon" parent="SubViewport/SkillIcon" index="2" unique_id=1278232838]
-material = SubResource("ShaderMaterial_l0m1e")
-
-[node name="RhomboidIcon" parent="SubViewport/SkillIcon" index="3" unique_id=1011236504]
-material = SubResource("ShaderMaterial_t7rj0")
-
-[node name="TerminateSkillIcon" parent="SubViewport/SkillIcon" index="4" unique_id=1065074037]
-material = SubResource("ShaderMaterial_q0eru")
-
-[node name="ShockWave" parent="SubViewport/SkillIcon" index="5" unique_id=342777392]
-material = SubResource("ShaderMaterial_laerk")
-
-[node name="SparkLight" parent="SubViewport/SkillIcon" index="6" unique_id=1133246718]
-material = SubResource("ShaderMaterial_g23ta")
-
-[node name="BottomAccent" type="ColorRect" parent="SubViewport" unique_id=162930117]
 offset_left = 20.0
-offset_top = 308.0
-offset_right = 230.0
-offset_bottom = 310.0
+offset_top = 236.0
+offset_right = 220.0
+offset_bottom = 238.0
 mouse_filter = 2
-color = Color(0.7058824, 0.87058824, 1, 0.2)
+color = Color(0.7058824, 0.87058824, 1, 0.38)
+
+[node name="DescriptionFrame" type="Panel" parent="SubViewport" unique_id=587677174]
+offset_left = 12.0
+offset_top = 246.0
+offset_right = 228.0
+offset_bottom = 358.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_description_shell")
+
+[node name="Description" type="RichTextLabel" parent="SubViewport" unique_id=574232235]
+custom_minimum_size = Vector2(204, 98)
+offset_left = 13.333333
+offset_top = 242.5
+offset_right = 226.66666
+offset_bottom = 354.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.9647059, 0.972549, 0.99215686, 0.96)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/normal_font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_description")
+bbcode_enabled = true
+text = "none"
+scroll_active = false
+autowrap_mode = 1
+
+[node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 228.0
+offset_bottom = 84.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_footer")
+
+[node name="NamePlate" type="Polygon2D" parent="SubViewport/BG2" unique_id=489562878]
+color = Color(0.6901961, 0.84313726, 1, 0.16)
+antialiased = true
+polygon = PackedVector2Array(8, 8, 208, 8, 208, 40.000004, 8, 40.000004)
+
+[node name="CharacterPlate" type="Polygon2D" parent="SubViewport/BG2" unique_id=1127487847]
+color = Color(0.6901961, 0.84313726, 1, 0.1)
+antialiased = true
+polygon = PackedVector2Array(8, 48, 207.99998, 48, 200, 72, 16, 72)
 
 [node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
-custom_minimum_size = Vector2(220, 30)
-offset_left = 15.0
-offset_top = 350.0
-offset_right = 235.0
-offset_bottom = 380.0
-theme = SubResource("Theme_t64y5")
-theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(204, 24)
+offset_left = 18.0
+offset_top = 22.0
+offset_right = 222.0
+offset_bottom = 46.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 19
 text = "name"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="CharacterName" type="Label" parent="SubViewport" unique_id=803558591]
-custom_minimum_size = Vector2(220, 20)
-offset_left = 15.0
-offset_top = 320.0
-offset_right = 235.0
-offset_bottom = 344.0
-theme = SubResource("Theme_t64y5")
-theme_override_font_sizes/font_size = 15
-theme_override_styles/normal = SubResource("StyleBoxFlat_bb6mt")
+custom_minimum_size = Vector2(168, 16)
+offset_left = 36.0
+offset_top = 60.0
+offset_right = 204.0
+offset_bottom = 76.0
+theme_override_colors/font_color = Color(1, 1, 1, 0.92)
+theme_override_font_sizes/font_size = 14
 text = "name"
 horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HoverHint" type="Panel" parent="SubViewport" unique_id=904079227]
+modulate = Color(18.892157, 18.892157, 18.892157, 1)
+custom_minimum_size = Vector2(230, 360)
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 238.0
+offset_bottom = 368.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hover")
 
 [node name="Button" type="Button" parent="SubViewport" unique_id=1761752522]
 modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(250, 400)
+custom_minimum_size = Vector2(240, 370)
 offset_top = 1.0
-offset_right = 250.0
-offset_bottom = 401.0
-
-[editable path="SubViewport/SkillIcon"]
+offset_right = 240.0
+offset_bottom = 371.0

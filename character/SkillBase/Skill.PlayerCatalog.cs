@@ -77,23 +77,6 @@ public partial class Skill
             list.Add(skillId);
         }
 
-        SkillID[] sharedBasics =
-        [
-            SkillID.BasicAttack,
-            SkillID.BasicDefense,
-            SkillID.BasicSpecial,
-        ];
-        foreach (var characterKey in Enum.GetValues<PlayerCharacterKey>())
-        {
-            if (!pools.TryGetValue(characterKey, out var list))
-            {
-                list = new List<SkillID>();
-                pools[characterKey] = list;
-            }
-
-            list.AddRange(sharedBasics);
-        }
-
         return pools.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Distinct().ToArray()

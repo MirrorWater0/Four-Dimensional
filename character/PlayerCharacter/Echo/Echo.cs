@@ -1,15 +1,14 @@
-using System;
 using Godot;
 
 public partial class Echo : PlayerCharacter
 {
-    private const int PassiveSurvivePowerGain = 2;
-    private const int PassiveNonSurviveEnergyGain = 1;
+    private const int PassiveSkillUseThreshold = 2;
+    private const int PassiveEnergyGain = 1;
+    private int _passiveSkillUseCount;
 
     public const string PassiveNameText = "余响";
     public static string PassiveDescriptionText =>
-        $"使用生存技能时：获得{PassiveSurvivePowerGain}点力量。\n"
-        + $"使用非生存技能时：获得{PassiveNonSurviveEnergyGain}点能量。";
+        $"每使用{PassiveSkillUseThreshold}张技能：获得{PassiveEnergyGain}点能量。";
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Echo;
     Label label => field ??= GetNode<Label>("Label");
@@ -24,6 +23,7 @@ public partial class Echo : PlayerCharacter
     public override void Initialize()
     {
         base.Initialize();
+        _passiveSkillUseCount = 0;
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
         BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
@@ -39,19 +39,18 @@ public partial class Echo : PlayerCharacter
         base.EndAction();
     }
 
-    public override async void Passive(Skill skill)
+    public override void Passive(Skill skill)
     {
         using var _ = BeginEffectSource("被动");
-        if (skill.OwnerCharater != this)
+        if (skill?.OwnerCharater != this)
             return;
 
-        if (skill.SkillType != Skill.SkillTypes.Survive)
-        {
-            UpdataEnergy(PassiveNonSurviveEnergyGain, this);
+        _passiveSkillUseCount++;
+        if (_passiveSkillUseCount < PassiveSkillUseThreshold)
             return;
-        }
 
-        await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
+        _passiveSkillUseCount = 0;
+        UpdataEnergy(PassiveEnergyGain, this);
     }
 }
 

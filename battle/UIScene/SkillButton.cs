@@ -92,12 +92,15 @@ public partial class SkillButton : Button
     {
         Modulate += changeColor;
 
-        // Show tooltip with skill description
         if (SelfSkill != null && globalTooltip != null)
         {
             globalTooltip.FollowMouse = true;
             SelfSkill.UpdateDescription();
-            globalTooltip.SetText(SelfSkill.Description);
+            string buffTooltipText = BuildBuffTooltipText(SelfSkill);
+            if (string.IsNullOrWhiteSpace(buffTooltipText))
+                globalTooltip.HideTooltip();
+            else
+                globalTooltip.SetText(buffTooltipText);
         }
 
         ShowTargetPreview();
@@ -345,5 +348,85 @@ public partial class SkillButton : Button
             return Vector2.Zero;
 
         return target.GetGlobalTransformWithCanvas().Origin;
+    }
+
+    private static string BuildBuffTooltipText(Skill skill)
+    {
+        if (skill == null)
+            return string.Empty;
+
+        string description = skill.Description ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(description))
+            return string.Empty;
+
+        string plainDescription = StripBbCodeTags(description);
+        List<(Buff.BuffName Name, int Index)> matchedBuffs = new();
+
+        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
+        {
+            string displayName = Buff.GetBuffDisplayName(buffName);
+            if (string.IsNullOrWhiteSpace(displayName))
+                continue;
+
+            int matchIndex = plainDescription.IndexOf(displayName, StringComparison.Ordinal);
+            if (matchIndex < 0)
+                continue;
+
+            matchedBuffs.Add((buffName, matchIndex));
+        }
+
+        if (matchedBuffs.Count == 0)
+            return string.Empty;
+
+        return string.Join(
+            "\n\n",
+            matchedBuffs
+                .OrderBy(entry => entry.Index)
+                .Select(entry => BuildBuffTooltipEntry(entry.Name))
+                .Where(entry => !string.IsNullOrWhiteSpace(entry))
+        );
+    }
+
+    private static string BuildBuffTooltipEntry(Buff.BuffName buffName)
+    {
+        string effectText = Buff.GetBuffEffectText(buffName);
+        if (string.IsNullOrWhiteSpace(effectText))
+            return string.Empty;
+
+        string formattedEffect = GlobalFunction.ColorizeKeywords(
+            GlobalFunction.ColorizeNumbers(effectText)
+        );
+        string plainBuffName = Buff.GetBuffDisplayName(buffName);
+        return $"[outline_size=0][color=#a8f0ad]{plainBuffName}[/color][/outline_size]\n{formattedEffect}";
+    }
+
+    private static string StripBbCodeTags(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        char[] buffer = new char[text.Length];
+        int count = 0;
+        bool inTag = false;
+
+        foreach (char ch in text)
+        {
+            if (ch == '[')
+            {
+                inTag = true;
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                continue;
+            }
+
+            if (!inTag)
+                buffer[count++] = ch;
+        }
+
+        return new string(buffer, 0, count);
     }
 }

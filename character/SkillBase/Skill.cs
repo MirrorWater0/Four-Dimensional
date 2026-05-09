@@ -23,9 +23,12 @@ public enum PropertyType
 
 public partial class Skill
 {
+    public const int XEnergyCost = -1;
+
     private int _previewPower;
     private int _previewSurvivability;
     private int _previewEnergy = 1;
+    private bool _previewIsPlayer = true;
 
     public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/AttackEffect.tscn"
@@ -52,10 +55,16 @@ public partial class Skill
     public virtual string SkillName { set; get; }
     public SkillTypes SkillType;
     public Character OwnerCharater;
+    public SkillID? SkillId { get; internal set; }
+    public virtual int EnergyCost => GetDefaultEnergyCost();
+    public virtual bool ExhaustsAfterUse => false;
     public bool Enable;
     public string Description;
     public bool Upgraded = false;
     private int _queuedExtraSkillExecutions;
+    private int _prepaidDisplayedEnergy;
+    private int _paidEnergyForCurrentEffect;
+    private int _energyCostWaiverDepth;
 
     public Skill(SkillTypes skillType)
     {
@@ -65,37 +74,77 @@ public partial class Skill
     public virtual async Task Effect()
     {
         using var _ = OwnerCharater?.BattleNode?.PushEffectSource(OwnerCharater, SkillName);
-        OwnerCharater?.DisableSkill();
-        if (OwnerCharater?.SkillBuffs != null)
+        bool effectExecuted = false;
+        try
         {
-            var stun = OwnerCharater.SkillBuffs.FirstOrDefault(x =>
-                x != null && x.ThisBuffName == Buff.BuffName.Stun && x.Stack > 0
-            );
-            if (stun != null)
+            OwnerCharater?.DisableSkill();
+            if (OwnerCharater?.SkillBuffs != null)
             {
-                await stun.Trigger(this);
-                return;
+                var stun = OwnerCharater.SkillBuffs.FirstOrDefault(x =>
+                    x != null && x.ThisBuffName == Buff.BuffName.Stun && x.Stack > 0
+                );
+                if (stun != null)
+                {
+                    effectExecuted = true;
+                    await stun.Trigger(this);
+                    await ResolveBattleOverAfterEffectAsync();
+                    return;
+                }
             }
-        }
-        RecordSkillUse();
-        foreach (var buff in OwnerCharater.SkillBuffs)
-        {
-            await buff.Trigger(this);
-        }
-        var plan = GetPlan();
-        if (plan != null)
-        {
-            await plan.Execute();
-            int extraSkillExecutions = ConsumeQueuedExtraSkillExecutions();
-            for (int i = 0; i < extraSkillExecutions; i++)
-            {
-                if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
-                    break;
 
-                RecordSkillUse();
+            if (!TryPayEnergyCostForEffect())
+                return;
+
+            effectExecuted = true;
+            RecordSkillUse();
+            foreach (var buff in OwnerCharater.SkillBuffs)
+            {
+                await buff.Trigger(this);
+            }
+            var plan = GetPlan();
+            if (plan != null)
+            {
                 await plan.Execute();
+                if (await ResolveBattleOverAfterEffectAsync())
+                    return;
+
+                int extraSkillExecutions = ConsumeQueuedExtraSkillExecutions();
+                for (int i = 0; i < extraSkillExecutions; i++)
+                {
+                    if (
+                        OwnerCharater == null
+                        || OwnerCharater.State == Character.CharacterState.Dying
+                        || OwnerCharater.BattleNode?.ShouldAbortSkillResolution() == true
+                    )
+                    {
+                        break;
+                    }
+
+                    RecordSkillUse();
+                    await plan.Execute();
+                    if (await ResolveBattleOverAfterEffectAsync())
+                        return;
+                }
+            }
+            else if (effectExecuted)
+            {
+                await ResolveBattleOverAfterEffectAsync();
             }
         }
+        finally
+        {
+            _prepaidDisplayedEnergy = 0;
+            _paidEnergyForCurrentEffect = 0;
+        }
+    }
+
+    private async Task<bool> ResolveBattleOverAfterEffectAsync()
+    {
+        Battle battle = OwnerCharater?.BattleNode;
+        if (battle == null)
+            return false;
+
+        return await battle.ResolveBattleOverAfterSkillAsync();
     }
 
     private void RecordSkillUse()
@@ -124,11 +173,17 @@ public partial class Skill
     /// <summary>
     /// For non-battle usage (e.g. previews), set preview stats so UpdateDescription can work without a Character instance.
     /// </summary>
-    public void SetPreviewStats(int power, int survivability, int energy = 1)
+    public void SetPreviewStats(
+        int power,
+        int survivability,
+        int energy = 1,
+        bool isPlayer = true
+    )
     {
         _previewPower = power;
         _previewSurvivability = survivability;
         _previewEnergy = energy;
+        _previewIsPlayer = isPlayer;
     }
 
     protected int OwnerPower => OwnerCharater != null ? OwnerCharater.BattlePower : _previewPower;
@@ -136,6 +191,12 @@ public partial class Skill
         OwnerCharater != null ? OwnerCharater.BattleSurvivability : _previewSurvivability;
     protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
     protected bool IsInBattle => OwnerCharater?.BattleNode != null;
+    public int RequiredEnergyCost => EnergyCost;
+    public int CardEnergyCost => UsesXEnergyCost ? 1 : RequiredEnergyCost;
+    public bool UsesXEnergyCost => RequiredEnergyCost == XEnergyCost;
+    public string CardEnergyCostText => UsesXEnergyCost ? "X" : CardEnergyCost.ToString();
+    public bool RequiresExternalEnergyPayment => RequiredEnergyCost != 0;
+    internal bool IsEnergyCostWaived => _energyCostWaiverDepth > 0;
 
     protected int DamageFromPower(int baseDamage = 0, int powerMultiplier = 1, int clampMax = 9999)
     {
@@ -153,14 +214,152 @@ public partial class Skill
         return Math.Clamp(block, 0, clampMax);
     }
 
-    protected bool TrySpendEnergy(int cost)
+    internal int GetXEnergyLoopCount(int paidEnergyPerLoop)
     {
+        int safeCost = Math.Max(1, paidEnergyPerLoop);
+        if (IsEnergyCostWaived)
+            return Math.Max(0, (OwnerCharater?.Energy ?? 0) / safeCost);
+
+        if (_paidEnergyForCurrentEffect > 0)
+            return Math.Max(0, _paidEnergyForCurrentEffect / safeCost);
+
         if (OwnerCharater == null)
+            return 0;
+
+        return Math.Max(0, OwnerCharater.Energy / safeCost);
+    }
+
+    internal IDisposable BeginEnergyCostWaiver()
+    {
+        _energyCostWaiverDepth++;
+        return new EnergyCostWaiverScope(this);
+    }
+
+    private void EndEnergyCostWaiver()
+    {
+        _energyCostWaiverDepth = Math.Max(0, _energyCostWaiverDepth - 1);
+    }
+
+    private sealed class EnergyCostWaiverScope : IDisposable
+    {
+        private Skill _skill;
+
+        public EnergyCostWaiverScope(Skill skill)
+        {
+            _skill = skill;
+        }
+
+        public void Dispose()
+        {
+            _skill?.EndEnergyCostWaiver();
+            _skill = null;
+        }
+    }
+
+    public bool CanUseCurrentEnergy()
+    {
+        if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
             return false;
+
+        return CanUseEnergy(OwnerCharater.Energy);
+    }
+
+    public bool CanUseEnergy(int availableEnergy)
+    {
+        if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
+            return false;
+
+        return availableEnergy >= CardEnergyCost;
+    }
+
+    public bool TrySpendDisplayedEnergy()
+    {
+        if (CardEnergyCost <= 0)
+            return true;
+
+        int paymentCost = UsesXEnergyCost ? OwnerCharater?.Energy ?? 0 : CardEnergyCost;
+        if (OwnerCharater == null || OwnerCharater.Energy < CardEnergyCost)
+            return false;
+
+        if (paymentCost <= 0)
+            return true;
+
+        OwnerCharater.UpdataEnergy(-paymentCost, OwnerCharater);
+        _prepaidDisplayedEnergy += paymentCost;
+        _paidEnergyForCurrentEffect = paymentCost;
+        return true;
+    }
+
+    public void RefundDisplayedEnergy()
+    {
+        if (_prepaidDisplayedEnergy <= 0 || OwnerCharater == null)
+            return;
+
+        int refund = _prepaidDisplayedEnergy;
+        _prepaidDisplayedEnergy = 0;
+        _paidEnergyForCurrentEffect = 0;
+        OwnerCharater.UpdataEnergy(refund, OwnerCharater);
+    }
+
+    private bool TryPayEnergyCostForEffect()
+    {
+        if (IsEnergyCostWaived)
+            return true;
+
+        if (OwnerCharater == null)
+            return CardEnergyCost <= 0;
+
+        if (UsesXEnergyCost)
+        {
+            if (_prepaidDisplayedEnergy > 0)
+            {
+                _paidEnergyForCurrentEffect = _prepaidDisplayedEnergy;
+                return true;
+            }
+
+            int paymentCost = OwnerCharater.Energy;
+            if (paymentCost <= 0)
+                return false;
+
+            OwnerCharater.UpdataEnergy(-paymentCost, OwnerCharater);
+            _paidEnergyForCurrentEffect = paymentCost;
+            return true;
+        }
+
+        int cost = CardEnergyCost;
+        if (cost <= 0)
+            return true;
+
+        if (_prepaidDisplayedEnergy >= cost)
+        {
+            _paidEnergyForCurrentEffect = Math.Max(_paidEnergyForCurrentEffect, cost);
+            return true;
+        }
+
         if (OwnerCharater.Energy < cost)
             return false;
+
         OwnerCharater.UpdataEnergy(-cost, OwnerCharater);
+        _paidEnergyForCurrentEffect = cost;
         return true;
+    }
+
+    private int GetDefaultEnergyCost()
+    {
+        bool isEnemy = OwnerCharater != null ? !OwnerCharater.IsPlayer : !_previewIsPlayer;
+        if (isEnemy)
+        {
+            if (SkillType == SkillTypes.Attack || SkillType == SkillTypes.Survive)
+                return 0;
+        }
+
+        return SkillType switch
+        {
+            SkillTypes.Attack => 1,
+            SkillTypes.Survive => 1,
+            SkillTypes.Special => 2,
+            _ => 0,
+        };
     }
 
     private static int GetBattleRow(int positionIndex) => positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
@@ -656,12 +855,50 @@ public partial class Skill
             || target == OwnerCharater
         )
             return;
-        await target.Skills[skillIndex].Effect();
+
+        if (!TryGetCarrySkillType(skillIndex, out SkillTypes skillType))
+            return;
+
+        Skill carriedSkill = target.BattleNode?.DrawCarrySkill(target, skillType);
+        if (carriedSkill == null)
+            return;
+
+        carriedSkill.OwnerCharater = target;
+        carriedSkill.UpdateDescription();
+        CharacterControl characterControl = target.BattleNode?.CharacterControl;
+        if (
+            OwnerCharater is PlayerCharacter
+            && target is PlayerCharacter
+            && characterControl != null
+            && GodotObject.IsInstanceValid(characterControl)
+        )
+        {
+            await characterControl.QueueCarryCardAsync(target, carriedSkill);
+            return;
+        }
+
+        using (carriedSkill.BeginEnergyCostWaiver())
+        {
+            await carriedSkill.Effect();
+        }
+    }
+
+    private static bool TryGetCarrySkillType(int skillIndex, out SkillTypes skillType)
+    {
+        skillType = skillIndex switch
+        {
+            0 => SkillTypes.Attack,
+            1 => SkillTypes.Survive,
+            2 => SkillTypes.Special,
+            _ => SkillTypes.none,
+        };
+
+        return skillType != SkillTypes.none;
     }
 
     public static Skill GetSkill(SkillID skillID)
     {
-        return skillID switch
+        Skill skill = skillID switch
         {
             SkillID.Determination => new Determination(),
             SkillID.ReNewedSpirit => new ReNewedSpirit(),
@@ -688,6 +925,7 @@ public partial class Skill
             SkillID.DissonantField => new DissonantField(),
             SkillID.ReverbChain => new ReverbChain(),
             SkillID.RelayShift => new RelayShift(),
+            SkillID.ResonanceShelter => new ResonanceShelter(),
             SkillID.VoidForm => new VoidForm(),
             SkillID.EchoForm => new EchoForm(),
             SkillID.EvilAttack => new EvilAttack(),
@@ -773,6 +1011,11 @@ public partial class Skill
             SkillID.BasicSpecial => new BasicSpecial(),
             _ => null,
         };
+
+        if (skill != null)
+            skill.SkillId = skillID;
+
+        return skill;
     }
 }
 
@@ -831,6 +1074,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     RelayShift = 86,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    ResonanceShelter = 108,
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     VoidForm = 101,

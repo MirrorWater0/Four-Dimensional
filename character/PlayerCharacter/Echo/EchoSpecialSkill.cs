@@ -5,7 +5,7 @@ public partial class EchoSpecialSkill : Node { }
 
 public class EchonicResonance : Skill
 {
-    private const int CostPerCast = 1;
+    private const int PaidEnergyPerCast = 1;
     private const int PowerGainPerCast = 1;
 
     public EchonicResonance()
@@ -15,6 +15,7 @@ public class EchonicResonance : Skill
     }
 
     public override string SkillName { get; set; } = "回响共鸣";
+    public override int EnergyCost => XEnergyCost;
 
     protected override SkillPlan BuildPlan()
     {
@@ -22,7 +23,7 @@ public class EchonicResonance : Skill
             this,
             AttackPrimaryStep(baseDamage: 3, powerMultiplier: 1),
             EnergyTimesWhileStep(
-                energyCost: CostPerCast,
+                paidEnergyPerLoop: PaidEnergyPerCast,
                 loopSteps:
                 [
                     AttackPrimaryStep(baseDamage: -3, powerMultiplier: 1),
@@ -36,7 +37,6 @@ public class EchonicResonance : Skill
 public class SonicBoom : Skill
 {
     private const int BaseDamage = 0;
-    private const int EnergyCost = 4;
     private const int ExtraTimes = 2;
 
     public SonicBoom()
@@ -46,18 +46,14 @@ public class SonicBoom : Skill
     }
 
     public override string SkillName { get; set; } = "音爆";
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AoeDamageStep(baseDamage: 6, target: HostileTargets(0)),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
-            )
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
         );
     }
 }
@@ -66,7 +62,6 @@ public class PhaseEcho : Skill
 {
     int damage = 20;
     int PowerGain = -4;
-    int EnergyCost = 1;
 
     public PhaseEcho()
         : base(SkillTypes.Special)
@@ -75,27 +70,20 @@ public class PhaseEcho : Skill
     }
 
     public override string SkillName { get; set; } = "相位回声";
+    public override int EnergyCost => 1;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                [
-                    AoeDamageStep(baseDamage: damage),
-                    ModifyPropertyStep(PropertyType.Power, PowerGain),
-                ]
-            )
+            AoeDamageStep(baseDamage: damage),
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
 
 public class ReverbChain : Skill
 {
-    private const int EnergyCost = 3;
     private const int BaseDamage = -2;
 
     public ReverbChain()
@@ -105,22 +93,16 @@ public class ReverbChain : Skill
     }
 
     public override string SkillName { get; set; } = "回声连奏";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps:
-                [
-                    TextStep("释放x次(x为本场战斗中其他己方角色的行动次数)。"),
-                    EnergyTimesWhileStep(
-                        energyCost: 0,
-                        times: GetLoopTimes,
-                        loopSteps: [AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1)]
-                    ),
-                ]
+            TextStep("释放x次(x为本场战斗中其他己方角色的行动次数)。"),
+            EnergyTimesWhileStep(
+                times: GetLoopTimes,
+                loopSteps: [AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1)]
             )
         );
     }
@@ -131,7 +113,6 @@ public class ReverbChain : Skill
 
 public class VoidForm : Skill
 {
-    private const int EnergyCost = 6;
     private const int VoidStacks = 2;
 
     public VoidForm()
@@ -141,20 +122,16 @@ public class VoidForm : Skill
     }
 
     public override string SkillName { get; set; } = "虚无形态";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Void,
-                    stacks: VoidStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Void,
+                stacks: VoidStacks,
+                target: RelativeTarget(0)
             )
         );
     }
@@ -162,8 +139,8 @@ public class VoidForm : Skill
 
 public class EchoForm : Skill
 {
-    private const int EnergyCost = 6;
     private const int EchoStacks = 1;
+    public override bool ExhaustsAfterUse => true;
 
     public EchoForm()
         : base(SkillTypes.Special)
@@ -172,20 +149,16 @@ public class EchoForm : Skill
     }
 
     public override string SkillName { get; set; } = "回响形态";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Echo,
-                    stacks: EchoStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Echo,
+                stacks: EchoStacks,
+                target: RelativeTarget(0)
             )
         );
     }

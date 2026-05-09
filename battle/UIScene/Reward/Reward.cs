@@ -27,6 +27,8 @@ public partial class Reward : CanvasLayer
     private Control PanelNode => field ??= GetNode<Control>("Panel");
     private Control DecorNode => field ??= GetNodeOrNull<Control>("Panel/Decor");
     private Button SkipButton => field ??= GetNodeOrNull<Button>("Panel/Decor/SkipButton");
+    private Button SkillRewardSkipButton =>
+        field ??= GetNodeOrNull<Button>("SkillRewardSkipButton");
     public Map MapNode => field ??= GetNode<Map>("/root/Map");
 
     private readonly List<SkillCard> _skillRewardSlots = new();
@@ -44,6 +46,8 @@ public partial class Reward : CanvasLayer
     private Tween _maskTween;
     private Vector2 _panelBasePosition;
     private bool _panelBaseCached;
+    private int _nextSkillRewardGroupIndex;
+    private bool _skillRewardOffersGenerated;
     private const float RewardReflowDuration = 0.18f;
 
     private enum RewardKind
@@ -60,6 +64,9 @@ public partial class Reward : CanvasLayer
         public RelicID RelicId;
         public Equipment Equipment;
         public ItemID ItemId;
+        public int SkillGroupIndex = -1;
+        public SkillID?[] OfferedSkillIds;
+        public int[] OfferedPlayerIndexes;
     }
 
     // Call from anywhere (e.g. Battle) to show the reward UI.
@@ -108,6 +115,8 @@ public partial class Reward : CanvasLayer
             SkillRewardsContainer.Visible = false;
         if (SkillMask != null)
             SkillMask.Visible = false;
+        if (SkillRewardSkipButton != null)
+            SkillRewardSkipButton.Visible = false;
 
         CachePanelTransform();
         if (PanelNode != null)
@@ -119,6 +128,8 @@ public partial class Reward : CanvasLayer
         WireStaticRewardControls();
         if (SkipButton != null)
             SkipButton.Pressed += SkipRewards;
+        if (SkillRewardSkipButton != null)
+            SkillRewardSkipButton.Pressed += SkipSkillRewardSelection;
     }
 
     public void SetCompleteNodeOnClose(LevelNode node)
@@ -160,16 +171,31 @@ public partial class Reward : CanvasLayer
             RemoveRewardControl(control);
         }
 
+        if (
+            !_rewardEntries.Values.Any(entry =>
+                entry.Kind == RewardKind.Skill && entry.SkillGroupIndex >= 0
+            )
+        )
+        {
+            _nextSkillRewardGroupIndex = 0;
+            _skillRewardOffersGenerated = false;
+        }
+
         InventoryGridNode?.LayoutCards(force: true);
     }
 
     /// <summary>Add a skill reward entry to the inventory list.</summary>
     public CardSlot AddSkillRewardEntry(string title = "技能奖励")
     {
-        var entry = new RewardEntry { Kind = RewardKind.Skill };
+        var entry = new RewardEntry
+        {
+            Kind = RewardKind.Skill,
+            SkillGroupIndex = _nextSkillRewardGroupIndex++,
+        };
         var card = CreateRewardCard(title, "点击展开技能卡");
         if (card == null)
             return null;
+        _skillRewardOffersGenerated = false;
         RegisterRewardControl(card, entry, isRuntime: true);
         return card;
     }
@@ -381,6 +407,11 @@ public partial class Reward : CanvasLayer
         _pickedSkill = false;
         _isSkillRewardOpen = true;
         SkillRewardsContainer.Visible = true;
+        if (SkillRewardSkipButton != null)
+        {
+            SkillRewardSkipButton.Visible = true;
+            SkillRewardSkipButton.Disabled = false;
+        }
         InventoryGridNode?.SetInputBlocked(true);
         ShowSkillMask(true);
 
@@ -403,6 +434,8 @@ public partial class Reward : CanvasLayer
         InventoryGridNode?.SetInputBlocked(false);
         if (SkillRewardsContainer != null)
             SkillRewardsContainer.Visible = false;
+        if (SkillRewardSkipButton != null)
+            SkillRewardSkipButton.Visible = false;
         ShowSkillMask(false);
     }
 
@@ -445,16 +478,32 @@ public partial class Reward : CanvasLayer
     /// <summary>Populate each visible slot with its offered skill (one offer per player).</summary>
     private void BuildSkillRewards()
     {
+        RewardEntry activeEntry = null;
+        if (_activeSkillRewardControl != null)
+            _rewardEntries.TryGetValue(_activeSkillRewardControl, out activeEntry);
+
         var players =
             GameInfo.PlayerCharacters
             ?? throw new InvalidOperationException("GameInfo.PlayerCharacters is null.");
 
         int count = Math.Min(players.Length, _skillRewardSlots.Count);
-        _offeredSkillIds = new SkillID?[count];
-        _offeredPlayerIndexes = new int[count];
+        EnsureSkillRewardOffersGenerated(players, count);
+        if (
+            activeEntry != null
+            && (activeEntry.OfferedSkillIds == null || activeEntry.OfferedPlayerIndexes == null)
+        )
+        {
+            GenerateSkillRewardOffers(
+                activeEntry,
+                players,
+                count,
+                previouslyGeneratedEntries: Array.Empty<RewardEntry>()
+            );
+        }
 
-        int skillSeed = _completeNodeOnClose?.RandomNum ?? GameInfo.Seed;
-        var rng = new Random(skillSeed);
+        _offeredSkillIds = activeEntry?.OfferedSkillIds?.ToArray() ?? new SkillID?[count];
+        _offeredPlayerIndexes =
+            activeEntry?.OfferedPlayerIndexes?.ToArray() ?? Enumerable.Range(0, count).ToArray();
 
         for (int i = 0; i < _skillRewardSlots.Count; i++)
         {
@@ -464,14 +513,9 @@ public partial class Reward : CanvasLayer
 
         for (int i = 0; i < count; i++)
         {
-            int playerIndex = i;
-            var info = players[playerIndex];
-
-            var pickedId = PickSkillId(info, rng);
-            _offeredSkillIds[i] = pickedId;
-            _offeredPlayerIndexes[i] = playerIndex;
-
+            int playerIndex = _offeredPlayerIndexes[i];
             var slot = _skillRewardSlots[i];
+            SkillID? pickedId = i < _offeredSkillIds.Length ? _offeredSkillIds[i] : null;
             if (pickedId == null)
             {
                 slot.SetSkill(null);
@@ -487,21 +531,132 @@ public partial class Reward : CanvasLayer
                 continue;
             }
 
+            var info = players[playerIndex];
             slot.CharacterName.Text = GameInfo.PlayerCharacters[playerIndex].CharacterName;
             skill.SetPreviewStats(info.Power, info.Survivability, 1);
             slot.SetSkill(skill);
         }
     }
 
-    private static SkillID? PickSkillId(PlayerInfoStructure info, Random rng)
+    private void EnsureSkillRewardOffersGenerated(PlayerInfoStructure[] players, int count)
+    {
+        if (_skillRewardOffersGenerated)
+            return;
+
+        RewardEntry[] skillEntries = _rewardEntries
+            .Values.Where(entry => entry.Kind == RewardKind.Skill && entry.SkillGroupIndex >= 0)
+            .OrderBy(entry => entry.SkillGroupIndex)
+            .ToArray();
+
+        List<RewardEntry> generatedEntries = new();
+        for (int i = 0; i < skillEntries.Length; i++)
+        {
+            RewardEntry entry = skillEntries[i];
+            if (entry.OfferedSkillIds == null || entry.OfferedPlayerIndexes == null)
+                GenerateSkillRewardOffers(entry, players, count, generatedEntries);
+
+            generatedEntries.Add(entry);
+        }
+
+        _skillRewardOffersGenerated = true;
+    }
+
+    private void GenerateSkillRewardOffers(
+        RewardEntry entry,
+        PlayerInfoStructure[] players,
+        int count,
+        IEnumerable<RewardEntry> previouslyGeneratedEntries
+    )
+    {
+        if (entry == null)
+            return;
+
+        entry.OfferedSkillIds = new SkillID?[count];
+        entry.OfferedPlayerIndexes = new int[count];
+
+        int skillSeed = _completeNodeOnClose?.RandomNum ?? GameInfo.Seed;
+        int groupSeed =
+            entry.SkillGroupIndex >= 0
+                ? unchecked(skillSeed * 397 ^ (entry.SkillGroupIndex + 1) * 7919)
+                : skillSeed;
+        var rng = new Random(groupSeed);
+        RewardEntry[] priorEntries = previouslyGeneratedEntries?.ToArray() ?? Array.Empty<RewardEntry>();
+
+        for (int i = 0; i < count; i++)
+        {
+            entry.OfferedPlayerIndexes[i] = i;
+
+            HashSet<SkillID> avoidSkillIds = new();
+            for (int j = 0; j < priorEntries.Length; j++)
+            {
+                RewardEntry priorEntry = priorEntries[j];
+                if (priorEntry?.OfferedSkillIds == null || i >= priorEntry.OfferedSkillIds.Length)
+                    continue;
+
+                SkillID? priorSkillId = priorEntry.OfferedSkillIds[i];
+                if (priorSkillId.HasValue)
+                    avoidSkillIds.Add(priorSkillId.Value);
+            }
+
+            entry.OfferedSkillIds[i] = PickSkillId(players[i], rng, avoidSkillIds);
+        }
+    }
+
+    private static SkillID? PickSkillId(
+        PlayerInfoStructure info,
+        Random rng,
+        ISet<SkillID> avoidSkillIds = null
+    )
     {
         var pool = info.AllSkills;
-        var gained = info.GainedSkills ?? new List<SkillID>();
-        var candidates = pool.Where(id => !gained.Contains(id)).ToArray();
-        if (candidates.Length == 0)
-            candidates = pool;
+        if (pool == null || pool.Length == 0)
+            return null;
 
-        return candidates[rng.Next(0, candidates.Length)];
+        Skill.SkillRarity rolledRarity = Skill.RollRewardRarity(rng);
+        SkillID[] filteredPool = GetRewardSkillPoolForRarity(pool, rolledRarity);
+        if (filteredPool.Length == 0)
+            filteredPool = pool;
+
+        SkillID[] pickPool = filteredPool;
+        if (avoidSkillIds != null && avoidSkillIds.Count > 0)
+        {
+            SkillID[] filteredNonDuplicate = filteredPool
+                .Where(skillId => !avoidSkillIds.Contains(skillId))
+                .ToArray();
+            if (filteredNonDuplicate.Length > 0)
+            {
+                pickPool = filteredNonDuplicate;
+            }
+            else
+            {
+                SkillID[] fullPoolNonDuplicate = pool
+                    .Where(skillId => !avoidSkillIds.Contains(skillId))
+                    .ToArray();
+                if (fullPoolNonDuplicate.Length > 0)
+                    pickPool = fullPoolNonDuplicate;
+            }
+        }
+
+        return pickPool[rng.Next(0, pickPool.Length)];
+    }
+
+    private static SkillID[] GetRewardSkillPoolForRarity(
+        IEnumerable<SkillID> pool,
+        Skill.SkillRarity rolledRarity
+    )
+    {
+        SkillID[] sourcePool = (pool ?? Array.Empty<SkillID>()).ToArray();
+        if (sourcePool.Length == 0)
+            return Array.Empty<SkillID>();
+
+        foreach (Skill.SkillRarity rarity in Skill.GetRewardRarityFallbackOrder(rolledRarity))
+        {
+            SkillID[] filtered = Skill.FilterSkillPoolByRarity(sourcePool, rarity);
+            if (filtered.Length > 0)
+                return filtered;
+        }
+
+        return sourcePool;
     }
 
     /// <summary>Pick the skill reward from a slot and hide the skill cards.</summary>
@@ -510,6 +665,11 @@ public partial class Reward : CanvasLayer
         if (_pickedSkill)
             return;
         _pickedSkill = true;
+        if (SkillRewardSkipButton != null)
+        {
+            SkillRewardSkipButton.Disabled = true;
+            SkillRewardSkipButton.Visible = false;
+        }
 
         var skillId = _offeredSkillIds[slotIndex]!.Value;
         int playerIndex = _offeredPlayerIndexes[slotIndex];
@@ -520,8 +680,7 @@ public partial class Reward : CanvasLayer
 
         var info = players[playerIndex];
         info.GainedSkills ??= new List<SkillID>();
-        if (!info.GainedSkills.Contains(skillId))
-            info.GainedSkills.Add(skillId);
+        info.GainedSkills.Add(skillId);
         players[playerIndex] = info;
         GameInfo.PlayerCharacters = players;
 
@@ -547,6 +706,8 @@ public partial class Reward : CanvasLayer
         _pickedSkill = false;
         if (SkillRewardsContainer != null)
             SkillRewardsContainer.Visible = false;
+        if (SkillRewardSkipButton != null)
+            SkillRewardSkipButton.Visible = false;
         InventoryGridNode?.SetInputBlocked(false);
         ShowSkillMask(false);
 
@@ -732,6 +893,14 @@ public partial class Reward : CanvasLayer
         ResetSkillRewardPanel();
         ClearRewardItems(clearStatic: true);
         CloseReward();
+    }
+
+    private void SkipSkillRewardSelection()
+    {
+        if (!_isSkillRewardOpen || _pickedSkill)
+            return;
+
+        ResetSkillRewardPanel();
     }
 
     private void PlayIntroAnimation()

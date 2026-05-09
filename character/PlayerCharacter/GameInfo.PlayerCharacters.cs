@@ -45,7 +45,6 @@ public static partial class GameInfo
                 }
             }
 
-            info.GainedSkills = info.GainedSkills.Distinct().ToList();
             PlayerCharacters[i] = info;
         }
     }
@@ -124,6 +123,9 @@ public static partial class GameInfo
             return;
 
         var poolSet = pool.ToHashSet();
+        poolSet.Add(SkillID.BasicAttack);
+        poolSet.Add(SkillID.BasicDefense);
+        poolSet.Add(SkillID.BasicSpecial);
         var validGained = (info.GainedSkills ?? new List<SkillID>())
             .Where(poolSet.Contains)
             .Distinct()
@@ -183,7 +185,6 @@ public static partial class GameInfo
                 info.GainedSkills.Add(skillId);
         }
 
-        info.GainedSkills = info.GainedSkills.Distinct().ToList();
     }
 
     private static T[] NormalizeArray<T>(T[] source, int length)

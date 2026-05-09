@@ -136,7 +136,6 @@ public partial class BlackHawkSpecial : Skill
 {
     private const int SurvivabilityDown = 4;
     private const int VulnerableStacks = 6;
-    private const int EnergyCost = 3;
     private const int MaxTargets = 2;
     int rtimes = 3;
     public BlackHawkSpecial()
@@ -146,6 +145,7 @@ public partial class BlackHawkSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "黑羽风暴";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -153,21 +153,14 @@ public partial class BlackHawkSpecial : Skill
             this,
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown),
             ApplyBuffHostile(Buff.BuffName.Vulnerable, VulnerableStacks),
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps:
+            EnergyTimesWhileStep(
+                times: () => rtimes,
+                loopSteps:
                 [
-                    EnergyTimesWhileStep(
-                        energyCost: 0,
-                        times: () => rtimes,
-                        loopSteps:
-                        [
-                            AoeDamageStep(
-                                baseDamage: 0,
-                                powerMultiplier: 1,
-                                target: HostileTargets(MaxTargets)
-                            ),
-                        ]
+                    AoeDamageStep(
+                        baseDamage: 0,
+                        powerMultiplier: 1,
+                        target: HostileTargets(MaxTargets)
                     ),
                 ]
             )

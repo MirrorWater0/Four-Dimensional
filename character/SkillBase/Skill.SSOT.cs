@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Godot;
 
@@ -580,6 +579,7 @@ public partial class Skill
                 })
                 .ToArray();
         }
+
     }
 
     protected abstract class SkillStep
@@ -600,6 +600,7 @@ public partial class Skill
         {
             return Array.Empty<PreviewDamageEntry>();
         }
+
     }
 
     protected SkillStep AttackPrimaryStep(
@@ -1174,34 +1175,12 @@ public partial class Skill
             descriptionLine
         );
 
-    protected SkillStep EnergyTimesGateStep(
-        int energyCost,
-        Func<int> times = null,
-        Action<int> setTimes = null,
-        params SkillStep[] onPassSteps
-    ) => new EnergyTimesGateSkillStep(energyCost, times, setTimes, onPassSteps);
-
-    protected SkillStep EnergyTimesGateStep(
-        int energyCost,
-        int times,
-        SkillStep firstOnPassStep,
-        [CallerArgumentExpression("times")] string timesMemberExpression = null,
-        params SkillStep[] additionalOnPassSteps
-    )
-    {
-        var (getTimes, setTimes) = ResolveEnergyTimesMember(timesMemberExpression);
-        SkillStep[] onPassSteps = firstOnPassStep == null
-            ? additionalOnPassSteps ?? Array.Empty<SkillStep>()
-            : [firstOnPassStep, .. (additionalOnPassSteps ?? Array.Empty<SkillStep>())];
-        return new EnergyTimesGateSkillStep(energyCost, getTimes, setTimes, onPassSteps);
-    }
-
     protected SkillStep EnergyTimesWhileStep(
-        int energyCost,
+        int paidEnergyPerLoop = 0,
         Func<int> times = null,
         Action<int> setTimes = null,
         params SkillStep[] loopSteps
-    ) => new EnergyTimesWhileSkillStep(energyCost, times, setTimes, loopSteps);
+    ) => new EnergyTimesWhileSkillStep(paidEnergyPerLoop, times, setTimes, loopSteps);
 
     private (Func<int> GetTimes, Action<int> SetTimes) ResolveEnergyTimesMember(
         string memberExpression
@@ -1843,6 +1822,7 @@ public partial class Skill
             case Buff.BuffName.DebuffImmunity:
             case Buff.BuffName.ExtraPower:
             case Buff.BuffName.ExtraSurvivability:
+            case Buff.BuffName.CardRefresh:
                 SpecialBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             default:
@@ -1926,11 +1906,19 @@ public partial class Skill
         if (skill._stopRemainingPlanExecution)
             return true;
 
-        if (skill.OwnerCharater?.State != Character.CharacterState.Dying)
-            return false;
+        if (skill.OwnerCharater?.State == Character.CharacterState.Dying)
+        {
+            skill._stopRemainingPlanExecution = true;
+            return true;
+        }
 
-        skill._stopRemainingPlanExecution = true;
-        return true;
+        if (skill.OwnerCharater?.BattleNode?.ShouldAbortSkillResolution() == true)
+        {
+            skill._stopRemainingPlanExecution = true;
+            return true;
+        }
+
+        return false;
     }
 
     private static int ResolveStepBaseValue(
@@ -2926,11 +2914,9 @@ public partial class Skill
                 return;
 
             var target = skill.ResolveFriendlyTarget(_target, dyingFilter: true);
-            if (target == null || target.Skills == null)
+            if (target == null)
                 return;
-            if (_skillIndex < 0 || _skillIndex >= target.Skills.Length)
-                return;
-            if (target.Skills[_skillIndex] == null)
+            if (!TryGetCarrySkillType(_skillIndex, out _))
                 return;
 
             await skill.Carry(target, _skillIndex);
@@ -3097,19 +3083,16 @@ public partial class Skill
 
     private sealed class EnergyTimesGateSkillStep : SkillStep
     {
-        private readonly int _energyCost;
         private readonly Func<int> _times;
         private readonly Action<int> _setTimes;
         private readonly SkillStep[] _onPassSteps;
 
         public EnergyTimesGateSkillStep(
-            int energyCost,
             Func<int> times,
             Action<int> setTimes,
             SkillStep[] onPassSteps
         )
         {
-            _energyCost = Math.Max(0, energyCost);
             _times = times;
             _setTimes = setTimes;
             _onPassSteps = onPassSteps ?? Array.Empty<SkillStep>();
@@ -3120,7 +3103,7 @@ public partial class Skill
             if (ShouldAbortStepExecution(skill))
                 return;
 
-            if (!TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
+            if (!TryPassTimesGate(skill, _times, _setTimes))
                 return;
 
             for (int i = 0; i < _onPassSteps.Length; i++)
@@ -3142,22 +3125,10 @@ public partial class Skill
             if (hasTimes)
             {
                 if (consumesTimes)
-                {
-                    if (_energyCost > 0)
-                        yield return $"消耗{_energyCost}点能量并次数-1(当前次数：{currentTimes})：";
-                    else
-                        yield return $"次数-1(当前次数：{currentTimes})：";
-                }
+                    yield return $"次数-1(当前次数：{currentTimes})：";
                 else
-                {
-                    if (_energyCost > 0)
-                        yield return $"消耗{_energyCost}点能量(当前次数：{currentTimes})：";
-                    else
-                        yield return $"当前次数：{currentTimes}：";
-                }
+                    yield return $"当前次数：{currentTimes}：";
             }
-            else if (_energyCost > 0)
-                yield return $"消耗{_energyCost}点能量：";
 
             for (int i = 0; i < _onPassSteps.Length; i++)
             {
@@ -3170,7 +3141,7 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+            if (!CanPassTimesGate(skill, _times))
                 return Array.Empty<Character>();
 
             return CollectPreviewTargets(skill, _onPassSteps);
@@ -3181,28 +3152,29 @@ public partial class Skill
             PreviewDamageContext context
         )
         {
-            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+            if (!CanPassTimesGate(skill, _times))
                 return Array.Empty<PreviewDamageEntry>();
 
             return CollectPreviewDamage(skill, _onPassSteps, context);
         }
+
     }
 
     private sealed class EnergyTimesWhileSkillStep : SkillStep
     {
-        private readonly int _energyCost;
+        private readonly int _paidEnergyPerLoop;
         private readonly Func<int> _times;
         private readonly Action<int> _setTimes;
         private readonly SkillStep[] _loopSteps;
 
         public EnergyTimesWhileSkillStep(
-            int energyCost,
+            int paidEnergyPerLoop,
             Func<int> times,
             Action<int> setTimes,
             SkillStep[] loopSteps
         )
         {
-            _energyCost = Math.Max(0, energyCost);
+            _paidEnergyPerLoop = Math.Max(0, paidEnergyPerLoop);
             _times = times;
             _setTimes = setTimes;
             _loopSteps = loopSteps ?? Array.Empty<SkillStep>();
@@ -3216,8 +3188,29 @@ public partial class Skill
             if (_loopSteps.Length == 0)
                 return;
 
-            if (_energyCost <= 0 && _times == null)
+            if (_paidEnergyPerLoop <= 0 && _times == null)
                 return;
+
+            if (_paidEnergyPerLoop > 0 && _times == null)
+            {
+                int loopCount = skill.GetXEnergyLoopCount(_paidEnergyPerLoop);
+                for (int loopIndex = 0; loopIndex < loopCount; loopIndex++)
+                {
+                    if (ShouldAbortStepExecution(skill))
+                        return;
+
+                    for (int i = 0; i < _loopSteps.Length; i++)
+                    {
+                        if (ShouldAbortStepExecution(skill))
+                            return;
+                        await _loopSteps[i].Execute(skill);
+                        if (ShouldAbortStepExecution(skill))
+                            return;
+                    }
+                }
+
+                return;
+            }
 
             // Delegate-only times mode: snapshot once, then consume locally.
             // This keeps WhileStep compatible with read-only Func<int> providers.
@@ -3228,9 +3221,6 @@ public partial class Skill
                 {
                     if (ShouldAbortStepExecution(skill))
                         return;
-
-                    if (_energyCost > 0 && !skill.TrySpendEnergy(_energyCost))
-                        break;
 
                     remainingTimes--;
                     for (int i = 0; i < _loopSteps.Length; i++)
@@ -3246,7 +3236,7 @@ public partial class Skill
                 return;
             }
 
-            while (TryPassEnergyTimesGate(skill, _energyCost, _times, _setTimes))
+            while (TryPassTimesGate(skill, _times, _setTimes))
             {
                 if (ShouldAbortStepExecution(skill))
                     return;
@@ -3267,7 +3257,7 @@ public partial class Skill
             bool hasTimes = _times != null;
             bool consumesTimes = hasTimes && _setTimes != null;
             int currentTimes = hasTimes ? Math.Max(0, _times?.Invoke() ?? 0) : 0;
-            if (_energyCost <= 0 && !hasTimes)
+            if (_paidEnergyPerLoop <= 0 && !hasTimes)
             {
                 yield return "循环条件无效，不执行。";
                 yield break;
@@ -3277,22 +3267,19 @@ public partial class Skill
             {
                 if (consumesTimes)
                 {
-                    if (_energyCost > 0)
-                        yield return $"循环每轮消耗{_energyCost}点能量并次数-1(当前次数：{currentTimes})：";
-                    else
-                        yield return $"循环每轮次数-1(当前次数：{currentTimes})。";
+                    yield return $"循环每轮次数-1(当前次数：{currentTimes})。";
                 }
                 else
                 {
-                    if (_energyCost > 0)
-                        yield return $"循环每轮消耗{_energyCost}点能量(当前次数：{currentTimes})：";
-                    else
-                        yield return $"循环当前次数：{currentTimes}。";
+                    yield return $"循环当前次数：{currentTimes}。";
                 }
             }
             else
             {
-                yield return $"循环每轮消耗{_energyCost}点能量：";
+                if (skill?.UsesXEnergyCost == true && _paidEnergyPerLoop == 1)
+                    yield return "循环x次：";
+                else
+                    yield return $"按本技能支付能量每{_paidEnergyPerLoop}点循环1次：";
             }
 
             for (int i = 0; i < _loopSteps.Length; i++)
@@ -3307,7 +3294,7 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+            if (!CanPassEnergyTimesLoop(skill, _paidEnergyPerLoop, _times))
                 return Array.Empty<Character>();
 
             return CollectPreviewTargets(skill, _loopSteps);
@@ -3318,14 +3305,15 @@ public partial class Skill
             PreviewDamageContext context
         )
         {
-            if (!CanPassEnergyTimesGate(skill, _energyCost, _times))
+            if (!CanPassEnergyTimesLoop(skill, _paidEnergyPerLoop, _times))
                 return Array.Empty<PreviewDamageEntry>();
 
             return CollectPreviewDamage(skill, _loopSteps, context);
         }
+
     }
 
-    private static bool CanPassEnergyTimesGate(Skill skill, int energyCost, Func<int> times)
+    private static bool CanPassTimesGate(Skill skill, Func<int> times)
     {
         if (ShouldAbortStepExecution(skill) || skill?.OwnerCharater == null)
             return false;
@@ -3335,13 +3323,22 @@ public partial class Skill
         if (hasTimes && currentTimes <= 0)
             return false;
 
-        int safeEnergyCost = Math.Max(0, energyCost);
-        return safeEnergyCost <= 0 || skill.OwnerCharater.Energy >= safeEnergyCost;
+        return true;
     }
 
-    private static bool TryPassEnergyTimesGate(
+    private static bool CanPassEnergyTimesLoop(Skill skill, int paidEnergyPerLoop, Func<int> times)
+    {
+        if (!CanPassTimesGate(skill, times))
+            return false;
+
+        if (times == null && paidEnergyPerLoop > 0)
+            return skill.GetXEnergyLoopCount(paidEnergyPerLoop) > 0;
+
+        return true;
+    }
+
+    private static bool TryPassTimesGate(
         Skill skill,
-        int energyCost,
         Func<int> times,
         Action<int> setTimes
     )
@@ -3352,10 +3349,6 @@ public partial class Skill
         bool hasTimes = times != null;
         int currentTimes = hasTimes ? Math.Max(0, times()) : 0;
         if (hasTimes && currentTimes <= 0)
-            return false;
-
-        int safeEnergyCost = Math.Max(0, energyCost);
-        if (safeEnergyCost > 0 && !skill.TrySpendEnergy(safeEnergyCost))
             return false;
 
         if (hasTimes)
@@ -3499,6 +3492,7 @@ public partial class Skill
 
             return CollectPreviewDamage(skill, _onPassSteps, context);
         }
+
     }
 
     private sealed class BranchSkillStep : SkillStep
@@ -3585,6 +3579,7 @@ public partial class Skill
             SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
             return CollectPreviewDamage(skill, activeSteps, context);
         }
+
     }
 
     private sealed class TextSkillStep : SkillStep
@@ -3636,5 +3631,3 @@ public partial class Skill
         }
     }
 }
-
-

@@ -166,7 +166,6 @@ public partial class InexorabilitySurvive : Skill
 public partial class InexorabilitySpecial : Skill
 {
     private const int SelfPowerGain = 4;
-    private const int EnergyCost = 4;
     private const int BaseDamage = 8;
     private const int PowerMultiplier = 2;
 
@@ -177,6 +176,7 @@ public partial class InexorabilitySpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终局律令";
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {
@@ -184,16 +184,10 @@ public partial class InexorabilitySpecial : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             BlockStep(0, 8),
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps:
-                [
-                    AoeDamageStep(
-                        baseDamage: BaseDamage,
-                        powerMultiplier: PowerMultiplier,
-                        target: HostileTargetsEachRowLast()
-                    ),
-                ]
+            AoeDamageStep(
+                baseDamage: BaseDamage,
+                powerMultiplier: PowerMultiplier,
+                target: HostileTargetsEachRowLast()
             )
         );
     }

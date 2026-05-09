@@ -9,7 +9,6 @@ public partial class SoundBarrier : Skill
     public override string SkillName { get; set; } = "音墙";
     private const int EnergyGain = 1;
     private const int BaseBlock = 8;
-    int times = 2;
 
     public SoundBarrier()
         : base(SkillTypes.Survive)
@@ -23,7 +22,7 @@ public partial class SoundBarrier : Skill
             this,
             EnergyStep(EnergyGain),
             BlockStep(0, BaseBlock),
-            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(1), skillIndex: 0))
+            CarryStep(target: RelativeTarget(1), skillIndex: 0)
         );
     }
 }
@@ -139,7 +138,6 @@ public partial class DissonantField : Skill
 public partial class RelayShift : Skill
 {
     private const int BaseBlock = 5;
-    int times = 3;
 
     public RelayShift()
         : base(SkillTypes.Survive)
@@ -157,7 +155,35 @@ public partial class RelayShift : Skill
             BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
             EnergyStep(1, RelativeTarget(-1)),
             EnergyStep(-1, RelativeTarget(0)),
-            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 1))
+            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+        );
+    }
+}
+
+public partial class ResonanceShelter : Skill
+{
+    private const int BaseBlock = 10;
+    private const int CardRefreshStacks = 1;
+
+    public ResonanceShelter()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "谐振护幕";
+    public override int EnergyCost => 1;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.CardRefresh,
+                stacks: CardRefreshStacks,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+            )
         );
     }
 }

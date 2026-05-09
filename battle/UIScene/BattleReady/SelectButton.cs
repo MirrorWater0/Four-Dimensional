@@ -11,6 +11,7 @@ public partial class SelectButton : Control
 
     Color out_orignalColor;
     public Skill MySkill;
+    public bool AllowPressEffect { get; set; } = true;
     public Label ThisLabel => field ??= GetNode("Control/Label") as Label;
     public Vector2 OriginalScale;
     public Panel Border => field ??= GetNode("Control/Border") as Panel;
@@ -37,10 +38,16 @@ public partial class SelectButton : Control
         Button.MouseExited += mouse_exited;
         Button.Pressed += () =>
         {
+            if (!AllowPressEffect)
+                return;
+
             CreateTween().TweenProperty(this, "scale", OriginalScale, 0.1f);
         };
         Button.ButtonDown += () =>
         {
+            if (!AllowPressEffect)
+                return;
+
             animation.Play("explode");
         };
 

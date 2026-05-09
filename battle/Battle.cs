@@ -16,9 +16,19 @@ public partial class Battle : Node2D
     public bool TestBattleTutorial { get; set; }
 
     public Random BattleIntentionRandom;
+    private Random _carrySkillRandom;
     private readonly CancellationTokenSource _lifetimeCts = new();
+    private readonly Dictionary<string, PlayerBattleCardPiles> _playerBattleCardPiles = new();
+    private readonly Dictionary<string, Random> _playerBattleSkillRandoms = new();
     private ulong _battleInstanceId;
     private bool _retreating;
+
+    private sealed class PlayerBattleCardPiles
+    {
+        public readonly List<SkillID> DrawPile = new();
+        public readonly List<SkillID> DiscardPile = new();
+        public readonly List<SkillID> Exhausted = new();
+    }
 
     [Signal]
     public delegate void NextEventHandler(Character character);
@@ -49,6 +59,7 @@ public partial class Battle : Node2D
     private readonly Dictionary<ulong, int> _characterActionCounts = new();
     private readonly Dictionary<ulong, int> _pendingExtraActions = new();
     private readonly HashSet<ulong> _activeExtraActionCharacters = new();
+    private Character _nextActionPreviewCharacter;
     private bool _actionPoinUiRefreshScheduled;
     private bool _pendingPlayerActionPoinUiRefresh;
     private bool _pendingEnemyActionPoinUiRefresh;
@@ -226,17 +237,281 @@ public partial class Battle : Node2D
 
     private void InitializeBattleUi()
     {
+        BattleIntentionRandom ??= CreateBattleRandom(unchecked((int)0x13572468));
+        _carrySkillRandom ??= CreateBattleRandom(unchecked((int)0x5A17C0DE));
         RetreatButton.ButtonDown += ManualRetreat;
         _playerActionCount = 0;
         _enemyActionCount = 0;
+        _playerBattleCardPiles.Clear();
+        _playerBattleSkillRandoms.Clear();
         _characterActionCounts.Clear();
         _pendingExtraActions.Clear();
         _activeExtraActionCharacters.Clear();
         InitializeNonGameplayUi();
     }
 
+    private Random CreateBattleRandom(int salt)
+    {
+        int baseSeed = CurrentLevelNode?.RandomNum ?? GameInfo.Seed;
+        int instanceSeed = unchecked((int)_battleInstanceId);
+        return new Random(baseSeed ^ salt ^ instanceSeed);
+    }
+
+    public Skill DrawPlayerBattleSkill(
+        PlayerCharacter player,
+        Skill.SkillTypes skillType = Skill.SkillTypes.none,
+        SkillID? avoidSkillId = null
+    )
+    {
+        if (player == null || GameInfo.PlayerCharacters == null)
+            return null;
+
+        if (player.CharacterIndex < 0 || player.CharacterIndex >= GameInfo.PlayerCharacters.Length)
+            return null;
+
+        PlayerBattleCardPiles piles = GetOrCreatePlayerBattleCardPiles(player);
+        if (piles == null)
+            return null;
+
+        if (!TryEnsureDrawableCards(piles, skillType))
+            return null;
+
+        int[] candidateIndexes = GetDrawableCardIndexes(piles.DrawPile, skillType);
+        if (candidateIndexes.Length == 0)
+            return null;
+
+        int[] pickPool =
+            avoidSkillId.HasValue && candidateIndexes.Length > 1
+                ? candidateIndexes
+                    .Where(index => piles.DrawPile[index] != avoidSkillId.Value)
+                    .ToArray()
+                : candidateIndexes;
+        if (pickPool.Length == 0)
+            pickPool = candidateIndexes;
+
+        Random rng = GetOrCreatePlayerBattleSkillRandom(player);
+        int pickedIndex = pickPool[rng.Next(pickPool.Length)];
+        SkillID pickedId = piles.DrawPile[pickedIndex];
+        piles.DrawPile.RemoveAt(pickedIndex);
+        Skill pickedSkill = Skill.GetSkill(pickedId);
+        if (pickedSkill != null)
+            pickedSkill.OwnerCharater = player;
+        player.InvalidateSkillTooltipCache();
+        return pickedSkill;
+    }
+
+    public void DiscardBattleSkill(Character actor, Skill skill)
+    {
+        if (actor is not PlayerCharacter player || skill == null || !skill.SkillId.HasValue)
+        {
+            return;
+        }
+
+        PlayerBattleCardPiles piles = GetOrCreatePlayerBattleCardPiles(player);
+        if (piles == null)
+            return;
+
+        SkillID skillId = skill.SkillId.Value;
+        if (skill.ExhaustsAfterUse)
+            piles.Exhausted.Add(skillId);
+        else
+            piles.DiscardPile.Add(skillId);
+
+        player.InvalidateSkillTooltipCache();
+    }
+
+    public SkillID[] GetDrawBattleCardPile(PlayerCharacter player) =>
+        GetOrCreatePlayerBattleCardPiles(player)?.DrawPile.ToArray() ?? Array.Empty<SkillID>();
+
+    public SkillID[] GetDiscardBattleCardPile(PlayerCharacter player) =>
+        GetOrCreatePlayerBattleCardPiles(player)?.DiscardPile.ToArray() ?? Array.Empty<SkillID>();
+
+    public SkillID[] GetExhaustedBattleCardPile(PlayerCharacter player) =>
+        GetOrCreatePlayerBattleCardPiles(player)?.Exhausted.ToArray() ?? Array.Empty<SkillID>();
+
+    public bool HasDrawablePlayerBattleSkill(
+        PlayerCharacter player,
+        Skill.SkillTypes skillType = Skill.SkillTypes.none
+    )
+    {
+        PlayerBattleCardPiles piles = GetOrCreatePlayerBattleCardPiles(player);
+        return
+            HasDrawableCards(piles?.DrawPile, skillType)
+            || HasDrawableCards(piles?.DiscardPile, skillType);
+    }
+
+    private PlayerBattleCardPiles GetOrCreatePlayerBattleCardPiles(PlayerCharacter player)
+    {
+        if (player == null || GameInfo.PlayerCharacters == null)
+            return null;
+
+        string characterKey = GetPlayerBattleSkillCharacterKey(player);
+        if (string.IsNullOrEmpty(characterKey))
+            return null;
+
+        if (_playerBattleCardPiles.TryGetValue(characterKey, out var piles))
+            return piles;
+
+        piles = new PlayerBattleCardPiles();
+        var info = GameInfo.PlayerCharacters[player.CharacterIndex];
+        foreach (SkillID skillId in info.GainedSkills ?? new List<SkillID>())
+        {
+            Skill skill = Skill.GetSkill(skillId);
+            if (skill == null || skill.SkillType == Skill.SkillTypes.none)
+                continue;
+
+            piles.DrawPile.Add(skillId);
+        }
+
+        _playerBattleCardPiles[characterKey] = piles;
+        return piles;
+    }
+
+    private bool TryEnsureDrawableCards(PlayerBattleCardPiles piles, Skill.SkillTypes skillType)
+    {
+        if (piles == null)
+            return false;
+
+        if (GetDrawableCardIndexes(piles.DrawPile, skillType).Length > 0)
+            return true;
+
+        if (piles.DiscardPile.Count == 0)
+            return false;
+
+        piles.DrawPile.AddRange(piles.DiscardPile);
+        piles.DiscardPile.Clear();
+        return GetDrawableCardIndexes(piles.DrawPile, skillType).Length > 0;
+    }
+
+    private static int[] GetDrawableCardIndexes(List<SkillID> drawPile, Skill.SkillTypes skillType)
+    {
+        if (drawPile == null || drawPile.Count == 0)
+            return Array.Empty<int>();
+
+        return drawPile
+            .Select((id, index) => new { id, index })
+            .Where(entry =>
+            {
+                if (skillType == Skill.SkillTypes.none)
+                    return Skill.GetSkill(entry.id) != null;
+
+                Skill candidate = Skill.GetSkill(entry.id);
+                return candidate != null && candidate.SkillType == skillType;
+            })
+            .Select(entry => entry.index)
+            .ToArray();
+    }
+
+    private static bool HasDrawableCards(List<SkillID> pile, Skill.SkillTypes skillType)
+    {
+        if (pile == null || pile.Count == 0)
+            return false;
+
+        return pile.Any(id =>
+        {
+            Skill candidate = Skill.GetSkill(id);
+            if (candidate == null)
+                return false;
+
+            return skillType == Skill.SkillTypes.none || candidate.SkillType == skillType;
+        });
+    }
+
+    private Random GetOrCreatePlayerBattleSkillRandom(PlayerCharacter player)
+    {
+        string characterKey = GetPlayerBattleSkillCharacterKey(player);
+        if (_playerBattleSkillRandoms.TryGetValue(characterKey, out Random rng))
+            return rng;
+
+        rng = new Random(CreatePlayerBattleSkillSeed(characterKey));
+        _playerBattleSkillRandoms[characterKey] = rng;
+        return rng;
+    }
+
+    private string GetPlayerBattleSkillCharacterKey(PlayerCharacter player)
+    {
+        if (
+            player == null
+            || GameInfo.PlayerCharacters == null
+            || player.CharacterIndex < 0
+            || player.CharacterIndex >= GameInfo.PlayerCharacters.Length
+        )
+        {
+            return string.Empty;
+        }
+
+        PlayerInfoStructure info = GameInfo.PlayerCharacters[player.CharacterIndex];
+        if (!string.IsNullOrWhiteSpace(info.CharacterScenePath))
+            return $"{player.CharacterIndex}:{info.CharacterScenePath}";
+        if (!string.IsNullOrWhiteSpace(info.CharacterName))
+            return $"{player.CharacterIndex}:{info.CharacterName}";
+
+        return $"character-index:{player.CharacterIndex}";
+    }
+
+    private int CreatePlayerBattleSkillSeed(string characterKey)
+    {
+        int baseSeed = CurrentLevelNode?.RandomNum ?? GameInfo.Seed;
+        return HashSeed(baseSeed, unchecked((int)0x24681357), StableStringHash(characterKey));
+    }
+
+    private static int HashSeed(params int[] values)
+    {
+        unchecked
+        {
+            int hash = (int)2166136261;
+            foreach (int value in values)
+            {
+                hash ^= value;
+                hash *= 16777619;
+            }
+
+            return hash;
+        }
+    }
+
+    private static int StableStringHash(string value)
+    {
+        unchecked
+        {
+            int hash = (int)2166136261;
+            foreach (char c in value ?? string.Empty)
+            {
+                hash ^= c;
+                hash *= 16777619;
+            }
+
+            return hash;
+        }
+    }
+
+    public Skill DrawCarrySkill(Character character, Skill.SkillTypes skillType)
+    {
+        if (character == null || skillType == Skill.SkillTypes.none)
+            return null;
+
+        if (character is PlayerCharacter player)
+            return DrawPlayerBattleSkill(player, skillType);
+
+        Skill[] candidates = (character.Skills ?? Array.Empty<Skill>())
+            .Where(skill => skill != null && skill.SkillType == skillType)
+            .ToArray();
+        if (candidates.Length == 0)
+            return null;
+
+        _carrySkillRandom ??= CreateBattleRandom(unchecked((int)0x5A17C0DE));
+        Skill pickedSkill =
+            candidates.Length == 1
+                ? candidates[0]
+                : candidates[_carrySkillRandom.Next(candidates.Length)];
+        if (pickedSkill != null)
+            pickedSkill.OwnerCharater = character;
+        return pickedSkill;
+    }
+
     public void SetCurrentActionCharacter(Character character)
     {
+        ClearNextActionPreviewCharacter(character);
         CurrentActionCharacter = character;
     }
 
@@ -244,6 +519,39 @@ public partial class Battle : Node2D
     {
         if (character == null || CurrentActionCharacter == character)
             CurrentActionCharacter = null;
+    }
+
+    public void SetNextActionPreviewCharacter(Character character)
+    {
+        if (_nextActionPreviewCharacter == character)
+            return;
+
+        ClearNextActionPreviewCharacter();
+        if (
+            character == null
+            || !GodotObject.IsInstanceValid(character)
+            || character == CurrentActionCharacter
+            || character.State == Character.CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        _nextActionPreviewCharacter = character;
+        character.ShowNextActionPreview();
+    }
+
+    public void ClearNextActionPreviewCharacter(Character character = null)
+    {
+        if (_nextActionPreviewCharacter == null)
+            return;
+        if (character != null && _nextActionPreviewCharacter != character)
+            return;
+
+        Character previewCharacter = _nextActionPreviewCharacter;
+        _nextActionPreviewCharacter = null;
+        if (GodotObject.IsInstanceValid(previewCharacter))
+            previewCharacter.HideNextActionPreview();
     }
 
     public IEnumerable<Character> GetTeamCharacters(bool isPlayer, bool includeSummons = true)
@@ -382,7 +690,9 @@ public partial class Battle : Node2D
                 return false;
             }
 
-            enemy.IntentionIndex = enemy.RollIntentionIndex();
+            enemy.IntentionIndex = enemy.RollIntentionIndex(
+                EnemyCharacter.NextActionEnergyPreviewBonus
+            );
             await enemy.DisappearIntention();
             if (!CanContinue(token))
             {
@@ -815,19 +1125,7 @@ public partial class Battle : Node2D
         }
     }
 
-    public Task EndEmitExtraActionS(Character character)
-    {
-        if (character?.IsSummon == true)
-        {
-            ClearCurrentActionCharacter(character);
-            EmitSignal(SignalName.Next, character);
-            return Task.CompletedTask;
-        }
-
-        EmitSignal(SignalName.Next, character);
-        ClearCurrentActionCharacter(character);
-        return Task.CompletedTask;
-    }
+    public Task EndEmitExtraActionS(Character character) => EndEmitS(character);
 
     public List<Func<Task>> StartEffectList = new();
 
@@ -848,18 +1146,18 @@ public partial class Battle : Node2D
 
         if (playerOpeningSpeed < enemyOpeningSpeed)
         {
-            await CharacterAction(EnemiesList, token);
+            await CharacterAction(EnemiesList, token, () => GetNextLivingCharacter(PlayersList));
         }
 
         for (int i = 0; i < MaxBattleTurns && CanContinue(token); i++)
         {
-            await CharacterAction(PlayersList, token);
+            await CharacterAction(PlayersList, token, () => GetNextLivingCharacter(EnemiesList));
             if (!CanContinue(token))
             {
                 return;
             }
 
-            await CharacterAction(EnemiesList, token);
+            await CharacterAction(EnemiesList, token, () => GetNextLivingCharacter(PlayersList));
         }
 
         if (CanContinue(token))
@@ -869,7 +1167,11 @@ public partial class Battle : Node2D
         }
     }
 
-    public async Task CharacterAction<T>(List<T> characterlist, CancellationToken token)
+    public async Task CharacterAction<T>(
+        List<T> characterlist,
+        CancellationToken token,
+        Func<Character> getNextAfterAction = null
+    )
         where T : Character
     {
         if (!CanAct(characterlist, token))
@@ -880,6 +1182,14 @@ public partial class Battle : Node2D
         DyingDetector(characterlist);
         Character actingCharacter = characterlist[0];
         RotateFrontToBack(characterlist);
+        Character nextPreview = GetNextActionPreviewAfterCurrentAction(
+            actingCharacter,
+            characterlist,
+            getNextAfterAction
+        );
+        if (nextPreview == actingCharacter)
+            nextPreview = null;
+        SetNextActionPreviewCharacter(nextPreview);
         bool isExtraAction = false;
         while (true)
         {
@@ -933,6 +1243,49 @@ public partial class Battle : Node2D
                 token
             );
         }
+    }
+
+    private Character GetNextActionPreviewAfterCurrentAction<T>(
+        Character actingCharacter,
+        List<T> rotatedCurrentTeam,
+        Func<Character> getNextAfterAction
+    )
+        where T : Character
+    {
+        Character actionPoinBurstPreview = GetActionPoinBurstPreviewAfterCurrentAction(
+            actingCharacter
+        );
+        if (actionPoinBurstPreview != null)
+            return actionPoinBurstPreview;
+
+        return getNextAfterAction != null
+            ? getNextAfterAction()
+            : GetNextLivingCharacter(rotatedCurrentTeam);
+    }
+
+    private Character GetActionPoinBurstPreviewAfterCurrentAction(Character actingCharacter)
+    {
+        int previewPlayerActionPoin = PlayerActionPoin;
+        int previewEnemyActionPoin = EnemyActionPoin;
+
+        if (
+            SuppressActionPoinGainThisTurn != true
+            && actingCharacter?.ParticipatesInTurnRotation == true
+        )
+        {
+            if (actingCharacter.IsPlayer)
+                previewPlayerActionPoin += GetAliveTeamSpeed(isPlayer: true);
+            else
+                previewEnemyActionPoin += GetAliveTeamSpeed(isPlayer: false);
+        }
+
+        if (previewPlayerActionPoin >= ActionPoinTriggerThreshold)
+            return GetNextLivingCharacter(PlayersList);
+
+        if (previewEnemyActionPoin >= ActionPoinTriggerThreshold)
+            return GetNextLivingCharacter(EnemiesList);
+
+        return null;
     }
 
     public void DyingDetector<T>(List<T> c)
@@ -1090,7 +1443,20 @@ public partial class Battle : Node2D
     private bool CanAct<T>(List<T> characters, CancellationToken token)
         where T : Character => characters is { Count: > 0 } && CanContinue(token);
 
-    private async Task<bool> HandleBattleOver(CancellationToken token)
+    public bool ShouldAbortSkillResolution() => _retreating || HasBattleEnded() || !IsBattleAlive();
+
+    public async Task<bool> ResolveBattleOverAfterSkillAsync()
+    {
+        if (!IsBattleAlive())
+            return true;
+
+        return await HandleBattleOver(_lifetimeCts.Token, delayAfterHandling: false);
+    }
+
+    private async Task<bool> HandleBattleOver(
+        CancellationToken token,
+        bool delayAfterHandling = true
+    )
     {
         bool playersDefeated = IsTeamDefeated(PlayersList);
         bool enemiesDefeated = IsTeamDefeated(EnemiesList);
@@ -1105,7 +1471,8 @@ public partial class Battle : Node2D
         else
             await HandleDefeatAsync();
 
-        await DelayOrCancel(BattleOverDelayMs, token);
+        if (delayAfterHandling)
+            await DelayOrCancel(BattleOverDelayMs, token);
         return true;
     }
 
@@ -1133,6 +1500,7 @@ public partial class Battle : Node2D
         SuppressActionPoinGainThisTurn = true;
         try
         {
+            SetNextActionPreviewCharacter(GetNextLivingCharacter(team));
             await CharacterAction(team, token);
         }
         finally
@@ -1148,6 +1516,10 @@ public partial class Battle : Node2D
         characters.Reverse(1, characters.Count - 1);
         characters.Reverse();
     }
+
+    private static Character GetNextLivingCharacter<T>(IEnumerable<T> characters)
+        where T : Character =>
+        characters?.FirstOrDefault(IsCharacterAlive);
 
     private static bool IsTeamDefeated<T>(IEnumerable<T> characters)
         where T : Character =>

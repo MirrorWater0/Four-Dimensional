@@ -6,7 +6,6 @@ public partial class MariyaSpecialSkill { }
 
 public partial class RebirthPrayer : Skill
 {
-    private const int EnergyCost = 2;
     private const int BaseRebirthHeal = 12;
     private const string SharedTargetKey = "治疗目标";
 
@@ -17,28 +16,24 @@ public partial class RebirthPrayer : Skill
     }
 
     public override string SkillName { get; set; } = "复苏祷告";
+    public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                HealStep(
-                    baseHeal: BaseRebirthHeal,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
-                    preferNonFull: true,
-                    rebirth: true,
-                    storeAs: SharedTargetKey
-                ),
-                BlockStep(StoredTarget(SharedTargetKey), baseBlock: 13),
-                ModifyPropertyStep(
-                    type: PropertyType.MaxLife,
-                    value: 10,
-                    target: StoredTarget(SharedTargetKey)
-                )
+            HealStep(
+                baseHeal: BaseRebirthHeal,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
+                preferNonFull: true,
+                rebirth: true,
+                storeAs: SharedTargetKey
+            ),
+            BlockStep(StoredTarget(SharedTargetKey), baseBlock: 13),
+            ModifyPropertyStep(
+                type: PropertyType.MaxLife,
+                value: 10,
+                target: StoredTarget(SharedTargetKey)
             )
         );
     }
@@ -49,8 +44,8 @@ public partial class Sacrifice : Skill
     int basisDamage = 28;
     int allyHurt = 15;
     int DeMax = 15;
-    int energyCost = 2;
     public override string SkillName { get; set; } = "献祭";
+    public override int EnergyCost => 2;
 
     public Sacrifice()
         : base(SkillTypes.Special)
@@ -62,21 +57,16 @@ public partial class Sacrifice : Skill
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                energyCost,
-                null,
-                null,
-                HurtFriendly(allyHurt, all: true),
-                ModifyPropertyStep(
-                    type: PropertyType.MaxLife,
-                    value: -DeMax,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
-                ),
-                AoeDamageStep(
-                    baseDamage: basisDamage,
-                    powerMultiplier: 2,
-                    target: HostileTargets(0)
-                )
+            HurtFriendly(allyHurt, all: true),
+            ModifyPropertyStep(
+                type: PropertyType.MaxLife,
+                value: -DeMax,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+            ),
+            AoeDamageStep(
+                baseDamage: basisDamage,
+                powerMultiplier: 2,
+                target: HostileTargets(0)
             )
         );
     }
@@ -84,7 +74,6 @@ public partial class Sacrifice : Skill
 
 public partial class RearlineRevival : Skill
 {
-    private const int EnergyCost = 3;
     private const int BaseRebirthHeal = 10;
     private const int TargetCount = 2;
 
@@ -95,22 +84,18 @@ public partial class RearlineRevival : Skill
     }
 
     public override string SkillName { get; set; } = "死者苏生";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                HealStep(
-                    baseHeal: BaseRebirthHeal,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
-                    preferNonFull: true,
-                    rebirth: true,
-                    repeatCount: TargetCount
-                )
+            HealStep(
+                baseHeal: BaseRebirthHeal,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
+                preferNonFull: true,
+                rebirth: true,
+                repeatCount: TargetCount
             )
         );
     }
@@ -118,7 +103,6 @@ public partial class RearlineRevival : Skill
 
 public partial class GroupHealing : Skill
 {
-    private const int EnergyCost = 3;
     private const int BaseHeal = 5;
 
     public GroupHealing()
@@ -128,26 +112,22 @@ public partial class GroupHealing : Skill
     }
 
     public override string SkillName { get; set; } = "圣光沐浴";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ModifyPropertyStep(
-                    type: PropertyType.MaxLife,
-                    value: 15,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
-                ),
-                HealStep(
-                    baseHeal: BaseHeal,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
-                    preferNonFull: false,
-                    includeSummonsWhenAll: false
-                )
+            ModifyPropertyStep(
+                type: PropertyType.MaxLife,
+                value: 15,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+            ),
+            HealStep(
+                baseHeal: BaseHeal,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                preferNonFull: false,
+                includeSummonsWhenAll: false
             )
         );
     }
@@ -156,7 +136,6 @@ public partial class GroupHealing : Skill
 public partial class Ragnarok : Skill
 {
     private const int PowerGain = 4;
-    private const int EnergyCost = 3;
     private const int DivinityStacks = 2;
 
     public Ragnarok()
@@ -166,21 +145,17 @@ public partial class Ragnarok : Skill
     }
 
     public override string SkillName { get; set; } = "诸神黄昏";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Divinity,
-                    stacks: DivinityStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Divinity,
+                stacks: DivinityStacks,
+                target: RelativeTarget(0)
             )
         );
     }
@@ -188,7 +163,6 @@ public partial class Ragnarok : Skill
 
 public partial class SanctuaryForm : Skill
 {
-    private const int EnergyCost = 6;
     private const int SanctuaryStacks = 1;
 
     public SanctuaryForm()
@@ -198,26 +172,22 @@ public partial class SanctuaryForm : Skill
     }
 
     public override string SkillName { get; set; } = "圣域形态";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                HealStep(
-                    baseHeal: 10,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All),
-                    preferNonFull: true,
-                    rebirth: true
-                ),
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Sanctuary,
-                    stacks: SanctuaryStacks,
-                    target: AbsoluteTarget(AbsoluteFriendlySelector.All)
-                )
+            HealStep(
+                baseHeal: 10,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                preferNonFull: true,
+                rebirth: true
+            ),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Sanctuary,
+                stacks: SanctuaryStacks,
+                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
             )
         );
     }

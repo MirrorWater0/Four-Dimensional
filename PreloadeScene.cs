@@ -60,6 +60,10 @@ public partial class PreloadeScene : Node2D
     public static Dictionary<string, PackedScene> PreloadedScenes =
         new Dictionary<string, PackedScene>();
 
+    // Preloaded textures cache to avoid runtime GD.Load stalls in exported builds
+    public static Dictionary<string, Texture2D> PreloadedTextures =
+        new Dictionary<string, Texture2D>();
+
     public override async void _Ready()
     {
         _sceneHolder = GetNodeOrNull<Node>("SceneHolder");
@@ -75,6 +79,10 @@ public partial class PreloadeScene : Node2D
         GD.Print("--- Start Preloading Scenes ---");
         ScanAndLoad("res://");
         GD.Print($"--- Finished Preloading. Loaded {PreloadedScenes.Count} scenes ---");
+
+        GD.Print("--- Start Preloading Textures ---");
+        PreloadCharacterPortraits();
+        GD.Print($"--- Finished Preloading. Loaded {PreloadedTextures.Count} textures ---");
 
         await WarmupInstantiateScenesAsync();
         WarmupSkills();
@@ -426,6 +434,60 @@ public partial class PreloadeScene : Node2D
         catch (Exception e)
         {
             GD.PrintErr($"Failed to load {path}: {e.Message}");
+        }
+    }
+
+    private void PreloadCharacterPortraits()
+    {
+        // Player characters
+        string[] playerPortraits = new string[]
+        {
+            "res://asset/PlayerCharater/Echo/EchoPortrait.png",
+            "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
+            "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
+            "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
+        };
+
+        // Enemy characters
+        string[] enemyPortraits = new string[]
+        {
+            "res://asset/EnemyCharater/AlienBody.png",
+            "res://asset/EnemyCharater/Armon.png",
+            "res://asset/EnemyCharater/Arrogance.png",
+            "res://asset/EnemyCharater/BlackHawk.png",
+            "res://asset/EnemyCharater/Evil.png",
+            "res://asset/EnemyCharater/FearWorm.png",
+            "res://asset/EnemyCharater/Ferociouess.png",
+            "res://asset/EnemyCharater/Inexorability.png",
+            "res://asset/EnemyCharater/RedHusk.png",
+            "res://asset/EnemyCharater/Turbine.png",
+            "res://asset/EnemyCharater/War.png",
+        };
+
+        foreach (var path in playerPortraits)
+            LoadTexture(path);
+
+        foreach (var path in enemyPortraits)
+            LoadTexture(path);
+    }
+
+    private void LoadTexture(string path)
+    {
+        try
+        {
+            if (ResourceLoader.Exists(path))
+            {
+                var texture = GD.Load<Texture2D>(path);
+                if (texture != null)
+                {
+                    PreloadedTextures[path] = texture;
+                    GD.Print($"Preloaded texture: {path}");
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Failed to preload texture {path}: {e.Message}");
         }
     }
 }

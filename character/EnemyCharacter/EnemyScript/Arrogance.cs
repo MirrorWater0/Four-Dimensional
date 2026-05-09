@@ -104,7 +104,6 @@ public partial class ArroganceSurvive : Skill
 public partial class ArroganceSpecial : Skill
 {
     private const int PursuitStacks = 3;
-    private const int PursuitEnergyCost = 3;
 
     public ArroganceSpecial()
         : base(SkillTypes.Special)
@@ -113,6 +112,7 @@ public partial class ArroganceSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "虚无追击";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -121,16 +121,10 @@ public partial class ArroganceSpecial : Skill
             HealStep(baseHeal: 10, target: RelativeTarget(0)),
             BlockStep(relativeIndex: 0, baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, 3),
-            EnergyTimesGateStep(
-                energyCost: PursuitEnergyCost,
-                onPassSteps:
-                [
-                    ApplyBuffFriendly(
-                        buffName: Buff.BuffName.Pursuit,
-                        stacks: PursuitStacks,
-                        target: RelativeTarget(0)
-                    ),
-                ]
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Pursuit,
+                stacks: PursuitStacks,
+                target: RelativeTarget(0)
             )
         );
     }

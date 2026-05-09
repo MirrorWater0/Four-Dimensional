@@ -137,7 +137,6 @@ public partial class ChargedBlade : Skill
     private const int BaseDamage = 14;
     private const int MaxTargets = 2;
     private const int SurvivabilityLoss = 3;
-    int times = 1;
 
     public ChargedBlade()
         : base(SkillTypes.Attack)
@@ -152,13 +151,8 @@ public partial class ChargedBlade : Skill
         return new SkillPlan(
             this,
             AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
-            EnergyTimesGateStep(
-                0,
-                () => times,
-                v => times = v,
-                AttackPrimaryStep(baseDamage: BaseDamage),
-                ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
-            )
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
         );
     }
 }

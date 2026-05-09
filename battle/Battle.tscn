@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
-[ext_resource type="PackedScene" uid="uid://de0vuounbh3nm" path="res://battle/UIScene/frame.tscn" id="6_n0cwx"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
 [ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
@@ -445,11 +444,11 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="." unique_id=489797672]
 y_sort_enabled = true
-position = Vector2(1168, 344)
+position = Vector2(1168, 331)
 
 [node name="Left" type="Node2D" parent="." unique_id=399900633]
 y_sort_enabled = true
-position = Vector2(808, 344)
+position = Vector2(808, 331)
 
 [node name="BattlePlayer" type="AnimationPlayer" parent="." unique_id=1504309812]
 libraries/ = SubResource("AnimationLibrary_od72c")
@@ -459,26 +458,37 @@ autoplay = &"start"
 modulate = Color(0.92, 0.92, 0.92, 1)
 z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
-offset_left = 72.0
-offset_top = 800.0
-offset_right = 2197.5557
-offset_bottom = 1140.0
+offset_left = 2.0
+offset_top = 704.0
+offset_right = 2127.5557
+offset_bottom = 1039.0
 scale = Vector2(0.9, 0.9)
 mouse_filter = 2
 theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
 
-[node name="frame1" parent="CharacterControl" unique_id=2093805624 instance=ExtResource("6_n0cwx")]
+[node name="ActionAreaRoot" type="VBoxContainer" parent="CharacterControl" unique_id=636477589]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_constants/separation = 30
 
-[node name="frame2" parent="CharacterControl" unique_id=370836206 instance=ExtResource("6_n0cwx")]
+[node name="StatusLabel" type="Label" parent="CharacterControl/ActionAreaRoot" unique_id=1045304350]
 layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "等待行动"
+horizontal_alignment = 1
 
-[node name="frame3" parent="CharacterControl" unique_id=1254669040 instance=ExtResource("6_n0cwx")]
+[node name="EndTurnButton" type="Button" parent="CharacterControl" unique_id=1518664472]
+custom_minimum_size = Vector2(164, 72)
 layout_mode = 2
-
-[node name="frame4" parent="CharacterControl" unique_id=1397365255 instance=ExtResource("6_n0cwx")]
-layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 22
+disabled = true
+text = "结束回合"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]
 position = Vector2(960, 540)

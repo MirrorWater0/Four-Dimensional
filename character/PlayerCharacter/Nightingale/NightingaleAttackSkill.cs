@@ -106,7 +106,6 @@ public partial class StasisBlade : Skill
     private const int BaseDamage = 15;
     private const int SpeedDown = 5;
     private const int FirstCastExtraSpeedDown = 3;
-    int times = 1;
 
     public StasisBlade()
         : base(SkillTypes.Attack)
@@ -122,11 +121,7 @@ public partial class StasisBlade : Skill
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
             LowerTargetPropertyStep(PropertyType.Speed, SpeedDown),
-            EnergyTimesGateStep(
-                0,
-                times,
-                LowerTargetPropertyStep(PropertyType.Speed, FirstCastExtraSpeedDown)
-            )
+            LowerTargetPropertyStep(PropertyType.Speed, FirstCastExtraSpeedDown)
         );
     }
 }
@@ -165,7 +160,6 @@ public partial class ContinuousPierce : Skill
 public partial class RuinBlade : Skill
 {
     private const int BaseDamage = 6;
-    private int times = 1;
 
     public RuinBlade()
         : base(SkillTypes.Attack)
@@ -180,7 +174,7 @@ public partial class RuinBlade : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, times: 2),
-            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 0))
+            CarryStep(target: RelativeTarget(-1), skillIndex: 0)
         );
     }
 }

@@ -133,7 +133,7 @@ public partial class EvilSurvive : Skill
 
 public partial class EvilTermin : Skill
 {
-    private const int EnergyCostPerHit = 1;
+    private const int PaidEnergyPerHit = 1;
 
     public EvilTermin()
         : base(Skill.SkillTypes.Special)
@@ -142,6 +142,7 @@ public partial class EvilTermin : Skill
     }
 
     public override string SkillName { set; get; } = "虚空回响";
+    public override int EnergyCost => XEnergyCost;
 
     protected override SkillPlan BuildPlan()
     {
@@ -149,7 +150,7 @@ public partial class EvilTermin : Skill
             this,
             AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
             EnergyTimesWhileStep(
-                energyCost: EnergyCostPerHit,
+                paidEnergyPerLoop: PaidEnergyPerHit,
                 loopSteps: [AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999)]
             )
         );

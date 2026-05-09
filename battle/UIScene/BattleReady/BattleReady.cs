@@ -102,10 +102,16 @@ public partial class BattleReady : Control
     }
 
     private Container GetSkillFence(int index) => SkillContainer.GetChild<Container>(index);
-    private readonly List<SkillID>[] _skillBuckets =
-        new List<SkillID>[] { new(), new(), new() };
+    private readonly List<SkillDisplayEntry>[] _skillBuckets =
+        new List<SkillDisplayEntry>[] { new(), new(), new() };
     private readonly int[] _skillPageIndices = new int[3];
     private readonly bool[] _skillPageTransitioning = new bool[3];
+
+    private readonly struct SkillDisplayEntry(SkillID skillId, int count)
+    {
+        public SkillID SkillId { get; } = skillId;
+        public int Count { get; } = count;
+    }
 
     private readonly struct SkillPage(int startIndex, int skillCount, bool hasPrev, bool hasNext)
     {
@@ -152,39 +158,20 @@ public partial class BattleReady : Control
             bucket.Clear();
 
         var character = GameInfo.PlayerCharacters[characterIndex];
-        foreach (var skillID in character.GainedSkills)
+        var groupedSkills = (character.GainedSkills ?? new List<SkillID>())
+            .GroupBy(skillId => skillId)
+            .Select(group => new SkillDisplayEntry(group.Key, group.Count()));
+
+        foreach (var entry in groupedSkills)
         {
-            var skill = Skill.GetSkill(skillID);
+            var skill = Skill.GetSkill(entry.SkillId);
             int skillIndex = GetSkillCategoryIndex(skill);
             if (skillIndex >= 0)
-                _skillBuckets[skillIndex].Add(skillID);
+                _skillBuckets[skillIndex].Add(entry);
         }
     }
 
-    private int GetInitialSkillPage(int skillIndex)
-    {
-        var skills = _skillBuckets[skillIndex];
-        var pages = BuildSkillPages(skills.Count);
-        int pageCount = pages.Count;
-        if (pageCount <= 1)
-            return 0;
-
-        var selectedSkill = GameInfo.PlayerCharacters[_selectedCharacterIndex].TakenSkills[skillIndex];
-        for (int i = 0; i < skills.Count; i++)
-        {
-            if (EqualityComparer<SkillID>.Default.Equals(skills[i], selectedSkill))
-            {
-                for (int pageIndex = 0; pageIndex < pages.Count; pageIndex++)
-                {
-                    var page = pages[pageIndex];
-                    if (i >= page.StartIndex && i < page.StartIndex + page.SkillCount)
-                        return pageIndex;
-                }
-            }
-        }
-
-        return 0;
-    }
+    private int GetInitialSkillPage(int skillIndex) => 0;
 
     private IEnumerable<SelectButton> EnumerateSkillButtons(Container fence)
     {
@@ -304,36 +291,29 @@ public partial class BattleReady : Control
         }
     }
 
-    private SelectButton CreateSkillButton(int characterIndex, int skillIndex, SkillID skillID)
+    private SelectButton CreateSkillButton(SkillDisplayEntry entry)
     {
         var selectbutton = SelectButtonScene.Instantiate<SelectButton>();
-        selectbutton.MySkill = Skill.GetSkill(skillID);
+        selectbutton.MySkill = Skill.GetSkill(entry.SkillId);
         if (selectbutton.MySkill == null)
         {
             selectbutton.QueueFree();
             return null;
         }
 
-        selectbutton.ThisLabel.Text = selectbutton.MySkill.SkillName;
-
-        if (GameInfo.PlayerCharacters[characterIndex].TakenSkills.Contains(skillID))
-        {
-            selectbutton.Button.ButtonPressed = true;
-            selectbutton.animation.Play("explode");
-        }
-
-        selectbutton.Button.Pressed += () =>
-        {
-            GameInfo.PlayerCharacters[characterIndex].TakenSkills[skillIndex] = skillID;
-            selectbutton.Button.ButtonPressed = true;
-            foreach (var button in EnumerateSkillButtons(GetSkillFence(skillIndex)))
-            {
-                if (button != selectbutton)
-                    button.Button.ButtonPressed = false;
-            }
-        };
+        selectbutton.ThisLabel.Text = GetSkillDisplayName(selectbutton.MySkill, entry.Count);
+        selectbutton.AllowPressEffect = false;
+        selectbutton.Button.ToggleMode = false;
+        selectbutton.Button.ButtonPressed = false;
+        selectbutton.Button.FocusMode = Control.FocusModeEnum.None;
 
         return selectbutton;
+    }
+
+    private static string GetSkillDisplayName(Skill skill, int count)
+    {
+        string name = skill?.SkillName ?? string.Empty;
+        return count > 1 ? $"{name} x{count}" : name;
     }
 
     private void RenderSkillFencePage(int characterIndex, int skillIndex, bool animate)
@@ -365,11 +345,7 @@ public partial class BattleReady : Control
 
         for (int i = 0; i < page.SkillCount; i++)
         {
-            var button = CreateSkillButton(
-                characterIndex,
-                skillIndex,
-                skills[page.StartIndex + i]
-            );
+            var button = CreateSkillButton(skills[page.StartIndex + i]);
             if (button == null)
                 continue;
 

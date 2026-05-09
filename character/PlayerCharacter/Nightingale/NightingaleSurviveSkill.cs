@@ -166,8 +166,7 @@ public partial class TwilightParadox : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
-            BlockStep(relativeIndex: -2, baseBlock: BaseBlock),
+            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,

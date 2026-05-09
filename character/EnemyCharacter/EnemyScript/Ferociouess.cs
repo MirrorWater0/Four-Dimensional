@@ -167,8 +167,6 @@ public partial class FerociouessSurvive : Skill
 public partial class FerociouessSpecial : Skill
 {
     private const int BaseDamage = 5;
-    private const int GainEnergyCost = 1;
-    private const int BurstEnergyCost = 2;
     private const int BurstPowerMultiplier = 2;
 
     public FerociouessSpecial()
@@ -178,26 +176,18 @@ public partial class FerociouessSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "狂暴";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
-            EnergyTimesGateStep(
-                energyCost: GainEnergyCost,
-                onPassSteps: [ModifyPropertyStep(PropertyType.Power, 3)]
-            ),
-            EnergyTimesGateStep(
-                energyCost: BurstEnergyCost,
-                onPassSteps:
-                [
-                    AoeDamageStep(
-                        baseDamage: -5,
-                        powerMultiplier: BurstPowerMultiplier,
-                        target: HostileTargets(0)
-                    ),
-                ]
+            ModifyPropertyStep(PropertyType.Power, 3),
+            AoeDamageStep(
+                baseDamage: -5,
+                powerMultiplier: BurstPowerMultiplier,
+                target: HostileTargets(0)
             )
         );
     }

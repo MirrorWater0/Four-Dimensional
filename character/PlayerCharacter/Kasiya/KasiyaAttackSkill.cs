@@ -35,7 +35,6 @@ public partial class Smite : Skill
 {
     private const int BaseDamage = 13;
     private const int SurvivalDown = 5;
-    int times = 1;
 
     public Smite()
         : base(Skill.SkillTypes.Attack)
@@ -51,11 +50,7 @@ public partial class Smite : Skill
             this,
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown),
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(
-                0,
-                times,
-                LowerTargetPropertyStep(PropertyType.Survivability, 4, target: HostileTargets(0))
-            )
+            LowerTargetPropertyStep(PropertyType.Survivability, 4, target: HostileTargets(0))
         );
     }
 }
@@ -95,7 +90,6 @@ public partial class Charge : Skill
 public partial class Vower : Skill
 {
     private const int BaseDamage = 15;
-    int times = 2;
 
     public Vower()
         : base(Skill.SkillTypes.Attack)
@@ -110,7 +104,7 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(0, times, CarryStep(target: RelativeTarget(-1), skillIndex: 1))
+            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
         );
     }
 }

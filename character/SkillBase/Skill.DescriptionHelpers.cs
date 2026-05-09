@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 public partial class Skill
 {
     protected const string UnfixedPlaceholder = "x";
     protected const int TooltipTotalMax = 999;
+    private const string ExhaustKeywordLine = "消耗：打出后，本场战斗中移出。";
 
     protected enum StatX
     {
@@ -135,10 +137,11 @@ public partial class Skill
     public virtual void UpdateDescription()
     {
         var plan = GetPlan();
-        if (plan != null)
-        {
-            SetDescriptionLines(plan.DescribeLines());
-        }
+        IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
+        if (ExhaustsAfterUse)
+            lines = new[] { ExhaustKeywordLine }.Concat(lines);
+
+        SetDescriptionLines(lines.ToArray());
     }
 
     protected static string LineIf(bool condition, string line) => condition ? line : null;

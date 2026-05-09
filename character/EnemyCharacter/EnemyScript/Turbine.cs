@@ -148,7 +148,6 @@ public partial class TurbineSurvive : Skill
 public partial class TurbineSpecial : Skill
 {
     private const int SelfPowerGain = 3;
-    private const int EnergyCost = 3;
     private const int ThornStacks = 8;
 
     public TurbineSpecial()
@@ -158,6 +157,7 @@ public partial class TurbineSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "超压模式";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -170,10 +170,7 @@ public partial class TurbineSpecial : Skill
                 stacks: ThornStacks,
                 target: RelativeTarget(0)
             ),
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps: [CarryStep(target: RelativeTarget(-1), skillIndex: 1)]
-            )
+            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
         );
     }
 }

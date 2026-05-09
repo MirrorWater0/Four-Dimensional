@@ -38,6 +38,8 @@ public partial class Character : Node2D
         set
         {
             _state = value;
+            if (_state == CharacterState.Dying)
+                BattleNode?.ClearNextActionPreviewCharacter(this);
             RefreshBattleActionPoinUi();
         }
     }
@@ -134,6 +136,8 @@ public partial class Character : Node2D
     private Tween _bufferBarTween;
     private Tween _lifeBarTween;
     private Tween _lifeBarMaxTween;
+    private Tween _nextActionPreviewTween;
+    private bool _nextActionPreviewVisible;
     private ulong _lastIncreasePropertyEffectTickMsec;
     private bool _isHoverframeHovered;
     private bool _isFramePreviewVisible;
@@ -165,6 +169,9 @@ public partial class Character : Node2D
         InvalidateHoverTooltipCache();
         for (int i = 0; i < Skills.Length; i++)
         {
+            if (Skills[i] == null)
+                continue;
+
             Skills[i].OwnerCharater = this;
             Skills[i].UpdateDescription();
         }
@@ -389,6 +396,12 @@ public partial class Character : Node2D
 
         AppendPassiveTooltip(sb);
 
+        if (this is PlayerCharacter player)
+        {
+            AppendPlayerBattleCardPiles(sb, player);
+            return sb.ToString().TrimEnd();
+        }
+
         if (Skills == null || Skills.Length == 0)
             return sb.ToString().TrimEnd();
 
@@ -409,6 +422,7 @@ public partial class Character : Node2D
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
+            sb.Append($"[color=#87ceeb]耗能[/color] {skill.CardEnergyCostText}\n");
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
             else
@@ -421,6 +435,95 @@ public partial class Character : Node2D
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendPlayerBattleCardPiles(StringBuilder sb, PlayerCharacter player)
+    {
+        if (player == null)
+            return;
+
+        SkillID[] drawPileIds =
+            player.BattleNode?.GetDrawBattleCardPile(player)
+            ?? GetOwnedPlayerSkillIds(player.CharacterIndex);
+        SkillID[] discardPileIds =
+            player.BattleNode?.GetDiscardBattleCardPile(player) ?? Array.Empty<SkillID>();
+        SkillID[] exhaustedIds =
+            player.BattleNode?.GetExhaustedBattleCardPile(player) ?? Array.Empty<SkillID>();
+
+        const string skillNameColor = "#b56bff";
+        const int skillNameFontSize = 32;
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color={skillNameColor}]抽牌堆[/color][/font_size]\n"
+        );
+        AppendSkillPileLines(sb, GetSkillsFromIds(drawPileIds), emptyText: "空");
+
+        sb.Append("\n[hr]\n");
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color=#9cdacf]弃牌堆[/color][/font_size]\n"
+        );
+        AppendSkillPileLines(sb, GetSkillsFromIds(discardPileIds), emptyText: "空");
+
+        sb.Append("\n[hr]\n");
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color=#ffb86b]消耗卡堆[/color][/font_size]\n"
+        );
+        AppendSkillPileLines(sb, GetSkillsFromIds(exhaustedIds), emptyText: "空");
+    }
+
+    private static SkillID[] GetOwnedPlayerSkillIds(int characterIndex)
+    {
+        if (
+            GameInfo.PlayerCharacters == null
+            || characterIndex < 0
+            || characterIndex >= GameInfo.PlayerCharacters.Length
+        )
+        {
+            return Array.Empty<SkillID>();
+        }
+
+        return (GameInfo.PlayerCharacters[characterIndex].GainedSkills ?? new List<SkillID>())
+            .ToArray();
+    }
+
+    private static Skill[] GetSkillsFromIds(IEnumerable<SkillID> skillIds)
+    {
+        return (skillIds ?? Array.Empty<SkillID>())
+            .Select(Skill.GetSkill)
+            .Where(skill => skill != null && skill.SkillType != Skill.SkillTypes.none)
+            .ToArray();
+    }
+
+    private static void AppendSkillPileLines(StringBuilder sb, Skill[] skills, string emptyText)
+    {
+        if (skills == null || skills.Length == 0)
+        {
+            sb.Append(emptyText);
+            sb.Append('\n');
+            return;
+        }
+
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Attack);
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Survive);
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Special);
+    }
+
+    private static void AppendSkillPileNameLine(
+        StringBuilder sb,
+        Skill[] skills,
+        Skill.SkillTypes skillType
+    )
+    {
+        string[] names = skills
+            .Where(skill => skill.SkillType == skillType)
+            .Select(skill => skill.SkillName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToArray();
+        if (names.Length == 0)
+            return;
+
+        sb.Append($"[color=#cccccc]({skillType.GetDescription()})[/color] ");
+        sb.Append(string.Join("、", names));
+        sb.Append('\n');
     }
 
     private void AppendPassiveTooltip(StringBuilder sb)
@@ -674,13 +777,49 @@ public partial class Character : Node2D
     public virtual void StartAction()
     {
         BattleNode?.SetCurrentActionCharacter(this);
-        bool isExtraAction = IsExtraActionPhase;
-        if (!isExtraAction)
-            ResolveTurnStartPhase();
+        ResolveTurnStartPhase();
 
         OnActionStart();
         TrailAnimation.Play("trail");
+        _nextActionPreviewVisible = false;
+        _nextActionPreviewTween?.Kill();
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
+    }
+
+    public void ShowNextActionPreview()
+    {
+        if (trail == null || State == CharacterState.Dying)
+            return;
+
+        _nextActionPreviewVisible = true;
+        _nextActionPreviewTween?.Kill();
+        TrailAnimation.Play("trail");
+        _nextActionPreviewTween = CreateTween();
+        _nextActionPreviewTween.TweenProperty(
+            trail,
+            "modulate",
+            new Color(0.2f, 1f, 0.25f, 0.78f),
+            0.2f
+        );
+    }
+
+    public async void HideNextActionPreview()
+    {
+        if (!_nextActionPreviewVisible || trail == null)
+            return;
+
+        _nextActionPreviewVisible = false;
+        _nextActionPreviewTween?.Kill();
+        _nextActionPreviewTween = CreateTween();
+        _nextActionPreviewTween.TweenProperty(
+            trail,
+            "modulate",
+            new Color(0.2f, 1f, 0.25f, 0f),
+            0.16f
+        );
+        await ToSignal(GetTree().CreateTimer(0.16f), "timeout");
+        if (!_nextActionPreviewVisible && BattleNode?.CurrentActionCharacter != this)
+            TrailAnimation.Stop();
     }
 
     protected virtual void ResolveTurnStartPhase()
@@ -704,7 +843,7 @@ public partial class Character : Node2D
             ClearOwnedSummonsBlock();
         }
 
-        UpdataEnergy(1);
+        UpdataEnergy(2);
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -737,18 +876,13 @@ public partial class Character : Node2D
 
     public virtual async void EndAction()
     {
-        bool isExtraAction = IsExtraActionPhase;
         OnActionEnd();
         var battleNode = BattleNode;
         if (battleNode == null || !GodotObject.IsInstanceValid(battleNode))
             return;
-        if (!isExtraAction)
-            await ResolveTurnEndPhaseAsync();
+        await ResolveTurnEndPhaseAsync();
 
-        if (isExtraAction)
-            await battleNode.EndEmitExtraActionS(this);
-        else
-            await battleNode.EndEmitS(this);
+        await battleNode.EndEmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
         await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
         TrailAnimation.Stop();

@@ -91,9 +91,8 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 2;
     private const int VulnerableStacks = 2;
-    private int times = 1;
 
     public EchoPuncture()
         : base(SkillTypes.Attack)
@@ -107,8 +106,7 @@ public partial class EchoPuncture : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(0, times, AttackPrimaryStep(baseDamage: 0, times: 2)),
+            AttackPrimaryStep(baseDamage: BaseDamage, times: 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -142,15 +140,6 @@ public partial class Extract : Skill
                 condition: TargetHasWeaken,
                 conditionDescription: "攻击目标拥有虚弱",
                 EnergyStep(EnergyGain)
-            ),
-            ConditionStep(
-                condition: () => !TargetHasWeaken(),
-                conditionDescription: "攻击目标没有虚弱",
-                ApplyBuffHostile(
-                    buffName: Buff.BuffName.Weaken,
-                    stacks: WeakenStacks,
-                    target: HostileTargets(1)
-                )
             )
         );
     }
@@ -169,7 +158,6 @@ public partial class BladeOfSlaughter : Skill
     private const int BaseDamage = 15;
     private const int VulnerableStacks = 2;
     private const string PrimaryTargetKey = "弑杀之刃目标";
-    private int comboTimes = 2;
 
     public BladeOfSlaughter()
         : base(SkillTypes.Attack)
@@ -192,11 +180,7 @@ public partial class BladeOfSlaughter : Skill
             ConditionStep(
                 condition: TargetHasWeaken,
                 conditionDescription: "攻击目标拥有虚弱",
-                EnergyTimesGateStep(
-                    0,
-                    comboTimes,
-                    CarryStep(target: RelativeTarget(-1), skillIndex: 0)
-                )
+                CarryStep(target: RelativeTarget(-1), skillIndex: 0)
             )
         );
     }

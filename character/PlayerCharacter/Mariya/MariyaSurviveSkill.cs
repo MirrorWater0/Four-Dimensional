@@ -35,7 +35,7 @@ public partial class FinalGuard : Skill
 public partial class CrystalGuard : Skill
 {
     private const int BaseBlock = 5;
-    private const int SurvivabilityGain = 4;
+    private const int SurvivabilityGain = 2;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -49,9 +49,7 @@ public partial class CrystalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
-            BlockStep(relativeIndex: 1, baseBlock: BaseBlock),
+            BlockStep(AbsoluteTarget(AbsoluteFriendlySelector.All), baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }

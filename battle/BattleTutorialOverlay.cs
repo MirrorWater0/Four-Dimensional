@@ -76,14 +76,14 @@ public partial class BattleTutorialOverlay : CanvasLayer
             new TutorialStep(
                 "角色面板",
                 "下方是我方角色面板。\n\n轮到角色行动时，对应面板的技能按钮会亮起。每名角色通常有攻击、生存、特殊三个技能。",
-                battle => battle.CharacterControl?.CharaterFrame1
+                battle => battle.CharacterControl?.ActionCardContainer
             )
         );
         _steps.Add(
             new TutorialStep(
                 "技能按钮",
                 "鼠标悬停技能可以查看说明和伤害预览。\n\n点击技能后角色会行动，行动结束会自动进入下一个角色或敌人的回合。",
-                battle => battle.CharacterControl?.CharaterFrame1?.SkillButtonContainer
+                battle => battle.CharacterControl?.GetCardSlot(0)
             )
         );
         _steps.Add(

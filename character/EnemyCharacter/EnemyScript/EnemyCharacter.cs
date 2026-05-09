@@ -9,6 +9,7 @@ public partial class EnemyCharacter : Character
     private const float DefaultIntentWeight = 3f;
     private const float SpecialIntentWeightMin = 0.5f;
     private const float SpecialIntentWeightMax = 7f;
+    public const int NextActionEnergyPreviewBonus = 2;
     private static readonly Color IntentionTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
     private static readonly Color IntentionDamageColor = new(1f, 0.84f, 0.63f, 1f);
@@ -76,28 +77,38 @@ public partial class EnemyCharacter : Character
     {
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
         base.StartAction();
+        Skill skill = GetCurrentIntentionSkill();
+        if (!CanUseIntentionSkill(skill, Energy))
+        {
+            IntentionIndex = RollIntentionIndex();
+            skill = GetCurrentIntentionSkill();
+        }
+
         await DisappearIntention();
-        await Skills[IntentionIndex].Effect();
+        if (CanUseIntentionSkill(skill, Energy))
+            await skill.Effect();
+
         EndAction();
     }
 
     public override void OnTurnEnd()
     {
-        IntentionIndex = RollIntentionIndex();
+        IntentionIndex = RollIntentionIndex(NextActionEnergyPreviewBonus);
         DisplayIntention();
         base.OnTurnEnd();
     }
 
-    public int RollIntentionIndex()
+    public int RollIntentionIndex(int energyPreviewBonus = 0)
     {
         if (Skills == null || Skills.Length == 0)
-            return 0;
+            return -1;
 
+        int availableEnergy = Math.Max(Energy + energyPreviewBonus, 0);
         float totalWeight = 0f;
         float[] weights = new float[Skills.Length];
         for (int i = 0; i < Skills.Length; i++)
         {
-            float weight = GetIntentionWeight(Skills[i]);
+            float weight = GetIntentionWeight(Skills[i], availableEnergy);
             weights[i] = weight;
             totalWeight += weight;
         }
@@ -106,10 +117,10 @@ public partial class EnemyCharacter : Character
         {
             for (int i = 0; i < Skills.Length; i++)
             {
-                if (Skills[i] != null)
+                if (CanUseIntentionSkill(Skills[i], availableEnergy))
                     return i;
             }
-            return 0;
+            return -1;
         }
 
         float roll = (float)BattleNode.BattleIntentionRandom.NextDouble() * totalWeight;
@@ -120,12 +131,18 @@ public partial class EnemyCharacter : Character
                 return i;
         }
 
-        return Math.Max(0, Skills.Length - 1);
+        for (int i = weights.Length - 1; i >= 0; i--)
+        {
+            if (weights[i] > 0f)
+                return i;
+        }
+
+        return -1;
     }
 
-    private float GetIntentionWeight(Skill skill)
+    private float GetIntentionWeight(Skill skill, int availableEnergy)
     {
-        if (skill == null)
+        if (!CanUseIntentionSkill(skill, availableEnergy))
             return 0f;
 
         if (skill.SkillType != Skill.SkillTypes.Special)
@@ -137,6 +154,15 @@ public partial class EnemyCharacter : Character
             SpecialIntentWeightMin,
             SpecialIntentWeightMax
         );
+    }
+
+    private bool CanUseIntentionSkill(Skill skill, int availableEnergy)
+    {
+        if (skill == null)
+            return false;
+
+        skill.OwnerCharater = this;
+        return skill.CanUseEnergy(availableEnergy);
     }
 
     public async Task DisappearIntention()
@@ -151,7 +177,18 @@ public partial class EnemyCharacter : Character
 
     public void DisplayIntention()
     {
-        var skill = Skills[IntentionIndex];
+        AttackIntention.Visible = false;
+        SurviveIntention.Visible = false;
+        SpecialIntention.Visible = false;
+
+        var skill = GetCurrentIntentionSkill();
+        if (skill == null)
+        {
+            IntentionContorl.Visible = false;
+            return;
+        }
+
+        IntentionContorl.Visible = true;
         IntentionContorl.Modulate = new Color(1, 1, 1, 0);
         IntentionContorl.Scale = new Vector2(1.8f, 1.8f);
         switch (skill.SkillType)

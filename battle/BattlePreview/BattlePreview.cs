@@ -61,6 +61,9 @@ public partial class BattlePreview : Control
     private int _previewTipCounter;
     private bool _hidePortraitTipsQueued;
     private PortraitTipPair _activePortraitTips;
+    private PortaitFrame _dragTarget;
+    private Control _dragOriginalParent;
+    private Vector2 _dragMouseOffset;
 
     private readonly struct AssemblyItem(Control control, Vector2 offset, float delay)
     {
@@ -93,6 +96,7 @@ public partial class BattlePreview : Control
         exitButton.PressedActions.Add(Close);
         Modulate = Modulate with { A = 0.0f };
         SetControlAlpha(BackgroundPanel, 0.0f);
+        InitializePlayerFormationSlots();
         SetPortraitPostion();
         CacheAssemblyBasePositions();
         UpdateBrushButtonMaterialSize();
@@ -117,6 +121,18 @@ public partial class BattlePreview : Control
             GlobalFunction.TweenShader(tex, "cut_x", 0.6f, 0.2f);
             GlobalFunction.TweenShader(tex, "cut_y", 0.6f, 0.2f);
         };
+    }
+
+    public override void _Process(double delta)
+    {
+        if (_dragTarget == null || !GodotObject.IsInstanceValid(_dragTarget))
+        {
+            ResetPlayerFormationSlotHighlights();
+            return;
+        }
+
+        _dragTarget.GlobalPosition = GetViewport().GetMousePosition() - _dragMouseOffset;
+        UpdatePlayerFormationSlotHighlights();
     }
 
     public override void _ExitTree()
@@ -252,6 +268,60 @@ public partial class BattlePreview : Control
         control.Modulate = control.Modulate with { A = alpha };
     }
 
+    private void InitializePlayerFormationSlots()
+    {
+        Color accentColor = new(0.69f, 0.75f, 0.80f);
+        for (int i = 0; i < PlayerFormation.GetChildCount(); i++)
+        {
+            if (PlayerFormation.GetChild(i) is not ColorRect slot)
+                continue;
+
+            slot.MouseFilter = MouseFilterEnum.Stop;
+            if (slot.Material is ShaderMaterial material)
+            {
+                material.ResourceLocalToScene = true;
+                var uniqueMaterial = material.Duplicate() as ShaderMaterial;
+                if (uniqueMaterial != null)
+                {
+                    slot.Material = uniqueMaterial;
+                    uniqueMaterial.SetShaderParameter("line_color", accentColor);
+                }
+            }
+        }
+    }
+
+    private void UpdatePlayerFormationSlotHighlights()
+    {
+        Vector2 mousePos = GetViewport().GetMousePosition();
+        Color accentColor = new(0.69f, 0.75f, 0.80f);
+        Color hoverColor = new(0.9f, 0.95f, 1.0f);
+
+        for (int i = 0; i < PlayerFormation.GetChildCount(); i++)
+        {
+            if (PlayerFormation.GetChild(i) is not ColorRect slot)
+                continue;
+
+            bool hovered = slot.GetGlobalRect().HasPoint(mousePos);
+            if (slot.Material is ShaderMaterial material)
+                material.SetShaderParameter("line_color", hovered ? hoverColor : accentColor);
+        }
+    }
+
+    private void ResetPlayerFormationSlotHighlights()
+    {
+        Color accentColor = new(0.69f, 0.75f, 0.80f);
+        for (int i = 0; i < PlayerFormation.GetChildCount(); i++)
+        {
+            if (
+                PlayerFormation.GetChild(i) is ColorRect slot
+                && slot.Material is ShaderMaterial material
+            )
+            {
+                material.SetShaderParameter("line_color", accentColor);
+            }
+        }
+    }
+
     private void EnsureTipLayer()
     {
         var root = GetTree()?.Root;
@@ -367,9 +437,10 @@ public partial class BattlePreview : Control
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var portrait = BattleReady.PortaitScene.Instantiate() as PortaitFrame;
-            portrait.PortaitRect.Texture = GD.Load<Texture2D>(
-                GameInfo.PlayerCharacters[i].PortaitPath
-            );
+            var playerPath = GameInfo.PlayerCharacters[i].PortaitPath;
+            portrait.PortaitRect.Texture = PreloadeScene.PreloadedTextures.TryGetValue(playerPath, out var playerTex)
+                ? playerTex
+                : GD.Load<Texture2D>(playerPath);
             portrait.PortaitIndex = i;
             var positionindex = GameInfo.PlayerCharacters[i].PositionIndex;
 
@@ -381,6 +452,7 @@ public partial class BattlePreview : Control
                     tips.Value.propertyText,
                     tips.Value.equipmentText
                 );
+            WirePlayerPortraitDrag(portrait);
 
             PlayerFormation.GetChild(BattleReady.remap[positionindex] - 1).AddChild(portrait);
         }
@@ -388,9 +460,10 @@ public partial class BattlePreview : Control
         for (int i = 0; i < WhichNode.EnemiesRegeditList.Count; i++)
         {
             var portrait = BattleReady.PortaitScene.Instantiate() as PortaitFrame;
-            portrait.PortaitRect.Texture = GD.Load<Texture2D>(
-                WhichNode.EnemiesRegeditList[i].PortaitPath
-            );
+            var enemyPath = WhichNode.EnemiesRegeditList[i].PortaitPath;
+            portrait.PortaitRect.Texture = PreloadeScene.PreloadedTextures.TryGetValue(enemyPath, out var enemyTex)
+                ? enemyTex
+                : GD.Load<Texture2D>(enemyPath);
             portrait.PortaitIndex = i;
             var positionindex = WhichNode.EnemiesRegeditList[i].PositionIndex;
 
@@ -407,6 +480,116 @@ public partial class BattlePreview : Control
         }
 
         UpdateSpeedSummary();
+    }
+
+    private void WirePlayerPortraitDrag(PortaitFrame portrait)
+    {
+        if (portrait?.PortaitButton == null)
+            return;
+
+        portrait.PortaitButton.KeepPressedOutside = true;
+        portrait.PortaitButton.ButtonDown += () => BeginPlayerPortraitDrag(portrait);
+        portrait.PortaitButton.ButtonUp += () => EndPlayerPortraitDrag(portrait);
+    }
+
+    private void BeginPlayerPortraitDrag(PortaitFrame portrait)
+    {
+        if (portrait == null || _isTransitioning)
+            return;
+
+        HidePortraitTooltipsImmediate();
+        _dragTarget = portrait;
+        _dragOriginalParent = portrait.GetParent<Control>();
+        _dragMouseOffset = GetViewport().GetMousePosition() - portrait.GlobalPosition;
+        portrait.ZIndex = 20;
+        UpdatePlayerFormationSlotHighlights();
+    }
+
+    private void EndPlayerPortraitDrag(PortaitFrame portrait)
+    {
+        if (_dragTarget != portrait || portrait == null)
+            return;
+
+        Control oldParent = _dragOriginalParent ?? portrait.GetParent<Control>();
+        Control newParent = FindPlayerFormationSlotAtMouse();
+
+        _dragTarget = null;
+        _dragOriginalParent = null;
+        _dragMouseOffset = Vector2.Zero;
+        portrait.ZIndex = 0;
+        ResetPlayerFormationSlotHighlights();
+
+        if (newParent == null)
+        {
+            TweenPortraitToSlot(portrait, 0.12f);
+            return;
+        }
+
+        if (newParent != oldParent && newParent.GetChildCount() > 0)
+        {
+            var swappedPortrait = newParent.GetChildren().OfType<PortaitFrame>().FirstOrDefault();
+            if (swappedPortrait != null)
+            {
+                swappedPortrait.Reparent(oldParent);
+                TweenPortraitToSlot(swappedPortrait, 0.18f);
+            }
+        }
+
+        if (portrait.GetParent() != newParent)
+            portrait.Reparent(newParent);
+
+        TweenPortraitToSlot(portrait, 0.18f);
+        CommitPlayerFormationPositions();
+    }
+
+    private Control FindPlayerFormationSlotAtMouse()
+    {
+        Vector2 mousePos = GetViewport().GetMousePosition();
+        return PlayerFormation
+            .GetChildren()
+            .OfType<Control>()
+            .FirstOrDefault(slot => slot.GetGlobalRect().HasPoint(mousePos));
+    }
+
+    private void TweenPortraitToSlot(PortaitFrame portrait, float duration)
+    {
+        if (portrait == null || !GodotObject.IsInstanceValid(portrait))
+            return;
+
+        CreateTween().TweenProperty(portrait, "position", Vector2.Zero, duration);
+        CreateTween()
+            .Chain()
+            .TweenCallback(
+                Callable.From(() =>
+                {
+                    if (GodotObject.IsInstanceValid(portrait))
+                        portrait.Animation?.Play("explode");
+                })
+            );
+    }
+
+    private void CommitPlayerFormationPositions()
+    {
+        if (GameInfo.PlayerCharacters == null)
+            return;
+
+        for (int i = 0; i < PlayerFormation.GetChildCount(); i++)
+        {
+            if (PlayerFormation.GetChild(i) is not Control slot)
+                continue;
+            if (!int.TryParse(slot.Name, out int positionIndex))
+                continue;
+
+            var portrait = slot.GetChildren().OfType<PortaitFrame>().FirstOrDefault();
+            if (portrait == null)
+                continue;
+            if (portrait.PortaitIndex < 0 || portrait.PortaitIndex >= GameInfo.PlayerCharacters.Length)
+                continue;
+
+            GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = positionIndex;
+        }
+
+        SaveSystem.SaveAll();
     }
 
     private void UpdateSpeedSummary()
@@ -556,14 +739,12 @@ public partial class BattlePreview : Control
 
     private static string BuildPlayerSkillText(PlayerInfoStructure info, string name)
     {
-        var skills = info.TakenSkills.Select(Skill.GetSkill).Where(x => x != null).ToArray();
-        foreach (var skill in skills)
-        {
-            skill.SetPreviewStats(info.Power, info.Survivability, 1);
-            skill.UpdateDescription();
-        }
+        var skills = (info.GainedSkills ?? new List<SkillID>())
+            .Select(Skill.GetSkill)
+            .Where(x => x != null && x.SkillType != Skill.SkillTypes.none)
+            .ToArray();
 
-        return BuildSkillTooltipText(name, info.PassiveName, info.PassiveDescription, skills);
+        return BuildOwnedSkillNameTooltipText(name, info.PassiveName, info.PassiveDescription, skills);
     }
 
     private static string BuildEnemySkillText(EnemyRegedit regedit)
@@ -576,7 +757,7 @@ public partial class BattlePreview : Control
         var skills = ids.Select(Skill.GetSkill).Where(x => x != null).ToArray();
         foreach (var skill in skills)
         {
-            skill.SetPreviewStats(regedit.Power, regedit.Survivability, 1);
+            skill.SetPreviewStats(regedit.Power, regedit.Survivability, 1, isPlayer: false);
             skill.UpdateDescription();
         }
 
@@ -614,6 +795,7 @@ public partial class BattlePreview : Control
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
+            sb.Append($"[color=#87ceeb]耗能[/color] {skill.CardEnergyCostText}\n");
 
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
@@ -626,6 +808,53 @@ public partial class BattlePreview : Control
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static string BuildOwnedSkillNameTooltipText(
+        string characterName,
+        string passiveName,
+        string passiveDesc,
+        Skill[] skills
+    )
+    {
+        var sb = new StringBuilder(256);
+        sb.Append($"[b]{characterName}[/b]\n");
+
+        AppendPassiveTooltip(sb, passiveName, passiveDesc);
+
+        if (skills == null || skills.Length == 0)
+            return sb.ToString().TrimEnd();
+
+        const string skillNameColor = "#b56bff";
+        const int skillNameFontSize = 32;
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color={skillNameColor}]已拥有技能[/color][/font_size]\n"
+        );
+
+        AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Attack);
+        AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Survive);
+        AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Special);
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendOwnedSkillNameLine(
+        StringBuilder sb,
+        Skill[] ownedSkills,
+        Skill.SkillTypes skillType
+    )
+    {
+        string[] names = (ownedSkills ?? Array.Empty<Skill>())
+            .Where(skill => skill != null && skill.SkillType == skillType)
+            .Select(skill => skill.SkillName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToArray();
+        if (names.Length == 0)
+            return;
+
+        sb.Append($"[color=#cccccc]({skillType.GetDescription()})[/color] ");
+        sb.Append(string.Join("、", names));
+        sb.Append('\n');
     }
 
     private static void AppendPassiveTooltip(
@@ -692,6 +921,8 @@ public partial class BattlePreview : Control
     private void ShowPortraitTooltips(PortraitTipPair tips)
     {
         if (tips == null)
+            return;
+        if (_dragTarget != null)
             return;
         if (!EnsurePortraitTipPairReady(tips))
             return;

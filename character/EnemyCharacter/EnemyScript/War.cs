@@ -145,7 +145,6 @@ public partial class WarSurvive : Skill
 
 public partial class WarSpecial : Skill
 {
-    private const int EnergyCost = 3;
     private const int ThrallPowerGain = 3;
 
     public WarSpecial()
@@ -155,6 +154,7 @@ public partial class WarSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "死亡行军";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -164,14 +164,8 @@ public partial class WarSpecial : Skill
             HealStep(baseHeal: 0, target: RelativeTarget(0)),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps:
-                [
-                    ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain),
-                    ModifyPropertyStep(PropertyType.Power, 5),
-                ]
-            )
+            ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain),
+            ModifyPropertyStep(PropertyType.Power, 5)
         );
     }
 }

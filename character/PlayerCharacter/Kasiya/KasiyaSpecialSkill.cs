@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using Godot;
 
@@ -7,8 +6,6 @@ public partial class KasiyaSpecialSkill : Node { }
 public class TerminateLight : Skill
 {
     private const int BaseDamage = 5;
-    private int UsedTimes = 2;
-    private const int EnergyCost = 2;
     private const int PowerGain = 5;
 
     public TerminateLight()
@@ -18,6 +15,7 @@ public class TerminateLight : Skill
     }
 
     public override string SkillName { get; set; } = "终末之光";
+    public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()
     {
@@ -26,11 +24,7 @@ public class TerminateLight : Skill
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 3),
             HurtFriendly(17, 0),
             ModifyPropertyStep(PropertyType.Power, -2),
-            EnergyTimesGateStep(
-                EnergyCost,
-                UsedTimes,
-                ModifyPropertyStep(PropertyType.Power, PowerGain)
-            )
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
@@ -39,8 +33,6 @@ public class HolySeal : Skill
 {
     private const int BaseDamage = 6;
     private const int StunStacks = 1;
-    private const int EnergyCost = 2;
-    public int times = 2;
 
     public HolySeal()
         : base(SkillTypes.Special)
@@ -49,20 +41,17 @@ public class HolySeal : Skill
     }
 
     public override string SkillName { get; set; } = "圣光封印";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            EnergyTimesGateStep(
-                EnergyCost,
-                times,
-                ApplyBuffHostile(
-                    buffName: Buff.BuffName.Stun,
-                    stacks: StunStacks,
-                    target: HostileTargets(1)
-                )
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Stun,
+                stacks: StunStacks,
+                target: HostileTargets(1)
             )
         );
     }
@@ -71,7 +60,6 @@ public class HolySeal : Skill
 public class AegisPledge : Skill
 {
     private const int PowerGain = 3;
-    private const int EnergyCost = 3;
     private const int BarricadeStacks = 1;
 
     public AegisPledge()
@@ -81,21 +69,17 @@ public class AegisPledge : Skill
     }
 
     public override string SkillName { get; set; } = "壁垒誓约";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Barricade,
-                    stacks: BarricadeStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Barricade,
+                stacks: BarricadeStacks,
+                target: RelativeTarget(0)
             )
         );
     }
@@ -103,8 +87,6 @@ public class AegisPledge : Skill
 
 public class VulnerabilityConversion : Skill
 {
-    private const int EnergyCost = 2;
-
     public VulnerabilityConversion()
         : base(SkillTypes.Special)
     {
@@ -112,6 +94,7 @@ public class VulnerabilityConversion : Skill
     }
 
     public override string SkillName { get; set; } = "万军取敌";
+    public override int EnergyCost => 2;
 
     private static int GetVulnerableStacks(Character target) =>
         target
@@ -141,18 +124,13 @@ public class VulnerabilityConversion : Skill
                 stacks: 1,
                 target: HostileTargets(1)
             ),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ModifyPropertyStep(
-                    PropertyType.Power,
-                    _ => GetTotalHostileVulnerableStacks(),
-                    RelativeTarget(0)
-                ),
-                TextStep(
-                    $"获得等同于敌方所有角色{Buff.BuffName.Vulnerable.GetDescription()}层数总和的力量。"
-                )
+            ModifyPropertyStep(
+                PropertyType.Power,
+                _ => GetTotalHostileVulnerableStacks(),
+                RelativeTarget(0)
+            ),
+            TextStep(
+                $"获得等同于敌方所有角色{Buff.BuffName.Vulnerable.GetDescription()}层数总和的力量。"
             )
         );
     }
@@ -160,7 +138,6 @@ public class VulnerabilityConversion : Skill
 
 public class DemonForm : Skill
 {
-    private const int EnergyCost = 6;
     private const int DemonStacks = 6;
 
     public DemonForm()
@@ -170,20 +147,16 @@ public class DemonForm : Skill
     }
 
     public override string SkillName { get; set; } = "恶魔形态";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Demon,
-                    stacks: DemonStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Demon,
+                stacks: DemonStacks,
+                target: RelativeTarget(0)
             )
         );
     }

@@ -4,7 +4,6 @@ public partial class TempoSurge : Skill
 {
     private const int SpeedGain = 3;
     private const int PowerGain = 4;
-    private const int EnergyCost = 3;
 
     public TempoSurge()
         : base(SkillTypes.Special)
@@ -13,6 +12,7 @@ public partial class TempoSurge : Skill
     }
 
     public override string SkillName { get; set; } = "疾奏";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -20,12 +20,7 @@ public partial class TempoSurge : Skill
             this,
             ModifyPropertyStep(PropertyType.Speed, SpeedGain),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                CarryStep(target: RelativeTarget(-1), skillIndex: 1)
-            )
+            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
         );
     }
 }
@@ -34,11 +29,10 @@ public partial class LongNight : Skill
 {
     private const int SurvivabilityLoss = 3;
     private const int SpeedLoss = 3;
-    private const int PrimaryEnergyCost = 2;
-    private const int SecondaryEnergyCost = 1;
     private const int PowerGain = 5;
 
     public override string SkillName { get; set; } = "长夜";
+    public override int EnergyCost => 3;
 
     public LongNight()
         : base(SkillTypes.Special)
@@ -50,21 +44,11 @@ public partial class LongNight : Skill
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                PrimaryEnergyCost,
-                null,
-                null,
-                CarryStep(target: RelativeTarget(-1), skillIndex: 2),
-                CarryStep(target: RelativeTarget(1), skillIndex: 2),
-                ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss),
-                ModifyPropertyStep(PropertyType.Speed, -SpeedLoss)
-            ),
-            EnergyTimesGateStep(
-                SecondaryEnergyCost,
-                null,
-                null,
-                ModifyPropertyStep(PropertyType.Power, PowerGain)
-            )
+            CarryStep(target: RelativeTarget(-1), skillIndex: 2),
+            CarryStep(target: RelativeTarget(1), skillIndex: 2),
+            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss),
+            ModifyPropertyStep(PropertyType.Speed, -SpeedLoss),
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
@@ -83,6 +67,7 @@ public partial class RequiemBloom : Skill
     }
 
     public override string SkillName { get; set; } = "安魂花";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -102,15 +87,10 @@ public partial class RequiemBloom : Skill
                     ),
                 ]
             ),
-            EnergyTimesGateStep(
-                3,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.ExtraTurn,
-                    stacks: ExtraTurnStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraTurn,
+                stacks: ExtraTurnStacks,
+                target: RelativeTarget(0)
             )
         );
     }
@@ -120,7 +100,6 @@ public partial class CurtainCallMoment : Skill
 {
     private const int WeakenStacks = 2;
     private const int InvisibleStacks = 5;
-    private const int EnergyCost = 3;
     private const int ExtraTurnStacks = 1;
 
     public CurtainCallMoment()
@@ -130,6 +109,7 @@ public partial class CurtainCallMoment : Skill
     }
 
     public override string SkillName { get; set; } = "落幕时刻";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -145,15 +125,10 @@ public partial class CurtainCallMoment : Skill
                 stacks: InvisibleStacks,
                 target: RelativeTarget(0)
             ),
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.ExtraTurn,
-                    stacks: ExtraTurnStacks,
-                    target: RelativeTarget(1)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraTurn,
+                stacks: ExtraTurnStacks,
+                target: RelativeTarget(1)
             )
         );
     }
@@ -161,7 +136,6 @@ public partial class CurtainCallMoment : Skill
 
 public partial class ShadowForm : Skill
 {
-    private const int EnergyCost = 6;
     private const int ShadowStacks = 2;
 
     public ShadowForm()
@@ -171,25 +145,21 @@ public partial class ShadowForm : Skill
     }
 
     public override string SkillName { get; set; } = "暗影形态";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                EnergyCost,
-                null,
-                null,
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Invisible,
-                    stacks: 5,
-                    target: RelativeTarget(0)
-                ),
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.Shadow,
-                    stacks: ShadowStacks,
-                    target: RelativeTarget(0)
-                )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Invisible,
+                stacks: 5,
+                target: RelativeTarget(0)
+            ),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Shadow,
+                stacks: ShadowStacks,
+                target: RelativeTarget(0)
             )
         );
     }

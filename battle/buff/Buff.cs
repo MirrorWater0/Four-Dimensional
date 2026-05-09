@@ -58,16 +58,17 @@ public partial class Buff
         [BuffName.Demon] = "res://battle/buff/StateIcon/Demon.tscn",
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
+        [BuffName.CardRefresh] = "res://battle/buff/StateIcon/CardRefresh.tscn",
     };
 
     private static string GetBuffNameKey(BuffName name)
     {
         var field = typeof(BuffName).GetField(name.ToString());
-        return field?
-            .GetCustomAttributes(typeof(DescriptionAttribute), false)
-            .OfType<DescriptionAttribute>()
-            .FirstOrDefault()
-            ?.Description ?? name.ToString();
+        return field
+                ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .OfType<DescriptionAttribute>()
+                .FirstOrDefault()
+                ?.Description ?? name.ToString();
     }
 
     public static string GetBuffDisplayName(BuffName name) =>
@@ -82,13 +83,13 @@ public partial class Buff
             BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
             BuffName.Thorn => "受到攻击时，对攻击者造成等同于层数的伤害。",
-            BuffName.Stun => "无法释放技能；释放技能时消耗1层。",
+            BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
             BuffName.Pursuit => "回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
             BuffName.ExtraPower => "获得力量时，额外获得等同于层数的力量。",
             BuffName.ExtraSurvivability => "获得生存时，额外获得等同于层数的生存。",
-            BuffName.ExtraTurn => "回合结束时消耗1层，触发1次额外出手(不触发回合开始/结束效果)。",
+            BuffName.ExtraTurn => "回合结束时消耗1层，触发1个完整额外回合。",
             BuffName.AutoArmor => "受到攻击后，获得等同于层数的格挡。",
             BuffName.Barricade => "回合开始时，保留你的格挡。",
             BuffName.Afterimage => "回合开始时，格挡不会消失，减少1层。",
@@ -100,8 +101,13 @@ public partial class Buff
             BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
             BuffName.Echo => "释放技能时，额外释放等同于层数的次数。",
             BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
+            BuffName.CardRefresh => "回合开始时，每层额外抽1张牌并消耗1层。",
             _ => string.Empty,
         };
+
+        if (false && name == BuffName.Stun)
+            key =
+                "ä¸‹1æ¬¡é‡Šæ”¾æŠ€èƒ½ä¼šè¢«é˜»æ­¢ï¼Œå¹¶å›ºå®šå¤±åŽ»1ç‚¹èƒ½é‡ï¼›è§¦å‘åŽæ¶ˆè€—1å±‚ã€‚";
 
         return string.IsNullOrWhiteSpace(key) ? string.Empty : TranslationServer.Translate(key);
     }
@@ -358,6 +364,9 @@ public partial class Buff
 
         [Description("圣域")]
         Sanctuary,
+
+        [Description("抽牌")]
+        CardRefresh,
     }
 
     public Character Owner;
@@ -400,6 +409,7 @@ public partial class Buff
             BuffName.Demon => Nature.positive,
             BuffName.Void => Nature.positive,
             BuffName.Sanctuary => Nature.positive,
+            BuffName.CardRefresh => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -899,8 +909,8 @@ public partial class AttackBuff : Buff
     private static bool HasDivinity(Character attacker)
     {
         return attacker?.StartActionBuffs?.Any(x =>
-            x != null && x.ThisBuffName == BuffName.Divinity && x.Stack > 0
-        ) == true;
+                x != null && x.ThisBuffName == BuffName.Divinity && x.Stack > 0
+            ) == true;
     }
 
     public static void Trigger(Character attacker, ref TriggerContext context)
@@ -976,6 +986,9 @@ public partial class SkillBuff : Buff
             case BuffName.Stun:
                 Stack--;
                 UpdateStackLabel();
+
+                if (skill?.OwnerCharater != null && skill.OwnerCharater.Energy > 0)
+                    skill.OwnerCharater.UpdataEnergy(-1, skill.OwnerCharater);
 
                 if (Owner != null)
                 {
@@ -1120,6 +1133,24 @@ public partial class SpecialBuff : Buff
         return true;
     }
 
+    public static bool TryConsumeCardRefresh(Character target)
+    {
+        if (target?.SpecialBuffs == null)
+            return false;
+
+        var refresh = target.SpecialBuffs.FirstOrDefault(x =>
+            x != null && x.ThisBuffName == BuffName.CardRefresh && x.Stack > 0
+        );
+        if (refresh == null)
+            return false;
+
+        refresh.Stack--;
+        refresh.UpdateStackLabel();
+        refresh.TweenLabel();
+        refresh.TryRemoveIfEmpty(target.SpecialBuffs);
+        return true;
+    }
+
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (target?.SpecialBuffs == null)
@@ -1132,6 +1163,7 @@ public partial class SpecialBuff : Buff
             name != BuffName.DebuffImmunity
             && name != BuffName.ExtraPower
             && name != BuffName.ExtraSurvivability
+            && name != BuffName.CardRefresh
         )
             return;
 

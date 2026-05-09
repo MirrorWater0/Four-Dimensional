@@ -113,7 +113,7 @@ public static partial class GameInfo
         public Dictionary<RelicID, int> Relics = new();
         public List<ItemID> Items = new();
         public List<string> OwnedEquipmentNames = new();
-        public List<HashSet<SkillID>> PlayerGainedSkills = new();
+        public List<Dictionary<SkillID, int>> PlayerGainedSkills = new();
         public PlayerPropertySnapshot[] PlayerProperties = Array.Empty<PlayerPropertySnapshot>();
 
         public static ActiveLevelNodeSnapshot Capture(LevelNode node)
@@ -497,7 +497,7 @@ public static partial class GameInfo
         {
             var player = players[i];
             var grouped = new Dictionary<Skill.SkillTypes, List<SkillID>>();
-            foreach (var skillId in (player.GainedSkills ?? new List<SkillID>()).Distinct())
+            foreach (var skillId in player.GainedSkills ?? new List<SkillID>())
             {
                 var skill = Skill.GetSkill(skillId);
                 if (skill == null || skill.SkillType == Skill.SkillTypes.none)
@@ -509,8 +509,7 @@ public static partial class GameInfo
                     grouped[skill.SkillType] = skillIds;
                 }
 
-                if (!skillIds.Contains(skillId))
-                    skillIds.Add(skillId);
+                skillIds.Add(skillId);
             }
 
             var characterRecord = new RunHistoryCharacterSkillRecord
@@ -964,15 +963,17 @@ public static partial class GameInfo
         return source.Select(GetEquipmentDisplayName).ToList();
     }
 
-    private static List<HashSet<SkillID>> CapturePlayerGainedSkills(PlayerInfoStructure[] players)
+    private static List<Dictionary<SkillID, int>> CapturePlayerGainedSkills(
+        PlayerInfoStructure[] players
+    )
     {
-        var result = new List<HashSet<SkillID>>();
+        var result = new List<Dictionary<SkillID, int>>();
         if (players == null || players.Length == 0)
             return result;
 
         for (int i = 0; i < players.Length; i++)
         {
-            result.Add(new HashSet<SkillID>(players[i].GainedSkills ?? new List<SkillID>()));
+            result.Add(CountSkillIds(players[i].GainedSkills));
         }
 
         return result;
@@ -1000,8 +1001,23 @@ public static partial class GameInfo
         return result;
     }
 
+    private static Dictionary<SkillID, int> CountSkillIds(IEnumerable<SkillID> skillIds)
+    {
+        var result = new Dictionary<SkillID, int>();
+        if (skillIds == null)
+            return result;
+
+        foreach (SkillID skillId in skillIds)
+        {
+            result.TryGetValue(skillId, out int count);
+            result[skillId] = count + 1;
+        }
+
+        return result;
+    }
+
     private static List<string> BuildSkillChanges(
-        List<HashSet<SkillID>> before,
+        List<Dictionary<SkillID, int>> before,
         PlayerInfoStructure[] currentPlayers
     )
     {
@@ -1012,12 +1028,20 @@ public static partial class GameInfo
         for (int i = 0; i < currentPlayers.Length; i++)
         {
             var current = currentPlayers[i];
-            var previous = i < before.Count ? before[i] : new HashSet<SkillID>();
-            foreach (var skillId in current.GainedSkills ?? new List<SkillID>())
+            var previous = i < before.Count ? before[i] : new Dictionary<SkillID, int>();
+            var currentCounts = CountSkillIds(current.GainedSkills);
+            foreach (
+                var pair in currentCounts.OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal)
+            )
             {
-                if (previous.Contains(skillId))
+                previous.TryGetValue(pair.Key, out int previousCount);
+                int gainedCount = pair.Value - previousCount;
+                if (gainedCount <= 0)
                     continue;
 
+                SkillID skillId = pair.Key;
+                for (int copyIndex = 1; copyIndex < gainedCount; copyIndex++)
+                    result.Add($"{GetPlayerName(current, i)} 路 {GetSkillDisplayName(skillId)}");
                 result.Add($"{GetPlayerName(current, i)} · {GetSkillDisplayName(skillId)}");
             }
         }

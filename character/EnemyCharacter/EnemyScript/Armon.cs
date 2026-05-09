@@ -131,7 +131,7 @@ public partial class ArmonSpecial : Skill
 {
     private const int BaseBlock = 3;
     private const int PowerGainPerEnergy = 4;
-    private const int SurvivabilityGainPerEnergy = 5;
+    private const int SurvivabilityGainPerEnergy = 2;
 
     public ArmonSpecial()
         : base(SkillTypes.Special)
@@ -140,6 +140,7 @@ public partial class ArmonSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "矩阵过载";
+    public override int EnergyCost => XEnergyCost;
 
     protected override SkillPlan BuildPlan()
     {
@@ -147,7 +148,7 @@ public partial class ArmonSpecial : Skill
             this,
             AttackPrimaryStep(BaseBlock),
             EnergyTimesWhileStep(
-                energyCost: 2,
+                paidEnergyPerLoop: 2,
                 loopSteps: new[]
                 {
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy),
@@ -157,4 +158,3 @@ public partial class ArmonSpecial : Skill
         );
     }
 }
-

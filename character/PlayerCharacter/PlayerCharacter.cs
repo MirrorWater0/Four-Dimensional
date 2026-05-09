@@ -6,6 +6,9 @@ using Godot;
 
 public partial class PlayerCharacter : Character
 {
+    public const int MaxBattleHandSize = 7;
+    private const int TurnStartDrawCount = 3;
+
     public Frame SelfFrame;
     public Control SkillButtonControl;
     public List<Skill> UntakeSkills;
@@ -20,11 +23,9 @@ public partial class PlayerCharacter : Character
         PassiveName = info.PassiveName;
         PassiveDescription = info.PassiveDescription;
         Skills =
-        [
-            Skill.GetSkill(info.TakenSkills[0]),
-            Skill.GetSkill(info.TakenSkills[1]),
-            Skill.GetSkill(info.TakenSkills[2]),
-        ];
+            BattleNode != null && GodotObject.IsInstanceValid(BattleNode)
+                ? new Skill[MaxBattleHandSize]
+                : CreateFallbackSkillLoadout();
         SetCombatStats(
             info.Power + EquipmentProperty(PropertyType.Power, info),
             info.Survivability + EquipmentProperty(PropertyType.Survivability, info),
@@ -76,6 +77,141 @@ public partial class PlayerCharacter : Character
         return GameInfo.PlayerCharacters[CharacterIndex].Equipments;
     }
 
+    private void DrawBattleCards(int count)
+    {
+        if (count <= 0)
+            return;
+
+        EnsureBattleHandSize();
+        for (int i = 0; i < Skills.Length && count > 0; i++)
+        {
+            if (Skills[i] != null)
+                continue;
+
+            Skill drawnSkill = DrawBattleSkill();
+            if (drawnSkill == null)
+                return;
+
+            drawnSkill.OwnerCharater = this;
+            drawnSkill.UpdateDescription();
+            Skills[i] = drawnSkill;
+            count--;
+        }
+    }
+
+    private static Skill[] CreateFallbackSkillLoadout()
+    {
+        return
+        [
+            Skill.GetSkill(SkillID.BasicAttack),
+            Skill.GetSkill(SkillID.BasicDefense),
+            Skill.GetSkill(SkillID.BasicSpecial),
+        ];
+    }
+
+    private Skill DrawBattleSkill(SkillID? avoidSkillId = null)
+    {
+        Skill skill = BattleNode?.DrawPlayerBattleSkill(this, avoidSkillId: avoidSkillId);
+        if (skill != null)
+            return skill;
+
+        if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
+            return null;
+
+        return Skill.GetSkill(SkillID.BasicAttack);
+    }
+
+    public void RedrawBattleSkill(int skillIndex, SkillID? avoidSkillId = null)
+    {
+        EnsureBattleHandSize();
+        if (skillIndex < 0 || skillIndex >= Skills.Length)
+            return;
+
+        Skill redrawnSkill = DrawBattleSkill(avoidSkillId);
+        if (redrawnSkill == null)
+            return;
+
+        redrawnSkill.OwnerCharater = this;
+        redrawnSkill.UpdateDescription();
+        Skills[skillIndex] = redrawnSkill;
+        InvalidateSkillTooltipCache();
+    }
+
+    public void ClearBattleSkill(int skillIndex)
+    {
+        EnsureBattleHandSize();
+        if (skillIndex < 0 || skillIndex >= Skills.Length)
+            return;
+
+        Skills[skillIndex] = null;
+        CompactBattleHand();
+        InvalidateSkillTooltipCache();
+    }
+
+    private void ResolveTurnStartCardDraw()
+    {
+        if (
+            Skills == null
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || BattleNode.CurrentActionCharacter != this
+            || State == Character.CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        DrawBattleCards(TurnStartDrawCount);
+
+        while (
+            HasBattleHandSpace()
+            && BattleNode.HasDrawablePlayerBattleSkill(this)
+            && SpecialBuff.TryConsumeCardRefresh(this)
+        )
+        {
+            DrawBattleCards(1);
+        }
+
+        InvalidateSkillTooltipCache();
+    }
+
+    private bool HasBattleHandSpace()
+    {
+        EnsureBattleHandSize();
+        return Skills.Any(skill => skill == null);
+    }
+
+    public void RemoveBattleHandCardAt(int skillIndex)
+    {
+        EnsureBattleHandSize();
+        if (skillIndex < 0 || skillIndex >= Skills.Length)
+            return;
+
+        Skills[skillIndex] = null;
+        InvalidateSkillTooltipCache();
+    }
+
+    public void DiscardBattleHand()
+    {
+        if (Skills == null || BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
+            return;
+
+        bool discardedAny = false;
+        for (int i = 0; i < Skills.Length; i++)
+        {
+            Skill skill = Skills[i];
+            if (skill == null)
+                continue;
+
+            BattleNode.DiscardBattleSkill(this, skill);
+            Skills[i] = null;
+            discardedAny = true;
+        }
+
+        if (discardedAny)
+            InvalidateSkillTooltipCache();
+    }
+
     public override void OnActionStart()
     {
         base.OnActionStart();
@@ -87,13 +223,8 @@ public partial class PlayerCharacter : Character
         )
             return;
 
-        for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
-        {
-            var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
-            skillButton.Enable();
-            skillButton.Modulate = SkillButton.EnabledModulate;
-        }
-        SelfFrame.Selected.Visible = true;
+        ResolveTurnStartCardDraw();
+        BattleNode.CharacterControl?.ShowPlayerTurn(this);
         BattleNode.RetreatButton.Disabled = !BattleNode.CanManualRetreat();
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
     }
@@ -106,9 +237,9 @@ public partial class PlayerCharacter : Character
             return;
         }
 
-        SelfFrame.Selected.Visible = false;
         BattleNode.RetreatButton.Disabled = true;
-        DisableSkill();
+        DiscardBattleHand();
+        BattleNode.CharacterControl?.DisablePlayerActions(this);
         var mapNode = BattleNode.MapNode;
         if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
             mapNode.PlayerResourceState?.SetItemsEnabled(false);
@@ -117,11 +248,33 @@ public partial class PlayerCharacter : Character
 
     public override void DisableSkill()
     {
-        for (int j = 0; j < SkillButtonControl.GetChildCount(); j++)
+        BattleNode?.CharacterControl?.SetPlayerInputsEnabled(this, enabled: false);
+    }
+
+    private void EnsureBattleHandSize()
+    {
+        if (Skills != null && Skills.Length == MaxBattleHandSize)
+            return;
+
+        Skill[] resized = new Skill[MaxBattleHandSize];
+        if (Skills != null)
+            Array.Copy(Skills, resized, Math.Min(Skills.Length, resized.Length));
+        Skills = resized;
+    }
+
+    private void CompactBattleHand()
+    {
+        EnsureBattleHandSize();
+        Skill[] compacted = new Skill[MaxBattleHandSize];
+        int next = 0;
+        for (int i = 0; i < Skills.Length; i++)
         {
-            var skillButton = SkillButtonControl.GetChild<SkillButton>(j);
-            skillButton.Disabled = true;
-            skillButton.Modulate = SkillButton.DisabledModulate;
+            if (Skills[i] == null)
+                continue;
+
+            compacted[next++] = Skills[i];
         }
+
+        Skills = compacted;
     }
 }

@@ -122,9 +122,8 @@ public partial class FearWormSurvive : Skill
 public partial class FearWormTermin : Skill
 {
     private const int BaseDamage = 6;
-    private const int PowerDown = 3;
-    private const int StunStacks = 1;
-    private const int Cost = 2;
+    private const int Power = 3;
+    private const int StunStacks = 2;
 
     public FearWormTermin()
         : base(SkillTypes.Special)
@@ -133,23 +132,18 @@ public partial class FearWormTermin : Skill
     }
 
     public override string SkillName { get; set; } = "梦魇缠绕";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyTimesGateStep(
-                energyCost: Cost,
-                onPassSteps:
-                [
-                    ApplyBuffHostile(
-                        buffName: Buff.BuffName.Stun,
-                        stacks: StunStacks,
-                        target: HostileTargets(1)
-                    ),
-                ]
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Stun,
+                stacks: StunStacks,
+                target: HostileTargets(1)
             ),
-            LowerTargetPropertyStep(PropertyType.Power, PowerDown),
+            ModifyPropertyStep(PropertyType.Power, Power),
             AttackPrimaryStep(BaseDamage)
         );
     }

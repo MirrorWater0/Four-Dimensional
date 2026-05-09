@@ -115,7 +115,6 @@ public partial class RedHuskSpecial : Skill
 {
     private const int AutoArmorStacks = 8;
     private const int RebirthStacks = 1;
-    private const int RebirthEnergyCost = 3;
 
     public RedHuskSpecial()
         : base(SkillTypes.Special)
@@ -124,6 +123,7 @@ public partial class RedHuskSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "护壳重生";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -134,18 +134,12 @@ public partial class RedHuskSpecial : Skill
                 stacks: AutoArmorStacks,
                 target: RelativeTarget(0)
             ),
-            EnergyTimesGateStep(
-                energyCost: RebirthEnergyCost,
-                onPassSteps:
-                [
-                    ApplyBuffFriendly(
-                        buffName: Buff.BuffName.RebirthI,
-                        stacks: RebirthStacks,
-                        target: RelativeTarget(0)
-                    ),
-                    ModifyPropertyStep(PropertyType.Survivability, 5),
-                ]
-            )
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.RebirthI,
+                stacks: RebirthStacks,
+                target: RelativeTarget(0)
+            ),
+            ModifyPropertyStep(PropertyType.Survivability, 5)
         );
     }
 }

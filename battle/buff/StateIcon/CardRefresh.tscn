@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://svj1vgr3sbp"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://drcenrxuvnjhl" path="res://shader/Icon/BuffIcon/CardRefresh.gdshader" id="2_cardrefresh"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ueow6"]
+resource_local_to_scene = true
+shader = ExtResource("2_cardrefresh")
+shader_parameter/back_card_color = Color(0.18, 0.45, 0.62, 0.64)
+shader_parameter/front_card_color = Color(0.24, 0.76, 0.86, 0.95)
+shader_parameter/card_edge_color = Color(0.88, 1, 0.95, 1)
+shader_parameter/arrow_color = Color(1, 0.84, 0.24, 1)
+shader_parameter/glow_color = Color(0.22, 0.88, 1, 0.45)
+shader_parameter/card_radius = 0.04500000143898
+shader_parameter/edge_width = 0.03300000121824
+shader_parameter/arrow_radius = 0.36400001589256004
+shader_parameter/arrow_width = 0.07999999821186
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_ueow6")

@@ -12,7 +12,7 @@ public partial class WarThrall : SummonCharacter
     public static string GetPassiveDescription()
     {
         var attack = Skill.GetSkill(SkillID.WarThrallAttack);
-        attack.SetPreviewStats(PowerStat, SurvivabilityStat, 1);
+        attack.SetPreviewStats(PowerStat, SurvivabilityStat, 1, isPlayer: false);
         attack.UpdateDescription();
         return BuildPassiveDescription(
             maxLife: MaxLifeStat,

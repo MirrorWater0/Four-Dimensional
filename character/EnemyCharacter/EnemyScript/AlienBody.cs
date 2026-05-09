@@ -201,7 +201,6 @@ public partial class AlienBodySurvive : Skill
 
 public partial class AlienBodySpecial : Skill
 {
-    private const int EnergyCost = 3;
     private const int PowerDown = 4;
     private const int SurvivabilityDown = 4;
 
@@ -212,20 +211,15 @@ public partial class AlienBodySpecial : Skill
     }
 
     public override string SkillName { get; set; } = "共生连携";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             CarryStep(target: RelativeTarget(-1), skillIndex: 1),
-            EnergyTimesGateStep(
-                energyCost: EnergyCost,
-                onPassSteps:
-                [
-                    LowerTargetPropertyStep(PropertyType.Power, PowerDown),
-                    LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown),
-                ]
-            )
+            LowerTargetPropertyStep(PropertyType.Power, PowerDown),
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown)
         );
     }
 }

@@ -206,6 +206,7 @@ public static class GlobalFunction
                         "伤害" => "#ffc9c9",
                         "格挡" => cambridgeBlue,
                         "能量" => "#c9cdff",
+                        "消耗" => "#ffb86b",
                         _ => null,
                     };
 
