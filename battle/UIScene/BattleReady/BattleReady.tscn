@@ -241,7 +241,7 @@ anchors_preset = 0
 offset_left = 207.0
 offset_top = 140.0
 offset_right = 295.0
-offset_bottom = 420.0
+offset_bottom = 558.0
 
 [node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
 layout_mode = 1
@@ -296,6 +296,18 @@ text = "技
 能
 一
 览"
+flat = true
+
+[node name="TalentModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons"]
+custom_minimum_size = Vector2(0, 126)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("10_btn")
+theme_override_font_sizes/font_size = 18
+toggle_mode = true
+text = "天
+赋
+树"
 flat = true
 
 [node name="FormationModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=1087776721]
@@ -488,14 +500,14 @@ custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 1
 
-[node name="CharacterSelectRoot" type="Control" parent="TacticsModeRoot" unique_id=603340522]
+[node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
 anchors_preset = 0
-offset_left = 404.0
-offset_top = 189.0
-offset_right = 924.0
-offset_bottom = 329.0
+offset_left = 382.0
+offset_top = 168.0
+offset_right = 902.0
+offset_bottom = 308.0
 
-[node name="CharacterSelectFrame" type="PanelContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1033239150]
+[node name="CharacterSelectFrame" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1033239150]
 layout_mode = 0
 offset_top = 54.0
 offset_right = 520.0
@@ -503,7 +515,7 @@ offset_bottom = 126.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
 
-[node name="CharacterSelectThumb" type="PanelContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1485209336]
+[node name="CharacterSelectThumb" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1485209336]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 62.0
@@ -512,12 +524,12 @@ offset_bottom = 118.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
 
-[node name="CharacterSelectThumbAccent" type="Panel" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectThumb" unique_id=1790214888]
+[node name="CharacterSelectThumbAccent" type="Panel" parent="CharacterSelectRoot/CharacterSelectThumb" unique_id=1790214888]
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
 
-[node name="CharacterSelectHeader" type="Label" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=2049201501]
+[node name="CharacterSelectHeader" type="Label" parent="CharacterSelectRoot" unique_id=2049201501]
 layout_mode = 0
 offset_left = 165.0
 offset_top = -4.0
@@ -526,7 +538,7 @@ offset_bottom = 36.0
 theme_override_font_sizes/font_size = 22
 text = "人物选择"
 
-[node name="CharacterSelectPanel" type="MarginContainer" parent="TacticsModeRoot/CharacterSelectRoot" unique_id=1332262597]
+[node name="CharacterSelectPanel" type="MarginContainer" parent="CharacterSelectRoot" unique_id=1332262597]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 54.0
@@ -538,13 +550,13 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="CharacterSelectList" type="HBoxContainer" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel" unique_id=618954340]
+[node name="CharacterSelectList" type="HBoxContainer" parent="CharacterSelectRoot/CharacterSelectPanel" unique_id=618954340]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 10
 
-[node name="EchoButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1229815964]
+[node name="EchoButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1229815964]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -554,7 +566,7 @@ toggle_mode = true
 text = "Echo"
 flat = true
 
-[node name="KasiyaButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=2123147018]
+[node name="KasiyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=2123147018]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -564,7 +576,7 @@ toggle_mode = true
 text = "Kasiya"
 flat = true
 
-[node name="MariyaButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1969700789]
+[node name="MariyaButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=1969700789]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -574,7 +586,7 @@ toggle_mode = true
 text = "Mariya"
 flat = true
 
-[node name="NightingaleButton" type="Button" parent="TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]
+[node name="NightingaleButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -583,6 +595,73 @@ theme_override_font_sizes/font_size = 16
 toggle_mode = true
 text = "Nightingale"
 flat = true
+
+[node name="TalentModeRoot" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -22.0
+offset_top = -21.0
+offset_right = -22.0
+offset_bottom = -21.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TalentTreeFrame" type="Panel" parent="TalentModeRoot"]
+layout_mode = 0
+offset_left = 388.0
+offset_top = 160.0
+offset_right = 1718.0
+offset_bottom = 1020.0
+mouse_filter = 2
+theme = SubResource("Theme_section_blue")
+
+[node name="TalentTreeHeaderFrame" type="Panel" parent="TalentModeRoot"]
+layout_mode = 0
+offset_left = 410.0
+offset_top = 177.0
+offset_right = 538.0
+offset_bottom = 231.0
+mouse_filter = 2
+theme = SubResource("Theme_section_header")
+
+[node name="TalentTreeHeader" type="Label" parent="TalentModeRoot/TalentTreeHeaderFrame"]
+layout_mode = 0
+offset_left = 20.0
+offset_top = 9.0
+offset_right = 98.0
+offset_bottom = 43.0
+theme_override_font_sizes/font_size = 24
+text = "天赋树"
+
+[node name="TalentPointFrame" type="Panel" parent="TalentModeRoot"]
+layout_mode = 0
+offset_left = 1544.0
+offset_top = 186.0
+offset_right = 1670.0
+offset_bottom = 236.0
+mouse_filter = 2
+theme = SubResource("Theme_section_header")
+
+[node name="TalentPointLabel" type="Label" parent="TalentModeRoot/TalentPointFrame"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 11.0
+offset_right = 114.0
+offset_bottom = 39.0
+theme_override_colors/font_color = Color(1, 0.86, 0.55, 1)
+theme_override_font_sizes/font_size = 18
+text = "天赋点 0"
+
+[node name="TalentTreeRoot" type="Control" parent="TalentModeRoot"]
+layout_mode = 0
+offset_left = 680.0
+offset_top = 330.0
+offset_right = 1440.0
+offset_bottom = 760.0
+mouse_filter = 2
 
 [node name="SkillContainer" type="VBoxContainer" parent="TacticsModeRoot" unique_id=972831189]
 layout_mode = 0

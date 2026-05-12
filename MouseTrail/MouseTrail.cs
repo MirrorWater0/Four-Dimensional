@@ -21,6 +21,9 @@ public partial class MouseTrail : CanvasLayer
     [Export(PropertyHint.Range, "0.05,1.0,0.01")]
     private float _overlayRefreshSeconds = 0.15f;
 
+    [Export]
+    private bool _logStutterAsError = false;
+
     private const float PressLerpSpeed = 14.0f;
     private const float CursorRotationSpeed = 9.0f;
     private const float LeftPressCursorRotation = -0.24f;
@@ -158,9 +161,12 @@ public partial class MouseTrail : CanvasLayer
             if (_stutterLogCooldownLeft <= 0f)
             {
                 string sceneName = GetTree()?.CurrentScene?.Name ?? "UnknownScene";
-                GD.PrintErr(
-                    $"[Stutter] frame={Engine.GetProcessFrames()} {frameMs:0.0}ms scene={sceneName} gc=({gcDelta0},{gcDelta1},{gcDelta2})"
-                );
+                string message =
+                    $"[Stutter] frame={Engine.GetProcessFrames()} {frameMs:0.0}ms scene={sceneName} gc=({gcDelta0},{gcDelta1},{gcDelta2})";
+                if (_logStutterAsError)
+                    GD.PrintErr(message);
+                else
+                    GD.Print(message);
                 _stutterLogCooldownLeft = _stutterLogCooldownSeconds;
             }
         }

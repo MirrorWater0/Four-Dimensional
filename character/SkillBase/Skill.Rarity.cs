@@ -73,17 +73,15 @@ public partial class Skill
             SkillRarity.Uncommon,
             SkillID.Extract,
             SkillID.BladeOfSlaughter,
-            SkillID.BreakStrike,
             SkillID.SonicBoom,
             SkillID.DissonantField,
             SkillID.ReverbChain,
             SkillID.RelayShift,
-            SkillID.Charge,
             SkillID.VulnerablePurge,
             SkillID.VulnerabilityStrike,
             SkillID.WeakpointBulwark,
+            SkillID.ReadyStance,
             SkillID.HolySeal,
-            SkillID.Vower,
             SkillID.VulnerabilityConversion,
             SkillID.ChargedBlade,
             SkillID.CrescentWind,
@@ -96,9 +94,11 @@ public partial class Skill
             SkillID.ContinuousPierce,
             SkillID.RuinBlade,
             SkillID.LongNight,
-            SkillID.FlashOfLight,
             SkillID.AfterimageWard,
-            SkillID.StarWard
+            SkillID.StarWard,
+            SkillID.WarGodWill,
+            SkillID.TwilightParadox,
+            SkillID.ConcordSlash
         );
 
         AddRarity(
@@ -115,7 +115,7 @@ public partial class Skill
             SkillID.SanctuaryForm,
             SkillID.RequiemBloom,
             SkillID.CurtainCallMoment,
-            SkillID.TwilightParadox,
+            SkillID.SunMoonCycle,
             SkillID.ShadowForm
         );
 

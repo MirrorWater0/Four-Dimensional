@@ -7,7 +7,7 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 12;
+    private const int BaseBlock = 9;
     private const int PowerGain = 4;
 
     public FinalGuard()
@@ -26,7 +26,7 @@ public partial class FinalGuard : Skill
             ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost)
+                target: TargetReference.ManualFriendly
             )
         );
     }
@@ -34,8 +34,7 @@ public partial class FinalGuard : Skill
 
 public partial class CrystalGuard : Skill
 {
-    private const int BaseBlock = 5;
-    private const int SurvivabilityGain = 2;
+    private const int BaseBlock = 2;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -47,11 +46,7 @@ public partial class CrystalGuard : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            BlockStep(AbsoluteTarget(AbsoluteFriendlySelector.All), baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
-        );
+        return new SkillPlan(this, BlockStep(TargetReference.All, baseBlock: BaseBlock));
     }
 }
 
@@ -77,20 +72,19 @@ public partial class QuietVeil : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             ModifyPropertyStep(PropertyType.MaxLife, MaxLifeGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            HealStep(baseHeal: BaseHeal, target: RelativeTarget(0))
+            HealStep(baseHeal: BaseHeal, target: TargetReference.Self)
         );
     }
 }
 
 public partial class EnergyTransfer : Skill
 {
-    private const int BaseBlock = 12;
+    private const int BaseBlock = 9;
     private const int AllyEnergyGain = 2;
-    private const int SelfEnergyLoss = 1;
 
     public EnergyTransfer()
         : base(SkillTypes.Survive)
@@ -105,11 +99,7 @@ public partial class EnergyTransfer : Skill
         return new SkillPlan(
             this,
             BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            EnergyStep(
-                delta: AllyEnergyGain,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost)
-            ),
-            EnergyStep(-SelfEnergyLoss)
+            EnergyStep(delta: AllyEnergyGain, target: TargetReference.ManualFriendly)
         );
     }
 }
@@ -138,10 +128,10 @@ public partial class EnergyRelay : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            BlockStep(relativeIndex: 0, baseBlock: 8),
-            BlockStep(relativeIndex: -1, baseBlock: 8),
-            EnergyStep(delta: _ => _cachedTransferEnergy, target: RelativeTarget(1)),
-            EnergyStep(delta: _ => -_cachedTransferEnergy, target: RelativeTarget(-1)),
+            BlockStep(relativeIndex: 0, baseBlock: 5),
+            BlockStep(relativeIndex: -1, baseBlock: 5),
+            EnergyStep(delta: _ => _cachedTransferEnergy, target: TargetReference.Next),
+            EnergyStep(delta: _ => -_cachedTransferEnergy, target: TargetReference.Previous),
             TextStep("将上一位角色的全部能量转移给下一位。")
         );
     }
@@ -162,7 +152,7 @@ public partial class EnergyRelay : Skill
 
 public partial class TouchOfGod : Skill
 {
-    private const int BaseBlock = 18;
+    private const int BaseBlock = 15;
     private const int DivinityStacks = 1;
 
     public TouchOfGod()
@@ -178,11 +168,10 @@ public partial class TouchOfGod : Skill
         return new SkillPlan(
             this,
             BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 3),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Divinity,
                 stacks: DivinityStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }

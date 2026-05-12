@@ -539,9 +539,7 @@ public partial class LevelNode : ColorRect
         [
             new EvilRegedit(),
             new FearWormRegedit(),
-            new ArmonRegedit(),
             new AlienBodyRegedit(),
-            new TurbineRegedit(),
         ];
     }
 
@@ -552,7 +550,6 @@ public partial class LevelNode : ColorRect
             new FerociouessRegedit(),
             new BlackHawkRegedit(),
             new InexorabilityRegedit(),
-            new RedHuskRegedit(),
         ];
     }
 

@@ -9,6 +9,13 @@ public partial class LevelProgress : Control
     private const int MaxMapHeight = 4; // Maximum vertical slots per stage
     private const int BossSlot = 1;
     private const int PathCount = 6;
+    private const int MinEliteNodes = 4;
+    private const int MaxEliteNodes = 6;
+    private const int MinShopNodes = 2;
+    private const int MaxShopNodes = 5;
+    private const int FirstEliteStage = 3;
+    private const int FirstShopStage = 1;
+    private const int EventChancePercent = 24;
     private const float NodeSpacingX = 250f; // Distance between stages
     private const float NodeSpacingY = 290f; // Vertical distance between slots
     private const float MapLeftMargin = 200f;
@@ -791,6 +798,43 @@ public partial class LevelProgress : Control
 
     private void AssignNodeTypes(Random rng)
     {
+        foreach (var layer in _mapNodes)
+        {
+            foreach (var node in layer)
+            {
+                if (node == null)
+                    continue;
+
+                int x = node.SelfCoordinate.X;
+                if (x == 0)
+                    node.Type = LevelNode.LevelType.Normal;
+                else if (x == MapLength - 1)
+                    node.Type = LevelNode.LevelType.Boss;
+                else
+                    node.Type =
+                        rng.Next(100) < EventChancePercent
+                            ? LevelNode.LevelType.Event
+                            : LevelNode.LevelType.Normal;
+            }
+        }
+
+        int shopCount = rng.Next(MinShopNodes, MaxShopNodes + 1);
+        int eliteCount = rng.Next(MinEliteNodes, MaxEliteNodes + 1);
+        AssignDistributedNodeType(
+            LevelNode.LevelType.Shop,
+            shopCount,
+            FirstShopStage,
+            MapLength - 2,
+            rng
+        );
+        AssignDistributedNodeType(
+            LevelNode.LevelType.Elite,
+            eliteCount,
+            FirstEliteStage,
+            MapLength - 2,
+            rng
+        );
+
         for (int x = 0; x < MapLength; x++)
         {
             var layer = _mapNodes[x];
@@ -799,26 +843,154 @@ public partial class LevelProgress : Control
                 if (node == null)
                     continue;
 
-                if (x == 0)
-                    node.Type = LevelNode.LevelType.Normal;
-                else if (x == MapLength - 1)
-                    node.Type = LevelNode.LevelType.Boss;
-                else
-                {
-                    int roll = rng.Next(100);
-                    if (roll < 45)
-                        node.Type = LevelNode.LevelType.Normal;
-                    else if (roll < 60)
-                        node.Type = LevelNode.LevelType.Event;
-                    else if (roll < 75)
-                        node.Type = LevelNode.LevelType.Shop;
-                    else if (roll < 90 && x > 2) // Elite can only appear after first 3 stages
-                        node.Type = LevelNode.LevelType.Elite;
-                    else
-                        node.Type = LevelNode.LevelType.Normal;
-                }
                 node.ColorChose();
             }
         }
+    }
+
+    private void AssignDistributedNodeType(
+        LevelNode.LevelType type,
+        int targetCount,
+        int minStage,
+        int maxStage,
+        Random rng
+    )
+    {
+        if (targetCount <= 0)
+            return;
+
+        minStage = Mathf.Clamp(minStage, 1, MapLength - 2);
+        maxStage = Mathf.Clamp(maxStage, minStage, MapLength - 2);
+
+        var stageCounts = new Dictionary<int, int>();
+        for (int i = 0; i < targetCount; i++)
+        {
+            LevelNode picked = PickDistributedNodeTypeCandidate(
+                type,
+                targetCount,
+                i,
+                minStage,
+                maxStage,
+                stageCounts,
+                rng,
+                enforceConnectionSpacing: true
+            ) ?? PickDistributedNodeTypeCandidate(
+                type,
+                targetCount,
+                i,
+                minStage,
+                maxStage,
+                stageCounts,
+                rng,
+                enforceConnectionSpacing: false
+            );
+
+            if (picked == null)
+                return;
+
+            picked.Type = type;
+            int stage = picked.SelfCoordinate.X;
+            stageCounts[stage] = stageCounts.GetValueOrDefault(stage) + 1;
+        }
+    }
+
+    private LevelNode PickDistributedNodeTypeCandidate(
+        LevelNode.LevelType type,
+        int targetCount,
+        int targetIndex,
+        int minStage,
+        int maxStage,
+        Dictionary<int, int> stageCounts,
+        Random rng,
+        bool enforceConnectionSpacing
+    )
+    {
+        var candidates = GetNodeTypeCandidates(type, minStage, maxStage, enforceConnectionSpacing);
+        if (candidates.Count == 0)
+            return null;
+
+        float desiredStage =
+            minStage + (maxStage - minStage) * ((targetIndex + 0.5f) / Math.Max(1, targetCount));
+
+        return candidates
+            .OrderBy(node =>
+            {
+                int stage = node.SelfCoordinate.X;
+                int usedInStage = stageCounts.GetValueOrDefault(stage);
+                float stageDistance = MathF.Abs(stage - desiredStage);
+                int sameStagePenalty = usedInStage * 100;
+                int typeNeighborPenalty = CountNeighborType(node, type) * 30;
+                return stageDistance * 12f + sameStagePenalty + typeNeighborPenalty + rng.Next(8);
+            })
+            .FirstOrDefault();
+    }
+
+    private List<LevelNode> GetNodeTypeCandidates(
+        LevelNode.LevelType type,
+        int minStage,
+        int maxStage,
+        bool enforceConnectionSpacing
+    )
+    {
+        var candidates = new List<LevelNode>();
+        for (int x = minStage; x <= maxStage && x < _mapNodes.Count; x++)
+        {
+            foreach (var node in _mapNodes[x])
+            {
+                if (node == null)
+                    continue;
+
+                if (node.Type == LevelNode.LevelType.Boss || node.Type == LevelNode.LevelType.Elite || node.Type == LevelNode.LevelType.Shop)
+                    continue;
+
+                if (enforceConnectionSpacing && !CanAssignNodeType(node, type))
+                    continue;
+
+                candidates.Add(node);
+            }
+        }
+
+        return candidates;
+    }
+
+    private static int CountNeighborType(LevelNode node, LevelNode.LevelType type)
+    {
+        if (node == null)
+            return 0;
+
+        int count = 0;
+        foreach (var parent in node.ParentNodes)
+        {
+            if (parent.Type == type)
+                count++;
+        }
+
+        foreach (var next in node.NextNodes)
+        {
+            if (next.Type == type)
+                count++;
+        }
+
+        return count;
+    }
+
+    private static bool CanAssignNodeType(LevelNode node, LevelNode.LevelType type)
+    {
+        if (type != LevelNode.LevelType.Shop && type != LevelNode.LevelType.Elite)
+            return true;
+
+        foreach (var parent in node.ParentNodes)
+        {
+            if (parent.Type == type)
+                return false;
+        }
+
+        foreach (var next in node.NextNodes)
+        {
+            if (next.Type == type)
+                return false;
+        }
+
+        return true;
     }
 }

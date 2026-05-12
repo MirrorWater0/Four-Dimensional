@@ -54,7 +54,6 @@ public partial class Reward : CanvasLayer
     {
         Skill,
         Relic,
-        Equipment,
         Item,
     }
 
@@ -62,7 +61,6 @@ public partial class Reward : CanvasLayer
     {
         public RewardKind Kind;
         public RelicID RelicId;
-        public Equipment Equipment;
         public ItemID ItemId;
         public int SkillGroupIndex = -1;
         public SkillID?[] OfferedSkillIds;
@@ -213,27 +211,6 @@ public partial class Reward : CanvasLayer
         return card;
     }
 
-    /// <summary>Add an equipment reward entry to the inventory list.</summary>
-    public CardSlot AddEquipmentRewardEntry(Equipment equipment)
-    {
-        if (equipment == null)
-            return null;
-
-        string bonus = BuildEquipmentBonusInline(equipment);
-        string title = equipment.DisplayName;
-        var entry = new RewardEntry { Kind = RewardKind.Equipment, Equipment = equipment };
-        var card = CreateRewardCard(title, bonus);
-        if (card == null)
-            return null;
-        RegisterRewardControl(card, entry, isRuntime: true);
-        return card;
-    }
-
-    public CardSlot AddEquipmentRewardEntry(Equipment.EquipmentName equipmentName)
-    {
-        return AddEquipmentRewardEntry(Equipment.Create(equipmentName));
-    }
-
     /// <summary>Add a consumable item reward entry to the inventory list.</summary>
     public CardSlot AddItemRewardEntry(ItemID itemId, string displayName = null)
     {
@@ -370,11 +347,6 @@ public partial class Reward : CanvasLayer
                 break;
             case RewardKind.Relic:
                 GrantRelicReward(entry.RelicId);
-                RemoveRewardControlWithReflow(control);
-                TryCloseIfDone();
-                break;
-            case RewardKind.Equipment:
-                GrantEquipmentReward(entry.Equipment);
                 RemoveRewardControlWithReflow(control);
                 TryCloseIfDone();
                 break;
@@ -739,14 +711,6 @@ public partial class Reward : CanvasLayer
         existing.UpdateIconLabel();
     }
 
-    private void GrantEquipmentReward(Equipment equipment)
-    {
-        if (equipment == null)
-            return;
-        GameInfo.OwnedEquipments ??= new List<Equipment>();
-        GameInfo.OwnedEquipments.Add(Equipment.Clone(equipment));
-    }
-
     private bool GrantItemReward(ItemID itemId)
     {
         var resourceState = MapNode?.PlayerResourceState;
@@ -1064,6 +1028,14 @@ public partial class Reward : CanvasLayer
             return;
 
         int rewardCoin = GetElectricityCoinReward(node);
+        var talentReward = GameInfo.TryGrantEliteTalentPointReward(node);
+        if (talentReward.Granted)
+        {
+            GD.Print(
+                $"精英奖励：{talentReward.CharacterName} 获得 {talentReward.Amount} 点天赋点。"
+            );
+        }
+
         if (MapNode?.PlayerResourceState != null)
         {
             MapNode.PlayerResourceState.ElectricityCoin += rewardCoin;

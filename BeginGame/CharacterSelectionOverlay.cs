@@ -35,7 +35,9 @@ public partial class CharacterSelectionOverlay : Control
     private bool _isAnimating;
     private bool _isClosing;
     private bool _normalizingSeedInput;
+    private bool _difficultyTooltipVisible;
     private Tween _overlayTween;
+    private Tip _difficultyTooltip;
 
     private ColorRect Shade => field ??= GetNodeOrNull<ColorRect>("Shade");
     private Control Panel => field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel");
@@ -46,6 +48,8 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/ConfirmButton");
     private Button CancelButton =>
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/CancelButton");
+    private Control DifficultyBox =>
+        field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox");
     private Button DifficultyMinusButton =>
         field ??= GetNodeOrNull<Button>(
             "SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox/DifficultyMinusButton"
@@ -58,6 +62,7 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Label>(
             "SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox/DifficultyValueLabel"
         );
+    private Tip DifficultyTooltip => _difficultyTooltip ??= EnsureDifficultyTooltip();
     private LineEdit SeedInput =>
         field ??= GetNodeOrNull<LineEdit>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedInput");
     private Button CardTemplate =>
@@ -84,6 +89,12 @@ public partial class CharacterSelectionOverlay : Control
         }
         SetupDifficultyButton(DifficultyMinusButton, -1);
         SetupDifficultyButton(DifficultyPlusButton, 1);
+        if (DifficultyBox != null)
+        {
+            DifficultyBox.MouseEntered += ShowDifficultyTooltip;
+            DifficultyBox.MouseExited += HideDifficultyTooltip;
+            DifficultyBox.TreeExiting += HideDifficultyTooltip;
+        }
         if (SeedInput != null)
         {
             SeedInput.ProcessMode = ProcessModeEnum.Always;
@@ -97,6 +108,11 @@ public partial class CharacterSelectionOverlay : Control
             Visible = false;
             Modulate = Colors.White;
         }
+    }
+
+    public override void _ExitTree()
+    {
+        HideDifficultyTooltip();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -372,7 +388,7 @@ public partial class CharacterSelectionOverlay : Control
                 : $"已选择 {_selectedCharacterNames.Count}/{_requiredSelectionCount}。还需要补满角色才能开始。";
         }
 
-        StatusLabel.Text = $"{selectionText}\n{GameInfo.BuildDifficultySummaryText(_selectedDifficulty)}";
+        StatusLabel.Text = selectionText;
     }
 
     private void ConfirmSelection()
@@ -582,6 +598,8 @@ public partial class CharacterSelectionOverlay : Control
 
         _selectedDifficulty = nextDifficulty;
         RefreshDifficultyState();
+        if (_difficultyTooltipVisible)
+            ShowDifficultyTooltip();
         UpdateStatusText(selectionFull: false);
     }
 
@@ -595,6 +613,52 @@ public partial class CharacterSelectionOverlay : Control
 
         if (DifficultyPlusButton != null)
             DifficultyPlusButton.Disabled = _selectedDifficulty >= MaxDifficulty;
+    }
+
+    private void ShowDifficultyTooltip()
+    {
+        var tip = DifficultyTooltip;
+        if (tip == null)
+            return;
+
+        _difficultyTooltipVisible = true;
+        tip.FollowMouse = true;
+        tip.SetText(GameInfo.BuildDifficultySummaryText(_selectedDifficulty));
+    }
+
+    private void HideDifficultyTooltip()
+    {
+        _difficultyTooltipVisible = false;
+        _difficultyTooltip?.HideTooltip();
+    }
+
+    private Tip EnsureDifficultyTooltip()
+    {
+        var tree = GetTree();
+        var root = tree?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer == null)
+        {
+            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            root.AddChild(layer);
+        }
+
+        var tip = layer.GetNodeOrNull<Tip>("Tip");
+        if (tip != null)
+            return tip;
+
+        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+        tip = tipScene?.Instantiate<Tip>();
+        if (tip == null)
+            return null;
+
+        tip.Name = "Tip";
+        tip.FollowMouse = true;
+        layer.AddChild(tip);
+        return tip;
     }
 
     private int ResolveSeed()
@@ -658,6 +722,10 @@ public partial class CharacterSelectionOverlay : Control
             Power = source.Power,
             Survivability = source.Survivability,
             Speed = source.Speed,
+            TalentPoints = source.TalentPoints,
+            UnlockedTalents = source.UnlockedTalents != null
+                ? new List<string>(source.UnlockedTalents)
+                : new List<string>(),
             GainedSkills = source.GainedSkills != null
                 ? new List<SkillID>(source.GainedSkills)
                 : new List<SkillID>(),
@@ -668,20 +736,7 @@ public partial class CharacterSelectionOverlay : Control
             CharacterName = source.CharacterName,
             PassiveName = source.PassiveName,
             PassiveDescription = source.PassiveDescription,
-            Equipments = CloneEquipments(source.Equipments),
         };
-    }
-
-    private static Equipment[] CloneEquipments(Equipment[] source)
-    {
-        if (source == null)
-            return new Equipment[2];
-
-        var result = new Equipment[source.Length];
-        for (int i = 0; i < source.Length; i++)
-            result[i] = Equipment.Clone(source[i]);
-
-        return result;
     }
 
     private static string FormatPassiveDescription(string description)

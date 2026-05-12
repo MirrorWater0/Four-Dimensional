@@ -79,10 +79,10 @@ public partial class TurbineRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
-        MaxLife = 85;
-        Power = 12;
-        Survivability = 12;
-        Speed = 9;
+        MaxLife = 55;
+        Power = 9;
+        Survivability = 9;
+        Speed = 6;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
@@ -113,7 +113,7 @@ public partial class TurbineAttack : Skill
             ModifyPropertyStep(
                 PropertyType.Survivability,
                 AllySurvivabilityGain,
-                RelativeTarget(-1)
+                TargetReference.Previous
             )
         );
     }
@@ -124,7 +124,7 @@ public partial class TurbineSurvive : Skill
     private const int BaseSurvivabilityGain = 5;
     private const int SurvivabilityMultiplier = 2;
     private const int AllyPowerGain = 3;
-    private const int AllyEnergyGain = 1;
+    private const int AllyEnergyGain = 2;
 
     public TurbineSurvive()
         : base(SkillTypes.Survive)
@@ -139,8 +139,8 @@ public partial class TurbineSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(0, BaseSurvivabilityGain, SurvivabilityMultiplier),
-            ModifyPropertyStep(PropertyType.Power, AllyPowerGain, RelativeTarget(1)),
-            EnergyStep(AllyEnergyGain, RelativeTarget(1))
+            ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next),
+            EnergyStep(AllyEnergyGain, TargetReference.Next)
         );
     }
 }
@@ -164,13 +164,13 @@ public partial class TurbineSpecial : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            HealStep(0, RelativeTarget(0)),
+            HealStep(0, TargetReference.Self),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Thorn,
                 stacks: ThornStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
-            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+            CarryStep(target: TargetReference.Previous, skillIndex: 1)
         );
     }
 }

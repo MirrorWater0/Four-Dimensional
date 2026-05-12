@@ -79,6 +79,7 @@ public partial class Character : Node2D
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
     public Label SpeedIconLabel => field ??= GetNode<Label>("State/SpeedIcon/Label");
     public Label EnergeIconLabel => field ??= GetNode<Label>("State/EnergeIcon/Label");
+    public Label TurnOrderPreviewLabel => field ??= GetNodeOrNull<Label>("TurnOrderPreview");
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
@@ -128,8 +129,6 @@ public partial class Character : Node2D
     public List<SkillBuff> SkillBuffs = new List<SkillBuff>();
     private Tip SkillTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
     private Tip BuffTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
-    private Tip EquipmentTooltip =>
-        field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/EquipmentTip");
     private Tip _localSkillTooltip;
     public Vector2 OriginalPosition;
     private Tween _hurtMoveTween;
@@ -145,10 +144,8 @@ public partial class Character : Node2D
     private Color _targetPreviewColor = Colors.White;
     private string _cachedSkillTooltipText;
     private string _cachedBuffTooltipText;
-    private string _cachedEquipmentTooltipText;
     private bool _skillTooltipCacheDirty = true;
     private bool _buffTooltipCacheDirty = true;
-    private bool _equipmentTooltipCacheDirty = true;
     private int _skillTooltipHoverVersion;
 
     protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
@@ -194,13 +191,12 @@ public partial class Character : Node2D
         _isFramePreviewVisible = false;
         _isTargetPreviewVisible = false;
         _targetPreviewColor = Colors.White;
+        HideTurnOrderPreview();
         RefreshHoverframeVisual();
         _cachedSkillTooltipText = BuildSkillTooltipText();
         _cachedBuffTooltipText = BuildBuffTooltipText();
-        _cachedEquipmentTooltipText = BuildEquipmentTooltipText();
         _skillTooltipCacheDirty = false;
         _buffTooltipCacheDirty = false;
-        _equipmentTooltipCacheDirty = false;
     }
 
     public override async void _Ready()
@@ -277,7 +273,6 @@ public partial class Character : Node2D
         _localSkillTooltip?.HideTooltip();
         SkillTooltip?.HideTooltip();
         BuffTooltip?.HideTooltip();
-        EquipmentTooltip?.HideTooltip();
     }
 
     private async Task ShowHoverTooltipsDelayed(int hoverVersion)
@@ -371,21 +366,6 @@ public partial class Character : Node2D
             BattleNode?.LogHoverPerfWork(this, "character-hover-bufftip", stepStartUsec);
         }
 
-        if (hoverVersion != _skillTooltipHoverVersion || !_isHoverframeHovered)
-            return;
-
-        string equipmentTooltipText = GetOrBuildEquipmentTooltipText();
-        if (EquipmentTooltip != null && !string.IsNullOrWhiteSpace(equipmentTooltipText))
-        {
-            ulong stepStartUsec = Time.GetTicksUsec();
-            EquipmentTooltip.FollowMouse = true;
-            EquipmentTooltip.SetText(equipmentTooltipText);
-            BattleNode?.LogHoverPerfWork(this, "character-hover-equipmenttip", stepStartUsec);
-        }
-        else
-        {
-            EquipmentTooltip?.HideTooltip();
-        }
     }
 
     private string BuildSkillTooltipText()
@@ -513,17 +493,26 @@ public partial class Character : Node2D
         Skill.SkillTypes skillType
     )
     {
-        string[] names = skills
+        string[] names = FormatStackedSkillNames(
+            skills
             .Where(skill => skill.SkillType == skillType)
             .Select(skill => skill.SkillName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
-            .ToArray();
+        );
         if (names.Length == 0)
             return;
 
         sb.Append($"[color=#cccccc]({skillType.GetDescription()})[/color] ");
         sb.Append(string.Join("、", names));
         sb.Append('\n');
+    }
+
+    private static string[] FormatStackedSkillNames(IEnumerable<string> names)
+    {
+        return (names ?? Array.Empty<string>())
+            .GroupBy(name => name)
+            .Select(group => group.Count() > 1 ? $"{group.Key} x{group.Count()}" : group.Key)
+            .ToArray();
     }
 
     private void AppendPassiveTooltip(StringBuilder sb)
@@ -554,19 +543,12 @@ public partial class Character : Node2D
         return GetOrBuildSkillTooltipText();
     }
 
-    protected virtual IEnumerable<Equipment> GetTooltipEquipments()
-    {
-        return null;
-    }
-
     public void InvalidateHoverTooltipCache()
     {
         _skillTooltipCacheDirty = true;
         _buffTooltipCacheDirty = true;
-        _equipmentTooltipCacheDirty = true;
         _cachedSkillTooltipText = null;
         _cachedBuffTooltipText = null;
-        _cachedEquipmentTooltipText = null;
     }
 
     public void InvalidateSkillTooltipCache()
@@ -579,12 +561,6 @@ public partial class Character : Node2D
     {
         _buffTooltipCacheDirty = true;
         _cachedBuffTooltipText = null;
-    }
-
-    public void InvalidateEquipmentTooltipCache()
-    {
-        _equipmentTooltipCacheDirty = true;
-        _cachedEquipmentTooltipText = null;
     }
 
     private string GetOrBuildSkillTooltipText()
@@ -607,17 +583,6 @@ public partial class Character : Node2D
         }
 
         return _cachedBuffTooltipText;
-    }
-
-    private string GetOrBuildEquipmentTooltipText()
-    {
-        if (_equipmentTooltipCacheDirty || _cachedEquipmentTooltipText == null)
-        {
-            _cachedEquipmentTooltipText = BuildEquipmentTooltipText();
-            _equipmentTooltipCacheDirty = false;
-        }
-
-        return _cachedEquipmentTooltipText;
     }
 
     private string BuildBuffTooltipText()
@@ -716,11 +681,6 @@ public partial class Character : Node2D
             sb.Append("None");
 
         return GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd());
-    }
-
-    private string BuildEquipmentTooltipText()
-    {
-        return Equipment.BuildSpecialEffectTooltipSection(GetTooltipEquipments());
     }
 
     public override void _Process(double delta)
@@ -822,8 +782,36 @@ public partial class Character : Node2D
             TrailAnimation.Stop();
     }
 
+    public void ShowTurnOrderPreview(int order)
+    {
+        var label = TurnOrderPreviewLabel;
+        if (label == null || State == CharacterState.Dying)
+            return;
+
+        label.Text = Math.Max(0, order).ToString();
+        label.Visible = true;
+        label.Modulate = order == 0
+            ? new Color(1f, 0.92f, 0.45f, 1f)
+            : new Color(0.92f, 0.98f, 1f, 0.92f);
+    }
+
+    public void HideTurnOrderPreview()
+    {
+        var label = TurnOrderPreviewLabel;
+        if (label != null)
+            label.Visible = false;
+    }
+
     protected virtual void ResolveTurnStartPhase()
     {
+        if (SkillBuffs != null)
+        {
+            foreach (var buff in SkillBuffs.Where(x => x != null).ToArray())
+            {
+                buff.ResetTurnState();
+            }
+        }
+
         if (ClearsBlockOnActionStart)
         {
             bool keepBlock =
@@ -904,7 +892,6 @@ public partial class Character : Node2D
     public virtual async Task GetHurt(
         float damage,
         Character source = null,
-        bool canTriggerThorn = true,
         DamageKind damageKind = DamageKind.Other
     )
     {
@@ -918,7 +905,7 @@ public partial class Character : Node2D
             // Iterate over a snapshot to ensure later buffs (e.g. DamageImmune) still trigger.
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                damage = await buff.Trigger(damage, source, canTriggerThorn, damageKind);
+                damage = await buff.Trigger(damage, source, damageKind);
             }
         }
 
@@ -1006,8 +993,11 @@ public partial class Character : Node2D
 
     public virtual async Task Dying(Character source = null)
     {
+        bool enteredDying = State != CharacterState.Dying;
         State = CharacterState.Dying;
         BattleNode?.RecordDying(this, source);
+        if (enteredDying)
+            BattleNode?.HandleCharacterEnteredDying(this);
         if (BattleNode != null)
             await BattleNode.EmitCharacterDying(this, source);
 
@@ -1198,6 +1188,7 @@ public partial class Character : Node2D
             return;
 
         BattleNode.RequestActionPoinUiRefresh(IsPlayer);
+        BattleNode.RefreshTurnOrderPreview();
     }
 
     private void TryPlayIncreasePropertyEffect()

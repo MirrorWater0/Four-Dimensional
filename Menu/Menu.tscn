@@ -275,3 +275,42 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_danger_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_danger_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_danger_hover")
 text = "放弃游戏"
+[node name="SettingsPanel" type="VBoxContainer" parent="CenterPanel/Margin/VBox" unique_id=2053167101]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="SettingsTitle" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=1068247423]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.980392, 1, 0.98)
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 36
+text = "设置"
+
+[node name="DescriptionModeCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=1676570052]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "战斗卡面显示总数值"
+
+[node name="TurnOrderPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=865591210]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "显示战斗出手顺序"
+
+[node name="SettingsBackButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=2047571245]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945098, 0.980392, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.909804, 0.952941, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = ExtResource("1_font")
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
+text = "返回"

@@ -7,7 +7,7 @@ public partial class KasiyaAttackSkill { }
 public partial class Determination : Skill
 {
     private const int DamageImmuneStacks = 1;
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 5;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -25,7 +25,7 @@ public partial class Determination : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }
@@ -33,7 +33,7 @@ public partial class Determination : Skill
 
 public partial class Smite : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 10;
     private const int SurvivalDown = 5;
 
     public Smite()
@@ -49,15 +49,14 @@ public partial class Smite : Skill
         return new SkillPlan(
             this,
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown),
-            AttackPrimaryStep(baseDamage: BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Survivability, 4, target: HostileTargets(0))
+            AttackPrimaryStep(baseDamage: BaseDamage)
         );
     }
 }
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 3;
 
     public Charge()
         : base(Skill.SkillTypes.Attack)
@@ -77,7 +76,8 @@ public partial class Charge : Skill
                 baseBlock: _ =>
                     OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
                         source: OwnerCharater,
-                        target: GetStoredTarget("charge_target")
+                        target: GetStoredTarget("charge_target"),
+                        includeBlockedDamage: true
                     ) ?? 0,
                 describe: false,
                 survivabilityMultiplier: 0
@@ -89,7 +89,7 @@ public partial class Charge : Skill
 
 public partial class Vower : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 12;
 
     public Vower()
         : base(Skill.SkillTypes.Attack)
@@ -104,14 +104,14 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+            CarryStep(target: TargetReference.Previous, skillIndex: 2)
         );
     }
 }
 
 public partial class VulnerablePurge : Skill
 {
-    private const int BaseDamage = 16;
+    private const int BaseDamage = 7;
 
     public VulnerablePurge()
         : base(SkillTypes.Attack)
@@ -119,7 +119,7 @@ public partial class VulnerablePurge : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "致命弱点";
+    public override string SkillName { get; set; } = "弱点突破";
 
     protected override SkillPlan BuildPlan()
     {
@@ -148,7 +148,7 @@ public partial class VulnerablePurge : Skill
 
 public partial class VulnerabilityStrike : Skill
 {
-    private const int BaseDamage = 14;
+    private const int BaseDamage = 11;
     private const string TargetKey = "vulnerability_strike_target";
     private bool _targetHadVulnerable;
 
@@ -193,11 +193,7 @@ public partial class VulnerabilityStrike : Skill
             ConditionStep(
                 ConsumeVulnerableSnapshotOrCheckCurrentTarget,
                 $"出手前目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
-                AttackPrimaryStep(
-                    baseDamage: BaseDamage,
-                    prefix: "额外造成",
-                    target: StoredTarget(TargetKey)
-                )
+                AttackPrimaryStep(TargetKey, baseDamage: BaseDamage, prefix: "额外造成")
             )
         );
     }

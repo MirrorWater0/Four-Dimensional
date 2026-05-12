@@ -7,7 +7,12 @@ public partial class BattleTutorialOverlay : CanvasLayer
 {
     private const string TutorialSavePath = "user://tutorial.cfg";
     private const string TutorialSection = "Tutorial";
-    private const string BattleTutorialSeenKey = "BattleTutorialSeen";
+    private const string BattleTutorialSeenKey = "BattleTutorialSeenV4";
+    private const string BattleSpeedTutorialBody =
+        "\u4e0a\u65b9\u662f\u53cc\u65b9\u884c\u52a8\u70b9\u6570\u6761\u3002\u5de6\u8fb9\u7684\u6570\u5b57\u662f\u5f53\u524d\u884c\u52a8\u70b9\uff0c\u62ec\u53f7\u91cc\u662f\u8be5\u9635\u8425\u5b58\u6d3b\u6210\u5458\u7684\u603b\u901f\u5ea6\u3002\n\n"
+        + "\u4e00\u540d\u89d2\u8272\u884c\u52a8\u7ed3\u675f\u540e\uff0c\u6240\u5c5e\u9635\u8425\u4f1a\u6309\u603b\u901f\u5ea6\u83b7\u5f97\u884c\u52a8\u70b9\u3002\u603b\u901f\u5ea6\u8d8a\u9ad8\uff0c\u6761\u6da8\u5f97\u8d8a\u5feb\uff1b\u51cf\u5458\u6216\u901f\u5ea6\u88ab\u964d\u4f4e\u65f6\uff0c\u7d2f\u79ef\u4e5f\u4f1a\u53d8\u6162\u3002\n\n"
+        + "\u961f\u4f0d\u5185\u90e8\u4ecd\u7136\u6309\u9635\u4f4d\u987a\u5e8f\u8f6e\u6d41\u51fa\u624b\uff0c\u884c\u52a8\u540e\u6392\u5230\u961f\u5c3e\u3002\u5f53\u4e00\u65b9\u884c\u52a8\u70b9\u8fbe\u5230 100 \u65f6\uff0c\u8be5\u9635\u8425\u4f1a\u5728\u6b63\u5e38\u8f6e\u6d41\u4e4b\u5916\u83b7\u5f97\u4e00\u6b21\u989d\u5916\u51fa\u624b\u673a\u4f1a\uff0c\u5e76\u7ed9\u8fd9\u6b21\u884c\u52a8\u7684\u89d2\u8272 1 \u70b9\u80fd\u91cf\u548c 1 \u70b9\u62bd\u5361\u50a8\u5907\u3002\n\n"
+        + "\u6240\u4ee5\uff0c\u901f\u5ea6\u4e0d\u53ea\u51b3\u5b9a\u8c01\u5148\u52a8\uff0c\u4e5f\u4f1a\u5f71\u54cd\u54ea\u4e00\u65b9\u80fd\u66f4\u9891\u7e41\u62a2\u5230\u989d\u5916\u56de\u5408\u3002";
 
     private readonly List<TutorialStep> _steps = new();
     private TaskCompletionSource<bool> _completion;
@@ -66,6 +71,10 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private void BuildSteps()
     {
         _steps.Clear();
+        BuildUpdatedSteps();
+        if (_steps.Count > 0)
+            return;
+
         _steps.Add(
             new TutorialStep(
                 "战斗教程",
@@ -146,11 +155,85 @@ public partial class BattleTutorialOverlay : CanvasLayer
         );
     }
 
+    private void BuildUpdatedSteps()
+    {
+        _steps.AddRange(
+            new[]
+            {
+                new TutorialStep(
+                    "战斗教程",
+                    "欢迎来到第一场战斗。\n\n这里是回合制卡牌战斗：观察敌人，轮到我方角色时从该角色的牌组抽牌，打出卡牌削减敌方生命。生命降到 0 会进入濒死。"
+                ),
+                new TutorialStep(
+                    "手牌区域",
+                    "下方是当前行动角色的手牌。\n\n每名角色都有自己的抽牌堆和弃牌堆；轮到角色行动时会抽取 4 张牌，打出的牌和回合结束时剩余的手牌会进入弃牌堆。抽牌堆空了以后，会把弃牌堆洗回抽牌堆继续抽。",
+                    battle => battle.CharacterControl?.ActionCardContainer
+                ),
+                new TutorialStep(
+                    "打出卡牌",
+                    "悬停卡牌可以查看说明、关键词解释、目标高亮和伤害预览。\n\n点击卡牌会先把它拿起，再在手牌区域外点击即可打出；右键可以取消。卡牌左下角写着耗能，当前能量不足时仍可查看，但不能打出。",
+                    battle => battle.CharacterControl?.GetCardSlot(0)
+                ),
+                new TutorialStep(
+                    "结束回合",
+                    "如果手牌没有合适的选择，可以点击结束回合，或按 E 快捷结束。\n\n结束回合会弃掉当前手牌，并进入下一名角色或敌人的行动。",
+                    battle => battle.CharacterControl?.EndTurnButton
+                ),
+                new TutorialStep(
+                    "抽卡储备",
+                    "有些效果会获得抽卡储备。\n\n抽卡储备会显示在右下角按钮上；当前角色手牌有空位，并且牌组还有可抽的牌时，可以消耗 1 点储备立刻补 1 张牌。",
+                    battle => battle.CharacterControl?.DrawReserveButton
+                ),
+                new TutorialStep(
+                    "目标选择",
+                    "大多数攻击会按常规规则自动选择敌人。\n\n嘲讽会抢占目标，隐身通常不会被选中；同排或距离更近的敌人会更早被考虑。少数支援牌会弹出友方目标选择，点选一名队友后才会结算。"
+                ),
+                new TutorialStep(
+                    "相对位",
+                    "技能说明里的“自身”“前一位”“后一位”说的是同队阵容顺序。\n\n自身是当前行动角色；后一位是阵容列表里的下一名队友，前一位是上一名队友。队伍首尾会相连计算。"
+                ),
+                new TutorialStep(
+                    "出手顺序",
+                    BattleSpeedTutorialBody,
+                    battle => battle.GetNodeOrNull<Control>("ActionPoinBox")
+                ),
+                new TutorialStep(
+                    "生命与格挡",
+                    "角色头顶的生命条表示剩余生命，蓝色护盾数值表示格挡。\n\n受到伤害时会先扣格挡，再扣生命。生命归零会进入濒死；带有“复生”的技能或状态可以让濒死角色回到战斗。"
+                ),
+                new TutorialStep(
+                    "物品与遗物",
+                    "资源栏里的物品是一次性消耗品，角色行动时可以使用；遗物是长期生效的奖励，会在战斗开始、结算或特定条件下自动触发。\n\n悬停物品和遗物图标可以查看具体效果。",
+                    battle => (Control)GetItemContainer(battle) ?? GetRelicContainer(battle)
+                ),
+                new TutorialStep(
+                    "\u6838\u5fc3\u80fd\u6e90",
+                    "\u5730\u56fe\u8d44\u6e90\u680f\u4e2d\u7684\u6838\u5fc3\u80fd\u6e90\u662f\u6574\u6b21\u884c\u52a8\u7684\u5b89\u5168\u9600\uff0c\u4e0a\u9650\u4e3a 100\uff0c\u4f1a\u4ee5\u8fde\u7eed\u8fdb\u5ea6\u6761\u663e\u793a\u5f53\u524d\u5269\u4f59\u503c\u3002\n\n"
+                        + "\u6211\u65b9\u975e\u53ec\u5524\u89d2\u8272\u8fdb\u5165\u6fd2\u6b7b\u65f6\uff0c\u6263\u9664 5 \u70b9\u6838\u5fc3\u80fd\u6e90\uff1b\u624b\u52a8\u64a4\u9000\u65f6\u6263\u9664 10 \u70b9\u3002\n\n"
+                        + "\u5982\u679c\u6211\u65b9\u5168\u5458\u6fd2\u6b7b\uff0c\u4e0d\u4f1a\u7acb\u523b\u6e38\u620f\u5931\u8d25\uff1a\u4f1a\u6263\u9664 10 \u70b9\u6838\u5fc3\u80fd\u6e90\u5e76\u64a4\u56de\u5730\u56fe\u3002\u5f53\u6838\u5fc3\u80fd\u6e90\u964d\u5230 0 \u65f6\uff0c\u624d\u4f1a\u5224\u5b9a\u672c\u6b21\u6e38\u620f\u5931\u8d25\u3002",
+                    battle => GetCoreEnergyControl(battle)
+                ),
+                new TutorialStep(
+                    "战斗记录",
+                    "右侧按钮可以展开战斗记录，方便查看伤害、治疗、Buff、濒死和复生触发。\n\n如果一回合里效果很多，战斗记录会帮你复盘发生了什么。",
+                    battle => battle.RecordButton
+                ),
+                new TutorialStep(
+                    "开始战斗",
+                    "教程结束后战斗会正式开始。\n\n先悬停卡牌看预览，再挑一张能量足够的牌打出去吧。"
+                ),
+            }
+        );
+    }
+
     private static HBoxContainer GetItemContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.ItemContainer;
 
     private static VBoxContainer GetRelicContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.RelicContainer;
+
+    private static Control GetCoreEnergyControl(Battle battle) =>
+        battle?.MapNode?.PlayerResourceState?.TransitionEnergyControl;
 
     private void BuildUi()
     {
@@ -266,13 +349,19 @@ public partial class BattleTutorialOverlay : CanvasLayer
         _stepIndex = Math.Clamp(index, 0, _steps.Count - 1);
         var step = _steps[_stepIndex];
         _titleLabel.Text = step.Title;
-        _bodyLabel.Text = step.Body;
+        _bodyLabel.Text = IsActionPoinTutorialStep(step) ? BattleSpeedTutorialBody : step.Body;
         _progressLabel.Text = $"{_stepIndex + 1}/{_steps.Count}";
         _nextButton.Text = _stepIndex >= _steps.Count - 1 ? "开始战斗" : "下一步";
 
         Rect2? targetRect = step.GetTargetRect(_battle);
         PositionHighlight(targetRect);
         PositionCard(targetRect);
+    }
+
+    private bool IsActionPoinTutorialStep(TutorialStep step)
+    {
+        Control target = step.Target?.Invoke(_battle);
+        return target?.Name == "ActionPoinBox";
     }
 
     private static ColorRect CreateScrimRect() =>

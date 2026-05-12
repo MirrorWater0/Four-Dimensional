@@ -390,7 +390,6 @@ public partial class EventInterface : Control
     private void ApplyNonPropertyOptionEffects(EventOption option)
     {
         ApplyResourceChanges(option);
-        ApplyEquipmentReward(option.EquipmentReward);
         if (option.Exit)
             _ = PlayCloseAnimationAsync(true);
     }
@@ -421,19 +420,6 @@ public partial class EventInterface : Control
 
         if (option.ElectricityChange != 0)
             GameInfo.ElectricityCoin += option.ElectricityChange;
-    }
-
-    private static void ApplyEquipmentReward(List<Equipment> equipmentReward)
-    {
-        if (equipmentReward == null || equipmentReward.Count == 0)
-            return;
-
-        foreach (var equipment in equipmentReward)
-        {
-            if (equipment == null)
-                continue;
-            GameInfo.OwnedEquipments.Add(Equipment.Clone(equipment));
-        }
     }
 
     private async Task PlayAssembleAnimationAsync()
@@ -666,7 +652,7 @@ public partial class EventInterface : Control
 
         if (option.TransitionEnergyChange != 0)
         {
-            sb.Append($"跃迁能量 {FormatSigned(option.TransitionEnergyChange)}\n");
+            sb.Append($"核心能源 {FormatSigned(option.TransitionEnergyChange)}\n");
             hasAny = true;
         }
 
@@ -675,22 +661,7 @@ public partial class EventInterface : Control
             sb.Append($"电力币 {FormatSigned(option.ElectricityChange)}\n");
             hasAny = true;
         }
-
-        if (option.EquipmentReward != null && option.EquipmentReward.Count > 0)
-        {
-            sb.Append("获得装备：");
-            for (int i = 0; i < option.EquipmentReward.Count; i++)
-            {
-                var equip = option.EquipmentReward[i];
-                if (equip == null)
-                    continue;
-                sb.Append(i == 0 ? equip.DisplayName : $"，{equip.DisplayName}");
-            }
-            sb.Append('\n');
-            hasAny = true;
-        }
-
-        if (option.Exit)
+if (option.Exit)
         {
             sb.Append("事件结束\n");
             hasAny = true;
@@ -752,5 +723,3 @@ public partial class EventInterface : Control
         control.Modulate = control.Modulate with { A = alpha };
     }
 }
-
-

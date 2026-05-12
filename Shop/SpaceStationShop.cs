@@ -438,10 +438,6 @@ public partial class SpaceStationShop : Control
             if (_catalogOffersBuilt || !IsInsideTree() || _isClosing)
                 return;
 
-            await BuildEquipmentOffersAsync();
-            if (!IsInsideTree() || _isClosing)
-                return;
-
             await BuildRelicOffersAsync();
             if (!IsInsideTree() || _isClosing)
                 return;
@@ -452,7 +448,7 @@ public partial class SpaceStationShop : Control
             NormalizeModuleContentLayouts();
             ApplyModuleVisibility();
             SnapModuleContentVisualState();
-            if (_currentModule is ShopModule.Equipment or ShopModule.Relic or ShopModule.Potion)
+            if (_currentModule is ShopModule.Relic or ShopModule.Potion)
                 RefreshCurrentModuleState();
         }
         finally
@@ -1215,11 +1211,7 @@ public partial class SpaceStationShop : Control
         switch (offer.Kind)
         {
             case OfferKind.Equipment:
-                if (offer.Equipment == null)
-                    return false;
-                GameInfo.OwnedEquipments ??= new List<Equipment>();
-                GameInfo.OwnedEquipments.Add(Equipment.Clone(offer.Equipment));
-                return true;
+                return false;
             case OfferKind.Relic:
                 GrantRelic(offer.RelicId);
                 return true;
@@ -1656,28 +1648,7 @@ public partial class SpaceStationShop : Control
 
     private static void ApplyRelicIconShader(ColorRect icon, RelicID relicId)
     {
-        if (icon == null)
-            return;
-
-        ApplyShaderToRect(icon, Relic.GetIconShaderPath(relicId));
-    }
-
-    private static void ApplyShaderToRect(ColorRect icon, string shaderPath)
-    {
-        if (string.IsNullOrWhiteSpace(shaderPath))
-        {
-            icon.Material = null;
-            return;
-        }
-
-        var shader = GD.Load<Shader>(shaderPath);
-        if (shader == null)
-        {
-            icon.Material = null;
-            return;
-        }
-
-        icon.Material = new ShaderMaterial { Shader = shader };
+        Relic.ApplyIconVisual(icon, relicId);
     }
 
     private void ShowRelicTip(CatalogOffer offer)
@@ -1833,7 +1804,8 @@ public partial class SpaceStationShop : Control
     {
         StatModuleButton.Pressed += () => RequestModuleChange(ShopModule.Stat);
         SkillModuleButton.Pressed += () => RequestModuleChange(ShopModule.Skill);
-        EquipmentModuleButton.Pressed += () => RequestModuleChange(ShopModule.Equipment);
+        EquipmentModuleButton.Visible = false;
+        EquipmentModuleButton.Disabled = true;
         RelicModuleButton.Pressed += () => RequestModuleChange(ShopModule.Relic);
         PotionModuleButton.Pressed += () => RequestModuleChange(ShopModule.Potion);
     }
@@ -1843,7 +1815,6 @@ public partial class SpaceStationShop : Control
         ModuleSelector.Resized += OnModuleSelectorLayoutChanged;
         StatModuleButton.Resized += OnModuleSelectorLayoutChanged;
         SkillModuleButton.Resized += OnModuleSelectorLayoutChanged;
-        EquipmentModuleButton.Resized += OnModuleSelectorLayoutChanged;
         RelicModuleButton.Resized += OnModuleSelectorLayoutChanged;
         PotionModuleButton.Resized += OnModuleSelectorLayoutChanged;
     }

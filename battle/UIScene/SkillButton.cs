@@ -96,7 +96,7 @@ public partial class SkillButton : Button
         {
             globalTooltip.FollowMouse = true;
             SelfSkill.UpdateDescription();
-            string buffTooltipText = BuildBuffTooltipText(SelfSkill);
+            string buffTooltipText = Skill.BuildKeywordTooltipText(SelfSkill);
             if (string.IsNullOrWhiteSpace(buffTooltipText))
                 globalTooltip.HideTooltip();
             else

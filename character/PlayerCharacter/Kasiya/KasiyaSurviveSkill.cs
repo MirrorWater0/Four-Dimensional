@@ -8,7 +8,7 @@ public partial class KasiyaSurviveSkill { }
 public partial class ShockWave : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = 0;
+    private const int BaseBlock = -3;
 
     public override string SkillName { get; set; } = "冲击波";
 
@@ -37,10 +37,40 @@ public partial class ShockWave : Skill
     }
 }
 
+public partial class ReadyStance : Skill
+{
+    private const int BaseBlock = -3;
+    private const int SurvivabilityMultiplier = 1;
+    private const int EnergyGain = 5;
+
+    public override string SkillName { get; set; } = "\u80fd\u91cf\u7206\u53d1";
+    public override int EnergyCost => 3;
+
+    public ReadyStance()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(
+                relativeIndex: 0,
+                baseBlock: BaseBlock,
+                survivabilityMultiplier: SurvivabilityMultiplier
+            ),
+            EnergyStep(EnergyGain)
+        );
+    }
+}
+
 public partial class ReNewedSpirit : Skill
 {
     private const int PowerGain = 5;
     private const int SurvivabilityGain = 5;
+    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "重振精神";
 
@@ -54,7 +84,7 @@ public partial class ReNewedSpirit : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: 10),
+            BlockStep(relativeIndex: 0, baseBlock: -3),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
@@ -64,7 +94,7 @@ public partial class ReNewedSpirit : Skill
 public partial class AbsouluteDefense : Skill
 {
     public override string SkillName { get; set; } = "绝对防御";
-    int basisBlock = 0;
+    int basisBlock = -3;
 
     public AbsouluteDefense()
         : base(SkillTypes.Survive)
@@ -77,7 +107,7 @@ public partial class AbsouluteDefense : Skill
         return new SkillPlan(
             this,
             BlockStep(0, basisBlock, survivabilityMultiplier: 3),
-            ApplyBuffFriendly(buffName: Buff.BuffName.Taunt, stacks: 1, target: RelativeTarget(0))
+            ApplyBuffFriendly(buffName: Buff.BuffName.Taunt, stacks: 1, target: TargetReference.Self)
         );
     }
 }
@@ -85,7 +115,7 @@ public partial class AbsouluteDefense : Skill
 public partial class TauntingGuard : Skill
 {
     private const int TauntStacks = 2;
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 1;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
@@ -102,7 +132,7 @@ public partial class TauntingGuard : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Taunt,
                 stacks: TauntStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             BlockStep(0, BaseBlock, survivabilityMultiplier: 2)
         );
@@ -111,7 +141,7 @@ public partial class TauntingGuard : Skill
 
 public partial class WeakpointBulwark : Skill
 {
-    private const int BaseBlock = 13;
+    private const int BaseBlock = 10;
     private int _capturedVulnerableStacks;
 
     public override string SkillName { get; set; } = "蓄势待发";

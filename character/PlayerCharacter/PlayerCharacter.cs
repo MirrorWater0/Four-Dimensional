@@ -7,7 +7,7 @@ using Godot;
 public partial class PlayerCharacter : Character
 {
     public const int MaxBattleHandSize = 7;
-    private const int TurnStartDrawCount = 3;
+    private const int TurnStartDrawCount = 4;
 
     public Frame SelfFrame;
     public Control SkillButtonControl;
@@ -20,18 +20,15 @@ public partial class PlayerCharacter : Character
         var info = GameInfo.PlayerCharacters[CharacterIndex];
 
         PositionIndex = info.PositionIndex;
+        CharacterName = info.CharacterName;
+        Portrait = LoadPortrait(info.PortaitPath);
         PassiveName = info.PassiveName;
         PassiveDescription = info.PassiveDescription;
         Skills =
             BattleNode != null && GodotObject.IsInstanceValid(BattleNode)
                 ? new Skill[MaxBattleHandSize]
                 : CreateFallbackSkillLoadout();
-        SetCombatStats(
-            info.Power + EquipmentProperty(PropertyType.Power, info),
-            info.Survivability + EquipmentProperty(PropertyType.Survivability, info),
-            info.Speed + EquipmentProperty(PropertyType.Speed, info),
-            info.LifeMax + EquipmentProperty(PropertyType.MaxLife, info)
-        );
+        SetCombatStats(info.Power, info.Survivability, info.Speed, info.LifeMax);
         Life = BattleMaxLife;
         base.Initialize();
         IsPlayer = true;
@@ -39,42 +36,15 @@ public partial class PlayerCharacter : Character
         BlockLabel.HorizontalAlignment = HorizontalAlignment.Left;
     }
 
-    public int EquipmentProperty(PropertyType type, PlayerInfoStructure info)
+    private static Texture2D LoadPortrait(string path)
     {
-        if (info.Equipments == null || info.Equipments.Length == 0)
-            return 0;
-
-        int value = 0;
-        foreach (var equipment in info.Equipments)
-        {
-            if (equipment == null)
-                continue;
-
-            value += type switch
-            {
-                PropertyType.Power => equipment.Power,
-                PropertyType.Survivability => equipment.Survivability,
-                PropertyType.Speed => equipment.Speed,
-                PropertyType.MaxLife => equipment.MaxLife,
-                _ => 0,
-            };
-        }
-
-        return value;
-    }
-
-    protected override IEnumerable<Equipment> GetTooltipEquipments()
-    {
-        if (
-            GameInfo.PlayerCharacters == null
-            || CharacterIndex < 0
-            || CharacterIndex >= GameInfo.PlayerCharacters.Length
-        )
-        {
+        if (string.IsNullOrWhiteSpace(path))
             return null;
-        }
 
-        return GameInfo.PlayerCharacters[CharacterIndex].Equipments;
+        if (PreloadeScene.PreloadedTextures.TryGetValue(path, out var texture))
+            return texture;
+
+        return ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
     }
 
     private void DrawBattleCards(int count)
@@ -83,6 +53,7 @@ public partial class PlayerCharacter : Character
             return;
 
         EnsureBattleHandSize();
+        CompactBattleHand();
         for (int i = 0; i < Skills.Length && count > 0; i++)
         {
             if (Skills[i] != null)
@@ -97,6 +68,30 @@ public partial class PlayerCharacter : Character
             Skills[i] = drawnSkill;
             count--;
         }
+    }
+
+    public bool TryDrawBattleCards(int count)
+    {
+        if (
+            count <= 0
+            || Skills == null
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || State == Character.CharacterState.Dying
+        )
+        {
+            return false;
+        }
+
+        EnsureBattleHandSize();
+        int beforeCount = Skills.Count(skill => skill != null);
+        DrawBattleCards(count);
+        int afterCount = Skills.Count(skill => skill != null);
+        if (afterCount == beforeCount)
+            return false;
+
+        InvalidateSkillTooltipCache();
+        return true;
     }
 
     private static Skill[] CreateFallbackSkillLoadout()

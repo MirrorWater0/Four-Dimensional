@@ -21,12 +21,12 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 3, powerMultiplier: 1),
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
             EnergyTimesWhileStep(
                 paidEnergyPerLoop: PaidEnergyPerCast,
                 loopSteps:
                 [
-                    AttackPrimaryStep(baseDamage: -3, powerMultiplier: 1),
+                    AttackPrimaryStep(baseDamage: -6, powerMultiplier: 1),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )
@@ -36,7 +36,7 @@ public class EchonicResonance : Skill
 
 public class SonicBoom : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = -3;
     private const int ExtraTimes = 2;
 
     public SonicBoom()
@@ -52,7 +52,7 @@ public class SonicBoom : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: 6, target: HostileTargets(0)),
+            AoeDamageStep(baseDamage: 3, target: HostileTargets(0)),
             AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
         );
     }
@@ -60,7 +60,7 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 20;
+    int damage = 17;
     int PowerGain = -4;
 
     public PhaseEcho()
@@ -84,7 +84,7 @@ public class PhaseEcho : Skill
 
 public class ReverbChain : Skill
 {
-    private const int BaseDamage = -2;
+    private const int BaseDamage = -5;
 
     public ReverbChain()
         : base(SkillTypes.Special)
@@ -122,7 +122,8 @@ public class VoidForm : Skill
     }
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => 6;
+    public override int EnergyCost => 5;
+    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -131,7 +132,7 @@ public class VoidForm : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Void,
                 stacks: VoidStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }
@@ -149,7 +150,7 @@ public class EchoForm : Skill
     }
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => 6;
+    public override int EnergyCost => 5;
 
     protected override SkillPlan BuildPlan()
     {
@@ -158,7 +159,7 @@ public class EchoForm : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Echo,
                 stacks: EchoStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }

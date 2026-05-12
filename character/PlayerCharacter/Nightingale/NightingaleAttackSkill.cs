@@ -7,7 +7,7 @@ public partial class NightingaleAttackSkill { }
 
 public partial class ShadowAmbush : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 9;
     int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
@@ -39,8 +39,8 @@ public partial class ShadowAmbush : Skill
 
 public partial class ShadowExecution : Skill
 {
-    private const int BaseDamage = 20;
-    private const int DoubleStrikeBaseDamage = 0;
+    private const int BaseDamage = 17;
+    private const int DoubleStrikeBaseDamage = -3;
     private const string KillTargetKey = "目标";
 
     public ShadowExecution()
@@ -67,7 +67,7 @@ public partial class ShadowExecution : Skill
 
 public partial class BreakStrike : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 8;
 
     public BreakStrike()
         : base(SkillTypes.Attack)
@@ -103,9 +103,8 @@ public partial class BreakStrike : Skill
 
 public partial class StasisBlade : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 12;
     private const int SpeedDown = 5;
-    private const int FirstCastExtraSpeedDown = 3;
 
     public StasisBlade()
         : base(SkillTypes.Attack)
@@ -120,15 +119,14 @@ public partial class StasisBlade : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown),
-            LowerTargetPropertyStep(PropertyType.Speed, FirstCastExtraSpeedDown)
+            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown)
         );
     }
 }
 
 public partial class ContinuousPierce : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 7;
     private const int SelfDamage = 7;
 
     private bool IsAtFullLife =>
@@ -150,7 +148,7 @@ public partial class ContinuousPierce : Skill
             ConditionStep(
                 () => IsAtFullLife,
                 "满血",
-                AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, prefix: "额外造成", times: 2),
+                AttackPrimaryStep(baseDamage: -3, powerMultiplier: 1, prefix: "额外造成", times: 2),
                 HurtFriendly(SelfDamage, 0)
             )
         );
@@ -159,7 +157,7 @@ public partial class ContinuousPierce : Skill
 
 public partial class RuinBlade : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 3;
 
     public RuinBlade()
         : base(SkillTypes.Attack)
@@ -173,8 +171,8 @@ public partial class RuinBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, times: 2),
-            CarryStep(target: RelativeTarget(-1), skillIndex: 0)
+            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, times: 1),
+            CarryStep(target: TargetReference.ManualFriendly, skillIndex: 1)
         );
     }
 }

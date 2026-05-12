@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Kasiya : PlayerCharacter
 {
-    private const int PassiveAttackBaseHeal = -5;
+    private const int PassiveAttackBaseHeal = -7;
     private const int PassiveSurvivePowerGain = 1;
 
     public const string PassiveNameText = "战意";
@@ -55,10 +55,10 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Kasiya",
         PassiveName = global::Kasiya.PassiveNameText,
         PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 60,
-        Power = 12,
-        Survivability = 12,
-        Speed = 8,
+        LifeMax = 55,
+        Power = 9,
+        Survivability = 9,
+        Speed = 5,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],

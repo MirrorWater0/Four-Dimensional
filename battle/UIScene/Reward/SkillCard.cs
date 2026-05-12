@@ -35,9 +35,8 @@ public partial class SkillCard : SubViewportContainer
     public Panel ArtFrame => field ??= GetNode<Panel>("SubViewport/ArtFrame");
     public Control RarityBadge => field ??= GetNode<Control>("SubViewport/RarityBadge");
     public Control EnergyBadge => field ??= GetNode<Control>("SubViewport/EnergyBadge");
-    public Label RarityLabel => field ??= GetNode<Label>("SubViewport/RarityBadge/RarityLabel");
+    public Label TypeLabel => field ??= GetNode<Label>("SubViewport/TypeBadge/TypeLabel");
     public Label CharacterName => field ??= GetNode<Label>("SubViewport/CharacterName");
-    public Label TypeLabel => field ??= GetNode<Label>("SubViewport/ArtFrame/TypeLabel");
     public Label EnergyCost => field ??= GetNode<Label>("SubViewport/EnergyBadge/EnergyCost");
     public ColorRect ArtFill => field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtFill");
     public ColorRect ArtBandTop =>
@@ -79,6 +78,8 @@ public partial class SkillCard : SubViewportContainer
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillPictureCache = new();
     private static Texture2D _defaultSkillIcon;
+    private Tip _keywordTooltip;
+    private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
 
     public override void _Ready()
     {
@@ -90,6 +91,7 @@ public partial class SkillCard : SubViewportContainer
         Button.MouseEntered += () =>
         {
             HoverHint.Visible = true;
+            ShowKeywordTooltip();
             if (!UseDefaultHoverEffect)
                 return;
 
@@ -100,6 +102,7 @@ public partial class SkillCard : SubViewportContainer
         Button.MouseExited += () =>
         {
             HoverHint.Visible = false;
+            _keywordTooltip?.HideTooltip();
             if (!UseDefaultHoverEffect)
                 return;
 
@@ -201,7 +204,6 @@ public partial class SkillCard : SubViewportContainer
         {
             NameLabel.Text = string.Empty;
             CharacterName.Text = string.Empty;
-            RarityLabel.Text = string.Empty;
             TypeLabel.Text = string.Empty;
             Description.Text = string.Empty;
             EnergyCost.Text = string.Empty;
@@ -219,8 +221,8 @@ public partial class SkillCard : SubViewportContainer
 
         CurrentSkill.UpdateDescription();
         NameLabel.Text = CurrentSkill.SkillName ?? string.Empty;
-        RarityLabel.Text = GetRarityDisplayName(CurrentSkill.Rarity);
-        TypeLabel.Text = CurrentSkill.SkillType.GetDescription();
+        string skillTypeText = CurrentSkill.SkillType.GetDescription();
+        TypeLabel.Text = skillTypeText;
         Description.Text = CurrentSkill.Description ?? string.Empty;
         EnergyCost.Text = $"\u8017\u80fd\uff1a{CurrentSkill.CardEnergyCostText}";
         ApplyRarityStyles(CurrentSkill.Rarity);
@@ -255,6 +257,23 @@ public partial class SkillCard : SubViewportContainer
     {
         HideDamagePreview();
         HideTargetPreview();
+    }
+
+    private void ShowKeywordTooltip()
+    {
+        if (CurrentSkill == null || KeywordTooltip == null)
+            return;
+
+        CurrentSkill.UpdateDescription();
+        string tooltipText = Skill.BuildKeywordTooltipText(CurrentSkill);
+        if (string.IsNullOrWhiteSpace(tooltipText))
+        {
+            KeywordTooltip.HideTooltip();
+            return;
+        }
+
+        KeywordTooltip.FollowMouse = true;
+        KeywordTooltip.SetText(tooltipText);
     }
 
     public void Vanish()
@@ -337,6 +356,7 @@ public partial class SkillCard : SubViewportContainer
     public override void _ExitTree()
     {
         HideSkillPreview();
+        _keywordTooltip?.HideTooltip();
         FreeDamagePreviewLabels();
         base._ExitTree();
     }
@@ -349,9 +369,7 @@ public partial class SkillCard : SubViewportContainer
                 return cachedTexture;
 
             string path = $"res://asset/svg/SkillIcon/{skillId}.svg";
-            Texture2D texture = ResourceLoader.Exists(path)
-                ? GD.Load<Texture2D>(path)
-                : null;
+            Texture2D texture = PreloadeScene.GetTexture(path);
 
             if (texture != null)
             {
@@ -381,7 +399,7 @@ public partial class SkillCard : SubViewportContainer
                 if (!ResourceLoader.Exists(path))
                     continue;
 
-                Texture2D texture = GD.Load<Texture2D>(path);
+                Texture2D texture = PreloadeScene.GetTexture(path);
                 if (texture == null)
                     continue;
 
@@ -421,14 +439,14 @@ public partial class SkillCard : SubViewportContainer
             _ => "res://asset/svg/SkillIcon/default.svg",
         };
 
-        texture = GD.Load<Texture2D>(path) ?? GetDefaultSkillIcon();
+        texture = PreloadeScene.GetTexture(path) ?? GetDefaultSkillIcon();
         TypeIconCache[skillType] = texture;
         return texture;
     }
 
     private static Texture2D GetDefaultSkillIcon()
     {
-        _defaultSkillIcon ??= GD.Load<Texture2D>("res://asset/svg/SkillIcon/default.svg");
+        _defaultSkillIcon ??= PreloadeScene.GetTexture("res://asset/svg/SkillIcon/default.svg");
         return _defaultSkillIcon;
     }
 
@@ -588,6 +606,28 @@ public partial class SkillCard : SubViewportContainer
         return existingLayer;
     }
 
+    private Tip EnsureGlobalTooltip()
+    {
+        var layer = EnsureTipLayer();
+        if (layer == null)
+            return null;
+
+        var tip = layer.GetNodeOrNull<Tip>("Tip");
+        if (tip != null)
+            return tip;
+
+        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+        if (tipScene == null)
+            return null;
+
+        tip = tipScene.Instantiate<Tip>();
+        tip.Name = "Tip";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(20f, 20f);
+        layer.AddChild(tip);
+        return tip;
+    }
+
     private static Vector2 GetTargetScreenPosition(Character target)
     {
         if (target == null || !GodotObject.IsInstanceValid(target))
@@ -729,16 +769,6 @@ public partial class SkillCard : SubViewportContainer
             if (_artFrameStyle != null)
                 ArtFrame.AddThemeStyleboxOverride("panel", _artFrameStyle);
         }
-    }
-
-    private static string GetRarityDisplayName(Skill.SkillRarity rarity)
-    {
-        return rarity switch
-        {
-            Skill.SkillRarity.Uncommon => "\u7f55\u89c1",
-            Skill.SkillRarity.Rare => "\u7a00\u6709",
-            _ => "\u666e\u901a",
-        };
     }
 
     private void SetCardBeamColor(Color color)

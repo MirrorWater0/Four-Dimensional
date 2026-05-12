@@ -36,10 +36,10 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 210;
-        Power = 24;
-        Survivability = 30;
-        Speed = 50;
+        MaxLife = 170;
+        Power = 21;
+        Survivability = 27;
+        Speed = 47;
         SpecialIntentThreshold = 4;
 
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
@@ -118,13 +118,13 @@ public partial class ArroganceSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: 10, target: RelativeTarget(0)),
+            HealStep(baseHeal: 10, target: TargetReference.Self),
             BlockStep(relativeIndex: 0, baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, 3),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }

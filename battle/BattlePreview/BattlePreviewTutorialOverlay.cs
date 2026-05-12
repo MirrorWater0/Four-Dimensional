@@ -6,7 +6,7 @@ public partial class BattlePreviewTutorialOverlay : CanvasLayer
 {
     private const string TutorialSavePath = "user://tutorial.cfg";
     private const string TutorialSection = "Tutorial";
-    private const string BattlePreviewTutorialSeenKey = "BattlePreviewTutorialSeen";
+    private const string BattlePreviewTutorialSeenKey = "BattlePreviewTutorialSeenV2";
 
     private readonly List<Control> _decorations = [];
     private TaskCompletionSource<bool> _completion;
@@ -204,6 +204,7 @@ public partial class BattlePreviewTutorialOverlay : CanvasLayer
         title.AddThemeFontSizeOverride("font_size", 32);
         title.AddThemeColorOverride("font_color", new Color(0.92f, 0.97f, 1f, 1f));
         layout.AddChild(title);
+        title.Text = "布阵与出手顺序";
 
         var body = new RichTextLabel
         {
@@ -220,6 +221,17 @@ public partial class BattlePreviewTutorialOverlay : CanvasLayer
             + "如果想改角色站位和对应战术，点击右下角的 [color=#f0d28a]战术[/color] 就能调整。\n\n"
             + "[color=#7fc7ff]点击任意位置继续[/color]";
         layout.AddChild(body);
+
+        body.Text =
+            "同一阵营会按图中的 [color=#f0d28a]1 -> 9[/color] 顺序轮流出手，行动后会重新排到队尾。\n\n"
+            + "可以拖拽我方头像调整站位；悬停双方头像可以查看属性、被动和持有技能。总速度越高，行动点数积累越快。\n\n"
+            + "[color=#7fc7ff]点击任意位置继续[/color]";
+
+        body.Text =
+            "\u540c\u4e00\u9635\u8425\u4f1a\u6309\u56fe\u4e2d\u7684 [color=#f0d28a]1 -> 9[/color] \u987a\u5e8f\u8f6e\u6d41\u51fa\u624b\uff0c\u884c\u52a8\u540e\u4f1a\u91cd\u65b0\u6392\u5230\u961f\u5c3e\u3002\n\n"
+            + "\u53ef\u4ee5\u62d6\u62fd\u6211\u65b9\u5934\u50cf\u8c03\u6574\u7ad9\u4f4d\uff1b\u60ac\u505c\u53cc\u65b9\u5934\u50cf\u53ef\u4ee5\u67e5\u770b\u5c5e\u6027\u3001\u88ab\u52a8\u548c\u6301\u6709\u6280\u80fd\u3002\n\n"
+            + "\u603b\u901f\u5ea6\u4f1a\u51b3\u5b9a\u884c\u52a8\u70b9\u7d2f\u79ef\u901f\u5ea6\uff1a\u603b\u901f\u5ea6\u8d8a\u9ad8\uff0c\u8d8a\u5bb9\u6613\u5728\u6b63\u5e38\u8f6e\u6d41\u4e4b\u5916\u62a2\u5230\u989d\u5916\u51fa\u624b\u3002\n\n"
+            + "[color=#7fc7ff]\u70b9\u51fb\u4efb\u610f\u4f4d\u7f6e\u7ee7\u7eed[/color]";
 
         return card;
     }

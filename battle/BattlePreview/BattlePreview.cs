@@ -76,10 +76,8 @@ public partial class BattlePreview : Control
     {
         public string SkillText;
         public string PropertyText;
-        public string EquipmentText;
         public Tip SkillTip;
         public Tip PropertyTip;
-        public Tip EquipmentTip;
     }
 
     public override void _Ready()
@@ -365,7 +363,6 @@ public partial class BattlePreview : Control
         {
             SkillText = skillText ?? string.Empty,
             PropertyText = propertyText ?? string.Empty,
-            EquipmentText = equipmentText ?? string.Empty,
         };
     }
 
@@ -377,42 +374,26 @@ public partial class BattlePreview : Control
         bool hasSkillTip = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
         bool hasPropertyTip =
             tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
-        bool needsEquipmentTip = !string.IsNullOrWhiteSpace(tips.EquipmentText);
-        bool hasEquipmentTip =
-            !needsEquipmentTip
-            || (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip));
-        if (hasSkillTip && hasPropertyTip && hasEquipmentTip)
+        if (hasSkillTip && hasPropertyTip)
             return true;
 
         if (!hasSkillTip)
             tips.SkillTip = CreatePreviewPortraitTip(tips.SkillText, new Vector2(20f, 20f));
         if (!hasPropertyTip)
             tips.PropertyTip = CreatePreviewPortraitTip(tips.PropertyText, new Vector2(-20f, 20f));
-        if (needsEquipmentTip && !hasEquipmentTip)
-            tips.EquipmentTip = CreatePreviewPortraitTip(
-                tips.EquipmentText,
-                new Vector2(-20f, -20f)
-            );
-
         bool readySkill = tips.SkillTip != null && GodotObject.IsInstanceValid(tips.SkillTip);
         bool readyProperty =
             tips.PropertyTip != null && GodotObject.IsInstanceValid(tips.PropertyTip);
-        bool readyEquipment =
-            !needsEquipmentTip
-            || (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip));
 
-        if (readySkill && readyProperty && readyEquipment)
+        if (readySkill && readyProperty)
             return true;
 
         if (readySkill)
             tips.SkillTip.QueueFree();
         if (readyProperty)
             tips.PropertyTip.QueueFree();
-        if (tips.EquipmentTip != null && GodotObject.IsInstanceValid(tips.EquipmentTip))
-            tips.EquipmentTip.QueueFree();
         tips.SkillTip = null;
         tips.PropertyTip = null;
-        tips.EquipmentTip = null;
         return false;
     }
 
@@ -438,9 +419,7 @@ public partial class BattlePreview : Control
         {
             var portrait = BattleReady.PortaitScene.Instantiate() as PortaitFrame;
             var playerPath = GameInfo.PlayerCharacters[i].PortaitPath;
-            portrait.PortaitRect.Texture = PreloadeScene.PreloadedTextures.TryGetValue(playerPath, out var playerTex)
-                ? playerTex
-                : GD.Load<Texture2D>(playerPath);
+            portrait.PortaitRect.Texture = PreloadeScene.GetTexture(playerPath);
             portrait.PortaitIndex = i;
             var positionindex = GameInfo.PlayerCharacters[i].PositionIndex;
 
@@ -461,9 +440,7 @@ public partial class BattlePreview : Control
         {
             var portrait = BattleReady.PortaitScene.Instantiate() as PortaitFrame;
             var enemyPath = WhichNode.EnemiesRegeditList[i].PortaitPath;
-            portrait.PortaitRect.Texture = PreloadeScene.PreloadedTextures.TryGetValue(enemyPath, out var enemyTex)
-                ? enemyTex
-                : GD.Load<Texture2D>(enemyPath);
+            portrait.PortaitRect.Texture = PreloadeScene.GetTexture(enemyPath);
             portrait.PortaitIndex = i;
             var positionindex = WhichNode.EnemiesRegeditList[i].PositionIndex;
 
@@ -620,8 +597,7 @@ public partial class BattlePreview : Control
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var info = GameInfo.PlayerCharacters[i];
-            int bonus = SumEquipmentBonus(info, x => x.Speed);
-            sum += info.Speed + bonus;
+            sum += info.Speed;
         }
 
         return sum;
@@ -656,8 +632,7 @@ public partial class BattlePreview : Control
 
         string skillText = BuildPlayerSkillText(info, name);
         string propertyText = BuildPlayerPropertyPreviewText(info, name);
-        string equipmentText = BuildPlayerEquipmentTipText(info);
-        return (skillText, propertyText, equipmentText);
+        return (skillText, propertyText, string.Empty);
     }
 
     private (string skillText, string propertyText, string equipmentText)? BuildEnemyPortraitTips(
@@ -681,41 +656,16 @@ public partial class BattlePreview : Control
     private static string BuildPlayerPropertyText(PlayerInfoStructure info, string name)
     {
         var sb = new StringBuilder(128);
-        int lifeBonus = SumEquipmentBonus(info, x => x.MaxLife);
-        int powerBonus = SumEquipmentBonus(info, x => x.Power);
-        int surviveBonus = SumEquipmentBonus(info, x => x.Survivability);
-        int speedBonus = SumEquipmentBonus(info, x => x.Speed);
-
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命：{info.LifeMax + lifeBonus}({FormatSigned(lifeBonus)})\n");
-        sb.Append($"力量：{info.Power + powerBonus}({FormatSigned(powerBonus)})\n");
-        sb.Append($"生存：{info.Survivability + surviveBonus}({FormatSigned(surviveBonus)})\n");
-        sb.Append($"速度：{info.Speed + speedBonus}({FormatSigned(speedBonus)})\n");
+        sb.Append($"生命：{info.LifeMax}\n");
+        sb.Append($"力量：{info.Power}\n");
+        sb.Append($"生存：{info.Survivability}\n");
+        sb.Append($"速度：{info.Speed}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
         text = GlobalFunction.ColorizeKeywords(text);
         return text;
-    }
-
-    private static int SumEquipmentBonus(PlayerInfoStructure info, Func<Equipment, int> selector)
-    {
-        if (info.Equipments == null || info.Equipments.Length == 0)
-            return 0;
-
-        int sum = 0;
-        foreach (var equipment in info.Equipments)
-        {
-            if (equipment == null)
-                continue;
-            sum += selector(equipment);
-        }
-        return sum;
-    }
-
-    private static string FormatSigned(int value)
-    {
-        return value >= 0 ? $"+{value}" : value.ToString();
     }
 
     private static string BuildEnemyPropertyText(EnemyRegedit regedit)
@@ -844,17 +794,26 @@ public partial class BattlePreview : Control
         Skill.SkillTypes skillType
     )
     {
-        string[] names = (ownedSkills ?? Array.Empty<Skill>())
+        string[] names = FormatStackedSkillNames(
+            (ownedSkills ?? Array.Empty<Skill>())
             .Where(skill => skill != null && skill.SkillType == skillType)
             .Select(skill => skill.SkillName)
             .Where(name => !string.IsNullOrWhiteSpace(name))
-            .ToArray();
+        );
         if (names.Length == 0)
             return;
 
         sb.Append($"[color=#cccccc]({skillType.GetDescription()})[/color] ");
         sb.Append(string.Join("、", names));
         sb.Append('\n');
+    }
+
+    private static string[] FormatStackedSkillNames(IEnumerable<string> names)
+    {
+        return (names ?? Array.Empty<string>())
+            .GroupBy(name => name)
+            .Select(group => group.Count() > 1 ? $"{group.Key} x{group.Count()}" : group.Key)
+            .ToArray();
     }
 
     private static void AppendPassiveTooltip(
@@ -933,12 +892,10 @@ public partial class BattlePreview : Control
         {
             _activePortraitTips.SkillTip?.HideTooltip();
             _activePortraitTips.PropertyTip?.HideTooltip();
-            _activePortraitTips.EquipmentTip?.HideTooltip();
         }
 
         tips.SkillTip?.ShowPreloaded(followMouse: true);
         tips.PropertyTip?.ShowPreloaded(followMouse: true);
-        tips.EquipmentTip?.ShowPreloaded(followMouse: true);
         _activePortraitTips = tips;
     }
 
@@ -971,7 +928,6 @@ public partial class BattlePreview : Control
 
         _activePortraitTips.SkillTip?.HideTooltip();
         _activePortraitTips.PropertyTip?.HideTooltip();
-        _activePortraitTips.EquipmentTip?.HideTooltip();
         _activePortraitTips = null;
     }
 
@@ -1031,7 +987,10 @@ public partial class BattlePreview : Control
                     exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
 
                     var battle =
-                        GD.Load<PackedScene>("res://battle/Battle.tscn").Instantiate() as Battle;
+                        PreloadeScene.GetPackedScene("res://battle/Battle.tscn")
+                            ?.Instantiate() as Battle;
+                    if (battle == null)
+                        return;
                     battle.BattleIntentionRandom = new Random(RandomNum);
                     battle.CurrentLevelNode = WhichNode;
                     layer.AddChild(battle);

@@ -24,24 +24,20 @@ public partial class RebirthPrayer : Skill
             this,
             HealStep(
                 baseHeal: BaseRebirthHeal,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
+                target: TargetReference.FrontMost,
                 preferNonFull: true,
                 rebirth: true,
                 storeAs: SharedTargetKey
             ),
-            BlockStep(StoredTarget(SharedTargetKey), baseBlock: 13),
-            ModifyPropertyStep(
-                type: PropertyType.MaxLife,
-                value: 10,
-                target: StoredTarget(SharedTargetKey)
-            )
+            BlockStep(SharedTargetKey, baseBlock: 10),
+            ModifyPropertyStep(SharedTargetKey, type: PropertyType.MaxLife, value: 10)
         );
     }
 }
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 28;
+    int basisDamage = 25;
     int allyHurt = 15;
     int DeMax = 15;
     public override string SkillName { get; set; } = "献祭";
@@ -61,7 +57,7 @@ public partial class Sacrifice : Skill
             ModifyPropertyStep(
                 type: PropertyType.MaxLife,
                 value: -DeMax,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+                target: TargetReference.All
             ),
             AoeDamageStep(
                 baseDamage: basisDamage,
@@ -92,7 +88,7 @@ public partial class RearlineRevival : Skill
             this,
             HealStep(
                 baseHeal: BaseRebirthHeal,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.BackMost),
+                target: TargetReference.BackMost,
                 preferNonFull: true,
                 rebirth: true,
                 repeatCount: TargetCount
@@ -121,11 +117,11 @@ public partial class GroupHealing : Skill
             ModifyPropertyStep(
                 type: PropertyType.MaxLife,
                 value: 15,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+                target: TargetReference.All
             ),
             HealStep(
                 baseHeal: BaseHeal,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                target: TargetReference.All,
                 preferNonFull: false,
                 includeSummonsWhenAll: false
             )
@@ -155,7 +151,7 @@ public partial class Ragnarok : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Divinity,
                 stacks: DivinityStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }
@@ -172,7 +168,8 @@ public partial class SanctuaryForm : Skill
     }
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => 6;
+    public override int EnergyCost => 5;
+    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -180,14 +177,14 @@ public partial class SanctuaryForm : Skill
             this,
             HealStep(
                 baseHeal: 10,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All),
+                target: TargetReference.All,
                 preferNonFull: true,
                 rebirth: true
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Sanctuary,
                 stacks: SanctuaryStacks,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
+                target: TargetReference.All
             )
         );
     }

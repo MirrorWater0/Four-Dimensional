@@ -6,35 +6,24 @@ public partial class PlayerResourceState : CanvasLayer
 {
     private static readonly PackedScene MenuScene = GD.Load<PackedScene>("res://Menu/Menu.tscn");
     private const long MaxDisplayHours = 99;
-    private const float TransitionEnergyShakeOffset = 7f;
-    private const float TransitionEnergyShakeDuration = 0.07f;
-    private const float TransitionEnergyFlashDuration = 0.3f;
-    private static readonly Color TransitionEnergyGainColor = new(0.52f, 1f, 0.64f, 1f);
-    private static readonly Color TransitionEnergyLossColor = new(1f, 0.46f, 0.46f, 1f);
-    private static readonly Color TransitionEnergyBaseColor = Colors.White;
-    private static readonly Color TransitionEnergyBaseBorderColor = new(
-        0.8983909f,
-        0.89839107f,
-        0.8983907f,
-        1f
+    private const float CoreEnergyShakeOffset = 7f;
+    private const float CoreEnergyShakeDuration = 0.07f;
+    private const float CoreEnergyFlashDuration = 0.3f;
+    private static readonly Color CoreEnergyGainColor = new(0.52f, 1f, 0.64f, 1f);
+    private static readonly Color CoreEnergyLossColor = new(1f, 0.46f, 0.46f, 1f);
+    private static readonly Color CoreEnergyBaseColor = Colors.White;
+    private static readonly Color CoreEnergyBaseBorderColor = new(
+        0.46666667f,
+        0.85490197f,
+        1f,
+        0.72f
     );
-    private static readonly Color TransitionEnergyBaseFillColor = new(
-        0.5310346f,
-        0.76356995f,
-        0.8728643f,
-        0.9019608f
-    );
-    private static readonly Color TransitionEnergyBaseGuideColor = new(0.78f, 0.82f, 0.86f, 0.28f);
+    private static readonly Color CoreEnergyBaseFillColor = new(0.5310346f, 0.76356995f, 0.8728643f, 0.9f);
 
-    private sealed class TransitionEnergySlotState
-    {
-        public Tween Tween;
-        public StyleBoxFlat BackgroundStyle;
-        public StyleBoxFlat FillStyle;
-        public ColorRect TopGuide;
-        public ColorRect BottomGuide;
-        public ColorRect RightLink;
-    }
+    private Tween _coreEnergyTween;
+    private StyleBoxFlat _coreEnergyBackgroundStyle;
+    private StyleBoxFlat _coreEnergyFillStyle;
+    private int _lastTransitionEnergy = -1;
 
     public int ElectricityCoin
     {
@@ -53,6 +42,7 @@ public partial class PlayerResourceState : CanvasLayer
             GameInfo.ElectricityCoin = value;
         }
     }
+
     public int TransitionEnergy
     {
         get => GameInfo.TransitionEnergy;
@@ -64,25 +54,40 @@ public partial class PlayerResourceState : CanvasLayer
         }
     }
 
+    public int CoreEnergy
+    {
+        get => TransitionEnergy;
+        set => TransitionEnergy = value;
+    }
+
     public int TransistionEnergyMax => GameInfo.TransitionEnergyMax;
+    public int CoreEnergyMax => GameInfo.TransitionEnergyMax;
+
     public Control TransitionEnergyControl => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = GetNodeOrNull<Control>("TransitionEnergyControl");
-    private HBoxContainer TransitionEnergySlots =>
-        field is not null && GodotObject.IsInstanceValid(field)
-            ? field
-            : field = TransitionEnergyControl?.GetNodeOrNull<HBoxContainer>("HBoxContainer");
+
+    private ProgressBar CoreEnergyBar => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = TransitionEnergyControl?.GetNodeOrNull<ProgressBar>("CoreEnergyBar");
+
+    private Label CoreEnergyValueLabel => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = TransitionEnergyControl?.GetNodeOrNull<Label>("CoreEnergyValue");
+
+    private Label CoreEnergyNameLabel => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = TransitionEnergyControl?.GetNodeOrNull<Label>("Label");
+
     public ColorRect ElectricityCoinIcon => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = GetNodeOrNull<ColorRect>("ElectricityCoin");
-    static PackedScene TransitionEnergySlot = GD.Load<PackedScene>(
-        "res://Map/UI/TransitionEnergySlot.tscn"
-    );
-    private readonly Dictionary<ProgressBar, TransitionEnergySlotState> _transitionEnergySlotStates =
-        new();
-    private int _lastTransitionEnergy = -1;
+
     public List<Relic> RelicList = new();
     public VBoxContainer RelicContainer => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -179,49 +184,36 @@ public partial class PlayerResourceState : CanvasLayer
 
     public void InitTransitionEnergyMax()
     {
-        var transitionEnergySlots = TransitionEnergySlots;
-        if (
-            transitionEnergySlots == null
-            || !GodotObject.IsInstanceValid(transitionEnergySlots)
-            || !transitionEnergySlots.IsInsideTree()
-        )
+        var bar = CoreEnergyBar;
+        if (bar == null || !GodotObject.IsInstanceValid(bar) || !bar.IsInsideTree())
             return;
 
-        while (transitionEnergySlots.GetChildCount() > 0)
-        {
-            var child = transitionEnergySlots.GetChild(0);
-            transitionEnergySlots.RemoveChild(child);
-            child.QueueFree();
-        }
-
-        _transitionEnergySlotStates.Clear();
-
-        for (int i = 0; i < GameInfo.TransitionEnergyMax; i++)
-        {
-            var slot = TransitionEnergySlot.Instantiate<ProgressBar>();
-            slot.SelfModulate = TransitionEnergyBaseColor;
-            transitionEnergySlots.AddChild(slot);
-            _transitionEnergySlotStates[slot] = BuildTransitionEnergySlotState(slot);
-        }
-
+        bar.MinValue = 0;
+        bar.MaxValue = Math.Max(1, GameInfo.TransitionEnergyMax);
+        bar.ShowPercentage = false;
+        bar.SelfModulate = CoreEnergyBaseColor;
+        _coreEnergyBackgroundStyle = DuplicateBarStyle(bar, "background");
+        _coreEnergyFillStyle = DuplicateBarStyle(bar, "fill");
+        ResetCoreEnergyBarVisuals();
+        if (CoreEnergyNameLabel != null)
+            CoreEnergyNameLabel.Text = "核心能源";
         _lastTransitionEnergy = -1;
     }
 
     private void RefreshTransitionEnergyUI(int value)
     {
-        var slots = TransitionEnergySlots;
-        if (slots == null || !GodotObject.IsInstanceValid(slots) || !slots.IsInsideTree())
+        var bar = CoreEnergyBar;
+        if (bar == null || !GodotObject.IsInstanceValid(bar) || !bar.IsInsideTree())
             return;
 
         int previousValue = _lastTransitionEnergy;
-        for (int i = 0; i < slots.GetChildCount(); i++)
-        {
-            if (slots.GetChild(i) is ProgressBar slot)
-                slot.Value = i < value ? 100 : 0;
-        }
+        bar.MaxValue = Math.Max(1, GameInfo.TransitionEnergyMax);
+        bar.Value = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
+        if (CoreEnergyValueLabel != null)
+            CoreEnergyValueLabel.Text = $"{value}/{GameInfo.TransitionEnergyMax}";
 
         if (previousValue >= 0 && previousValue != value)
-            AnimateTransitionEnergyChange(slots, previousValue, value);
+            AnimateCoreEnergyChange(previousValue, value);
 
         _lastTransitionEnergy = value;
     }
@@ -322,153 +314,92 @@ public partial class PlayerResourceState : CanvasLayer
         TimerValueLabel.Modulate = new Color(0.92f, 0.96f, 1f, 1f);
     }
 
-    private void AnimateTransitionEnergyChange(HBoxContainer slots, int previousValue, int value)
+    private void AnimateCoreEnergyChange(int previousValue, int value)
     {
-        int startIndex = Math.Min(previousValue, value);
-        int endIndex = Math.Max(previousValue, value);
-        bool gained = value > previousValue;
-        Color flashColor = gained ? TransitionEnergyGainColor : TransitionEnergyLossColor;
-
-        for (int i = startIndex; i < endIndex; i++)
-        {
-            if (slots.GetChild(i) is ProgressBar slot)
-                AnimateTransitionEnergySlot(slot, flashColor);
-        }
-    }
-
-    private void AnimateTransitionEnergySlot(ProgressBar slot, Color flashColor)
-    {
-        if (
-            slot == null
-            || !GodotObject.IsInstanceValid(slot)
-            || !_transitionEnergySlotStates.TryGetValue(slot, out var state)
-        )
+        var bar = CoreEnergyBar;
+        if (bar == null || !GodotObject.IsInstanceValid(bar))
             return;
 
-        state.Tween?.Kill();
-        slot.SelfModulate = flashColor;
-        Vector2 basePosition = slot.Position;
+        bool gained = value > previousValue;
+        Color flashColor = gained ? CoreEnergyGainColor : CoreEnergyLossColor;
+
+        _coreEnergyTween?.Kill();
+        bar.SelfModulate = flashColor;
+        Vector2 basePosition = TransitionEnergyControl?.Position ?? bar.Position;
+        Node targetPositionNode = TransitionEnergyControl ?? bar;
 
         var tween = CreateTween();
-        state.Tween = tween;
+        _coreEnergyTween = tween;
         tween.SetEase(Tween.EaseType.Out);
         tween.SetTrans(Tween.TransitionType.Cubic);
         tween.SetParallel(true);
-        tween.TweenProperty(slot, "self_modulate", TransitionEnergyBaseColor, TransitionEnergyFlashDuration);
-        TweenSlotColor(tween, state.BackgroundStyle, "border_color", TransitionEnergyBaseBorderColor, flashColor);
-        TweenSlotColor(tween, state.FillStyle, "bg_color", TransitionEnergyBaseFillColor, flashColor);
-        TweenSlotColor(tween, state.TopGuide, "color", TransitionEnergyBaseGuideColor, flashColor);
-        TweenSlotColor(
-            tween,
-            state.BottomGuide,
-            "color",
-            new Color(flashColor.R, flashColor.G, flashColor.B, 0.24f),
-            flashColor
-        );
-        TweenSlotColor(
-            tween,
-            state.RightLink,
-            "color",
-            new Color(flashColor.R, flashColor.G, flashColor.B, 0.5f),
-            flashColor
-        );
+        tween.TweenProperty(bar, "self_modulate", CoreEnergyBaseColor, CoreEnergyFlashDuration);
+        TweenStyleColor(tween, _coreEnergyBackgroundStyle, "border_color", CoreEnergyBaseBorderColor, flashColor);
+        TweenStyleColor(tween, _coreEnergyFillStyle, "bg_color", CoreEnergyBaseFillColor, flashColor);
 
         tween.SetParallel(false);
         tween.TweenProperty(
-            slot,
+            targetPositionNode,
             "position",
-            basePosition + new Vector2(-TransitionEnergyShakeOffset, 0f),
-            TransitionEnergyShakeDuration
+            basePosition + new Vector2(-CoreEnergyShakeOffset, 0f),
+            CoreEnergyShakeDuration
         );
         tween.TweenProperty(
-            slot,
+            targetPositionNode,
             "position",
-            basePosition + new Vector2(TransitionEnergyShakeOffset, 0f),
-            TransitionEnergyShakeDuration
+            basePosition + new Vector2(CoreEnergyShakeOffset, 0f),
+            CoreEnergyShakeDuration
         );
         tween.TweenProperty(
-            slot,
+            targetPositionNode,
             "position",
-            basePosition + new Vector2(-TransitionEnergyShakeOffset * 0.55f, 0f),
-            TransitionEnergyShakeDuration
+            basePosition + new Vector2(-CoreEnergyShakeOffset * 0.55f, 0f),
+            CoreEnergyShakeDuration
         );
-        tween.TweenProperty(slot, "position", basePosition, TransitionEnergyShakeDuration);
+        tween.TweenProperty(targetPositionNode, "position", basePosition, CoreEnergyShakeDuration);
         tween.Finished += () =>
         {
-            if (slot != null && GodotObject.IsInstanceValid(slot))
-            {
-                slot.Position = basePosition;
-                slot.SelfModulate = TransitionEnergyBaseColor;
-            }
+            if (bar != null && GodotObject.IsInstanceValid(bar))
+                bar.SelfModulate = CoreEnergyBaseColor;
+            if (targetPositionNode != null && GodotObject.IsInstanceValid(targetPositionNode))
+                targetPositionNode.Set("position", basePosition);
+            ResetCoreEnergyBarVisuals();
         };
     }
 
-    private TransitionEnergySlotState BuildTransitionEnergySlotState(ProgressBar slot)
+    private static StyleBoxFlat DuplicateBarStyle(ProgressBar bar, string styleName)
     {
-        var state = new TransitionEnergySlotState
-        {
-            BackgroundStyle = DuplicateSlotStyle(slot, "background"),
-            FillStyle = DuplicateSlotStyle(slot, "fill"),
-            TopGuide = slot.GetNodeOrNull<ColorRect>("TopGuide"),
-            BottomGuide = slot.GetNodeOrNull<ColorRect>("BottomGuide"),
-            RightLink = slot.GetNodeOrNull<ColorRect>("RightLink"),
-        };
-
-        ResetTransitionEnergySlotVisuals(state);
-        return state;
-    }
-
-    private static StyleBoxFlat DuplicateSlotStyle(ProgressBar slot, string styleName)
-    {
-        if (slot?.GetThemeStylebox(styleName) is not StyleBoxFlat style)
+        if (bar?.GetThemeStylebox(styleName) is not StyleBoxFlat style)
             return null;
 
         var duplicate = style.Duplicate() as StyleBoxFlat;
         if (duplicate == null)
             return null;
 
-        slot.AddThemeStyleboxOverride(styleName, duplicate);
+        bar.AddThemeStyleboxOverride(styleName, duplicate);
         return duplicate;
     }
 
-    private static void TweenSlotColor(
+    private static void TweenStyleColor(
         Tween tween,
-        GodotObject target,
+        StyleBoxFlat style,
         string property,
         Color baseColor,
         Color flashColor
     )
     {
-        if (tween == null || target == null)
+        if (tween == null || style == null)
             return;
 
-        switch (target)
-        {
-            case StyleBoxFlat style:
-                style.Set(property, flashColor);
-                break;
-            case CanvasItem item:
-                item.Set(property, flashColor);
-                break;
-        }
-
-        tween.Parallel().TweenProperty(target, property, baseColor, TransitionEnergyFlashDuration);
+        style.Set(property, flashColor);
+        tween.Parallel().TweenProperty(style, property, baseColor, CoreEnergyFlashDuration);
     }
 
-    private static void ResetTransitionEnergySlotVisuals(TransitionEnergySlotState state)
+    private void ResetCoreEnergyBarVisuals()
     {
-        if (state == null)
-            return;
-
-        if (state.BackgroundStyle != null)
-            state.BackgroundStyle.BorderColor = TransitionEnergyBaseBorderColor;
-        if (state.FillStyle != null)
-            state.FillStyle.BgColor = TransitionEnergyBaseFillColor;
-        if (state.TopGuide != null)
-            state.TopGuide.Color = TransitionEnergyBaseGuideColor;
-        if (state.BottomGuide != null)
-            state.BottomGuide.Color = new Color(0.68f, 0.72f, 0.76f, 0.24f);
-        if (state.RightLink != null)
-            state.RightLink.Color = new Color(0.72f, 0.76f, 0.8f, 0.5f);
+        if (_coreEnergyBackgroundStyle != null)
+            _coreEnergyBackgroundStyle.BorderColor = CoreEnergyBaseBorderColor;
+        if (_coreEnergyFillStyle != null)
+            _coreEnergyFillStyle.BgColor = CoreEnergyBaseFillColor;
     }
 }

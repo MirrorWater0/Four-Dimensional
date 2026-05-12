@@ -36,11 +36,10 @@ public partial class Inexorability : EnemyCharacter
     public override async Task GetHurt(
         float damage,
         Character source = null,
-        bool canTriggerThorn = true,
         DamageKind damageKind = DamageKind.Other
     )
     {
-        await base.GetHurt(damage, source, canTriggerThorn, damageKind);
+        await base.GetHurt(damage, source, damageKind);
 
         if (
             damageKind != DamageKind.Attack
@@ -89,10 +88,10 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 110;
-        Power = 12;
-        Survivability = 12;
-        Speed = 11;
+        MaxLife = 90;
+        Power = 9;
+        Survivability = 9;
+        Speed = 8;
         SpecialIntentThreshold = 4;
 
         SkillIDs =
@@ -127,8 +126,8 @@ public partial class InexorabilityAttack : Skill
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, byBehindRow: true),
             EnergyStep(SelfEnergyGain),
-            EnergyStep(-AdjacentEnergyLoss, RelativeTarget(1)),
-            EnergyStep(-AdjacentEnergyLoss, RelativeTarget(-1))
+            EnergyStep(-AdjacentEnergyLoss, TargetReference.Next),
+            EnergyStep(-AdjacentEnergyLoss, TargetReference.Previous)
         );
     }
 }

@@ -5,10 +5,10 @@ using System.Linq;
 public enum GameDifficultyBonus
 {
     RandomRelics = 1,
-    RandomEquipment = 2,
-    PlayerStats = 3,
-    ElectricityCoin = 4,
-    FreeRetreat = 5,
+    PlayerStats = 2,
+    ElectricityCoin = 3,
+    FreeRetreat = 4,
+    RandomTalentPoints = 5,
 }
 
 public static partial class GameInfo
@@ -19,10 +19,11 @@ public static partial class GameInfo
     public const int MaxDifficulty = 6;
 
     private const int StarterRelicCount = 2;
-    private const int StarterEquipmentCount = 1;
     private const int StarterElectricityCoinBonus = 100;
     private const int StarterPropertyBonus = 1;
     private const int StarterLifeMaxBonus = 5;
+    private const int StarterTalentPointCharacterCount = 2;
+    private const int StarterTalentPointAmount = 1;
 
     public static void ApplyDifficultyStartBonuses()
     {
@@ -32,20 +33,23 @@ public static partial class GameInfo
         if (IsDifficultyBonusActive(GameDifficultyBonus.RandomRelics))
             AddRandomStarterRelics(rng, StarterRelicCount);
 
-        if (IsDifficultyBonusActive(GameDifficultyBonus.RandomEquipment))
-            AddRandomStarterEquipments(rng, StarterEquipmentCount);
-
         if (IsDifficultyBonusActive(GameDifficultyBonus.ElectricityCoin))
             ElectricityCoin += StarterElectricityCoinBonus;
 
         if (IsDifficultyBonusActive(GameDifficultyBonus.PlayerStats))
             ApplyStarterPlayerStatBonus();
+
+        if (IsDifficultyBonusActive(GameDifficultyBonus.RandomTalentPoints))
+            GrantRandomStarterTalentPoints(
+                rng,
+                StarterTalentPointCharacterCount,
+                StarterTalentPointAmount
+            );
     }
 
     public static bool IsDifficultyBonusActive(GameDifficultyBonus bonus)
     {
-        int bonusOrder = (int)bonus;
-        return bonusOrder > 0 && bonusOrder <= GetActiveDifficultyBonusCount(Difficulty);
+        return GetActiveDifficultyBonuses(Difficulty).Contains(bonus);
     }
 
     public static string BuildDifficultySummaryText(int difficulty)
@@ -62,22 +66,28 @@ public static partial class GameInfo
         return $"难度 {difficulty}：{activeBonusText}";
     }
 
-    private static int GetActiveDifficultyBonusCount(int difficulty)
+    private static IEnumerable<GameDifficultyBonus> GetActiveDifficultyBonuses(int difficulty)
     {
         difficulty = Math.Clamp(difficulty, MinDifficulty, MaxDifficulty);
 
-        // Keep the user's anchor points: difficulty 0 has all bonuses, difficulty 2 keeps 1-4.
+        if (difficulty <= 0)
+        {
+            yield return GameDifficultyBonus.RandomRelics;
+            yield return GameDifficultyBonus.PlayerStats;
+            yield return GameDifficultyBonus.ElectricityCoin;
+            yield return GameDifficultyBonus.FreeRetreat;
+            yield return GameDifficultyBonus.RandomTalentPoints;
+            yield break;
+        }
+
+        if (difficulty <= 5)
+            yield return GameDifficultyBonus.RandomTalentPoints;
+        if (difficulty <= 3)
+            yield return GameDifficultyBonus.RandomRelics;
+        if (difficulty <= 2)
+            yield return GameDifficultyBonus.PlayerStats;
         if (difficulty <= 1)
-            return 5;
-
-        return Math.Clamp(6 - difficulty, 0, 5);
-    }
-
-    private static IEnumerable<GameDifficultyBonus> GetActiveDifficultyBonuses(int difficulty)
-    {
-        int count = GetActiveDifficultyBonusCount(difficulty);
-        for (int i = 1; i <= count; i++)
-            yield return (GameDifficultyBonus)i;
+            yield return GameDifficultyBonus.ElectricityCoin;
     }
 
     private static string GetDifficultyBonusLabel(GameDifficultyBonus bonus)
@@ -85,8 +95,9 @@ public static partial class GameInfo
         return bonus switch
         {
             GameDifficultyBonus.RandomRelics => "开局2随机遗物",
-            GameDifficultyBonus.RandomEquipment => "开局1随机装备",
-            GameDifficultyBonus.FreeRetreat => "撤退不耗跃迁能量",
+            GameDifficultyBonus.FreeRetreat => "\u64a4\u9000\u4e0d\u8017\u6838\u5fc3\u80fd\u6e90",
+            GameDifficultyBonus.RandomTalentPoints =>
+                "\u5f00\u5c40\u968f\u673a2\u540d\u89d2\u8272\u5404+1\u5929\u8d4b\u70b9",
             GameDifficultyBonus.ElectricityCoin => "开局+100电力币",
             GameDifficultyBonus.PlayerStats => "全员力量/生存/速度+1，血量+5",
             _ => string.Empty,
@@ -120,16 +131,6 @@ public static partial class GameInfo
         }
     }
 
-    private static void AddRandomStarterEquipments(Random rng, int count)
-    {
-        if (Equipment.Catalog == null || Equipment.Catalog.Length == 0)
-            return;
-
-        OwnedEquipments ??= new List<Equipment>();
-        for (int i = 0; i < count; i++)
-            OwnedEquipments.Add(Equipment.Clone(PickRandom(Equipment.Catalog, rng)));
-    }
-
     private static void ApplyStarterPlayerStatBonus()
     {
         if (PlayerCharacters == null)
@@ -143,6 +144,37 @@ public static partial class GameInfo
             info.Speed += StarterPropertyBonus;
             info.LifeMax += StarterLifeMaxBonus;
             PlayerCharacters[i] = info;
+        }
+    }
+
+    private static void GrantRandomStarterTalentPoints(Random rng, int characterCount, int amount)
+    {
+        if (
+            PlayerCharacters == null
+            || PlayerCharacters.Length == 0
+            || characterCount <= 0
+            || amount <= 0
+        )
+        {
+            return;
+        }
+
+        List<int> candidateIndices = PlayerCharacters
+            .Select((player, index) => new { player, index })
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.player.CharacterName))
+            .Select(entry => entry.index)
+            .ToList();
+
+        int grantCount = Math.Min(characterCount, candidateIndices.Count);
+        for (int i = 0; i < grantCount; i++)
+        {
+            int poolIndex = rng.Next(candidateIndices.Count);
+            int characterIndex = candidateIndices[poolIndex];
+            candidateIndices.RemoveAt(poolIndex);
+
+            var info = PlayerCharacters[characterIndex];
+            TalentTree.AddTalentPoints(ref info, amount);
+            PlayerCharacters[characterIndex] = info;
         }
     }
 

@@ -1,6 +1,6 @@
 public partial class BasicAttack : Skill
 {
-    private const int BaseDamage = 16;
+    private const int BaseDamage = 7;
     private const int PowerMultiplier = 1;
 
     public BasicAttack()
@@ -22,7 +22,7 @@ public partial class BasicAttack : Skill
 
 public partial class BasicDefense : Skill
 {
-    private const int BaseBlock = 18;
+    private const int BaseBlock = 7;
     private const int SurvivabilityMultiplier = 1;
 
     public BasicDefense()
@@ -39,6 +39,31 @@ public partial class BasicDefense : Skill
             this,
             BlockStep(
                 relativeIndex: 0,
+                baseBlock: BaseBlock,
+                survivabilityMultiplier: SurvivabilityMultiplier
+            )
+        );
+    }
+}
+
+public partial class BasicGuard : Skill
+{
+    private const int BaseBlock = 3;
+    private const int SurvivabilityMultiplier = 1;
+
+    public BasicGuard()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "护卫";
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(
+                target: TargetReference.ManualFriendly,
                 baseBlock: BaseBlock,
                 survivabilityMultiplier: SurvivabilityMultiplier
             )
@@ -66,7 +91,7 @@ public partial class BasicSpecial : Skill
             this,
             LowerTargetPropertyStep(PropertyType.Survivability, DeSur),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            CarryStep(target: RelativeTarget(1), skillIndex: 0)
+            CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
 }

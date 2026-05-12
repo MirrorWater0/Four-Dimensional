@@ -54,11 +54,13 @@ public partial class Map : Control
     private CanvasLayer FrontUiLayer => field ??= GetNodeOrNull<CanvasLayer>("BattleReadyLayer");
     private CanvasLayer MenuLayer => field ??= GetNodeOrNull<CanvasLayer>("MenuLayer");
     private ReadyButton ReadyButtonNode => field ??= GetNodeOrNull<ReadyButton>("UI/ReadyButton");
-    private EquipmentButton EquipmentButtonNode =>
-        field ??= GetNodeOrNull<EquipmentButton>("UI/EquipmentButton");
     private DebugConsole DebugConsoleNode => field ??= GetNodeOrNull<DebugConsole>("DebugConsole");
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
+    private bool _regionLabelInitialized;
+    private bool _lastRegionTwoUnlocked;
+    private ulong _blockingOverlayFrame = ulong.MaxValue;
+    private bool _blockingOverlayResult;
 
     public override void _Process(double delta)
     {
@@ -322,9 +324,6 @@ public partial class Map : Control
         }
 
         var tasks = new System.Collections.Generic.List<Task>(2);
-        if (EquipmentButtonNode != null)
-            tasks.Add(EquipmentButtonNode.CloseCurrentUiAsync());
-
         if (ReadyButtonNode != null)
             tasks.Add(ReadyButtonNode.CloseBattleReadyAsync(confirmTactics: true));
 
@@ -374,6 +373,17 @@ public partial class Map : Control
     }
 
     private bool HasBlockingOverlay()
+    {
+        ulong frame = Engine.GetProcessFrames();
+        if (_blockingOverlayFrame == frame)
+            return _blockingOverlayResult;
+
+        _blockingOverlayFrame = frame;
+        _blockingOverlayResult = ComputeBlockingOverlay();
+        return _blockingOverlayResult;
+    }
+
+    private bool ComputeBlockingOverlay()
     {
         return LayerHasVisibleChildren(SiteUiLayer)
             || LayerHasVisibleChildren(FrontUiLayer)
@@ -490,6 +500,11 @@ public partial class Map : Control
             return;
 
         bool regionTwoUnlocked = GameInfo.IsRegionTwoUnlocked();
+        if (_regionLabelInitialized && _lastRegionTwoUnlocked == regionTwoUnlocked)
+            return;
+
+        _regionLabelInitialized = true;
+        _lastRegionTwoUnlocked = regionTwoUnlocked;
         RegionLabel.Text = regionTwoUnlocked ? "区域 2" : "区域 1";
         RegionLabel.Modulate = regionTwoUnlocked
             ? new Color(1f, 0.88f, 0.38f, 0.96f)

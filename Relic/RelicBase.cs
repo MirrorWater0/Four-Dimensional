@@ -5,7 +5,12 @@ using Godot;
 
 public partial class Relic
 {
-    private const int BlessingDamage = 50;
+    private const int BlessingDamage = 30;
+    private const int MatrixShieldBlock = 15;
+    private const int BackpackDrawReserve = 2;
+    private const int EnergyTankEnergy = 1;
+    private const int FusionCoreActionInterval = 3;
+    private const int FusionCoreEnergy = 1;
 
     public RelicID ID;
     public string RelicName;
@@ -35,6 +40,10 @@ public partial class Relic
             RelicID.Heptagon,
             RelicID.Octagon,
             RelicID.CompressionCore,
+            RelicID.MatrixShield,
+            RelicID.Backpack,
+            RelicID.EnergyTank,
+            RelicID.FusionCore,
         };
 
         for (int i = 0; i < pool.Length; i++)
@@ -59,6 +68,10 @@ public partial class Relic
             RelicID.Heptagon => new Relic(RelicID.Heptagon),
             RelicID.Octagon => new Relic(RelicID.Octagon),
             RelicID.CompressionCore => new Relic(RelicID.CompressionCore),
+            RelicID.MatrixShield => new Relic(RelicID.MatrixShield),
+            RelicID.Backpack => new Relic(RelicID.Backpack),
+            RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
+            RelicID.FusionCore => new Relic(RelicID.FusionCore),
             _ => new Relic(RelicID.curse),
         };
     }
@@ -88,6 +101,64 @@ public partial class Relic
         };
     }
 
+    public static string GetIconTexturePath(RelicID relicID)
+    {
+        return relicID switch
+        {
+            RelicID.MatrixShield => "res://asset/svg/RelicIcon/MatrixShield.svg",
+            RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
+            RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
+            RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
+            _ => null,
+        };
+    }
+
+    public static void ApplyIconVisual(Control icon, RelicID relicID)
+    {
+        if (icon == null)
+            return;
+
+        ClearGeneratedTextureIcon(icon);
+
+        string texturePath = GetIconTexturePath(relicID);
+        Texture2D texture = string.IsNullOrWhiteSpace(texturePath)
+            ? null
+            : GD.Load<Texture2D>(texturePath);
+        if (texture != null)
+        {
+            if (icon is ColorRect colorRect)
+            {
+                colorRect.Color = Colors.Transparent;
+                colorRect.Material = null;
+            }
+
+            var textureIcon = new TextureRect
+            {
+                Name = "GeneratedTextureIcon",
+                Texture = texture,
+                ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            textureIcon.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            textureIcon.OffsetLeft = 1f;
+            textureIcon.OffsetTop = 1f;
+            textureIcon.OffsetRight = -1f;
+            textureIcon.OffsetBottom = -1f;
+            icon.AddChild(textureIcon);
+            icon.MoveChild(textureIcon, 0);
+            return;
+        }
+
+        if (icon is ColorRect shaderIcon)
+        {
+            shaderIcon.Color = Colors.White;
+            string shaderPath = GetIconShaderPath(relicID);
+            var shader = string.IsNullOrWhiteSpace(shaderPath) ? null : GD.Load<Shader>(shaderPath);
+            shaderIcon.Material = shader == null ? null : new ShaderMaterial { Shader = shader };
+        }
+    }
+
     public static string FormatCountLabel(int count)
     {
         return count < 0 ? string.Empty : count.ToString();
@@ -115,12 +186,36 @@ public partial class Relic
         return Mathf.CeilToInt(baseAmount * 1.2f);
     }
 
+    public static void ApplyPlayerActionStartRelicEffects(
+        Battle battle,
+        Character actingCharacter,
+        int playerActionNumber
+    )
+    {
+        if (
+            battle?.MapNode?.PlayerResourceState?.RelicList == null
+            || actingCharacter == null
+            || !actingCharacter.IsPlayer
+            || playerActionNumber <= 0
+        )
+        {
+            return;
+        }
+
+        foreach (var relic in battle.MapNode.PlayerResourceState.RelicList)
+        {
+            if (relic == null)
+                continue;
+
+            if (relic.ID == RelicID.FusionCore)
+                ApplyFusionCoreActionStart(actingCharacter, playerActionNumber);
+        }
+    }
+
     public void IconAdd(PlayerResourceState playerResourceState)
     {
-        string path = GetIconShaderPath(ID);
         var icon = IconScene.Instantiate() as ColorRect;
-        var shader = string.IsNullOrWhiteSpace(path) ? null : GD.Load<Shader>(path);
-        icon.Material = shader == null ? null : new ShaderMaterial() { Shader = shader };
+        ApplyIconVisual(icon, ID);
         icon.GetNode<Label>("Label").Text = GetIconCountText();
         WireRelicTip(icon, playerResourceState);
         playerResourceState.RelicContainer.AddChild(icon);
@@ -159,6 +254,18 @@ public partial class Relic
                 ApplyDebuffToEnemies(battle, Buff.BuffName.Weaken, 1);
                 break;
             case RelicID.CompressionCore:
+                break;
+            case RelicID.MatrixShield:
+                ApplyBlockToPlayers(battle, MatrixShieldBlock);
+                break;
+            case RelicID.Backpack:
+                battle?.AddCardDrawReserve(BackpackDrawReserve);
+                break;
+            case RelicID.EnergyTank:
+                ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
+                break;
+            case RelicID.FusionCore:
+                break;
             case RelicID.curse:
                 break;
         }
@@ -185,6 +292,16 @@ public partial class Relic
 
     private static string GetRelicName(RelicID relicID)
     {
+        if (relicID == RelicID.EnergyTank)
+            return "\u80fd\u91cf\u50a8\u7f50";
+        if (relicID == RelicID.FusionCore)
+            return "\u805a\u53d8\u6838\u5fc3";
+
+        if (relicID == RelicID.MatrixShield)
+            return "矩阵护盾";
+        if (relicID == RelicID.Backpack)
+            return "背包";
+
         return relicID switch
         {
             RelicID.Blessing => "祝福",
@@ -201,6 +318,16 @@ public partial class Relic
 
     private static string GetRelicDescription(RelicID relicID)
     {
+        if (relicID == RelicID.EnergyTank)
+            return $"\u6218\u6597\u5f00\u59cb\u65f6\u524d2\u4f4d\u89d2\u8272\u83b7\u5f97{EnergyTankEnergy}\u70b9\u80fd\u91cf\u3002";
+        if (relicID == RelicID.FusionCore)
+            return $"\u5df1\u65b9\u884c\u52a8\u6bcf{FusionCoreActionInterval}\u6b21\u884c\u52a8\u5f53\u524d\u89d2\u8272\u83b7\u5f97{FusionCoreEnergy}\u70b9\u80fd\u91cf\u3002";
+
+        if (relicID == RelicID.MatrixShield)
+            return $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。";
+        if (relicID == RelicID.Backpack)
+            return $"战斗开始时获得{BackpackDrawReserve}点抽卡储备。";
+
         return relicID switch
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
@@ -267,6 +394,52 @@ public partial class Relic
                     break;
             }
         }
+    }
+
+    private static void ApplyBlockToPlayers(Battle battle, int block)
+    {
+        if (battle?.PlayersList == null || block <= 0)
+            return;
+
+        for (int i = 0; i < battle.PlayersList.Count; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (player == null || player.State == Character.CharacterState.Dying)
+                continue;
+
+            player.UpdataBlock(block);
+        }
+    }
+
+    private static void ApplyEnergyToFrontPlayers(Battle battle, int energy)
+    {
+        if (battle?.PlayersList == null || energy == 0)
+            return;
+
+        int targetCount = Math.Min(2, battle.PlayersList.Count);
+        for (int i = 0; i < targetCount; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (player == null || player.State == Character.CharacterState.Dying)
+                continue;
+
+            player.UpdataEnergy(energy, player);
+        }
+    }
+
+    private static void ApplyFusionCoreActionStart(Character actingCharacter, int playerActionNumber)
+    {
+        if (
+            actingCharacter == null
+            || FusionCoreActionInterval <= 0
+            || playerActionNumber % FusionCoreActionInterval != 0
+        )
+        {
+            return;
+        }
+
+        using var _ = actingCharacter.BeginEffectSource(GetRelicName(RelicID.FusionCore));
+        actingCharacter.UpdataEnergy(FusionCoreEnergy, actingCharacter);
     }
 
     private string GetIconCountText()
@@ -338,6 +511,13 @@ public partial class Relic
         return tip;
     }
 
+    private static void ClearGeneratedTextureIcon(Control icon)
+    {
+        var existing = icon.GetNodeOrNull<TextureRect>("GeneratedTextureIcon");
+        if (existing != null)
+            existing.QueueFree();
+    }
+
     private const string NameColorHex = "#b78cff";
     private const string NumberColorHex = "#ffd24a";
 
@@ -404,5 +584,9 @@ public enum RelicID
     Heptagon,
     Octagon,
     CompressionCore,
+    MatrixShield,
+    Backpack,
+    EnergyTank,
+    FusionCore,
     curse,
 }

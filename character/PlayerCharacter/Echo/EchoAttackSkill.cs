@@ -21,7 +21,7 @@ public partial class SacredOnslaught : Skill
         return new SkillPlan(
             this,
             AoeDamageStep(
-                baseDamage: 0,
+                baseDamage: -3,
                 powerMultiplier: 1,
                 target: HostileTargets(MaxTargets),
                 times: 1
@@ -68,7 +68,7 @@ public partial class SacredOnslaught : Skill
 
 public partial class ResonantSlash : Skill
 {
-    private const int BaseDamage = 1;
+    private const int BaseDamage = -2;
     private const int UpgradeDamageBonus = 2;
 
     public ResonantSlash()
@@ -84,14 +84,14 @@ public partial class ResonantSlash : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2),
-            EnergyStep(1)
+            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargets(1))
         );
     }
 }
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 2;
+    private const int BaseDamage = -1;
     private const int VulnerableStacks = 2;
 
     public EchoPuncture()
@@ -118,7 +118,7 @@ public partial class EchoPuncture : Skill
 
 public partial class Extract : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 12;
     private const int EnergyGain = 2;
     private const int WeakenStacks = 3;
     private const string PrimaryTargetKey = "萃取目标";
@@ -155,8 +155,7 @@ public partial class Extract : Skill
 
 public partial class BladeOfSlaughter : Skill
 {
-    private const int BaseDamage = 15;
-    private const int VulnerableStacks = 2;
+    private const int BaseDamage = 12;
     private const string PrimaryTargetKey = "弑杀之刃目标";
 
     public BladeOfSlaughter()
@@ -172,15 +171,10 @@ public partial class BladeOfSlaughter : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: VulnerableStacks,
-                target: HostileTargets(1)
-            ),
             ConditionStep(
                 condition: TargetHasWeaken,
                 conditionDescription: "攻击目标拥有虚弱",
-                CarryStep(target: RelativeTarget(-1), skillIndex: 0)
+                CarryStep(target: TargetReference.Previous, skillIndex: 1)
             )
         );
     }
@@ -196,7 +190,7 @@ public partial class BladeOfSlaughter : Skill
 
 public partial class DisasterImpact : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = -3;
     private const int DisasterStacks = 10;
 
     public DisasterImpact()

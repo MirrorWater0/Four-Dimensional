@@ -9,6 +9,12 @@ public partial class CharacterControl : Control
     private static readonly PackedScene SkillCardScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Reward/SkillCard.tscn"
     );
+    private static readonly PackedScene CharacterTargetCardScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/ManualTarget/CharacterTargetCard.tscn"
+    );
+    private static readonly Shader DrawReserveIconShader = GD.Load<Shader>(
+        "res://shader/DrawReserveIcon.gdshader"
+    );
 
     private static readonly Vector2 BattleCardBaseSize = new(240f, 370f);
     private static readonly Vector2 BattleCardScale = new(0.936f, 0.936f);
@@ -22,6 +28,9 @@ public partial class CharacterControl : Control
     private const float HandCardGap = 14f;
     private const float HandLayoutTweenDuration = 0.18f;
     private const int CardPlayOverlayLayer = 80;
+    private const int PlayedCardZIndex = 100;
+    private const int TemporaryCarryCardZIndex = 300;
+    private const int ManualTargetPickerZIndex = 400;
     private const int HandCardCapacity = PlayerCharacter.MaxBattleHandSize;
     private static readonly Vector2 PlayedCardScale = new(1.104f, 1.104f);
     private static readonly Color QueuedCardModulate = new(1f, 1f, 1f, 0.82f);
@@ -34,12 +43,19 @@ public partial class CharacterControl : Control
     public Frame[] CharactersControl =>
         new[] { CharaterFrame1, CharaterFrame2, CharaterFrame3, CharaterFrame4 };
     public Button EndTurnButton => _endTurnButton;
+    public Button DrawReserveButton => _drawReserveButton;
     public Control ActionCardContainer => _cardRow;
 
     private VBoxContainer _root;
     private Label _statusLabel;
     private Control _cardRow;
+    private Control _manualTargetPickerRoot;
+    private ColorRect _manualTargetPickerMask;
+    private HBoxContainer _manualTargetPickerRow;
     private Button _endTurnButton;
+    private Button _drawReserveButton;
+    private ColorRect _drawReserveIcon;
+    private Label _drawReserveCountLabel;
     private SkillCard[] _cards = new SkillCard[HandCardCapacity];
     private Control[] _cardSlots = new Control[HandCardCapacity];
     private Tween[] _cardSlotLayoutTweens = new Tween[HandCardCapacity];
@@ -141,6 +157,7 @@ public partial class CharacterControl : Control
         )
         {
             ClearLiftedCard(instant: false);
+            HideManualTargetPicker();
             GetViewport().SetInputAsHandled();
         }
     }
@@ -197,6 +214,15 @@ public partial class CharacterControl : Control
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(false);
     }
 
+    public void RefreshDisplayedSkillDescriptions()
+    {
+        if (!_uiBuilt)
+            return;
+
+        if (_activePlayer != null)
+            RefreshTurnUi();
+    }
+
     public void SetPlayerInputsEnabled(PlayerCharacter player, bool enabled)
     {
         if (player == null || player != _activePlayer || !_uiBuilt)
@@ -234,10 +260,21 @@ public partial class CharacterControl : Control
         _root = GetNodeOrNull<VBoxContainer>("ActionAreaRoot");
         _statusLabel = GetNodeOrNull<Label>("ActionAreaRoot/StatusLabel");
         _cardRow = GetNodeOrNull<Control>("ActionAreaRoot/CardRow");
+        Control actionButtonsRoot = GetOrCreateActionButtonsRoot();
         _endTurnButton =
-            GetNodeOrNull<Button>("EndTurnButton")
+            actionButtonsRoot?.GetNodeOrNull<Button>("EndTurnButton")
+            ?? GetNodeOrNull<Button>("../BattleActionButtons/EndTurnButton")
+            ?? GetNodeOrNull<Button>("EndTurnButton")
             ?? GetNodeOrNull<Button>("ActionAreaRoot/EndTurnButton")
             ?? GetNodeOrNull<Button>("ActionAreaRoot/CardRow/EndTurnButton");
+        _drawReserveButton =
+            actionButtonsRoot?.GetNodeOrNull<Button>("DrawReserveButton")
+            ?? GetNodeOrNull<Button>("../BattleActionButtons/DrawReserveButton")
+            ?? GetNodeOrNull<Button>("DrawReserveButton")
+            ?? GetNodeOrNull<Button>("ActionAreaRoot/DrawReserveButton")
+            ?? GetNodeOrNull<Button>("ActionAreaRoot/CardRow/DrawReserveButton");
+        _drawReserveIcon = _drawReserveButton?.GetNodeOrNull<ColorRect>("Icon");
+        _drawReserveCountLabel = _drawReserveButton?.GetNodeOrNull<Label>("ReserveCountLabel");
 
         if (_root == null || _statusLabel == null)
             return false;
@@ -287,14 +324,89 @@ public partial class CharacterControl : Control
         if (_endTurnButton == null)
         {
             _endTurnButton = new Button { Name = "EndTurnButton" };
-            AddChild(_endTurnButton);
+            (actionButtonsRoot ?? this).AddChild(_endTurnButton);
         }
 
         _endTurnButton.Disabled = true;
         ConfigureEndTurnButton(_endTurnButton);
         _endTurnButton.Pressed += OnEndTurnPressed;
+
+        if (_drawReserveButton == null)
+        {
+            _drawReserveButton = new Button { Name = "DrawReserveButton" };
+            (actionButtonsRoot ?? this).AddChild(_drawReserveButton);
+        }
+
+        _drawReserveButton.Disabled = true;
+        ConfigureDrawReserveButton(_drawReserveButton);
+        EnsureDrawReserveIcon();
+        EnsureDrawReserveCountLabel();
+        _drawReserveButton.Pressed += OnDrawReservePressed;
         LayoutActionCards(instant: true);
         return true;
+    }
+
+    private void EnsureDrawReserveIcon()
+    {
+        if (_drawReserveButton == null || !GodotObject.IsInstanceValid(_drawReserveButton))
+            return;
+
+        _drawReserveIcon ??= _drawReserveButton.GetNodeOrNull<ColorRect>("Icon");
+        if (_drawReserveIcon == null)
+        {
+            _drawReserveIcon = new ColorRect
+            {
+                Name = "Icon",
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            _drawReserveButton.AddChild(_drawReserveIcon);
+            _drawReserveButton.MoveChild(_drawReserveIcon, 0);
+        }
+
+        ConfigureDrawReserveIcon(_drawReserveIcon);
+    }
+
+    private void EnsureDrawReserveCountLabel()
+    {
+        if (_drawReserveButton == null || !GodotObject.IsInstanceValid(_drawReserveButton))
+            return;
+
+        _drawReserveCountLabel ??= _drawReserveButton.GetNodeOrNull<Label>("ReserveCountLabel");
+        if (_drawReserveCountLabel == null)
+        {
+            _drawReserveCountLabel = new Label
+            {
+                Name = "ReserveCountLabel",
+                MouseFilter = MouseFilterEnum.Ignore,
+                Text = "0",
+            };
+            _drawReserveButton.AddChild(_drawReserveCountLabel);
+        }
+
+        ConfigureDrawReserveCountLabel(_drawReserveCountLabel);
+    }
+
+    private Control GetOrCreateActionButtonsRoot()
+    {
+        Node parent = GetParent();
+        Control root = parent?.GetNodeOrNull<Control>("BattleActionButtons");
+        if (root != null)
+            return root;
+
+        if (parent == null)
+            return null;
+
+        root = new Control
+        {
+            Name = "BattleActionButtons",
+            MouseFilter = MouseFilterEnum.Ignore,
+            OffsetLeft = 1470f,
+            OffsetTop = 704f,
+            OffsetRight = 1830f,
+            OffsetBottom = 790f,
+        };
+        parent.AddChild(root);
+        return root;
     }
 
     private void WireBattleCard(SkillCard card, int index)
@@ -362,6 +474,7 @@ public partial class CharacterControl : Control
         };
         _cardRow.Resized += LayoutActionCards;
         _root.AddChild(_cardRow);
+        Control actionButtonsRoot = GetOrCreateActionButtonsRoot();
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -384,7 +497,19 @@ public partial class CharacterControl : Control
         };
         ConfigureEndTurnButton(_endTurnButton);
         _endTurnButton.Pressed += OnEndTurnPressed;
-        AddChild(_endTurnButton);
+        (actionButtonsRoot ?? this).AddChild(_endTurnButton);
+
+        _drawReserveButton = new Button
+        {
+            Name = "DrawReserveButton",
+            Text = "\u62bd\u5361\u50a8\u5907",
+            Disabled = true,
+        };
+        ConfigureDrawReserveButton(_drawReserveButton);
+        EnsureDrawReserveIcon();
+        EnsureDrawReserveCountLabel();
+        _drawReserveButton.Pressed += OnDrawReservePressed;
+        (actionButtonsRoot ?? this).AddChild(_drawReserveButton);
         LayoutActionCards(instant: true);
 
         _uiBuilt = true;
@@ -467,6 +592,65 @@ public partial class CharacterControl : Control
                 3
             )
         );
+    }
+
+    private static void ConfigureDrawReserveButton(Button button)
+    {
+        if (button == null)
+            return;
+
+        ConfigureEndTurnButton(button);
+        button.Text = "\u62bd\u5361\u50a8\u5907";
+        button.CustomMinimumSize = new Vector2(70f, 72f);
+    }
+
+    private static void ConfigureDrawReserveIcon(ColorRect icon)
+    {
+        if (icon == null)
+            return;
+
+        icon.OffsetLeft = -25f;
+        icon.OffsetTop = 10f;
+        icon.OffsetRight = 23f;
+        icon.OffsetBottom = 58f;
+        icon.MouseFilter = MouseFilterEnum.Ignore;
+
+        ShaderMaterial material = icon.Material as ShaderMaterial;
+        if (material == null || material.Shader != DrawReserveIconShader)
+        {
+            material = new ShaderMaterial
+            {
+                ResourceLocalToScene = true,
+                Shader = DrawReserveIconShader,
+            };
+            icon.Material = material;
+        }
+
+        material.SetShaderParameter("card_color", new Color(0.55f, 0.9f, 1f, 0.95f));
+        material.SetShaderParameter("back_card_color", new Color(0.1178f, 0.461f, 0.62f, 0.765f));
+        material.SetShaderParameter("line_color", new Color(0.9f, 1f, 1f, 1f));
+        material.SetShaderParameter("arrow_color", new Color(0.7f, 0.95f, 1f, 0.92f));
+        material.SetShaderParameter("glow", 1f);
+        material.SetShaderParameter("back_card_rotation_degrees", 20.5f);
+        material.SetShaderParameter("front_card_rotation_degrees", 5.7f);
+    }
+
+    private static void ConfigureDrawReserveCountLabel(Label label)
+    {
+        if (label == null)
+            return;
+
+        label.OffsetLeft = -25f;
+        label.OffsetTop = 58f;
+        label.OffsetRight = 23f;
+        label.OffsetBottom = 80f;
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.MouseFilter = MouseFilterEnum.Ignore;
+        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeColorOverride("font_color", new Color(0.88f, 0.98f, 1f, 1f));
+        label.AddThemeColorOverride("font_outline_color", new Color(0.01f, 0.03f, 0.06f, 0.95f));
+        label.AddThemeConstantOverride("outline_size", 3);
     }
 
     private static StyleBoxFlat CreateEndTurnStyle(
@@ -637,11 +821,19 @@ public partial class CharacterControl : Control
 
             if (_endTurnButton != null)
                 _endTurnButton.Disabled = true;
+            if (_drawReserveButton != null)
+                _drawReserveButton.Disabled = true;
+            if (_drawReserveCountLabel != null)
+                _drawReserveCountLabel.Text = (BattleNode?.GetCardDrawReserve() ?? 0).ToString();
             return;
         }
 
         _statusLabel.Text =
             $"{_activePlayer.CharacterName} 回合中 | 当前能量 {_activePlayer.Energy}";
+
+        int drawReserve = BattleNode?.GetCardDrawReserve() ?? 0;
+        if (_drawReserveCountLabel != null)
+            _drawReserveCountLabel.Text = drawReserve.ToString();
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -705,6 +897,15 @@ public partial class CharacterControl : Control
 
         if (_endTurnButton != null)
             _endTurnButton.Disabled = _isResolvingCard || _endTurnQueued;
+
+        if (_drawReserveButton != null)
+        {
+            bool canSpendReserve =
+                !_isResolvingCard
+                && !_endTurnQueued
+                && BattleNode?.CanSpendCardDrawReserveToDraw(_activePlayer) == true;
+            _drawReserveButton.Disabled = !canSpendReserve;
+        }
 
         if (updateLayout)
             LayoutActionCards();
@@ -778,6 +979,8 @@ public partial class CharacterControl : Control
         {
             return;
         }
+
+        skill.ClearManualFriendlyTarget();
 
         bool hadStun = HasActiveStun(_activePlayer);
         if (!hadStun && !skill.TrySpendDisplayedEnergy())
@@ -955,6 +1158,14 @@ public partial class CharacterControl : Control
         if (play.IsHandCard)
             RefreshTurnUi();
 
+        if (!await SelectManualFriendlyTargetIfNeededAsync(play))
+        {
+            play.Skill.RefundDisplayedEnergy();
+            QueueFreeQueuedPlayCard(play);
+            CompleteQueuedPlay(play, succeeded: false);
+            return play.IsHandCard;
+        }
+
         if (play.FreeEnergyCost)
         {
             using (play.Skill.BeginEnergyCostWaiver())
@@ -1083,7 +1294,7 @@ public partial class CharacterControl : Control
         card.HoverHint.Visible = false;
         card.Scale = sourceScale;
         card.GlobalPosition = sourceGlobalPosition;
-        card.ZIndex = 100;
+        card.ZIndex = PlayedCardZIndex;
         return card;
     }
 
@@ -1143,7 +1354,7 @@ public partial class CharacterControl : Control
         card.CharacterName.Text = $"{play.Actor.CharacterName} | 连携";
         card.Button.Disabled = true;
         card.HoverHint.Visible = false;
-        card.ZIndex = 300;
+        card.ZIndex = TemporaryCarryCardZIndex;
         card.Scale = PlayedCardScale * CarryCardSpawnScaleMultiplier;
         card.GlobalPosition = GetScreenCenterCardPosition(card.Scale);
         card.StartAnimation();
@@ -1201,7 +1412,7 @@ public partial class CharacterControl : Control
 
         card.StopBattleMotion();
         card.HoverHint.Visible = true;
-        card.ZIndex = 100;
+        card.ZIndex = PlayedCardZIndex;
         SetProcess(true);
         UpdateLiftedCardPosition();
     }
@@ -1215,9 +1426,199 @@ public partial class CharacterControl : Control
         }
 
         int index = _liftedCardIndex;
+        Skill skill =
+            _activePlayer?.Skills != null && index < _activePlayer.Skills.Length
+                ? _activePlayer.Skills[index]
+                : null;
+        skill?.ClearManualFriendlyTarget();
         _liftedCardIndex = -1;
         SetProcess(false);
         ResetCardMotion(index, instant);
+    }
+
+    private async Task<bool> SelectManualFriendlyTargetIfNeededAsync(QueuedCardPlay play)
+    {
+        if (play?.Skill?.RequiresManualFriendlyTarget() != true)
+            return true;
+
+        Character target = await ShowManualTargetPickerAsync(play.Skill);
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return false;
+
+        play.Skill.SetManualFriendlyTarget(target);
+        return play.Skill.HasManualFriendlyTarget();
+    }
+
+    private void EnsureManualTargetPickerUi()
+    {
+        if (_manualTargetPickerRoot != null && GodotObject.IsInstanceValid(_manualTargetPickerRoot))
+            return;
+
+        CanvasLayer overlay = EnsureCardPlayOverlay();
+        if (overlay == null)
+            return;
+
+        _manualTargetPickerRoot = new Control
+        {
+            Name = "ManualTargetPicker",
+            Visible = false,
+            ZIndex = ManualTargetPickerZIndex,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        _manualTargetPickerRoot.SetAnchorsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(_manualTargetPickerRoot);
+
+        _manualTargetPickerMask = new ColorRect
+        {
+            Name = "Mask",
+            Color = new Color(0f, 0f, 0f, 0.42f),
+            MouseFilter = MouseFilterEnum.Stop,
+            ZIndex = 0,
+        };
+        _manualTargetPickerMask.SetAnchorsPreset(LayoutPreset.FullRect);
+        _manualTargetPickerRoot.AddChild(_manualTargetPickerMask);
+
+        _manualTargetPickerRow = new HBoxContainer
+        {
+            Name = "Cards",
+            Alignment = BoxContainer.AlignmentMode.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 1,
+        };
+        _manualTargetPickerRow.AnchorLeft = 0.5f;
+        _manualTargetPickerRow.AnchorRight = 0.5f;
+        _manualTargetPickerRow.AnchorTop = 0.5f;
+        _manualTargetPickerRow.AnchorBottom = 0.5f;
+        _manualTargetPickerRow.OffsetLeft = -452f;
+        _manualTargetPickerRow.OffsetTop = -130f;
+        _manualTargetPickerRow.OffsetRight = 452f;
+        _manualTargetPickerRow.OffsetBottom = 130f;
+        _manualTargetPickerRow.AddThemeConstantOverride("separation", 32);
+        _manualTargetPickerRoot.AddChild(_manualTargetPickerRow);
+    }
+
+    private async Task<Character> ShowManualTargetPickerAsync(Skill skill)
+    {
+        if (skill?.OwnerCharater == null || BattleNode == null)
+            return null;
+
+        EnsureManualTargetPickerUi();
+        if (_manualTargetPickerRoot == null || _manualTargetPickerRow == null)
+            return null;
+
+        ClearManualTargetCards();
+        _statusLabel.Text = "选择一名己方角色";
+
+        var completion = new TaskCompletionSource<Character>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+
+        bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
+        Character owner = skill.OwnerCharater;
+        Character[] targets = BattleNode
+            .GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.State != Character.CharacterState.Dying
+                && (!excludeSelf || character != owner)
+            )
+            .OrderBy(character => character.PositionIndex)
+            .ToArray();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            if (CharacterTargetCardScene?.Instantiate() is not CharacterTargetCard card)
+                continue;
+
+            Character target = targets[i];
+            card.SetTarget(target);
+            card.Selected += selected => completion.TrySetResult(selected);
+            var slot = new Control
+            {
+                Name = "TargetCardSlot",
+                CustomMinimumSize = card.CustomMinimumSize,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            _manualTargetPickerRow.AddChild(slot);
+            slot.AddChild(card);
+            AnimateManualTargetCard(card, i, targets.Length);
+        }
+
+        _manualTargetPickerRoot.Visible = targets.Length > 0;
+        if (_manualTargetPickerMask != null)
+            _manualTargetPickerMask.Modulate = new Color(1f, 1f, 1f, 0f);
+        if (targets.Length == 0)
+            return null;
+
+        if (_manualTargetPickerMask != null)
+            _manualTargetPickerMask.CreateTween().TweenProperty(
+                _manualTargetPickerMask,
+                "modulate:a",
+                1f,
+                0.12f
+            );
+
+        try
+        {
+            return await completion.Task;
+        }
+        finally
+        {
+            HideManualTargetPicker();
+        }
+    }
+
+    private void AnimateManualTargetCard(Control card, int index, int count)
+    {
+        if (card == null)
+            return;
+
+        const float cardWidth = 190f;
+        const float cardSeparation = 32f;
+        float centerOffsetX = (count - 1) * (cardWidth + cardSeparation) * 0.5f;
+        float startOffsetX = centerOffsetX - index * (cardWidth + cardSeparation);
+        float normalizedIndex = count <= 1 ? 0f : (index - (count - 1) * 0.5f) / ((count - 1) * 0.5f);
+        float finalRotation = Mathf.DegToRad(normalizedIndex * 4f);
+
+        card.Modulate = new Color(1f, 1f, 1f, 0f);
+        card.Position = new Vector2(startOffsetX, 72f);
+        card.PivotOffset = card.CustomMinimumSize * 0.5f;
+        card.Rotation = Mathf.DegToRad(normalizedIndex * -8f);
+        card.Scale = new Vector2(0.72f, 0.72f);
+
+        Tween tween = card.CreateTween();
+        if (index > 0)
+            tween.TweenInterval(index * 0.025f);
+        tween.SetParallel(true);
+        tween.TweenProperty(card, "modulate:a", 1f, 0.14f);
+        tween.TweenProperty(card, "position", Vector2.Zero, 0.24f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(card, "rotation", finalRotation, 0.28f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(card, "scale", Vector2.One, 0.22f)
+            .SetTrans(Tween.TransitionType.Back)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private void HideManualTargetPicker()
+    {
+        if (_manualTargetPickerRoot == null || !GodotObject.IsInstanceValid(_manualTargetPickerRoot))
+            return;
+
+        _manualTargetPickerRoot.Visible = false;
+        ClearManualTargetCards();
+    }
+
+    private void ClearManualTargetCards()
+    {
+        if (_manualTargetPickerRow == null || !GodotObject.IsInstanceValid(_manualTargetPickerRow))
+            return;
+
+        foreach (Node child in _manualTargetPickerRow.GetChildren())
+            child.QueueFree();
     }
 
     private void UpdateLiftedCardPosition()
@@ -1242,7 +1643,7 @@ public partial class CharacterControl : Control
         }
 
         card.GlobalPosition = GetViewport().GetMousePosition() - _liftedCardMouseOffset;
-        card.ZIndex = 100;
+        card.ZIndex = PlayedCardZIndex;
     }
 
     private bool SetCardHovered(int index, bool hovered)
@@ -1441,6 +1842,73 @@ public partial class CharacterControl : Control
     private void OnEndTurnPressed()
     {
         _ = QueueEndTurnAsync();
+    }
+
+    private void OnDrawReservePressed()
+    {
+        if (
+            _activePlayer == null
+            || !GodotObject.IsInstanceValid(_activePlayer)
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || _isResolvingCard
+            || _endTurnQueued
+        )
+        {
+            return;
+        }
+
+        Skill[] handBeforeDraw = CaptureBattleHand(_activePlayer);
+        bool drewCard = BattleNode.TrySpendCardDrawReserveToDraw(_activePlayer);
+        RefreshTurnUi();
+        if (drewCard)
+            RevealReserveDrawnCards(GetNewlyDrawnBattleHandSlots(_activePlayer, handBeforeDraw));
+    }
+
+    private static Skill[] CaptureBattleHand(PlayerCharacter player)
+    {
+        if (player?.Skills == null)
+            return Array.Empty<Skill>();
+
+        return player.Skills.ToArray();
+    }
+
+    private static int[] GetNewlyDrawnBattleHandSlots(PlayerCharacter player, Skill[] handBeforeDraw)
+    {
+        if (player?.Skills == null || handBeforeDraw == null)
+            return Array.Empty<int>();
+
+        var indexes = new List<int>();
+        for (int index = 0; index < player.Skills.Length; index++)
+        {
+            Skill skill = player.Skills[index];
+            if (skill != null && !handBeforeDraw.Any(previous => ReferenceEquals(previous, skill)))
+                indexes.Add(index);
+        }
+
+        return indexes.ToArray();
+    }
+
+    private void RevealReserveDrawnCards(int[] indexes)
+    {
+        if (indexes == null)
+            return;
+
+        for (int revealIndex = 0; revealIndex < indexes.Length; revealIndex++)
+        {
+            int index = indexes[revealIndex];
+            if (!IsCardIndexValid(index))
+                continue;
+
+            SkillCard card = _cards[index];
+            if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            card.Visible = true;
+            card.ResetState();
+            card.StartAnimation(0.03f * revealIndex);
+            card.HoverHint.Visible = false;
+        }
     }
 
     private bool CanUseEndTurnShortcut()

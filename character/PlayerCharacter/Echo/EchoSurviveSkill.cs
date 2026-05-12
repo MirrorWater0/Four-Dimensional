@@ -8,7 +8,7 @@ public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
     private const int EnergyGain = 1;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 5;
 
     public SoundBarrier()
         : base(SkillTypes.Survive)
@@ -22,7 +22,7 @@ public partial class SoundBarrier : Skill
             this,
             EnergyStep(EnergyGain),
             BlockStep(0, BaseBlock),
-            CarryStep(target: RelativeTarget(1), skillIndex: 0)
+            CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
 }
@@ -30,7 +30,7 @@ public partial class SoundBarrier : Skill
 public partial class SonicDeflection : Skill
 {
     private const int DamageImmuneStacks = 2;
-    private const int BaseBlock = 1;
+    private const int BaseBlock = -2;
 
     public SonicDeflection()
         : base(SkillTypes.Survive)
@@ -48,17 +48,17 @@ public partial class SonicDeflection : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
-            ModifyPropertyStep(PropertyType.Survivability, -2, RelativeTarget(0))
+            ModifyPropertyStep(PropertyType.Survivability, -2, TargetReference.Self)
         );
     }
 }
 
 public partial class TuningStance : Skill
 {
-    private const int PowerGain = 5;
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 7;
+    public override int EnergyCost => 2;
 
     public TuningStance()
         : base(SkillTypes.Survive)
@@ -66,14 +66,14 @@ public partial class TuningStance : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "韵律姿态";
+    public override string SkillName { get; set; } = "韵律";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, PowerGain),
-            BlockStep(0, BaseBlock)
+            BlockStep(0, BaseBlock),
+            EnergyStep(1, TargetReference.All)
         );
     }
 }
@@ -81,8 +81,7 @@ public partial class TuningStance : Skill
 public partial class ResonantWard : Skill
 {
     private const int DebuffImmunityStacks = 2;
-    private const int BaseBlock = 4;
-    int PowerGain = 2;
+    private const int BaseBlock = 1;
 
     public ResonantWard()
         : base(SkillTypes.Survive)
@@ -99,17 +98,16 @@ public partial class ResonantWard : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
-            BlockStep(0, BaseBlock, 2),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            BlockStep(0, BaseBlock, 1)
         );
     }
 }
 
 public partial class DissonantField : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 5;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;
 
@@ -137,7 +135,8 @@ public partial class DissonantField : Skill
 
 public partial class RelayShift : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 2;
+    public override int EnergyCost => 2;
 
     public RelayShift()
         : base(SkillTypes.Survive)
@@ -153,25 +152,24 @@ public partial class RelayShift : Skill
             this,
             SwapPositionFriendlyStep(relativeIndexA: 0, relativeIndexB: 1),
             BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
-            EnergyStep(1, RelativeTarget(-1)),
-            EnergyStep(-1, RelativeTarget(0)),
-            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+            EnergyStep(1, TargetReference.Previous),
+            CarryStep(target: TargetReference.Previous, skillIndex: 2)
         );
     }
 }
 
-public partial class ResonanceShelter : Skill
+public partial class Shelter : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = -3;
     private const int CardRefreshStacks = 1;
 
-    public ResonanceShelter()
+    public Shelter()
         : base(SkillTypes.Survive)
     {
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "谐振护幕";
+    public override string SkillName { get; set; } = "护幕";
     public override int EnergyCost => 1;
 
     protected override SkillPlan BuildPlan()
@@ -182,8 +180,9 @@ public partial class ResonanceShelter : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.CardRefresh,
                 stacks: CardRefreshStacks,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.All)
-            )
+                target: TargetReference.All
+            ),
+            DrawReserveStep(1)
         );
     }
 }

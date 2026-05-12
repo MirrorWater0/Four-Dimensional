@@ -61,10 +61,10 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 92;
-        Power = 11;
-        Survivability = 8;
-        Speed = 14;
+        MaxLife = 72;
+        Power = 8;
+        Survivability = 5;
+        Speed = 11;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
@@ -98,7 +98,7 @@ public partial class BlackHawkAttack : Skill
                 prefix: "每段造成",
                 suffix: "点伤害，共3段。"
             ),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, RelativeTarget(0))
+            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
 }
@@ -120,14 +120,18 @@ public partial class BlackHawkSurvive : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(HealAmount, RelativeTarget(0), descriptionOverride: $"治疗{HealAmount}点。"),
+            HealStep(HealAmount, TargetReference.Self, descriptionOverride: $"治疗{HealAmount}点。"),
             HealStep(
                 HealAmount,
-                RelativeTarget(-1),
+                TargetReference.Previous,
                 descriptionOverride: $"上一位角色治疗{HealAmount}点。"
             ),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, RelativeTarget(0)),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, RelativeTarget(-1))
+            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self),
+            ApplyBuffFriendly(
+                Buff.BuffName.Invisible,
+                InvisibleStacks,
+                TargetReference.Previous
+            )
         );
     }
 }

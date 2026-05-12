@@ -79,10 +79,10 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 425;
-        Power = 16;
-        Survivability = 11;
-        Speed = 15;
+        MaxLife = 405;
+        Power = 13;
+        Survivability = 8;
+        Speed = 12;
         SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
@@ -94,7 +94,7 @@ public partial class WarRegedit : EnemyRegedit
 
 public partial class WarAttack : Skill
 {
-    private const int BaseDamage = -10;
+    private const int BaseDamage = -15;
     private const int ThrallPowerGain = 2;
 
     public WarAttack()
@@ -161,11 +161,11 @@ public partial class WarSpecial : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: 0),
-            HealStep(baseHeal: 0, target: RelativeTarget(0)),
+            HealStep(baseHeal: 0, target: TargetReference.Self),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain),
-            ModifyPropertyStep(PropertyType.Power, 5)
+            ModifyPropertyStep(PropertyType.Power, 4)
         );
     }
 }

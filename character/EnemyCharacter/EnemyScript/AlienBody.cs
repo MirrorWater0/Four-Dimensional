@@ -140,10 +140,10 @@ public partial class AlienBodyRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AlienBody.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
-        MaxLife = 60;
-        Power = 10;
-        Survivability = 11;
-        Speed = 8;
+        MaxLife = 40;
+        Power = 7;
+        Survivability = 8;
+        Speed = 5;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
@@ -217,7 +217,7 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
-            CarryStep(target: RelativeTarget(-1), skillIndex: 1),
+            CarryStep(target: TargetReference.Previous, skillIndex: 2),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown),
             LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown)
         );

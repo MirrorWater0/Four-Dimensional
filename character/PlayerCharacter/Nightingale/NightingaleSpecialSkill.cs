@@ -1,9 +1,29 @@
 public partial class NightingaleSpecialSkill { }
 
+public partial class NightingaleEnergy : Skill
+{
+    private const int EnergyGain = 1;
+
+    public NightingaleEnergy()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "\u591c\u606f";
+    public override int EnergyCost => 0;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(this, EnergyStep(EnergyGain));
+    }
+}
+
 public partial class TempoSurge : Skill
 {
     private const int SpeedGain = 3;
     private const int PowerGain = 4;
+    public override bool ExhaustsAfterUse => base.ExhaustsAfterUse;
 
     public TempoSurge()
         : base(SkillTypes.Special)
@@ -20,19 +40,18 @@ public partial class TempoSurge : Skill
             this,
             ModifyPropertyStep(PropertyType.Speed, SpeedGain),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            CarryStep(target: RelativeTarget(-1), skillIndex: 1)
+            CarryStep(target: TargetReference.Previous, skillIndex: 2)
         );
     }
 }
 
 public partial class LongNight : Skill
 {
-    private const int SurvivabilityLoss = 3;
     private const int SpeedLoss = 3;
-    private const int PowerGain = 5;
 
     public override string SkillName { get; set; } = "长夜";
     public override int EnergyCost => 3;
+    public override bool ExhaustsAfterUse => true;
 
     public LongNight()
         : base(SkillTypes.Special)
@@ -44,11 +63,8 @@ public partial class LongNight : Skill
     {
         return new SkillPlan(
             this,
-            CarryStep(target: RelativeTarget(-1), skillIndex: 2),
-            CarryStep(target: RelativeTarget(1), skillIndex: 2),
-            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss),
-            ModifyPropertyStep(PropertyType.Speed, -SpeedLoss),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            CarryStep(target: TargetReference.Previous, skillIndex: 3),
+            CarryStep(target: TargetReference.Next, skillIndex: 3)
         );
     }
 }
@@ -56,7 +72,8 @@ public partial class LongNight : Skill
 public partial class RequiemBloom : Skill
 {
     private const int PowerGain = 3;
-    private const int SurvivabilityLoss = 4;
+    public override bool ExhaustsAfterUse => true;
+
     private const int RebirthStacks = 1;
     private const int ExtraTurnStacks = 1;
 
@@ -74,7 +91,6 @@ public partial class RequiemBloom : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss),
             ConditionStep(
                 condition: () => GetAllAllyWithOrder(dyingFilter: true).Length >= 3,
                 conditionDescription: "己方有3个角色存活",
@@ -83,14 +99,14 @@ public partial class RequiemBloom : Skill
                     ApplyBuffFriendly(
                         buffName: Buff.BuffName.RebirthI,
                         stacks: RebirthStacks,
-                        target: RelativeTarget(0)
+                        target: TargetReference.Self
                     ),
                 ]
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraTurn,
                 stacks: ExtraTurnStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }
@@ -101,6 +117,7 @@ public partial class CurtainCallMoment : Skill
     private const int WeakenStacks = 2;
     private const int InvisibleStacks = 5;
     private const int ExtraTurnStacks = 1;
+    public override bool ExhaustsAfterUse => true;
 
     public CurtainCallMoment()
         : base(SkillTypes.Special)
@@ -123,14 +140,33 @@ public partial class CurtainCallMoment : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraTurn,
                 stacks: ExtraTurnStacks,
-                target: RelativeTarget(1)
+                target: TargetReference.Next
             )
         );
+    }
+}
+
+public partial class SunMoonCycle : Skill
+{
+    private const int DrawReserveGain = 4;
+
+    public SunMoonCycle()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "日月轮回";
+    public override int EnergyCost => 2;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(this, DrawReserveStep(DrawReserveGain));
     }
 }
 
@@ -145,8 +181,8 @@ public partial class ShadowForm : Skill
     }
 
     public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => 6;
-
+    public override int EnergyCost => 5;
+    public override bool ExhaustsAfterUse => true;
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -154,12 +190,12 @@ public partial class ShadowForm : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Invisible,
                 stacks: 5,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Shadow,
                 stacks: ShadowStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             )
         );
     }

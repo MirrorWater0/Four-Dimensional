@@ -2,10 +2,10 @@ using Godot;
 
 public partial class WarThrall : SummonCharacter
 {
-    internal const int MaxLifeStat = 24;
-    internal const int PowerStat = 5;
-    internal const int SurvivabilityStat = 3;
-    internal const int SpeedStat = 6;
+    internal const int MaxLifeStat = 14;
+    internal const int PowerStat = 6;
+    internal const int SurvivabilityStat = 0;
+    internal const int SpeedStat = 0;
 
     public override string CharacterName { get; set; } = "战仆";
 

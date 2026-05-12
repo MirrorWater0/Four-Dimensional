@@ -99,7 +99,7 @@ public partial class Buff
             BuffName.Shadow => "攻击时，获得等同于层数的力量。",
             BuffName.Demon => "回合结束时，获得等同于层数的力量。",
             BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
-            BuffName.Echo => "释放技能时，额外释放等同于层数的次数。",
+            BuffName.Echo => "每回合前X张技能牌释放2次，X等同于层数。",
             BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
             BuffName.CardRefresh => "回合开始时，每层额外抽1张牌并消耗1层。",
             _ => string.Empty,
@@ -561,7 +561,13 @@ public partial class Buff
         if (!IconScenePaths.TryGetValue(name, out var scenePath))
             return null;
 
-        return GD.Load<PackedScene>(scenePath).Instantiate() as ColorRect;
+        PackedScene scene = null;
+        if (PreloadeScene.PreloadedScenes.TryGetValue(scenePath, out var cachedScene))
+            scene = cachedScene;
+        else
+            scene = GD.Load<PackedScene>(scenePath);
+
+        return scene?.Instantiate() as ColorRect;
     }
 
     protected static bool TryStackExisting<TBuff>(
@@ -680,7 +686,6 @@ public partial class HurtBuff : Buff
     public async Task<float> Trigger(
         float damage,
         Character attacker = null,
-        bool canTriggerThorn = true,
         Character.DamageKind damageKind = Character.DamageKind.Other
     )
     {
@@ -708,8 +713,7 @@ public partial class HurtBuff : Buff
                 break;
             case BuffName.Thorn:
                 if (
-                    canTriggerThorn
-                    && damageKind == Character.DamageKind.Attack
+                    damageKind == Character.DamageKind.Attack
                     && Owner != null
                     && attacker != null
                     && attacker != Owner
@@ -718,7 +722,7 @@ public partial class HurtBuff : Buff
                 )
                 {
                     using var _ = Owner.BeginEffectSource(GetBuffDisplayName(ThisBuffName));
-                    await attacker.GetHurt(Stack, Owner, canTriggerThorn: false);
+                    await attacker.GetHurt(Stack, Owner);
                 }
                 break;
             case BuffName.AutoArmor:
@@ -973,17 +977,27 @@ public partial class AttackBuff : Buff
 
 public partial class SkillBuff : Buff
 {
+    private int _echoTriggeredCountThisTurn;
+
     public SkillBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
+
+    public void ResetTurnState()
+    {
+        _echoTriggeredCountThisTurn = 0;
+    }
 
     public async Task Trigger(Skill skill)
     {
         if (Stack <= 0 || IsOwnerUnavailableForTrigger())
             return;
 
+        bool triggered = false;
+
         switch (ThisBuffName)
         {
             case BuffName.Stun:
+                triggered = true;
                 Stack--;
                 UpdateStackLabel();
 
@@ -1010,11 +1024,18 @@ public partial class SkillBuff : Buff
                 }
                 break;
             case BuffName.Echo:
-                skill?.QueueExtraSkillExecutions(Stack);
+                if (_echoTriggeredCountThisTurn < Stack)
+                {
+                    triggered = true;
+                    _echoTriggeredCountThisTurn++;
+                    skill?.QueueExtraSkillExecutions(1);
+                }
                 break;
         }
 
-        TweenLabel();
+        if (triggered)
+            TweenLabel();
+
         TryRemoveIfEmpty(Owner.SkillBuffs);
     }
 

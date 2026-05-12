@@ -134,7 +134,6 @@ public partial class SummonCharacter : Character
         var sb = new StringBuilder(128);
         sb.Append("仅在战斗中被召唤。濒死时若未触发复生则移出战斗。");
         sb.Append("\n不参与正常轮转和全阵速度；召唤者行动后依次出手。");
-        sb.Append($"\n属性：生命{maxLife}，力量{power}，生存{survivability}，速度{speed}。");
 
         var validSkills = skills?.Where(x => x != null).ToArray() ?? Array.Empty<Skill>();
         for (int i = 0; i < validSkills.Length; i++)

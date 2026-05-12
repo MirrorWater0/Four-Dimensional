@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 8;
+    private const int StartAutoArmorStacks = 5;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -35,10 +35,10 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 80;
-        Power = 15;
-        Survivability = 15;
-        Speed = 8;
+        MaxLife = 60;
+        Power = 12;
+        Survivability = 12;
+        Speed = 5;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
@@ -79,8 +79,7 @@ public partial class RedHuskAttack : Skill
 public partial class RedHuskSurvive : Skill
 {
     private const int BaseBlock = 1;
-    private const int PowerDown = 3;
-    private const int SurvivabilityDown = 3;
+    private const int SurvivabilityDown = 9;
 
     public RedHuskSurvive()
         : base(SkillTypes.Survive)
@@ -96,12 +95,6 @@ public partial class RedHuskSurvive : Skill
             this,
             BlockStep(0, BaseBlock, 2),
             LowerTargetPropertyStep(
-                PropertyType.Power,
-                PowerDown,
-                target: HostileTargets(1, byBehindRow: true),
-                permanent: false
-            ),
-            LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
                 target: HostileTargets(1, byBehindRow: true),
@@ -113,7 +106,7 @@ public partial class RedHuskSurvive : Skill
 
 public partial class RedHuskSpecial : Skill
 {
-    private const int AutoArmorStacks = 8;
+    private const int AutoArmorStacks = 5;
     private const int RebirthStacks = 1;
 
     public RedHuskSpecial()
@@ -132,14 +125,14 @@ public partial class RedHuskSpecial : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.RebirthI,
                 stacks: RebirthStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
-            ModifyPropertyStep(PropertyType.Survivability, 5)
+            ModifyPropertyStep(PropertyType.Power, 5)
         );
     }
 }

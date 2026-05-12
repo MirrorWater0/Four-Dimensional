@@ -7,6 +7,8 @@ using Godot;
 
 public static partial class GameInfo
 {
+    public const int CoreEnergyDefaultMax = 100;
+
     public static PlayerInfoStructure[] PlayerCharacters;
     public static int Seed = 4203;
     public static int ElectricityCoin;
@@ -24,15 +26,13 @@ public static partial class GameInfo
     public static Dictionary<RelicID, int> Relics = new();
     public static int ItemsMaxCount = 3;
     public static List<ItemID> Items = new();
-    public static List<Equipment> OwnedEquipments = new();
     public static int BattleItemDropChance = BaseBattleItemDropChance;
-    public static int BattleEquipmentDropChance = BaseBattleEquipmentDropChance;
 
     public static void InitNewGame()
     {
         ElectricityCoin = 150;
-        TransitionEnergy = 6;
-        TransitionEnergyMax = 6;
+        TransitionEnergy = CoreEnergyDefaultMax;
+        TransitionEnergyMax = CoreEnergyDefaultMax;
         CurrentLevel = 0;
         SessionPlaySeconds = 0;
         RunStartedAtUtcTicks = DateTime.UtcNow.Ticks;
@@ -45,7 +45,7 @@ public static partial class GameInfo
         GameInfo.Items.Add(ItemID.Explosion);
         Relics.Clear();
         Relics[RelicID.Blessing] = 3;
-        OwnedEquipments = CreateStarterOwnedEquipments();
+
     }
 
     public static void RefreshRandomNum(ref int num)
@@ -53,21 +53,6 @@ public static partial class GameInfo
         num = new Random(num).Next();
     }
 
-    private static List<Equipment> CreateStarterOwnedEquipments()
-    {
-        // Starter inventory for equipment interface.
-        var result = new List<Equipment>();
-        AddOwnedIfNotNull(result, Equipment.Create(Equipment.EquipmentName.RiftBlade));
-        return result;
-    }
-
-    private static void AddOwnedIfNotNull(List<Equipment> target, Equipment equipment)
-    {
-        if (target == null || equipment == null)
-            return;
-
-        target.Add(equipment);
-    }
 }
 
 public struct PlayerInfoStructure
@@ -79,6 +64,8 @@ public struct PlayerInfoStructure
     public int Power;
     public int Survivability;
     public int Speed;
+    public int TalentPoints;
+    public List<string> UnlockedTalents = new();
     public List<SkillID> GainedSkills = new();
     public SkillID[] TakenSkills = new SkillID[3];
     public SkillID[] AllSkills;
@@ -87,7 +74,6 @@ public struct PlayerInfoStructure
     public string CharacterName;
     public string PassiveName;
     public string PassiveDescription;
-    public Equipment[] Equipments = new Equipment[2];
 }
 
 public static class GlobalFunction
@@ -207,6 +193,8 @@ public static class GlobalFunction
                         "格挡" => cambridgeBlue,
                         "能量" => "#c9cdff",
                         "消耗" => "#ffb86b",
+                        "\u590d\u751f" => "#a8f0ad",
+                        "\u8fde\u643a" => "#a8f0ad",
                         _ => null,
                     };
 

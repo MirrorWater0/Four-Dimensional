@@ -1737,13 +1737,8 @@ public partial class DebugConsole : CanvasLayer
         if (args.Length >= 3 && !TryParsePositiveInt(args[2], out count))
             return;
 
-        GameInfo.OwnedEquipments ??= new List<Equipment>();
-        for (int i = 0; i < count; i++)
-            GameInfo.OwnedEquipments.Add(Equipment.Create(equipmentName));
-
-        RefreshOpenUi();
-        SaveSystem.SaveAll();
-        AppendSuccess($"已添加装备 {Equipment.Create(equipmentName)?.DisplayName} x{count}。");
+        AppendError("Equipment system has been removed.");
+        return;
     }
 
     private void ExecuteAddRelic(string[] args)
@@ -1872,7 +1867,7 @@ public partial class DebugConsole : CanvasLayer
     {
         if (args.Length < 3)
         {
-            AppendError("用法：setresource <coin|energy|maxenergy> <值>");
+            AppendError("Usage: setresource <coin|energy|core|maxenergy|maxcore> <value>");
             return;
         }
 
@@ -1887,11 +1882,11 @@ public partial class DebugConsole : CanvasLayer
         {
             GameInfo.ElectricityCoin = Math.Max(0, value);
         }
-        else if (Matches(target, "energy", "能量"))
+        else if (Matches(target, "energy", "core", "coreenergy", "能量", "核心能源"))
         {
             GameInfo.TransitionEnergy = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
         }
-        else if (Matches(target, "maxenergy", "energymax", "最大能量"))
+        else if (Matches(target, "maxenergy", "energymax", "maxcore", "coremax", "最大能量", "核心能源上限"))
         {
             GameInfo.TransitionEnergyMax = Math.Max(0, value);
             GameInfo.TransitionEnergy = Math.Clamp(
@@ -1958,8 +1953,6 @@ public partial class DebugConsole : CanvasLayer
     {
         ResourceState?.RefreshDebugView();
         GetNodeOrNull<BattlePreview>("/root/Map/SiteUI/BattlePreview")?.SetPortraitPostion();
-        GetNodeOrNull<EquipmentInterface>("/root/Map/BattleReadyLayer/EquipmentInterface")
-            ?.RefreshFromExternalChange();
         GetNodeOrNull<BattleReady>("/root/Map/BattleReadyLayer/BattleReady")
             ?.RefreshFromExternalChange();
     }
@@ -1993,12 +1986,10 @@ public partial class DebugConsole : CanvasLayer
     {
         return propertyType switch
         {
-            PropertyType.Power => info.Power + player.EquipmentProperty(PropertyType.Power, info),
-            PropertyType.Survivability => info.Survivability
-                + player.EquipmentProperty(PropertyType.Survivability, info),
-            PropertyType.Speed => info.Speed + player.EquipmentProperty(PropertyType.Speed, info),
-            PropertyType.MaxLife => info.LifeMax
-                + player.EquipmentProperty(PropertyType.MaxLife, info),
+            PropertyType.Power => info.Power,
+            PropertyType.Survivability => info.Survivability,
+            PropertyType.Speed => info.Speed,
+            PropertyType.MaxLife => info.LifeMax,
             _ => 0,
         };
     }

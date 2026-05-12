@@ -9,6 +9,7 @@ public partial class BattleReady : Control
     private enum BattleReadyMode
     {
         Tactics,
+        Talent,
         Formation,
     }
 
@@ -18,14 +19,19 @@ public partial class BattleReady : Control
     public Control Grid => field ??= ResolveNode<Control>("FormationModeRoot/GridContainer");
     private Control FormationModeRoot => field ??= ResolveNode<Control>("FormationModeRoot");
     private Control TacticsModeRoot => field ??= ResolveNode<Control>("TacticsModeRoot");
+    private Control TalentModeRoot => field ??= ResolveNode<Control>("TalentModeRoot");
     private Control ModeSelectorRoot => field ??= ResolveNode<Control>("ModeSelectorRoot");
     private Control ModeSelectorThumb =>
         field ??= ResolveNode<Control>("ModeSelectorRoot/ModeThumb");
     private Control CharacterSelectorThumb =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/CharacterSelectRoot/CharacterSelectThumb");
+        field ??= ResolveNode<Control>("CharacterSelectRoot/CharacterSelectThumb");
     private Button TacticsModeButton =>
         field ??= ResolveNode<Button>(
             "ModeSelectorRoot/ModeButtonsMargin/ModeButtons/TacticsModeButton"
+        );
+    private Button TalentModeButton =>
+        field ??= ResolveNode<Button>(
+            "ModeSelectorRoot/ModeButtonsMargin/ModeButtons/TalentModeButton"
         );
     private Button FormationModeButton =>
         field ??= ResolveNode<Button>(
@@ -34,7 +40,7 @@ public partial class BattleReady : Control
     private Container SkillContainer =>
         field ??= ResolveNode<Container>("TacticsModeRoot/SkillContainer");
     private Control CharacterSelectRoot =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/CharacterSelectRoot");
+        field ??= ResolveNode<Control>("CharacterSelectRoot");
     private Control FormationFrame =>
         field ??= ResolveNode<Control>("FormationModeRoot/FormationFrame");
     private Control FormationHeaderFrame =>
@@ -51,28 +57,41 @@ public partial class BattleReady : Control
         field ??= ResolveNode<Control>("TacticsModeRoot/SkillTypeFrame/SkillTypeIcons");
     private Control SkillDividers =>
         field ??= ResolveNode<Control>("TacticsModeRoot/SkillDividers");
+    private Control TalentTreeFrame =>
+        field ??= ResolveNode<Control>("TalentModeRoot/TalentTreeFrame");
+    private Control TalentTreeHeaderFrame =>
+        field ??= ResolveNode<Control>("TalentModeRoot/TalentTreeHeaderFrame");
+    private Control TalentPointFrame =>
+        field ??= ResolveNode<Control>("TalentModeRoot/TalentPointFrame");
+    private Label TalentPointLabel =>
+        field ??= ResolveNode<Label>("TalentModeRoot/TalentPointFrame/TalentPointLabel");
+    private Control TalentTreeRoot =>
+        field ??= ResolveNode<Control>("TalentModeRoot/TalentTreeRoot");
     private Control TopAccent => field ??= GetNode<Control>("ColorRect");
     public ColorRect BG => field ??= GetNode<ColorRect>("BG");
     private Control CharacterSelectPanel =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel");
+        field ??= ResolveNode<Control>("CharacterSelectRoot/CharacterSelectPanel");
     private Button[] CharacterButtons =>
         field ??= [
             ResolveNode<Button>(
-                "TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/EchoButton"
+                "CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/EchoButton"
             ),
             ResolveNode<Button>(
-                "TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/KasiyaButton"
+                "CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/KasiyaButton"
             ),
             ResolveNode<Button>(
-                "TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/MariyaButton"
+                "CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/MariyaButton"
             ),
             ResolveNode<Button>(
-                "TacticsModeRoot/CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/NightingaleButton"
+                "CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList/NightingaleButton"
             ),
         ];
 
     private static PackedScene SelectButtonScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/SelectButton.tscn"
+    );
+    private static readonly PackedScene TipScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/Tip.tscn"
     );
     private static readonly Theme SkillPagerButtonTheme = GD.Load<Theme>(
         "res://battle/ButtonTheme1.tres"
@@ -83,6 +102,10 @@ public partial class BattleReady : Control
     private const float SkillButtonEnterStagger = 0.022f;
     private const float SkillButtonExitStagger = 0.018f;
     private const float SkillButtonExitSettleTime = 0.12f;
+    private const float TalentNodeWidth = 76f;
+    private const float TalentNodeHeight = 76f;
+    private const float TalentNodeLabelHeight = 22f;
+    private const float TalentLineThickness = 5f;
 
     private T ResolveNode<T>(string path, string fallbackName = null)
         where T : Node
@@ -368,6 +391,292 @@ public partial class BattleReady : Control
         fence.QueueSort();
     }
 
+    private void RefreshTalentTree(int characterIndex)
+    {
+        ClearTalentTree();
+
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+        {
+            if (TalentPointLabel != null)
+                TalentPointLabel.Text = "天赋点 0";
+            return;
+        }
+
+        var info = players[characterIndex];
+        info.UnlockedTalents ??= new List<string>();
+        players[characterIndex] = info;
+
+        if (TalentPointLabel != null)
+            TalentPointLabel.Text = $"天赋点 {info.TalentPoints}";
+
+        var nodes = TalentTree.GetNodes(info.CharacterName);
+        var nodesById = nodes.ToDictionary(node => node.Id);
+
+        foreach (var node in nodes)
+        {
+            foreach (string prerequisiteId in node.Prerequisites)
+            {
+                if (!nodesById.TryGetValue(prerequisiteId, out var prerequisite))
+                    continue;
+
+                bool active = TalentTree.HasUnlocked(info, prerequisite.Id)
+                    && TalentTree.HasUnlocked(info, node.Id);
+                AddTalentConnection(prerequisite.Position, node.Position, active);
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            bool unlocked = TalentTree.HasUnlocked(info, node.Id);
+            bool canUnlock = TalentTree.CanUnlock(info, node, out string reason);
+            var button = CreateTalentNodeControl(characterIndex, node, unlocked, canUnlock, reason);
+            TalentTreeRoot.AddChild(button);
+        }
+    }
+
+    private void ClearTalentTree()
+    {
+        for (int i = TalentTreeRoot.GetChildCount() - 1; i >= 0; i--)
+        {
+            var child = TalentTreeRoot.GetChild(i);
+            TalentTreeRoot.RemoveChild(child);
+            child.QueueFree();
+        }
+    }
+
+    private Control CreateTalentNodeControl(
+        int characterIndex,
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        var wrapper = new Control
+        {
+            Position = node.Position,
+            Size = new Vector2(TalentNodeWidth, TalentNodeHeight + TalentNodeLabelHeight),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        var button = new Button
+        {
+            Position = Vector2.Zero,
+            Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            Text = GetTalentIconText(node),
+            TooltipText = string.Empty,
+            FocusMode = FocusModeEnum.None,
+            Flat = false,
+            Disabled = false,
+        };
+
+        button.AddThemeFontSizeOverride("font_size", 30);
+        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
+        button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
+        button.AddThemeStyleboxOverride("pressed", CreateTalentNodeStyle(unlocked, canUnlock, 0.22f));
+        button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
+        button.MouseExited += HideTalentTooltip;
+        button.Pressed += () => OnTalentNodePressed(characterIndex, node.Id);
+
+        var progressLabel = new Label
+        {
+            Position = new Vector2(0f, TalentNodeHeight - 2f),
+            Size = new Vector2(TalentNodeWidth, TalentNodeLabelHeight),
+            Text = unlocked ? "1/1" : "0/1",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        progressLabel.AddThemeFontSizeOverride("font_size", 15);
+        progressLabel.AddThemeColorOverride(
+            "font_color",
+            unlocked
+                ? new Color(1f, 0.88f, 0.54f, 1f)
+                : canUnlock
+                    ? new Color(0.82f, 0.94f, 1f, 0.95f)
+                    : new Color(0.58f, 0.64f, 0.72f, 0.72f)
+        );
+
+        wrapper.AddChild(button);
+        wrapper.AddChild(progressLabel);
+        return wrapper;
+    }
+
+    private Button CreateTalentNodeButton(
+        int characterIndex,
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        var button = new Button
+        {
+            Position = node.Position,
+            Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            Text =
+                $"{(unlocked ? "◆" : canUnlock ? "◇" : "·")} {node.DisplayName}\n阶段 {node.Stage + 1} / 消耗 {node.Cost}",
+            TooltipText = string.Empty,
+            FocusMode = FocusModeEnum.None,
+            Flat = false,
+            Disabled = unlocked || !canUnlock,
+        };
+
+        button.AddThemeFontSizeOverride("font_size", 13);
+        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
+        button.AddThemeColorOverride(
+            "font_disabled_color",
+            unlocked
+                ? new Color(1f, 0.86f, 0.52f, 0.92f)
+                : new Color(0.54f, 0.61f, 0.68f, 0.62f)
+        );
+        button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
+        button.AddThemeStyleboxOverride("pressed", CreateTalentNodeStyle(unlocked, canUnlock, 0.22f));
+        button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
+        button.MouseExited += HideTalentTooltip;
+        button.Pressed += () => OnTalentNodePressed(characterIndex, node.Id);
+        return button;
+    }
+
+    private void ShowTalentTooltip(
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        var tip = EnsureGlobalTooltip();
+        if (tip == null)
+            return;
+
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(24f, 20f);
+        tip.MinContentWidth = 360f;
+        tip.SetText(BuildTalentTooltipText(node, unlocked, canUnlock, reason));
+    }
+
+    private void HideTalentTooltip()
+    {
+        EnsureGlobalTooltip()?.HideTooltip();
+    }
+
+    private static string BuildTalentTooltipText(
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        string stateText = unlocked ? "已点亮" : canUnlock ? "可点亮" : reason;
+        string stateColor = unlocked ? "#ffd987" : canUnlock ? "#9ff5ff" : "#9aa3b5";
+        string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
+        string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
+            ? "暂未配置效果。"
+            : node.EffectDescription;
+
+        return
+            $"[b]{node.DisplayName}[/b]\n"
+            + $"[color=#cfd6e6]阶段 {node.Stage + 1} / 消耗 {node.Cost} 点天赋点[/color]\n"
+            + $"[color={stateColor}]{stateText}[/color]\n\n"
+            + $"[color=#9fb5d6]说明[/color]\n{description}\n\n"
+            + $"[color=#ffd987]效果[/color]\n{effect}";
+    }
+
+    private static StyleBoxFlat CreateTalentNodeStyle(bool unlocked, bool canUnlock, float hoverBoost)
+    {
+        Color borderColor = unlocked
+            ? new Color(1f, 0.78f, 0.38f, 0.88f)
+            : canUnlock
+                ? new Color(0.56f, 0.82f, 1f, 0.72f)
+                : new Color(0.35f, 0.44f, 0.55f, 0.46f);
+        Color bgColor = unlocked
+            ? new Color(0.34f, 0.22f, 0.08f, 0.56f + hoverBoost)
+            : canUnlock
+                ? new Color(0.08f, 0.17f, 0.25f, 0.54f + hoverBoost)
+                : new Color(0.05f, 0.08f, 0.12f, 0.38f);
+
+        return new StyleBoxFlat
+        {
+            BgColor = bgColor,
+            BorderColor = borderColor,
+            BorderWidthLeft = 4,
+            BorderWidthTop = 4,
+            BorderWidthRight = 4,
+            BorderWidthBottom = 4,
+            CornerRadiusTopLeft = 38,
+            CornerRadiusTopRight = 38,
+            CornerRadiusBottomRight = 38,
+            CornerRadiusBottomLeft = 38,
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 6,
+            ContentMarginBottom = 6,
+        };
+    }
+
+    private static string GetTalentIconText(TalentNodeDefinition node)
+    {
+        if (node.Id.EndsWith(".Core", StringComparison.Ordinal))
+            return "✦";
+        if (node.Id.EndsWith(".Attack1", StringComparison.Ordinal))
+            return "◇";
+        if (node.Id.EndsWith(".Attack2", StringComparison.Ordinal))
+            return "✧";
+        if (node.Id.EndsWith(".Survive1", StringComparison.Ordinal))
+            return "◆";
+        return "✹";
+    }
+
+    private void AddTalentConnection(Vector2 fromPosition, Vector2 toPosition, bool active)
+    {
+        Color color = active
+            ? new Color(1f, 0.76f, 0.36f, 0.72f)
+            : new Color(0.48f, 0.62f, 0.78f, 0.28f);
+        Vector2 start = fromPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+        Vector2 end = toPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+        AddTalentLine(start, end, color);
+    }
+
+    private void AddTalentLine(Vector2 start, Vector2 end, Color color)
+    {
+        var line = new Line2D
+        {
+            Points = [start, end],
+            Width = TalentLineThickness,
+            DefaultColor = color,
+            Antialiased = true,
+        };
+        TalentTreeRoot.AddChild(line);
+    }
+
+    private void OnTalentNodePressed(int characterIndex, string talentId)
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+            return;
+
+        var info = players[characterIndex];
+        if (TalentTree.TryUnlock(ref info, talentId, out string message))
+        {
+            players[characterIndex] = info;
+            SaveSystem.SaveAll();
+        }
+
+        GD.Print(message);
+        RefreshTalentTree(characterIndex);
+    }
+
     private PortaitFrame _dragTarget;
     private Vector2 _dragMouseOffset;
     private int _selectedCharacterIndex;
@@ -397,6 +706,7 @@ public partial class BattleReady : Control
         ApplyModeStateImmediate(_currentMode);
         ModeSelectorRoot.Resized += RefreshModeSelectorLayout;
         TacticsModeButton.Resized += RefreshModeSelectorLayout;
+        TalentModeButton.Resized += RefreshModeSelectorLayout;
         FormationModeButton.Resized += RefreshModeSelectorLayout;
         CharacterSelectRoot.Resized += RefreshCharacterSelectorLayout;
         foreach (var button in CharacterButtons)
@@ -508,6 +818,10 @@ public partial class BattleReady : Control
             new AssemblyItem(SkillAreaHeader, new Vector2(78f, 0f), 0.1f),
             new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.12f),
             new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.16f),
+            new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.16f),
+            new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.18f),
+            new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.20f),
+            new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.22f),
             new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.2f),
             new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.24f),
             new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.2f),
@@ -526,6 +840,16 @@ public partial class BattleReady : Control
                 new AssemblyItem(Grid, new Vector2(-60f, 28f), 0.18f),
                 new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.16f),
             ],
+            BattleReadyMode.Talent =>
+            [
+                new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
+                new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.08f),
+                new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.10f),
+                new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.14f),
+                new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.16f),
+                new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.18f),
+                new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.18f),
+            ],
             _ =>
             [
                 new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
@@ -536,7 +860,7 @@ public partial class BattleReady : Control
                 new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.16f),
                 new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.2f),
                 new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.22f),
-                new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.26f),
+                new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.28f),
                 new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.18f),
             ],
         };
@@ -550,6 +874,7 @@ public partial class BattleReady : Control
     private void WireModeSelector()
     {
         TacticsModeButton.Pressed += () => OnModeButtonPressed(BattleReadyMode.Tactics);
+        TalentModeButton.Pressed += () => OnModeButtonPressed(BattleReadyMode.Talent);
         FormationModeButton.Pressed += () => OnModeButtonPressed(BattleReadyMode.Formation);
         SnapModeSelectorToCurrentButton();
     }
@@ -580,6 +905,8 @@ public partial class BattleReady : Control
 
             _currentMode = targetMode;
             SetModeVisible(_currentMode, true);
+            if (_currentMode == BattleReadyMode.Talent)
+                RefreshTalentTree(_selectedCharacterIndex);
             await AnimateModeEnterAsync(_currentMode);
         }
         finally
@@ -652,14 +979,23 @@ public partial class BattleReady : Control
     {
         _currentMode = mode;
         SetModeVisible(BattleReadyMode.Tactics, mode == BattleReadyMode.Tactics);
+        SetModeVisible(BattleReadyMode.Talent, mode == BattleReadyMode.Talent);
         SetModeVisible(BattleReadyMode.Formation, mode == BattleReadyMode.Formation);
         ResetModeItemsToBase(
             BattleReadyMode.Tactics,
             mode == BattleReadyMode.Tactics ? 1.0f : 0.0f
         );
         ResetModeItemsToBase(
+            BattleReadyMode.Talent,
+            mode == BattleReadyMode.Talent ? 1.0f : 0.0f
+        );
+        ResetModeItemsToBase(
             BattleReadyMode.Formation,
             mode == BattleReadyMode.Formation ? 1.0f : 0.0f
+        );
+        SetControlAlpha(
+            CharacterSelectRoot,
+            mode is BattleReadyMode.Tactics or BattleReadyMode.Talent ? 1.0f : 0.0f
         );
         UpdateModeButtonState(mode);
         UpdateModeSelectorPosition(mode, false);
@@ -687,6 +1023,14 @@ public partial class BattleReady : Control
                 new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.08f),
                 new AssemblyItem(Grid, new Vector2(-60f, 28f), 0.12f),
             ],
+            BattleReadyMode.Talent =>
+            [
+                new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
+                new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.06f),
+                new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.10f),
+                new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.12f),
+                new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.14f),
+            ],
             _ =>
             [
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
@@ -696,7 +1040,7 @@ public partial class BattleReady : Control
                 new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.12f),
                 new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.16f),
                 new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.20f),
-                new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.24f),
+                new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.26f),
             ],
         };
     }
@@ -715,20 +1059,33 @@ public partial class BattleReady : Control
 
     private void SetModeVisible(BattleReadyMode mode, bool visible)
     {
-        var root = mode == BattleReadyMode.Formation ? FormationModeRoot : TacticsModeRoot;
+        var root = mode switch
+        {
+            BattleReadyMode.Formation => FormationModeRoot,
+            BattleReadyMode.Talent => TalentModeRoot,
+            _ => TacticsModeRoot,
+        };
         root.Visible = visible;
         root.MouseFilter = visible ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+
+        bool showCharacterSelector = _currentMode is BattleReadyMode.Tactics or BattleReadyMode.Talent;
+        CharacterSelectRoot.Visible = showCharacterSelector;
+        CharacterSelectRoot.MouseFilter = showCharacterSelector
+            ? MouseFilterEnum.Stop
+            : MouseFilterEnum.Ignore;
     }
 
     private void SetModeSelectorEnabled(bool enabled)
     {
         TacticsModeButton.Disabled = !enabled;
+        TalentModeButton.Disabled = !enabled;
         FormationModeButton.Disabled = !enabled;
     }
 
     private void UpdateModeButtonState(BattleReadyMode mode)
     {
         SetModeButtonState(TacticsModeButton, mode == BattleReadyMode.Tactics);
+        SetModeButtonState(TalentModeButton, mode == BattleReadyMode.Talent);
         SetModeButtonState(FormationModeButton, mode == BattleReadyMode.Formation);
     }
 
@@ -758,7 +1115,12 @@ public partial class BattleReady : Control
 
     private void UpdateModeSelectorPosition(BattleReadyMode mode, bool animate)
     {
-        var button = mode == BattleReadyMode.Formation ? FormationModeButton : TacticsModeButton;
+        var button = mode switch
+        {
+            BattleReadyMode.Formation => FormationModeButton,
+            BattleReadyMode.Talent => TalentModeButton,
+            _ => TacticsModeButton,
+        };
         if (button == null || !GodotObject.IsInstanceValid(button))
             return;
 
@@ -855,11 +1217,47 @@ public partial class BattleReady : Control
     {
         var tip = GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
         if (tip != null)
-            tip.Visible = false;
+            tip.HideTooltip();
 
         var buffTip = GetTree().Root.GetNodeOrNull<Tip>("TipLayer/BuffTip");
         if (buffTip != null)
-            buffTip.Visible = false;
+            buffTip.HideTooltip();
+    }
+
+    private CanvasLayer EnsureTipLayer()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer != null)
+            return layer;
+
+        layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+        root.AddChild(layer);
+        return layer;
+    }
+
+    private Tip EnsureGlobalTooltip()
+    {
+        var layer = EnsureTipLayer();
+        if (layer == null)
+            return null;
+
+        var tip = layer.GetNodeOrNull<Tip>("Tip");
+        if (tip != null)
+            return tip;
+
+        if (TipScene == null)
+            return null;
+
+        tip = TipScene.Instantiate<Tip>();
+        tip.Name = "Tip";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(24f, 20f);
+        layer.AddChild(tip);
+        return tip;
     }
 
     public override void _Process(double delta)
@@ -957,7 +1355,7 @@ public partial class BattleReady : Control
             }
 
             if (!string.IsNullOrWhiteSpace(players[i].PortaitPath))
-                portrait.PortaitRect.Texture = GD.Load<Texture2D>(players[i].PortaitPath);
+                portrait.PortaitRect.Texture = PreloadeScene.GetTexture(players[i].PortaitPath);
 
             portrait.PortaitIndex = i;
             int positionindex = players[i].PositionIndex;
@@ -1072,7 +1470,10 @@ public partial class BattleReady : Control
 
     private async void OnCharacterButtonPressed(int characterIndex)
     {
-        if (_currentMode != BattleReadyMode.Tactics || _isModeTransitioning)
+        if (
+            _currentMode is not (BattleReadyMode.Tactics or BattleReadyMode.Talent)
+            || _isModeTransitioning
+        )
             return;
 
         await SelectCharacter(characterIndex);
@@ -1090,6 +1491,7 @@ public partial class BattleReady : Control
         if (characterIndex == _selectedCharacterIndex && HasSkillButtons())
         {
             UpdateCharacterButtonState(true);
+            RefreshTalentTree(characterIndex);
             return;
         }
 
@@ -1097,6 +1499,7 @@ public partial class BattleReady : Control
         UpdateCharacterButtonState(true);
         await ClearSkillContainer();
         PopulateSkillButtons(characterIndex);
+        RefreshTalentTree(characterIndex);
     }
 
     private void PopulateSkillButtons(int characterIndex)
@@ -1181,6 +1584,7 @@ public partial class BattleReady : Control
         UpdateCharacterButtonState(false);
         await ClearSkillContainer();
         PopulateSkillButtons(_selectedCharacterIndex);
+        RefreshTalentTree(_selectedCharacterIndex);
     }
 
     public void ComfirmTactics()

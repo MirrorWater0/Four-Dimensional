@@ -31,6 +31,9 @@ public partial class PreloadeScene : Node2D
     public bool WarmupAllBattleEffectScenes = true;
 
     [Export]
+    public bool WarmupAllBuffIconScenes = true;
+
+    [Export]
     public bool WarmupAllBattleUIScenes = false;
 
     [Export]
@@ -38,6 +41,9 @@ public partial class PreloadeScene : Node2D
 
     [Export]
     public bool WarmupAllSkills = true;
+
+    [Export]
+    public bool PreloadSkillArtTextures = true;
 
     [Export]
     public int ShaderWarmupMaxCount = 0;
@@ -50,6 +56,18 @@ public partial class PreloadeScene : Node2D
 
     [Export]
     public int WarmupSceneYieldFrames = 1;
+
+    [Export]
+    public int PreloadSceneBatchSize = 8;
+
+    [Export]
+    public int SkillWarmupBatchSize = 12;
+
+    [Export]
+    public int TexturePreloadBatchSize = 10;
+
+    [Export]
+    public bool LogPreloadedResources = false;
 
     private Node _sceneHolder;
     private Node _warmupHolder;
@@ -64,8 +82,41 @@ public partial class PreloadeScene : Node2D
     public static Dictionary<string, Texture2D> PreloadedTextures =
         new Dictionary<string, Texture2D>();
 
+    public static PackedScene GetPackedScene(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        if (PreloadedScenes.TryGetValue(path, out var scene) && scene != null)
+            return scene;
+
+        scene = GD.Load<PackedScene>(path);
+        if (scene != null)
+            PreloadedScenes[path] = scene;
+        return scene;
+    }
+
+    public static Texture2D GetTexture(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        if (PreloadedTextures.TryGetValue(path, out var texture) && texture != null)
+            return texture;
+
+        if (!ResourceLoader.Exists(path))
+            return null;
+
+        texture = GD.Load<Texture2D>(path);
+        if (texture != null)
+            PreloadedTextures[path] = texture;
+        return texture;
+    }
+
     public override async void _Ready()
     {
+        UserSettings.EnsureLoaded();
+
         _sceneHolder = GetNodeOrNull<Node>("SceneHolder");
         _warmupHolder = GetNodeOrNull<Node>("WarmupHolder");
         _shaderWarmupRect = GetNodeOrNull<ColorRect>("FadeLayer/ShaderWarmupRect");
@@ -77,15 +128,15 @@ public partial class PreloadeScene : Node2D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
         GD.Print("--- Start Preloading Scenes ---");
-        ScanAndLoad("res://");
+        await ScanAndLoadAsync("res://");
         GD.Print($"--- Finished Preloading. Loaded {PreloadedScenes.Count} scenes ---");
 
         GD.Print("--- Start Preloading Textures ---");
-        PreloadCharacterPortraits();
+        await PreloadTexturesAsync();
         GD.Print($"--- Finished Preloading. Loaded {PreloadedTextures.Count} textures ---");
 
         await WarmupInstantiateScenesAsync();
-        WarmupSkills();
+        await WarmupSkillsAsync();
         await WarmupShadersAsync();
         LoadMainSceneIntoHolder();
 
@@ -221,6 +272,12 @@ public partial class PreloadeScene : Node2D
                 result.Add(path);
         }
 
+        if (WarmupAllBuffIconScenes)
+        {
+            foreach (var path in ScanScenePaths("res://battle/buff"))
+                result.Add(path);
+        }
+
         if (WarmupAllBattleUIScenes)
         {
             foreach (var path in ScanScenePaths("res://battle/UIScene"))
@@ -293,6 +350,63 @@ public partial class PreloadeScene : Node2D
         return results;
     }
 
+    private List<string> ScanTexturePaths(string dirPath)
+    {
+        var results = new List<string>();
+        using var dir = DirAccess.Open(dirPath);
+        if (dir == null)
+            return results;
+
+        dir.ListDirBegin();
+        string fileName = dir.GetNext();
+        while (fileName != "")
+        {
+            if (dir.CurrentIsDir())
+            {
+                if (!fileName.StartsWith("."))
+                    results.AddRange(ScanTexturePaths(dirPath.PathJoin(fileName)));
+            }
+            else if (
+                fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                || fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                || fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
+                || fileName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                || fileName.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                results.Add(dirPath.PathJoin(fileName));
+            }
+
+            fileName = dir.GetNext();
+        }
+
+        return results;
+    }
+
+    private async System.Threading.Tasks.Task PreloadTexturesAsync()
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddCharacterPortraitPaths(paths);
+
+        if (PreloadSkillArtTextures)
+        {
+            foreach (var path in ScanTexturePaths("res://asset/CardPicture"))
+                paths.Add(path);
+            foreach (var path in ScanTexturePaths("res://asset/svg/SkillIcon"))
+                paths.Add(path);
+        }
+
+        int batchSize = Math.Max(1, TexturePreloadBatchSize);
+        int loaded = 0;
+        foreach (var path in paths)
+        {
+            LoadTexture(path);
+            loaded++;
+            if (loaded % batchSize == 0)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+    }
+
     private async System.Threading.Tasks.Task WarmupShadersAsync()
     {
         if (!WarmupAllShaders)
@@ -337,7 +451,7 @@ public partial class PreloadeScene : Node2D
         _shaderWarmupRect.Visible = false;
     }
 
-    private void WarmupSkills()
+    private async System.Threading.Tasks.Task WarmupSkillsAsync()
     {
         if (!WarmupAllSkills)
             return;
@@ -345,6 +459,7 @@ public partial class PreloadeScene : Node2D
         try
         {
             var ids = (SkillID[])Enum.GetValues(typeof(SkillID));
+            int warmed = 0;
             foreach (var id in ids)
             {
                 var skill = Skill.GetSkill(id);
@@ -360,6 +475,10 @@ public partial class PreloadeScene : Node2D
                 {
                     GD.PrintErr($"Warmup skill failed: {id} ({e.Message})");
                 }
+
+                warmed++;
+                if (SkillWarmupBatchSize > 0 && warmed % SkillWarmupBatchSize == 0)
+                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
         }
         catch (Exception e)
@@ -379,6 +498,18 @@ public partial class PreloadeScene : Node2D
                 instance.QueueFree();
         }
         _warmupInstances.Clear();
+    }
+
+    private async System.Threading.Tasks.Task ScanAndLoadAsync(string dirPath)
+    {
+        var paths = ScanScenePaths(dirPath);
+        int batchSize = Math.Max(1, PreloadSceneBatchSize);
+        for (int i = 0; i < paths.Count; i++)
+        {
+            LoadResource(paths[i]);
+            if ((i + 1) % batchSize == 0)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
     }
 
     private void ScanAndLoad(string dirPath)
@@ -428,7 +559,8 @@ public partial class PreloadeScene : Node2D
             if (resource != null)
             {
                 PreloadedScenes[path] = resource;
-                GD.Print($"Preloaded: {path}");
+                if (LogPreloadedResources)
+                    GD.Print($"Preloaded: {path}");
             }
         }
         catch (Exception e)
@@ -437,8 +569,11 @@ public partial class PreloadeScene : Node2D
         }
     }
 
-    private void PreloadCharacterPortraits()
+    private void AddCharacterPortraitPaths(ISet<string> paths)
     {
+        if (paths == null)
+            return;
+
         // Player characters
         string[] playerPortraits = new string[]
         {
@@ -465,10 +600,10 @@ public partial class PreloadeScene : Node2D
         };
 
         foreach (var path in playerPortraits)
-            LoadTexture(path);
+            paths.Add(path);
 
         foreach (var path in enemyPortraits)
-            LoadTexture(path);
+            paths.Add(path);
     }
 
     private void LoadTexture(string path)
@@ -481,7 +616,8 @@ public partial class PreloadeScene : Node2D
                 if (texture != null)
                 {
                     PreloadedTextures[path] = texture;
-                    GD.Print($"Preloaded texture: {path}");
+                    if (LogPreloadedResources)
+                        GD.Print($"Preloaded texture: {path}");
                 }
             }
         }

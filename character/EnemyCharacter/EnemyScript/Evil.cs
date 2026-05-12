@@ -71,10 +71,10 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 65;
-        Power = 13;
-        Survivability = 10;
-        Speed = 8;
+        MaxLife = 45;
+        Power = 10;
+        Survivability = 7;
+        Speed = 5;
         SpecialIntentThreshold = 3;
 
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
@@ -110,7 +110,7 @@ public partial class EvilSurvive : Skill
 {
     private const int SurvivabilityGain = 3;
     private const int BaseBlock = 8;
-    private const int DescendingNum = 3;
+    private const int DescendingNum = 4;
 
     public EvilSurvive()
         : base(SkillTypes.Survive)
@@ -126,7 +126,7 @@ public partial class EvilSurvive : Skill
             this,
             BlockStep(0, BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            LowerTargetPropertyStep(PropertyType.Power, DescendingNum)
+            LowerTargetPropertyStep(PropertyType.Survivability, DescendingNum)
         );
     }
 }
@@ -141,7 +141,7 @@ public partial class EvilTermin : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { set; get; } = "虚空回响";
+    public override string SkillName { set; get; } = "虚空终结";
     public override int EnergyCost => XEnergyCost;
 
     protected override SkillPlan BuildPlan()

@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design.Serialization;
-using System.IO;
-using System.Runtime.CompilerServices;
-using Godot;
 
 public partial class GameEvent
 {
     public string EventName { get; private set; }
     public string Text { get; private set; }
     public EventOption[] Options { get; private set; }
+
     public static readonly GameEvent[] Catalog =
     [
         Event(
@@ -33,10 +30,7 @@ public partial class GameEvent
                 + "加密芯片尚未烧毁，只是供能极不稳定。\n"
                 + "你可以读取残存记录，也可以直接拆下还能用的模块。",
             Option("解码事故航迹", electricityChange: 90, transitionEnergyChange: -1),
-            Option(
-                "拆下完整模块",
-                equipmentReward: RewardList(Equipment.EquipmentName.EchoCore)
-            ),
+            Option("拆下完整模块", electricityChange: 90),
             Option("写入伪装日志后离开", electricityChange: 30)
         ),
         Event(
@@ -61,17 +55,11 @@ public partial class GameEvent
         ),
         Event(
             "废弃军械舱",
-            "密封门后是一间被炸开的军械舱，备用挂架上还固定着几件可用装备。\n"
+            "密封门后是一间被炸开的军械舱，备用挂架上只剩一些可拆解零件。\n"
                 + "你没有足够时间全部带走，只能在高风险输出和稳态防护之间做选择。\n"
-                + "也可以放弃装备，把能拆下来的零件直接换成电力币。",
-            Option(
-                "取走裂隙短刃",
-                equipmentReward: RewardList(Equipment.EquipmentName.RiftBlade)
-            ),
-            Option(
-                "取走相位肩甲",
-                equipmentReward: RewardList(Equipment.EquipmentName.PhaseShoulder)
-            ),
+                + "也可以放弃搜刮，把能拆下来的零件直接换成电力币。",
+            Option("回收高能模块", electricityChange: 90),
+            Option("回收防护模块", electricityChange: 90),
             Option("拆解剩余零件", electricityChange: 90)
         ),
         Event(
@@ -112,17 +100,11 @@ public partial class GameEvent
         ),
         Event(
             "静默圣所",
-            "一间被切断外部通信的独立舱室安静得异常，中央只留下一套简易祭台和存放柜。\n"
-                + "柜体里保存着尚未被取走的防护部件，墙面上则反复滚动着一段静默训练守则。\n"
-                + "你可以带走装备，也可以短暂停留，恢复航程节奏。",
-            Option(
-                "带走缄默吊坠",
-                equipmentReward: RewardList(Equipment.EquipmentName.SilentPendant)
-            ),
-            Option(
-                "展开折叠护壁并收纳",
-                equipmentReward: RewardList(Equipment.EquipmentName.FoldedBulwark)
-            ),
+            "一间被切断外部通信的独立舱室安静得异常，中央只留下简易祭台和存放柜。\n"
+                + "柜体里的防护部件已经失效，墙面上则反复滚动着一段静默训练守则。\n"
+                + "你可以拆解柜体，也可以短暂停留，恢复航程节奏。",
+            Option("拆解存放柜", electricityChange: 90),
+            Option("展开折叠护壁并拆解", electricityChange: 90),
             Option("遵循守则静坐片刻", transitionEnergyChange: 2)
         ),
     ];
@@ -142,7 +124,6 @@ public partial class GameEvent
         Dictionary<PropertyType, int> propertyChange = null,
         bool randomChange = false,
         bool exit = true,
-        List<Equipment> equipmentReward = null,
         int transitionEnergyChange = 0,
         int electricityChange = 0
     )
@@ -153,7 +134,6 @@ public partial class GameEvent
             PropertyChange = propertyChange,
             RandomChange = randomChange,
             Exit = exit,
-            EquipmentReward = equipmentReward,
             TransitionEnergyChange = transitionEnergyChange,
             ElectricityChange = electricityChange,
         };
@@ -169,21 +149,6 @@ public partial class GameEvent
             result[pairs[i].type] = pairs[i].value;
         return result;
     }
-
-    private static List<Equipment> RewardList(params Equipment.EquipmentName[] names)
-    {
-        if (names == null || names.Length == 0)
-            return null;
-
-        var result = new List<Equipment>(names.Length);
-        for (int i = 0; i < names.Length; i++)
-        {
-            var equipment = Equipment.Create(names[i]);
-            if (equipment != null)
-                result.Add(equipment);
-        }
-        return result;
-    }
 }
 
 public class EventOption
@@ -191,7 +156,6 @@ public class EventOption
     public Dictionary<PropertyType, int> PropertyChange;
     public bool RandomChange = false;
     public bool Exit;
-    public List<Equipment> EquipmentReward;
     public int TransitionEnergyChange;
     public int ElectricityChange;
     public string Text;

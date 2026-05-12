@@ -5,9 +5,19 @@ using Godot;
 
 public partial class Armon : EnemyCharacter
 {
+    private const int FirstTurnEndBlockMultiplier = 2;
+    private const int SecondTurnStartPowerGain = 5;
+
+    private int _turnStartCount;
+    private bool _grantedFirstTurnEndBlock;
+
     public const string PassiveNameText = "矩阵核心";
     public const string PassiveDescriptionText =
         "战斗开始时：全队获得等同于该角色生存的格挡。\n回合结束时：全队获得等同于该角色生存的格挡。";
+
+    public static string UpdatedPassiveDescriptionText =>
+        $"第一次回合结束时：全阵获得{FirstTurnEndBlockMultiplier}x（生存）点格挡。\n"
+        + $"第二次回合开始时：全阵获得{SecondTurnStartPowerGain}点力量。";
 
     public override string CharacterName { get; set; } = "Armon";
 
@@ -15,13 +25,28 @@ public partial class Armon : EnemyCharacter
     {
         base.Initialize();
         PassiveName = PassiveNameText;
-        PassiveDescription = PassiveDescriptionText;
-        BattleNode.StartEffectList.Add(StartPassive);
+        PassiveDescription = UpdatedPassiveDescriptionText;
+        _turnStartCount = 0;
+        _grantedFirstTurnEndBlock = false;
+    }
+
+    public override async void OnTurnStart()
+    {
+        base.OnTurnStart();
+
+        _turnStartCount++;
+        if (_turnStartCount == 2)
+            await GrantFormationPower();
     }
 
     public override void OnTurnEnd()
     {
-        GrantFormationBlock();
+        if (!_grantedFirstTurnEndBlock)
+        {
+            _grantedFirstTurnEndBlock = true;
+            GrantFormationBlock();
+        }
+
         base.OnTurnEnd();
     }
 
@@ -32,7 +57,7 @@ public partial class Armon : EnemyCharacter
 
         using var _ = BeginEffectSource("被动");
 
-        int block = Math.Clamp(BattleSurvivability, 0, 999);
+        int block = Math.Clamp(BattleSurvivability * FirstTurnEndBlockMultiplier, 0, 999);
         var allies = BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true);
 
         foreach (var ally in allies.Where(x => x != null && x.State == CharacterState.Normal))
@@ -41,15 +66,18 @@ public partial class Armon : EnemyCharacter
         }
     }
 
-    public Task StartPassive()
+    private async Task GrantFormationPower()
     {
         using var _ = BeginEffectSource("被动");
-        var allies = BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true).ToArray();
+        if (BattleNode == null)
+            return;
+
+        var allies = BattleNode
+            .GetTeamCharacters(IsPlayer, includeSummons: true)
+            .Where(x => x != null && x.State == CharacterState.Normal)
+            .ToArray();
         for (int i = 0; i < allies.Length; i++)
-        {
-            allies[i].UpdataBlock(BattleSurvivability, source: this);
-        }
-        return Task.CompletedTask;
+            await allies[i].IncreaseProperties(PropertyType.Power, SecondTurnStartPowerGain, this);
     }
 }
 
@@ -62,16 +90,16 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 75;
-        Power = 10;
-        Survivability = 11;
-        Speed = 9;
+        MaxLife = 55;
+        Power = 7;
+        Survivability = 8;
+        Speed = 6;
         SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
         PassiveName = global::Armon.PassiveNameText;
-        PassiveDescription = global::Armon.PassiveDescriptionText;
+        PassiveDescription = global::Armon.UpdatedPassiveDescriptionText;
     }
 }
 
@@ -129,8 +157,7 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int BaseBlock = 3;
-    private const int PowerGainPerEnergy = 4;
+    private const int PowerGainPerEnergy = 3;
     private const int SurvivabilityGainPerEnergy = 2;
 
     public ArmonSpecial()
@@ -146,13 +173,20 @@ public partial class ArmonSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(BaseBlock),
             EnergyTimesWhileStep(
                 paidEnergyPerLoop: 2,
                 loopSteps: new[]
                 {
-                    ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy),
-                    ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGainPerEnergy),
+                    ModifyPropertyStep(
+                        PropertyType.Power,
+                        PowerGainPerEnergy,
+                        TargetReference.All
+                    ),
+                    ModifyPropertyStep(
+                        PropertyType.Survivability,
+                        SurvivabilityGainPerEnergy,
+                        TargetReference.All
+                    ),
                 }
             )
         );

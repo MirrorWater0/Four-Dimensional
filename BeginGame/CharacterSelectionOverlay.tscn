@@ -128,7 +128,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
+mouse_filter = 1
 color = Color(0.01, 0.02, 0.04, 0.84)
 
 [node name="SafeArea" type="MarginContainer" parent="." unique_id=1658685177]

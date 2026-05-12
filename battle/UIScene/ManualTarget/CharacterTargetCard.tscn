@@ -1,0 +1,105 @@
+[gd_scene format=3 uid="uid://cioh2s7aremxv"]
+
+[ext_resource type="Script" uid="uid://b65ojt88rj2rl" path="res://battle/UIScene/ManualTarget/CharacterTargetCard.cs" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.034, 0.049, 0.082, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.72, 1, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.83, 0.42, 0.95)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(1, 1, 1, 0)
+
+[node name="CharacterTargetCard" type="Control" unique_id=1506218204]
+custom_minimum_size = Vector2(190, 260)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 190.0
+offset_bottom = 260.0
+script = ExtResource("1_card")
+
+[node name="Panel" type="Panel" parent="." unique_id=541053181]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="Panel" unique_id=2079272308]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Stack" type="VBoxContainer" parent="Panel/Margin" unique_id=118588168]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Portrait" type="TextureRect" parent="Panel/Margin/Stack" unique_id=1447382796]
+custom_minimum_size = Vector2(170, 170)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="Label" parent="Panel/Margin/Stack" unique_id=1806359853]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 0.96)
+theme_override_font_sizes/font_size = 24
+text = "Select Target"
+horizontal_alignment = 1
+
+[node name="StatsLabel" type="Label" parent="Panel/Margin/Stack" unique_id=526899873]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.84, 0.95, 0.9)
+theme_override_font_sizes/font_size = 16
+text = "No Target"
+horizontal_alignment = 1
+
+[node name="Border" type="Panel" parent="." unique_id=1348526837]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hover")
+
+[node name="Button" type="Button" parent="." unique_id=1695467750]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button")

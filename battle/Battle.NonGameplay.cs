@@ -78,6 +78,7 @@ public partial class Battle
 
     public RichTextLabel BattleRecord => field ??= GetNodeOrNull<RichTextLabel>("UI/BattleRecord");
     public Button RecordButton => field ??= GetNodeOrNull<Button>("UI/RecordButton");
+    private Control ActionPoinBox => field ??= GetNodeOrNull<Control>("ActionPoinBox");
 
     private const float RecordSlideDuration = 0.2f;
     private const float RecordHideMargin = 18f;
@@ -88,8 +89,14 @@ public partial class Battle
     private const string RecordDamageColor = "#ff7b7b";
     private const string RecordHealColor = "#6bff8f";
     private const string RecordNeutralColor = "#d9e2f2";
+    private const string ActionPoinTooltipText =
+        "[b]\u884c\u52a8\u70b9\u4e0e\u901f\u5ea6[/b]\n"
+        + "\u6761\u4e0a\u6570\u5b57\u662f\u5f53\u524d\u884c\u52a8\u70b9\uff0c\u62ec\u53f7\u91cc\u662f\u8be5\u9635\u8425\u5b58\u6d3b\u6210\u5458\u7684\u603b\u901f\u5ea6\u3002\n\n"
+        + "\u89d2\u8272\u884c\u52a8\u7ed3\u675f\u540e\uff0c\u6240\u5c5e\u9635\u8425\u6309\u603b\u901f\u5ea6\u7d2f\u79ef\u884c\u52a8\u70b9\u3002\u8fbe\u5230 100 \u65f6\uff0c\u8be5\u9635\u8425\u83b7\u5f97\u4e00\u6b21\u989d\u5916\u51fa\u624b\u673a\u4f1a\uff0c\u5e76\u7ed9\u8fd9\u6b21\u884c\u52a8\u7684\u89d2\u8272 1 \u70b9\u80fd\u91cf\u548c 1 \u70b9\u62bd\u5361\u50a8\u5907\u3002";
 
     private bool _recordInitialized;
+    private bool _actionPoinTooltipInitialized;
+    private Tip _actionPoinTooltip;
     private bool _recordVisible;
     private float _recordVisibleLeft;
     private float _recordVisibleRight;
@@ -117,6 +124,7 @@ public partial class Battle
         }
 
         InitRecordButton();
+        InitActionPoinTooltip();
     }
 
     public override void _Process(double delta)
@@ -182,6 +190,75 @@ public partial class Battle
     {
         string line = $"[HoverPerf] {text}";
         GD.Print(line);
+    }
+
+    private void InitActionPoinTooltip()
+    {
+        if (_actionPoinTooltipInitialized)
+            return;
+
+        var actionPoinBox = ActionPoinBox;
+        if (actionPoinBox == null)
+            return;
+
+        _actionPoinTooltipInitialized = true;
+        actionPoinBox.MouseFilter = Control.MouseFilterEnum.Stop;
+        actionPoinBox.MouseEntered += ShowActionPoinTooltip;
+        actionPoinBox.MouseExited += HideActionPoinTooltip;
+        actionPoinBox.TreeExiting += HideActionPoinTooltip;
+
+        foreach (Node child in actionPoinBox.GetChildren())
+        {
+            if (child is Control control)
+                control.MouseFilter = Control.MouseFilterEnum.Pass;
+        }
+    }
+
+    private void ShowActionPoinTooltip()
+    {
+        var tip = EnsureActionPoinTooltip();
+        if (tip == null)
+            return;
+
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(20f, 22f);
+        tip.MinContentWidth = 430f;
+        tip.SetText(ActionPoinTooltipText);
+    }
+
+    private void HideActionPoinTooltip()
+    {
+        _actionPoinTooltip?.HideTooltip();
+    }
+
+    private Tip EnsureActionPoinTooltip()
+    {
+        if (_actionPoinTooltip != null && GodotObject.IsInstanceValid(_actionPoinTooltip))
+            return _actionPoinTooltip;
+
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer == null)
+        {
+            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            root.AddChild(layer);
+        }
+
+        _actionPoinTooltip = layer.GetNodeOrNull<Tip>("ActionPoinTip");
+        if (_actionPoinTooltip != null)
+            return _actionPoinTooltip;
+
+        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+        if (tipScene == null)
+            return null;
+
+        _actionPoinTooltip = tipScene.Instantiate<Tip>();
+        _actionPoinTooltip.Name = "ActionPoinTip";
+        layer.AddChild(_actionPoinTooltip);
+        return _actionPoinTooltip;
     }
 
     private static string GetCharacterLogName(Character character)
@@ -295,7 +372,8 @@ public partial class Battle
 
     public int GetLastRecordedDamageFromCurrentEffectSource(
         Character source = null,
-        Character target = null
+        Character target = null,
+        bool includeBlockedDamage = false
     )
     {
         EffectSourceContext context = GetCurrentEffectSourceContext();
@@ -313,7 +391,7 @@ public partial class Battle
             if (target != null && entry.TargetCharacter != target)
                 continue;
 
-            return entry.ActualDamage;
+            return includeBlockedDamage ? entry.ActualDamage + entry.BlockedDamage : entry.ActualDamage;
         }
 
         return 0;
@@ -355,6 +433,33 @@ public partial class Battle
         string action = delta > 0 ? "获得" : "失去";
         AppendRecordLine(
             $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] 点能量",
+            indent: true
+        );
+    }
+
+    public void RecordCardDrawReserveChange(Character target, int delta, Character source = null)
+    {
+        if (delta == 0)
+            return;
+
+        string sourceText = FormatRecordSource(source);
+        string targetText = FormatRecordActor(target, RecordTargetColor);
+        string action = delta > 0 ? "\u83b7\u5f97" : "\u5931\u53bb";
+        AppendRecordLine(
+            $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] \u70b9\u62bd\u5361\u50a8\u5907",
+            indent: true
+        );
+    }
+
+    public void RecordCardDrawReserveUse(Character actor, int reserveCost, int drawnCards)
+    {
+        if (actor == null || reserveCost <= 0 || drawnCards <= 0)
+            return;
+
+        string sourceText = FormatRecordSource(actor);
+        string targetText = FormatRecordActor(actor, RecordTargetColor);
+        AppendRecordLine(
+            $"{sourceText} -> {targetText}  \u4f7f\u7528  [color={RecordNeutralColor}]{reserveCost}[/color] \u70b9\u62bd\u5361\u50a8\u5907\uff0c\u62bd\u53d6  [color={RecordNeutralColor}]{drawnCards}[/color] \u5f20\u724c",
             indent: true
         );
     }

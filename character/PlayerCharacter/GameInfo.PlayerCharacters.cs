@@ -4,6 +4,32 @@ using System.Linq;
 
 public static partial class GameInfo
 {
+    private static readonly SkillID[] StarterBattleDeck =
+    [
+        SkillID.BasicDefense,
+        SkillID.BasicGuard,
+        SkillID.BasicAttack,
+        SkillID.BasicAttack,
+        SkillID.BasicSpecial,
+    ];
+
+    private static readonly SkillID[] NightingaleStarterBattleDeck =
+    [
+        SkillID.BasicDefense,
+        SkillID.BasicGuard,
+        SkillID.BasicAttack,
+        SkillID.BasicAttack,
+        SkillID.NightingaleEnergy,
+    ];
+
+    private static readonly HashSet<SkillID> BasicSkillIds =
+    [
+        SkillID.BasicAttack,
+        SkillID.BasicDefense,
+        SkillID.BasicGuard,
+        SkillID.BasicSpecial,
+    ];
+
     public static void NormalizePlayerCharacters()
     {
         if (PlayerCharacters == null)
@@ -37,11 +63,18 @@ public static partial class GameInfo
         {
             var info = PlayerCharacters[i];
             info.GainedSkills ??= new List<SkillID>();
-            foreach (var skillId in info.TakenSkills ?? Array.Empty<SkillID>())
+            if (IsStarterBasicOnlyDeck(info.GainedSkills))
             {
-                if (!info.GainedSkills.Contains(skillId))
+                info.GainedSkills = new List<SkillID>(GetStarterBattleDeck(info));
+            }
+            else
+            {
+                foreach (var skillId in info.TakenSkills ?? Array.Empty<SkillID>())
                 {
-                    info.GainedSkills.Add(skillId);
+                    if (!info.GainedSkills.Contains(skillId))
+                    {
+                        info.GainedSkills.Add(skillId);
+                    }
                 }
             }
 
@@ -52,8 +85,9 @@ public static partial class GameInfo
     private static void NormalizePlayerInfo(ref PlayerInfoStructure info, int defaultPositionIndex)
     {
         info.GainedSkills ??= new List<SkillID>();
+        info.UnlockedTalents ??= new List<string>();
+        info.TalentPoints = Math.Max(0, info.TalentPoints);
         info.TakenSkills = NormalizeArray(info.TakenSkills, 3);
-        info.Equipments = NormalizeArray(info.Equipments, 2);
         if (info.PositionIndex <= 0)
         {
             info.PositionIndex = defaultPositionIndex;
@@ -125,6 +159,7 @@ public static partial class GameInfo
         var poolSet = pool.ToHashSet();
         poolSet.Add(SkillID.BasicAttack);
         poolSet.Add(SkillID.BasicDefense);
+        poolSet.Add(SkillID.BasicGuard);
         poolSet.Add(SkillID.BasicSpecial);
         var validGained = (info.GainedSkills ?? new List<SkillID>())
             .Where(poolSet.Contains)
@@ -153,6 +188,24 @@ public static partial class GameInfo
         }
 
         info.TakenSkills = normalized.Select(skill => skill ?? pool[0]).ToArray();
+    }
+
+    private static bool IsStarterBasicOnlyDeck(List<SkillID> gainedSkills)
+    {
+        return gainedSkills == null
+            || gainedSkills.Count == 0
+            || gainedSkills.All(BasicSkillIds.Contains);
+    }
+
+    private static SkillID[] GetStarterBattleDeck(PlayerInfoStructure info)
+    {
+        return string.Equals(
+            info.CharacterName,
+            "Nightingale",
+            StringComparison.OrdinalIgnoreCase
+        )
+            ? NightingaleStarterBattleDeck
+            : StarterBattleDeck;
     }
 
     private static SkillID PickReplacementSkill(

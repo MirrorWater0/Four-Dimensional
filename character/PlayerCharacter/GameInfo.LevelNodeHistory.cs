@@ -112,7 +112,6 @@ public static partial class GameInfo
         public int TransitionEnergy;
         public Dictionary<RelicID, int> Relics = new();
         public List<ItemID> Items = new();
-        public List<string> OwnedEquipmentNames = new();
         public List<Dictionary<SkillID, int>> PlayerGainedSkills = new();
         public PlayerPropertySnapshot[] PlayerProperties = Array.Empty<PlayerPropertySnapshot>();
 
@@ -128,7 +127,6 @@ public static partial class GameInfo
                 TransitionEnergy = GameInfo.TransitionEnergy,
                 Relics = CloneRelicMap(GameInfo.Relics),
                 Items = CloneItemList(GameInfo.Items),
-                OwnedEquipmentNames = CaptureOwnedEquipmentNames(GameInfo.OwnedEquipments),
                 PlayerGainedSkills = CapturePlayerGainedSkills(GameInfo.PlayerCharacters),
                 PlayerProperties = CapturePlayerProperties(GameInfo.PlayerCharacters),
             };
@@ -147,22 +145,13 @@ public static partial class GameInfo
                 SkillChanges = BuildSkillChanges(PlayerGainedSkills, GameInfo.PlayerCharacters),
                 GainedItems = BuildPositiveItemChanges(Items, GameInfo.Items),
                 ConsumedItems = BuildNegativeItemChanges(Items, GameInfo.Items),
-                EquipmentChanges = BuildEquipmentChanges(
-                    OwnedEquipmentNames,
-                    GameInfo.OwnedEquipments
-                ),
                 RelicChanges = BuildRelicChanges(Relics, GameInfo.Relics),
                 PermanentPropertyChanges = BuildPropertyChanges(
                     PlayerProperties,
                     GameInfo.PlayerCharacters
                 ),
-                EquipmentGainedCount = CountEquipmentGained(
-                    OwnedEquipmentNames,
-                    GameInfo.OwnedEquipments
-                ),
                 RelicGainedCount = CountRelicsGained(Relics, GameInfo.Relics),
                 NextBattleItemDropChance = GameInfo.BattleItemDropChance,
-                NextBattleEquipmentDropChance = GameInfo.BattleEquipmentDropChance,
             };
 
             if (record.EnemyNames.Count == 0 && EnemyNames.Count > 0)
@@ -292,14 +281,9 @@ public static partial class GameInfo
             EliteDefeated = records.Count(record => record.NodeType == LevelNode.LevelType.Elite),
             BossDefeated = records.Count(record => record.NodeType == LevelNode.LevelType.Boss),
             ElectricityCoinGained = records.Sum(record => record.ElectricityCoinGained),
-            EquipmentGained = records.Sum(record => record.EquipmentGainedCount),
             RelicGained = records.Sum(record => record.RelicGainedCount),
             NodeRecords = nodeRecords,
             RelicRecords = BuildRunRelicRecords(GameInfo.Relics),
-            EquipmentRecords = BuildRunEquipmentRecords(
-                GameInfo.OwnedEquipments,
-                GameInfo.PlayerCharacters
-            ),
             CharacterSkillRecords = BuildRunCharacterSkillRecords(GameInfo.PlayerCharacters),
         };
     }
@@ -358,13 +342,10 @@ public static partial class GameInfo
             SkillChanges = CopyStringList(source.SkillChanges),
             GainedItems = CopyStringList(source.GainedItems),
             ConsumedItems = CopyStringList(source.ConsumedItems),
-            EquipmentChanges = CopyStringList(source.EquipmentChanges),
-            EquipmentGainedCount = source.EquipmentGainedCount,
             RelicChanges = CopyStringList(source.RelicChanges),
             RelicGainedCount = source.RelicGainedCount,
             PermanentPropertyChanges = ClonePropertyChangeRecords(source.PermanentPropertyChanges),
             NextBattleItemDropChance = source.NextBattleItemDropChance,
-            NextBattleEquipmentDropChance = source.NextBattleEquipmentDropChance,
             Notes = CopyStringList(source.Notes),
             Summary = source.Summary,
         };
@@ -426,65 +407,6 @@ public static partial class GameInfo
 
         return result;
     }
-
-    private static List<RunHistoryEquipmentRecord> BuildRunEquipmentRecords(
-        List<Equipment> ownedEquipments,
-        PlayerInfoStructure[] players
-    )
-    {
-        var equipmentCounts = new Dictionary<Equipment.EquipmentName, (Equipment Equipment, int Count)>();
-        AddEquipmentRecords(equipmentCounts, ownedEquipments);
-
-        if (players != null)
-        {
-            foreach (var player in players)
-                AddEquipmentRecords(equipmentCounts, player.Equipments);
-        }
-
-        return equipmentCounts
-            .OrderBy(pair => GetEquipmentDisplayName(pair.Value.Equipment), StringComparer.Ordinal)
-            .Select(pair =>
-            {
-                var equipment = pair.Value.Equipment;
-                return new RunHistoryEquipmentRecord
-                {
-                    EquipmentName = pair.Key,
-                    DisplayName = GetEquipmentDisplayName(equipment),
-                    TypeLabel = equipment?.TypeLabel ?? string.Empty,
-                    Power = equipment?.Power ?? 0,
-                    Survivability = equipment?.Survivability ?? 0,
-                    Speed = equipment?.Speed ?? 0,
-                    MaxLife = equipment?.MaxLife ?? 0,
-                    Description = equipment?.Description ?? string.Empty,
-                    Count = pair.Value.Count,
-                };
-            })
-            .ToList();
-    }
-
-    private static void AddEquipmentRecords(
-        Dictionary<Equipment.EquipmentName, (Equipment Equipment, int Count)> equipmentCounts,
-        IEnumerable<Equipment> equipments
-    )
-    {
-        if (equipmentCounts == null || equipments == null)
-            return;
-
-        foreach (var equipment in equipments)
-        {
-            if (equipment == null)
-                continue;
-
-            if (!equipmentCounts.TryGetValue(equipment.Name, out var entry))
-            {
-                equipmentCounts[equipment.Name] = (Equipment.Clone(equipment), 1);
-                continue;
-            }
-
-            equipmentCounts[equipment.Name] = (entry.Equipment, entry.Count + 1);
-        }
-    }
-
     private static List<RunHistoryCharacterSkillRecord> BuildRunCharacterSkillRecords(
         PlayerInfoStructure[] players
     )
@@ -647,7 +569,7 @@ public static partial class GameInfo
         if (node.ElectricityCoinChange != 0)
             parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
         if (node.TransitionEnergyChange != 0)
-            parts.Add($"跃迁能量 {FormatSigned(node.TransitionEnergyChange)}");
+            parts.Add($"核心能源 {FormatSigned(node.TransitionEnergyChange)}");
 
         AddNodeRecordPart(parts, "技能", node.SkillChanges);
         AddNodeRecordPart(parts, "物品", node.GainedItems);
@@ -813,7 +735,7 @@ public static partial class GameInfo
             sb.Append($"\n电力币：{FormatSigned(record.ElectricityCoinChange)}");
 
         if (record.TransitionEnergyChange != 0)
-            sb.Append($"\n跃迁能量：{FormatSigned(record.TransitionEnergyChange)}");
+            sb.Append($"\n核心能源：{FormatSigned(record.TransitionEnergyChange)}");
 
         sb.Append(
             $"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%；普通装备 {record.NextBattleEquipmentDropChance}%"
@@ -954,15 +876,6 @@ public static partial class GameInfo
     {
         return source == null ? new List<ItemID>() : new List<ItemID>(source);
     }
-
-    private static List<string> CaptureOwnedEquipmentNames(List<Equipment> source)
-    {
-        if (source == null || source.Count == 0)
-            return new List<string>();
-
-        return source.Select(GetEquipmentDisplayName).ToList();
-    }
-
     private static List<Dictionary<SkillID, int>> CapturePlayerGainedSkills(
         PlayerInfoStructure[] players
     )
@@ -1082,27 +995,6 @@ public static partial class GameInfo
 
         return result;
     }
-
-    private static List<string> BuildEquipmentChanges(
-        List<string> beforeEquipmentNames,
-        List<Equipment> currentEquipments
-    )
-    {
-        var before = CountStrings(beforeEquipmentNames);
-        var after = CountStrings(CaptureOwnedEquipmentNames(currentEquipments));
-        return BuildCountedChanges(after, before, value => value);
-    }
-
-    private static int CountEquipmentGained(
-        List<string> beforeEquipmentNames,
-        List<Equipment> currentEquipments
-    )
-    {
-        var before = CountStrings(beforeEquipmentNames);
-        var after = CountStrings(CaptureOwnedEquipmentNames(currentEquipments));
-        return CountPositiveCountDifference(after, before);
-    }
-
     private static Dictionary<string, int> CountStrings(List<string> values)
     {
         var result = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -1262,14 +1154,5 @@ public static partial class GameInfo
         return skill == null || string.IsNullOrWhiteSpace(skill.SkillName)
             ? skillId.ToString()
             : skill.SkillName;
-    }
-
-    private static string GetEquipmentDisplayName(Equipment equipment)
-    {
-        if (equipment == null)
-            return "未知装备";
-        return string.IsNullOrWhiteSpace(equipment.DisplayName)
-            ? equipment.Name.ToString()
-            : equipment.DisplayName;
     }
 }

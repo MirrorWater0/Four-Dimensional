@@ -1,37 +1,75 @@
 using System;
-using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class FearWorm : EnemyCharacter
 {
     private const int PassiveDebuffImmunityStacks = 1;
-    private const int PassiveEndActionPowerGain = 2;
+    private const int PassiveAllyActionThreshold = 2;
+    private const int PassivePowerGain = 10;
+    private int _passiveAllyActionCount;
+    private Func<Character, Task> _allyActionEndedHandler;
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
         $"初始：获得{PassiveDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。\n"
-        + $"回合结束时：获得{PassiveEndActionPowerGain}点力量。";
+        + $"\u5176\u4ed6\u5df1\u65b9\u89d2\u8272\u6bcf\u884c\u52a8{PassiveAllyActionThreshold}\u6b21\uff1a\u83b7\u5f97{PassivePowerGain}\u70b9\u529b\u91cf\u3002";
 
     public override void Initialize()
     {
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
+        UpdatePassiveDescription();
         using var _ = BeginEffectSource("被动");
         SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, PassiveDebuffImmunityStacks, this);
+        _allyActionEndedHandler ??= OnAllyActionEnded;
+        if (BattleNode != null && !BattleNode.EmitList.Contains(_allyActionEndedHandler))
+            BattleNode.EmitList.Add(_allyActionEndedHandler);
+    }
+
+    public override void _ExitTree()
+    {
+        if (BattleNode != null && _allyActionEndedHandler != null)
+            BattleNode.EmitList.Remove(_allyActionEndedHandler);
+        base._ExitTree();
+    }
+
+    private Task OnAllyActionEnded(Character actingCharacter)
+    {
+        if (
+            actingCharacter == null
+            || actingCharacter == this
+            || actingCharacter.IsPlayer != IsPlayer
+            || actingCharacter.BattleNode != BattleNode
+            || State != CharacterState.Normal
+            || actingCharacter.IsSummon
+        )
+            return Task.CompletedTask;
+
+        _passiveAllyActionCount++;
+        UpdatePassiveDescription();
+        if (_passiveAllyActionCount < PassiveAllyActionThreshold)
+            return Task.CompletedTask;
+
+        _passiveAllyActionCount = 0;
+        UpdatePassiveDescription();
+        TriggerPassive(null);
+        return Task.CompletedTask;
+    }
+
+    private void UpdatePassiveDescription()
+    {
+        PassiveDescription =
+            $"{PassiveDescriptionText}\n\u5f53\u524d\u8ba1\u6570\uff1a{_passiveAllyActionCount}/{PassiveAllyActionThreshold}";
     }
 
     public override async void Passive(Skill skill)
     {
         using var _ = BeginEffectSource("被动");
-        await IncreaseProperties(PropertyType.Power, PassiveEndActionPowerGain, this);
+        await IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
 
-    public override void OnTurnEnd()
-    {
-        TriggerPassive(new Skill(Skill.SkillTypes.Survive));
-        base.OnTurnEnd();
-    }
 }
 
 public partial class FearWormRegedit : EnemyRegedit
@@ -43,10 +81,10 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 70;
-        Power = 15;
-        Survivability = 9;
-        Speed = 12;
+        MaxLife = 45;
+        Power = 12;
+        Survivability = 6;
+        Speed = 9;
         SpecialIntentThreshold = 2;
 
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
@@ -111,10 +149,10 @@ public partial class FearWormSurvive : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             BlockStep(0, BaseBlock),
-            CarryStep(target: RelativeTarget(1), skillIndex: 0)
+            CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
 }

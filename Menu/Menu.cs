@@ -23,6 +23,22 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/EncyclopediaButton");
     private Button SettingsButton =>
         field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/SettingsButton");
+    private Control MainButtons =>
+        field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/Buttons");
+    private Control SettingsPanel =>
+        field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/SettingsPanel");
+    private CheckBox DescriptionModeCheckBox =>
+        field ??= GetNodeOrNull<CheckBox>(
+            "CenterPanel/Margin/VBox/SettingsPanel/DescriptionModeCheckBox"
+        );
+    private CheckBox TurnOrderPreviewCheckBox =>
+        field ??= GetNodeOrNull<CheckBox>(
+            "CenterPanel/Margin/VBox/SettingsPanel/TurnOrderPreviewCheckBox"
+        );
+    private Button SettingsBackButton =>
+        field ??= GetNodeOrNull<Button>(
+            "CenterPanel/Margin/VBox/SettingsPanel/SettingsBackButton"
+        );
     private Tween _transitionTween;
 
     public override void _Ready()
@@ -49,6 +65,17 @@ public partial class Menu : Control
 
         if (SettingsButton != null)
             SettingsButton.Pressed += OnSettingsPressed;
+
+        if (DescriptionModeCheckBox != null)
+            DescriptionModeCheckBox.Pressed += OnDescriptionModePressed;
+
+        if (TurnOrderPreviewCheckBox != null)
+            TurnOrderPreviewCheckBox.Pressed += OnTurnOrderPreviewPressed;
+
+        if (SettingsBackButton != null)
+            SettingsBackButton.Pressed += ShowMainPanel;
+
+        RefreshSettingsPanel();
     }
 
     public void Toggle()
@@ -68,6 +95,7 @@ public partial class Menu : Control
         Visible = true;
         if (CenterPanel != null)
             CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
+        ShowMainPanel();
 
         _transitionTween = CreateTween();
         _transitionTween.SetParallel(true);
@@ -142,6 +170,12 @@ public partial class Menu : Control
 
     private void OnReturnPressed()
     {
+        if (SettingsPanel?.Visible == true)
+        {
+            ShowMainPanel();
+            return;
+        }
+
         Close();
     }
 
@@ -154,7 +188,53 @@ public partial class Menu : Control
 
     private void OnSettingsPressed()
     {
-        GD.Print("Settings menu is not implemented yet.");
+        ShowSettingsPanel();
+    }
+
+    private void OnDescriptionModePressed()
+    {
+        if (DescriptionModeCheckBox == null)
+            return;
+
+        UserSettings.SetCompactBattleCardDescriptions(DescriptionModeCheckBox.ButtonPressed);
+
+        var activeBattle = FindActiveBattle(GetTree()?.Root);
+        activeBattle?.CharacterControl?.RefreshDisplayedSkillDescriptions();
+    }
+
+    private void OnTurnOrderPreviewPressed()
+    {
+        if (TurnOrderPreviewCheckBox == null)
+            return;
+
+        UserSettings.SetBattleTurnOrderPreview(TurnOrderPreviewCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshTurnOrderPreviewFromSettings();
+    }
+
+    private void ShowSettingsPanel()
+    {
+        RefreshSettingsPanel();
+        if (MainButtons != null)
+            MainButtons.Visible = false;
+        if (SettingsPanel != null)
+            SettingsPanel.Visible = true;
+    }
+
+    private void ShowMainPanel()
+    {
+        if (SettingsPanel != null)
+            SettingsPanel.Visible = false;
+        if (MainButtons != null)
+            MainButtons.Visible = true;
+    }
+
+    private void RefreshSettingsPanel()
+    {
+        UserSettings.EnsureLoaded();
+        if (DescriptionModeCheckBox != null)
+            DescriptionModeCheckBox.ButtonPressed = UserSettings.UseCompactBattleCardDescriptions;
+        if (TurnOrderPreviewCheckBox != null)
+            TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
     }
 
     private void AbortActiveBattle(bool unlockMapNodes = true)

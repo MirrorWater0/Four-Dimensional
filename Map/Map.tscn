@@ -5,10 +5,8 @@
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
-[ext_resource type="Script" uid="uid://eud58fsjwpgj" path="res://Map/EquipmentButton.cs" id="9_eqbtn"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
-[ext_resource type="Shader" uid="uid://byfjhw3duk8p3" path="res://shader/UI/Button/Figure.gdshader" id="12_0g0qh"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
 [ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
 [ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
@@ -105,24 +103,6 @@ Button/styles/hover = SubResource("StyleBoxTexture_fl2tk")
 Button/styles/normal = SubResource("StyleBoxTexture_hgu68")
 Button/styles/pressed = SubResource("StyleBoxTexture_7mxfi")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_equipment_hover"]
-shader = ExtResource("8_vk5l4")
-shader_parameter/rotation_speed = 3.0
-shader_parameter/scale = 1.90000002086168
-shader_parameter/color = Color(0.16799998, 0.6159999, 0.84, 1)
-shader_parameter/thickness = 0.01999999950874
-shader_parameter/dist2 = 0.5000000074506
-shader_parameter/dist1 = 0.70000001043084
-shader_parameter/outer_ring_dist = 0.26999999396496
-shader_parameter/triangle_dist = 0.27999999374144
-shader_parameter/hover = 0.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_b3jsu"]
-shader = ExtResource("12_0g0qh")
-shader_parameter/shape_color = Color(0, 0.7999997, 1, 0.8862745)
-shader_parameter/hover = 0.0
-shader_parameter/line_thickness = 0.01
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status_panel"]
 bg_color = Color(0.03529412, 0.0627451, 0.09411765, 0.83137256)
 border_width_left = 2
@@ -136,6 +116,29 @@ corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 shadow_color = Color(0, 0, 0, 0.3137255)
 shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_core_energy_bg"]
+bg_color = Color(0.026, 0.041, 0.058, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.46666667, 0.85490197, 1, 0.72156864)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_core_energy_fill"]
+bg_color = Color(0.5310346, 0.76356995, 0.8728643, 0.9019608)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="Theme" id="Theme_core_energy"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_core_energy_bg")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_core_energy_fill")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
 shader = ExtResource("12_jq5q4")
@@ -488,36 +491,6 @@ offset_right = 1915.0
 offset_bottom = 91.0
 text = "x"
 
-[node name="EquipmentButton" type="Button" parent="UI" unique_id=326064623 node_paths=PackedStringArray("SiteUILayer")]
-material = SubResource("ShaderMaterial_equipment_hover")
-custom_minimum_size = Vector2(130, 130)
-offset_left = 1750.0
-offset_top = 699.0
-offset_right = 1880.0
-offset_bottom = 829.0
-focus_mode = 0
-flat = true
-script = ExtResource("9_eqbtn")
-SiteUILayer = NodePath("../../BattleReadyLayer")
-
-[node name="ColorRect" type="ColorRect" parent="UI/EquipmentButton" unique_id=425907821]
-material = SubResource("ShaderMaterial_b3jsu")
-layout_mode = 0
-offset_left = -32.0
-offset_top = -31.0
-offset_right = 163.0
-offset_bottom = 164.0
-mouse_filter = 1
-
-[node name="Label" type="Label" parent="UI/EquipmentButton" unique_id=1026316791]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 40.0
-offset_right = 102.0
-offset_bottom = 89.0
-theme = ExtResource("10_svc60")
-text = "装备"
-
 [node name="BattleReadyLayer" type="CanvasLayer" parent="." unique_id=1257121331]
 layer = 2
 
@@ -560,17 +533,31 @@ text = "00:00:00"
 [node name="SessionTimer" type="Timer" parent="PlayerResourceState" unique_id=1531783413]
 
 [node name="TransitionEnergyControl" type="HBoxContainer" parent="PlayerResourceState" unique_id=200816458]
-offset_right = 144.0
+offset_right = 365.0
 offset_bottom = 49.0
 scale = Vector2(0.8, 0.8)
+theme_override_constants/separation = 10
 
 [node name="Label" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=923755580]
 layout_mode = 2
 theme = ExtResource("10_svc60")
 text = "跃迁能量"
 
-[node name="HBoxContainer" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
+[node name="CoreEnergyBar" type="ProgressBar" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
+custom_minimum_size = Vector2(180, 20)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme = SubResource("Theme_core_energy")
+value = 100.0
+show_percentage = false
+
+[node name="CoreEnergyValue" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=1699986201]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+theme = ExtResource("10_svc60")
+text = "100/100"
+horizontal_alignment = 1
 
 [node name="Button2" type="Button" parent="PlayerResourceState/TransitionEnergyControl" unique_id=524157967]
 self_modulate = Color(1, 1, 1, 0)

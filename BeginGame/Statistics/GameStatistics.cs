@@ -52,6 +52,10 @@ public partial class GameStatistics : CanvasLayer
         field ??= GetNodeOrNull<HFlowContainer>(
             "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentGrid"
         );
+    private Control EquipmentSection =>
+        field ??= GetNodeOrNull<Control>(
+            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection"
+        );
     private Control CharacterSelectorRoot =>
         field ??= GetNodeOrNull<Control>(
             "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"
@@ -374,7 +378,6 @@ public partial class GameStatistics : CanvasLayer
         AddSummaryChip($"精英 {_currentRecord.EliteDefeated}", Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
         AddSummaryChip($"Boss {_currentRecord.BossDefeated}", Colors.White, new Color(0.34f, 0.14f, 0.26f, 0.92f));
         AddSummaryChip($"电力币 {_currentRecord.ElectricityCoinGained}", Colors.White, new Color(0.18f, 0.28f, 0.40f, 0.92f));
-        AddSummaryChip($"装备 {_currentRecord.EquipmentGained}", Colors.White, new Color(0.23f, 0.24f, 0.34f, 0.92f));
         AddSummaryChip($"遗物 {_currentRecord.RelicGained}", Colors.White, new Color(0.32f, 0.24f, 0.12f, 0.92f));
     }
 
@@ -549,10 +552,7 @@ public partial class GameStatistics : CanvasLayer
 
         if (icon is ColorRect colorRect)
         {
-            string shaderPath = Relic.GetIconShaderPath(record.RelicID);
-            var shader = string.IsNullOrWhiteSpace(shaderPath) ? null : GD.Load<Shader>(shaderPath);
-            if (shader != null)
-                colorRect.Material = new ShaderMaterial { Shader = shader };
+            Relic.ApplyIconVisual(colorRect, record.RelicID);
         }
 
         var countLabel = icon.GetNodeOrNull<Label>("Label");
@@ -573,25 +573,12 @@ public partial class GameStatistics : CanvasLayer
 
         wrapper.AddChild(icon);
         return wrapper;
-    }
-
-    private void RefreshEquipments()
+    }    private void RefreshEquipments()
     {
+        if (EquipmentSection != null)
+            EquipmentSection.Visible = false;
         ClearChildren(EquipmentGrid);
-        if (EquipmentGrid == null)
-            return;
-
-        var records = GetEquipmentRecords();
-        if (records.Count == 0)
-        {
-            EquipmentGrid.AddChild(CreateEmptyLabel("没有装备记录"));
-            return;
-        }
-
-        foreach (var record in records)
-            EquipmentGrid.AddChild(CreateEquipmentRecordLabel(record));
     }
-
     private Control CreateEquipmentRecordLabel(RunHistoryEquipmentRecord record)
     {
         string count = record.Count > 1 ? $" x{record.Count}" : string.Empty;
@@ -826,7 +813,13 @@ public partial class GameStatistics : CanvasLayer
         };
         column.AddThemeConstantOverride("separation", 8);
 
-        var title = CreateLabel(GetSkillTypeLabel(skillType), 22, GetSkillTypeColor(skillType), HorizontalAlignment.Center);
+        var typeRecord = character
+            .SkillTypeRecords?.FirstOrDefault(record => record != null && record.SkillType == skillType);
+        var skillNames = typeRecord?.SkillNames ?? new List<string>();
+        var skillIds = typeRecord?.SkillIds ?? new List<SkillID>();
+        int skillCount = CountSkillTypeEntries(skillNames, skillIds);
+
+        var title = CreateLabel($"{GetSkillTypeLabel(skillType)} {skillCount}", 22, GetSkillTypeColor(skillType), HorizontalAlignment.Center);
         title.CustomMinimumSize = new Vector2(0f, 28f);
         title.VerticalAlignment = VerticalAlignment.Center;
         column.AddChild(title);
@@ -839,29 +832,70 @@ public partial class GameStatistics : CanvasLayer
         flow.AddThemeConstantOverride("h_separation", 10);
         flow.AddThemeConstantOverride("v_separation", 8);
 
-        var typeRecord = character
-            .SkillTypeRecords?.FirstOrDefault(record => record != null && record.SkillType == skillType);
-        var skillNames = typeRecord?.SkillNames ?? new List<string>();
-        var skillIds = typeRecord?.SkillIds ?? new List<SkillID>();
-
         if (skillNames.Count == 0 && skillIds.Count == 0)
         {
             flow.AddChild(CreateEmptyLabel("未获得"));
         }
         else
         {
-            int count = Math.Max(skillNames.Count, skillIds.Count);
-            for (int i = 0; i < count; i++)
+            foreach (var entry in BuildSkillDisplayEntries(skillNames, skillIds))
             {
-                string skillName = i < skillNames.Count ? skillNames[i] : GetSkillDisplayName(skillIds[i]);
-                SkillID? skillId = i < skillIds.Count ? skillIds[i] : null;
-                flow.AddChild(CreateSkillPill(skillType, skillName, skillId));
+                flow.AddChild(CreateSkillPill(skillType, entry.Name, entry.SkillId));
             }
         }
 
         column.AddChild(flow);
         return column;
     }
+
+    private static int CountSkillTypeEntries(List<string> skillNames, List<SkillID> skillIds)
+    {
+        if (skillIds != null && skillIds.Count > 0)
+            return skillIds.Count;
+
+        return skillNames?.Count(name => !string.IsNullOrWhiteSpace(name)) ?? 0;
+    }
+
+    private static List<(string Name, SkillID? SkillId)> BuildSkillDisplayEntries(
+        List<string> skillNames,
+        List<SkillID> skillIds
+    )
+    {
+        if (skillIds != null && skillIds.Count > 0)
+        {
+            return skillIds
+                .Select(
+                    (skillId, index) =>
+                        new
+                        {
+                            SkillId = skillId,
+                            Name = index < (skillNames?.Count ?? 0)
+                                ? skillNames[index]
+                                : GetSkillDisplayName(skillId),
+                        }
+                )
+                .GroupBy(entry => entry.SkillId)
+                .Select(group =>
+                {
+                    var first = group.First();
+                    int count = group.Count();
+                    string name = string.IsNullOrWhiteSpace(first.Name)
+                        ? GetSkillDisplayName(first.SkillId)
+                        : first.Name;
+                    return (FormatCountedName(name, count), (SkillID?)first.SkillId);
+                })
+                .ToList();
+        }
+
+        return (skillNames ?? new List<string>())
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .GroupBy(name => name)
+            .Select(group => (FormatCountedName(group.Key, group.Count()), (SkillID?)null))
+            .ToList();
+    }
+
+    private static string FormatCountedName(string name, int count) =>
+        count > 1 ? $"{name} x{count}" : name;
 
     private Control CreateSkillPill(Skill.SkillTypes type, string skillName, SkillID? skillId)
     {
@@ -968,7 +1002,7 @@ public partial class GameStatistics : CanvasLayer
         if (record.ElectricityCoinChange != 0)
             parts.Add($"电力币：{FormatSigned(record.ElectricityCoinChange)}");
         if (record.TransitionEnergyChange != 0)
-            parts.Add($"跃迁能量：{FormatSigned(record.TransitionEnergyChange)}");
+            parts.Add($"核心能源：{FormatSigned(record.TransitionEnergyChange)}");
         AppendJoined(parts, "技能", record.SkillChanges);
         AppendJoined(parts, "道具", record.GainedItems);
         AppendJoined(parts, "装备", record.EquipmentChanges);

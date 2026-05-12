@@ -135,6 +135,7 @@ public partial class Skill
         {
             _prepaidDisplayedEnergy = 0;
             _paidEnergyForCurrentEffect = 0;
+            ClearManualFriendlyTarget();
         }
     }
 
@@ -450,6 +451,9 @@ public partial class Skill
 
     public Character GetAllyByRelative(int Where, bool dyingFilter = false)
     {
+        if (OwnerCharater?.BattleNode == null)
+            return null;
+
         Character[] ally = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
             OwnerCharater.IsPlayer,
             includeSummons: false,
@@ -493,6 +497,9 @@ public partial class Skill
 
     public Character[] GetAllAllyWithOrder(bool dyingFilter = false, bool includeSummons = false)
     {
+        if (OwnerCharater?.BattleNode == null)
+            return Array.Empty<Character>();
+
         return OwnerCharater.BattleNode.GetOrderedTeamCharacters(
             OwnerCharater.IsPlayer,
             includeSummons,
@@ -502,6 +509,9 @@ public partial class Skill
 
     public Character GetAllyByIndex(int index, bool dyingFilter = false)
     {
+        if (OwnerCharater?.BattleNode == null)
+            return null;
+
         var allies = OwnerCharater
             .BattleNode.GetOrderedTeamCharacters(OwnerCharater.IsPlayer, includeSummons: false)
             .ToList();
@@ -672,7 +682,7 @@ public partial class Skill
             if (firstIndex < 0 || secondIndex < 0 || firstIndex == secondIndex)
                 return;
 
-            (list[firstIndex], list[secondIndex]) = (list[secondIndex], list[firstIndex]);
+            SwapListOrderThenMoveActingToBack(battle, list, firstIndex, secondIndex);
             return;
         }
 
@@ -685,10 +695,30 @@ public partial class Skill
         if (enemyFirstIndex < 0 || enemySecondIndex < 0 || enemyFirstIndex == enemySecondIndex)
             return;
 
-        (enemyList[enemyFirstIndex], enemyList[enemySecondIndex]) = (
-            enemyList[enemySecondIndex],
-            enemyList[enemyFirstIndex]
-        );
+        SwapListOrderThenMoveActingToBack(battle, enemyList, enemyFirstIndex, enemySecondIndex);
+    }
+
+    private static void SwapListOrderThenMoveActingToBack<T>(
+        Battle battle,
+        List<T> list,
+        int firstIndex,
+        int secondIndex
+    )
+        where T : Character
+    {
+        (list[firstIndex], list[secondIndex]) = (list[secondIndex], list[firstIndex]);
+
+        Character actingCharacter = battle.CurrentActionCharacter;
+        if (actingCharacter == null)
+            return;
+
+        int actingIndex = list.FindIndex(character => character == actingCharacter);
+        if (actingIndex < 0 || actingIndex == list.Count - 1)
+            return;
+
+        T acting = list[actingIndex];
+        list.RemoveAt(actingIndex);
+        list.Add(acting);
     }
 
     private static bool CanContinueAttack(Character owner, Character target)
@@ -887,13 +917,14 @@ public partial class Skill
     {
         skillType = skillIndex switch
         {
-            0 => SkillTypes.Attack,
-            1 => SkillTypes.Survive,
-            2 => SkillTypes.Special,
+            0 => SkillTypes.none,
+            1 => SkillTypes.Attack,
+            2 => SkillTypes.Survive,
+            3 => SkillTypes.Special,
             _ => SkillTypes.none,
         };
 
-        return skillType != SkillTypes.none;
+        return skillIndex is >= 0 and <= 3;
     }
 
     public static Skill GetSkill(SkillID skillID)
@@ -925,7 +956,7 @@ public partial class Skill
             SkillID.DissonantField => new DissonantField(),
             SkillID.ReverbChain => new ReverbChain(),
             SkillID.RelayShift => new RelayShift(),
-            SkillID.ResonanceShelter => new ResonanceShelter(),
+            SkillID.ResonanceShelter => new Shelter(),
             SkillID.VoidForm => new VoidForm(),
             SkillID.EchoForm => new EchoForm(),
             SkillID.EvilAttack => new EvilAttack(),
@@ -935,9 +966,11 @@ public partial class Skill
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
             SkillID.WeakpointBulwark => new WeakpointBulwark(),
+            SkillID.ReadyStance => new ReadyStance(),
             SkillID.BarrierDuplication => new BarrierDuplication(),
             SkillID.HolySeal => new HolySeal(),
             SkillID.AegisPledge => new AegisPledge(),
+            SkillID.WarGodWill => new WarGodWill(),
             SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
             SkillID.DemonForm => new DemonForm(),
             SkillID.FearWormAttack => new FearWormAttack(),
@@ -946,6 +979,7 @@ public partial class Skill
             SkillID.MendSlash => new MendSlash(),
             SkillID.ChargedBlade => new ChargedBlade(),
             SkillID.CrescentWind => new CrescentWind(),
+            SkillID.ConcordSlash => new ConcordSlash(),
             SkillID.SiphonSlash => new SiphonSlash(),
             SkillID.SwapSlash => new SwapSlash(),
             SkillID.ShatterSlash => new ShatterSlash(),
@@ -960,10 +994,12 @@ public partial class Skill
             SkillID.ContinuousPierce => new ContinuousPierce(),
             SkillID.RuinBlade => new RuinBlade(),
             SkillID.VeilStep => new VeilStep(),
+            SkillID.NightingaleEnergy => new NightingaleEnergy(),
             SkillID.TempoSurge => new TempoSurge(),
             SkillID.LongNight => new LongNight(),
             SkillID.RequiemBloom => new RequiemBloom(),
             SkillID.CurtainCallMoment => new CurtainCallMoment(),
+            SkillID.SunMoonCycle => new SunMoonCycle(),
             SkillID.ShadowForm => new ShadowForm(),
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
@@ -1008,6 +1044,7 @@ public partial class Skill
             SkillID.InexorabilitySpecial => new InexorabilitySpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
+            SkillID.BasicGuard => new BasicGuard(),
             SkillID.BasicSpecial => new BasicSpecial(),
             _ => null,
         };
@@ -1122,6 +1159,9 @@ public enum SkillID
     WeakpointBulwark = 82,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    ReadyStance = 114,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
     BarrierDuplication = 85,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
@@ -1132,6 +1172,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     AegisPledge = 70,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    WarGodWill = 109,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     VulnerabilityConversion = 78,
@@ -1149,6 +1192,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     CrescentWind = 107,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    ConcordSlash = 111,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     SiphonSlash = 59,
@@ -1216,6 +1262,9 @@ public enum SkillID
     VeilStep = 32,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    NightingaleEnergy = 113,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
     TempoSurge = 33,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
@@ -1226,6 +1275,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     CurtainCallMoment = 106,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    SunMoonCycle = 110,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     FlashOfLight = 37,
@@ -1321,6 +1373,7 @@ public enum SkillID
     BasicAttack = 71,
     BasicDefense = 72,
     BasicSpecial = 73,
+    BasicGuard = 112,
     #endregion
 
     #endregion

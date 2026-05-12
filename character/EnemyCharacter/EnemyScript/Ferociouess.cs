@@ -90,10 +90,10 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 60;
-        Power = 10;
-        Survivability = 14;
-        Speed = 10;
+        MaxLife = 40;
+        Power = 7;
+        Survivability = 11;
+        Speed = 7;
         SpecialIntentThreshold = 2;
 
         SkillIDs =
@@ -133,7 +133,7 @@ public partial class FerociouessAttack : Skill
 
 public partial class FerociouessSurvive : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 0;
     private const int DamageImmuneStacks = 1;
     private const int VulnerableStacks = 1;
 
@@ -153,13 +153,14 @@ public partial class FerociouessSurvive : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                target: RelativeTarget(0)
+                target: TargetReference.Self
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(9)
-            )
+                target: HostileTargets(0)
+            ),
+            ModifyPropertyStep(PropertyType.Power, 3)
         );
     }
 }
@@ -183,9 +184,8 @@ public partial class FerociouessSpecial : Skill
         return new SkillPlan(
             this,
             AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
-            ModifyPropertyStep(PropertyType.Power, 3),
             AoeDamageStep(
-                baseDamage: -5,
+                baseDamage: 0,
                 powerMultiplier: BurstPowerMultiplier,
                 target: HostileTargets(0)
             )

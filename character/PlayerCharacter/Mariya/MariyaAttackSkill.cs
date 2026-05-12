@@ -6,7 +6,7 @@ public partial class MariyaAttackSkill { }
 
 public partial class MendSlash : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 9;
     private const int BaseHeal = 10;
 
     public MendSlash()
@@ -24,7 +24,7 @@ public partial class MendSlash : Skill
             AttackPrimaryStep(baseDamage: BaseDamage),
             HealStep(
                 baseHeal: BaseHeal,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.FrontMost),
+                target: TargetReference.FrontMost,
                 preferNonFull: true,
                 rebirth: false
             )
@@ -34,7 +34,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 15;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -56,7 +56,7 @@ public partial class SwapSlash : Skill
 
 public partial class SiphonSlash : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 5;
     private const string AttackTargetKey = "siphon_target";
 
     public SiphonSlash()
@@ -80,7 +80,7 @@ public partial class SiphonSlash : Skill
                             target: GetStoredTarget(AttackTargetKey)
                         ) ?? 0
                     ) / 2,
-                target: AbsoluteTarget(AbsoluteFriendlySelector.LowestLife),
+                target: TargetReference.LowestLife,
                 descriptionOverride: $"回复生命值最低的己方角色等同于此次造成伤害一半的生命。"
             )
         );
@@ -89,7 +89,7 @@ public partial class SiphonSlash : Skill
 
 public partial class ShatterSlash : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 10;
     private const int RequiredHitCount = 5;
     private const int RebirthStacks = 1;
     private const int NextAllySelfDamage = 25;
@@ -124,7 +124,7 @@ public partial class ShatterSlash : Skill
                 ApplyBuffFriendly(
                     buffName: Buff.BuffName.RebirthI,
                     stacks: RebirthStacks,
-                    target: RelativeTarget(1)
+                    target: TargetReference.Next
                 )
             ),
             HurtFriendly(NextAllySelfDamage, index: 1)
@@ -134,7 +134,7 @@ public partial class ShatterSlash : Skill
 
 public partial class ChargedBlade : Skill
 {
-    private const int BaseDamage = 14;
+    private const int BaseDamage = 11;
     private const int MaxTargets = 2;
     private const int SurvivabilityLoss = 3;
 
@@ -159,7 +159,7 @@ public partial class ChargedBlade : Skill
 
 public partial class CrescentWind : Skill
 {
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 6;
     private const int WeakenStacks = 2;
 
     public CrescentWind()
@@ -183,6 +183,32 @@ public partial class CrescentWind : Skill
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
                 target: HostileTargetsEachRowFirst()
+            )
+        );
+    }
+}
+
+public partial class ConcordSlash : Skill
+{
+    private const int BaseDamage = 7;
+
+    public ConcordSlash()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "同心斩";
+    public override int EnergyCost => 1;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage),
+            DrawReserveStep(
+                _ => GetAllAllyWithOrder(dyingFilter: true).Length / 2,
+                "每有2名己方角色存活，获得1点抽卡储备"
             )
         );
     }

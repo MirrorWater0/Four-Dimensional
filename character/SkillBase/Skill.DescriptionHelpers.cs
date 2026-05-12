@@ -6,7 +6,16 @@ public partial class Skill
 {
     protected const string UnfixedPlaceholder = "x";
     protected const int TooltipTotalMax = 999;
-    private const string ExhaustKeywordLine = "消耗：打出后，本场战斗中移出。";
+    public const string CarryKeyword = "\u8fde\u643a";
+    public const string CarryKeywordEffectText =
+        "\u968f\u673a\u4ece\u76ee\u6807\u7684\u62bd\u724c\u5806\u548c\u5f03\u724c\u5806\u4e2d\u6253\u51fa1\u5f20\u724c\uff0c\u53ef\u6307\u5b9a\u7c7b\u578b\uff0c\u4e0d\u6d88\u8017\u80fd\u91cf\u3002";
+    public const string ExhaustKeyword = "\u6d88\u8017";
+    public const string ExhaustKeywordEffectText =
+        "\u6253\u51fa\u540e\uff0c\u672c\u573a\u6218\u6597\u4e2d\u79fb\u51fa\u3002";
+    public const string RebirthKeyword = "\u590d\u751f";
+    public const string RebirthKeywordEffectText =
+        "\u53ef\u5bf9\u6fd2\u6b7b\u76ee\u6807\u751f\u6548\u3002\u9009\u62e9\u76ee\u6807\u65f6\uff0c\u4f18\u5148\u6fd2\u6b7b\u76ee\u6807\uff0c\u5176\u6b21\u975e\u6ee1\u8840\u76ee\u6807\u3002";
+    private const string ExhaustKeywordLine = ExhaustKeyword + "\u3002";
 
     protected enum StatX
     {
@@ -112,6 +121,9 @@ public partial class Skill
             return basisText;
 
         int clamped = Math.Clamp(total, 0, clampMax);
+        if (UseCompactBattleCardDescription)
+            return clamped.ToString();
+
         return $"{basisText}(总计：{clamped})";
     }
 
@@ -120,7 +132,19 @@ public partial class Skill
         if (!IsInBattle)
             return basisText;
 
+        if (UseCompactBattleCardDescription)
+            return totalText;
+
         return $"{basisText}(总计：{totalText})";
+    }
+
+    private bool UseCompactBattleCardDescription
+    {
+        get
+        {
+            UserSettings.EnsureLoaded();
+            return IsInBattle && UserSettings.UseCompactBattleCardDescriptions;
+        }
     }
 
     protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>
@@ -161,28 +185,48 @@ public partial class Skill
     protected string DamageFromPowerText(
         int baseDamage = 0,
         int powerMultiplier = 1,
-        int clampMax = 9999
+        int clampMax = 9999,
+        int times = 1
     )
     {
+        times = Math.Max(1, times);
         int rawDamage = baseDamage + OwnerPower * powerMultiplier;
         string basisText = FormatBasePlusX(baseDamage, StatX.Power, powerMultiplier);
+        if (times > 1)
+            basisText = $"({basisText})*{times}";
 
         if (!IsInBattle)
             return basisText;
 
-        int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax);
-        int modifiedDamage = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(
-                OwnerCharater,
-                rawDamage,
-                previewState: new AttackBuff.PreviewState()
-            ),
-            0,
-            clampMax
-        );
+        int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax) * times;
+        int modifiedDamage = 0;
+        var previewState = new AttackBuff.PreviewState();
+        for (int i = 0; i < times; i++)
+        {
+            modifiedDamage += Math.Clamp(
+                AttackBuff.ApplyOutgoingDamageModifiers(
+                    OwnerCharater,
+                    rawDamage,
+                    previewState: previewState
+                ),
+                0,
+                clampMax
+            );
+        }
+
+        if (UseCompactBattleCardDescription)
+        {
+            int totalDamage = modifiedDamage == rawClampedDamage ? rawClampedDamage : modifiedDamage;
+            return BuildCompactBattleValueText(
+                totalDamage,
+                PropertyType.Power,
+                powerMultiplier,
+                times
+            );
+        }
 
         if (modifiedDamage == rawClampedDamage)
-            return WithBattleTotal(basisText, rawClampedDamage, clampMax);
+            return WithBattleTotal(basisText, rawClampedDamage.ToString());
 
         return WithBattleTotal(basisText, $"{rawClampedDamage}→{modifiedDamage}");
     }
@@ -194,6 +238,15 @@ public partial class Skill
     )
     {
         int totalBlock = baseBlock + OwnerSurvivability * survivabilityMultiplier;
+        if (UseCompactBattleCardDescription)
+        {
+            return BuildCompactBattleValueText(
+                Math.Clamp(totalBlock, 0, clampMax),
+                PropertyType.Survivability,
+                survivabilityMultiplier
+            );
+        }
+
         return BasePlusXWithBattleTotal(
             baseBlock,
             totalBlock,
@@ -201,6 +254,24 @@ public partial class Skill
             xMultiplier: survivabilityMultiplier,
             clampMax: clampMax
         );
+    }
+
+    private static string BuildCompactBattleValueText(
+        int total,
+        PropertyType scalingProperty,
+        int propertyMultiplier,
+        int times = 1
+    )
+    {
+        var hints = new List<string>();
+        if (Math.Abs(propertyMultiplier) > 1)
+            hints.Add($"{Math.Abs(propertyMultiplier)}\u500d{GetPropertyLabel(scalingProperty)}\u52a0\u6210");
+        if (times > 1)
+            hints.Add($"{times}\u6bb5");
+
+        return hints.Count == 0
+            ? total.ToString()
+            : $"{total}\uff08{string.Join("\uff0c", hints)}\uff09";
     }
 
     protected static string GainPropertyText(PropertyType type, int value) =>
@@ -220,8 +291,9 @@ public partial class Skill
         int powerMultiplier = 1,
         string prefix = "造成",
         string suffix = "点伤害。",
-        int clampMax = 9999
-    ) => $"{prefix}{DamageFromPowerText(baseDamage, powerMultiplier, clampMax)}{suffix}";
+        int clampMax = 9999,
+        int times = 1
+    ) => $"{prefix}{DamageFromPowerText(baseDamage, powerMultiplier, clampMax, times)}{suffix}";
 
     protected string BlockLine(
         int baseBlock = 0,
@@ -247,5 +319,97 @@ public partial class Skill
         string castTimesBasis =
             costPerCast == 1 ? $"{baseCasts}+{energyX}" : $"{baseCasts}+ceil({energyX}/{costPerCast})";
         return WithBattleTotal(castTimesBasis, castTimes);
+    }
+
+    public static string BuildKeywordTooltipText(Skill skill)
+    {
+        if (skill == null)
+            return string.Empty;
+
+        var entries = new List<(int Index, string Text)>();
+        if (skill.ExhaustsAfterUse)
+            entries.Add((-1, BuildKeywordTooltipEntry(ExhaustKeyword, ExhaustKeywordEffectText)));
+
+        string description = skill.Description ?? string.Empty;
+        string plainDescription = StripBbCodeTags(description);
+
+        int carryIndex = plainDescription.IndexOf(CarryKeyword, StringComparison.Ordinal);
+        if (carryIndex >= 0)
+            entries.Add((carryIndex, BuildKeywordTooltipEntry(CarryKeyword, CarryKeywordEffectText)));
+
+        int rebirthIndex = plainDescription.IndexOf(RebirthKeyword, StringComparison.Ordinal);
+        if (rebirthIndex >= 0)
+            entries.Add(
+                (rebirthIndex, BuildKeywordTooltipEntry(RebirthKeyword, RebirthKeywordEffectText))
+            );
+
+        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
+        {
+            string displayName = Buff.GetBuffDisplayName(buffName);
+            if (string.IsNullOrWhiteSpace(displayName))
+                continue;
+
+            int matchIndex = plainDescription.IndexOf(displayName, StringComparison.Ordinal);
+            if (matchIndex < 0)
+                continue;
+
+            string effectText = Buff.GetBuffEffectText(buffName);
+            if (string.IsNullOrWhiteSpace(effectText))
+                continue;
+
+            entries.Add((matchIndex, BuildKeywordTooltipEntry(displayName, effectText)));
+        }
+
+        if (entries.Count == 0)
+            return string.Empty;
+
+        return string.Join(
+            "\n\n",
+            entries
+                .OrderBy(entry => entry.Index)
+                .Select(entry => entry.Text)
+                .Where(entry => !string.IsNullOrWhiteSpace(entry))
+        );
+    }
+
+    private static string BuildKeywordTooltipEntry(string title, string effectText)
+    {
+        if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(effectText))
+            return string.Empty;
+
+        string formattedEffect = GlobalFunction.ColorizeKeywords(
+            GlobalFunction.ColorizeNumbers(effectText)
+        );
+        return $"[outline_size=0][color=#a8f0ad]{title}[/color][/outline_size]\n{formattedEffect}";
+    }
+
+    private static string StripBbCodeTags(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        char[] buffer = new char[text.Length];
+        int count = 0;
+        bool inTag = false;
+
+        foreach (char ch in text)
+        {
+            if (ch == '[')
+            {
+                inTag = true;
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                continue;
+            }
+
+            if (!inTag)
+                buffer[count++] = ch;
+        }
+
+        return new string(buffer, 0, count);
     }
 }
