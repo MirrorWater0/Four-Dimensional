@@ -10,7 +10,7 @@ public partial class NightingaleEnergy : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "\u591c\u606f";
+    public override string SkillName { get; set; } = "安息之歌";
     public override int EnergyCost => 0;
 
     protected override SkillPlan BuildPlan()
@@ -154,6 +154,7 @@ public partial class CurtainCallMoment : Skill
 public partial class SunMoonCycle : Skill
 {
     private const int DrawReserveGain = 4;
+    public override bool ExhaustsAfterUse => true;
 
     public SunMoonCycle()
         : base(SkillTypes.Special)
@@ -181,7 +182,7 @@ public partial class ShadowForm : Skill
     }
 
     public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
     protected override SkillPlan BuildPlan()
     {

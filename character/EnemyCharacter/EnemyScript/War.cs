@@ -79,12 +79,10 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 405;
-        Power = 13;
-        Survivability = 8;
+        MaxLife = 400;
+        Power = 15;
+        Survivability = 15;
         Speed = 12;
-        SpecialIntentThreshold = 2;
-
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
         PassiveName = global::War.PassiveNameText;
@@ -111,7 +109,6 @@ public partial class WarAttack : Skill
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 2),
             SummonStep(0, War.ThrallScene),
-            HealSummonsStep(baseHeal: 5),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
         );
     }
@@ -154,7 +151,7 @@ public partial class WarSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "死亡行军";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

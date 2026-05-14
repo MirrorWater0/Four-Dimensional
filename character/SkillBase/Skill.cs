@@ -979,7 +979,7 @@ public partial class Skill
             SkillID.MendSlash => new MendSlash(),
             SkillID.ChargedBlade => new ChargedBlade(),
             SkillID.CrescentWind => new CrescentWind(),
-            SkillID.ConcordSlash => new ConcordSlash(),
+            SkillID.ConcordSlash => new ArcTrack(),
             SkillID.SiphonSlash => new SiphonSlash(),
             SkillID.SwapSlash => new SwapSlash(),
             SkillID.ShatterSlash => new ShatterSlash(),

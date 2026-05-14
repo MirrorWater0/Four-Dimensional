@@ -188,17 +188,17 @@ public partial class CrescentWind : Skill
     }
 }
 
-public partial class ConcordSlash : Skill
+public partial class ArcTrack : Skill
 {
     private const int BaseDamage = 7;
 
-    public ConcordSlash()
+    public ArcTrack()
         : base(SkillTypes.Attack)
     {
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "同心斩";
+    public override string SkillName { get; set; } = "弧形轨迹";
     public override int EnergyCost => 1;
 
     protected override SkillPlan BuildPlan()

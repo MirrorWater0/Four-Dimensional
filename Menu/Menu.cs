@@ -35,6 +35,10 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<CheckBox>(
             "CenterPanel/Margin/VBox/SettingsPanel/TurnOrderPreviewCheckBox"
         );
+    private CheckBox EnemyAttackPreviewCheckBox =>
+        field ??= GetNodeOrNull<CheckBox>(
+            "CenterPanel/Margin/VBox/SettingsPanel/EnemyAttackPreviewCheckBox"
+        );
     private Button SettingsBackButton =>
         field ??= GetNodeOrNull<Button>(
             "CenterPanel/Margin/VBox/SettingsPanel/SettingsBackButton"
@@ -71,6 +75,9 @@ public partial class Menu : Control
 
         if (TurnOrderPreviewCheckBox != null)
             TurnOrderPreviewCheckBox.Pressed += OnTurnOrderPreviewPressed;
+
+        if (EnemyAttackPreviewCheckBox != null)
+            EnemyAttackPreviewCheckBox.Pressed += OnEnemyAttackPreviewPressed;
 
         if (SettingsBackButton != null)
             SettingsBackButton.Pressed += ShowMainPanel;
@@ -211,6 +218,15 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.RefreshTurnOrderPreviewFromSettings();
     }
 
+    private void OnEnemyAttackPreviewPressed()
+    {
+        if (EnemyAttackPreviewCheckBox == null)
+            return;
+
+        UserSettings.SetEnemyAttackPreview(EnemyAttackPreviewCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshEnemyAttackPreviewFromSettings();
+    }
+
     private void ShowSettingsPanel()
     {
         RefreshSettingsPanel();
@@ -235,6 +251,8 @@ public partial class Menu : Control
             DescriptionModeCheckBox.ButtonPressed = UserSettings.UseCompactBattleCardDescriptions;
         if (TurnOrderPreviewCheckBox != null)
             TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
+        if (EnemyAttackPreviewCheckBox != null)
+            EnemyAttackPreviewCheckBox.ButtonPressed = UserSettings.ShowEnemyAttackPreview;
     }
 
     private void AbortActiveBattle(bool unlockMapNodes = true)

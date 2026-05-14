@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Mariya : PlayerCharacter
 {
-    private const int PassiveHealBase = 4;
+    private const int PassiveHealBase = 8;
 
     public const string PassiveNameText = "治愈";
     public static string PassiveDescriptionText =>
@@ -56,7 +56,7 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Mariya",
         PassiveName = global::Mariya.PassiveNameText,
         PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 40,
+        LifeMax = 35,
         Power = 6,
         Survivability = 7,
         Speed = 7,

@@ -106,7 +106,6 @@ public partial class EnergyTransfer : Skill
 
 public partial class EnergyRelay : Skill
 {
-    private int _cachedTransferEnergy;
 
     public EnergyRelay()
         : base(SkillTypes.Survive)
@@ -120,19 +119,8 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            CustomStep(
-                _ =>
-                {
-                    _cachedTransferEnergy = ResolveTransferEnergyAmount();
-                    return Task.CompletedTask;
-                },
-                _ => Array.Empty<string>()
-            ),
-            BlockStep(relativeIndex: 0, baseBlock: 5),
-            BlockStep(relativeIndex: -1, baseBlock: 5),
-            EnergyStep(delta: _ => _cachedTransferEnergy, target: TargetReference.Next),
-            EnergyStep(delta: _ => -_cachedTransferEnergy, target: TargetReference.Previous),
-            TextStep("将上一位角色的全部能量转移给下一位。")
+            EnergyStep(delta: ResolveTransferEnergyAmount(), target: TargetReference.ManualFriendly),
+            EnergyStep(delta: ResolveTransferEnergyAmount(), target: TargetReference.ManualFriendly)
         );
     }
 
@@ -152,8 +140,9 @@ public partial class EnergyRelay : Skill
 
 public partial class TouchOfGod : Skill
 {
-    private const int BaseBlock = 15;
+    private const int BaseBlock = -3;
     private const int DivinityStacks = 1;
+    public override int EnergyCost => 1;
 
     public TouchOfGod()
         : base(SkillTypes.Survive)

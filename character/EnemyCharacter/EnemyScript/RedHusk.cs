@@ -35,12 +35,10 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 60;
-        Power = 12;
+        MaxLife = 55;
+        Power = 10;
         Survivability = 12;
         Speed = 5;
-        SpecialIntentThreshold = 3;
-
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
         PassiveName = global::RedHusk.PassiveNameText;
@@ -116,7 +114,7 @@ public partial class RedHuskSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "护壳重生";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

@@ -26,7 +26,7 @@ public class EchonicResonance : Skill
                 paidEnergyPerLoop: PaidEnergyPerCast,
                 loopSteps:
                 [
-                    AttackPrimaryStep(baseDamage: -6, powerMultiplier: 1),
+                    AttackPrimaryStep(baseDamage: -2, powerMultiplier: 1),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )
@@ -36,7 +36,7 @@ public class EchonicResonance : Skill
 
 public class SonicBoom : Skill
 {
-    private const int BaseDamage = -3;
+    private const int BaseDamage = 0;
     private const int ExtraTimes = 2;
 
     public SonicBoom()
@@ -61,7 +61,7 @@ public class SonicBoom : Skill
 public class PhaseEcho : Skill
 {
     int damage = 17;
-    int PowerGain = -4;
+    int PowerGain = -2;
 
     public PhaseEcho()
         : base(SkillTypes.Special)
@@ -122,7 +122,7 @@ public class VoidForm : Skill
     }
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -150,7 +150,7 @@ public class EchoForm : Skill
     }
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

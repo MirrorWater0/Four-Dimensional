@@ -23,7 +23,6 @@ public abstract partial class EnemyRegedit
     public int Survivability;
     public int MaxLife;
     public int Speed;
-    public int SpecialIntentThreshold = 3;
 
     public EnemyRegedit() { }
 

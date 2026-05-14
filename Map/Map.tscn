@@ -8,7 +8,6 @@
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
-[ext_resource type="Shader" uid="uid://6jvqq6uvow6k" path="res://Map/TransitionIcon.gdshader" id="12_jq5q4"]
 [ext_resource type="Script" uid="uid://b40i7syrmxkt5" path="res://Map/UI/PlayerResourceState.cs" id="13_ehio4"]
 [ext_resource type="Shader" uid="uid://bml6r6p6cj0ml" path="res://shader/Icon/ElectricityIcon.gdshader" id="13_jq5q4"]
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
@@ -139,11 +138,6 @@ corner_radius_bottom_left = 4
 [sub_resource type="Theme" id="Theme_core_energy"]
 ProgressBar/styles/background = SubResource("StyleBoxFlat_core_energy_bg")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_core_energy_fill")
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_7a0j3"]
-shader = ExtResource("12_jq5q4")
-shader_parameter/icon_scale = 1.20000004768372
-shader_parameter/base_thickness = 0.01400000031574
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0g0qh"]
 shader = ExtResource("13_jq5q4")
@@ -559,15 +553,9 @@ theme = ExtResource("10_svc60")
 text = "100/100"
 horizontal_alignment = 1
 
-[node name="Button2" type="Button" parent="PlayerResourceState/TransitionEnergyControl" unique_id=524157967]
-self_modulate = Color(1, 1, 1, 0)
+[node name="Difficulty" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=647921054]
 layout_mode = 2
-
-[node name="ColorRect" type="ColorRect" parent="PlayerResourceState/TransitionEnergyControl/Button2" unique_id=1743479047]
-material = SubResource("ShaderMaterial_7a0j3")
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+text = "难度"
 
 [node name="ElectricityCoin" type="ColorRect" parent="PlayerResourceState" unique_id=360590376]
 material = SubResource("ShaderMaterial_0g0qh")

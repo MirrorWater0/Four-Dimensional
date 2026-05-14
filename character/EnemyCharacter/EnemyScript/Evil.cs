@@ -71,12 +71,10 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 45;
+        MaxLife = 40;
         Power = 10;
         Survivability = 7;
         Speed = 5;
-        SpecialIntentThreshold = 3;
-
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
         PassiveName = global::Evil.PassiveNameText;
@@ -86,7 +84,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 2;
+    private const int HitDamage = 3;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)

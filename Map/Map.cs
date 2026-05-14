@@ -16,6 +16,8 @@ public partial class Map : Control
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
     public Label RegionLabel => field ??= GetNodeOrNull<Label>("UI/RegionLabel");
+    public Label DifficultyLabel =>
+        field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
     private TextureRect MiniMapPreview => field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
     private Control MiniMapPlayerIndicator =>
@@ -220,6 +222,15 @@ public partial class Map : Control
         }
 
         SeedLabel.Text = $"Seed: {GameInfo.Seed}";
+        if (DifficultyLabel != null)
+        {
+            int difficulty = Math.Clamp(
+                GameInfo.Difficulty,
+                GameInfo.MinDifficulty,
+                GameInfo.MaxDifficulty
+            );
+            DifficultyLabel.Text = $"难度 {difficulty}";
+        }
         UpdateRegionLabel();
         Camera.LimitEnabled = false;
         Camera.PositionSmoothingEnabled = false;

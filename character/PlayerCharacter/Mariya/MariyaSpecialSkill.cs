@@ -6,7 +6,7 @@ public partial class MariyaSpecialSkill { }
 
 public partial class RebirthPrayer : Skill
 {
-    private const int BaseRebirthHeal = 12;
+    private const int BaseRebirthHeal = 22;
     private const string SharedTargetKey = "治疗目标";
 
     public RebirthPrayer()
@@ -59,18 +59,14 @@ public partial class Sacrifice : Skill
                 value: -DeMax,
                 target: TargetReference.All
             ),
-            AoeDamageStep(
-                baseDamage: basisDamage,
-                powerMultiplier: 2,
-                target: HostileTargets(0)
-            )
+            AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, target: HostileTargets(0))
         );
     }
 }
 
 public partial class RearlineRevival : Skill
 {
-    private const int BaseRebirthHeal = 10;
+    private const int BaseRebirthHeal = 22;
     private const int TargetCount = 2;
 
     public RearlineRevival()
@@ -99,7 +95,7 @@ public partial class RearlineRevival : Skill
 
 public partial class GroupHealing : Skill
 {
-    private const int BaseHeal = 5;
+    private const int BaseHeal = 15;
 
     public GroupHealing()
         : base(SkillTypes.Special)
@@ -114,11 +110,7 @@ public partial class GroupHealing : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(
-                type: PropertyType.MaxLife,
-                value: 15,
-                target: TargetReference.All
-            ),
+            ModifyPropertyStep(type: PropertyType.MaxLife, value: 15, target: TargetReference.All),
             HealStep(
                 baseHeal: BaseHeal,
                 target: TargetReference.All,
@@ -131,8 +123,9 @@ public partial class GroupHealing : Skill
 
 public partial class Ragnarok : Skill
 {
-    private const int PowerGain = 4;
+    private const int PowerGain = 2;
     private const int DivinityStacks = 2;
+    public override bool ExhaustsAfterUse => true;
 
     public Ragnarok()
         : base(SkillTypes.Special)
@@ -168,19 +161,14 @@ public partial class SanctuaryForm : Skill
     }
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            HealStep(
-                baseHeal: 10,
-                target: TargetReference.All,
-                preferNonFull: true,
-                rebirth: true
-            ),
+            HealStep(baseHeal: 20, target: TargetReference.All, preferNonFull: true, rebirth: true),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Sanctuary,
                 stacks: SanctuaryStacks,

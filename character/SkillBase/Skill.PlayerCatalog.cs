@@ -56,6 +56,21 @@ public partial class Skill
             : Array.Empty<SkillID>();
     }
 
+    public static bool TryGetPlayerCharacterKey(SkillID skillId, out PlayerCharacterKey characterKey)
+    {
+        foreach (var pair in PlayerSkillPools)
+        {
+            if (pair.Value.Contains(skillId))
+            {
+                characterKey = pair.Key;
+                return true;
+            }
+        }
+
+        characterKey = default;
+        return false;
+    }
+
     private static Dictionary<PlayerCharacterKey, SkillID[]> BuildPlayerSkillPools()
     {
         var pools = new Dictionary<PlayerCharacterKey, List<SkillID>>();

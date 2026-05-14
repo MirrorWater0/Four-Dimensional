@@ -6,6 +6,8 @@ using Godot;
 
 public partial class BattlePreview : Control
 {
+    private static readonly bool AllowManualPlayerFormationAdjustment = false;
+
     [Export]
     public bool WarmupMode { get; set; }
 
@@ -461,7 +463,7 @@ public partial class BattlePreview : Control
 
     private void WirePlayerPortraitDrag(PortaitFrame portrait)
     {
-        if (portrait?.PortaitButton == null)
+        if (!AllowManualPlayerFormationAdjustment || portrait?.PortaitButton == null)
             return;
 
         portrait.PortaitButton.KeepPressedOutside = true;
@@ -471,7 +473,7 @@ public partial class BattlePreview : Control
 
     private void BeginPlayerPortraitDrag(PortaitFrame portrait)
     {
-        if (portrait == null || _isTransitioning)
+        if (!AllowManualPlayerFormationAdjustment || portrait == null || _isTransitioning)
             return;
 
         HidePortraitTooltipsImmediate();
@@ -484,7 +486,7 @@ public partial class BattlePreview : Control
 
     private void EndPlayerPortraitDrag(PortaitFrame portrait)
     {
-        if (_dragTarget != portrait || portrait == null)
+        if (!AllowManualPlayerFormationAdjustment || _dragTarget != portrait || portrait == null)
             return;
 
         Control oldParent = _dragOriginalParent ?? portrait.GetParent<Control>();

@@ -30,6 +30,10 @@ public partial class EventInterface : Control
     private Tip OptionTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/EventTip");
     private TargetSelectOverlay TargetSelectOverlay =>
         field ??= GetNode<TargetSelectOverlay>("Frame/TargetSelectOverlay");
+    private Control OutcomeOverlay => field ??= GetNodeOrNull<Control>("Frame/OutcomeOverlay");
+    private Control OutcomeBanner => field ??= GetNodeOrNull<Control>("Frame/OutcomeOverlay/Banner");
+    private RichTextLabel OutcomeText =>
+        field ??= GetNodeOrNull<RichTextLabel>("Frame/OutcomeOverlay/Banner/OutcomeText");
 
     private IReadOnlyList<Button> OptionButtons =>
         field ??= OptionsContainer.GetChildren().OfType<Button>().ToArray();
@@ -64,8 +68,10 @@ public partial class EventInterface : Control
     private readonly Dictionary<Control, PartState> _partStates = [];
     private bool _isTransitioning;
     private bool _assembled;
+    private bool _isShowingOutcomeOverlay;
     private string[] _optionTipTexts = Array.Empty<string>();
     private EventOption _pendingTargetOption;
+    private TaskCompletionSource<bool> _outcomeDismissSource;
 
     private float IntroSpeed => MathF.Max(0.05f, IntroAnimationSpeed);
     private float IntroDuration(float baseSeconds) => baseSeconds / IntroSpeed;
@@ -78,6 +84,12 @@ public partial class EventInterface : Control
         SetControlAlpha(OptionsTitle, 0.0f);
         SetControlAlpha(OptionsContainer, 0.0f);
         TargetSelectOverlay.Visible = false;
+        if (OutcomeOverlay != null)
+        {
+            OutcomeOverlay.Visible = false;
+            SetControlAlpha(OutcomeOverlay, 0.0f);
+            OutcomeOverlay.GuiInput += OnOutcomeOverlayGuiInput;
+        }
         EnterButton.Pressed += OnEnterPressed;
         ExitButton.Pressed += OnExitPressed;
         BindOptionButtons();
@@ -91,6 +103,10 @@ public partial class EventInterface : Control
     {
         TargetSelectOverlay.CharacterSelected -= OnTargetCharacterSelected;
         TargetSelectOverlay.SelectionCanceled -= OnTargetSelectionCanceled;
+        if (OutcomeOverlay != null)
+            OutcomeOverlay.GuiInput -= OnOutcomeOverlayGuiInput;
+        _outcomeDismissSource?.TrySetResult(false);
+        _outcomeDismissSource = null;
     }
 
     public async void StartAnimation()
@@ -236,7 +252,7 @@ public partial class EventInterface : Control
 
     private void OnExitPressed()
     {
-        if (_isTransitioning)
+        if (_isTransitioning || _isShowingOutcomeOverlay)
             return;
 
         HideOptionTip();
@@ -244,9 +260,14 @@ public partial class EventInterface : Control
         _ = PlayCloseAnimationAsync(false);
     }
 
-    private void OnOptionPressed(int optionIndex)
+    private async void OnOptionPressed(int optionIndex)
     {
-        if (_isTransitioning || TargetSelectOverlay.Visible || ThisEvent?.Options == null)
+        if (
+            _isTransitioning
+            || _isShowingOutcomeOverlay
+            || TargetSelectOverlay.Visible
+            || ThisEvent?.Options == null
+        )
             return;
         if ((uint)optionIndex >= (uint)ThisEvent.Options.Length)
             return;
@@ -267,7 +288,7 @@ public partial class EventInterface : Control
                     ShowPropertyHint(randomIndex, option.PropertyChange, true);
                 }
 
-                ApplyNonPropertyOptionEffects(option);
+                await ResolveOptionOutcomeAsync(option, randomIndex, true);
                 return;
             }
 
@@ -275,7 +296,7 @@ public partial class EventInterface : Control
             return;
         }
 
-        ApplyNonPropertyOptionEffects(option);
+        await ResolveOptionOutcomeAsync(option);
     }
 
     private void ShowTargetSelection(EventOption option)
@@ -296,7 +317,7 @@ public partial class EventInterface : Control
         _pendingTargetOption = null;
     }
 
-    private void OnTargetCharacterSelected(int index)
+    private async void OnTargetCharacterSelected(int index)
     {
         if (_pendingTargetOption == null)
             return;
@@ -307,7 +328,7 @@ public partial class EventInterface : Control
         HideTargetSelection();
         ApplyPropertyChangesToPlayer(index, option.PropertyChange);
         ShowPropertyHint(index, option.PropertyChange, false);
-        ApplyNonPropertyOptionEffects(option);
+        await ResolveOptionOutcomeAsync(option, index, false);
     }
 
     private static bool IsValidPlayerIndex(int index)
@@ -387,11 +408,80 @@ public partial class EventInterface : Control
         );
     }
 
-    private void ApplyNonPropertyOptionEffects(EventOption option)
+    private async Task ResolveOptionOutcomeAsync(
+        EventOption option,
+        int targetIndex = -1,
+        bool randomTarget = false
+    )
     {
         ApplyResourceChanges(option);
+        string outcomeText = BuildOutcomeSummaryText(option, targetIndex, randomTarget);
+        if (!string.IsNullOrWhiteSpace(outcomeText))
+            await ShowOutcomeOverlayAsync(outcomeText);
+
         if (option.Exit)
-            _ = PlayCloseAnimationAsync(true);
+            await PlayCloseAnimationAsync(true);
+    }
+
+    private async Task ShowOutcomeOverlayAsync(string text)
+    {
+        if (OutcomeOverlay == null || OutcomeText == null || string.IsNullOrWhiteSpace(text))
+            return;
+
+        _outcomeDismissSource = new TaskCompletionSource<bool>();
+        _isShowingOutcomeOverlay = true;
+        OutcomeText.Text = text;
+        OutcomeOverlay.Visible = true;
+        SetControlAlpha(OutcomeOverlay, 0.0f);
+        if (OutcomeBanner != null)
+            OutcomeBanner.Scale = new Vector2(0.985f, 0.985f);
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+        tween.TweenProperty(OutcomeOverlay, "modulate:a", 1.0f, 0.16f);
+        if (OutcomeBanner != null)
+            tween.TweenProperty(OutcomeBanner, "scale", Vector2.One, 0.2f);
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        await _outcomeDismissSource.Task;
+    }
+
+    private async void DismissOutcomeOverlay()
+    {
+        if (!_isShowingOutcomeOverlay || OutcomeOverlay == null)
+            return;
+
+        _isShowingOutcomeOverlay = false;
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.In);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+        tween.TweenProperty(OutcomeOverlay, "modulate:a", 0.0f, 0.12f);
+        if (OutcomeBanner != null)
+            tween.TweenProperty(OutcomeBanner, "scale", new Vector2(0.985f, 0.985f), 0.12f);
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        OutcomeOverlay.Visible = false;
+        _outcomeDismissSource?.TrySetResult(true);
+        _outcomeDismissSource = null;
+    }
+
+    private void OnOutcomeOverlayGuiInput(InputEvent inputEvent)
+    {
+        if (!_isShowingOutcomeOverlay)
+            return;
+
+        bool shouldDismiss =
+            (inputEvent is InputEventMouseButton mouseButton && mouseButton.Pressed)
+            || (inputEvent is InputEventScreenTouch screenTouch && screenTouch.Pressed);
+
+        if (!shouldDismiss)
+            return;
+
+        AcceptEvent();
+        DismissOutcomeOverlay();
     }
 
     private void ApplyResourceChanges(EventOption option)
@@ -674,6 +764,66 @@ if (option.Exit)
         text = GlobalFunction.ColorizeNumbers(text);
         text = GlobalFunction.ColorizeKeywords(text);
         return text;
+    }
+
+    private static string BuildOutcomeSummaryText(
+        EventOption option,
+        int targetIndex = -1,
+        bool randomTarget = false
+    )
+    {
+        if (option == null)
+            return string.Empty;
+
+        var sb = new StringBuilder(128);
+        bool hasAny = false;
+
+        if (option.PropertyChange != null && option.PropertyChange.Count > 0)
+        {
+            string targetName = GetPlayerDisplayName(targetIndex);
+            if (!string.IsNullOrWhiteSpace(targetName))
+            {
+                sb.Append($"[b]{targetName}[/b]");
+                if (randomTarget)
+                    sb.Append(" [color=#ffd36b](随机)[/color]");
+                sb.Append('\n');
+            }
+
+            foreach (var kv in option.PropertyChange)
+                sb.Append($"{Skill.GetColoredPropertyLabel(kv.Key)} {FormatSigned(kv.Value)}\n");
+
+            hasAny = true;
+        }
+
+        if (option.TransitionEnergyChange != 0 || option.ElectricityChange != 0)
+        {
+            if (hasAny)
+                sb.Append('\n');
+
+            if (option.TransitionEnergyChange != 0)
+                sb.Append($"核心能源 {FormatSigned(option.TransitionEnergyChange)}\n");
+            if (option.ElectricityChange != 0)
+                sb.Append($"电力币 {FormatSigned(option.ElectricityChange)}\n");
+
+            hasAny = true;
+        }
+
+        if (!hasAny)
+            return string.Empty;
+
+        string text = sb.ToString().TrimEnd();
+        text = GlobalFunction.ColorizeNumbers(text);
+        text = GlobalFunction.ColorizeKeywords(text);
+        return text;
+    }
+
+    private static string GetPlayerDisplayName(int index)
+    {
+        if (!IsValidPlayerIndex(index))
+            return string.Empty;
+
+        var info = GameInfo.PlayerCharacters[index];
+        return string.IsNullOrWhiteSpace(info.CharacterName) ? $"角色{index + 1}" : info.CharacterName;
     }
 
     private static string FormatSigned(int value)

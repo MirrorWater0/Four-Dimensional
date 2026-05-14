@@ -8,7 +8,7 @@ public partial class CharacterSelectionOverlay : Control
 {
     private const int DefaultRequiredSelectionCount = 4;
     private const int MinDifficulty = 0;
-    private const int MaxDifficulty = 6;
+    private const int MaxDifficulty = 5;
     private const int MaxSeedDigits = 9;
     private const int MaxSeedValue = 999_999_999;
     private const float EnterAnimationDuration = 0.24f;
@@ -62,6 +62,10 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Label>(
             "SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox/DifficultyValueLabel"
         );
+    private Label DifficultyLabel =>
+        field ??= GetNodeOrNull<Label>(
+            "SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox/DifficultyLabel"
+        );
     private Tip DifficultyTooltip => _difficultyTooltip ??= EnsureDifficultyTooltip();
     private LineEdit SeedInput =>
         field ??= GetNodeOrNull<LineEdit>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedInput");
@@ -89,12 +93,11 @@ public partial class CharacterSelectionOverlay : Control
         }
         SetupDifficultyButton(DifficultyMinusButton, -1);
         SetupDifficultyButton(DifficultyPlusButton, 1);
-        if (DifficultyBox != null)
-        {
-            DifficultyBox.MouseEntered += ShowDifficultyTooltip;
-            DifficultyBox.MouseExited += HideDifficultyTooltip;
-            DifficultyBox.TreeExiting += HideDifficultyTooltip;
-        }
+        WireDifficultyTooltipTarget(DifficultyBox);
+        WireDifficultyTooltipTarget(DifficultyLabel);
+        WireDifficultyTooltipTarget(DifficultyValueLabel);
+        WireDifficultyTooltipTarget(DifficultyMinusButton);
+        WireDifficultyTooltipTarget(DifficultyPlusButton);
         if (SeedInput != null)
         {
             SeedInput.ProcessMode = ProcessModeEnum.Always;
@@ -623,13 +626,49 @@ public partial class CharacterSelectionOverlay : Control
 
         _difficultyTooltipVisible = true;
         tip.FollowMouse = true;
-        tip.SetText(GameInfo.BuildDifficultySummaryText(_selectedDifficulty));
+        tip.AnchorOffset = new Vector2(20f, 20f);
+        tip.MinContentWidth = 360f;
+        tip.SetText(GameInfo.BuildDifficultyTooltipText(_selectedDifficulty));
     }
 
     private void HideDifficultyTooltip()
     {
         _difficultyTooltipVisible = false;
         _difficultyTooltip?.HideTooltip();
+    }
+
+    private void WireDifficultyTooltipTarget(Control control)
+    {
+        if (control == null)
+            return;
+
+        control.MouseEntered += ShowDifficultyTooltip;
+        control.MouseExited += QueueHideDifficultyTooltipIfNeeded;
+        control.FocusEntered += ShowDifficultyTooltip;
+        control.FocusExited += QueueHideDifficultyTooltipIfNeeded;
+        control.TreeExiting += HideDifficultyTooltip;
+    }
+
+    private void QueueHideDifficultyTooltipIfNeeded()
+    {
+        CallDeferred(nameof(HideDifficultyTooltipIfCursorLeft));
+    }
+
+    private void HideDifficultyTooltipIfCursorLeft()
+    {
+        if (!_difficultyTooltipVisible)
+            return;
+
+        if (
+            DifficultyBox != null
+            && GodotObject.IsInstanceValid(DifficultyBox)
+            && DifficultyBox.GetGlobalRect().HasPoint(GetViewport().GetMousePosition())
+        )
+        {
+            return;
+        }
+
+        HideDifficultyTooltip();
     }
 
     private Tip EnsureDifficultyTooltip()

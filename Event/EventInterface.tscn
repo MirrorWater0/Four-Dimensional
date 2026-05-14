@@ -4,6 +4,7 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="1_title_font"]
 [ext_resource type="Script" uid="uid://ciweo42q0w4h8" path="res://Event/EventInterface.cs" id="2_event_script"]
 [ext_resource type="PackedScene" uid="uid://4opia7kg26cu" path="res://Event/TargetSelectOverlay.tscn" id="4_dcu8k"]
+[ext_resource type="Shader" path="res://shader/EventOutcomeBanner.gdshader" id="5_outcome_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_yci0a"]
 shader = ExtResource("1_bno6k")
@@ -100,6 +101,13 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_outcome_banner"]
+shader = ExtResource("5_outcome_shader")
+shader_parameter/fill_color = Color(0.08, 0.14, 0.21, 0.92)
+shader_parameter/edge_color = Color(0.38, 0.56, 0.78, 0.22)
+shader_parameter/horizontal_fade = 0.18
+shader_parameter/vertical_softness = 0.2
 
 [node name="EventInterface" type="Control" unique_id=352844998]
 layout_mode = 3
@@ -369,6 +377,70 @@ offset_right = 8.0
 offset_bottom = 56.0
 mouse_filter = 2
 color = Color(0.72, 0.64, 0.4, 0.9)
+
+[node name="OutcomeOverlay" type="Control" parent="Frame" unique_id=1820456001]
+visible = false
+layout_mode = 0
+offset_left = 40.0
+offset_top = 520.0
+offset_right = 1600.0
+offset_bottom = 860.0
+mouse_filter = 0
+
+[node name="Banner" type="ColorRect" parent="Frame/OutcomeOverlay" unique_id=1815927300]
+material = SubResource("ShaderMaterial_outcome_banner")
+layout_mode = 0
+offset_top = 52.0
+offset_right = 1560.0
+offset_bottom = 188.0
+mouse_filter = 2
+color = Color(0.08, 0.14, 0.21, 0.92)
+
+[node name="BorderTop" type="ColorRect" parent="Frame/OutcomeOverlay/Banner" unique_id=663910241]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 14.0
+offset_right = 1410.0
+offset_bottom = 16.0
+mouse_filter = 2
+color = Color(0.74, 0.82, 0.95, 0.3)
+
+[node name="BorderBottom" type="ColorRect" parent="Frame/OutcomeOverlay/Banner" unique_id=995204387]
+layout_mode = 0
+offset_left = 150.0
+offset_top = 120.0
+offset_right = 1410.0
+offset_bottom = 122.0
+mouse_filter = 2
+color = Color(0.74, 0.82, 0.95, 0.24)
+
+[node name="OutcomeText" type="RichTextLabel" parent="Frame/OutcomeOverlay/Banner" unique_id=633810421]
+layout_mode = 0
+offset_left = 164.0
+offset_top = 22.0
+offset_right = 1396.0
+offset_bottom = 98.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.75)
+theme_override_constants/line_separation = 4
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/normal_font_size = 24
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="DismissHint" type="Label" parent="Frame/OutcomeOverlay/Banner" unique_id=152290307]
+layout_mode = 0
+offset_left = 164.0
+offset_top = 94.0
+offset_right = 1396.0
+offset_bottom = 120.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.72)
+theme_override_font_sizes/font_size = 16
+text = "点击任意处继续"
+horizontal_alignment = 1
 
 [node name="TargetSelectOverlay" parent="Frame" unique_id=637401648 instance=ExtResource("4_dcu8k")]
 layout_mode = 0

@@ -10,7 +10,9 @@ public partial class SpaceStationShop : Control
     private const int ShopCharacterCount = 4;
     private const int SkillOffersPerCharacter = 2;
     private const int SkillOfferCount = ShopCharacterCount * SkillOffersPerCharacter;
-    private const int SkillOfferBasePrice = 40;
+    private const int CommonSkillOfferBasePrice = 40;
+    private const int UncommonSkillOfferBasePrice = 80;
+    private const int RareSkillOfferBasePrice = 120;
     private const int SkillOfferPriceVariance = 10;
     private const int StatOfferBasePrice = 20;
     private const int StatOfferPriceVariance = 5;
@@ -18,6 +20,7 @@ public partial class SpaceStationShop : Control
     private const int EquipmentOfferPriceVariance = 20;
     private const int PotionOfferBasePrice = 25;
     private const int PotionOfferPriceVariance = 5;
+    private const int RelicOfferCount = 3;
     private const int RelicOfferBasePrice = 120;
     private const int RelicOfferPriceVariance = 20;
     private const float ModuleSelectorTweenDuration = 0.06f;
@@ -607,7 +610,7 @@ public partial class SpaceStationShop : Control
     private async Task BuildRelicOffersAsync()
     {
         var rng = CreateShopRandom(0x6E11);
-        var relicPool = Relic.GetUnownedOfferPool();
+        var relicPool = Relic.GetUnownedOfferPool().OrderBy(_ => rng.Next()).Take(RelicOfferCount).ToArray();
         for (int i = 0; i < relicPool.Length; i++)
         {
             AddRelicOffer(
@@ -682,7 +685,7 @@ public partial class SpaceStationShop : Control
                     {
                         PlayerIndex = offerPlayerIndex,
                         SkillId = pickedSkills[slotIndex],
-                        Price = ComputeSkillOfferPrice(rng),
+                        Price = ComputeSkillOfferPrice(rng, pickedSkills[slotIndex]),
                         View = tile,
                         Card = card,
                         PriceLabel = priceLabel,
@@ -2814,12 +2817,19 @@ public partial class SpaceStationShop : Control
         levelProgress?.UnlockAllNodes();
     }
 
-    private static int ComputeSkillOfferPrice(Random rng)
+    private static int ComputeSkillOfferPrice(Random rng, SkillID? skillId)
     {
         if (rng == null)
-            return SkillOfferBasePrice;
+            return CommonSkillOfferBasePrice;
 
-        return ComputeShopPrice(rng, SkillOfferBasePrice, SkillOfferPriceVariance);
+        int basePrice = Skill.GetRarity(skillId) switch
+        {
+            Skill.SkillRarity.Uncommon => UncommonSkillOfferBasePrice,
+            Skill.SkillRarity.Rare => RareSkillOfferBasePrice,
+            _ => CommonSkillOfferBasePrice,
+        };
+
+        return ComputeShopPrice(rng, basePrice, SkillOfferPriceVariance);
     }
 
     private static int ComputeShopPrice(Random rng, int basePrice, int variance)

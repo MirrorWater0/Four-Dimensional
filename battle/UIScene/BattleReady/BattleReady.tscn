@@ -238,10 +238,10 @@ metadata/_edit_lock_ = true
 
 [node name="ModeSelectorRoot" type="Control" parent="." unique_id=389790671]
 anchors_preset = 0
-offset_left = 207.0
-offset_top = 140.0
-offset_right = 295.0
-offset_bottom = 558.0
+offset_left = 212.0
+offset_top = 335.0
+offset_right = 300.0
+offset_bottom = 753.0
 
 [node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
 layout_mode = 1
@@ -298,7 +298,7 @@ text = "技
 览"
 flat = true
 
-[node name="TalentModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons"]
+[node name="TalentModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=821664343]
 custom_minimum_size = Vector2(0, 126)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -439,6 +439,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="SkillAreaFrame" type="Panel" parent="TacticsModeRoot" unique_id=1475926958]
+visible = false
 layout_mode = 0
 offset_left = 388.0
 offset_top = 160.0
@@ -466,6 +467,7 @@ theme_override_font_sizes/font_size = 24
 text = "技能一览"
 
 [node name="SkillTypeFrame" type="Panel" parent="TacticsModeRoot" unique_id=859483008]
+visible = false
 layout_mode = 0
 offset_left = 415.0
 offset_top = 354.0
@@ -499,6 +501,66 @@ material = SubResource("ShaderMaterial_4b02f")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
 mouse_filter = 1
+
+[node name="SkillContainer" type="ScrollContainer" parent="TacticsModeRoot" unique_id=972831189]
+layout_mode = 0
+offset_left = 363.0
+offset_top = 318.0
+offset_right = 1523.0
+offset_bottom = 1093.0
+horizontal_scroll_mode = 0
+
+[node name="SkillScrollMargin" type="MarginContainer" parent="TacticsModeRoot/SkillContainer" unique_id=792204793]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 34
+
+[node name="SkillGrid" type="GridContainer" parent="TacticsModeRoot/SkillContainer/SkillScrollMargin" unique_id=1439102249]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 26
+columns = 5
+
+[node name="SkillDividers" type="Control" parent="TacticsModeRoot" unique_id=1055536850]
+visible = false
+anchors_preset = 0
+offset_left = 546.0
+offset_top = 377.0
+offset_right = 1626.0
+offset_bottom = 919.0
+mouse_filter = 2
+
+[node name="Panel" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1958467348]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 0
+offset_right = 1000.0
+offset_bottom = 3.0
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel2" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1589845525]
+layout_mode = 0
+offset_top = 179.0
+offset_right = 1000.0
+offset_bottom = 182.0
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel3" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=973292487]
+layout_mode = 0
+offset_top = 358.0
+offset_right = 1000.0
+offset_bottom = 361.0
+theme = SubResource("Theme_dbxj7")
+
+[node name="Panel4" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=980294257]
+layout_mode = 0
+offset_top = 537.0
+offset_right = 1000.0
+offset_bottom = 540.0
+theme = SubResource("Theme_dbxj7")
 
 [node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
 anchors_preset = 0
@@ -596,7 +658,7 @@ toggle_mode = true
 text = "Nightingale"
 flat = true
 
-[node name="TalentModeRoot" type="Control" parent="."]
+[node name="TalentModeRoot" type="Control" parent="." unique_id=1638681360]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -609,7 +671,7 @@ offset_bottom = -21.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="TalentTreeFrame" type="Panel" parent="TalentModeRoot"]
+[node name="TalentTreeFrame" type="Panel" parent="TalentModeRoot" unique_id=109817545]
 layout_mode = 0
 offset_left = 388.0
 offset_top = 160.0
@@ -618,7 +680,7 @@ offset_bottom = 1020.0
 mouse_filter = 2
 theme = SubResource("Theme_section_blue")
 
-[node name="TalentTreeHeaderFrame" type="Panel" parent="TalentModeRoot"]
+[node name="TalentTreeHeaderFrame" type="Panel" parent="TalentModeRoot" unique_id=876269970]
 layout_mode = 0
 offset_left = 410.0
 offset_top = 177.0
@@ -627,7 +689,7 @@ offset_bottom = 231.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
-[node name="TalentTreeHeader" type="Label" parent="TalentModeRoot/TalentTreeHeaderFrame"]
+[node name="TalentTreeHeader" type="Label" parent="TalentModeRoot/TalentTreeHeaderFrame" unique_id=1737260870]
 layout_mode = 0
 offset_left = 20.0
 offset_top = 9.0
@@ -636,7 +698,7 @@ offset_bottom = 43.0
 theme_override_font_sizes/font_size = 24
 text = "天赋树"
 
-[node name="TalentPointFrame" type="Panel" parent="TalentModeRoot"]
+[node name="TalentPointFrame" type="Panel" parent="TalentModeRoot" unique_id=719139115]
 layout_mode = 0
 offset_left = 1544.0
 offset_top = 186.0
@@ -645,7 +707,7 @@ offset_bottom = 236.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
-[node name="TalentPointLabel" type="Label" parent="TalentModeRoot/TalentPointFrame"]
+[node name="TalentPointLabel" type="Label" parent="TalentModeRoot/TalentPointFrame" unique_id=1580695145]
 layout_mode = 0
 offset_left = 15.0
 offset_top = 11.0
@@ -655,81 +717,13 @@ theme_override_colors/font_color = Color(1, 0.86, 0.55, 1)
 theme_override_font_sizes/font_size = 18
 text = "天赋点 0"
 
-[node name="TalentTreeRoot" type="Control" parent="TalentModeRoot"]
-layout_mode = 0
+[node name="TalentTreeRoot" type="Control" parent="TalentModeRoot" unique_id=655128754]
+anchors_preset = 0
 offset_left = 680.0
 offset_top = 330.0
 offset_right = 1440.0
 offset_bottom = 760.0
 mouse_filter = 2
-
-[node name="SkillContainer" type="VBoxContainer" parent="TacticsModeRoot" unique_id=972831189]
-layout_mode = 0
-offset_left = 543.0
-offset_top = 417.0
-offset_right = 1626.0
-offset_bottom = 919.0
-theme_override_constants/separation = 150
-
-[node name="AttackFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1604114826]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 6
-
-[node name="DefenseFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1963456351]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 6
-
-[node name="SpecialFence" type="GridContainer" parent="TacticsModeRoot/SkillContainer" unique_id=1109577460]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 6
-
-[node name="SkillDividers" type="Control" parent="TacticsModeRoot" unique_id=1055536850]
-anchors_preset = 0
-offset_left = 546.0
-offset_top = 377.0
-offset_right = 1626.0
-offset_bottom = 919.0
-mouse_filter = 2
-
-[node name="Panel" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1958467348]
-custom_minimum_size = Vector2(0, 2)
-layout_mode = 0
-offset_right = 1000.0
-offset_bottom = 3.0
-theme = SubResource("Theme_dbxj7")
-
-[node name="Panel2" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=1589845525]
-layout_mode = 0
-offset_top = 179.0
-offset_right = 1000.0
-offset_bottom = 182.0
-theme = SubResource("Theme_dbxj7")
-
-[node name="Panel3" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=973292487]
-layout_mode = 0
-offset_top = 358.0
-offset_right = 1000.0
-offset_bottom = 361.0
-theme = SubResource("Theme_dbxj7")
-
-[node name="Panel4" type="Panel" parent="TacticsModeRoot/SkillDividers" unique_id=980294257]
-layout_mode = 0
-offset_top = 537.0
-offset_right = 1000.0
-offset_bottom = 540.0
-theme = SubResource("Theme_dbxj7")
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1598531785]
 material = SubResource("ShaderMaterial_wa4fa")

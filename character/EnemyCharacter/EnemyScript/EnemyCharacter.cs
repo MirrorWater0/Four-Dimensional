@@ -7,8 +7,14 @@ using Godot;
 public partial class EnemyCharacter : Character
 {
     private const float DefaultIntentWeight = 3f;
+    private const int DefaultSpecialIntentThreshold = 3;
     private const float SpecialIntentWeightMin = 0.5f;
     private const float SpecialIntentWeightMax = 7f;
+    private const float IntentCurveTargetLift = 92f;
+    private const float IntentCurveSplitX = 26f;
+    private const float IntentCurveGroupSpreadX = 36f;
+    private static readonly Color AttackIntentCurveColor = new(1f, 0.42f, 0.32f, 0.82f);
+    private static readonly Color DebuffIntentCurveColor = new(0.52f, 0.94f, 1f, 0.88f);
     public const int NextActionEnergyPreviewBonus = 2;
     private static readonly Color IntentionTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
@@ -24,10 +30,10 @@ public partial class EnemyCharacter : Character
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex;
-    public int SpecialIntentThreshold { get; private set; } = 3;
     private Character[] _intentionPreviewTargets = Array.Empty<Character>();
     private int _intentionPreviewHoverDepth;
     private readonly List<Label> _intentionDamageLabels = new();
+    private readonly Dictionary<string, Line2D> _intentPreviewLines = new();
 
     public override void _Ready()
     {
@@ -42,6 +48,7 @@ public partial class EnemyCharacter : Character
     public override void _ExitTree()
     {
         HideIntentionTargetPreview();
+        HideAttackIntentCurve();
         FreeIntentionDamageLabels();
         base._ExitTree();
     }
@@ -50,6 +57,7 @@ public partial class EnemyCharacter : Character
     {
         _intentionPreviewHoverDepth = 0;
         HideIntentionTargetPreview();
+        HideAttackIntentCurve();
         await base.Dying(source);
     }
 
@@ -60,7 +68,6 @@ public partial class EnemyCharacter : Character
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
-            SpecialIntentThreshold = Math.Max(0, Registry.SpecialIntentThreshold);
             SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed, Registry.MaxLife);
             Life = BattleMaxLife;
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
@@ -148,7 +155,7 @@ public partial class EnemyCharacter : Character
         if (skill.SkillType != Skill.SkillTypes.Special)
             return DefaultIntentWeight;
 
-        int energyDelta = Energy - SpecialIntentThreshold;
+        int energyDelta = Energy - DefaultSpecialIntentThreshold;
         return Math.Clamp(
             DefaultIntentWeight + energyDelta,
             SpecialIntentWeightMin,
@@ -298,6 +305,229 @@ public partial class EnemyCharacter : Character
             return null;
 
         return Skills[IntentionIndex];
+    }
+
+    public Character[] GetCurrentIntentionPreviewTargets()
+    {
+        var skill = GetCurrentIntentionSkill();
+        return skill?
+                .GetPreviewHostileTargets()
+                .Where(GodotObject.IsInstanceValid)
+                .Distinct()
+                .ToArray()
+            ?? Array.Empty<Character>();
+    }
+
+    public Skill.PreviewDamageEntry[] GetCurrentIntentionPreviewDamageEntries()
+    {
+        var skill = GetCurrentIntentionSkill();
+        return skill?.GetPreviewHostileDamageEntries() ?? Array.Empty<Skill.PreviewDamageEntry>();
+    }
+
+    public Character[] GetCurrentIntentionPreviewDebuffTargets()
+    {
+        var skill = GetCurrentIntentionSkill();
+        return skill?
+                .GetPreviewHostileDebuffTargets()
+                .Where(GodotObject.IsInstanceValid)
+                .Distinct()
+                .ToArray()
+            ?? Array.Empty<Character>();
+    }
+
+    public Character[] GetCurrentIntentionPreviewAttackTargets()
+    {
+        return GetCurrentIntentionPreviewDamageEntries()
+            .Select(entry => entry.Target)
+            .Where(target =>
+                target != null
+                && GodotObject.IsInstanceValid(target)
+                && target.State == CharacterState.Normal
+            )
+            .Distinct()
+            .ToArray();
+    }
+
+    public void ShowIntentionPreviewCurves(
+        IReadOnlyList<Character> attackTargets,
+        IReadOnlyList<Character> debuffTargets
+    )
+    {
+        var validAttackTargets = (attackTargets ?? Array.Empty<Character>())
+            .Where(target =>
+                target != null
+                && GodotObject.IsInstanceValid(target)
+                && target.State == CharacterState.Normal
+            )
+            .Distinct()
+            .ToArray();
+        var validDebuffTargets = (debuffTargets ?? Array.Empty<Character>())
+            .Where(target =>
+                target != null
+                && GodotObject.IsInstanceValid(target)
+                && target.State == CharacterState.Normal
+            )
+            .Distinct()
+            .ToArray();
+
+        if (validAttackTargets.Length == 0 && validDebuffTargets.Length == 0)
+        {
+            HideAttackIntentCurve();
+            return;
+        }
+
+        var activeKeys = new HashSet<string>();
+        var attackTargetIds = validAttackTargets.Select(target => target.GetInstanceId()).ToHashSet();
+        var debuffTargetIds = validDebuffTargets.Select(target => target.GetInstanceId()).ToHashSet();
+
+        for (int i = 0; i < validAttackTargets.Length; i++)
+        {
+            Character target = validAttackTargets[i];
+            bool hasDebuffLine = debuffTargetIds.Contains(target.GetInstanceId());
+            string key = $"attack:{target.GetInstanceId()}";
+            activeKeys.Add(key);
+            UpdateIntentPreviewLine(
+                key,
+                BuildIntentPreviewTargetPoint(
+                    target,
+                    indexInGroup: i,
+                    totalInGroup: validAttackTargets.Length,
+                    lateralSplit: hasDebuffLine ? -IntentCurveSplitX : 0f,
+                    verticalExtraLift: hasDebuffLine ? 0f : 8f
+                ),
+                AttackIntentCurveColor,
+                width: 7f,
+                controlOffsetX: hasDebuffLine ? -18f : 0f
+            );
+        }
+
+        for (int i = 0; i < validDebuffTargets.Length; i++)
+        {
+            Character target = validDebuffTargets[i];
+            bool hasAttackLine = attackTargetIds.Contains(target.GetInstanceId());
+            string key = $"debuff:{target.GetInstanceId()}";
+            activeKeys.Add(key);
+            UpdateIntentPreviewLine(
+                key,
+                BuildIntentPreviewTargetPoint(
+                    target,
+                    indexInGroup: i,
+                    totalInGroup: validDebuffTargets.Length,
+                    lateralSplit: hasAttackLine ? IntentCurveSplitX : 0f,
+                    verticalExtraLift: hasAttackLine ? 24f : 18f
+                ),
+                DebuffIntentCurveColor,
+                width: 5f,
+                controlOffsetX: hasAttackLine ? 18f : 0f
+            );
+        }
+
+        foreach (var kv in _intentPreviewLines)
+        {
+            if (!activeKeys.Contains(kv.Key) && GodotObject.IsInstanceValid(kv.Value))
+            {
+                kv.Value.Visible = false;
+                kv.Value.ClearPoints();
+            }
+        }
+    }
+
+    public void HideAttackIntentCurve()
+    {
+        foreach (var kv in _intentPreviewLines)
+        {
+            if (!GodotObject.IsInstanceValid(kv.Value))
+                continue;
+
+            kv.Value.Visible = false;
+            kv.Value.ClearPoints();
+        }
+    }
+
+    private Vector2 BuildIntentPreviewTargetPoint(
+        Character target,
+        int indexInGroup,
+        int totalInGroup,
+        float lateralSplit,
+        float verticalExtraLift
+    )
+    {
+        float centeredIndex = indexInGroup - (totalInGroup - 1) * 0.5f;
+        float groupOffsetX = centeredIndex * IntentCurveGroupSpreadX;
+        return target.GlobalPosition
+            + new Vector2(groupOffsetX + lateralSplit, -IntentCurveTargetLift - verticalExtraLift);
+    }
+
+    private void UpdateIntentPreviewLine(
+        string key,
+        Vector2 targetGlobalPoint,
+        Color color,
+        float width,
+        float controlOffsetX
+    )
+    {
+        Line2D line = GetOrCreateIntentPreviewLine(key);
+        Vector2 start = Sprite != null && GodotObject.IsInstanceValid(Sprite) ? Sprite.Position : Vector2.Zero;
+        Vector2 end = ToLocal(targetGlobalPoint);
+        if (start.DistanceTo(end) <= 4f)
+        {
+            line.Visible = false;
+            line.ClearPoints();
+            return;
+        }
+
+        Vector2 delta = end - start;
+        float arcHeight = Mathf.Clamp(delta.Length() * 0.18f, 80f, 190f);
+        Vector2 control = (start + end) * 0.5f + new Vector2(controlOffsetX, -arcHeight);
+
+        line.DefaultColor = color;
+        line.Width = width;
+        line.ClearPoints();
+        const int sampleCount = 18;
+        for (int i = 0; i <= sampleCount; i++)
+        {
+            float t = i / (float)sampleCount;
+            line.AddPoint(SampleIntentPreviewCurve(start, control, end, t));
+        }
+
+        line.Visible = true;
+    }
+
+    private Line2D GetOrCreateIntentPreviewLine(string key)
+    {
+        if (_intentPreviewLines.TryGetValue(key, out Line2D existingLine))
+        {
+            if (GodotObject.IsInstanceValid(existingLine))
+                return existingLine;
+        }
+
+        var line = new Line2D
+        {
+            Name = $"IntentPreviewLine_{key}",
+            Visible = false,
+            Width = 6f,
+            Antialiased = true,
+            ZIndex = 30,
+            ZAsRelative = false,
+            JointMode = Line2D.LineJointMode.Round,
+            BeginCapMode = Line2D.LineCapMode.Round,
+            EndCapMode = Line2D.LineCapMode.Round,
+        };
+        AddChild(line);
+        _intentPreviewLines[key] = line;
+        return line;
+    }
+
+    private static Vector2 SampleIntentPreviewCurve(
+        Vector2 start,
+        Vector2 control,
+        Vector2 end,
+        float t
+    )
+    {
+        Vector2 startToControl = start.Lerp(control, t);
+        Vector2 controlToEnd = control.Lerp(end, t);
+        return startToControl.Lerp(controlToEnd, t);
     }
 
     private void ShowIntentionDamageLabels(IReadOnlyList<Skill.PreviewDamageEntry> entries)

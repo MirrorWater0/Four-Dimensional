@@ -77,6 +77,7 @@ public partial class SkillCard : SubViewportContainer
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillPictureCache = new();
+    private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
     private static Texture2D _defaultSkillIcon;
     private Tip _keywordTooltip;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
@@ -389,26 +390,51 @@ public partial class SkillCard : SubViewportContainer
         if (SkillPictureCache.TryGetValue(skillId, out Texture2D cachedTexture) && cachedTexture != null)
             return cachedTexture;
 
-        string[] fileNames = [skillId.ToString(), $"Kasiya{skillId}"];
-        string[] extensions = [".png", ".jpg", ".jpeg", ".webp"];
-        foreach (string fileName in fileNames)
+        foreach (string path in EnumerateSkillPicturePaths(skill, skillId))
         {
-            foreach (string extension in extensions)
-            {
-                string path = $"res://asset/CardPicture/{fileName}{extension}";
-                if (!ResourceLoader.Exists(path))
-                    continue;
+            if (!ResourceLoader.Exists(path))
+                continue;
 
-                Texture2D texture = PreloadeScene.GetTexture(path);
-                if (texture == null)
-                    continue;
+            Texture2D texture = PreloadeScene.GetTexture(path);
+            if (texture == null)
+                continue;
 
-                SkillPictureCache[skillId] = texture;
-                return texture;
-            }
+            SkillPictureCache[skillId] = texture;
+            return texture;
         }
 
         return null;
+    }
+
+    private static IEnumerable<string> EnumerateSkillPicturePaths(Skill skill, SkillID skillId)
+    {
+        string skillFileName = skillId.ToString();
+        var searchedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (string folder in GetSkillPictureFolders(skill, skillId))
+        {
+            if (string.IsNullOrWhiteSpace(folder) || !searchedFolders.Add(folder))
+                continue;
+
+            foreach (string extension in SkillPictureExtensions)
+                yield return $"res://asset/CardPicture/{folder}/{skillFileName}{extension}";
+        }
+
+        string[] legacyFileNames = [skillFileName, $"Kasiya{skillFileName}"];
+        foreach (string legacyFileName in legacyFileNames)
+        {
+            foreach (string extension in SkillPictureExtensions)
+                yield return $"res://asset/CardPicture/{legacyFileName}{extension}";
+        }
+    }
+
+    private static IEnumerable<string> GetSkillPictureFolders(Skill skill, SkillID skillId)
+    {
+        if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
+            yield return skill.OwnerCharater.CharacterName;
+
+        if (Skill.TryGetPlayerCharacterKey(skillId, out PlayerCharacterKey characterKey))
+            yield return characterKey.ToString();
     }
 
     private void SetArtPlaceholderVisible(bool visible)

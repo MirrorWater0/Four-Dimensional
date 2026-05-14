@@ -90,12 +90,10 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 55;
-        Power = 7;
+        MaxLife = 50;
+        Power = 5;
         Survivability = 8;
         Speed = 6;
-        SpecialIntentThreshold = 2;
-
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
         PassiveName = global::Armon.PassiveNameText;

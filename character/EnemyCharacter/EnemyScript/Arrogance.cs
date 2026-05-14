@@ -36,12 +36,10 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 170;
-        Power = 21;
+        MaxLife = 180;
+        Power = 19;
         Survivability = 27;
-        Speed = 47;
-        SpecialIntentThreshold = 4;
-
+        Speed = 50;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
         PassiveName = global::Arrogance.PassiveNameText;
@@ -112,13 +110,13 @@ public partial class ArroganceSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "虚无追击";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: 10, target: TargetReference.Self),
+            HealStep(baseHeal: 0, target: TargetReference.Self),
             BlockStep(relativeIndex: 0, baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, 3),
             ApplyBuffFriendly(

@@ -69,6 +69,13 @@ public partial class DebugConsole : CanvasLayer
     private const string EditorKeywordColor = "#4fc1ff";
     private const string EditorSymbolColor = "#c586c0";
     private const int MaxVisibleCompletions = 10;
+    private static readonly SkillID[] StarterSkillIds =
+    [
+        SkillID.BasicAttack,
+        SkillID.BasicDefense,
+        SkillID.BasicGuard,
+        SkillID.BasicSpecial,
+    ];
 
     private static readonly CommandDefinition[] CommandDefinitions =
     [
@@ -84,17 +91,10 @@ public partial class DebugConsole : CanvasLayer
         ),
         new(
             "addskill",
-            "addskill <角色> <技能ID/技能名> [槽位1-3]",
-            "为角色解锁技能，可选直接装备到某个槽位。",
-            ["角色名或 1-4", "技能 ID 或技能名", "可选：槽位 1-3"],
+            "addskill <角色> <技能ID/技能名>",
+            "向角色牌库添加技能。",
+            ["角色名或 1-4", "技能 ID 或技能名"],
             "加技能"
-        ),
-        new(
-            "equipskill",
-            "equipskill <角色> <槽位1-3> <技能ID/技能名>",
-            "把角色某个技能槽直接切换到指定技能。",
-            ["角色名或 1-4", "槽位 1-3", "技能 ID 或技能名"],
-            "装备技能"
         ),
         new(
             "addequipment",
@@ -138,6 +138,14 @@ public partial class DebugConsole : CanvasLayer
             "修改电币、当前能量或能量上限。",
             ["资源类型", "目标值"],
             "设资源"
+        ),
+        new(
+            "battletest",
+            "battletest <on|off|toggle>",
+            "开关 Battle.Istest 测试模式。",
+            ["on/off/toggle，也支持 true/false/1/0/开/关"],
+            "战斗测试",
+            "bt"
         ),
         new("save", "save", "手动保存当前 GameInfo。", Array.Empty<string>(), "保存"),
     ];
@@ -1119,7 +1127,7 @@ public partial class DebugConsole : CanvasLayer
         {
             return
                 $"[color={AccentColor}]开始输入[/color]\n"
-                + $"[color={DimColor}]常用：addskill, equipskill, addequipment, addrelic, additem, setstat, setresource[/color]";
+                + $"[color={DimColor}]常用：addskill, addequipment, addrelic, additem, setstat, setresource, battletest[/color]";
         }
 
         CommandDefinition definition = ResolveCommandDefinition(context.Tokens[0]);
@@ -1175,13 +1183,13 @@ public partial class DebugConsole : CanvasLayer
         {
             "catalog" => BuildCatalogCompletions(context),
             "addskill" => BuildAddSkillCompletions(context),
-            "equipskill" => BuildEquipSkillCompletions(context),
             "addequipment" => FilterCompletionItems(BuildEquipmentCompletions(), prefix),
             "addrelic" => FilterCompletionItems(BuildRelicCompletions(), prefix),
             "additem" => FilterCompletionItems(BuildItemCompletions(), prefix),
             "setstat" => BuildStatCompletions(context),
             "addstat" => BuildStatCompletions(context),
             "setresource" => BuildResourceCompletions(context),
+            "battletest" => BuildToggleCompletions(context),
             _ => Enumerable.Empty<CompletionItem>(),
         };
     }
@@ -1232,20 +1240,6 @@ public partial class DebugConsole : CanvasLayer
             return FilterCompletionItems(BuildPlayerCompletions(includeIndices: true), prefix);
         if (context.TargetTokenIndex == 2)
             return FilterCompletionItems(BuildSkillCompletionsForContext(context, playerTokenIndex: 1), prefix);
-        if (context.TargetTokenIndex == 3)
-            return FilterCompletionItems(BuildSlotCompletions(), prefix);
-        return Enumerable.Empty<CompletionItem>();
-    }
-
-    private IEnumerable<CompletionItem> BuildEquipSkillCompletions(InputContext context)
-    {
-        string prefix = context.CurrentToken;
-        if (context.TargetTokenIndex == 1)
-            return FilterCompletionItems(BuildPlayerCompletions(includeIndices: true), prefix);
-        if (context.TargetTokenIndex == 2)
-            return FilterCompletionItems(BuildSlotCompletions(), prefix);
-        if (context.TargetTokenIndex == 3)
-            return FilterCompletionItems(BuildSkillCompletionsForContext(context, playerTokenIndex: 1), prefix);
         return Enumerable.Empty<CompletionItem>();
     }
 
@@ -1282,6 +1276,22 @@ public partial class DebugConsole : CanvasLayer
         return Enumerable.Empty<CompletionItem>();
     }
 
+    private static IEnumerable<CompletionItem> BuildToggleCompletions(InputContext context)
+    {
+        if (context.TargetTokenIndex != 1)
+            return Enumerable.Empty<CompletionItem>();
+
+        return FilterCompletionItems(
+            [
+                new CompletionItem("on", "on  ·  开启", "on", "true", "1", "开"),
+                new CompletionItem("off", "off  ·  关闭", "off", "false", "0", "关"),
+                new CompletionItem("toggle", "toggle  ·  切换", "toggle", "切换"),
+            ],
+            context.CurrentToken
+        );
+    }
+
+
     private IEnumerable<CompletionItem> BuildSkillCompletionsForContext(InputContext context, int playerTokenIndex)
     {
         if (context.Tokens.Length <= playerTokenIndex)
@@ -1291,7 +1301,7 @@ public partial class DebugConsole : CanvasLayer
             return BuildAllSkillCompletions();
 
         var info = GameInfo.PlayerCharacters[playerIndex];
-        SkillID[] pool = info.AllSkills ?? Array.Empty<SkillID>();
+        SkillID[] pool = GetConsoleSkillPool(info);
         return pool.Select(skillId =>
             new CompletionItem(
                 skillId.ToString(),
@@ -1397,16 +1407,6 @@ public partial class DebugConsole : CanvasLayer
             new CompletionItem("survivability", "survivability  ·  生存", "survivability", "survive", "生存"),
             new CompletionItem("speed", "speed  ·  速度", "speed", "速度"),
             new CompletionItem("maxlife", "maxlife  ·  生命上限", "maxlife", "maxhp", "生命", "生命上限"),
-        ];
-    }
-
-    private static IEnumerable<CompletionItem> BuildSlotCompletions()
-    {
-        return
-        [
-            new CompletionItem("1", "1  ·  第一槽", "1", "第一槽"),
-            new CompletionItem("2", "2  ·  第二槽", "2", "第二槽"),
-            new CompletionItem("3", "3  ·  第三槽", "3", "第三槽"),
         ];
     }
 
@@ -1518,12 +1518,6 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
-        if (Matches(command, "equipskill", "装备技能"))
-        {
-            await ExecuteEquipSkillAsync(args);
-            return;
-        }
-
         if (Matches(command, "addequipment", "加装备"))
         {
             ExecuteAddEquipment(args);
@@ -1560,6 +1554,12 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
+        if (Matches(command, "battletest", "战斗测试", "bt"))
+        {
+            ExecuteBattleTest(args);
+            return;
+        }
+
         if (Matches(command, "save", "保存"))
         {
             SaveSystem.SaveAll();
@@ -1591,7 +1591,7 @@ public partial class DebugConsole : CanvasLayer
                 return;
 
             var info = GameInfo.PlayerCharacters[playerIndex];
-            SkillID[] pool = info.AllSkills ?? Array.Empty<SkillID>();
+            SkillID[] pool = GetConsoleSkillPool(info);
             string lines = string.Join(
                 "\n",
                 pool.Select(skillId => $"{skillId}  ->  {GetSkillDisplayName(skillId)}")
@@ -1644,7 +1644,7 @@ public partial class DebugConsole : CanvasLayer
     {
         if (args.Length < 3)
         {
-            AppendError("用法：addskill <角色> <技能ID/技能名> [槽位1-3]");
+            AppendError("用法：addskill <角色> <技能ID/技能名>");
             return;
         }
 
@@ -1654,73 +1654,39 @@ public partial class DebugConsole : CanvasLayer
             return;
 
         var info = GameInfo.PlayerCharacters[playerIndex];
-        if (!(info.AllSkills ?? Array.Empty<SkillID>()).Contains(skillId))
+        if (!CanPlayerUseConsoleSkill(info, skillId))
         {
-            AppendError($"{info.CharacterName} 的技能池不包含 {skillId}。");
+            AppendError($"{info.CharacterName} 的技能池或初始牌不包含 {skillId}。");
             return;
         }
 
         info.GainedSkills ??= new List<SkillID>();
-        if (!info.GainedSkills.Contains(skillId))
+        if (IsStarterSkillId(skillId) || !info.GainedSkills.Contains(skillId))
             info.GainedSkills.Add(skillId);
-
-        int? slotIndex = null;
-        if (args.Length >= 4)
-        {
-            if (!TryParseSlot(args[3], 3, out int parsedSlot))
-                return;
-            slotIndex = parsedSlot;
-            info.TakenSkills[slotIndex.Value] = skillId;
-        }
 
         GameInfo.PlayerCharacters[playerIndex] = info;
         GameInfo.NormalizePlayerCharacters();
-        await SyncBattleSkillStateAsync(playerIndex, slotIndex);
         RefreshOpenUi();
         SaveSystem.SaveAll();
+        await Task.CompletedTask;
 
-        AppendSuccess(
-            slotIndex.HasValue
-                ? $"已为 {info.CharacterName} 解锁并装备技能 {GetSkillDisplayName(skillId)} 到槽位 {slotIndex.Value + 1}。"
-                : $"已为 {info.CharacterName} 解锁技能 {GetSkillDisplayName(skillId)}。"
-        );
+        AppendSuccess($"已为 {info.CharacterName} 添加技能 {GetSkillDisplayName(skillId)}。");
     }
 
-    private async Task ExecuteEquipSkillAsync(string[] args)
+    private static SkillID[] GetConsoleSkillPool(PlayerInfoStructure info)
     {
-        if (args.Length < 4)
-        {
-            AppendError("用法：equipskill <角色> <槽位1-3> <技能ID/技能名>");
-            return;
-        }
-
-        if (!TryResolvePlayer(args[1], out int playerIndex))
-            return;
-        if (!TryParseSlot(args[2], 3, out int slotIndex))
-            return;
-        if (!TryResolveSkillId(args[3], out SkillID skillId))
-            return;
-
-        var info = GameInfo.PlayerCharacters[playerIndex];
-        if (!(info.AllSkills ?? Array.Empty<SkillID>()).Contains(skillId))
-        {
-            AppendError($"{info.CharacterName} 的技能池不包含 {skillId}。");
-            return;
-        }
-
-        info.GainedSkills ??= new List<SkillID>();
-        if (!info.GainedSkills.Contains(skillId))
-            info.GainedSkills.Add(skillId);
-        info.TakenSkills[slotIndex] = skillId;
-        GameInfo.PlayerCharacters[playerIndex] = info;
-        GameInfo.NormalizePlayerCharacters();
-        await SyncBattleSkillStateAsync(playerIndex, slotIndex);
-        RefreshOpenUi();
-        SaveSystem.SaveAll();
-        AppendSuccess(
-            $"已将 {info.CharacterName} 的第 {slotIndex + 1} 槽技能设置为 {GetSkillDisplayName(skillId)}。"
-        );
+        return (info.AllSkills ?? Array.Empty<SkillID>())
+            .Concat(StarterSkillIds)
+            .Distinct()
+            .ToArray();
     }
+
+    private static bool CanPlayerUseConsoleSkill(PlayerInfoStructure info, SkillID skillId)
+    {
+        return IsStarterSkillId(skillId) || (info.AllSkills ?? Array.Empty<SkillID>()).Contains(skillId);
+    }
+
+    private static bool IsStarterSkillId(SkillID skillId) => StarterSkillIds.Contains(skillId);
 
     private void ExecuteAddEquipment(string[] args)
     {
@@ -1906,6 +1872,33 @@ public partial class DebugConsole : CanvasLayer
         AppendSuccess($"已更新资源 {target}。");
     }
 
+    private void ExecuteBattleTest(string[] args)
+    {
+        if (args.Length < 2)
+        {
+            AppendInfo($"Battle.Istest 当前为 {(Battle.Istest ? "ON" : "OFF")}。用法：battletest <on|off|toggle>");
+            return;
+        }
+
+        string value = args[1];
+        if (Matches(value, "toggle", "切换"))
+        {
+            Battle.Istest = !Battle.Istest;
+        }
+        else if (TryParseToggleValue(value, out bool enabled))
+        {
+            Battle.Istest = enabled;
+        }
+        else
+        {
+            AppendError($"未知开关值：{value}。可用：on/off/toggle");
+            return;
+        }
+
+        AppendSuccess($"Battle.Istest 已{(Battle.Istest ? "开启" : "关闭")}。");
+    }
+
+
     private async Task SyncBattleStatsAsync(int playerIndex, PropertyType propertyType)
     {
         var battlePlayer = FindBattle()
@@ -1924,29 +1917,6 @@ public partial class DebugConsole : CanvasLayer
             await battlePlayer.IncreaseProperties(propertyType, delta);
         else
             await battlePlayer.DescendingProperties(propertyType, -delta);
-    }
-
-    private async Task SyncBattleSkillStateAsync(int playerIndex, int? slotIndex)
-    {
-        RefreshOpenUi();
-
-        if (!slotIndex.HasValue)
-            return;
-
-        var battlePlayer = FindBattle()
-            ?.PlayersList?.FirstOrDefault(player => player.CharacterIndex == playerIndex);
-        if (battlePlayer == null)
-            return;
-
-        var skillId = GameInfo.PlayerCharacters[playerIndex].TakenSkills[slotIndex.Value];
-        Skill skill = Skill.GetSkill(skillId);
-        if (skill == null)
-            return;
-
-        skill.OwnerCharater = battlePlayer;
-        skill.UpdateDescription();
-        battlePlayer.Skills[slotIndex.Value] = skill;
-        await Task.CompletedTask;
     }
 
     private void RefreshOpenUi()
@@ -2224,26 +2194,6 @@ public partial class DebugConsole : CanvasLayer
         return true;
     }
 
-    private bool TryParseSlot(string token, int maxSlots, out int slotIndex)
-    {
-        slotIndex = -1;
-        if (!int.TryParse(token, out int parsed))
-        {
-            AppendError($"不是有效槽位：{token}");
-            return false;
-        }
-
-        parsed -= 1;
-        if (parsed < 0 || parsed >= maxSlots)
-        {
-            AppendError($"槽位必须在 1 到 {maxSlots} 之间。");
-            return false;
-        }
-
-        slotIndex = parsed;
-        return true;
-    }
-
     private static string GetSkillDisplayName(SkillID skillId)
     {
         Skill skill = Skill.GetSkill(skillId);
@@ -2291,24 +2241,24 @@ public partial class DebugConsole : CanvasLayer
             + "catalog relic\n"
             + "catalog item\n\n"
             + $"[color={AccentColor}]修改内容[/color]\n"
-            + "addskill <角色> <技能ID/技能名> [槽位1-3]\n"
-            + "equipskill <角色> <槽位1-3> <技能ID/技能名>\n"
+            + "addskill <角色> <技能ID/技能名>\n"
             + "addequipment <装备ID/装备名> [数量]\n"
             + "addrelic <遗物ID/遗物名> [数量]\n"
             + "additem <道具ID/道具名> [数量]\n"
             + "setstat <角色> <power|survivability|speed|maxlife> <值>\n"
             + "addstat <角色> <power|survivability|speed|maxlife> <增量>\n"
             + "setresource <coin|energy|maxenergy> <值>\n"
+            + "battletest <on|off|toggle>\n"
             + "save\n\n"
             + $"[color={AccentColor}]示例[/color]\n"
             + "addskill Nightingale BreakStrike\n"
-            + "equipskill Echo 1 EchoPuncture\n"
             + "addequipment 裂隙短刃 2\n"
             + "addrelic Blessing 5\n"
             + "additem Fury 1\n"
             + "setstat Kasiya power 20\n"
             + "addstat Mariya speed 3\n"
             + "setresource coin 999\n\n"
+            + "battletest toggle\n\n"
             + "角色名支持英文名，也支持用 1-4 指代当前队伍顺序。";
     }
 
@@ -2355,6 +2305,24 @@ public partial class DebugConsole : CanvasLayer
                 return true;
         }
 
+        return false;
+    }
+
+    private static bool TryParseToggleValue(string token, out bool enabled)
+    {
+        if (Matches(token, "on", "true", "1", "yes", "开", "开启"))
+        {
+            enabled = true;
+            return true;
+        }
+
+        if (Matches(token, "off", "false", "0", "no", "关", "关闭"))
+        {
+            enabled = false;
+            return true;
+        }
+
+        enabled = false;
         return false;
     }
 }

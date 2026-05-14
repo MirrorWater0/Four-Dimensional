@@ -77,6 +77,7 @@ public partial class CharacterControl : Control
     private bool _layoutInitialized;
     private bool _suppressNextRefreshLayout;
     private bool _endTurnQueued;
+    private TaskCompletionSource<Character> _manualTargetCompletion;
 
     private sealed class QueuedCardPlay
     {
@@ -181,6 +182,7 @@ public partial class CharacterControl : Control
         _isResolvingCard = false;
         _isProcessingCardQueue = false;
         _endTurnQueued = false;
+        HideManualTargetPicker();
         ClearCardQueue(resetCards: true);
         ClearLiftedCard(instant: true);
         ResetCardDisplayTracking();
@@ -1115,6 +1117,12 @@ public partial class CharacterControl : Control
                 }
             }
         }
+        catch (Exception ex)
+        {
+            GD.PushError($"CharacterControl: card queue aborted: {ex}");
+            HideManualTargetPicker();
+            ClearCardQueue(resetCards: true);
+        }
         finally
         {
             _isProcessingCardQueue = false;
@@ -1512,6 +1520,7 @@ public partial class CharacterControl : Control
         var completion = new TaskCompletionSource<Character>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+        _manualTargetCompletion = completion;
 
         bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
         Character owner = skill.OwnerCharater;
@@ -1561,12 +1570,38 @@ public partial class CharacterControl : Control
 
         try
         {
-            return await completion.Task;
+            while (
+                !completion.Task.IsCompleted
+                && IsManualTargetPickerContextValid(skill, owner)
+            )
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+
+            return completion.Task.IsCompleted ? await completion.Task : null;
         }
         finally
         {
+            if (_manualTargetCompletion == completion)
+                _manualTargetCompletion = null;
             HideManualTargetPicker();
         }
+    }
+
+    private bool IsManualTargetPickerContextValid(Skill skill, Character owner)
+    {
+        return
+            IsInsideTree()
+            && _manualTargetPickerRoot != null
+            && GodotObject.IsInstanceValid(_manualTargetPickerRoot)
+            && _manualTargetPickerRoot.Visible
+            && skill != null
+            && owner != null
+            && GodotObject.IsInstanceValid(owner)
+            && owner.State != Character.CharacterState.Dying
+            && BattleNode != null
+            && GodotObject.IsInstanceValid(BattleNode)
+            && BattleNode.ShouldAbortSkillResolution() != true;
     }
 
     private void AnimateManualTargetCard(Control card, int index, int count)
@@ -1605,6 +1640,9 @@ public partial class CharacterControl : Control
 
     private void HideManualTargetPicker()
     {
+        _manualTargetCompletion?.TrySetResult(null);
+        _manualTargetCompletion = null;
+
         if (_manualTargetPickerRoot == null || !GodotObject.IsInstanceValid(_manualTargetPickerRoot))
             return;
 
@@ -1722,6 +1760,7 @@ public partial class CharacterControl : Control
 
     private void ClearCardQueue(bool resetCards)
     {
+        HideManualTargetPicker();
         if (
             _queuedCardPlays.Count == 0
             && _queuedFollowUpCardPlays.Count == 0

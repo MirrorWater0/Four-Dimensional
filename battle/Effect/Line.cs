@@ -7,6 +7,9 @@ public partial class Line : Line2D
     public Node2D Target;
 
     [Export]
+    public bool ManualPreviewMode;
+
+    [Export]
     public int TrailLength = 30;
 
     [Export]
@@ -17,15 +20,14 @@ public partial class Line : Line2D
     // Called every frame. 'delta' is the elapsed time since the previous frame.
     public override void _Process(double delta)
     {
+        if (ManualPreviewMode)
+            return;
+
+        if (Target == null || !GodotObject.IsInstanceValid(Target))
+            return;
+
         GlobalPosition = Vector2.Zero;
-        try
-        {
-            AddPoint(ToLocal(Target.GlobalPosition) + Offset);
-        }
-        catch
-        {
-            QueueFree();
-        }
+        AddPoint(ToLocal(Target.GlobalPosition) + Offset);
         if (GetPointCount() > TrailLength)
         {
             RemovePoint(0);

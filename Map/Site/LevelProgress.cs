@@ -393,8 +393,6 @@ public partial class LevelProgress : Control
         _siteUiLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("Map/SiteUI");
         GenerateMap();
         RefreshNodeInteractivity();
-        if (HasCompletedBossNode())
-            CallDeferred(nameof(AdvanceToNextRegion));
         // CallDeferred("StartAnimation");
     }
 

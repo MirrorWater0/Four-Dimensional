@@ -1,7 +1,7 @@
 param(
     [string]$EnvFile = "C:\tmp\openai.env",
     [string]$KeyFile = "C:\tmp\key.txt",
-    [string]$BaseUrl = "http://new.xem8k5.top:3000/v1",
+    [string]$BaseUrl = "https://www.traxnode.com/v1",
     [string]$Model = "gpt-image-2",
 
     [Parameter(Mandatory = $true)]
@@ -21,12 +21,60 @@ param(
     [string]$OutputPath,
     [string]$OutputDir = "asset/generated/openai",
     [string]$OutputName,
+    [ValidateRange(30, 3600)]
+    [int]$RequestTimeoutSec = 300,
+    [ValidateRange(30, 3600)]
+    [int]$DownloadTimeoutSec = 180,
     [switch]$DryRun,
     [switch]$OpenAfterSave
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Write-ProgressLog {
+    param([string]$Message)
+
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    Write-Host "[openai-image $timestamp] $Message"
+}
+
+function Get-TimeoutErrorMessage {
+    param(
+        [System.Exception]$Exception,
+        [string]$Operation,
+        [int]$TimeoutSec
+    )
+
+    if ($Exception -is [System.Threading.Tasks.TaskCanceledException]) {
+        return "$Operation timed out after ${TimeoutSec}s."
+    }
+
+    if (($Exception -is [System.Net.WebException]) -and ($Exception.Status -eq [System.Net.WebExceptionStatus]::Timeout)) {
+        return "$Operation timed out after ${TimeoutSec}s."
+    }
+
+    return $null
+}
+
+function Get-ExceptionDiagnostic {
+    param([System.Exception]$Exception)
+
+    if (-not $Exception) {
+        return "Unknown error."
+    }
+
+    $messages = New-Object System.Collections.Generic.List[string]
+    $current = $Exception
+    while ($current) {
+        if ($current.Message) {
+            $messages.Add($current.Message)
+        }
+        $current = $current.InnerException
+    }
+
+    return ($messages | Select-Object -Unique) -join " | "
+}
 
 function Read-DotEnv {
     param([string]$Path)
@@ -127,11 +175,16 @@ function Save-ImageItem {
         New-Item -ItemType Directory -Force -Path $parent | Out-Null
     }
 
-    if ($Item.b64_json) {
-        [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($Item.b64_json))
+    $base64Data = if ($Item.PSObject.Properties.Name -contains "b64_json") { $Item.b64_json } else { $null }
+    $downloadUrl = if ($Item.PSObject.Properties.Name -contains "url") { $Item.url } else { $null }
+
+    if ($base64Data) {
+        Write-ProgressLog "Writing base64 image to: $path"
+        [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($base64Data))
     }
-    elseif ($Item.url) {
-        Invoke-WebRequest -Uri $Item.url -OutFile $path -TimeoutSec 180 | Out-Null
+    elseif ($downloadUrl) {
+        Write-ProgressLog "Downloading image to: $path"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $path -TimeoutSec $DownloadTimeoutSec | Out-Null
     }
     else {
         throw "Image response did not contain b64_json or url."
@@ -167,10 +220,29 @@ function Invoke-OpenAIImageGeneration {
     $uri = Get-ApiUri -Base $BaseUrl -Endpoint "images/generations"
 
     try {
-        return Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -ContentType "application/json" -Body $json
+        Write-ProgressLog "Submitting image generation request to $uri"
+        $response = Invoke-RestMethod `
+            -Uri $uri `
+            -Method Post `
+            -Headers $headers `
+            -ContentType "application/json" `
+            -Body $json `
+            -TimeoutSec $RequestTimeoutSec
+        Write-ProgressLog "Generation response received."
+        return $response
     }
     catch {
-        $response = $_.Exception.Response
+        $timeoutMessage = Get-TimeoutErrorMessage -Exception $_.Exception -Operation "Image generation request" -TimeoutSec $RequestTimeoutSec
+        if ($timeoutMessage) {
+            throw $timeoutMessage
+        }
+
+        $response = if ($_.Exception.PSObject.Properties.Name -contains "Response") {
+            $_.Exception.Response
+        }
+        else {
+            $null
+        }
         if ($response) {
             $reader = [IO.StreamReader]::new($response.GetResponseStream())
             try {
@@ -209,12 +281,14 @@ function Invoke-OpenAIImageEdit {
     Add-Type -AssemblyName System.Net.Http
 
     $client = [System.Net.Http.HttpClient]::new()
-    $client.Timeout = [TimeSpan]::FromMinutes(5)
+    $client.Timeout = [System.Threading.Timeout]::InfiniteTimeSpan
+    $client.DefaultRequestHeaders.ExpectContinue = $false
     $client.DefaultRequestHeaders.Authorization =
         [System.Net.Http.Headers.AuthenticationHeaderValue]::new("Bearer", $ApiKey)
 
     $form = [System.Net.Http.MultipartFormDataContent]::new()
     $streams = New-Object System.Collections.Generic.List[System.IO.FileStream]
+    $cancellation = [System.Threading.CancellationTokenSource]::new()
     try {
         $form.Add([System.Net.Http.StringContent]::new($Model), "model")
         $form.Add([System.Net.Http.StringContent]::new($Prompt), "prompt")
@@ -232,6 +306,7 @@ function Invoke-OpenAIImageEdit {
             }
 
             $resolvedImage = (Resolve-Path -LiteralPath $image).Path
+            Write-ProgressLog "Attaching reference image: $resolvedImage"
             $stream = [System.IO.File]::OpenRead($resolvedImage)
             $streams.Add($stream)
             $fileContent = [System.Net.Http.StreamContent]::new($stream)
@@ -241,15 +316,35 @@ function Invoke-OpenAIImageEdit {
         }
 
         $uri = Get-ApiUri -Base $BaseUrl -Endpoint "images/edits"
-        $response = $client.PostAsync($uri, $form).GetAwaiter().GetResult()
+        Write-ProgressLog "Submitting image edit request to $uri"
+        $cancellation.CancelAfter([TimeSpan]::FromSeconds($RequestTimeoutSec))
+        $responseTask = $client.PostAsync($uri, $form, $cancellation.Token)
+        $waitCompleted = $responseTask.Wait([TimeSpan]::FromSeconds($RequestTimeoutSec + 5))
+        if (-not $waitCompleted) {
+            $cancellation.Cancel()
+            throw "Image edit request timed out after ${RequestTimeoutSec}s without receiving a response."
+        }
+
+        $response = $responseTask.GetAwaiter().GetResult()
         $text = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
         if (-not $response.IsSuccessStatusCode) {
             throw "OpenAI image edit failed, HTTP $([int]$response.StatusCode): $text"
         }
 
+        Write-ProgressLog "Edit response received."
         return $text | ConvertFrom-Json
     }
+    catch {
+        $timeoutMessage = Get-TimeoutErrorMessage -Exception $_.Exception -Operation "Image edit request" -TimeoutSec $RequestTimeoutSec
+        if ($timeoutMessage) {
+            throw $timeoutMessage
+        }
+
+        $diagnostic = Get-ExceptionDiagnostic -Exception $_.Exception
+        throw "Image edit request failed: $diagnostic"
+    }
     finally {
+        $cancellation.Dispose()
         foreach ($stream in $streams) {
             $stream.Dispose()
         }
@@ -275,6 +370,7 @@ if ($ImageCount -gt 1) {
 }
 
 if ($DryRun) {
+    Write-ProgressLog "Dry run only; request will not be submitted."
     [pscustomobject]@{
         endpoint = if ($ReferenceImage) { Get-ApiUri -Base $BaseUrl -Endpoint "images/edits" } else { Get-ApiUri -Base $BaseUrl -Endpoint "images/generations" }
         body = $body
@@ -284,11 +380,14 @@ if ($DryRun) {
     exit 0
 }
 
+Write-ProgressLog "Preparing API key and request payload."
 $apiKey = Get-OpenAIApiKey -EnvPath $EnvFile -KeyPath $KeyFile
 $response = if ($ReferenceImage) {
+    Write-ProgressLog "Mode: edit. Reference image count: $($ReferenceImage.Count)."
     Invoke-OpenAIImageEdit -ApiKey $apiKey -Images $ReferenceImage
 }
 else {
+    Write-ProgressLog "Mode: generation. Image count: $ImageCount."
     Invoke-OpenAIImageGeneration -ApiKey $apiKey -Body $body
 }
 
@@ -299,12 +398,15 @@ if (-not $response.data -or $response.data.Count -eq 0) {
 
 $namePrefix = ConvertTo-SafeFileName -Value $(if ($OutputName) { $OutputName } else { $Prompt })
 $savedFiles = New-Object System.Collections.Generic.List[string]
+Write-ProgressLog "Saving $($response.data.Count) image(s)."
 $index = 1
 foreach ($image in $response.data) {
     $explicitPath = if ($OutputPath -and $response.data.Count -eq 1) { $OutputPath } else { $null }
     $savedFiles.Add((Save-ImageItem -Item $image -Directory $OutputDir -NamePrefix $namePrefix -Format $OutputFormat -Index $index -ExplicitPath $explicitPath))
     $index += 1
 }
+
+Write-ProgressLog "Saved file count: $($savedFiles.Count)."
 
 [pscustomobject]@{
     model = $Model

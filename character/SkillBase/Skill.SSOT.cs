@@ -248,6 +248,12 @@ public partial class Skill
         return plan?.GetPreviewHostileDamageEntries() ?? Array.Empty<PreviewDamageEntry>();
     }
 
+    public Character[] GetPreviewHostileDebuffTargets()
+    {
+        var plan = GetPlan();
+        return plan?.GetPreviewHostileDebuffTargets() ?? Array.Empty<Character>();
+    }
+
     public bool RequiresManualFriendlyTarget()
     {
         var plan = GetPlan();
@@ -572,6 +578,19 @@ public partial class Skill
         );
     }
 
+    private static IEnumerable<Character> CollectPreviewHostileDebuffTargets(
+        Skill skill,
+        IEnumerable<SkillStep> steps
+    )
+    {
+        if (steps == null)
+            return Array.Empty<Character>();
+
+        return steps.SelectMany(step =>
+            step?.PreviewHostileDebuffTargets(skill) ?? Array.Empty<Character>()
+        );
+    }
+
     protected sealed class SkillPlan
     {
         private readonly Skill _skill;
@@ -677,6 +696,24 @@ public partial class Skill
                 .ToArray();
         }
 
+        public Character[] GetPreviewHostileDebuffTargets()
+        {
+            _skill._storedTargets.Clear();
+
+            Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
+            Character[] targets = CollectPreviewHostileDebuffTargets(_skill, _steps)
+                .Where(target =>
+                    target != null
+                    && target != dummy
+                    && target.State == Character.CharacterState.Normal
+                )
+                .Distinct()
+                .ToArray();
+
+            _skill._storedTargets.Clear();
+            return targets;
+        }
+
         public bool RequiresManualFriendlyTarget() =>
             _steps.Any(step => StepRequiresManualFriendlyTarget(step));
 
@@ -702,6 +739,11 @@ public partial class Skill
         )
         {
             return Array.Empty<PreviewDamageEntry>();
+        }
+
+        public virtual IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            return Array.Empty<Character>();
         }
 
     }
@@ -2076,6 +2118,11 @@ public partial class Skill
                 : skill.ResolveHostileTargets(_multiTarget);
         }
 
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            return PreviewTargets(skill);
+        }
+
         private string PermanentTag()
         {
             return _permanent ? "(永久)" : string.Empty;
@@ -2563,6 +2610,11 @@ public partial class Skill
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
             return PreviewHostileTargets(skill, _target);
+        }
+
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            return PreviewTargets(skill);
         }
     }
 
@@ -3578,6 +3630,14 @@ public partial class Skill
             return CollectPreviewDamage(skill, _onPassSteps, context);
         }
 
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            if (!CanPassTimesGate(skill, _times))
+                return Array.Empty<Character>();
+
+            return CollectPreviewHostileDebuffTargets(skill, _onPassSteps);
+        }
+
     }
 
     private sealed class EnergyTimesWhileSkillStep : SkillStep
@@ -3729,6 +3789,14 @@ public partial class Skill
                 return Array.Empty<PreviewDamageEntry>();
 
             return CollectPreviewDamage(skill, _loopSteps, context);
+        }
+
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            if (!CanPassEnergyTimesLoop(skill, _paidEnergyPerLoop, _times))
+                return Array.Empty<Character>();
+
+            return CollectPreviewHostileDebuffTargets(skill, _loopSteps);
         }
 
     }
@@ -3913,6 +3981,14 @@ public partial class Skill
             return CollectPreviewDamage(skill, _onPassSteps, context);
         }
 
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            if (_condition?.Invoke() != true)
+                return Array.Empty<Character>();
+
+            return CollectPreviewHostileDebuffTargets(skill, _onPassSteps);
+        }
+
     }
 
     private sealed class BranchSkillStep : SkillStep
@@ -3998,6 +4074,12 @@ public partial class Skill
         {
             SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
             return CollectPreviewDamage(skill, activeSteps, context);
+        }
+
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            SkillStep[] activeSteps = _condition?.Invoke() == true ? _onPassSteps : _onFailSteps;
+            return CollectPreviewHostileDebuffTargets(skill, activeSteps);
         }
 
     }

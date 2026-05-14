@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 public partial class Battle
@@ -290,21 +291,69 @@ public partial class Battle
     private EffectSourceContext GetCurrentEffectSourceContext() =>
         _effectSourceStack.Count > 0 ? _effectSourceStack[^1] : null;
 
-    private static string GetRecordCharacterName(Character character)
+    private string GetRecordCharacterName(Character character)
+    {
+        if (character == null)
+            return "系统";
+
+        string baseName = GetRecordBaseCharacterName(character);
+        if (ShouldNumberEnemyInRecord(character, baseName))
+            return $"{baseName} {GetEnemyRecordNumber(character, baseName)}";
+
+        return baseName;
+    }
+
+    private static string GetRecordBaseCharacterName(Character character)
     {
         if (character == null)
             return "系统";
 
         if (!string.IsNullOrWhiteSpace(character.CharacterName))
             return character.CharacterName;
-
         if (!string.IsNullOrWhiteSpace(character.Name))
             return character.Name;
 
         return character.GetType().Name;
     }
 
-    private static string FormatRecordActor(Character character, string color, string fallback = "系统")
+    private bool ShouldNumberEnemyInRecord(Character character, string baseName)
+    {
+        if (character == null || character.IsPlayer || string.IsNullOrWhiteSpace(baseName))
+            return false;
+
+        return GetEnemyRecordNameGroup(baseName).Skip(1).Any();
+    }
+
+    private int GetEnemyRecordNumber(Character character, string baseName)
+    {
+        Character[] group = GetEnemyRecordNameGroup(baseName);
+        for (int i = 0; i < group.Length; i++)
+        {
+            if (group[i] == character)
+                return i + 1;
+        }
+
+        return Math.Max(1, group.Length + 1);
+    }
+
+    private Character[] GetEnemyRecordNameGroup(string baseName)
+    {
+        return GetTeamCharacters(isPlayer: false, includeSummons: true)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && string.Equals(
+                    GetRecordBaseCharacterName(character),
+                    baseName,
+                    StringComparison.Ordinal
+                )
+            )
+            .OrderBy(character => character.PositionIndex)
+            .ThenBy(character => character.GetInstanceId())
+            .ToArray();
+    }
+
+    private string FormatRecordActor(Character character, string color, string fallback = "系统")
     {
         string name = character == null ? fallback : GetRecordCharacterName(character);
         return $"[color={color}]{name}[/color]";
@@ -538,9 +587,9 @@ public partial class Battle
             return;
         }
 
-        string characterName = string.IsNullOrWhiteSpace(skill.OwnerCharater?.CharacterName)
-            ? skill.OwnerCharater?.Name ?? "Unknown"
-            : skill.OwnerCharater.CharacterName;
+        string characterName = skill.OwnerCharater == null
+            ? "Unknown"
+            : GetRecordCharacterName(skill.OwnerCharater);
         string skillName = string.IsNullOrWhiteSpace(skill.SkillName)
             ? skill.GetType().Name
             : skill.SkillName;

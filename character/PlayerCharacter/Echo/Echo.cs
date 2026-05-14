@@ -61,7 +61,7 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Echo",
         PassiveName = global::Echo.PassiveNameText,
         PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 48,
+        LifeMax = 43,
         Power = 6,
         Survivability = 8,
         Speed = 7,

@@ -6,7 +6,7 @@ using Godot;
 public partial class SacredOnslaught : Skill
 {
     private const int MaxTargets = 4;
-    private const int BlockPerTarget = 5;
+    private const int BlockPerTarget = 4;
 
     public SacredOnslaught()
         : base(SkillTypes.Attack)
@@ -21,7 +21,7 @@ public partial class SacredOnslaught : Skill
         return new SkillPlan(
             this,
             AoeDamageStep(
-                baseDamage: -3,
+                baseDamage: 0,
                 powerMultiplier: 1,
                 target: HostileTargets(MaxTargets),
                 times: 1
@@ -68,7 +68,7 @@ public partial class SacredOnslaught : Skill
 
 public partial class ResonantSlash : Skill
 {
-    private const int BaseDamage = -2;
+    private const int BaseDamage = 0;
     private const int UpgradeDamageBonus = 2;
 
     public ResonantSlash()
@@ -155,7 +155,7 @@ public partial class Extract : Skill
 
 public partial class BladeOfSlaughter : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 15;
     private const string PrimaryTargetKey = "弑杀之刃目标";
 
     public BladeOfSlaughter()

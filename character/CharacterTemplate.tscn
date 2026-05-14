@@ -13,6 +13,7 @@
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
 [ext_resource type="Shader" uid="uid://kjsfn7cmaayt" path="res://shader/UI/CharacterHoverFrame.gdshader" id="17_hover"]
+[ext_resource type="Shader" uid="uid://2jepl1o0xuu4" path="res://shader/UI/TurnOrderCircle.gdshader" id="18_turnorder"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
@@ -185,6 +186,16 @@ corner_radius_bottom_left = 8
 [sub_resource type="Theme" id="Theme_yic7g"]
 ProgressBar/styles/background = SubResource("StyleBoxFlat_ek3d4")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_yic7g")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_turn_order"]
+shader = ExtResource("18_turnorder")
+shader_parameter/fill_color = Color(0.08, 0.18, 0.28, 0.82)
+shader_parameter/rim_color = Color(0.45, 0.88, 1, 1)
+shader_parameter/glow_color = Color(0.45, 0.88, 1, 0.7)
+shader_parameter/ring_width = 0.09
+shader_parameter/glow_size = 0.12
+shader_parameter/soft_edge = 0.042000001995
+shader_parameter/center_brightness = 0.18
 
 [sub_resource type="Animation" id="Animation_ttcdc"]
 length = 0.001
@@ -639,19 +650,38 @@ offset_bottom = 54.0
 theme_override_font_sizes/font_size = 40
 text = "23"
 
-[node name="TurnOrderPreview" type="Label" parent="." unique_id=1903752664]
-visible = false
+[node name="TurnOrderPreview" type="Control" parent="." unique_id=1903752664]
 z_index = 5
-offset_left = 72.0
-offset_top = -286.0
-offset_right = 126.0
-offset_bottom = -232.0
-theme_override_colors/font_color = Color(0.92, 0.98, 1, 1)
+layout_mode = 3
+anchors_preset = 0
+offset_left = 56.25
+offset_top = -295.0
+offset_right = 104.25
+offset_bottom = -247.0
+mouse_filter = 2
+
+[node name="Circle" type="ColorRect" parent="TurnOrderPreview" unique_id=614205381]
+material = SubResource("ShaderMaterial_turn_order")
+layout_mode = 0
+offset_left = 4.7499986
+offset_top = 6.0000114
+offset_right = 43.5
+offset_bottom = 44.75001
+mouse_filter = 2
+color = Color(1, 1, 1, 0.43529412)
+
+[node name="Value" type="Label" parent="TurnOrderPreview" unique_id=926415340]
+layout_mode = 0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 46.0
+offset_bottom = 46.0
+theme_override_colors/font_color = Color(0.97, 0.99, 1, 1)
 theme_override_colors/font_outline_color = Color(0.015, 0.025, 0.04, 1)
-theme_override_constants/outline_size = 8
+theme_override_constants/outline_size = 6
 theme_override_fonts/font = ExtResource("3_lucsw")
-theme_override_font_sizes/font_size = 44
-text = "0"
+theme_override_font_sizes/font_size = 28
+text = "1"
 horizontal_alignment = 1
 vertical_alignment = 1
 

@@ -120,6 +120,7 @@ public partial class SummonCharacter : Character
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
+        BattleNode.ClearCurrentActionCharacter(this);
         BattleNode.EmitSignal(Battle.SignalName.Next, this);
     }
 

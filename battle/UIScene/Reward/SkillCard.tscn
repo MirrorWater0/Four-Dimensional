@@ -2,7 +2,7 @@
 
 [ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_hfhot"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
-[ext_resource type="Texture2D" uid="uid://cb2g8brxm0m4b" path="res://asset/CardPicture/AbsouluteDefense.png" id="3_p4fnn"]
+[ext_resource type="Texture2D" uid="uid://cb2g8brxm0m4b" path="res://asset/CardPicture/Kasiya/AbsouluteDefense.png" id="3_p4fnn"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i77dj"]
 resource_local_to_scene = true

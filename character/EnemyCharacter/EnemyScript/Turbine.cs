@@ -79,12 +79,10 @@ public partial class TurbineRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
-        MaxLife = 55;
-        Power = 9;
+        MaxLife = 50;
+        Power = 7;
         Survivability = 9;
         Speed = 6;
-        SpecialIntentThreshold = 3;
-
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
 
         PassiveName = global::Turbine.PassiveNameText;
@@ -157,7 +155,7 @@ public partial class TurbineSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "超压模式";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

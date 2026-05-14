@@ -2,8 +2,8 @@ using Godot;
 
 public partial class WarThrall : SummonCharacter
 {
-    internal const int MaxLifeStat = 14;
-    internal const int PowerStat = 6;
+    internal const int MaxLifeStat = 19;
+    internal const int PowerStat = 5;
     internal const int SurvivabilityStat = 0;
     internal const int SpeedStat = 0;
 

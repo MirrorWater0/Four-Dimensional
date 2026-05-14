@@ -6,6 +6,8 @@ using Godot;
 
 public partial class BattleReady : Control
 {
+    private static readonly bool AllowManualPlayerFormationAdjustment = false;
+
     private enum BattleReadyMode
     {
         Tactics,
@@ -37,8 +39,12 @@ public partial class BattleReady : Control
         field ??= ResolveNode<Button>(
             "ModeSelectorRoot/ModeButtonsMargin/ModeButtons/FormationModeButton"
         );
-    private Container SkillContainer =>
-        field ??= ResolveNode<Container>("TacticsModeRoot/SkillContainer");
+    private ScrollContainer SkillContainer =>
+        field ??= ResolveNode<ScrollContainer>("TacticsModeRoot/SkillContainer");
+    private GridContainer SkillGrid =>
+        field ??= ResolveNode<GridContainer>(
+            "TacticsModeRoot/SkillContainer/SkillScrollMargin/SkillGrid"
+        );
     private Control CharacterSelectRoot =>
         field ??= ResolveNode<Control>("CharacterSelectRoot");
     private Control FormationFrame =>
@@ -87,21 +93,18 @@ public partial class BattleReady : Control
             ),
         ];
 
-    private static PackedScene SelectButtonScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/BattleReady/SelectButton.tscn"
+    private static readonly PackedScene SkillCardScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/Reward/SkillCard.tscn"
     );
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
     );
-    private static readonly Theme SkillPagerButtonTheme = GD.Load<Theme>(
-        "res://battle/ButtonTheme1.tres"
-    );
-    private const int SkillButtonsPerPage = 4;
-    private const float SkillPagerButtonWidth = 96f;
-    private const float SkillButtonHeight = 52f;
-    private const float SkillButtonEnterStagger = 0.022f;
     private const float SkillButtonExitStagger = 0.018f;
-    private const float SkillButtonExitSettleTime = 0.12f;
+    private const float SkillCardEnterStagger = 0.035f;
+    private const float SkillCardExitSettleTime = 0.14f;
+    private static readonly Vector2 SkillCardBaseDisplaySize = new(240f, 370f);
+    private static readonly Vector2 BattleReadySkillCardScale = new(0.78f, 0.78f);
+    private static readonly Vector2 SkillCardHoverPadding = Vector2.Zero;
     private const float TalentNodeWidth = 76f;
     private const float TalentNodeHeight = 76f;
     private const float TalentNodeLabelHeight = 22f;
@@ -124,24 +127,14 @@ public partial class BattleReady : Control
         );
     }
 
-    private Container GetSkillFence(int index) => SkillContainer.GetChild<Container>(index);
     private readonly List<SkillDisplayEntry>[] _skillBuckets =
         new List<SkillDisplayEntry>[] { new(), new(), new() };
-    private readonly int[] _skillPageIndices = new int[3];
-    private readonly bool[] _skillPageTransitioning = new bool[3];
+    private readonly Random _skillAnimationRandom = new();
 
     private readonly struct SkillDisplayEntry(SkillID skillId, int count)
     {
         public SkillID SkillId { get; } = skillId;
         public int Count { get; } = count;
-    }
-
-    private readonly struct SkillPage(int startIndex, int skillCount, bool hasPrev, bool hasNext)
-    {
-        public int StartIndex { get; } = startIndex;
-        public int SkillCount { get; } = skillCount;
-        public bool HasPrev { get; } = hasPrev;
-        public bool HasNext { get; } = hasNext;
     }
 
     private static int GetSkillCategoryIndex(Skill skill) =>
@@ -156,23 +149,6 @@ public partial class BattleReady : Control
             Skill.SkillTypes.Special => 2,
             _ => -1,
         };
-    }
-
-    private static List<SkillPage> BuildSkillPages(int totalCount)
-    {
-        var pages = new List<SkillPage>();
-        if (totalCount <= 0)
-            return pages;
-
-        for (int startIndex = 0; startIndex < totalCount; startIndex += SkillButtonsPerPage)
-        {
-            int skillCount = Math.Min(SkillButtonsPerPage, totalCount - startIndex);
-            bool hasPrev = startIndex > 0;
-            bool hasNext = startIndex + skillCount < totalCount;
-            pages.Add(new SkillPage(startIndex, skillCount, hasPrev, hasNext));
-        }
-
-        return pages;
     }
 
     private void CacheCharacterSkillBuckets(int characterIndex)
@@ -194,201 +170,73 @@ public partial class BattleReady : Control
         }
     }
 
-    private int GetInitialSkillPage(int skillIndex) => 0;
-
-    private IEnumerable<SelectButton> EnumerateSkillButtons(Container fence)
-    {
-        for (int i = 0; i < fence.GetChildCount(); i++)
-        {
-            if (fence.GetChild(i) is SelectButton button)
-                yield return button;
-        }
-    }
-
-    private void ClearFenceChildren(Container fence)
-    {
-        for (int i = fence.GetChildCount() - 1; i >= 0; i--)
-        {
-            var child = fence.GetChild(i);
-            fence.RemoveChild(child);
-            child.QueueFree();
-        }
-    }
-
-    private Button CreateSkillPageButton(
-        int characterIndex,
-        int skillIndex,
-        int pageDelta,
-        string symbol,
-        string tooltip
-    )
-    {
-        var button = new Button
-        {
-            CustomMinimumSize = new Vector2(SkillPagerButtonWidth, SkillButtonHeight),
-            Theme = SkillPagerButtonTheme,
-            Text = symbol,
-            TooltipText = tooltip,
-            Flat = false,
-        };
-        button.AddThemeFontSizeOverride("font_size", 38);
-        button.Pressed += () => AdvanceSkillPage(characterIndex, skillIndex, pageDelta);
-        return button;
-    }
-
-    private static void AnimatePagerButtonIn(Control control, float delay)
-    {
-        control.PivotOffset = new Vector2(SkillPagerButtonWidth * 0.5f, SkillButtonHeight * 0.5f);
-        control.Modulate = control.Modulate with { A = 0.0f };
-        control.Scale = new Vector2(0.84f, 0.84f);
-        var tween = control.CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(control, "modulate:a", 1.0f, 0.12f).SetDelay(delay);
-        tween.TweenProperty(control, "scale", Vector2.One, 0.14f).SetDelay(delay);
-    }
-
-    private static void AnimatePagerButtonOut(Control control, float delay)
-    {
-        control.PivotOffset = new Vector2(SkillPagerButtonWidth * 0.5f, SkillButtonHeight * 0.5f);
-        var tween = control.CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(control, "modulate:a", 0.0f, 0.10f).SetDelay(delay);
-        tween.TweenProperty(control, "scale", new Vector2(0.84f, 0.84f), 0.12f).SetDelay(delay);
-    }
-
-    private async Task AnimateFenceExitAsync(Container fence)
-    {
-        int animatedCount = 0;
-        for (int i = 0; i < fence.GetChildCount(); i++)
-        {
-            if (fence.GetChild(i) is SelectButton skillButton)
-            {
-                skillButton.FadeAnimation(SkillButtonExitStagger * animatedCount);
-                animatedCount++;
-            }
-            else if (fence.GetChild(i) is Control pagerButton)
-            {
-                AnimatePagerButtonOut(pagerButton, SkillButtonExitStagger * animatedCount);
-                animatedCount++;
-            }
-        }
-
-        if (animatedCount > 0)
-            await ToSignal(
-                GetTree().CreateTimer(
-                    SkillButtonExitSettleTime + SkillButtonExitStagger * (animatedCount - 1)
-                ),
-                "timeout"
-            );
-
-        ClearFenceChildren(fence);
-    }
-
-    private async void AdvanceSkillPage(int characterIndex, int skillIndex, int pageDelta)
-    {
-        if (_isTransitioning || _isModeTransitioning || _skillPageTransitioning[skillIndex])
-            return;
-
-        int pageCount = BuildSkillPages(_skillBuckets[skillIndex].Count).Count;
-        if (pageCount <= 1)
-            return;
-
-        int targetPage = Math.Clamp(
-            _skillPageIndices[skillIndex] + pageDelta,
-            0,
-            pageCount - 1
-        );
-        if (targetPage == _skillPageIndices[skillIndex])
-            return;
-
-        _skillPageTransitioning[skillIndex] = true;
-        try
-        {
-            await AnimateFenceExitAsync(GetSkillFence(skillIndex));
-            _skillPageIndices[skillIndex] = targetPage;
-            RenderSkillFencePage(characterIndex, skillIndex, true);
-        }
-        finally
-        {
-            _skillPageTransitioning[skillIndex] = false;
-        }
-    }
-
-    private SelectButton CreateSkillButton(SkillDisplayEntry entry)
-    {
-        var selectbutton = SelectButtonScene.Instantiate<SelectButton>();
-        selectbutton.MySkill = Skill.GetSkill(entry.SkillId);
-        if (selectbutton.MySkill == null)
-        {
-            selectbutton.QueueFree();
-            return null;
-        }
-
-        selectbutton.ThisLabel.Text = GetSkillDisplayName(selectbutton.MySkill, entry.Count);
-        selectbutton.AllowPressEffect = false;
-        selectbutton.Button.ToggleMode = false;
-        selectbutton.Button.ButtonPressed = false;
-        selectbutton.Button.FocusMode = Control.FocusModeEnum.None;
-
-        return selectbutton;
-    }
-
     private static string GetSkillDisplayName(Skill skill, int count)
     {
         string name = skill?.SkillName ?? string.Empty;
         return count > 1 ? $"{name} x{count}" : name;
     }
 
-    private void RenderSkillFencePage(int characterIndex, int skillIndex, bool animate)
+    private static Vector2 GetBattleReadySkillCardSize()
     {
-        var fence = GetSkillFence(skillIndex);
-        ClearFenceChildren(fence);
+        return SkillCardBaseDisplaySize * BattleReadySkillCardScale + SkillCardHoverPadding * 2f;
+    }
 
-        var skills = _skillBuckets[skillIndex];
-        int totalCount = skills.Count;
-        if (totalCount <= 0)
+    private static Control CreateSkillCardHolder(SkillCard card)
+    {
+        var holder = new Control
         {
-            fence.QueueSort();
-            return;
-        }
+            CustomMinimumSize = GetBattleReadySkillCardSize(),
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
 
-        var pages = BuildSkillPages(totalCount);
-        int pageCount = pages.Count;
-        int currentPage = Math.Clamp(_skillPageIndices[skillIndex], 0, Math.Max(pageCount - 1, 0));
-        _skillPageIndices[skillIndex] = currentPage;
-        var page = pages[currentPage];
+        card.Position =
+            SkillCardHoverPadding
+            - 0.5f * (Vector2.One - BattleReadySkillCardScale) * SkillCardBaseDisplaySize;
+        holder.AddChild(card);
+        return holder;
+    }
 
-        if (page.HasPrev)
+    private static void ClearSkillGridChildren(GridContainer skillGrid)
+    {
+        for (int i = skillGrid.GetChildCount() - 1; i >= 0; i--)
         {
-            var pager = CreateSkillPageButton(characterIndex, skillIndex, -1, "◀", "上一页");
-            fence.AddChild(pager);
-            if (animate)
-                AnimatePagerButtonIn(pager, 0.00f);
+            var child = skillGrid.GetChild(i);
+            skillGrid.RemoveChild(child);
+            child.QueueFree();
         }
+    }
 
-        for (int i = 0; i < page.SkillCount; i++)
+    private void ShuffleSkillAnimationOrder<T>(IList<T> items)
+    {
+        for (int i = items.Count - 1; i > 0; i--)
         {
-            var button = CreateSkillButton(skills[page.StartIndex + i]);
-            if (button == null)
-                continue;
-
-            fence.AddChild(button);
-            if (animate)
-                button.StartAnimation(SkillButtonEnterStagger * (i + (page.HasPrev ? 1 : 0)));
+            int swapIndex = _skillAnimationRandom.Next(i + 1);
+            (items[i], items[swapIndex]) = (items[swapIndex], items[i]);
         }
+    }
 
-        if (page.HasNext)
-        {
-            var pager = CreateSkillPageButton(characterIndex, skillIndex, 1, "▶", "下一页");
-            fence.AddChild(pager);
-            if (animate)
-                AnimatePagerButtonIn(
-                    pager,
-                    SkillButtonEnterStagger * (page.SkillCount + (page.HasPrev ? 1 : 0))
-                );
-        }
+    private SkillCard CreateSkillCard(SkillDisplayEntry entry, PlayerInfoStructure character)
+    {
+        var skill = Skill.GetSkill(entry.SkillId);
+        if (skill == null)
+            return null;
 
-        fence.QueueSort();
+        skill.SetPreviewStats(character.Power, character.Survivability, 1);
+
+        var card = SkillCardScene.Instantiate<SkillCard>();
+        card.Name = $"SkillCard_{entry.SkillId}";
+        card.ConfigureDisplayScale(BattleReadySkillCardScale);
+        card.AutoPressEffect = false;
+        card.Button.ToggleMode = false;
+        card.Button.ButtonPressed = false;
+        card.Button.FocusMode = Control.FocusModeEnum.None;
+        card.CharacterName.Text = character.CharacterName ?? string.Empty;
+        card.SetSkill(skill);
+        card.CharacterName.Text = character.CharacterName ?? string.Empty;
+        card.NameLabel.Text = GetSkillDisplayName(skill, entry.Count);
+        return card;
     }
 
     private void RefreshTalentTree(int characterIndex)
@@ -890,13 +738,15 @@ public partial class BattleReady : Control
             return;
 
         _isModeTransitioning = true;
-        SetModeSelectorEnabled(false);
         HideTransientTooltips();
         _dragTarget = null;
         _dragMouseOffset = Vector2.Zero;
 
         try
         {
+            _modeSelectorTween?.Kill();
+            _characterSelectorTween?.Kill();
+
             UpdateModeButtonState(targetMode);
             UpdateModeSelectorPosition(targetMode, true);
 
@@ -904,15 +754,18 @@ public partial class BattleReady : Control
             SetModeVisible(_currentMode, false);
 
             _currentMode = targetMode;
-            SetModeVisible(_currentMode, true);
-            if (_currentMode == BattleReadyMode.Talent)
+            SetModeVisible(BattleReadyMode.Tactics, targetMode == BattleReadyMode.Tactics);
+            SetModeVisible(BattleReadyMode.Talent, targetMode == BattleReadyMode.Talent);
+            SetModeVisible(BattleReadyMode.Formation, targetMode == BattleReadyMode.Formation);
+
+            if (targetMode == BattleReadyMode.Talent)
                 RefreshTalentTree(_selectedCharacterIndex);
+
             await AnimateModeEnterAsync(_currentMode);
         }
         finally
         {
             _isModeTransitioning = false;
-            SetModeSelectorEnabled(true);
             UpdateModeButtonState(_currentMode);
         }
     }
@@ -1387,12 +1240,16 @@ public partial class BattleReady : Control
 
             portrait.PortaitButton.ButtonDown += () =>
             {
+                if (!AllowManualPlayerFormationAdjustment)
+                    return;
                 _dragTarget = portrait;
                 _dragMouseOffset = GetViewport().GetMousePosition() - portrait.GlobalPosition;
                 portrait.ZIndex = 1;
             };
             portrait.PortaitButton.ButtonUp += () =>
             {
+                if (!AllowManualPlayerFormationAdjustment)
+                    return;
                 _dragTarget = null;
                 _dragMouseOffset = Vector2.Zero;
                 portrait.ZIndex = 0;
@@ -1505,11 +1362,29 @@ public partial class BattleReady : Control
     private void PopulateSkillButtons(int characterIndex)
     {
         CacheCharacterSkillBuckets(characterIndex);
-        for (int skillIndex = 0; skillIndex < _skillBuckets.Length; skillIndex++)
+        SkillContainer.ScrollVertical = 0;
+
+        var character = GameInfo.PlayerCharacters[characterIndex];
+        var cardsToAnimate = new List<SkillCard>();
+        foreach (var entry in _skillBuckets.SelectMany(bucket => bucket))
         {
-            _skillPageIndices[skillIndex] = GetInitialSkillPage(skillIndex);
-            RenderSkillFencePage(characterIndex, skillIndex, true);
+            var card = CreateSkillCard(entry, character);
+            if (card == null)
+                continue;
+
+            var holder = CreateSkillCardHolder(card);
+            SkillGrid.AddChild(holder);
+            cardsToAnimate.Add(card);
         }
+
+        SkillGrid.QueueSort();
+
+        ShuffleSkillAnimationOrder(cardsToAnimate);
+        for (int i = 0; i < cardsToAnimate.Count; i++)
+            cardsToAnimate[i].CallDeferred(
+                nameof(SkillCard.StartAnimation),
+                SkillCardEnterStagger * i
+            );
     }
 
     private void UpdateCharacterButtonState(bool animateSelector)
@@ -1527,51 +1402,54 @@ public partial class BattleReady : Control
 
     private bool HasSkillButtons()
     {
-        for (int i = 0; i < SkillContainer.GetChildCount(); i++)
-        {
-            if (EnumerateSkillButtons(GetSkillFence(i)).Any())
-                return true;
-        }
-
-        return false;
+        return SkillGrid.GetChildCount() > 0;
     }
 
     public async Task ClearSkillContainer()
     {
         HideTransientTooltips();
 
-        bool hasChildren = false;
-        int buttonsCount = 0;
-        int cumulativeIndex = 0;
-        for (int i = 0; i < SkillContainer.GetChildCount(); i++)
-        {
-            var fence = GetSkillFence(i);
-            hasChildren |= fence.GetChildCount() > 0;
-            for (int j = 0; j < fence.GetChildCount(); j++)
-            {
-                if (fence.GetChild(j) is SelectButton button)
-                    button.FadeAnimation(SkillButtonExitStagger * cumulativeIndex);
-                else if (fence.GetChild(j) is Control pagerButton)
-                    AnimatePagerButtonOut(pagerButton, SkillButtonExitStagger * cumulativeIndex);
+        int cardCount = SkillGrid.GetChildCount();
+        if (cardCount <= 0)
+            return;
 
-                buttonsCount++;
-                cumulativeIndex++;
+        var holdersToAnimate = new List<Control>();
+        for (int i = 0; i < cardCount; i++)
+        {
+            if (SkillGrid.GetChild(i) is Control holder)
+                holdersToAnimate.Add(holder);
+        }
+
+        ShuffleSkillAnimationOrder(holdersToAnimate);
+        for (int i = 0; i < holdersToAnimate.Count; i++)
+        {
+            var holder = holdersToAnimate[i];
+            float delay = SkillButtonExitStagger * i;
+            var tween = holder.CreateTween();
+            tween.SetParallel(true);
+            tween.TweenProperty(holder, "modulate:a", 0.0f, 0.10f).SetDelay(delay);
+            tween.TweenProperty(holder, "scale", new Vector2(0.96f, 0.96f), 0.12f)
+                .SetDelay(delay);
+
+            if (holder.GetChildCount() > 0 && holder.GetChild(0) is SkillCard card)
+            {
+                var cardTween = card.CreateTween();
+                cardTween.TweenCallback(Callable.From(() => card.Vanish())).SetDelay(delay);
             }
         }
 
-        if (!hasChildren)
+        if (holdersToAnimate.Count <= 0)
             return;
 
-        if (buttonsCount > 0)
-            await ToSignal(
-                GetTree().CreateTimer(
-                    SkillButtonExitSettleTime + SkillButtonExitStagger * (buttonsCount - 1)
+        await ToSignal(
+            GetTree()
+                .CreateTimer(
+                    SkillCardExitSettleTime + SkillButtonExitStagger * (holdersToAnimate.Count - 1)
                 ),
-                "timeout"
-            );
+            "timeout"
+        );
 
-        for (int i = 0; i < SkillContainer.GetChildCount(); i++)
-            ClearFenceChildren(GetSkillFence(i));
+        ClearSkillGridChildren(SkillGrid);
     }
 
     public async void RefreshFromExternalChange()
@@ -1589,6 +1467,14 @@ public partial class BattleReady : Control
 
     public void ComfirmTactics()
     {
+        if (!AllowManualPlayerFormationAdjustment)
+        {
+            var previewDisabled = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
+            if (previewDisabled != null)
+                previewDisabled.SetPortraitPostion();
+            return;
+        }
+
         var map = new System.Collections.Generic.Dictionary<int, int>()
         {
             [1] = 7,

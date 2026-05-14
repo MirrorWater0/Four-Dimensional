@@ -39,12 +39,12 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Nightingale",
         PassiveName = global::Nightingale.PassiveNameText,
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 45,
+        LifeMax = 40,
         Power = 9,
         Survivability = 7,
         Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.NightingaleEnergy],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
     };
 }

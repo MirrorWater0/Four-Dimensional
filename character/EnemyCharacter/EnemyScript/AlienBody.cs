@@ -51,18 +51,10 @@ public partial class AlienBody : EnemyCharacter
         );
 
         ApplyPermanentPropertyLoss(target, PropertyType.Power, PassivePowerDown);
-        ApplyPermanentPropertyLoss(
-            target,
-            PropertyType.Survivability,
-            PassiveSurvivabilityDown
-        );
+        ApplyPermanentPropertyLoss(target, PropertyType.Survivability, PassiveSurvivabilityDown);
     }
 
-    private static void ApplyPermanentPropertyLoss(
-        Character target,
-        PropertyType type,
-        int loss
-    )
+    private static void ApplyPermanentPropertyLoss(Character target, PropertyType type, int loss)
     {
         if (loss <= 0 || target is not PlayerCharacter player)
             return;
@@ -140,12 +132,10 @@ public partial class AlienBodyRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AlienBody.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
-        MaxLife = 40;
-        Power = 7;
+        MaxLife = 35;
+        Power = 5;
         Survivability = 8;
         Speed = 5;
-        SpecialIntentThreshold = 3;
-
         SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
 
         PassiveName = global::AlienBody.PassiveNameText;
@@ -211,7 +201,7 @@ public partial class AlienBodySpecial : Skill
     }
 
     public override string SkillName { get; set; } = "共生连携";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

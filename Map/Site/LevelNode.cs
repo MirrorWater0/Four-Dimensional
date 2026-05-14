@@ -247,14 +247,18 @@ public partial class LevelNode : ColorRect
 
         if (isBoss)
         {
-            if (levelProgress != null)
-                levelProgress.AdvanceToNextRegion();
-            else
-                SaveSystem.SaveAll();
+            CompleteRunAfterFinalBoss();
             return;
         }
 
         SaveSystem.SaveAll();
+    }
+
+    private void CompleteRunAfterFinalBoss()
+    {
+        GameInfo.RecordCurrentRunHistory(victory: true, includeCurrentNode: false);
+        SaveSystem.SaveAll();
+        GameOverSummary.Show(this);
     }
 
     private void OnNodeMouseEntered()
@@ -346,6 +350,7 @@ public partial class LevelNode : ColorRect
         GameInfo.BeginLevelNodeTracking(this);
         var tween = ExplodeAnimation();
         EnemiesRegeditList = ProduceEnemies();
+        RandomizePlayerPreviewPositions();
         var preview = BattlePreviewScene.Instantiate() as BattlePreview;
         preview.WhichNode = this;
         preview.RandomNum = RandomNum;
@@ -358,6 +363,25 @@ public partial class LevelNode : ColorRect
                     preview.StartAnimation();
                 })
             );
+    }
+
+    private void RandomizePlayerPreviewPositions()
+    {
+        if (GameInfo.PlayerCharacters == null || GameInfo.PlayerCharacters.Length == 0)
+            return;
+
+        var positions = Enumerable.Range(1, 9).ToList();
+        Random rng = new Random(RandomNum);
+
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
+        {
+            if (positions.Count == 0)
+                break;
+
+            int positionPickIndex = rng.Next(positions.Count);
+            GameInfo.PlayerCharacters[i].PositionIndex = positions[positionPickIndex];
+            positions.RemoveAt(positionPickIndex);
+        }
     }
 
     public void GotoEvent()

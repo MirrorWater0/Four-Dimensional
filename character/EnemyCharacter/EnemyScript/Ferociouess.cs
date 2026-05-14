@@ -90,12 +90,10 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 40;
-        Power = 7;
+        MaxLife = 35;
+        Power = 5;
         Survivability = 11;
         Speed = 7;
-        SpecialIntentThreshold = 2;
-
         SkillIDs =
         [
             SkillID.FerociouessAttack,
@@ -177,7 +175,7 @@ public partial class FerociouessSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "狂暴";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

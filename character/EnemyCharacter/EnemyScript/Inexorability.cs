@@ -88,12 +88,10 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 90;
-        Power = 9;
+        MaxLife = 85;
+        Power = 7;
         Survivability = 9;
         Speed = 8;
-        SpecialIntentThreshold = 4;
-
         SkillIDs =
         [
             SkillID.InexorabilityAttack,
@@ -175,7 +173,7 @@ public partial class InexorabilitySpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终局律令";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 5;
 
     protected override SkillPlan BuildPlan()
     {

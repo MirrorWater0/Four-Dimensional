@@ -8,6 +8,8 @@ using Godot;
 
 public partial class Character : Node2D
 {
+    private const int TurnStartEnergyGain = 3;
+
     public enum DamageKind
     {
         Other,
@@ -79,7 +81,10 @@ public partial class Character : Node2D
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
     public Label SpeedIconLabel => field ??= GetNode<Label>("State/SpeedIcon/Label");
     public Label EnergeIconLabel => field ??= GetNode<Label>("State/EnergeIcon/Label");
-    public Label TurnOrderPreviewLabel => field ??= GetNodeOrNull<Label>("TurnOrderPreview");
+    private Control TurnOrderPreviewRoot => field ??= GetNodeOrNull<Control>("TurnOrderPreview");
+    private ColorRect TurnOrderPreviewCircle =>
+        field ??= GetNodeOrNull<ColorRect>("TurnOrderPreview/Circle");
+    public Label TurnOrderPreviewLabel => field ??= GetNodeOrNull<Label>("TurnOrderPreview/Value");
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
@@ -88,6 +93,10 @@ public partial class Character : Node2D
     public Node2D Sprite;
     public AnimationPlayer TrailAnimation => field ??= GetNode<AnimationPlayer>("TrailAnimation");
     public Node2D trail => field ??= GetNode<Node2D>("Path2D");
+    private Path2D TrailPath => trail as Path2D;
+    private Line2D TrailLine => trail?.GetNodeOrNull<Line2D>("Line2D");
+    private global::Line TrailLineScript => trail?.GetNodeOrNull<global::Line>("Line2D");
+    private PathFollow2D TrailFollow => trail?.GetNodeOrNull<PathFollow2D>("PathFollow2D");
 
     // public Control SkillControl => field??=GetNode<Control>("SkillControl");
     //action and skill
@@ -136,7 +145,13 @@ public partial class Character : Node2D
     private Tween _lifeBarTween;
     private Tween _lifeBarMaxTween;
     private Tween _nextActionPreviewTween;
+    private Tween _trailPreviewTween;
+    private Tween _turnOrderPreviewTween;
     private bool _nextActionPreviewVisible;
+    private bool _customTrailPreviewVisible;
+    private Vector2 _customTrailPreviewTargetGlobalPosition;
+    private Color _customTrailPreviewColor = new(1f, 0.42f, 0.32f, 0.78f);
+    private Line2D _curvedTrailPreviewLine;
     private ulong _lastIncreasePropertyEffectTickMsec;
     private bool _isHoverframeHovered;
     private bool _isFramePreviewVisible;
@@ -147,6 +162,10 @@ public partial class Character : Node2D
     private bool _skillTooltipCacheDirty = true;
     private bool _buffTooltipCacheDirty = true;
     private int _skillTooltipHoverVersion;
+    private Curve2D _defaultTrailCurve;
+    private Vector2 _defaultTrailLinePosition;
+    private bool _hasDefaultTrailLinePosition;
+    private bool _trailUsesCustomCurve;
 
     protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
     {
@@ -191,12 +210,14 @@ public partial class Character : Node2D
         _isFramePreviewVisible = false;
         _isTargetPreviewVisible = false;
         _targetPreviewColor = Colors.White;
+        ConfigureTurnOrderPreviewBase();
         HideTurnOrderPreview();
         RefreshHoverframeVisual();
         _cachedSkillTooltipText = BuildSkillTooltipText();
         _cachedBuffTooltipText = BuildBuffTooltipText();
         _skillTooltipCacheDirty = false;
         _buffTooltipCacheDirty = false;
+        CacheDefaultTrailGeometry();
     }
 
     public override async void _Ready()
@@ -725,6 +746,12 @@ public partial class Character : Node2D
 
     public override void _ExitTree()
     {
+        if (_curvedTrailPreviewLine != null && GodotObject.IsInstanceValid(_curvedTrailPreviewLine))
+        {
+            _curvedTrailPreviewLine.QueueFree();
+            _curvedTrailPreviewLine = null;
+        }
+
         if (_localSkillTooltip != null && GodotObject.IsInstanceValid(_localSkillTooltip))
         {
             _localSkillTooltip.QueueFree();
@@ -740,9 +767,13 @@ public partial class Character : Node2D
         ResolveTurnStartPhase();
 
         OnActionStart();
+        _customTrailPreviewVisible = false;
+        RefreshCurvedTrailPreviewLine();
         TrailAnimation.Play("trail");
         _nextActionPreviewVisible = false;
         _nextActionPreviewTween?.Kill();
+        _trailPreviewTween?.Kill();
+        RestoreDefaultTrailGeometry();
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
     }
 
@@ -752,54 +783,148 @@ public partial class Character : Node2D
             return;
 
         _nextActionPreviewVisible = true;
-        _nextActionPreviewTween?.Kill();
-        TrailAnimation.Play("trail");
-        _nextActionPreviewTween = CreateTween();
-        _nextActionPreviewTween.TweenProperty(
-            trail,
-            "modulate",
-            new Color(0.2f, 1f, 0.25f, 0.78f),
-            0.2f
-        );
+        RefreshTrailPreviewState();
     }
 
-    public async void HideNextActionPreview()
+    public void HideNextActionPreview()
     {
         if (!_nextActionPreviewVisible || trail == null)
             return;
 
         _nextActionPreviewVisible = false;
-        _nextActionPreviewTween?.Kill();
-        _nextActionPreviewTween = CreateTween();
-        _nextActionPreviewTween.TweenProperty(
-            trail,
-            "modulate",
-            new Color(0.2f, 1f, 0.25f, 0f),
-            0.16f
-        );
-        await ToSignal(GetTree().CreateTimer(0.16f), "timeout");
-        if (!_nextActionPreviewVisible && BattleNode?.CurrentActionCharacter != this)
-            TrailAnimation.Stop();
+        RefreshTrailPreviewState();
+    }
+
+    public void ShowCurvedTrailPreviewToTarget(Vector2 targetGlobalPosition, Color color)
+    {
+        if (State == CharacterState.Dying)
+            return;
+
+        _customTrailPreviewVisible = true;
+        _customTrailPreviewTargetGlobalPosition = targetGlobalPosition;
+        _customTrailPreviewColor = color;
+        RefreshCurvedTrailPreviewLine();
+    }
+
+    public void HideCurvedTrailPreview()
+    {
+        _customTrailPreviewVisible = false;
+        RefreshCurvedTrailPreviewLine();
     }
 
     public void ShowTurnOrderPreview(int order)
     {
+        var root = TurnOrderPreviewRoot;
+        var circle = TurnOrderPreviewCircle;
         var label = TurnOrderPreviewLabel;
-        if (label == null || State == CharacterState.Dying)
+        if (root == null || circle == null || label == null || State == CharacterState.Dying)
             return;
 
-        label.Text = Math.Max(0, order).ToString();
-        label.Visible = true;
-        label.Modulate = order == 0
-            ? new Color(1f, 0.92f, 0.45f, 1f)
-            : new Color(0.92f, 0.98f, 1f, 0.92f);
+        order = Math.Max(0, order);
+        bool isCurrent = order == 0;
+        bool wasVisible = root.Visible;
+
+        ConfigureTurnOrderPreviewBase();
+        ApplyTurnOrderPreviewStyle(order, isCurrent);
+        label.Text = (order + 1).ToString();
+        root.Visible = true;
+
+        Vector2 targetScale = isCurrent ? new Vector2(1.08f, 1.08f) : Vector2.One;
+        _turnOrderPreviewTween?.Kill();
+        if (!wasVisible)
+        {
+            root.Scale = isCurrent ? new Vector2(0.82f, 0.82f) : new Vector2(0.9f, 0.9f);
+            root.Modulate = new Color(1f, 1f, 1f, 0f);
+
+            _turnOrderPreviewTween = CreateTween();
+            _turnOrderPreviewTween.SetParallel(true);
+            _turnOrderPreviewTween
+                .TweenProperty(root, "scale", targetScale, isCurrent ? 0.22f : 0.16f)
+                .SetEase(Tween.EaseType.Out)
+                .SetTrans(Tween.TransitionType.Back);
+            _turnOrderPreviewTween
+                .TweenProperty(root, "modulate", Colors.White, isCurrent ? 0.18f : 0.14f)
+                .SetEase(Tween.EaseType.Out)
+                .SetTrans(Tween.TransitionType.Cubic);
+        }
+        else
+        {
+            root.Scale = targetScale;
+            root.Modulate = Colors.White;
+        }
     }
 
     public void HideTurnOrderPreview()
     {
-        var label = TurnOrderPreviewLabel;
-        if (label != null)
-            label.Visible = false;
+        _turnOrderPreviewTween?.Kill();
+
+        var root = TurnOrderPreviewRoot;
+        if (root != null)
+        {
+            root.Visible = false;
+            root.Scale = Vector2.One;
+            root.Modulate = Colors.White;
+        }
+    }
+
+    private void ConfigureTurnOrderPreviewBase()
+    {
+        var root = TurnOrderPreviewRoot;
+        if (root == null)
+            return;
+
+        root.MouseFilter = Control.MouseFilterEnum.Ignore;
+        root.PivotOffset = root.Size / 2f;
+
+        if (TurnOrderPreviewCircle?.Material is ShaderMaterial material)
+        {
+            ShaderMaterial localMaterial = material;
+            if (!material.ResourceLocalToScene)
+            {
+                localMaterial = (ShaderMaterial)material.Duplicate();
+                localMaterial.ResourceLocalToScene = true;
+                TurnOrderPreviewCircle.Material = localMaterial;
+            }
+        }
+    }
+
+    private void ApplyTurnOrderPreviewStyle(int order, bool isCurrent)
+    {
+        Color accent = isCurrent
+            ? new Color(1f, 0.84f, 0.33f, 1f)
+            : IsPlayer
+                ? new Color(0.42f, 0.88f, 1f, 1f)
+                : new Color(1f, 0.47f, 0.42f, 1f);
+        Color fill = isCurrent
+            ? new Color(0.22f, 0.16f, 0.05f, 0.92f)
+            : IsPlayer
+                ? new Color(0.05f, 0.14f, 0.22f, 0.88f)
+                : new Color(0.2f, 0.07f, 0.08f, 0.88f);
+        Color glow = accent with { A = isCurrent ? 0.95f : 0.72f };
+        Color valueColor = isCurrent
+            ? new Color(1f, 0.95f, 0.78f, 1f)
+            : new Color(0.97f, 0.99f, 1f, 0.98f);
+
+        if (TurnOrderPreviewCircle?.Material is ShaderMaterial material)
+        {
+            material.SetShaderParameter("fill_color", fill);
+            material.SetShaderParameter("rim_color", accent);
+            material.SetShaderParameter("glow_color", glow);
+            material.SetShaderParameter("ring_width", isCurrent ? 0.1f : 0.085f);
+            material.SetShaderParameter("glow_size", isCurrent ? 0.16f : 0.11f);
+            material.SetShaderParameter("center_brightness", isCurrent ? 0.26f : 0.15f);
+        }
+
+        if (TurnOrderPreviewLabel != null)
+        {
+            TurnOrderPreviewLabel.AddThemeColorOverride("font_color", valueColor);
+            TurnOrderPreviewLabel.AddThemeColorOverride(
+                "font_outline_color",
+                new Color(0.015f, 0.025f, 0.04f, 1f)
+            );
+            TurnOrderPreviewLabel.AddThemeConstantOverride("outline_size", isCurrent ? 7 : 6);
+            TurnOrderPreviewLabel.AddThemeFontSizeOverride("font_size", isCurrent ? 30 : 28);
+        }
     }
 
     protected virtual void ResolveTurnStartPhase()
@@ -831,7 +956,7 @@ public partial class Character : Node2D
             ClearOwnedSummonsBlock();
         }
 
-        UpdataEnergy(2);
+        UpdataEnergy(TurnStartEnergyGain);
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -982,7 +1107,7 @@ public partial class Character : Node2D
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(effect);
         effect.Animation.Play("recover");
-        if (State == CharacterState.Dying && canRevive)
+        if (State == CharacterState.Dying && canRevive && Life > 0)
         {
             State = CharacterState.Normal;
             CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);
@@ -996,8 +1121,6 @@ public partial class Character : Node2D
         bool enteredDying = State != CharacterState.Dying;
         State = CharacterState.Dying;
         BattleNode?.RecordDying(this, source);
-        if (enteredDying)
-            BattleNode?.HandleCharacterEnteredDying(this);
         if (BattleNode != null)
             await BattleNode.EmitCharacterDying(this, source);
 
@@ -1011,7 +1134,11 @@ public partial class Character : Node2D
             }
 
         if (State == CharacterState.Dying)
+        {
+            if (enteredDying)
+                BattleNode?.HandleCharacterEnteredDying(this);
             TriggerOwnedSummonsDying();
+        }
     }
 
     private void TriggerOwnedSummonsDying()
@@ -1231,7 +1358,11 @@ public partial class Character : Node2D
 
     public virtual void OnTurnStart() { }
 
-    public virtual void OnTurnEnd() { }
+    public virtual void OnTurnEnd()
+    {
+        if (IsPlayer && Energy > 0)
+            UpdataEnergy(-Energy, this);
+    }
 
     private void StopTween(ref Tween tween)
     {
@@ -1394,6 +1525,212 @@ public partial class Character : Node2D
         }
 
         Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+    }
+
+    private void CacheDefaultTrailGeometry()
+    {
+        if (TrailPath?.Curve != null && _defaultTrailCurve == null)
+            _defaultTrailCurve = TrailPath.Curve.Duplicate() as Curve2D;
+
+        if (TrailLine != null && !_hasDefaultTrailLinePosition)
+        {
+            _defaultTrailLinePosition = TrailLine.Position;
+            _hasDefaultTrailLinePosition = true;
+        }
+    }
+
+    private void RefreshTrailPreviewState()
+    {
+        if (trail == null)
+            return;
+
+        _nextActionPreviewTween?.Kill();
+        _trailPreviewTween?.Kill();
+        CacheDefaultTrailGeometry();
+
+        if (_nextActionPreviewVisible)
+        {
+            RestoreDefaultTrailGeometry();
+            if (TrailLineScript != null)
+                TrailLineScript.ManualPreviewMode = false;
+            TrailAnimation.Play("trail");
+            TweenTrailToColor(new Color(0.2f, 1f, 0.25f, 0.78f), 0.18f);
+            return;
+        }
+
+        RestoreDefaultTrailGeometry();
+        TweenTrailToColor(
+            new Color(trail.Modulate.R, trail.Modulate.G, trail.Modulate.B, 0f),
+            0.14f,
+            stopWhenFinished: true
+        );
+    }
+
+    private void TweenTrailToColor(Color color, float duration, bool stopWhenFinished = false)
+    {
+        if (trail == null)
+            return;
+
+        _trailPreviewTween = CreateTween();
+        _trailPreviewTween.TweenProperty(trail, "modulate", color, duration);
+        if (!stopWhenFinished)
+            return;
+
+        _trailPreviewTween.Finished += () =>
+        {
+            if (
+                !_nextActionPreviewVisible
+                && !_customTrailPreviewVisible
+                && BattleNode?.CurrentActionCharacter != this
+            )
+            {
+                TrailAnimation.Stop();
+            }
+        };
+    }
+
+    private void ConfigureTrailCurveToTarget(Vector2 targetGlobalPosition)
+    {
+        if (TrailPath == null)
+            return;
+
+        CacheDefaultTrailGeometry();
+
+        Vector2 start =
+            _defaultTrailCurve?.PointCount > 0
+                ? _defaultTrailCurve.GetPointPosition(0)
+                : Vector2.Zero;
+        Vector2 end = TrailPath.ToLocal(targetGlobalPosition);
+        if (start.DistanceTo(end) <= 1f)
+            return;
+
+        Vector2 delta = end - start;
+        float arcHeight = Mathf.Clamp(delta.Length() * 0.18f, 46f, 180f);
+        Vector2 bend = Vector2.Up * arcHeight;
+        Vector2 tangent = delta * 0.35f;
+
+        Curve2D curve = new Curve2D();
+        if (_defaultTrailCurve != null)
+            curve.BakeInterval = _defaultTrailCurve.BakeInterval;
+        curve.AddPoint(start, Vector2.Zero, tangent + bend);
+        curve.AddPoint(end, -tangent + bend, Vector2.Zero);
+
+        TrailPath.Curve = curve;
+        if (TrailLineScript != null)
+            TrailLineScript.ManualPreviewMode = true;
+        if (TrailLine != null)
+        {
+            TrailLine.Position = Vector2.Zero;
+            TrailLine.ClearPoints();
+            Vector2[] bakedPoints = curve.GetBakedPoints();
+            for (int i = 0; i < bakedPoints.Length; i++)
+                TrailLine.AddPoint(bakedPoints[i]);
+        }
+        if (TrailFollow != null)
+            TrailFollow.ProgressRatio = 0f;
+
+        _trailUsesCustomCurve = true;
+    }
+
+    private void RestoreDefaultTrailGeometry()
+    {
+        if (!_trailUsesCustomCurve || TrailPath == null)
+            return;
+
+        if (_defaultTrailCurve != null)
+            TrailPath.Curve = _defaultTrailCurve.Duplicate() as Curve2D;
+        if (TrailLine != null)
+        {
+            if (TrailLineScript != null)
+                TrailLineScript.ManualPreviewMode = false;
+            if (_hasDefaultTrailLinePosition)
+                TrailLine.Position = _defaultTrailLinePosition;
+            TrailLine.ClearPoints();
+        }
+        if (TrailFollow != null)
+            TrailFollow.ProgressRatio = 0f;
+
+        _trailUsesCustomCurve = false;
+    }
+
+    private void RefreshCurvedTrailPreviewLine()
+    {
+        Line2D previewLine = EnsureCurvedTrailPreviewLine();
+        if (previewLine == null)
+            return;
+
+        if (!_customTrailPreviewVisible || State == CharacterState.Dying || !IsInsideTree())
+        {
+            previewLine.Visible = false;
+            previewLine.ClearPoints();
+            return;
+        }
+
+        Vector2 start = GetCurvedTrailPreviewStartLocalPosition();
+        Vector2 end = ToLocal(_customTrailPreviewTargetGlobalPosition);
+        if (start.DistanceTo(end) <= 4f)
+        {
+            previewLine.Visible = false;
+            previewLine.ClearPoints();
+            return;
+        }
+
+        Vector2 delta = end - start;
+        float arcHeight = Mathf.Clamp(delta.Length() * 0.16f, 60f, 180f);
+        Vector2 control = (start + end) * 0.5f + Vector2.Up * arcHeight;
+
+        previewLine.DefaultColor = _customTrailPreviewColor;
+        previewLine.ClearPoints();
+        const int sampleCount = 18;
+        for (int i = 0; i <= sampleCount; i++)
+        {
+            float t = i / (float)sampleCount;
+            previewLine.AddPoint(SampleQuadraticBezier(start, control, end, t));
+        }
+
+        previewLine.Visible = true;
+    }
+
+    private Line2D EnsureCurvedTrailPreviewLine()
+    {
+        if (_curvedTrailPreviewLine != null && GodotObject.IsInstanceValid(_curvedTrailPreviewLine))
+            return _curvedTrailPreviewLine;
+
+        _curvedTrailPreviewLine = new Line2D
+        {
+            Name = "CurvedTrailPreviewLine",
+            Visible = false,
+            Width = 8f,
+            Antialiased = true,
+            DefaultColor = _customTrailPreviewColor,
+            ZIndex = 30,
+            ZAsRelative = false,
+            JointMode = Line2D.LineJointMode.Round,
+            BeginCapMode = Line2D.LineCapMode.Round,
+            EndCapMode = Line2D.LineCapMode.Round,
+        };
+        AddChild(_curvedTrailPreviewLine);
+        return _curvedTrailPreviewLine;
+    }
+
+    private Vector2 GetCurvedTrailPreviewStartLocalPosition()
+    {
+        if (Sprite != null && GodotObject.IsInstanceValid(Sprite))
+            return Sprite.Position;
+
+        return Vector2.Zero;
+    }
+
+    private static Vector2 SampleQuadraticBezier(
+        Vector2 start,
+        Vector2 control,
+        Vector2 end,
+        float t
+    )
+    {
+        Vector2 startToControl = start.Lerp(control, t);
+        Vector2 controlToEnd = control.Lerp(end, t);
+        return startToControl.Lerp(controlToEnd, t);
     }
 
     public void Hover()

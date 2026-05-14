@@ -16,7 +16,7 @@ public static partial class GameInfo
     public static int Difficulty;
 
     public const int MinDifficulty = 0;
-    public const int MaxDifficulty = 6;
+    public const int MaxDifficulty = 5;
 
     private const int StarterRelicCount = 2;
     private const int StarterElectricityCoinBonus = 100;
@@ -61,9 +61,45 @@ public static partial class GameInfo
         );
 
         if (string.IsNullOrWhiteSpace(activeBonusText))
-            activeBonusText = "无开局增益";
+            activeBonusText = "\u65e0\u5f00\u5c40\u589e\u76ca";
 
-        return $"难度 {difficulty}：{activeBonusText}";
+        return $"\u96be\u5ea6 {difficulty}\uff1a{activeBonusText}";
+    }
+
+    public static string BuildDifficultyTooltipText(int difficulty)
+    {
+        difficulty = Math.Clamp(difficulty, MinDifficulty, MaxDifficulty);
+        List<GameDifficultyBonus> activeBonuses = GetActiveDifficultyBonuses(difficulty).ToList();
+        var lines = new List<string> { $"[b]\u96be\u5ea6 {difficulty}[/b]" };
+
+        if (activeBonuses.Count == 0)
+        {
+            lines.Add("\u5f53\u524d\u6ca1\u6709\u5f00\u5c40\u589e\u76ca\u3002");
+        }
+        else
+        {
+            lines.Add("\u5f53\u524d\u4fdd\u7559\u7684\u5f00\u5c40\u589e\u76ca\uff1a");
+            lines.AddRange(activeBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
+        }
+
+        if (difficulty < MaxDifficulty)
+        {
+            List<GameDifficultyBonus> nextBonuses = GetActiveDifficultyBonuses(difficulty + 1).ToList();
+            List<GameDifficultyBonus> lostBonuses = activeBonuses
+                .Where(bonus => !nextBonuses.Contains(bonus))
+                .ToList();
+
+            if (lostBonuses.Count > 0)
+            {
+                lines.Add(string.Empty);
+                lines.Add(
+                    $"\u63d0\u9ad8\u5230\u96be\u5ea6 {difficulty + 1} \u540e\u4f1a\u5931\u53bb\uff1a"
+                );
+                lines.AddRange(lostBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
+            }
+        }
+
+        return string.Join("\n", lines);
     }
 
     private static IEnumerable<GameDifficultyBonus> GetActiveDifficultyBonuses(int difficulty)
@@ -80,7 +116,7 @@ public static partial class GameInfo
             yield break;
         }
 
-        if (difficulty <= 5)
+        if (difficulty <= 4)
             yield return GameDifficultyBonus.RandomTalentPoints;
         if (difficulty <= 3)
             yield return GameDifficultyBonus.RandomRelics;
@@ -94,12 +130,14 @@ public static partial class GameInfo
     {
         return bonus switch
         {
-            GameDifficultyBonus.RandomRelics => "开局2随机遗物",
-            GameDifficultyBonus.FreeRetreat => "\u64a4\u9000\u4e0d\u8017\u6838\u5fc3\u80fd\u6e90",
+            GameDifficultyBonus.RandomRelics => "\u5f00\u5c402\u968f\u673a\u9057\u7269",
+            GameDifficultyBonus.FreeRetreat =>
+                "\u64a4\u9000\u4e0d\u6d88\u8017\u6838\u5fc3\u80fd\u6e90",
             GameDifficultyBonus.RandomTalentPoints =>
                 "\u5f00\u5c40\u968f\u673a2\u540d\u89d2\u8272\u5404+1\u5929\u8d4b\u70b9",
-            GameDifficultyBonus.ElectricityCoin => "开局+100电力币",
-            GameDifficultyBonus.PlayerStats => "全员力量/生存/速度+1，血量+5",
+            GameDifficultyBonus.ElectricityCoin => "\u5f00\u5c40+100\u7535\u529b\u5e01",
+            GameDifficultyBonus.PlayerStats =>
+                "\u5168\u5458\u529b\u91cf/\u751f\u5b58/\u901f\u5ea6+1\uff0c\u8840\u91cf+5",
             _ => string.Empty,
         };
     }

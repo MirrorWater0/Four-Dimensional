@@ -164,7 +164,7 @@ public class DemonForm : Skill
     }
 
     public override string SkillName { get; set; } = "恶魔形态";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()

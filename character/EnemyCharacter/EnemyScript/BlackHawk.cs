@@ -61,12 +61,10 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 72;
-        Power = 8;
+        MaxLife = 67;
+        Power = 6;
         Survivability = 5;
         Speed = 11;
-        SpecialIntentThreshold = 3;
-
         SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
 
         PassiveName = global::BlackHawk.PassiveNameText;
@@ -149,7 +147,7 @@ public partial class BlackHawkSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "黑羽风暴";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

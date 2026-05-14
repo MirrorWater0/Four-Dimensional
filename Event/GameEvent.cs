@@ -76,7 +76,7 @@ public partial class GameEvent
                 propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.Power, 1)),
                 randomChange: true
             ),
-            Option("抽走休眠仓备用电池", transitionEnergyChange: 2, electricityChange: -20)
+            Option("抽走休眠仓备用电池", transitionEnergyChange: 20, electricityChange: -20)
         ),
         Event(
             "引力透镜井",
@@ -105,7 +105,7 @@ public partial class GameEvent
                 + "你可以拆解柜体，也可以短暂停留，恢复航程节奏。",
             Option("拆解存放柜", electricityChange: 90),
             Option("展开折叠护壁并拆解", electricityChange: 90),
-            Option("遵循守则静坐片刻", transitionEnergyChange: 2)
+            Option("遵循守则静坐片刻", transitionEnergyChange: 20)
         ),
     ];
 

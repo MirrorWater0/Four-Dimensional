@@ -4,7 +4,6 @@ using Godot;
 
 public partial class FearWorm : EnemyCharacter
 {
-    private const int PassiveDebuffImmunityStacks = 1;
     private const int PassiveAllyActionThreshold = 2;
     private const int PassivePowerGain = 10;
     private int _passiveAllyActionCount;
@@ -12,8 +11,7 @@ public partial class FearWorm : EnemyCharacter
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
-        $"初始：获得{PassiveDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。\n"
-        + $"\u5176\u4ed6\u5df1\u65b9\u89d2\u8272\u6bcf\u884c\u52a8{PassiveAllyActionThreshold}\u6b21\uff1a\u83b7\u5f97{PassivePowerGain}\u70b9\u529b\u91cf\u3002";
+        $"\u5176\u4ed6\u5df1\u65b9\u89d2\u8272\u6bcf\u884c\u52a8{PassiveAllyActionThreshold}\u6b21\uff1a\u83b7\u5f97{PassivePowerGain}\u70b9\u529b\u91cf\u3002";
 
     public override void Initialize()
     {
@@ -21,8 +19,6 @@ public partial class FearWorm : EnemyCharacter
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
         UpdatePassiveDescription();
-        using var _ = BeginEffectSource("被动");
-        SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, PassiveDebuffImmunityStacks, this);
         _allyActionEndedHandler ??= OnAllyActionEnded;
         if (BattleNode != null && !BattleNode.EmitList.Contains(_allyActionEndedHandler))
             BattleNode.EmitList.Add(_allyActionEndedHandler);
@@ -81,12 +77,10 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 45;
-        Power = 12;
-        Survivability = 6;
-        Speed = 9;
-        SpecialIntentThreshold = 2;
-
+        MaxLife = 40;
+        Power = 13;
+        Survivability = 9;
+        Speed = 8;
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
         PassiveName = global::FearWorm.PassiveNameText;
@@ -131,7 +125,6 @@ public partial class FearWormAttack : Skill
 
 public partial class FearWormSurvive : Skill
 {
-    private const int DebuffImmunityStacks = 1;
     private const int BaseBlock = 4;
 
     public FearWormSurvive()
@@ -146,11 +139,6 @@ public partial class FearWormSurvive : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.DebuffImmunity,
-                stacks: DebuffImmunityStacks,
-                target: TargetReference.Self
-            ),
             BlockStep(0, BaseBlock),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
@@ -170,7 +158,7 @@ public partial class FearWormTermin : Skill
     }
 
     public override string SkillName { get; set; } = "梦魇缠绕";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

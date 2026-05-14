@@ -55,7 +55,7 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Kasiya",
         PassiveName = global::Kasiya.PassiveNameText,
         PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 55,
+        LifeMax = 50,
         Power = 9,
         Survivability = 9,
         Speed = 5,

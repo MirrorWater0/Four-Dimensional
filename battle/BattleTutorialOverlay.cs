@@ -7,7 +7,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
 {
     private const string TutorialSavePath = "user://tutorial.cfg";
     private const string TutorialSection = "Tutorial";
-    private const string BattleTutorialSeenKey = "BattleTutorialSeenV4";
+    private const string BattleTutorialSeenKey = "BattleTutorialSeenV5";
     private const string BattleSpeedTutorialBody =
         "\u4e0a\u65b9\u662f\u53cc\u65b9\u884c\u52a8\u70b9\u6570\u6761\u3002\u5de6\u8fb9\u7684\u6570\u5b57\u662f\u5f53\u524d\u884c\u52a8\u70b9\uff0c\u62ec\u53f7\u91cc\u662f\u8be5\u9635\u8425\u5b58\u6d3b\u6210\u5458\u7684\u603b\u901f\u5ea6\u3002\n\n"
         + "\u4e00\u540d\u89d2\u8272\u884c\u52a8\u7ed3\u675f\u540e\uff0c\u6240\u5c5e\u9635\u8425\u4f1a\u6309\u603b\u901f\u5ea6\u83b7\u5f97\u884c\u52a8\u70b9\u3002\u603b\u901f\u5ea6\u8d8a\u9ad8\uff0c\u6761\u6da8\u5f97\u8d8a\u5feb\uff1b\u51cf\u5458\u6216\u901f\u5ea6\u88ab\u964d\u4f4e\u65f6\uff0c\u7d2f\u79ef\u4e5f\u4f1a\u53d8\u6162\u3002\n\n"
