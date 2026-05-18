@@ -106,10 +106,65 @@ public static class GlobalFunction
 
     private const string NumberColor = "#ffff00";
 
+    public static string CompactDescriptionPunctuation(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        StringBuilder builder = new(input.Length);
+        bool inTag = false;
+
+        foreach (char ch in input)
+        {
+            if (ch == '[')
+            {
+                inTag = true;
+                builder.Append(ch);
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                builder.Append(ch);
+                continue;
+            }
+
+            builder.Append(inTag ? ch : ToCompactPunctuation(ch));
+        }
+
+        return builder.ToString();
+    }
+
+    private static char ToCompactPunctuation(char ch) =>
+        ch switch
+        {
+            '，' => ',',
+            '。' => '.',
+            '：' => ':',
+            '；' => ';',
+            '！' => '!',
+            '？' => '?',
+            '（' => '(',
+            '）' => ')',
+            '【' => '(',
+            '】' => ')',
+            '、' => ',',
+            '“' => '"',
+            '”' => '"',
+            '‘' => '\'',
+            '’' => '\'',
+            '《' => '<',
+            '》' => '>',
+            _ => ch,
+        };
+
     public static string ColorizeNumbers(string input)
     {
         if (string.IsNullOrEmpty(input))
             return input;
+
+        input = CompactDescriptionPunctuation(input);
 
         // 仅高亮 BBCode 标签外的数字，避免破坏像 [color=#87CEEB] 这样的标签参数。
         StringBuilder builder = new StringBuilder(input.Length * 2);
@@ -157,6 +212,8 @@ public static class GlobalFunction
         if (string.IsNullOrEmpty(input))
             return input;
 
+        input = CompactDescriptionPunctuation(input);
+
         // Only process outside BBCode tags to avoid corrupting things like [color=#87CEEB].
         // "Cambridge Blue" is commonly represented as #A3C1AD.
         const string cambridgeBlue = "#9cdacf";
@@ -193,7 +250,8 @@ public static class GlobalFunction
                         "格挡" => cambridgeBlue,
                         "能量" => "#c9cdff",
                         "消耗" => "#ffb86b",
-                        "\u590d\u751f" => "#a8f0ad",
+                        "\u865a\u65e0" => "#b9a6ff",
+                        "\u590d\u751f" when IsValidRebirthKeywordMatch(input, i) => "#a8f0ad",
                         "\u8fde\u643a" => "#a8f0ad",
                         _ => null,
                     };
@@ -213,6 +271,70 @@ public static class GlobalFunction
         }
 
         return builder.ToString();
+    }
+
+    public static bool IsValidRebirthKeywordMatch(string input, int index)
+    {
+        if (string.IsNullOrEmpty(input) || index < 0 || index + 2 > input.Length)
+            return false;
+
+        if (!string.Equals(input.Substring(index, 2), "\u590d\u751f", StringComparison.Ordinal))
+            return false;
+
+        char? previous = FindPreviousPlainChar(input, index);
+        char? next = FindNextPlainChar(input, index + 2);
+
+        return previous is not ('\u56de' or '\u6062') && next != '\u547d';
+    }
+
+    private static char? FindPreviousPlainChar(string input, int startIndex)
+    {
+        bool inTag = false;
+        for (int i = startIndex - 1; i >= 0; i--)
+        {
+            char ch = input[i];
+            if (ch == ']')
+            {
+                inTag = true;
+                continue;
+            }
+
+            if (ch == '[')
+            {
+                inTag = false;
+                continue;
+            }
+
+            if (!inTag)
+                return ch;
+        }
+
+        return null;
+    }
+
+    private static char? FindNextPlainChar(string input, int startIndex)
+    {
+        bool inTag = false;
+        for (int i = startIndex; i < input.Length; i++)
+        {
+            char ch = input[i];
+            if (ch == '[')
+            {
+                inTag = true;
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                continue;
+            }
+
+            if (!inTag)
+                return ch;
+        }
+
+        return null;
     }
 }
 

@@ -6,14 +6,12 @@ using Godot;
 public partial class Armon : EnemyCharacter
 {
     private const int FirstTurnEndBlockMultiplier = 2;
-    private const int SecondTurnStartPowerGain = 5;
+    private const int SecondTurnStartPowerGain = 10;
 
     private int _turnStartCount;
     private bool _grantedFirstTurnEndBlock;
 
     public const string PassiveNameText = "矩阵核心";
-    public const string PassiveDescriptionText =
-        "战斗开始时：全队获得等同于该角色生存的格挡。\n回合结束时：全队获得等同于该角色生存的格挡。";
 
     public static string UpdatedPassiveDescriptionText =>
         $"第一次回合结束时：全阵获得{FirstTurnEndBlockMultiplier}x（生存）点格挡。\n"
@@ -90,10 +88,10 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 50;
-        Power = 5;
-        Survivability = 8;
-        Speed = 6;
+        MaxLife = 64;
+        Power = 14;
+        Survivability = 5;
+        Speed = 7;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
         PassiveName = global::Armon.PassiveNameText;
@@ -104,7 +102,7 @@ public partial class ArmonRegedit : EnemyRegedit
 public partial class ArmonAttack : Skill
 {
     private const int BaseDamage = 18;
-    private const int SelfPowerGain = 3;
+    private const int SelfPowerGain = 5;
     private const int SelfSurvivabilityGain = 2;
 
     public ArmonAttack()

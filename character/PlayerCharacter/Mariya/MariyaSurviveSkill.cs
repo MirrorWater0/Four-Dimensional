@@ -81,32 +81,8 @@ public partial class QuietVeil : Skill
     }
 }
 
-public partial class EnergyTransfer : Skill
-{
-    private const int BaseBlock = 9;
-    private const int AllyEnergyGain = 2;
-
-    public EnergyTransfer()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "能量传输";
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            EnergyStep(delta: AllyEnergyGain, target: TargetReference.ManualFriendly)
-        );
-    }
-}
-
 public partial class EnergyRelay : Skill
 {
-
     public EnergyRelay()
         : base(SkillTypes.Survive)
     {
@@ -119,22 +95,10 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            EnergyStep(delta: ResolveTransferEnergyAmount(), target: TargetReference.ManualFriendly),
-            EnergyStep(delta: ResolveTransferEnergyAmount(), target: TargetReference.ManualFriendly)
+            BlockStep(relativeIndex: 0, baseBlock: 0),
+            EnergyStep(delta: 1, target: TargetReference.Next),
+            EnergyStep(delta: 1, target: TargetReference.Previous)
         );
-    }
-
-    private int ResolveTransferEnergyAmount()
-    {
-        if (OwnerCharater?.BattleNode == null)
-            return 0;
-
-        Character previous = GetAllyByRelative(-1, dyingFilter: true);
-        Character next = GetAllyByRelative(1, dyingFilter: true);
-        if (previous == null || next == null || previous == next)
-            return 0;
-
-        return Math.Max(0, previous.Energy);
     }
 }
 

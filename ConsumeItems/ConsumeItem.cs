@@ -25,7 +25,7 @@ public partial class ConsumeItem
 
     private static readonly Dictionary<ItemID, ItemConfig> ItemConfigs = new()
     {
-        [ItemID.Health] = new("治疗道具", ItemEffectType.Recover, 35),
+        [ItemID.Health] = new("治疗道具", ItemEffectType.Buff, 1, BuffName: Buff.BuffName.RebirthI),
         [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 60),
         [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 4, PropertyType.Power),
         [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
@@ -39,13 +39,13 @@ public partial class ConsumeItem
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,
-            10,
+            8,
             BuffName: Buff.BuffName.Weaken
         ),
         [ItemID.SpaceOscillation] = new(
             "空间震荡",
             ItemEffectType.Buff,
-            10,
+            6,
             BuffName: Buff.BuffName.Vulnerable
         ),
     };
@@ -270,6 +270,9 @@ public partial class ConsumeItem
                 break;
             case Buff.BuffName.Vulnerable:
                 HurtBuff.BuffAdd(config.BuffName, target, config.Value);
+                break;
+            case Buff.BuffName.RebirthI:
+                DyingBuff.BuffAdd(config.BuffName, target, config.Value);
                 break;
         }
     }

@@ -16,6 +16,11 @@ public partial class CharacterTargetCard : Control
     private Label NameLabel => field ??= GetNode<Label>("Panel/Margin/Stack/NameLabel");
     private Label StatsLabel => field ??= GetNode<Label>("Panel/Margin/Stack/StatsLabel");
     private Panel Border => field ??= GetNode<Panel>("Border");
+    private Tip _skillTooltip;
+    private Tip _buffTooltip;
+
+    public bool Selectable { get; set; } = true;
+    public bool ShowTooltipOnHover { get; set; } = true;
 
     public override void _Ready()
     {
@@ -25,9 +30,17 @@ public partial class CharacterTargetCard : Control
         Button.MouseExited += OnMouseExited;
         Button.Pressed += () =>
         {
-            if (_target != null && GodotObject.IsInstanceValid(_target))
+            if (Selectable && _target != null && GodotObject.IsInstanceValid(_target))
+            {
+                HideTargetTooltip();
                 EmitSignal(SignalName.Selected, _target);
+            }
         };
+    }
+
+    public override void _ExitTree()
+    {
+        HideTargetTooltip();
     }
 
     private void OnMouseEntered()
@@ -35,6 +48,8 @@ public partial class CharacterTargetCard : Control
         Border.Visible = true;
         ZIndex = 20;
         TweenScale(HoverScale, 0.12f);
+        if (ShowTooltipOnHover)
+            ShowTargetTooltip();
     }
 
     private void OnMouseExited()
@@ -42,6 +57,7 @@ public partial class CharacterTargetCard : Control
         Border.Visible = false;
         ZIndex = 0;
         TweenScale(NormalScale, 0.14f);
+        HideTargetTooltip();
     }
 
     private void TweenScale(Vector2 targetScale, float duration)
@@ -62,5 +78,64 @@ public partial class CharacterTargetCard : Control
         StatsLabel.Text = target == null
             ? string.Empty
             : $"生命 {target.Life}/{target.BattleMaxLife}  能量 {target.Energy}";
+    }
+
+    public void SetSelectable(bool selectable)
+    {
+        Selectable = selectable;
+        Button.MouseDefaultCursorShape = selectable
+            ? CursorShape.PointingHand
+            : CursorShape.Arrow;
+    }
+
+    public void SetTooltipOnHover(bool enabled)
+    {
+        ShowTooltipOnHover = enabled;
+        if (!enabled)
+            HideTargetTooltip();
+    }
+
+    public void HideTargetTooltip()
+    {
+        _skillTooltip?.HideTooltip();
+        _buffTooltip?.HideTooltip();
+    }
+
+    private void ShowTargetTooltip()
+    {
+        if (_target == null || !GodotObject.IsInstanceValid(_target))
+            return;
+
+        Tip skillTooltip = GetSkillTooltip();
+        if (skillTooltip != null)
+        {
+            skillTooltip.FollowMouse = true;
+            skillTooltip.SetText(_target.GetSkillTooltipText());
+        }
+
+        Tip buffTooltip = GetBuffTooltip();
+        if (buffTooltip != null)
+        {
+            buffTooltip.FollowMouse = true;
+            buffTooltip.SetText(_target.GetBuffTooltipText());
+        }
+    }
+
+    private Tip GetSkillTooltip()
+    {
+        if (_skillTooltip != null && GodotObject.IsInstanceValid(_skillTooltip))
+            return _skillTooltip;
+
+        _skillTooltip = GetTree()?.Root?.GetNodeOrNull<Tip>("TipLayer/Tip");
+        return _skillTooltip;
+    }
+
+    private Tip GetBuffTooltip()
+    {
+        if (_buffTooltip != null && GodotObject.IsInstanceValid(_buffTooltip))
+            return _buffTooltip;
+
+        _buffTooltip = GetTree()?.Root?.GetNodeOrNull<Tip>("TipLayer/BuffTip");
+        return _buffTooltip;
     }
 }

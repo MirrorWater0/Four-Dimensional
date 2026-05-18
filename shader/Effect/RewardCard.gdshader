@@ -8,7 +8,7 @@ uniform float center_vanish : hint_range(0.0, 1.0) = 0.0;
 uniform float line_density : hint_range(1.0, 200.0) = 80.0;
 uniform float line_speed = 8.0;
 uniform float aberration_amount : hint_range(0.0, 0.1) = 0.03;
-uniform vec4 beam_color : source_color = vec4(0.0, 1.0, 1.0, 1.0);
+uniform vec4 beam_color : source_color = vec4(0.5, 0.7, 1.0, 1.0);
 
 void vertex(){
 	modulate = COLOR;

@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 5;
+    private const int StartAutoArmorStacks = 8;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -35,10 +35,10 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 55;
-        Power = 10;
-        Survivability = 12;
-        Speed = 5;
+        MaxLife = 56;
+        Power = 18;
+        Survivability = 5;
+        Speed = 7;
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
         PassiveName = global::RedHusk.PassiveNameText;
@@ -64,7 +64,7 @@ public partial class RedHuskAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, byBehindRow: true),
-            ModifyPropertyStep(PropertyType.Power, 4),
+            ModifyPropertyStep(PropertyType.Power, 8),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -104,7 +104,7 @@ public partial class RedHuskSurvive : Skill
 
 public partial class RedHuskSpecial : Skill
 {
-    private const int AutoArmorStacks = 5;
+    private const int AutoArmorStacks = 6;
     private const int RebirthStacks = 1;
 
     public RedHuskSpecial()

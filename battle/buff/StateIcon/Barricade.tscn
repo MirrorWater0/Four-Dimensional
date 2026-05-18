@@ -6,12 +6,13 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_barricade"]
 shader = ExtResource("2_shd")
 shader_parameter/bg_color = Color(0, 0, 0, 0)
-shader_parameter/fill_color = Color(0.42, 0.72, 1, 1)
-shader_parameter/edge_color = Color(0.88, 0.95, 1, 1)
-shader_parameter/card_size = 0.58
-shader_parameter/edge_width = 0.02
-shader_parameter/offset_step = 0.09
+shader_parameter/fill_color = Color(0.34, 0.76, 0.84, 1)
+shader_parameter/edge_color = Color(0.68, 0.94, 0.98, 1)
+shader_parameter/shadow_color = Color(0.04, 0.18, 0.22, 0.55)
+shader_parameter/card_size = 0.7
+shader_parameter/edge_width = 0.025
+shader_parameter/offset_step = 0.12
+shader_parameter/corner_radius = 0.035
 
 [node name="Icon" instance=ExtResource("1_tpl")]
 material = SubResource("ShaderMaterial_barricade")
-

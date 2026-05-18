@@ -1,18 +1,25 @@
 [gd_scene format=3 uid="uid://tstwg1ja8lsd"]
 
-[ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_hfhot"]
+[ext_resource type="Shader" uid="uid://bgu23nildkh5y" path="res://shader/Effect/CardExhaust.gdshader" id="1_imej8"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
-[ext_resource type="Texture2D" uid="uid://cb2g8brxm0m4b" path="res://asset/CardPicture/Kasiya/AbsouluteDefense.png" id="3_p4fnn"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_imej8"]
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_p4fnn"]
+noise = SubResource("FastNoiseLite_imej8")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i77dj"]
 resource_local_to_scene = true
-shader = ExtResource("1_hfhot")
-shader_parameter/progress = 0.0
-shader_parameter/center_vanish = 0.0
-shader_parameter/line_density = 30.0000013775
-shader_parameter/line_speed = 8.0
-shader_parameter/aberration_amount = 0.03
-shader_parameter/beam_color = Color(0, 1, 1, 1)
+shader = ExtResource("1_imej8")
+shader_parameter/exhaust_progress = 0.0
+shader_parameter/edge_width = 0.08
+shader_parameter/noise_scale = 1.25
+shader_parameter/ember_amount = 0.55
+shader_parameter/aberration_amount = 0.006
+shader_parameter/noise_tex = SubResource("NoiseTexture2D_p4fnn")
+shader_parameter/noise_offset = Vector2(0, 0)
+shader_parameter/ember_color = Color(0.5, 0.6, 1, 1)
+shader_parameter/ash_color = Color(0.1, 0.08, 0.11, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -165,7 +172,6 @@ layout_mode = 0
 offset_right = 216.0
 offset_bottom = 114.0
 mouse_filter = 2
-texture = ExtResource("3_p4fnn")
 expand_mode = 1
 stretch_mode = 6
 
@@ -185,10 +191,12 @@ mouse_filter = 2
 
 [node name="TypeLabel" type="Label" parent="SubViewport/TypeBadge" unique_id=1519905069]
 layout_mode = 0
-offset_right = 76.0
-offset_bottom = 24.0
+offset_left = -3.6666667
+offset_top = -2.5000062
+offset_right = 72.333336
+offset_bottom = 21.499994
 theme_override_colors/font_color = Color(1, 1, 1, 0.95)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 18
 text = "type"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -209,11 +217,12 @@ mouse_filter = 2
 
 [node name="EnergyCost" type="Label" parent="SubViewport/EnergyBadge" unique_id=1575399771]
 layout_mode = 0
-offset_left = 2.0
-offset_right = 74.0
-offset_bottom = 24.0
+offset_left = 2.1666641
+offset_top = -1.666673
+offset_right = 74.166664
+offset_bottom = 22.333326
 theme_override_colors/font_color = Color(1, 1, 1, 0.95)
-theme_override_font_sizes/font_size = 15
+theme_override_font_sizes/font_size = 18
 text = "Energy"
 horizontal_alignment = 1
 vertical_alignment = 1

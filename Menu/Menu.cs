@@ -39,6 +39,14 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<CheckBox>(
             "CenterPanel/Margin/VBox/SettingsPanel/EnemyAttackPreviewCheckBox"
         );
+    private OptionButton TextSizeOptionButton =>
+        field ??= GetNodeOrNull<OptionButton>(
+            "CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeOptionButton"
+        );
+    private OptionButton BattleShakeOptionButton =>
+        field ??= GetNodeOrNull<OptionButton>(
+            "CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow/BattleShakeOptionButton"
+        );
     private Button SettingsBackButton =>
         field ??= GetNodeOrNull<Button>(
             "CenterPanel/Margin/VBox/SettingsPanel/SettingsBackButton"
@@ -78,6 +86,13 @@ public partial class Menu : Control
 
         if (EnemyAttackPreviewCheckBox != null)
             EnemyAttackPreviewCheckBox.Pressed += OnEnemyAttackPreviewPressed;
+
+        ConfigureTextSizeOptionButton();
+        if (TextSizeOptionButton != null)
+            TextSizeOptionButton.ItemSelected += OnTextSizeSelected;
+        ConfigureBattleShakeOptionButton();
+        if (BattleShakeOptionButton != null)
+            BattleShakeOptionButton.ItemSelected += OnBattleShakeSelected;
 
         if (SettingsBackButton != null)
             SettingsBackButton.Pressed += ShowMainPanel;
@@ -206,7 +221,7 @@ public partial class Menu : Control
         UserSettings.SetCompactBattleCardDescriptions(DescriptionModeCheckBox.ButtonPressed);
 
         var activeBattle = FindActiveBattle(GetTree()?.Root);
-        activeBattle?.CharacterControl?.RefreshDisplayedSkillDescriptions();
+        activeBattle?.RefreshBattleCardDescriptionModeFromSettings();
     }
 
     private void OnTurnOrderPreviewPressed()
@@ -225,6 +240,32 @@ public partial class Menu : Control
 
         UserSettings.SetEnemyAttackPreview(EnemyAttackPreviewCheckBox.ButtonPressed);
         FindActiveBattle(GetTree()?.Root)?.RefreshEnemyAttackPreviewFromSettings();
+    }
+
+    private void OnTextSizeSelected(long index)
+    {
+        if (TextSizeOptionButton == null)
+            return;
+
+        int selectedIndex = (int)index;
+        int level = selectedIndex >= 0 && selectedIndex < TextSizeOptionButton.ItemCount
+            ? TextSizeOptionButton.GetItemId(selectedIndex)
+            : UserSettings.TextSizeLevelStandard;
+        UserSettings.SetTextSizeLevel(level);
+        FindActiveBattle(GetTree()?.Root)?.RefreshTextSizeFromSettings();
+        RefreshTextSizeForTree(GetTree()?.Root);
+    }
+
+    private void OnBattleShakeSelected(long index)
+    {
+        if (BattleShakeOptionButton == null)
+            return;
+
+        int selectedIndex = (int)index;
+        int level = selectedIndex >= 0 && selectedIndex < BattleShakeOptionButton.ItemCount
+            ? BattleShakeOptionButton.GetItemId(selectedIndex)
+            : UserSettings.BattleShakeLevelStandard;
+        UserSettings.SetBattleShakeLevel(level);
     }
 
     private void ShowSettingsPanel()
@@ -253,6 +294,84 @@ public partial class Menu : Control
             TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
         if (EnemyAttackPreviewCheckBox != null)
             EnemyAttackPreviewCheckBox.ButtonPressed = UserSettings.ShowEnemyAttackPreview;
+        SelectTextSizeOption(UserSettings.TextSizeLevel);
+        SelectBattleShakeOption(UserSettings.BattleShakeLevel);
+    }
+
+    private void ConfigureTextSizeOptionButton()
+    {
+        if (TextSizeOptionButton == null || TextSizeOptionButton.ItemCount > 0)
+            return;
+
+        for (
+            int level = UserSettings.TextSizeLevelSmall;
+            level <= UserSettings.TextSizeLevelExtraLarge;
+            level++
+        )
+        {
+            TextSizeOptionButton.AddItem(UserSettings.GetTextSizeLevelLabel(level), level);
+        }
+    }
+
+    private void ConfigureBattleShakeOptionButton()
+    {
+        if (BattleShakeOptionButton == null || BattleShakeOptionButton.ItemCount > 0)
+            return;
+
+        for (
+            int level = UserSettings.BattleShakeLevelOff;
+            level <= UserSettings.BattleShakeLevelLarge;
+            level++
+        )
+        {
+            BattleShakeOptionButton.AddItem(UserSettings.GetBattleShakeLevelLabel(level), level);
+        }
+    }
+
+    private void SelectTextSizeOption(int level)
+    {
+        if (TextSizeOptionButton == null)
+            return;
+
+        int normalizedLevel = UserSettings.NormalizeTextSizeLevel(level);
+        for (int i = 0; i < TextSizeOptionButton.ItemCount; i++)
+        {
+            if (TextSizeOptionButton.GetItemId(i) != normalizedLevel)
+                continue;
+
+            TextSizeOptionButton.Select(i);
+            return;
+        }
+    }
+
+    private void SelectBattleShakeOption(int level)
+    {
+        if (BattleShakeOptionButton == null)
+            return;
+
+        int normalizedLevel = UserSettings.NormalizeBattleShakeLevel(level);
+        for (int i = 0; i < BattleShakeOptionButton.ItemCount; i++)
+        {
+            if (BattleShakeOptionButton.GetItemId(i) != normalizedLevel)
+                continue;
+
+            BattleShakeOptionButton.Select(i);
+            return;
+        }
+    }
+
+    private static void RefreshTextSizeForTree(Node node)
+    {
+        if (node == null)
+            return;
+
+        if (node is Tip tip)
+            tip.RefreshTextSizeFromSettings();
+        else if (node is SkillCard card)
+            card.RefreshTextSizeFromSettings();
+
+        foreach (Node child in node.GetChildren())
+            RefreshTextSizeForTree(child);
     }
 
     private void AbortActiveBattle(bool unlockMapNodes = true)

@@ -66,6 +66,7 @@ public partial class PlayerCharacter : Character
             drawnSkill.OwnerCharater = this;
             drawnSkill.UpdateDescription();
             Skills[i] = drawnSkill;
+            drawnSkill.OnDrawnToHand(this);
             count--;
         }
     }
@@ -156,7 +157,7 @@ public partial class PlayerCharacter : Character
             return;
         }
 
-        DrawBattleCards(TurnStartDrawCount);
+        DrawBattleCards(TurnStartDrawCount + Relic.GetTurnStartDrawBonus(BattleNode));
 
         while (
             HasBattleHandSpace()
@@ -198,7 +199,7 @@ public partial class PlayerCharacter : Character
             if (skill == null)
                 continue;
 
-            BattleNode.DiscardBattleSkill(this, skill);
+            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
             Skills[i] = null;
             discardedAny = true;
         }

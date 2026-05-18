@@ -29,7 +29,8 @@ public partial class SkillCard : SubViewportContainer
     public Button Button => field ??= GetNode<Button>("SubViewport/Button");
     public TextureRect SkillPicture =>
         field ??= GetNodeOrNull<TextureRect>("SubViewport/ArtFrame/SkillPicture");
-    public TextureRect SkillIcon => field ??= GetNode<TextureRect>("SubViewport/ArtFrame/SkillIcon");
+    public TextureRect SkillIcon =>
+        field ??= GetNode<TextureRect>("SubViewport/ArtFrame/SkillIcon");
     public Panel HoverHint => field ??= GetNode<Panel>("SubViewport/HoverHint");
     public Panel BG2 => field ??= GetNode<Panel>("SubViewport/BG2");
     public Panel ArtFrame => field ??= GetNode<Panel>("SubViewport/ArtFrame");
@@ -52,6 +53,7 @@ public partial class SkillCard : SubViewportContainer
     public Polygon2D CharacterPlate =>
         field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
     public Skill CurrentSkill { get; set; }
+    public string PreviewCharacterName { get; set; }
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
 
@@ -68,6 +70,7 @@ public partial class SkillCard : SubViewportContainer
     private StyleBoxFlat _descriptionStyle;
     private StyleBoxFlat _bg2Style;
     private StyleBoxFlat _artFrameStyle;
+    private ShaderMaterial _defaultCardMaterial;
     private Character[] _previewTargets = Array.Empty<Character>();
     private readonly List<Label> _previewDamageLabels = new();
     private static readonly Color TargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
@@ -76,14 +79,22 @@ public partial class SkillCard : SubViewportContainer
     private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
-    private static readonly Dictionary<SkillID, Texture2D> SkillPictureCache = new();
+    private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
     private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+    private static readonly Shader DefaultCardShader = GD.Load<Shader>(
+        "res://shader/Effect/RewardCard.gdshader"
+    );
+    private static readonly Shader CardExhaustShader = GD.Load<Shader>(
+        "res://shader/Effect/CardExhaust.gdshader"
+    );
+    private static NoiseTexture2D _cardExhaustNoiseTexture;
     private static Texture2D _defaultSkillIcon;
     private Tip _keywordTooltip;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
 
     public override void _Ready()
     {
+        CacheDefaultCardMaterial();
         ApplySkillToUi();
         HoverHint.Visible = false;
         CacheBaseFontSizes();
@@ -111,7 +122,7 @@ public partial class SkillCard : SubViewportContainer
             _hoverTween = CreateTween();
             _hoverTween.TweenProperty(this, "scale", _baseScale, 0.15f);
         };
-        (Material as ShaderMaterial)?.SetShaderParameter("progress", 1f);
+        RestoreDefaultCardMaterial()?.SetShaderParameter("progress", 1f);
         Button.Pressed += () =>
         {
             if (AutoPressEffect)
@@ -139,7 +150,7 @@ public partial class SkillCard : SubViewportContainer
         ZIndex = 0;
         Modulate = new Color(1, 1, 1, 1);
 
-        if (Material is ShaderMaterial shader)
+        if (RestoreDefaultCardMaterial() is ShaderMaterial shader)
         {
             shader.SetShaderParameter("progress", 1f);
             shader.SetShaderParameter("center_vanish", 0f);
@@ -159,7 +170,7 @@ public partial class SkillCard : SubViewportContainer
         Position = Vector2.Zero;
         ZIndex = 0;
 
-        if (Material is ShaderMaterial shader)
+        if (RestoreDefaultCardMaterial() is ShaderMaterial shader)
         {
             shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
@@ -168,7 +179,7 @@ public partial class SkillCard : SubViewportContainer
 
     public void StartAnimation(float delay = 0f)
     {
-        if (Material is not ShaderMaterial shader)
+        if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
 
         _progressTween?.Kill();
@@ -222,13 +233,18 @@ public partial class SkillCard : SubViewportContainer
 
         CurrentSkill.UpdateDescription();
         NameLabel.Text = CurrentSkill.SkillName ?? string.Empty;
-        string skillTypeText = CurrentSkill.SkillType.GetDescription();
+        bool isStatusCard = IsStatusCard(CurrentSkill);
+        string skillTypeText = isStatusCard ? "状态" : CurrentSkill.SkillType.GetDescription();
         TypeLabel.Text = skillTypeText;
         Description.Text = CurrentSkill.Description ?? string.Empty;
-        EnergyCost.Text = $"\u8017\u80fd\uff1a{CurrentSkill.CardEnergyCostText}";
+        EnergyCost.Text = isStatusCard
+            ? "不可打出"
+            : $"\u8017\u80fd\uff1a{CurrentSkill.CardEnergyCostText}";
         ApplyRarityStyles(CurrentSkill.Rarity);
+        if (isStatusCard)
+            ApplyStatusCardStyle();
 
-        Texture2D skillPicture = GetSkillPictureTexture(CurrentSkill);
+        Texture2D skillPicture = GetSkillPictureTexture(CurrentSkill, PreviewCharacterName);
         bool hasSkillPicture = skillPicture != null;
         if (SkillPicture != null)
         {
@@ -277,9 +293,15 @@ public partial class SkillCard : SubViewportContainer
         KeywordTooltip.SetText(tooltipText);
     }
 
+    public void RefreshTextSizeFromSettings()
+    {
+        QueueAdjustTextSizes();
+        _keywordTooltip?.RefreshTextSizeFromSettings();
+    }
+
     public void Vanish()
     {
-        if (Material is not ShaderMaterial shader)
+        if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
 
         _progressTween?.Kill();
@@ -331,7 +353,7 @@ public partial class SkillCard : SubViewportContainer
 
     public void PressEffect()
     {
-        if (Material is not ShaderMaterial shader)
+        if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
 
         _pressTween?.Kill();
@@ -354,6 +376,141 @@ public partial class SkillCard : SubViewportContainer
             .SetEase(Tween.EaseType.Out);
     }
 
+    public void PlayExhaustEffect(float duration = 0.8f)
+    {
+        if (CardExhaustShader == null)
+        {
+            PressEffect();
+            return;
+        }
+
+        _progressTween?.Kill();
+        _pressTween?.Kill();
+        _hoverTween?.Kill();
+        _motionTween?.Kill();
+
+        Color accentColor = Skill.GetRarityBorderColor(
+            CurrentSkill?.Rarity ?? Skill.SkillRarity.Common
+        );
+        var shader = new ShaderMaterial { Shader = CardExhaustShader, ResourceLocalToScene = true };
+        shader.SetShaderParameter("exhaust_progress", 0f);
+        shader.SetShaderParameter("ember_color", new Color(0.50f, 0.62f, 1f, 1f));
+        shader.SetShaderParameter("ash_color", new Color(0.09f, 0.075f, 0.105f, 1f));
+        shader.SetShaderParameter("edge_width", 0.07f);
+        shader.SetShaderParameter("noise_scale", 1.35f);
+        shader.SetShaderParameter("ember_amount", 0.48f);
+        shader.SetShaderParameter("aberration_amount", 0.006f);
+        shader.SetShaderParameter("noise_tex", GetCardExhaustNoiseTexture());
+        shader.SetShaderParameter("noise_offset", CreateCardExhaustNoiseOffset());
+        Material = shader;
+
+        Modulate = Colors.White;
+        _pressTween = CreateTween();
+        _pressTween.SetParallel(true);
+        _pressTween
+            .TweenMethod(
+                Callable.From<float>(value => shader.SetShaderParameter("exhaust_progress", value)),
+                0f,
+                1f,
+                duration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        _pressTween
+            .TweenProperty(this, "scale", Scale * 1.035f, duration)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private void CacheDefaultCardMaterial()
+    {
+        if (_defaultCardMaterial != null)
+            return;
+
+        if (
+            Material is ShaderMaterial sceneMaterial
+            && IsDefaultCardShader(sceneMaterial.Shader)
+            && sceneMaterial.Duplicate() is ShaderMaterial duplicatedSceneMaterial
+        )
+        {
+            _defaultCardMaterial = duplicatedSceneMaterial;
+        }
+        else
+        {
+            _defaultCardMaterial = new ShaderMaterial { Shader = DefaultCardShader };
+            InitializeDefaultCardShaderParameters(_defaultCardMaterial);
+        }
+
+        if (_defaultCardMaterial == null)
+            return;
+
+        _defaultCardMaterial.ResourceLocalToScene = true;
+        Material = _defaultCardMaterial;
+    }
+
+    private ShaderMaterial RestoreDefaultCardMaterial()
+    {
+        CacheDefaultCardMaterial();
+        if (_defaultCardMaterial != null && Material != _defaultCardMaterial)
+            Material = _defaultCardMaterial;
+
+        return Material as ShaderMaterial;
+    }
+
+    private static bool IsDefaultCardShader(Shader shader)
+    {
+        if (shader == null || DefaultCardShader == null)
+            return false;
+
+        return shader == DefaultCardShader || shader.ResourcePath == DefaultCardShader.ResourcePath;
+    }
+
+    private static void InitializeDefaultCardShaderParameters(ShaderMaterial shader)
+    {
+        if (shader == null)
+            return;
+
+        shader.SetShaderParameter("progress", 0f);
+        shader.SetShaderParameter("center_vanish", 0f);
+        shader.SetShaderParameter("line_density", 30f);
+        shader.SetShaderParameter("line_speed", 8f);
+        shader.SetShaderParameter("aberration_amount", 0.03f);
+        shader.SetShaderParameter("beam_color", new Color(0f, 1f, 1f, 1f));
+    }
+
+    private static NoiseTexture2D GetCardExhaustNoiseTexture()
+    {
+        if (_cardExhaustNoiseTexture != null)
+            return _cardExhaustNoiseTexture;
+
+        var noise = new FastNoiseLite
+        {
+            Seed = 47391,
+            Frequency = 0.018f,
+            FractalOctaves = 6,
+            FractalGain = 0.54f,
+            FractalLacunarity = 2.35f,
+        };
+
+        _cardExhaustNoiseTexture = new NoiseTexture2D
+        {
+            Width = 256,
+            Height = 256,
+            Seamless = true,
+            Noise = noise,
+        };
+        return _cardExhaustNoiseTexture;
+    }
+
+    private static Vector2 CreateCardExhaustNoiseOffset()
+    {
+        double tick = Time.GetTicksUsec() * 0.000001;
+        return new Vector2(
+            Mathf.PosMod((float)(tick * 0.173), 1f),
+            Mathf.PosMod((float)(tick * 0.317 + 0.41), 1f)
+        );
+    }
+
     public override void _ExitTree()
     {
         HideSkillPreview();
@@ -366,7 +523,10 @@ public partial class SkillCard : SubViewportContainer
     {
         if (skill?.SkillId is SkillID skillId)
         {
-            if (SkillIconCache.TryGetValue(skillId, out Texture2D cachedTexture) && cachedTexture != null)
+            if (
+                SkillIconCache.TryGetValue(skillId, out Texture2D cachedTexture)
+                && cachedTexture != null
+            )
                 return cachedTexture;
 
             string path = $"res://asset/svg/SkillIcon/{skillId}.svg";
@@ -382,16 +542,19 @@ public partial class SkillCard : SubViewportContainer
         return GetSkillTypeIconTexture(skill?.SkillType ?? Skill.SkillTypes.none);
     }
 
-    private static Texture2D GetSkillPictureTexture(Skill skill)
+    private static Texture2D GetSkillPictureTexture(Skill skill, string previewCharacterName = null)
     {
         if (skill?.SkillId is not SkillID skillId)
             return null;
 
-        if (SkillPictureCache.TryGetValue(skillId, out Texture2D cachedTexture) && cachedTexture != null)
-            return cachedTexture;
-
-        foreach (string path in EnumerateSkillPicturePaths(skill, skillId))
+        foreach (string path in EnumerateSkillPicturePaths(skill, skillId, previewCharacterName))
         {
+            if (
+                SkillPictureCache.TryGetValue(path, out Texture2D cachedTexture)
+                && cachedTexture != null
+            )
+                return cachedTexture;
+
             if (!ResourceLoader.Exists(path))
                 continue;
 
@@ -399,19 +562,23 @@ public partial class SkillCard : SubViewportContainer
             if (texture == null)
                 continue;
 
-            SkillPictureCache[skillId] = texture;
+            SkillPictureCache[path] = texture;
             return texture;
         }
 
         return null;
     }
 
-    private static IEnumerable<string> EnumerateSkillPicturePaths(Skill skill, SkillID skillId)
+    private static IEnumerable<string> EnumerateSkillPicturePaths(
+        Skill skill,
+        SkillID skillId,
+        string previewCharacterName = null
+    )
     {
         string skillFileName = skillId.ToString();
         var searchedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string folder in GetSkillPictureFolders(skill, skillId))
+        foreach (string folder in GetSkillPictureFolders(skill, skillId, previewCharacterName))
         {
             if (string.IsNullOrWhiteSpace(folder) || !searchedFolders.Add(folder))
                 continue;
@@ -428,10 +595,17 @@ public partial class SkillCard : SubViewportContainer
         }
     }
 
-    private static IEnumerable<string> GetSkillPictureFolders(Skill skill, SkillID skillId)
+    private static IEnumerable<string> GetSkillPictureFolders(
+        Skill skill,
+        SkillID skillId,
+        string previewCharacterName = null
+    )
     {
         if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
             yield return skill.OwnerCharater.CharacterName;
+
+        if (!string.IsNullOrWhiteSpace(previewCharacterName))
+            yield return previewCharacterName;
 
         if (Skill.TryGetPlayerCharacterKey(skillId, out PlayerCharacterKey characterKey))
             yield return characterKey.ToString();
@@ -692,8 +866,9 @@ public partial class SkillCard : SubViewportContainer
         if (availableHeight <= 0.0f)
             return;
 
+        int preferredFontSize = UserSettings.ScaleTextFontSize(_baseDescriptionFontSize);
         for (
-            int fontSize = _baseDescriptionFontSize;
+            int fontSize = preferredFontSize;
             fontSize >= MinDescriptionFontSize;
             fontSize--
         )
@@ -758,6 +933,57 @@ public partial class SkillCard : SubViewportContainer
         if (TopAccent != null)
             TopAccent.Color = WithAlpha(borderColor, 0.58f);
     }
+
+    private void ApplyStatusCardStyle()
+    {
+        EnsureStyleOverridesReady();
+
+        Color borderColor = new(0.76f, 0.58f, 1f, 1f);
+        Color accentColor = new(0.52f, 0.34f, 0.95f, 0.7f);
+        Color surfaceColor = new(0.055f, 0.045f, 0.09f, 0.96f);
+
+        if (_bgStyle != null)
+        {
+            _bgStyle.BorderColor = borderColor;
+            _bgStyle.BgColor = new Color(0.035f, 0.026f, 0.06f, 0.86f);
+        }
+        if (_innerFrameStyle != null)
+            _innerFrameStyle.BorderColor = new Color(0.82f, 0.7f, 1f, 0.34f);
+        if (_descriptionStyle != null)
+        {
+            _descriptionStyle.BorderColor = borderColor;
+            _descriptionStyle.BgColor = surfaceColor;
+        }
+        if (_bg2Style != null)
+        {
+            _bg2Style.BorderColor = borderColor;
+            _bg2Style.BgColor = new Color(0.04f, 0.032f, 0.075f, 0.98f);
+        }
+        if (_artFrameStyle != null)
+        {
+            _artFrameStyle.BorderColor = accentColor;
+            _artFrameStyle.BgColor = new Color(0.045f, 0.036f, 0.08f, 0.68f);
+        }
+        if (RarityPlate != null)
+            RarityPlate.Color = new Color(0.62f, 0.42f, 1f, 0.3f);
+        if (EnergyPlate != null)
+            EnergyPlate.Color = new Color(0.62f, 0.42f, 1f, 0.3f);
+        if (NamePlate != null)
+            NamePlate.Color = new Color(0.62f, 0.42f, 1f, 0.26f);
+        if (CharacterPlate != null)
+            CharacterPlate.Color = new Color(0.48f, 0.31f, 0.86f, 0.22f);
+        if (ArtDiamondOuter != null)
+            ArtDiamondOuter.Color = new Color(0.72f, 0.54f, 1f, 0.5f);
+        if (ArtDiamondInner != null)
+            ArtDiamondInner.Color = new Color(0.88f, 0.76f, 1f, 0.22f);
+        if (TopAccent != null)
+            TopAccent.Color = new Color(0.86f, 0.72f, 1f, 0.72f);
+
+        SetCardBeamColor(borderColor);
+    }
+
+    private static bool IsStatusCard(Skill skill) =>
+        skill != null && (!skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none);
 
     private void EnsureStyleOverridesReady()
     {

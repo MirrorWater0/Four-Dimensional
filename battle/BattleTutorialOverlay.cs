@@ -180,11 +180,6 @@ public partial class BattleTutorialOverlay : CanvasLayer
                     battle => battle.CharacterControl?.EndTurnButton
                 ),
                 new TutorialStep(
-                    "抽卡储备",
-                    "有些效果会获得抽卡储备。\n\n抽卡储备会显示在右下角按钮上；当前角色手牌有空位，并且牌组还有可抽的牌时，可以消耗 1 点储备立刻补 1 张牌。",
-                    battle => battle.CharacterControl?.DrawReserveButton
-                ),
-                new TutorialStep(
                     "目标选择",
                     "大多数攻击会按常规规则自动选择敌人。\n\n嘲讽会抢占目标，隐身通常不会被选中；同排或距离更近的敌人会更早被考虑。少数支援牌会弹出友方目标选择，点选一名队友后才会结算。"
                 ),

@@ -58,7 +58,7 @@ public partial class Buff
         [BuffName.Demon] = "res://battle/buff/StateIcon/Demon.tscn",
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
-        [BuffName.CardRefresh] = "res://battle/buff/StateIcon/CardRefresh.tscn",
+        [BuffName.ExtraDraw] = "res://battle/buff/StateIcon/CardRefresh.tscn",
     };
 
     private static string GetBuffNameKey(BuffName name)
@@ -101,7 +101,7 @@ public partial class Buff
             BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
             BuffName.Echo => "每回合前X张技能牌释放2次，X等同于层数。",
             BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
-            BuffName.CardRefresh => "回合开始时，每层额外抽1张牌并消耗1层。",
+            BuffName.ExtraDraw => "回合开始时，每层额外抽1张牌并消耗1层。",
             _ => string.Empty,
         };
 
@@ -365,8 +365,8 @@ public partial class Buff
         [Description("圣域")]
         Sanctuary,
 
-        [Description("抽牌")]
-        CardRefresh,
+        [Description("额外抽卡")]
+        ExtraDraw,
     }
 
     public Character Owner;
@@ -409,7 +409,7 @@ public partial class Buff
             BuffName.Demon => Nature.positive,
             BuffName.Void => Nature.positive,
             BuffName.Sanctuary => Nature.positive,
-            BuffName.CardRefresh => Nature.positive,
+            BuffName.ExtraDraw => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -554,6 +554,7 @@ public partial class Buff
         if (label != null)
             label.Text = Stack.ToString();
         Owner?.InvalidateBuffTooltipCache();
+        Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
     }
 
     protected static ColorRect CreateBuffIcon(BuffName name)
@@ -626,6 +627,7 @@ public partial class Buff
         BuffIcon = null;
         buffs?.Remove((TBuff)this);
         Owner?.InvalidateBuffTooltipCache();
+        Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
 
         if (showVanishHint)
             Hint(ThisBuffName, BuffHintLabel.Which.vanish);
@@ -1160,7 +1162,7 @@ public partial class SpecialBuff : Buff
             return false;
 
         var refresh = target.SpecialBuffs.FirstOrDefault(x =>
-            x != null && x.ThisBuffName == BuffName.CardRefresh && x.Stack > 0
+            x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
         );
         if (refresh == null)
             return false;
@@ -1184,7 +1186,7 @@ public partial class SpecialBuff : Buff
             name != BuffName.DebuffImmunity
             && name != BuffName.ExtraPower
             && name != BuffName.ExtraSurvivability
-            && name != BuffName.CardRefresh
+            && name != BuffName.ExtraDraw
         )
             return;
 

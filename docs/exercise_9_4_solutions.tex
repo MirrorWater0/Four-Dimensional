@@ -1,0 +1,1109 @@
+\documentclass[12pt,a4paper]{ctexart}
+\usepackage{amsmath,amssymb,geometry}
+\geometry{margin=1in}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+
+\author{}
+\date{}
+
+\begin{document}
+
+
+\section*{习题 9.4（A）}
+
+\subsection*{一}
+\[
+Q=\iiint_{\Omega} \mu(x,y,z)\,dV.
+\]
+
+\subsection*{二}
+\[
+M=\iiint_{[0,1]^3}(x+y+z)\,dV
+=\iiint_{[0,1]^3}x\,dV+\iiint_{[0,1]^3}y\,dV+\iiint_{[0,1]^3}z\,dV
+=3\cdot \frac12=\frac32.
+\]
+
+\subsection*{三}
+\textbf{(1)}
+\[
+I=\iiint_{x,y,z\ge 0,\,x+y+z\le 1}\frac{1}{(1+x+y+z)^3}\,dV.
+\]
+令 $s=x+y+z$，截面面积为 $A(s)=\dfrac{s^2}{2}$，故
+\[
+I=\frac12\int_0^1 \frac{s^2}{(1+s)^3}\,ds
+=\frac12\int_1^2\left(\frac1u-\frac{2}{u^2}+\frac1{u^3}\right)du
+=\frac12\ln 2-\frac{5}{16}.
+\]
+
+\textbf{(2)}
+区域可写为
+\[
+-1\le x\le 1,\quad x^2\le y\le 1,\quad 0\le z\le y.
+\]
+于是
+\[
+I=\int_{-1}^1\int_{x^2}^1\int_0^y xz\,dz\,dy\,dx.
+\]
+被积函数关于 $x$ 为奇函数，而区域关于 $yz$ 平面对称，故
+\[
+I=0.
+\]
+
+\textbf{(3)}
+用柱面坐标 $r,\theta,z$：
+\[
+0\le r\le R,\quad 0\le \theta\le 2\pi,\quad \frac{h}{R}r\le z\le h.
+\]
+故
+\[
+I=\int_0^{2\pi}\int_0^R\int_{hr/R}^{h} z r\,dz\,dr\,d\theta
+=\frac{\pi R^2h^2}{4}.
+\]
+
+\textbf{(4)}
+由对称性
+\[
+\iiint_{\Omega}(x+y+z)\,dV=3\iiint_{\Omega}x\,dV.
+\]
+对四面体 $x+y+z\le 1$，其重心为 $\left(\frac14,\frac14,\frac14\right)$，体积为 $\frac16$，故
+\[
+I=\frac16\left(\frac14+\frac14+\frac14\right)=\frac18.
+\]
+
+\textbf{(5)}
+区域关于平面 $x=0$ 对称，而被积函数 $x$ 关于 $x$ 为奇函数，故
+\[
+I=0.
+\]
+
+\subsection*{四}
+\textbf{(1)} 直角坐标下
+\[
+I=\int_{-1}^1\int_{-\sqrt{1-x^2}}^{\sqrt{1-x^2}}\int_{x^2+y^2}^{\sqrt{x^2+y^2}} f(x,y,z)\,dz\,dy\,dx.
+\]
+柱面坐标下
+\[
+I=\int_0^{2\pi}\int_0^1\int_{r^2}^{r} f(r\cos\theta,r\sin\theta,z)\,r\,dz\,dr\,d\theta.
+\]
+
+\textbf{(2)} 直角坐标下
+\[
+I=\int_{-1}^1\int_{-\sqrt{1-x^2}}^{\sqrt{1-x^2}}\int_0^{\sqrt{x^2+y^2}} f(x,y,z)\,dz\,dy\,dx.
+\]
+柱面坐标下
+\[
+I=\int_0^{2\pi}\int_0^1\int_0^{r} f(r\cos\theta,r\sin\theta,z)\,r\,dz\,dr\,d\theta.
+\]
+
+\textbf{(3)} 直角坐标下
+\[
+I=\int_{-1/\sqrt2}^{1/\sqrt2}\int_{-\sqrt{\frac12-x^2}}^{\sqrt{\frac12-x^2}}\int_{\sqrt{x^2+y^2}}^{\sqrt{1-x^2-y^2}} f(x^2+y^2)\,dz\,dy\,dx.
+\]
+柱面坐标下
+\[
+I=\int_0^{2\pi}\int_0^{1/\sqrt2}\int_{r}^{\sqrt{1-r^2}} f(r^2)\,r\,dz\,dr\,d\theta.
+\]
+球面坐标下
+\[
+I=\int_0^{2\pi}\int_0^{\pi/4}\int_0^1 f(\rho^2\sin^2\varphi)\,\rho^2\sin\varphi\,d\rho\,d\varphi\,d\theta.
+\]
+
+\subsection*{五}
+\textbf{(1)} 用柱面坐标：
+\[
+I=\int_0^1\int_0^{\pi/2}\int_0^1 (r\cos\theta)(r\sin\theta)r\,dz\,d\theta\,dr
+=\left(\int_0^1r^3dr\right)\left(\int_0^{\pi/2}\sin\theta\cos\theta\,d\theta\right)
+=\frac18.
+\]
+
+\textbf{(2)} 用球面坐标：
+\[
+0\le \theta\le 2\pi,\quad 0\le \varphi\le \frac{\pi}{4},\quad 0\le \rho\le 2a\cos\varphi.
+\]
+故
+\[
+I=\int_0^{2\pi}\int_0^{\pi/4}\int_0^{2a\cos\varphi}(\rho\cos\varphi)\rho^2\sin\varphi\,d\rho\,d\varphi\,d\theta
+=\frac{7\pi a^4}{6}.
+\]
+
+\subsection*{六}
+\textbf{(1)}
+\[
+V=\int_0^{2\pi}\int_0^1\int_{r^2}^{r} r\,dz\,dr\,d\theta
+=2\pi\int_0^1(r^2-r^3)dr=\frac{\pi}{6}.
+\]
+
+\textbf{(2)} 用球面坐标：
+\[
+0\le \theta\le 2\pi,\quad 0\le \varphi\le \frac{\pi}{4},\quad 0\le \rho\le 2a\cos\varphi.
+\]
+故体积
+\[
+V=\int_0^{2\pi}\int_0^{\pi/4}\int_0^{2a\cos\varphi}\rho^2\sin\varphi\,d\rho\,d\varphi\,d\theta
+=\pi a^3.
+\]
+
+\section*{习题 9.4（B）}
+
+\subsection*{一}
+固定 $z$，截面为圆盘 $x^2+y^2\le 1-z^2$，面积为 $\pi(1-z^2)$，故
+\[
+\iiint_{\Omega}f(z)\,dV=\int_{-1}^1 f(z)\cdot \pi(1-z^2)\,dz
+=\pi\int_{-1}^1(1-z^2)f(z)\,dz.
+\]
+
+\subsection*{二}
+利用球域的对称性：
+\[
+\iiint_{\Omega}x^3\cos y\,dV=\iiint_{\Omega}x^2\sin y\,dV=\iiint_{\Omega}x^2y^3\,dV=\iiint_{\Omega}z^3\,dV=0.
+\]
+于是
+\[
+M=-\iiint_{\Omega}(x^2y^2+z^4)\,dV<0,\qquad N=0,
+\]
+而
+\[
+P=\iiint_{\Omega}(z^3+x^4\cos^2 y+x^2z^2)\,dV
+=\iiint_{\Omega}(x^4\cos^2 y+x^2z^2)\,dV>0.
+\]
+故
+\[
+M<N<P.
+\]
+
+\subsection*{三}
+由对称性，交叉项积分为 $0$，故
+\[
+I=\iiint_{\Omega}(x^2+y^2+z^2)\,dV.
+\]
+用球面坐标，区域为
+\[
+0\le \rho\le 2,\quad 0\le \varphi\le \frac{\pi}{4},\quad 0\le \theta\le 2\pi.
+\]
+于是
+\[
+I=\int_0^{2\pi}\int_0^{\pi/4}\int_0^2 \rho^2\cdot \rho^2\sin\varphi\,d\rho\,d\varphi\,d\theta
+=\frac{64\pi}{5}\left(1-\frac{1}{\sqrt2}\right).
+\]
+
+\subsection*{四}
+用球面坐标：
+\[
+I=4\pi\int_0^{\sqrt2}|r^2-1|r^2\,dr
+=4\pi\left(\int_0^1(1-r^2)r^2dr+\int_1^{\sqrt2}(r^2-1)r^2dr\right)
+=\frac{8\pi}{15}(2+\sqrt2).
+\]
+
+\subsection*{五}
+设
+\[
+F(t)=\iiint_{x^2+y^2+z^2\le t^2} f(\sqrt{x^2+y^2+z^2})\,dV.
+\]
+化为球坐标得
+\[
+F(t)=4\pi\int_0^t r^2f(r)\,dr.
+\]
+故
+\[
+F'(t)=4\pi t^2f(t).
+\]
+又因 $f(0)=0,\,f'(0)=1$，所以 $f(r)=r+o(r)$，从而
+\[
+F(t)=4\pi\int_0^t(r^3+o(r^3))dr=\pi t^4+o(t^4).
+\]
+因此
+\[
+\lim_{t\to 0^+}\frac{F(t)}{\pi t^4}=1.
+\]
+
+\subsection*{六}
+原区域为
+\[
+0\le x\le 1,\quad 0\le y\le 1,\quad 0\le z\le x^2+y^2.
+\]
+改为先对 $y$，再对 $z$，最后对 $x$：
+\[
+I=\int_0^1\left[\int_0^{x^2}\int_0^1 f(x,y,z)\,dy\,dz
++\int_{x^2}^{1+x^2}\int_{\sqrt{z-x^2}}^1 f(x,y,z)\,dy\,dz\right]dx.
+\]
+
+\subsection*{七}
+令
+\[
+x=au,\quad y=bv,\quad z=cw,
+\]
+则雅可比为 $abc$，区域化为单位球 $u^2+v^2+w^2\le 1$，故
+\[
+I=abc\iiint_{u^2+v^2+w^2\le 1}(u^2+v^2+w^2)\,dudvdw.
+\]
+再用球坐标：
+\[
+I=abc\int_0^{2\pi}\int_0^{\pi}\int_0^1 r^2\cdot r^2\sin\varphi\,dr\,d\varphi\,d\theta
+=\frac{4\pi abc}{5}.
+\]
+
+\section*{习题 10.1}
+
+\subsection*{A 一}
+\textbf{(1)}
+\[
+I=\oint_L (x^2+y^2)^n\,ds.
+\]
+由参数方程 $x=a\cos t,\ y=a\sin t\ (0\le t\le 2\pi)$，
+\[
+x^2+y^2=a^2,\qquad ds=\sqrt{(-a\sin t)^2+(a\cos t)^2}\,dt=a\,dt.
+\]
+故
+\[
+I=\int_0^{2\pi} a^{2n}\cdot a\,dt=2\pi a^{2n+1}.
+\]
+
+\textbf{(2)}
+\[
+I=\int_L (x+y)\,ds.
+\]
+取参数方程 $x=1-t,\ y=t\ (0\le t\le 1)$，则
+\[
+x+y=1,\qquad ds=\sqrt{(-1)^2+1^2}\,dt=\sqrt2\,dt.
+\]
+故
+\[
+I=\int_0^1 \sqrt2\,dt=\sqrt2.
+\]
+
+\textbf{(3)}
+将边界分成三段：$x$ 轴上的线段、圆弧、直线 $y=x$ 上的线段。
+
+在 $x$ 轴上，
+\[
+\int e^{\sqrt{x^2+y^2}}\,ds=\int_0^a e^x\,dx=e^a-1.
+\]
+在圆弧 $x=a\cos t,\ y=a\sin t,\ 0\le t\le \frac{\pi}{4}$ 上，
+\[
+\int e^{\sqrt{x^2+y^2}}\,ds=\int_0^{\pi/4} e^a\cdot a\,dt=\frac{\pi a e^a}{4}.
+\]
+在直线 $y=x$ 上，取 $x=t,\ y=t\ (0\le t\le a/\sqrt2)$，则
+\[
+ds=\sqrt2\,dt,\qquad \sqrt{x^2+y^2}=\sqrt2\,t,
+\]
+故
+\[
+\int e^{\sqrt{x^2+y^2}}\,ds
+=\int_0^{a/\sqrt2} e^{\sqrt2 t}\sqrt2\,dt=e^a-1.
+\]
+所以
+\[
+I=2(e^a-1)+\frac{\pi a e^a}{4}.
+\]
+
+\textbf{(4)}
+\[
+I=\int_\Gamma \frac{1}{x^2+y^2+z^2}\,ds,
+\qquad
+\Gamma:\ x=e^t\cos t,\ y=e^t\sin t,\ z=e^t,\ 0\le t\le 2\pi.
+\]
+有
+\[
+x^2+y^2+z^2=e^{2t}+e^{2t}=2e^{2t}.
+\]
+又
+\[
+\left(\frac{dx}{dt}\right)^2+\left(\frac{dy}{dt}\right)^2+\left(\frac{dz}{dt}\right)^2
+=e^{2t}\bigl[(\cos t-\sin t)^2+(\sin t+\cos t)^2+1\bigr]
+=3e^{2t},
+\]
+故
+\[
+ds=\sqrt3\,e^t\,dt.
+\]
+于是
+\[
+I=\int_0^{2\pi}\frac{1}{2e^{2t}}\sqrt3\,e^t\,dt
+=\frac{\sqrt3}{2}\int_0^{2\pi}e^{-t}\,dt
+=\frac{\sqrt3}{2}\bigl(1-e^{-2\pi}\bigr).
+\]
+
+\subsection*{A 二}
+设摆线
+\[
+x=a(t-\sin t),\qquad y=a(1-\cos t),\qquad 0\le t\le \pi.
+\]
+均匀细线的质心公式为
+\[
+\bar x=\frac{1}{L}\int_L x\,ds,\qquad
+\bar y=\frac{1}{L}\int_L y\,ds.
+\]
+先求弧长元：
+\[
+dx=a(1-\cos t)\,dt,\qquad dy=a\sin t\,dt,
+\]
+\[
+ds=\sqrt{a^2(1-\cos t)^2+a^2\sin^2 t}\,dt
+=a\sqrt{2-2\cos t}\,dt
+=2a\sin\frac t2\,dt.
+\]
+故总弧长
+\[
+L=\int_0^\pi 2a\sin\frac t2\,dt=4a.
+\]
+再算
+\[
+\int_L x\,ds
+=2a^2\int_0^\pi (t-\sin t)\sin\frac t2\,dt
+=2a^2\left(4-\frac43\right)=\frac{16a^2}{3},
+\]
+因此
+\[
+\bar x=\frac{1}{4a}\cdot \frac{16a^2}{3}=\frac{4a}{3}.
+\]
+又
+\[
+\int_L y\,ds
+=2a^2\int_0^\pi (1-\cos t)\sin\frac t2\,dt
+=4a^2\int_0^\pi \sin^3\frac t2\,dt
+=\frac{16a^2}{3},
+\]
+故
+\[
+\bar y=\frac{1}{4a}\cdot \frac{16a^2}{3}=\frac{4a}{3}.
+\]
+所以质心为
+\[
+\left(\bar x,\bar y\right)=\left(\frac{4a}{3},\frac{4a}{3}\right).
+\]
+
+\subsection*{A 三}
+设圆弧半径为 $a$，对称轴取为角平分线。令圆弧参数为
+\[
+x=a\cos\theta,\qquad y=a\sin\theta,\qquad -\varphi\le \theta\le \varphi.
+\]
+到对称轴的距离为 $a\sin\theta$，且 $ds=a\,d\theta$，故转动惯量
+\[
+I=\int_{-\varphi}^{\varphi}(a\sin\theta)^2\,a\,d\theta
+=a^3\int_{-\varphi}^{\varphi}\sin^2\theta\,d\theta.
+\]
+于是
+\[
+I=a^3\left(\varphi-\frac{\sin 2\varphi}{2}\right).
+\]
+
+\subsection*{A 四}
+螺旋线
+\[
+x=a\cos t,\qquad y=a\sin t,\qquad z=kt,\qquad 0\le t\le 2\pi,
+\]
+线密度
+\[
+\mu=x^2+y^2+z^2=a^2+k^2t^2.
+\]
+又
+\[
+ds=\sqrt{(-a\sin t)^2+(a\cos t)^2+k^2}\,dt=\sqrt{a^2+k^2}\,dt.
+\]
+
+\textbf{(1) 关于 $z$ 轴的转动惯量}
+\[
+I_z=\int_L (x^2+y^2)\mu\,ds
+=a^2\sqrt{a^2+k^2}\int_0^{2\pi}(a^2+k^2t^2)\,dt.
+\]
+故
+\[
+I_z=a^2\sqrt{a^2+k^2}\left(2\pi a^2+\frac{8\pi^3k^2}{3}\right).
+\]
+
+\textbf{(2) 质心}
+总质量
+\[
+M=\int_L \mu\,ds
+=\sqrt{a^2+k^2}\int_0^{2\pi}(a^2+k^2t^2)\,dt
+=\sqrt{a^2+k^2}\left(2\pi a^2+\frac{8\pi^3k^2}{3}\right).
+\]
+于是
+\[
+\bar x=\frac{1}{M}\int_L x\mu\,ds
+=\frac{a\int_0^{2\pi}(a^2+k^2t^2)\cos t\,dt}{\int_0^{2\pi}(a^2+k^2t^2)\,dt}
+=\frac{2ak^2}{a^2+\frac{4\pi^2k^2}{3}},
+\]
+\[
+\bar y=\frac{1}{M}\int_L y\mu\,ds
+=\frac{a\int_0^{2\pi}(a^2+k^2t^2)\sin t\,dt}{\int_0^{2\pi}(a^2+k^2t^2)\,dt}
+=-\frac{2\pi ak^2}{a^2+\frac{4\pi^2k^2}{3}},
+\]
+\[
+\bar z=\frac{1}{M}\int_L z\mu\,ds
+=\frac{k\int_0^{2\pi}t(a^2+k^2t^2)\,dt}{\int_0^{2\pi}(a^2+k^2t^2)\,dt}
+=\frac{\pi k(a^2+2\pi^2k^2)}{a^2+\frac{4\pi^2k^2}{3}}.
+\]
+故质心为
+\[
+\left(
+\frac{2ak^2}{a^2+\frac{4\pi^2k^2}{3}},
+-\frac{2\pi ak^2}{a^2+\frac{4\pi^2k^2}{3}},
+\frac{\pi k(a^2+2\pi^2k^2)}{a^2+\frac{4\pi^2k^2}{3}}
+\right).
+\]
+
+\subsection*{B 一}
+\[
+I=\oint_L (x^2+y^3)\,ds,\qquad L:\ x^2+y^2=a^2.
+\]
+取参数方程 $x=a\cos t,\ y=a\sin t,\ 0\le t\le 2\pi$，则 $ds=a\,dt$，
+\[
+I=\int_0^{2\pi}(a^2\cos^2 t+a^3\sin^3 t)a\,dt
+=a^3\int_0^{2\pi}\cos^2 t\,dt+a^4\int_0^{2\pi}\sin^3 t\,dt.
+\]
+其中第二项为 $0$，故
+\[
+I=\pi a^3.
+\]
+
+\subsection*{B 二}
+\[
+I=\oint_\Gamma (z+y^2)\,ds,
+\qquad
+\Gamma:\ \begin{cases}
+x^2+y^2+z^2=R^2,\\
+x+y+z=0.
+\end{cases}
+\]
+该圆周是过原点平面的截线，故为大圆，半径为 $R$。
+
+由对称性
+\[
+\oint_\Gamma z\,ds=0.
+\]
+又由对称性
+\[
+\oint_\Gamma x^2\,ds=\oint_\Gamma y^2\,ds=\oint_\Gamma z^2\,ds.
+\]
+而在 $\Gamma$ 上恒有
+\[
+x^2+y^2+z^2=R^2,
+\]
+故
+\[
+3\oint_\Gamma y^2\,ds=\oint_\Gamma R^2\,ds=R^2\cdot 2\pi R=2\pi R^3.
+\]
+于是
+\[
+I=\oint_\Gamma y^2\,ds=\frac{2\pi R^3}{3}.
+\]
+
+\subsection*{B 三}
+\[
+I=\oint_\Gamma (x^2+y^2+z^2)\,ds,
+\]
+其中 $\Gamma$ 为球面
+\[
+x^2+y^2+z^2=\frac92
+\]
+与平面 $x+z=1$ 的交线。
+
+在 $\Gamma$ 上，
+\[
+x^2+y^2+z^2=\frac92
+\]
+为常数，故
+\[
+I=\frac92\cdot |\Gamma|.
+\]
+球心到平面 $x+z=1$ 的距离为
+\[
+d=\frac{|{-1}|}{\sqrt{1^2+0^2+1^2}}=\frac{1}{\sqrt2}.
+\]
+球半径为
+\[
+R=\sqrt{\frac92}=\frac{3}{\sqrt2},
+\]
+故交圆半径
+\[
+r=\sqrt{R^2-d^2}=\sqrt{\frac92-\frac12}=2.
+\]
+于是
+\[
+|\Gamma|=2\pi r=4\pi,
+\]
+从而
+\[
+I=\frac92\cdot 4\pi=18\pi.
+\]
+
+\section*{习题 10.4}
+
+\subsection*{六}
+设曲面薄壳
+\[
+z=\frac12(x^2+y^2),\qquad 0\le z\le \frac12,
+\]
+面密度为常量 $\mu_0$。
+
+\textbf{(1) 形心}
+由对称性，形心在 $z$ 轴上，只需求 $\bar z$。
+
+令 $r^2=x^2+y^2$，则 $0\le r\le 1$，且
+\[
+z=\frac{r^2}{2},\qquad
+dS=\sqrt{1+z_x^2+z_y^2}\,dA=\sqrt{1+r^2}\,dA.
+\]
+总质量
+\[
+M=\mu_0\iint_\Sigma dS
+=2\pi\mu_0\int_0^1 r\sqrt{1+r^2}\,dr
+=\frac{2\pi\mu_0}{3}(2\sqrt2-1).
+\]
+再算
+\[
+\iint_\Sigma z\,\mu_0\,dS
+=\pi\mu_0\int_0^1 r^3\sqrt{1+r^2}\,dr
+=\frac{2\pi\mu_0}{15}(1+\sqrt2).
+\]
+故
+\[
+\bar z=\frac{\iint_\Sigma z\mu_0\,dS}{M}
+=\frac{1+\sqrt2}{5(2\sqrt2-1)}
+=\frac{5+3\sqrt2}{35}.
+\]
+所以形心为
+\[
+\left(0,0,\frac{5+3\sqrt2}{35}\right).
+\]
+
+\textbf{(2) 关于 $z$ 轴的转动惯量}
+\[
+I_z=\iint_\Sigma (x^2+y^2)\mu_0\,dS
+=2\pi\mu_0\int_0^1 r^3\sqrt{1+r^2}\,dr
+=\frac{4\pi\mu_0}{15}(1+\sqrt2).
+\]
+
+\subsection*{B}
+\textbf{一}
+\[
+I=\iint_\Sigma z\,dS,
+\]
+其中 $\Sigma$ 为圆柱面 $x^2+y^2=R^2$ 在第一卦限内且 $0\le z\le 1$ 的部分。
+
+取参数
+\[
+x=R\cos\theta,\qquad y=R\sin\theta,\qquad 0\le \theta\le \frac{\pi}{2},\ 0\le z\le 1,
+\]
+则
+\[
+dS=R\,d\theta\,dz.
+\]
+故
+\[
+I=\int_0^{\pi/2}\int_0^1 zR\,dz\,d\theta
+=\frac{\pi R}{4}.
+\]
+
+\textbf{二}
+\[
+I=\iint_\Sigma x^2\,dS,
+\]
+其中 $\Sigma$ 为圆柱面 $x^2+y^2=a^2$ 介于平面 $z=0$ 与 $z=h$ 之间的部分。
+
+取参数
+\[
+x=a\cos\theta,\qquad y=a\sin\theta,\qquad 0\le \theta\le 2\pi,\ 0\le z\le h,
+\]
+则
+\[
+dS=a\,d\theta\,dz.
+\]
+故
+\[
+I=\int_0^h\int_0^{2\pi} a^2\cos^2\theta\cdot a\,d\theta\,dz
+=\pi a^3h.
+\]
+
+\textbf{三}
+设
+\[
+\Sigma:\ x^2+y^2+z^2=a^2\ (z\ge 0),
+\]
+$\Sigma_1$ 为其在第一卦限的部分。由对称性：
+\[
+\iint_\Sigma x\,dS=0,\qquad
+\iint_\Sigma y\,dS=0,\qquad
+\iint_\Sigma xyz\,dS=0.
+\]
+而
+\[
+\iint_\Sigma z\,dS
+=4\iint_{\Sigma_1} z\,dS
+=4\iint_{\Sigma_1} x\,dS,
+\]
+其中最后一步利用第一卦限球面关于坐标置换的对称性。
+
+故正确选项为
+\[
+\boxed{(C)}.
+\]
+
+\section*{习题 10.3}
+
+\subsection*{A 一}
+\[
+I=\iint_\Sigma 1\,dS,
+\]
+其中 $\Sigma$ 为抛物面
+\[
+z=2-(x^2+y^2)
+\]
+在 $xOy$ 面上方的部分。
+
+投影区域为 $x^2+y^2\le 2$。由
+\[
+z_x=-2x,\qquad z_y=-2y,
+\]
+得
+\[
+dS=\sqrt{1+4x^2+4y^2}\,dA=\sqrt{1+4r^2}\,dA.
+\]
+故
+\[
+I=2\pi\int_0^{\sqrt2} r\sqrt{1+4r^2}\,dr
+=\frac{\pi}{6}\int_1^9 u^{1/2}\,du
+=\frac{13\pi}{3}.
+\]
+
+\subsection*{A 二}
+\[
+I=\iint_\Sigma (x^2+y^2)\,dS,
+\]
+其中 $\Sigma$ 为圆锥面 $z=\sqrt{x^2+y^2}$ 与平面 $z=1$ 所围空间的整个边界曲面。
+
+边界由侧面 $\Sigma_1$ 与顶面圆盘 $\Sigma_2$ 组成。
+
+对侧面 $z=r$，有
+\[
+dS=\sqrt2\,dA,
+\]
+故
+\[
+\iint_{\Sigma_1}(x^2+y^2)\,dS
+=2\pi\sqrt2\int_0^1 r^3\,dr
+=\frac{\pi\sqrt2}{2}.
+\]
+对顶面 $z=1$，有 $dS=dA$，故
+\[
+\iint_{\Sigma_2}(x^2+y^2)\,dS
+=2\pi\int_0^1 r^3\,dr
+=\frac{\pi}{2}.
+\]
+所以
+\[
+I=\frac{\pi}{2}(1+\sqrt2).
+\]
+
+\subsection*{A 三}
+在球面
+\[
+\Sigma:\ x^2+y^2+z^2=a^2
+\]
+上，利用对称性：
+
+- $x\sin z$ 关于 $x$ 为奇函数，积分为 $0$；
+- $x^2\sin z$ 关于 $z$ 为奇函数，积分为 $0$；
+- $(x^2+y^2)\sin z$ 关于 $z$ 为奇函数，积分为 $0$；
+- $x^2\cos z$ 为偶函数，一般不为 $0$。
+
+故等于 $0$ 的是
+\[
+\boxed{(A)(B)(C)}.
+\]
+
+\subsection*{A 四}
+\textbf{(1)}
+\[
+I=\iint_\Sigma \left(z+2x+\frac43y\right)\,dS,
+\]
+其中 $\Sigma$ 为平面
+\[
+\frac{x}{2}+\frac{y}{3}+\frac{z}{4}=1
+\]
+在第一卦限的部分。
+
+由平面方程
+\[
+z=4-2x-\frac43y,
+\]
+可得被积函数恒为
+\[
+z+2x+\frac43y=4.
+\]
+故
+\[
+I=4\cdot S_\Sigma.
+\]
+三顶点为 $(2,0,0),(0,3,0),(0,0,4)$，故三角形面积
+\[
+S_\Sigma=\frac12\left|(-2,3,0)\times(-2,0,4)\right|
+=\frac12\sqrt{12^2+8^2+6^2}
+=\sqrt{61}.
+\]
+于是
+\[
+I=4\sqrt{61}.
+\]
+
+\textbf{(2)}
+\[
+I=\iint_\Sigma (xy+yz+zx)\,dS,
+\]
+其中 $\Sigma$ 为锥面
+\[
+z=\sqrt{x^2+y^2}
+\]
+被圆柱面
+\[
+x^2+y^2=2ax
+\]
+截得的有限部分。
+
+在极坐标下投影区域为
+\[
+0\le r\le 2a\cos\theta,\qquad -\frac{\pi}{2}\le \theta\le \frac{\pi}{2}.
+\]
+又
+\[
+x=r\cos\theta,\quad y=r\sin\theta,\quad z=r,\quad dS=\sqrt2\,r\,dr\,d\theta.
+\]
+故
+\[
+xy+yz+zx=r^2(\cos\theta\sin\theta+\sin\theta+\cos\theta).
+\]
+于是
+\[
+I=\sqrt2\int_{-\pi/2}^{\pi/2}\int_0^{2a\cos\theta}
+r^3(\cos\theta\sin\theta+\sin\theta+\cos\theta)\,dr\,d\theta.
+\]
+其中前两项关于 $\theta$ 为奇函数，积分为 $0$，故
+\[
+I=\sqrt2\int_{-\pi/2}^{\pi/2}\cos\theta\cdot \frac{(2a\cos\theta)^4}{4}\,d\theta
+=4\sqrt2a^4\int_{-\pi/2}^{\pi/2}\cos^5\theta\,d\theta.
+\]
+而
+\[
+\int_{-\pi/2}^{\pi/2}\cos^5\theta\,d\theta
+=2\int_0^{\pi/2}\cos^5\theta\,d\theta
+=\frac{16}{15},
+\]
+故
+\[
+I=\frac{64\sqrt2}{15}a^4.
+\]
+
+\subsection*{A 五}
+面密度壳面
+\[
+\mu=z,\qquad
+z=\frac12(x^2+y^2),\qquad 0\le z\le 1
+\]
+的质量为
+\[
+M=\iint_\Sigma \mu\,dS.
+\]
+此时 $0\le r\le \sqrt2$，且
+\[
+\mu=\frac{r^2}{2},\qquad dS=\sqrt{1+r^2}\,dA.
+\]
+故
+\[
+M=2\pi\int_0^{\sqrt2}\frac{r^2}{2}\sqrt{1+r^2}\,r\,dr
+=\pi\int_0^{\sqrt2}r^3\sqrt{1+r^2}\,dr.
+\]
+令 $u=1+r^2$，则
+\[
+M=\frac{\pi}{2}\int_1^3(u^{3/2}-u^{1/2})\,du
+=\pi\left[\frac{u^{5/2}}{5}-\frac{u^{3/2}}{3}\right]_1^3
+=\frac{2\pi}{15}(6\sqrt3+1).
+\]
+
+\section*{习题 10.5}
+
+\subsection*{A 一}
+\textbf{(1)}
+\[
+I=\iint_\Sigma x^2y^2z\,dx\,dy,
+\]
+其中 $\Sigma$ 为球面
+\[
+x^2+y^2+z^2=R^2
+\]
+下半部分的下侧。
+
+下半球可写为
+\[
+z=-\sqrt{R^2-x^2-y^2},
+\]
+取下侧时
+\[
+dx\,dy=-n_z\,dS
+\]
+对应到平面投影上得
+\[
+I=-\iint_D x^2y^2z(x,y)\,dx\,dy
+=\iint_D x^2y^2\sqrt{R^2-x^2-y^2}\,dx\,dy,
+\]
+其中 $D:\ x^2+y^2\le R^2$。
+
+改用极坐标：
+\[
+I=\int_0^{2\pi}\int_0^R r^4\cos^2\theta\sin^2\theta\sqrt{R^2-r^2}\,r\,dr\,d\theta.
+\]
+由
+\[
+\int_0^{2\pi}\cos^2\theta\sin^2\theta\,d\theta=\frac{\pi}{4},
+\qquad
+\int_0^R r^5\sqrt{R^2-r^2}\,dr=\frac{8R^7}{105},
+\]
+得
+\[
+I=\frac{2\pi R^7}{105}.
+\]
+
+\textbf{(2)}
+\[
+I=\iint_\Sigma z\,dx\,dy+x\,dy\,dz+y\,dz\,dx,
+\]
+其中 $\Sigma$ 为圆柱面 $x^2+y^2=1$ 被 $z=0,z=3$ 截得的第一卦限部分的前侧。
+
+取参数
+\[
+x=\cos\theta,\qquad y=\sin\theta,\qquad 0\le \theta\le \frac{\pi}{2},\ 0\le z\le 3.
+\]
+前侧取外法向，故
+\[
+\vec n\,dS=(\cos\theta,\sin\theta,0)\,d\theta\,dz=(x,y,0)\,d\theta\,dz.
+\]
+于是
+\[
+I=\iint_\Sigma (x,y,z)\cdot \vec n\,dS
+=\int_0^{\pi/2}\int_0^3 (x^2+y^2)\,dz\,d\theta
+=\int_0^{\pi/2}\int_0^3 1\,dz\,d\theta
+=\frac{3\pi}{2}.
+\]
+
+\textbf{(3)}
+\[
+I=\iint_\Sigma (x^3+y^2+z)\,dx\,dy,
+\]
+其中 $\Sigma$ 为球面
+\[
+x^2+y^2+z^2=1
+\]
+在 $x\ge 0,y\ge 0$ 的部分，取外侧。
+
+它由上、下两部分组成。投影区域为第一象限单位圆扇形
+\[
+D:\ x\ge 0,\ y\ge 0,\ x^2+y^2\le 1.
+\]
+上半部分取外侧对应 $+dx\,dy$，下半部分取外侧对应 $-dx\,dy$，故
+\[
+I=\iint_D\Bigl[(x^3+y^2+\sqrt{1-x^2-y^2})-(x^3+y^2-\sqrt{1-x^2-y^2})\Bigr]dx\,dy.
+\]
+即
+\[
+I=2\iint_D\sqrt{1-x^2-y^2}\,dx\,dy
+=2\int_0^{\pi/2}\int_0^1 \sqrt{1-r^2}\,r\,dr\,d\theta
+=\frac{\pi}{3}.
+\]
+
+\textbf{(4)}
+\[
+I=\iint_\Sigma (f+x)\,dy\,dz+(2f+y)\,dz\,dx+(f+z)\,dx\,dy,
+\]
+其中 $f(x,y,z)$ 连续，$\Sigma$ 为平面
+\[
+x-y+z=1
+\]
+在第 IV 卦限部分的上侧。
+
+由平面方程
+\[
+z=1-x+y,\qquad z_x=-1,\qquad z_y=1.
+\]
+上侧公式为
+\[
+I=\iint_D\bigl[-(f+x)z_x-(2f+y)z_y+(f+z)\bigr]dx\,dy.
+\]
+代入得
+\[
+-(f+x)(-1)-(2f+y)(1)+(f+z)=x-y+z=1.
+\]
+故
+\[
+I=\iint_D 1\,dx\,dy.
+\]
+第 IV 卦限对应
+\[
+x\ge 0,\quad y\le 0,\quad z=1-x+y\ge 0,
+\]
+故投影区域为三角形
+\[
+0\le x\le 1,\qquad x-1\le y\le 0,
+\]
+面积为 $\frac12$。因此
+\[
+I=\frac12.
+\]
+
+\subsection*{A 二}
+设
+\[
+I=\iint_\Sigma P\,dy\,dz+Q\,dz\,dx+R\,dx\,dy,
+\]
+其中 $\Sigma$ 为平面
+\[
+3x+2y+2\sqrt3\,z=6
+\]
+在第一卦限的上侧。
+
+由平面方程
+\[
+z=\frac{6-3x-2y}{2\sqrt3},
+\qquad
+z_x=-\frac{\sqrt3}{2},
+\qquad
+z_y=-\frac{1}{\sqrt3}.
+\]
+故
+\[
+I=\iint_D\left(\frac{\sqrt3}{2}P+\frac{1}{\sqrt3}Q+R\right)dx\,dy.
+\]
+又
+\[
+dS=\sqrt{1+z_x^2+z_y^2}\,dx\,dy
+=\sqrt{1+\frac34+\frac13}\,dx\,dy
+=\frac{5}{2\sqrt3}\,dx\,dy,
+\]
+即
+\[
+dx\,dy=\frac{2\sqrt3}{5}\,dS.
+\]
+因此
+\[
+I=\iint_\Sigma \left(\frac35P+\frac25Q+\frac{2\sqrt3}{5}R\right)dS.
+\]
+
+\subsection*{A 三}
+\[
+I=\iint_\Sigma x\,dy\,dz-z\,dx\,dy,
+\]
+其中 $\Sigma$ 为抛物面
+\[
+z=x^2+y^2
+\]
+介于 $z=0$ 与 $z=1$ 之间的部分，取下侧。
+
+令
+\[
+P=x,\qquad Q=0,\qquad R=-z.
+\]
+对下侧有
+\[
+I=\iint_D \bigl(Pz_x+Qz_y-R\bigr)\,dx\,dy,
+\]
+其中
+\[
+z_x=2x,\qquad z_y=2y,\qquad D:\ x^2+y^2\le 1.
+\]
+故
+\[
+I=\iint_D (2x^2+z)\,dx\,dy
+=\iint_D (3x^2+y^2)\,dx\,dy.
+\]
+由对称性
+\[
+\iint_D x^2\,dx\,dy=\iint_D y^2\,dx\,dy=\frac{\pi}{4},
+\]
+所以
+\[
+I=3\cdot \frac{\pi}{4}+\frac{\pi}{4}=\pi.
+\]
+
+\subsection*{B 一}
+设
+\[
+\Sigma:\ z=\sqrt{1-x^2-y^2},
+\]
+$\gamma$ 为外法线与 $z$ 轴正向的夹角，则
+\[
+\cos\gamma=n_z=z
+\]
+（因在单位上半球上外法向量即 $(x,y,z)$）。
+
+故
+\[
+I=\iint_\Sigma z^2\cos\gamma\,dS=\iint_\Sigma z^3\,dS.
+\]
+又因
+\[
+\cos\gamma\,dS=dx\,dy,
+\]
+得
+\[
+I=\iint_D z^2\,dx\,dy
+=\iint_D (1-x^2-y^2)\,dx\,dy,
+\]
+其中 $D:\ x^2+y^2\le 1$。于是
+\[
+I=2\pi\int_0^1 (1-r^2)r\,dr=\frac{\pi}{2}.
+\]
+
+\subsection*{B 二}
+\[
+I=\iint_\Sigma (x+1)\,dy\,dz+y\,dz\,dx+dx\,dy,
+\]
+其中 $\Sigma$ 为平面
+\[
+x+y+z=1
+\]
+在第一卦限部分的上侧。
+
+由
+\[
+z=1-x-y,\qquad z_x=z_y=-1,
+\]
+得
+\[
+I=\iint_D\bigl[-(x+1)z_x-yz_y+1\bigr]dx\,dy
+=\iint_D(x+y+2)\,dx\,dy,
+\]
+其中
+\[
+D:\ x\ge 0,\ y\ge 0,\ x+y\le 1.
+\]
+故
+\[
+I=\int_0^1\int_0^{1-x}(x+y+2)\,dy\,dx=\frac43.
+\]
+
+\subsection*{B 三}
+\[
+I=\iint_\Sigma x\,dy\,dz+y\,dz\,dx+z\,dx\,dy,
+\]
+其中 $\Sigma$ 为曲面
+\[
+z=x^2+y^2\qquad (0\le z\le 1)
+\]
+在第一卦限部分的上侧。
+
+上侧公式给出
+\[
+I=\iint_D(-xz_x-yz_y+z)\,dx\,dy,
+\]
+其中
+\[
+z_x=2x,\qquad z_y=2y,\qquad D:\ x\ge 0,\ y\ge 0,\ x^2+y^2\le 1.
+\]
+故
+\[
+I=\iint_D -(x^2+y^2)\,dx\,dy
+=-\int_0^{\pi/2}\int_0^1 r^2\cdot r\,dr\,d\theta
+=-\frac{\pi}{8}.
+\]
+
+\end{document}

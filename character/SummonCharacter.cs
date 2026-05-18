@@ -8,6 +8,7 @@ public partial class SummonCharacter : Character
 {
     private const float DeathFadeDurationSeconds = 0.4f;
     public Character Summoner { get; private set; }
+    public Character LastSummoner { get; private set; }
     protected virtual float TriggerActionDelaySeconds => 0.1f;
 
     public override bool IsSummon => true;
@@ -20,6 +21,7 @@ public partial class SummonCharacter : Character
     internal void BindToSummoner(Character summoner)
     {
         Summoner = summoner;
+        LastSummoner = summoner;
         BattleNode = summoner?.BattleNode;
         IsPlayer = summoner?.IsPlayer ?? IsPlayer;
     }

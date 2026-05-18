@@ -12,9 +12,12 @@ public partial class Skill
     public const string ExhaustKeyword = "\u6d88\u8017";
     public const string ExhaustKeywordEffectText =
         "\u6253\u51fa\u540e\uff0c\u672c\u573a\u6218\u6597\u4e2d\u79fb\u51fa\u3002";
+    public const string VoidnessKeyword = "\u865a\u65e0";
+    public const string VoidnessKeywordEffectText =
+        "\u56de\u5408\u7ed3\u675f\u65f6\u82e5\u5728\u624b\u724c\u4e2d\u5219\u6d88\u8017\u3002";
     public const string RebirthKeyword = "\u590d\u751f";
     public const string RebirthKeywordEffectText =
-        "\u53ef\u5bf9\u6fd2\u6b7b\u76ee\u6807\u751f\u6548\u3002\u9009\u62e9\u76ee\u6807\u65f6\uff0c\u4f18\u5148\u6fd2\u6b7b\u76ee\u6807\uff0c\u5176\u6b21\u975e\u6ee1\u8840\u76ee\u6807\u3002";
+        "\u53ef\u5bf9\u6fd2\u6b7b\u76ee\u6807\u751f\u6548\u3002";
     private const string ExhaustKeywordLine = ExhaustKeyword + "\u3002";
 
     protected enum StatX
@@ -337,7 +340,16 @@ public partial class Skill
         if (carryIndex >= 0)
             entries.Add((carryIndex, BuildKeywordTooltipEntry(CarryKeyword, CarryKeywordEffectText)));
 
-        int rebirthIndex = plainDescription.IndexOf(RebirthKeyword, StringComparison.Ordinal);
+        int voidnessIndex = plainDescription.IndexOf(VoidnessKeyword, StringComparison.Ordinal);
+        if (voidnessIndex >= 0)
+            entries.Add(
+                (
+                    voidnessIndex,
+                    BuildKeywordTooltipEntry(VoidnessKeyword, VoidnessKeywordEffectText)
+                )
+            );
+
+        int rebirthIndex = FindValidRebirthKeywordIndex(plainDescription);
         if (rebirthIndex >= 0)
             entries.Add(
                 (rebirthIndex, BuildKeywordTooltipEntry(RebirthKeyword, RebirthKeywordEffectText))
@@ -370,6 +382,27 @@ public partial class Skill
                 .Select(entry => entry.Text)
                 .Where(entry => !string.IsNullOrWhiteSpace(entry))
         );
+    }
+
+    private static int FindValidRebirthKeywordIndex(string plainDescription)
+    {
+        if (string.IsNullOrEmpty(plainDescription))
+            return -1;
+
+        int searchStart = 0;
+        while (searchStart < plainDescription.Length)
+        {
+            int index = plainDescription.IndexOf(RebirthKeyword, searchStart, StringComparison.Ordinal);
+            if (index < 0)
+                return -1;
+
+            if (GlobalFunction.IsValidRebirthKeywordMatch(plainDescription, index))
+                return index;
+
+            searchStart = index + 1;
+        }
+
+        return -1;
     }
 
     private static string BuildKeywordTooltipEntry(string title, string effectText)

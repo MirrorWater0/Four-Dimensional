@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
@@ -33,35 +34,6 @@ public partial class ShockWave : Skill
                 target: HostileTargets(9)
             ),
             BlockStep(0, BaseBlock)
-        );
-    }
-}
-
-public partial class ReadyStance : Skill
-{
-    private const int BaseBlock = -3;
-    private const int SurvivabilityMultiplier = 1;
-    private const int EnergyGain = 5;
-
-    public override string SkillName { get; set; } = "\u80fd\u91cf\u7206\u53d1";
-    public override int EnergyCost => 3;
-
-    public ReadyStance()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            BlockStep(
-                relativeIndex: 0,
-                baseBlock: BaseBlock,
-                survivabilityMultiplier: SurvivabilityMultiplier
-            ),
-            EnergyStep(EnergyGain)
         );
     }
 }
@@ -142,7 +114,6 @@ public partial class TauntingGuard : Skill
 public partial class WeakpointBulwark : Skill
 {
     private const int BaseBlock = 10;
-    private int _capturedVulnerableStacks;
 
     public override string SkillName { get; set; } = "蓄势待发";
 
@@ -157,31 +128,63 @@ public partial class WeakpointBulwark : Skill
         return new SkillPlan(
             this,
             BlockStep(0, BaseBlock),
-            CustomStep(
-                _ =>
-                {
-                    var target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
-                    _capturedVulnerableStacks =
-                        target == null || target == OwnerCharater?.BattleNode?.dummy
-                            ? 0
-                            : target
-                                .HurtBuffs?.FirstOrDefault(buff =>
-                                    buff != null
-                                    && buff.ThisBuffName == Buff.BuffName.Vulnerable
-                                    && buff.Stack > 0
-                                )
-                                ?.Stack ?? 0;
-
-                    return Task.CompletedTask;
-                },
-                _ => new[] { $"令目标的{Buff.BuffName.Vulnerable.GetDescription()}层数翻倍。" }
-            ),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: _ => _capturedVulnerableStacks,
-                target: HostileTargets(1)
-            )
+            new DoubleEnemyFormationVulnerableStep()
         );
+    }
+
+    private sealed class DoubleEnemyFormationVulnerableStep : SkillStep
+    {
+        public override Task Execute(Skill skill)
+        {
+            foreach (var target in GetTargets(skill))
+            {
+                int vulnerableStacks = GetVulnerableStacks(target);
+                if (vulnerableStacks > 0)
+                    HurtBuff.BuffAdd(
+                        Buff.BuffName.Vulnerable,
+                        target,
+                        vulnerableStacks,
+                        skill?.OwnerCharater
+                    );
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            yield return $"令敌方全阵的{Buff.BuffName.Vulnerable.GetDescription()}层数翻倍。";
+        }
+
+        public override IEnumerable<Character> PreviewTargets(Skill skill)
+        {
+            return GetTargets(skill);
+        }
+
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            return GetTargets(skill);
+        }
+
+        private static Character[] GetTargets(Skill skill)
+        {
+            Character dummy = skill?.OwnerCharater?.BattleNode?.dummy;
+            return skill
+                    ?.ChosetargetByOrder(byBehindRow: false)
+                    .Where(target => target != null && target != dummy)
+                    .ToArray() ?? Array.Empty<Character>();
+        }
+
+        private static int GetVulnerableStacks(Character target)
+        {
+            return target
+                    ?.HurtBuffs?.FirstOrDefault(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Vulnerable
+                        && buff.Stack > 0
+                    )
+                    ?.Stack ?? 0;
+        }
     }
 }
 

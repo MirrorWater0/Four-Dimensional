@@ -20,6 +20,7 @@ public partial class BattleReady : Control
     );
     public Control Grid => field ??= ResolveNode<Control>("FormationModeRoot/GridContainer");
     private Control FormationModeRoot => field ??= ResolveNode<Control>("FormationModeRoot");
+    private Control CharacterPreviewRoot => _characterPreviewRoot ??= CreateCharacterPreviewRoot();
     private Control TacticsModeRoot => field ??= ResolveNode<Control>("TacticsModeRoot");
     private Control TalentModeRoot => field ??= ResolveNode<Control>("TalentModeRoot");
     private Control ModeSelectorRoot => field ??= ResolveNode<Control>("ModeSelectorRoot");
@@ -45,8 +46,7 @@ public partial class BattleReady : Control
         field ??= ResolveNode<GridContainer>(
             "TacticsModeRoot/SkillContainer/SkillScrollMargin/SkillGrid"
         );
-    private Control CharacterSelectRoot =>
-        field ??= ResolveNode<Control>("CharacterSelectRoot");
+    private Control CharacterSelectRoot => field ??= ResolveNode<Control>("CharacterSelectRoot");
     private Control FormationFrame =>
         field ??= ResolveNode<Control>("FormationModeRoot/FormationFrame");
     private Control FormationHeaderFrame =>
@@ -109,6 +109,23 @@ public partial class BattleReady : Control
     private const float TalentNodeHeight = 76f;
     private const float TalentNodeLabelHeight = 22f;
     private const float TalentLineThickness = 5f;
+    private const int CharacterPreviewSpineRenderScale = 2;
+    private static readonly Vector2I CharacterPreviewSpineDefaultViewportSize = new(360, 520);
+    private static readonly CharacterPreviewSpinePose DefaultCharacterPreviewSpinePose = new(
+        new Vector2(-20f, -70f),
+        new Vector2(0.07f, 0.07f)
+    );
+
+    private static readonly Dictionary<
+        string,
+        CharacterPreviewSpinePose
+    > CharacterPreviewSpinePoses = new() { };
+
+    private readonly struct CharacterPreviewSpinePose(Vector2 position, Vector2 scale)
+    {
+        public Vector2 Position { get; } = position;
+        public Vector2 Scale { get; } = scale;
+    }
 
     private T ResolveNode<T>(string path, string fallbackName = null)
         where T : Node
@@ -127,9 +144,20 @@ public partial class BattleReady : Control
         );
     }
 
-    private readonly List<SkillDisplayEntry>[] _skillBuckets =
-        new List<SkillDisplayEntry>[] { new(), new(), new() };
+    private readonly List<SkillDisplayEntry> _skillDisplayEntries = new();
     private readonly Random _skillAnimationRandom = new();
+    private Control _characterPreviewRoot;
+    private TextureRect _characterPreviewPortrait;
+    private SubViewportContainer _characterPreviewSpineContainer;
+    private SubViewport _characterPreviewSpineViewport;
+    private Node2D _characterPreviewSpineWorld;
+    private Node2D _characterPreviewSpineModel;
+    private bool _characterPreviewSpineQualityApplied;
+    private Label _characterPreviewNameLabel;
+    private Label _characterPreviewPassiveNameLabel;
+    private RichTextLabel _characterPreviewPassiveDescriptionLabel;
+    private readonly Dictionary<string, Label> _characterPreviewStatLabels = [];
+    private int _skillPreviewCharacterIndex = -1;
 
     private readonly struct SkillDisplayEntry(SkillID skillId, int count)
     {
@@ -151,10 +179,9 @@ public partial class BattleReady : Control
         };
     }
 
-    private void CacheCharacterSkillBuckets(int characterIndex)
+    private void CacheCharacterSkillDisplayEntries(int characterIndex)
     {
-        foreach (var bucket in _skillBuckets)
-            bucket.Clear();
+        _skillDisplayEntries.Clear();
 
         var character = GameInfo.PlayerCharacters[characterIndex];
         var groupedSkills = (character.GainedSkills ?? new List<SkillID>())
@@ -166,8 +193,425 @@ public partial class BattleReady : Control
             var skill = Skill.GetSkill(entry.SkillId);
             int skillIndex = GetSkillCategoryIndex(skill);
             if (skillIndex >= 0)
-                _skillBuckets[skillIndex].Add(entry);
+                _skillDisplayEntries.Add(entry);
         }
+    }
+
+    private Control CreateCharacterPreviewRoot()
+    {
+        var root = FormationModeRoot.GetNodeOrNull<Control>("CharacterPreviewRoot");
+        if (root != null)
+        {
+            BindCharacterPreviewNodes(root);
+            return root;
+        }
+
+        root = new Control
+        {
+            Name = "CharacterPreviewRoot",
+            Position = new Vector2(31f, 84f),
+            Size = new Vector2(516f, 480f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        var layout = new HBoxContainer
+        {
+            Position = new Vector2(18f, 18f),
+            Size = new Vector2(480f, 424f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        layout.AddThemeConstantOverride("separation", 18);
+        root.AddChild(layout);
+
+        var portraitPanel = CreatePreviewPanel(new Vector2(210f, 424f));
+        layout.AddChild(portraitPanel);
+
+        var portraitMargin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        portraitMargin.AddThemeConstantOverride("margin_left", 14);
+        portraitMargin.AddThemeConstantOverride("margin_top", 14);
+        portraitMargin.AddThemeConstantOverride("margin_right", 14);
+        portraitMargin.AddThemeConstantOverride("margin_bottom", 14);
+        portraitPanel.AddChild(portraitMargin);
+
+        var portraitStack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        portraitStack.AddThemeConstantOverride("separation", 12);
+        portraitMargin.AddChild(portraitStack);
+
+        _characterPreviewPortrait = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(182f, 310f),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        portraitStack.AddChild(_characterPreviewPortrait);
+        EnsureCharacterPreviewSpineNodes(_characterPreviewPortrait);
+
+        _characterPreviewNameLabel = CreatePreviewLabel(
+            24,
+            Colors.White,
+            HorizontalAlignment.Center
+        );
+        _characterPreviewNameLabel.CustomMinimumSize = new Vector2(0f, 38f);
+        portraitStack.AddChild(_characterPreviewNameLabel);
+
+        var detailPanel = CreatePreviewPanel(new Vector2(252f, 424f));
+        detailPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        layout.AddChild(detailPanel);
+
+        var detailMargin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
+        detailMargin.AddThemeConstantOverride("margin_left", 18);
+        detailMargin.AddThemeConstantOverride("margin_top", 18);
+        detailMargin.AddThemeConstantOverride("margin_right", 18);
+        detailMargin.AddThemeConstantOverride("margin_bottom", 18);
+        detailPanel.AddChild(detailMargin);
+
+        var detailStack = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+        detailStack.AddThemeConstantOverride("separation", 14);
+        detailMargin.AddChild(detailStack);
+
+        var statTitle = CreatePreviewLabel(
+            20,
+            new Color(0.88f, 0.94f, 1f),
+            HorizontalAlignment.Left
+        );
+        statTitle.Text = "属性";
+        detailStack.AddChild(statTitle);
+
+        var statGrid = new GridContainer
+        {
+            Columns = 2,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        statGrid.AddThemeConstantOverride("h_separation", 24);
+        statGrid.AddThemeConstantOverride("v_separation", 8);
+        detailStack.AddChild(statGrid);
+
+        AddPreviewStat(statGrid, "生命", "LifeMax", new Color(1f, 0.48f, 0.52f));
+        AddPreviewStat(statGrid, "力量", "Power", new Color(1f, 0.78f, 0.38f));
+        AddPreviewStat(statGrid, "生存", "Survivability", new Color(0.54f, 1f, 0.99f));
+        AddPreviewStat(statGrid, "速度", "Speed", new Color(0.64f, 0.9f, 1f));
+
+        var separator = new ColorRect
+        {
+            CustomMinimumSize = new Vector2(0f, 1f),
+            Color = new Color(0.76f, 0.86f, 1f, 0.35f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        detailStack.AddChild(separator);
+
+        _characterPreviewPassiveNameLabel = CreatePreviewLabel(
+            20,
+            new Color(1f, 0.92f, 0.54f),
+            HorizontalAlignment.Left
+        );
+        detailStack.AddChild(_characterPreviewPassiveNameLabel);
+
+        _characterPreviewPassiveDescriptionLabel = new RichTextLabel
+        {
+            BbcodeEnabled = true,
+            FitContent = false,
+            ScrollActive = true,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        _characterPreviewPassiveDescriptionLabel.AddThemeFontSizeOverride("normal_font_size", 18);
+        detailStack.AddChild(_characterPreviewPassiveDescriptionLabel);
+
+        FormationModeRoot.AddChild(root);
+        return root;
+    }
+
+    private void BindCharacterPreviewNodes(Control root)
+    {
+        _characterPreviewPortrait = FindCharacterPreviewNode<TextureRect>(root, "PreviewPortrait");
+        EnsureCharacterPreviewSpineNodes(_characterPreviewPortrait);
+        _characterPreviewNameLabel = FindCharacterPreviewNode<Label>(root, "PreviewNameLabel");
+        _characterPreviewPassiveNameLabel = FindCharacterPreviewNode<Label>(
+            root,
+            "PassiveNameLabel"
+        );
+        _characterPreviewPassiveDescriptionLabel = FindCharacterPreviewNode<RichTextLabel>(
+            root,
+            "PassiveDescriptionLabel"
+        );
+
+        _characterPreviewStatLabels.Clear();
+        _characterPreviewStatLabels["LifeMax"] = FindCharacterPreviewNode<Label>(
+            root,
+            "LifeMaxValue"
+        );
+        _characterPreviewStatLabels["Power"] = FindCharacterPreviewNode<Label>(root, "PowerValue");
+        _characterPreviewStatLabels["Survivability"] = FindCharacterPreviewNode<Label>(
+            root,
+            "SurvivabilityValue"
+        );
+        _characterPreviewStatLabels["Speed"] = FindCharacterPreviewNode<Label>(root, "SpeedValue");
+    }
+
+    private void EnsureCharacterPreviewSpineNodes(Control visualRoot)
+    {
+        _characterPreviewSpineContainer = visualRoot.GetNodeOrNull<SubViewportContainer>(
+            "SpinePreviewContainer"
+        );
+        if (_characterPreviewSpineContainer == null)
+        {
+            _characterPreviewSpineContainer = new SubViewportContainer
+            {
+                Name = "SpinePreviewContainer",
+                MouseFilter = MouseFilterEnum.Ignore,
+                AnchorsPreset = (int)LayoutPreset.FullRect,
+                Stretch = true,
+            };
+            _characterPreviewSpineContainer.SetAnchorsPreset(LayoutPreset.FullRect);
+            visualRoot.AddChild(_characterPreviewSpineContainer);
+        }
+        _characterPreviewSpineContainer.Set("texture_filter", 4);
+
+        _characterPreviewSpineViewport = _characterPreviewSpineContainer.GetNodeOrNull<SubViewport>(
+            "SpinePreviewViewport"
+        );
+        if (_characterPreviewSpineViewport == null)
+        {
+            _characterPreviewSpineViewport = new SubViewport
+            {
+                Name = "SpinePreviewViewport",
+                TransparentBg = true,
+                Size = CharacterPreviewSpineDefaultViewportSize,
+                RenderTargetUpdateMode = SubViewport.UpdateMode.WhenParentVisible,
+            };
+            _characterPreviewSpineContainer.AddChild(_characterPreviewSpineViewport);
+        }
+
+        _characterPreviewSpineWorld = _characterPreviewSpineViewport.GetNodeOrNull<Node2D>(
+            "SpinePreviewWorld"
+        );
+        if (_characterPreviewSpineWorld == null)
+        {
+            _characterPreviewSpineWorld = new Node2D { Name = "SpinePreviewWorld" };
+            _characterPreviewSpineViewport.AddChild(_characterPreviewSpineWorld);
+        }
+
+        ApplyCharacterPreviewSpineRenderQuality();
+    }
+
+    private void ApplyCharacterPreviewSpineRenderQuality()
+    {
+        if (_characterPreviewSpineQualityApplied)
+            return;
+
+        _characterPreviewSpineQualityApplied = true;
+        _characterPreviewSpineViewport.Size *= CharacterPreviewSpineRenderScale;
+        _characterPreviewSpineWorld.Position *= CharacterPreviewSpineRenderScale;
+    }
+
+    private static T FindCharacterPreviewNode<T>(Control root, string nodeName)
+        where T : Node
+    {
+        if (root.FindChild(nodeName, true, false) is T node)
+            return node;
+
+        throw new InvalidOperationException(
+            $"BattleReady character preview node missing: {nodeName}"
+        );
+    }
+
+    private static PanelContainer CreatePreviewPanel(Vector2 minimumSize)
+    {
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = minimumSize,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        panel.AddThemeStyleboxOverride(
+            "panel",
+            CreatePreviewStyle(
+                new Color(0.05f, 0.09f, 0.15f, 0.72f),
+                new Color(0.65f, 0.78f, 0.95f, 0.5f)
+            )
+        );
+        return panel;
+    }
+
+    private static StyleBoxFlat CreatePreviewStyle(Color background, Color border)
+    {
+        var style = new StyleBoxFlat { BgColor = background, BorderColor = border };
+        style.SetBorderWidthAll(1);
+        style.SetCornerRadiusAll(4);
+        return style;
+    }
+
+    private static Label CreatePreviewLabel(
+        int fontSize,
+        Color color,
+        HorizontalAlignment alignment
+    )
+    {
+        var label = new Label
+        {
+            HorizontalAlignment = alignment,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        label.AddThemeFontSizeOverride("font_size", fontSize);
+        label.AddThemeColorOverride("font_color", color);
+        return label;
+    }
+
+    private void AddPreviewStat(GridContainer statGrid, string title, string key, Color color)
+    {
+        var nameLabel = CreatePreviewLabel(
+            18,
+            new Color(0.82f, 0.88f, 0.95f),
+            HorizontalAlignment.Left
+        );
+        nameLabel.Text = title;
+        statGrid.AddChild(nameLabel);
+
+        var valueLabel = CreatePreviewLabel(20, color, HorizontalAlignment.Right);
+        valueLabel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        statGrid.AddChild(valueLabel);
+        _characterPreviewStatLabels[key] = valueLabel;
+    }
+
+    private void InitializeCharacterPreview()
+    {
+        Grid.Visible = false;
+        Grid.MouseFilter = MouseFilterEnum.Ignore;
+        CharacterPreviewRoot.Visible = true;
+        RefreshCharacterPreview(_selectedCharacterIndex);
+    }
+
+    private void RefreshCharacterPreview(int characterIndex)
+    {
+        _ = CharacterPreviewRoot;
+
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+            return;
+
+        var info = players[characterIndex];
+        RefreshCharacterPreviewVisual(info);
+        _characterPreviewNameLabel.Text = string.IsNullOrWhiteSpace(info.CharacterName)
+            ? $"角色{characterIndex + 1}"
+            : info.CharacterName;
+
+        SetPreviewStat("LifeMax", info.LifeMax);
+        SetPreviewStat("Power", info.Power);
+        SetPreviewStat("Survivability", info.Survivability);
+        SetPreviewStat("Speed", info.Speed);
+
+        string passiveName = string.IsNullOrWhiteSpace(info.PassiveName)
+            ? "被动"
+            : info.PassiveName;
+        string passiveDescription = string.IsNullOrWhiteSpace(info.PassiveDescription)
+            ? "-"
+            : info.PassiveDescription;
+        passiveDescription = GlobalFunction.ColorizeKeywords(
+            GlobalFunction.ColorizeNumbers(passiveDescription)
+        );
+
+        _characterPreviewPassiveNameLabel.Text = passiveName;
+        _characterPreviewPassiveDescriptionLabel.Text = passiveDescription;
+    }
+
+    private void RefreshCharacterPreviewVisual(PlayerInfoStructure info)
+    {
+        ClearCharacterPreviewSpineModel();
+
+        if (TryShowCharacterPreviewSpine(info))
+        {
+            _characterPreviewPortrait.Texture = null;
+            _characterPreviewSpineContainer.Visible = true;
+            return;
+        }
+
+        _characterPreviewSpineContainer.Visible = false;
+        _characterPreviewPortrait.Texture = string.IsNullOrWhiteSpace(info.PortaitPath)
+            ? null
+            : PreloadeScene.GetTexture(info.PortaitPath);
+    }
+
+    private bool TryShowCharacterPreviewSpine(PlayerInfoStructure info)
+    {
+        if (
+            string.IsNullOrWhiteSpace(info.CharacterScenePath)
+            || _characterPreviewSpineWorld == null
+        )
+            return false;
+
+        var scene = ResourceLoader.Load<PackedScene>(info.CharacterScenePath);
+        if (scene == null)
+            return false;
+
+        var instance = scene.Instantiate();
+        if (instance == null)
+            return false;
+
+        try
+        {
+            if (instance is Character character)
+                character.WarmupMode = true;
+
+            if (instance.FindChild("SpineSprite", true, false) is not Node2D spineSprite)
+                return false;
+
+            spineSprite.GetParent()?.RemoveChild(spineSprite);
+            _characterPreviewSpineWorld.AddChild(spineSprite);
+            _characterPreviewSpineModel = spineSprite;
+            ConfigureCharacterPreviewSpineModel(spineSprite, info.CharacterName);
+            return true;
+        }
+        finally
+        {
+            instance.QueueFree();
+        }
+    }
+
+    private void ConfigureCharacterPreviewSpineModel(Node2D spineModel, string characterName)
+    {
+        var pose = GetCharacterPreviewSpinePose(characterName);
+        spineModel.Visible = true;
+        spineModel.Position = pose.Position * CharacterPreviewSpineRenderScale;
+        spineModel.Scale = pose.Scale * CharacterPreviewSpineRenderScale;
+        spineModel.Set("texture_filter", 4);
+        spineModel.ZIndex = 0;
+    }
+
+    private static (Vector2 Position, Vector2 Scale) GetCharacterPreviewSpinePose(
+        string characterName
+    )
+    {
+        if (
+            !string.IsNullOrWhiteSpace(characterName)
+            && CharacterPreviewSpinePoses.TryGetValue(characterName, out var pose)
+        )
+            return (pose.Position, pose.Scale);
+
+        return (DefaultCharacterPreviewSpinePose.Position, DefaultCharacterPreviewSpinePose.Scale);
+    }
+
+    private void ClearCharacterPreviewSpineModel()
+    {
+        if (GodotObject.IsInstanceValid(_characterPreviewSpineModel))
+        {
+            _characterPreviewSpineModel.GetParent()?.RemoveChild(_characterPreviewSpineModel);
+            _characterPreviewSpineModel.QueueFree();
+        }
+
+        _characterPreviewSpineModel = null;
+    }
+
+    private void SetPreviewStat(string key, int value)
+    {
+        if (_characterPreviewStatLabels.TryGetValue(key, out var label))
+            label.Text = value.ToString();
     }
 
     private static string GetSkillDisplayName(Skill skill, int count)
@@ -232,6 +676,7 @@ public partial class BattleReady : Control
         card.Button.ToggleMode = false;
         card.Button.ButtonPressed = false;
         card.Button.FocusMode = Control.FocusModeEnum.None;
+        card.PreviewCharacterName = character.CharacterName;
         card.CharacterName.Text = character.CharacterName ?? string.Empty;
         card.SetSkill(skill);
         card.CharacterName.Text = character.CharacterName ?? string.Empty;
@@ -268,7 +713,8 @@ public partial class BattleReady : Control
                 if (!nodesById.TryGetValue(prerequisiteId, out var prerequisite))
                     continue;
 
-                bool active = TalentTree.HasUnlocked(info, prerequisite.Id)
+                bool active =
+                    TalentTree.HasUnlocked(info, prerequisite.Id)
                     && TalentTree.HasUnlocked(info, node.Id);
                 AddTalentConnection(prerequisite.Position, node.Position, active);
             }
@@ -326,7 +772,10 @@ public partial class BattleReady : Control
         button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
         button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
         button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
-        button.AddThemeStyleboxOverride("pressed", CreateTalentNodeStyle(unlocked, canUnlock, 0.22f));
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateTalentNodeStyle(unlocked, canUnlock, 0.22f)
+        );
         button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
         button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
         button.MouseExited += HideTalentTooltip;
@@ -344,11 +793,9 @@ public partial class BattleReady : Control
         progressLabel.AddThemeFontSizeOverride("font_size", 15);
         progressLabel.AddThemeColorOverride(
             "font_color",
-            unlocked
-                ? new Color(1f, 0.88f, 0.54f, 1f)
-                : canUnlock
-                    ? new Color(0.82f, 0.94f, 1f, 0.95f)
-                    : new Color(0.58f, 0.64f, 0.72f, 0.72f)
+            unlocked ? new Color(1f, 0.88f, 0.54f, 1f)
+                : canUnlock ? new Color(0.82f, 0.94f, 1f, 0.95f)
+                : new Color(0.58f, 0.64f, 0.72f, 0.72f)
         );
 
         wrapper.AddChild(button);
@@ -383,13 +830,14 @@ public partial class BattleReady : Control
         button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
         button.AddThemeColorOverride(
             "font_disabled_color",
-            unlocked
-                ? new Color(1f, 0.86f, 0.52f, 0.92f)
-                : new Color(0.54f, 0.61f, 0.68f, 0.62f)
+            unlocked ? new Color(1f, 0.86f, 0.52f, 0.92f) : new Color(0.54f, 0.61f, 0.68f, 0.62f)
         );
         button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
         button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
-        button.AddThemeStyleboxOverride("pressed", CreateTalentNodeStyle(unlocked, canUnlock, 0.22f));
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateTalentNodeStyle(unlocked, canUnlock, 0.22f)
+        );
         button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
         button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
         button.MouseExited += HideTalentTooltip;
@@ -426,33 +874,40 @@ public partial class BattleReady : Control
         string reason
     )
     {
-        string stateText = unlocked ? "已点亮" : canUnlock ? "可点亮" : reason;
-        string stateColor = unlocked ? "#ffd987" : canUnlock ? "#9ff5ff" : "#9aa3b5";
+        string stateText =
+            unlocked ? "已点亮"
+            : canUnlock ? "可点亮"
+            : reason;
+        string stateColor =
+            unlocked ? "#ffd987"
+            : canUnlock ? "#9ff5ff"
+            : "#9aa3b5";
         string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
         string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
             ? "暂未配置效果。"
             : node.EffectDescription;
 
-        return
-            $"[b]{node.DisplayName}[/b]\n"
+        return $"[b]{node.DisplayName}[/b]\n"
             + $"[color=#cfd6e6]阶段 {node.Stage + 1} / 消耗 {node.Cost} 点天赋点[/color]\n"
             + $"[color={stateColor}]{stateText}[/color]\n\n"
             + $"[color=#9fb5d6]说明[/color]\n{description}\n\n"
             + $"[color=#ffd987]效果[/color]\n{effect}";
     }
 
-    private static StyleBoxFlat CreateTalentNodeStyle(bool unlocked, bool canUnlock, float hoverBoost)
+    private static StyleBoxFlat CreateTalentNodeStyle(
+        bool unlocked,
+        bool canUnlock,
+        float hoverBoost
+    )
     {
-        Color borderColor = unlocked
-            ? new Color(1f, 0.78f, 0.38f, 0.88f)
-            : canUnlock
-                ? new Color(0.56f, 0.82f, 1f, 0.72f)
-                : new Color(0.35f, 0.44f, 0.55f, 0.46f);
-        Color bgColor = unlocked
-            ? new Color(0.34f, 0.22f, 0.08f, 0.56f + hoverBoost)
-            : canUnlock
-                ? new Color(0.08f, 0.17f, 0.25f, 0.54f + hoverBoost)
-                : new Color(0.05f, 0.08f, 0.12f, 0.38f);
+        Color borderColor =
+            unlocked ? new Color(1f, 0.78f, 0.38f, 0.88f)
+            : canUnlock ? new Color(0.56f, 0.82f, 1f, 0.72f)
+            : new Color(0.35f, 0.44f, 0.55f, 0.46f);
+        Color bgColor =
+            unlocked ? new Color(0.34f, 0.22f, 0.08f, 0.56f + hoverBoost)
+            : canUnlock ? new Color(0.08f, 0.17f, 0.25f, 0.54f + hoverBoost)
+            : new Color(0.05f, 0.08f, 0.12f, 0.38f);
 
         return new StyleBoxFlat
         {
@@ -660,7 +1115,7 @@ public partial class BattleReady : Control
             new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
             new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.04f),
             new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.08f),
-            new AssemblyItem(Grid, new Vector2(-60f, 28f), 0.12f),
+            new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.12f),
             new AssemblyItem(SkillAreaFrame, new Vector2(96f, 18f), 0.00f),
             new AssemblyItem(SkillAreaHeaderFrame, new Vector2(78f, 0f), 0.06f),
             new AssemblyItem(SkillAreaHeader, new Vector2(78f, 0f), 0.1f),
@@ -683,9 +1138,10 @@ public partial class BattleReady : Control
             BattleReadyMode.Formation =>
             [
                 new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
+                new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.08f),
                 new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.1f),
                 new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.14f),
-                new AssemblyItem(Grid, new Vector2(-60f, 28f), 0.18f),
+                new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.18f),
                 new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.16f),
             ],
             BattleReadyMode.Talent =>
@@ -758,8 +1214,12 @@ public partial class BattleReady : Control
             SetModeVisible(BattleReadyMode.Talent, targetMode == BattleReadyMode.Talent);
             SetModeVisible(BattleReadyMode.Formation, targetMode == BattleReadyMode.Formation);
 
-            if (targetMode == BattleReadyMode.Talent)
+            if (targetMode == BattleReadyMode.Tactics)
+                await RefreshSelectedSkillPreviewAsync();
+            else if (targetMode == BattleReadyMode.Talent)
                 RefreshTalentTree(_selectedCharacterIndex);
+            else if (targetMode == BattleReadyMode.Formation)
+                RefreshCharacterPreview(_selectedCharacterIndex);
 
             await AnimateModeEnterAsync(_currentMode);
         }
@@ -838,18 +1298,19 @@ public partial class BattleReady : Control
             BattleReadyMode.Tactics,
             mode == BattleReadyMode.Tactics ? 1.0f : 0.0f
         );
-        ResetModeItemsToBase(
-            BattleReadyMode.Talent,
-            mode == BattleReadyMode.Talent ? 1.0f : 0.0f
-        );
+        ResetModeItemsToBase(BattleReadyMode.Talent, mode == BattleReadyMode.Talent ? 1.0f : 0.0f);
         ResetModeItemsToBase(
             BattleReadyMode.Formation,
             mode == BattleReadyMode.Formation ? 1.0f : 0.0f
         );
         SetControlAlpha(
             CharacterSelectRoot,
-            mode is BattleReadyMode.Tactics or BattleReadyMode.Talent ? 1.0f : 0.0f
+            mode is BattleReadyMode.Tactics or BattleReadyMode.Talent or BattleReadyMode.Formation
+                ? 1.0f
+                : 0.0f
         );
+        if (mode == BattleReadyMode.Formation)
+            RefreshCharacterPreview(_selectedCharacterIndex);
         UpdateModeButtonState(mode);
         UpdateModeSelectorPosition(mode, false);
     }
@@ -872,9 +1333,10 @@ public partial class BattleReady : Control
         {
             BattleReadyMode.Formation =>
             [
+                new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
                 new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.04f),
                 new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.08f),
-                new AssemblyItem(Grid, new Vector2(-60f, 28f), 0.12f),
+                new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.12f),
             ],
             BattleReadyMode.Talent =>
             [
@@ -921,7 +1383,11 @@ public partial class BattleReady : Control
         root.Visible = visible;
         root.MouseFilter = visible ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
 
-        bool showCharacterSelector = _currentMode is BattleReadyMode.Tactics or BattleReadyMode.Talent;
+        bool showCharacterSelector =
+            _currentMode
+            is BattleReadyMode.Tactics
+                or BattleReadyMode.Talent
+                or BattleReadyMode.Formation;
         CharacterSelectRoot.Visible = showCharacterSelector;
         CharacterSelectRoot.MouseFilter = showCharacterSelector
             ? MouseFilterEnum.Stop
@@ -1117,6 +1583,8 @@ public partial class BattleReady : Control
     {
         if (_currentMode != BattleReadyMode.Formation || !FormationModeRoot.Visible)
             return;
+        if (!Grid.Visible)
+            return;
 
         if (_dragTarget != null)
             _dragTarget.GlobalPosition = GetViewport().GetMousePosition() - _dragMouseOffset;
@@ -1137,6 +1605,7 @@ public partial class BattleReady : Control
     public void Initialize()
     {
         InitializePostion();
+        InitializeCharacterPreview();
         InitializeCharacterButtons();
         _ = SelectCharacter(_selectedCharacterIndex);
     }
@@ -1327,13 +1796,28 @@ public partial class BattleReady : Control
 
     private async void OnCharacterButtonPressed(int characterIndex)
     {
-        if (
-            _currentMode is not (BattleReadyMode.Tactics or BattleReadyMode.Talent)
-            || _isModeTransitioning
-        )
+        if (_isModeTransitioning)
             return;
 
-        await SelectCharacter(characterIndex);
+        if (_currentMode == BattleReadyMode.Formation)
+        {
+            SelectPreviewCharacter(characterIndex);
+            return;
+        }
+
+        if (_currentMode is BattleReadyMode.Tactics or BattleReadyMode.Talent)
+            await SelectCharacter(characterIndex);
+    }
+
+    private void SelectPreviewCharacter(int characterIndex)
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+            return;
+
+        _selectedCharacterIndex = characterIndex;
+        UpdateCharacterButtonState(true);
+        RefreshCharacterPreview(characterIndex);
     }
 
     private async Task SelectCharacter(int characterIndex)
@@ -1345,7 +1829,10 @@ public partial class BattleReady : Control
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
             return;
 
-        if (characterIndex == _selectedCharacterIndex && HasSkillButtons())
+        if (
+            characterIndex == _selectedCharacterIndex
+            && _skillPreviewCharacterIndex == characterIndex
+        )
         {
             UpdateCharacterButtonState(true);
             RefreshTalentTree(characterIndex);
@@ -1361,12 +1848,13 @@ public partial class BattleReady : Control
 
     private void PopulateSkillButtons(int characterIndex)
     {
-        CacheCharacterSkillBuckets(characterIndex);
+        _skillPreviewCharacterIndex = characterIndex;
+        CacheCharacterSkillDisplayEntries(characterIndex);
         SkillContainer.ScrollVertical = 0;
 
         var character = GameInfo.PlayerCharacters[characterIndex];
         var cardsToAnimate = new List<SkillCard>();
-        foreach (var entry in _skillBuckets.SelectMany(bucket => bucket))
+        foreach (var entry in _skillDisplayEntries)
         {
             var card = CreateSkillCard(entry, character);
             if (card == null)
@@ -1381,10 +1869,8 @@ public partial class BattleReady : Control
 
         ShuffleSkillAnimationOrder(cardsToAnimate);
         for (int i = 0; i < cardsToAnimate.Count; i++)
-            cardsToAnimate[i].CallDeferred(
-                nameof(SkillCard.StartAnimation),
-                SkillCardEnterStagger * i
-            );
+            cardsToAnimate[i]
+                .CallDeferred(nameof(SkillCard.StartAnimation), SkillCardEnterStagger * i);
     }
 
     private void UpdateCharacterButtonState(bool animateSelector)
@@ -1403,6 +1889,23 @@ public partial class BattleReady : Control
     private bool HasSkillButtons()
     {
         return SkillGrid.GetChildCount() > 0;
+    }
+
+    private async Task RefreshSelectedSkillPreviewAsync()
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (
+            players == null
+            || _selectedCharacterIndex < 0
+            || _selectedCharacterIndex >= players.Length
+        )
+            return;
+
+        if (_skillPreviewCharacterIndex == _selectedCharacterIndex)
+            return;
+
+        await ClearSkillContainer();
+        PopulateSkillButtons(_selectedCharacterIndex);
     }
 
     public async Task ClearSkillContainer()
@@ -1428,8 +1931,7 @@ public partial class BattleReady : Control
             var tween = holder.CreateTween();
             tween.SetParallel(true);
             tween.TweenProperty(holder, "modulate:a", 0.0f, 0.10f).SetDelay(delay);
-            tween.TweenProperty(holder, "scale", new Vector2(0.96f, 0.96f), 0.12f)
-                .SetDelay(delay);
+            tween.TweenProperty(holder, "scale", new Vector2(0.96f, 0.96f), 0.12f).SetDelay(delay);
 
             if (holder.GetChildCount() > 0 && holder.GetChild(0) is SkillCard card)
             {
@@ -1463,13 +1965,15 @@ public partial class BattleReady : Control
         await ClearSkillContainer();
         PopulateSkillButtons(_selectedCharacterIndex);
         RefreshTalentTree(_selectedCharacterIndex);
+        RefreshCharacterPreview(_selectedCharacterIndex);
     }
 
     public void ComfirmTactics()
     {
         if (!AllowManualPlayerFormationAdjustment)
         {
-            var previewDisabled = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
+            var previewDisabled = GetTree()
+                .Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
             if (previewDisabled != null)
                 previewDisabled.SetPortraitPostion();
             return;

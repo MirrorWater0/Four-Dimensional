@@ -1,6 +1,6 @@
 public partial class BasicAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 4;
     private const int PowerMultiplier = 1;
 
     public BasicAttack()
@@ -22,7 +22,7 @@ public partial class BasicAttack : Skill
 
 public partial class BasicDefense : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 5;
     private const int SurvivabilityMultiplier = 1;
 
     public BasicDefense()
@@ -48,7 +48,7 @@ public partial class BasicDefense : Skill
 
 public partial class BasicGuard : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 2;
     private const int SurvivabilityMultiplier = 1;
 
     public BasicGuard()
@@ -74,7 +74,6 @@ public partial class BasicGuard : Skill
 public partial class BasicSpecial : Skill
 {
     private const int PowerGain = 2;
-    private const int DeSur = 4;
 
     public BasicSpecial()
         : base(SkillTypes.Special)
@@ -89,7 +88,6 @@ public partial class BasicSpecial : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(PropertyType.Survivability, DeSur),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );

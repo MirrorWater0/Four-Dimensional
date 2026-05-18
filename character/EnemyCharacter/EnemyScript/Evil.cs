@@ -71,9 +71,9 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 40;
-        Power = 10;
-        Survivability = 7;
+        MaxLife = 30;
+        Power = 6;
+        Survivability = 5;
         Speed = 5;
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
@@ -84,7 +84,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 3;
+    private const int HitDamage = 4;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -106,7 +106,7 @@ public partial class EvilAttack : Skill
 
 public partial class EvilSurvive : Skill
 {
-    private const int SurvivabilityGain = 3;
+    private const int SurvivabilityGain = 8;
     private const int BaseBlock = 8;
     private const int DescendingNum = 4;
 

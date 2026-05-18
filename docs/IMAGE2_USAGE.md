@@ -4,7 +4,7 @@
 
 ## 接口配置
 
-- `base_url`: `https://www.traxnode.com/v1`
+- `base_url`: `https://api.traxnode.com/v1`
 - `model`: `gpt-image-2`
 - API key 默认放在：`C:\tmp\key.txt`
 - 不要在聊天、README、提交记录或 issue 里明文粘贴 API key。
@@ -21,7 +21,7 @@
 
 ```text
 请使用项目里的 docs/IMAGE2_USAGE.md 调用图片接口。
-base_url = https://www.traxnode.com/v1
+base_url = https://api.traxnode.com/v1
 model = gpt-image-2
 API key 在 C:\tmp\key.txt，不要打印 key。
 生成图片保存到我指定的项目路径。
@@ -36,10 +36,12 @@ API key 在 C:\tmp\key.txt，不要打印 key。
 
 ## 纯文本生成图片
 
+> 注意：角色、敌人、Boss 立绘禁止只用纯文本生成。必须使用“参考图生成/编辑”接口并传入项目内已有风格参考图，否则画风很容易跑偏。
+
 接口：
 
 ```text
-POST https://www.traxnode.com/v1/images/generations
+POST https://api.traxnode.com/v1/images/generations
 ```
 
 PowerShell 示例：
@@ -58,7 +60,7 @@ $body = @{
 } | ConvertTo-Json -Depth 5
 
 $response = Invoke-RestMethod `
-    -Uri "https://www.traxnode.com/v1/images/generations" `
+    -Uri "https://api.traxnode.com/v1/images/generations" `
     -Method Post `
     -Headers @{ Authorization = "Bearer $key" } `
     -ContentType "application/json" `
@@ -80,10 +82,65 @@ if ($item.b64_json) {
 接口：
 
 ```text
-POST https://www.traxnode.com/v1/images/edits
+POST https://api.traxnode.com/v1/images/edits
 ```
 
 单张参考图使用 multipart 字段 `image`。多张参考图使用 `image[]`。
+
+## 敌人/Boss 立绘硬规则
+
+敌人、Boss、角色立绘必须传参考图，不允许只用纯文本生成。默认使用 `/images/edits` 接口，并用 multipart 字段 `image[]` 传入多张项目内已有立绘作为风格参考。
+
+默认参考图选择：
+
+```text
+从 asset/EnemyCharater/ 中随机挑选 3 到 5 张已有敌人/Boss 立绘作为 image[] 参考图。
+暂时不要使用 asset/EnemyCharater/War.png 作为参考图，除非用户明确要求参考 War。
+不要使用当前失败稿或待重生成目标图作为参考图。
+```
+
+随机参考图要在提示词里逐张标注角色，例如 `Image 1 Evil: style reference only`。新增敌人立绘时，提示词必须明确写：
+
+```text
+Use the provided images only as style references for this game's enemy portrait look.
+Do not copy their identities, silhouettes, exact weapons, or armor.
+Create a new enemy standing portrait.
+Pale anime sketch with clean thin line art.
+Simple watercolor shading with slightly cleaner color blocks.
+Perfectly flat solid #00ff00 chroma-key background for local background removal.
+The background must be one uniform green color with no shadow, gradient, texture, floor plane, or lighting variation.
+Do not use #00ff00 or green rim light anywhere in the enemy itself.
+Raw game enemy portrait only, not a finished card template.
+No text, no watermark, no logo, no UI frame, no card border.
+```
+
+普通小怪默认要低复杂度，不要画成 Boss 或精英怪。提示词里优先追加：
+
+```text
+Normal enemy complexity, not boss complexity.
+Use a simple readable silhouette with only a few large shapes.
+Low detail density, low ornament density, fewer internal lines.
+No ornate armor, no layered bone armor, no many spikes, no many cloth strips.
+Avoid heroic or cinematic presentation.
+```
+
+低复杂度不等于没有怪异感。现有小怪通常靠清晰怪异剪影成立：尖刺、触须、虫形、漂浮体、异形肢体或非人比例。避免生成普通披斗篷人形。需要追加：
+
+```text
+Keep an uncanny monster silhouette.
+Use 1 or 2 strong weird shape motifs such as tendrils, floating body, insect-like curve, blade-like limbs, or asymmetric spikes.
+The weirdness should come from the outer silhouette, not dense internal decoration.
+Do not make it a plain hooded human or a simple robe figure.
+```
+
+立绘输出流程：
+
+1. 先用 `gpt-image-2` 生成合法尺寸，例如 `2048x2048`。
+2. 保存绿幕源图到临时文件。
+3. 本地用绿幕抠图, 只移除接近 `#00ff00` 的背景色, 不要按白色或边缘亮色抠图。
+4. 本地缩放/裁剪成项目默认立绘规格 `2500x2500`。
+5. 最终保存到 `asset/EnemyCharater/{EnemyName}.png`。
+6. 不要覆盖已有正式图，除非明确要求替换。
 
 PowerShell 单参考图示例：
 
@@ -119,7 +176,7 @@ try {
     $form.Add($fileContent, "image", [System.IO.Path]::GetFileName($refPath))
 
     $response = $client.PostAsync(
-        "https://www.traxnode.com/v1/images/edits",
+        "https://api.traxnode.com/v1/images/edits",
         $form
     ).GetAwaiter().GetResult()
 
@@ -625,6 +682,12 @@ Keep the picture clean and readable at small card size.
 ```
 
 ## 输出规格
+
+角色、敌人、Boss 立绘默认使用：
+
+```text
+2500x2500
+```
 
 现有 `asset/CardPicture/{CharacterName}` 里的多数卡图是：
 

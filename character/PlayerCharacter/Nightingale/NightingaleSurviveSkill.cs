@@ -7,6 +7,7 @@ public partial class VeilStep : Skill
 {
     private const int InvisibleStacks = 3;
     private const int BaseBlock = 3;
+    public override int EnergyCost => 0;
 
     public VeilStep()
         : base(SkillTypes.Survive)
@@ -25,7 +26,6 @@ public partial class VeilStep : Skill
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
             ),
-            EnergyStep(1),
             BlockStep(relativeIndex: 1, baseBlock: BaseBlock, survivabilityMultiplier: 2)
         );
     }
@@ -80,8 +80,7 @@ public partial class Swift : Skill
                 type: PropertyType.Survivability,
                 value: SurvivabilityGain,
                 target: TargetReference.All
-            ),
-            EnergyStep(1)
+            )
         );
     }
 }

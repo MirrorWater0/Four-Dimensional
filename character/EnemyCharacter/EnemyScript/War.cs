@@ -13,7 +13,8 @@ public partial class War : EnemyCharacter
 
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
-        $"战斗开始时：在上一空位和下一空位各召唤{PassiveSummonsPerSide}个召唤物。";
+        $"战斗开始时：在上一空位和下一空位各召唤{PassiveSummonsPerSide}个召唤物。\n"
+        + "回合结束时：随机在一个空位上召唤1个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -23,6 +24,42 @@ public partial class War : EnemyCharacter
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
         BattleNode.StartEffectList.Add(StartPassive);
+    }
+
+    public override void OnTurnEnd()
+    {
+        base.OnTurnEnd();
+        _ = SummonAtRandomEmptySlot();
+    }
+
+    private Task SummonAtRandomEmptySlot()
+    {
+        if (BattleNode == null || ThrallScene == null)
+            return Task.CompletedTask;
+
+        var occupied = BattleNode
+            .GetTeamCharacters(IsPlayer, includeSummons: true)
+            .Where(x => x != null && GodotObject.IsInstanceValid(x))
+            .Select(x => x.PositionIndex)
+            .Where(index => index > 0)
+            .ToHashSet();
+
+        int[] emptySlots = Enumerable
+            .Range(1, Battle.MaxFormationSlots)
+            .Where(slot => !occupied.Contains(slot))
+            .ToArray();
+
+        if (emptySlots.Length == 0)
+            return Task.CompletedTask;
+
+        Random random = BattleNode.BattleIntentionRandom ?? new Random();
+        int chosenSlot = emptySlots[random.Next(emptySlots.Length)];
+        int slotSelector = chosenSlot - PositionIndex;
+
+        using var _ = BeginEffectSource("被动");
+        var thrall = ThrallScene.Instantiate<WarThrall>();
+        BattleNode.AddSummon(thrall, this, slotSelector);
+        return Task.CompletedTask;
     }
 
     private Task StartPassive()
@@ -79,9 +116,9 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 400;
-        Power = 15;
-        Survivability = 15;
+        MaxLife = 278;
+        Power = 10;
+        Survivability = 10;
         Speed = 12;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
@@ -92,8 +129,8 @@ public partial class WarRegedit : EnemyRegedit
 
 public partial class WarAttack : Skill
 {
-    private const int BaseDamage = -15;
-    private const int ThrallPowerGain = 2;
+    private const int BaseDamage = 0;
+    private const int ThrallPowerGain = 3;
 
     public WarAttack()
         : base(SkillTypes.Attack)
@@ -108,7 +145,6 @@ public partial class WarAttack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 2),
-            SummonStep(0, War.ThrallScene),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
         );
     }
@@ -116,7 +152,7 @@ public partial class WarAttack : Skill
 
 public partial class WarSurvive : Skill
 {
-    private const int BaseBlock = 13;
+    private const int BaseBlock = 10;
     private const int SelfSurvivabilityGain = 2;
     private const int ThrallBlock = 0;
 
@@ -133,8 +169,8 @@ public partial class WarSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(0, BaseBlock),
-            SummonStep(9, War.ThrallScene),
             BlockSummonsStep(baseBlock: ThrallBlock),
+            HealStep(0, 0),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
@@ -142,7 +178,7 @@ public partial class WarSurvive : Skill
 
 public partial class WarSpecial : Skill
 {
-    private const int ThrallPowerGain = 3;
+    private const int ThrallPowerGain = 2;
 
     public WarSpecial()
         : base(SkillTypes.Special)
@@ -151,18 +187,17 @@ public partial class WarSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "死亡行军";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 5;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: 0),
-            HealStep(baseHeal: 0, target: TargetReference.Self),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain),
-            ModifyPropertyStep(PropertyType.Power, 4)
+            ModifyPropertyStep(PropertyType.Power, 2)
         );
     }
 }

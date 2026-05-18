@@ -26,6 +26,7 @@ using Godot;
 // - BlockStep: 相对位友方获得格挡（0自己、-1前一位、+1后一位...；可选对自己不生效）。
 // - CarryStep: 连携指定友方目标释放指定技能（target 支持相对位 / 绝对位 / 已存储目标；index:0攻击/1生存/2特殊）。
 // - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
+// - AddStatusCardsToDrawPileStep: 向已储存目标所属玩家的抽牌堆塞入状态牌（支持召唤物归属解析）。
 // - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
 // - EnergyTimesWhileStep: while循环（按EnergyTimesGate条件判定；条件满足时循环执行循环体step）。
 // - ConditionStep: 条件执行（condition/steps/conditionDescription）。
@@ -51,12 +52,14 @@ public partial class Skill
     protected sealed class PreviewDamageContext
     {
         private readonly Character _attacker;
+        private readonly bool _includeTargetVulnerable;
         private readonly AttackBuff.PreviewState _attackBuffState = new();
         private readonly Dictionary<Character, int> _vulnerableStacks = new();
 
-        public PreviewDamageContext(Character attacker)
+        public PreviewDamageContext(Character attacker, bool includeTargetVulnerable = true)
         {
             _attacker = attacker;
+            _includeTargetVulnerable = includeTargetVulnerable;
         }
 
         public int PredictDamage(Character target, int baseDamage)
@@ -72,7 +75,7 @@ public partial class Skill
                 0
             );
 
-            if (target != null)
+            if (_includeTargetVulnerable && target != null)
             {
                 if (!_vulnerableStacks.TryGetValue(target, out int vulnerableStacks))
                 {
@@ -242,10 +245,10 @@ public partial class Skill
         return plan?.GetPreviewHostileTargets() ?? Array.Empty<Character>();
     }
 
-    public PreviewDamageEntry[] GetPreviewHostileDamageEntries()
+    public PreviewDamageEntry[] GetPreviewHostileDamageEntries(bool includeTargetVulnerable = true)
     {
         var plan = GetPlan();
-        return plan?.GetPreviewHostileDamageEntries() ?? Array.Empty<PreviewDamageEntry>();
+        return plan?.GetPreviewHostileDamageEntries(includeTargetVulnerable) ?? Array.Empty<PreviewDamageEntry>();
     }
 
     public Character[] GetPreviewHostileDebuffTargets()
@@ -266,9 +269,18 @@ public partial class Skill
         return plan?.ManualFriendlyTargetExcludesSelf() == true;
     }
 
+    public bool ManualFriendlyTargetAllowsDying()
+    {
+        var plan = GetPlan();
+        return plan?.ManualFriendlyTargetAllowsDying() == true;
+    }
+
     public void SetManualFriendlyTarget(Character target)
     {
-        _manualFriendlyTarget = IsValidManualFriendlyTarget(target, dyingFilter: true)
+        _manualFriendlyTarget = IsValidManualFriendlyTarget(
+            target,
+            dyingFilter: !ManualFriendlyTargetAllowsDying()
+        )
             ? target
             : null;
     }
@@ -279,7 +291,10 @@ public partial class Skill
     }
 
     public bool HasManualFriendlyTarget() =>
-        IsValidManualFriendlyTarget(_manualFriendlyTarget, dyingFilter: true);
+        IsValidManualFriendlyTarget(
+            _manualFriendlyTarget,
+            dyingFilter: !ManualFriendlyTargetAllowsDying()
+        );
 
     private static TargetReferenceValue RelativeTargetFromIndex(int relativeIndex) =>
         TargetReferenceValue.FromRelative(relativeIndex);
@@ -632,86 +647,109 @@ public partial class Skill
 
         public Character[] GetPreviewHostileTargets()
         {
-            _skill._storedTargets.Clear();
+            Dictionary<string, Character> storedTargetSnapshot = new(_skill._storedTargets);
+            try
+            {
+                _skill._storedTargets.Clear();
 
-            Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
-            Character[] targets = CollectPreviewTargets(_skill, _steps)
-                .Where(target =>
-                    target != null
-                    && target != dummy
-                    && target.State == Character.CharacterState.Normal
-                )
-                .Distinct()
-                .ToArray();
-
-            _skill._storedTargets.Clear();
-            return targets;
+                Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
+                return CollectPreviewTargets(_skill, _steps)
+                    .Where(target =>
+                        target != null
+                        && target != dummy
+                        && target.State == Character.CharacterState.Normal
+                    )
+                    .Distinct()
+                    .ToArray();
+            }
+            finally
+            {
+                _skill._storedTargets.Clear();
+                foreach (var pair in storedTargetSnapshot)
+                    _skill._storedTargets[pair.Key] = pair.Value;
+            }
         }
 
-        public PreviewDamageEntry[] GetPreviewHostileDamageEntries()
+        public PreviewDamageEntry[] GetPreviewHostileDamageEntries(bool includeTargetVulnerable = true)
         {
-            _skill._storedTargets.Clear();
-
-            Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
-            var context = new PreviewDamageContext(_skill.OwnerCharater);
-            var aggregated = new Dictionary<Character, (int damage, int hits)>();
-            var orderedTargets = new List<Character>();
-
-            for (int i = 0; i < _steps.Length; i++)
+            Dictionary<string, Character> storedTargetSnapshot = new(_skill._storedTargets);
+            try
             {
-                IEnumerable<PreviewDamageEntry> entries =
-                    _steps[i]?.PreviewDamage(_skill, context) ?? Array.Empty<PreviewDamageEntry>();
-                foreach (PreviewDamageEntry entry in entries)
+                _skill._storedTargets.Clear();
+
+                Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
+                var context = new PreviewDamageContext(_skill.OwnerCharater, includeTargetVulnerable);
+                var aggregated = new Dictionary<Character, (int damage, int hits)>();
+                var orderedTargets = new List<Character>();
+
+                for (int i = 0; i < _steps.Length; i++)
                 {
-                    if (
-                        entry.Target == null
-                        || entry.Target == dummy
-                        || entry.Target.State != Character.CharacterState.Normal
-                    )
+                    IEnumerable<PreviewDamageEntry> entries =
+                        _steps[i]?.PreviewDamage(_skill, context) ?? Array.Empty<PreviewDamageEntry>();
+                    foreach (PreviewDamageEntry entry in entries)
                     {
-                        continue;
-                    }
+                        if (
+                            entry.Target == null
+                            || entry.Target == dummy
+                            || entry.Target.State != Character.CharacterState.Normal
+                        )
+                        {
+                            continue;
+                        }
 
-                    if (!aggregated.TryGetValue(entry.Target, out var current))
-                    {
-                        aggregated[entry.Target] = (entry.Damage, entry.HitCount);
-                        orderedTargets.Add(entry.Target);
-                        continue;
-                    }
+                        if (!aggregated.TryGetValue(entry.Target, out var current))
+                        {
+                            aggregated[entry.Target] = (entry.Damage, entry.HitCount);
+                            orderedTargets.Add(entry.Target);
+                            continue;
+                        }
 
-                    aggregated[entry.Target] = (
-                        current.damage + entry.Damage,
-                        current.hits + entry.HitCount
-                    );
+                        aggregated[entry.Target] = (
+                            current.damage + entry.Damage,
+                            current.hits + entry.HitCount
+                        );
+                    }
                 }
-            }
 
-            _skill._storedTargets.Clear();
-            return orderedTargets
-                .Select(target =>
-                {
-                    var data = aggregated[target];
-                    return new PreviewDamageEntry(target, data.damage, data.hits);
-                })
-                .ToArray();
+                return orderedTargets
+                    .Select(target =>
+                    {
+                        var data = aggregated[target];
+                        return new PreviewDamageEntry(target, data.damage, data.hits);
+                    })
+                    .ToArray();
+            }
+            finally
+            {
+                _skill._storedTargets.Clear();
+                foreach (var pair in storedTargetSnapshot)
+                    _skill._storedTargets[pair.Key] = pair.Value;
+            }
         }
 
         public Character[] GetPreviewHostileDebuffTargets()
         {
-            _skill._storedTargets.Clear();
+            Dictionary<string, Character> storedTargetSnapshot = new(_skill._storedTargets);
+            try
+            {
+                _skill._storedTargets.Clear();
 
-            Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
-            Character[] targets = CollectPreviewHostileDebuffTargets(_skill, _steps)
-                .Where(target =>
-                    target != null
-                    && target != dummy
-                    && target.State == Character.CharacterState.Normal
-                )
-                .Distinct()
-                .ToArray();
-
-            _skill._storedTargets.Clear();
-            return targets;
+                Character dummy = _skill.OwnerCharater?.BattleNode?.dummy;
+                return CollectPreviewHostileDebuffTargets(_skill, _steps)
+                    .Where(target =>
+                        target != null
+                        && target != dummy
+                        && target.State == Character.CharacterState.Normal
+                    )
+                    .Distinct()
+                    .ToArray();
+            }
+            finally
+            {
+                _skill._storedTargets.Clear();
+                foreach (var pair in storedTargetSnapshot)
+                    _skill._storedTargets[pair.Key] = pair.Value;
+            }
         }
 
         public bool RequiresManualFriendlyTarget() =>
@@ -719,6 +757,9 @@ public partial class Skill
 
         public bool ManualFriendlyTargetExcludesSelf() =>
             _steps.Any(step => StepManualFriendlyTargetExcludesSelf(step));
+
+        public bool ManualFriendlyTargetAllowsDying() =>
+            _steps.Any(step => StepManualFriendlyTargetAllowsDying(step));
 
     }
 
@@ -798,6 +839,35 @@ public partial class Skill
                 foreach (SkillStep item in nestedSteps)
                 {
                     if (StepManualFriendlyTargetExcludesSelf(item))
+                        return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool StepManualFriendlyTargetAllowsDying(SkillStep step)
+    {
+        if (step == null)
+            return false;
+
+        if (step is HealFriendlySkillStep healStep && healStep.AllowsDyingManualFriendlyTarget)
+            return true;
+
+        var fields = step.GetType()
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        for (int i = 0; i < fields.Length; i++)
+        {
+            object value = fields[i].GetValue(step);
+            if (value is SkillStep nestedStep && StepManualFriendlyTargetAllowsDying(nestedStep))
+                return true;
+
+            if (value is IEnumerable<SkillStep> nestedSteps)
+            {
+                foreach (SkillStep item in nestedSteps)
+                {
+                    if (StepManualFriendlyTargetAllowsDying(item))
                         return true;
                 }
             }
@@ -1325,13 +1395,24 @@ public partial class Skill
     protected SkillStep EnergyStep(Func<Skill, int> delta, TargetReference target) =>
         EnergyStep(delta, (TargetReferenceValue)target);
 
-    protected SkillStep DrawReserveStep(int delta) => new CardDrawReserveSkillStep(delta);
+    protected SkillStep DrawCardsStep(int count) => new DrawCardsSkillStep(count);
 
-    protected SkillStep DrawReserveStep(Func<Skill, int> delta) =>
-        new CardDrawReserveSkillStep(delta);
+    protected SkillStep DrawCardsStep(Func<Skill, int> count, string description = null) =>
+        new DrawCardsSkillStep(count, description);
 
-    protected SkillStep DrawReserveStep(Func<Skill, int> delta, string description) =>
-        new CardDrawReserveSkillStep(delta, description);
+    protected SkillStep AddStatusCardsToDrawPileStep(
+        SkillID statusSkillId,
+        int count,
+        string storedTargetKey,
+        string targetText = "目标"
+    ) => new AddStatusCardsToDrawPileSkillStep(statusSkillId, count, storedTargetKey, targetText);
+
+    protected SkillStep AddStatusCardsToDrawPileStep(
+        SkillID statusSkillId,
+        int count,
+        HostileTargetReference target,
+        string targetText = "目标"
+    ) => new AddStatusCardsToDrawPileSkillStep(statusSkillId, count, target, targetText);
 
     protected SkillStep ModifyPropertyStep(
         PropertyType type,
@@ -2227,7 +2308,7 @@ public partial class Skill
             case Buff.BuffName.DebuffImmunity:
             case Buff.BuffName.ExtraPower:
             case Buff.BuffName.ExtraSurvivability:
-            case Buff.BuffName.CardRefresh:
+            case Buff.BuffName.ExtraDraw:
                 SpecialBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             default:
@@ -2351,6 +2432,23 @@ public partial class Skill
         int clampMax
     ) => ResolveFriendlyHealAmount(skill, baseHeal, clampMax).ToString();
 
+    private static PlayerCharacter ResolveCardPileOwner(Character target)
+    {
+        if (target is PlayerCharacter player)
+            return player;
+
+        if (target is SummonCharacter summon)
+        {
+            if (summon.Summoner is PlayerCharacter summoner)
+                return summoner;
+
+            if (summon.LastSummoner is PlayerCharacter lastSummoner)
+                return lastSummoner;
+        }
+
+        return null;
+    }
+
     private static string PropertyDeltaActionText(PropertyType type, int value)
     {
         int amount = Math.Abs(value);
@@ -2407,17 +2505,6 @@ public partial class Skill
         };
     }
 
-    private static string AbsoluteFriendlyPriorityText(bool preferNonFull, bool rebirth)
-    {
-        if (rebirth && preferNonFull)
-            return "优先濒死目标，其次非满血目标";
-        if (rebirth)
-            return "优先濒死目标";
-        if (preferNonFull)
-            return "优先非满血目标";
-        return null;
-    }
-
     private static Character SelectAbsoluteFriendlyTarget(
         Skill skill,
         AbsoluteFriendlySelector selector,
@@ -2457,12 +2544,7 @@ public partial class Skill
         }
 
         if (rebirth)
-        {
-            var dying = allies.Where(x => x.State == Character.CharacterState.Dying);
-            var dyingTarget = PickBySelector(dying);
-            if (dyingTarget != null)
-                return dyingTarget;
-        }
+            return PickBySelector(allies);
 
         var normal = allies.Where(x => x.State != Character.CharacterState.Dying);
 
@@ -2811,7 +2893,7 @@ public partial class Skill
 
             string targetText = RelativeFriendlyTargetTextForDescription(_index);
             if (_index == 0)
-                yield return $"造成{_damage}点伤害。";
+                yield return $"受到{_damage}点伤害。";
             else
                 yield return $"对{targetText}造成{_damage}点伤害。";
         }
@@ -2860,6 +2942,8 @@ public partial class Skill
         private readonly string _storeAs;
         private readonly bool _includeSummonsWhenAll;
         private readonly int _repeatCount;
+        public bool AllowsDyingManualFriendlyTarget =>
+            _rebirth && IsManualFriendlyTarget(_target);
 
         public HealFriendlySkillStep(
             int baseHeal,
@@ -2975,15 +3059,6 @@ public partial class Skill
             string normalLine = IsImplicitSelfFriendlyTarget(_target)
                 ? $"回复{healText}点生命。"
                 : $"使{targetText}回复{healText}点生命。";
-            string priorityText =
-                _target.Kind == TargetReferenceValueKind.Absolute
-                && _target.AbsoluteSelector != AbsoluteFriendlySelector.All
-                    ? AbsoluteFriendlyPriorityText(_preferNonFull, _rebirth)
-                    : null;
-            if (!string.IsNullOrWhiteSpace(priorityText))
-                normalLine += $"({priorityText})";
-            if (_rebirth && string.IsNullOrWhiteSpace(priorityText))
-                normalLine += "(可对濒死目标生效)";
             if (_repeatCount > 1)
                 normalLine += $"(重复{_repeatCount}次)";
             yield return normalLine;
@@ -3502,33 +3577,32 @@ public partial class Skill
         }
     }
 
-    private sealed class CardDrawReserveSkillStep : SkillStep
+    private sealed class DrawCardsSkillStep : SkillStep
     {
-        private const string ReserveName = "\u62bd\u5361\u50a8\u5907";
-        private readonly int _delta;
-        private readonly Func<Skill, int> _deltaProvider;
+        private readonly int _count;
+        private readonly Func<Skill, int> _countProvider;
         private readonly string _description;
 
-        public CardDrawReserveSkillStep(int delta)
+        public DrawCardsSkillStep(int count)
         {
-            _delta = delta;
-            _deltaProvider = null;
+            _count = count;
+            _countProvider = null;
         }
 
-        public CardDrawReserveSkillStep(Func<Skill, int> delta, string description = null)
+        public DrawCardsSkillStep(Func<Skill, int> count, string description = null)
         {
-            _delta = 0;
-            _deltaProvider = delta;
+            _count = 0;
+            _countProvider = count;
             _description = description;
         }
 
         public override Task Execute(Skill skill)
         {
-            int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
-            if (delta == 0)
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0 || skill?.OwnerCharater is not PlayerCharacter player)
                 return Task.CompletedTask;
 
-            skill?.OwnerCharater?.BattleNode?.AddCardDrawReserve(delta, skill?.OwnerCharater);
+            player.TryDrawBattleCards(count);
             return Task.CompletedTask;
         }
 
@@ -3540,16 +3614,137 @@ public partial class Skill
                 yield break;
             }
 
-            int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
-            if (delta == 0)
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0)
                 yield break;
 
-            string reserveText =
-                delta > 0
-                    ? $"\u83b7\u5f97{delta}\u70b9{ReserveName}"
-                    : $"\u5931\u53bb{-delta}\u70b9{ReserveName}";
+            yield return $"抽{count}张牌。";
+        }
+    }
 
-            yield return $"{reserveText}\u3002";
+    private sealed class AddStatusCardsToDrawPileSkillStep : SkillStep
+    {
+        private readonly SkillID _statusSkillId;
+        private readonly int _count;
+        private readonly string _storedTargetKey;
+        private readonly HostileTargetReference _hostileTarget;
+        private readonly string _targetText;
+        private readonly bool _useStoredTarget;
+
+        public AddStatusCardsToDrawPileSkillStep(
+            SkillID statusSkillId,
+            int count,
+            string storedTargetKey,
+            string targetText
+        )
+        {
+            _statusSkillId = statusSkillId;
+            _count = count;
+            _storedTargetKey = storedTargetKey;
+            _hostileTarget = default;
+            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
+            _useStoredTarget = true;
+        }
+
+        public AddStatusCardsToDrawPileSkillStep(
+            SkillID statusSkillId,
+            int count,
+            HostileTargetReference hostileTarget,
+            string targetText
+        )
+        {
+            _statusSkillId = statusSkillId;
+            _count = count;
+            _storedTargetKey = null;
+            _hostileTarget = hostileTarget;
+            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
+            _useStoredTarget = false;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            if (skill == null || _count <= 0)
+                return;
+
+            if (_useStoredTarget)
+            {
+                Character target = skill.GetStoredTarget(_storedTargetKey);
+                PlayerCharacter player = ResolveCardPileOwner(target);
+                if (player == null || player.BattleNode == null)
+                    return;
+
+                Character visualTarget = target ?? player;
+                if (player.BattleNode.CharacterControl != null)
+                {
+                    await player.BattleNode.CharacterControl.PlayStatusCardInsertAnimationAsync(
+                        visualTarget,
+                        _statusSkillId,
+                        _count,
+                        skill.OwnerCharater
+                    );
+                }
+
+                player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                    player,
+                    _statusSkillId,
+                    _count,
+                    skill.OwnerCharater
+                );
+
+                return;
+            }
+
+            Character[] targets = skill.ResolveHostileTargets(_hostileTarget);
+            if (targets.Length == 0)
+                return;
+
+            var affectedOwners = targets
+                .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
+                .Where(x => x.Player != null && x.Player.BattleNode != null)
+                .GroupBy(x => x.Player)
+                .Select(group => new
+                {
+                    Player = group.Key,
+                    VisualTarget = group.Select(x => x.Target).FirstOrDefault(target => target != null)
+                        ?? group.Key
+                });
+
+            foreach (var entry in affectedOwners)
+            {
+                if (entry.Player.BattleNode.CharacterControl != null)
+                {
+                    await entry.Player.BattleNode.CharacterControl.PlayStatusCardInsertAnimationAsync(
+                        entry.VisualTarget,
+                        _statusSkillId,
+                        _count,
+                        skill.OwnerCharater
+                    );
+                }
+
+                entry.Player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                    entry.Player,
+                    _statusSkillId,
+                    _count,
+                    skill.OwnerCharater
+                );
+            }
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (_count <= 0)
+                yield break;
+
+            string statusName = Skill.GetSkill(_statusSkillId)?.SkillName ?? _statusSkillId.ToString();
+            yield return $"向{_targetText}抽牌堆塞入{_count}张{statusName}。";
+        }
+
+        public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
+        {
+            if (_useStoredTarget)
+                return SingleTargetArray(skill?.GetStoredTarget(_storedTargetKey));
+
+            return PreviewHostileTargets(skill, _hostileTarget);
         }
     }
 
@@ -3788,7 +3983,17 @@ public partial class Skill
             if (!CanPassEnergyTimesLoop(skill, _paidEnergyPerLoop, _times))
                 return Array.Empty<PreviewDamageEntry>();
 
-            return CollectPreviewDamage(skill, _loopSteps, context);
+            IEnumerable<PreviewDamageEntry> entries = CollectPreviewDamage(skill, _loopSteps, context);
+            if (_times != null || _paidEnergyPerLoop <= 0)
+                return entries;
+
+            int loopCount = skill.GetXEnergyLoopCount(_paidEnergyPerLoop);
+            if (loopCount <= 1)
+                return entries;
+
+            return entries.Select(entry =>
+                new PreviewDamageEntry(entry.Target, entry.Damage * loopCount, entry.HitCount * loopCount)
+            );
         }
 
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)

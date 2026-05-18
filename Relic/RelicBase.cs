@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -7,10 +8,14 @@ public partial class Relic
 {
     private const int BlessingDamage = 30;
     private const int MatrixShieldBlock = 15;
-    private const int BackpackDrawReserve = 2;
+    private const int BackpackExtraDrawStacks = 1;
     private const int EnergyTankEnergy = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
+    private const int PhilosophersStoneEnergyBonus = 1;
+    private const int PhilosophersStoneEnemyPower = 5;
+    private const int EternalGlassDrawBonus = 1;
+    private const int KingsSwordPartyPower = 4;
 
     public RelicID ID;
     public string RelicName;
@@ -72,8 +77,16 @@ public partial class Relic
             RelicID.Backpack => new Relic(RelicID.Backpack),
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
             RelicID.FusionCore => new Relic(RelicID.FusionCore),
+            RelicID.PhilosophersStone => new Relic(RelicID.PhilosophersStone),
+            RelicID.EternalGlass => new Relic(RelicID.EternalGlass),
+            RelicID.KingsSword => new Relic(RelicID.KingsSword),
             _ => new Relic(RelicID.curse),
         };
+    }
+
+    public static RelicID[] GetBossRelicOfferPool()
+    {
+        return [RelicID.PhilosophersStone, RelicID.EternalGlass, RelicID.KingsSword];
     }
 
     public static int GetAcquireAmount(RelicID relicID)
@@ -81,6 +94,7 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => 3,
+            RelicID.FusionCore => 0,
             _ => -1,
         };
     }
@@ -97,6 +111,9 @@ public partial class Relic
             RelicID.Heptagon => "res://shader/Icon/RelicIcon/Heptagon.gdshader",
             RelicID.Octagon => "res://shader/Icon/RelicIcon/Octagon.gdshader",
             RelicID.CompressionCore => "res://shader/Icon/RelicIcon/CompressionCore.gdshader",
+            RelicID.PhilosophersStone => "res://shader/Icon/RelicIcon/Hexagon.gdshader",
+            RelicID.EternalGlass => "res://shader/Icon/RelicIcon/Octagon.gdshader",
+            RelicID.KingsSword => "res://shader/Icon/RelicIcon/Pentagon.gdshader",
             _ => null,
         };
     }
@@ -109,6 +126,9 @@ public partial class Relic
             RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
             RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
+            RelicID.PhilosophersStone => "res://asset/svg/RelicIcon/PhilosophersStone.svg",
+            RelicID.EternalGlass => "res://asset/svg/RelicIcon/EternalGlass.svg",
+            RelicID.KingsSword => "res://asset/svg/RelicIcon/KingsSword.svg",
             _ => null,
         };
     }
@@ -173,6 +193,7 @@ public partial class Relic
         playerResourceState.RelicList ??= new List<Relic>();
         playerResourceState.RelicList.Add(relic);
         GameInfo.Relics[relicID] = num;
+        ApplyAcquireEffect(relicID);
     }
 
     public static int ApplyElectricityCoinBonus(int baseAmount)
@@ -208,9 +229,33 @@ public partial class Relic
                 continue;
 
             if (relic.ID == RelicID.FusionCore)
-                ApplyFusionCoreActionStart(actingCharacter, playerActionNumber);
+            {
+                relic.Num = Math.Max(0, relic.Num) + 1;
+                if (relic.Num >= FusionCoreActionInterval)
+                {
+                    ApplyFusionCoreActionStart(actingCharacter);
+                    relic.Num = 0;
+                }
+                relic.UpdateIconLabel();
+            }
         }
     }
+
+    public static int GetTurnStartEnergyGainBonus(Character character)
+    {
+        if (character is not PlayerCharacter)
+            return 0;
+
+        return HasRelic(RelicID.PhilosophersStone) ? PhilosophersStoneEnergyBonus : 0;
+    }
+
+    public static int GetTurnStartDrawBonus(Battle battle)
+    {
+        return HasRelic(RelicID.EternalGlass) ? EternalGlassDrawBonus : 0;
+    }
+
+    private static bool HasRelic(RelicID relicId) =>
+        GameInfo.Relics != null && GameInfo.Relics.ContainsKey(relicId);
 
     public void IconAdd(PlayerResourceState playerResourceState)
     {
@@ -259,12 +304,18 @@ public partial class Relic
                 ApplyBlockToPlayers(battle, MatrixShieldBlock);
                 break;
             case RelicID.Backpack:
-                battle?.AddCardDrawReserve(BackpackDrawReserve);
+                ApplyExtraDrawToFrontPlayers(battle, BackpackExtraDrawStacks);
                 break;
             case RelicID.EnergyTank:
                 ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
                 break;
             case RelicID.FusionCore:
+                break;
+            case RelicID.PhilosophersStone:
+                await ApplyPowerToEnemies(battle, PhilosophersStoneEnemyPower);
+                break;
+            case RelicID.EternalGlass:
+            case RelicID.KingsSword:
                 break;
             case RelicID.curse:
                 break;
@@ -301,6 +352,12 @@ public partial class Relic
             return "矩阵护盾";
         if (relicID == RelicID.Backpack)
             return "背包";
+        if (relicID == RelicID.PhilosophersStone)
+            return "贤者之石";
+        if (relicID == RelicID.EternalGlass)
+            return "亘古琉璃";
+        if (relicID == RelicID.KingsSword)
+            return "王者之剑";
 
         return relicID switch
         {
@@ -326,7 +383,13 @@ public partial class Relic
         if (relicID == RelicID.MatrixShield)
             return $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。";
         if (relicID == RelicID.Backpack)
-            return $"战斗开始时获得{BackpackDrawReserve}点抽卡储备。";
+            return $"战斗开始时前2位角色获得{BackpackExtraDrawStacks}层额外抽卡。";
+        if (relicID == RelicID.PhilosophersStone)
+            return $"回合开始时获得的能量+{PhilosophersStoneEnergyBonus}。战斗开始时所有敌人获得{PhilosophersStoneEnemyPower}点力量。";
+        if (relicID == RelicID.EternalGlass)
+            return $"回合开始时抽牌数+{EternalGlassDrawBonus}。";
+        if (relicID == RelicID.KingsSword)
+            return $"拾起时全体角色增加{KingsSwordPartyPower}点力量。";
 
         return relicID switch
         {
@@ -427,16 +490,56 @@ public partial class Relic
         }
     }
 
-    private static void ApplyFusionCoreActionStart(Character actingCharacter, int playerActionNumber)
+    private static void ApplyExtraDrawToFrontPlayers(Battle battle, int stacks)
     {
-        if (
-            actingCharacter == null
-            || FusionCoreActionInterval <= 0
-            || playerActionNumber % FusionCoreActionInterval != 0
-        )
-        {
+        if (battle?.PlayersList == null || stacks <= 0)
             return;
+
+        int targetCount = Math.Min(2, battle.PlayersList.Count);
+        for (int i = 0; i < targetCount; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (player == null || player.State == Character.CharacterState.Dying)
+                continue;
+
+            SpecialBuff.BuffAdd(Buff.BuffName.ExtraDraw, player, stacks, player);
         }
+    }
+
+    private static async Task ApplyPowerToEnemies(Battle battle, int power)
+    {
+        if (battle?.EnemiesList == null || power == 0)
+            return;
+
+        foreach (var enemy in battle.EnemiesList.ToArray())
+        {
+            if (enemy == null || enemy.State == Character.CharacterState.Dying)
+                continue;
+
+            await enemy.IncreaseProperties(PropertyType.Power, power, enemy);
+        }
+    }
+
+    private static void ApplyAcquireEffect(RelicID relicID)
+    {
+        if (relicID != RelicID.KingsSword)
+            return;
+
+        if (GameInfo.PlayerCharacters == null)
+            return;
+
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
+        {
+            var info = GameInfo.PlayerCharacters[i];
+            info.Power += KingsSwordPartyPower;
+            GameInfo.PlayerCharacters[i] = info;
+        }
+    }
+
+    private static void ApplyFusionCoreActionStart(Character actingCharacter)
+    {
+        if (actingCharacter == null)
+            return;
 
         using var _ = actingCharacter.BeginEffectSource(GetRelicName(RelicID.FusionCore));
         actingCharacter.UpdataEnergy(FusionCoreEnergy, actingCharacter);
@@ -588,5 +691,8 @@ public enum RelicID
     Backpack,
     EnergyTank,
     FusionCore,
+    PhilosophersStone,
+    EternalGlass,
+    KingsSword,
     curse,
 }

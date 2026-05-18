@@ -45,4 +45,9 @@ public enum EnemiesEnum
     Turbine,
     BlackHawk,
     Inexorability,
+    GraveWraith,
+    VoidAcolyte,
+    HollowBulwark,
+    MarrowReaver,
+    Death,
 }

@@ -6,8 +6,8 @@ public partial class MariyaAttackSkill { }
 
 public partial class MendSlash : Skill
 {
-    private const int BaseDamage = 9;
-    private const int BaseHeal = 10;
+    private const int BaseDamage = 7;
+    private const int BaseHeal = 5;
 
     public MendSlash()
         : base(SkillTypes.Attack)
@@ -34,7 +34,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 7;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -89,10 +89,10 @@ public partial class SiphonSlash : Skill
 
 public partial class ShatterSlash : Skill
 {
-    private const int BaseDamage = 10;
-    private const int RequiredHitCount = 5;
+    private const int BaseDamage = 9;
+    private const int RequiredHitCount = 4;
     private const int RebirthStacks = 1;
-    private const int NextAllySelfDamage = 25;
+    private const int NextAllySelfDamage = 15;
 
     private int _recordedHitCount;
 
@@ -134,7 +134,7 @@ public partial class ShatterSlash : Skill
 
 public partial class ChargedBlade : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 6;
     private const int MaxTargets = 2;
     private const int SurvivabilityLoss = 3;
 
@@ -159,7 +159,7 @@ public partial class ChargedBlade : Skill
 
 public partial class CrescentWind : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 4;
     private const int WeakenStacks = 2;
 
     public CrescentWind()
@@ -206,10 +206,39 @@ public partial class ArcTrack : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage),
-            DrawReserveStep(
+            DrawCardsStep(
                 _ => GetAllAllyWithOrder(dyingFilter: true).Length / 2,
-                "每有2名己方角色存活，获得1点抽卡储备"
+                "每有2名己方角色存活，抽1张牌"
             )
+        );
+    }
+}
+
+public partial class Sacrifice : Skill
+{
+    int basisDamage = 18;
+    int allyHurt = 10;
+    int DeMax = 10;
+    public override string SkillName { get; set; } = "献祭";
+    public override int EnergyCost => 2;
+
+    public Sacrifice()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            HurtFriendly(allyHurt, all: true),
+            ModifyPropertyStep(
+                type: PropertyType.MaxLife,
+                value: -DeMax,
+                target: TargetReference.All
+            ),
+            AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, target: HostileTargets(0))
         );
     }
 }

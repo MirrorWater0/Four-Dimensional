@@ -1,0 +1,138 @@
+using System.Threading.Tasks;
+using Godot;
+
+public partial class HollowBulwark : EnemyCharacter
+{
+    private const int StartBarricadeStacks = 1;
+    private const int StartBlock = 70;
+
+    public const string PassiveNameText = "空壳壁障";
+    public static string PassiveDescriptionText =>
+        $"战斗开始时: 获得{StartBarricadeStacks}层{Buff.BuffName.Barricade.GetDescription()}，获得{StartBlock}点格挡.";
+
+    public override string CharacterName { get; set; } = "空壳壁卫";
+
+    public override void Initialize()
+    {
+        base.Initialize();
+        PassiveName = PassiveNameText;
+        PassiveDescription = PassiveDescriptionText;
+        BattleNode?.StartEffectList.Add(StartPassive);
+    }
+
+    public Task StartPassive()
+    {
+        using var _ = BeginEffectSource("被动");
+        StartActionBuff.BuffAdd(Buff.BuffName.Barricade, this, StartBarricadeStacks, this);
+        UpdataBlock(StartBlock, source: this);
+        return Task.CompletedTask;
+    }
+}
+
+public partial class HollowBulwarkRegedit : EnemyRegedit
+{
+    public HollowBulwarkRegedit()
+    {
+        CharacterName = "空壳壁卫";
+        PType = EnemyPositionType.FrontRow;
+        PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
+        CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
+
+        MaxLife = 26;
+        Power = 16;
+        Survivability = 5;
+        Speed = 6;
+        SkillIDs =
+        [
+            SkillID.HollowBulwarkAttack,
+            SkillID.HollowBulwarkSurvive,
+            SkillID.HollowBulwarkSpecial,
+        ];
+
+        PassiveName = global::HollowBulwark.PassiveNameText;
+        PassiveDescription = global::HollowBulwark.PassiveDescriptionText;
+    }
+}
+
+public partial class HollowBulwarkAttack : Skill
+{
+    public HollowBulwarkAttack()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "壁刃冲击";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(
+                baseDamage: skill => (skill?.OwnerCharater?.Block ?? 0) / 2,
+                prefix: "造成当前格挡/2（",
+                suffix: "）点伤害。"
+            ),
+            BlockStep(0)
+        );
+    }
+}
+
+public partial class HollowBulwarkSurvive : Skill
+{
+    private const int BaseBlock = 20;
+    private const int SurvivabilityDown = 4;
+
+    public HollowBulwarkSurvive()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "空壳";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(0, BaseBlock, 2),
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                SurvivabilityDown,
+                target: HostileTargets(1),
+                permanent: false
+            )
+        );
+    }
+}
+
+public partial class HollowBulwarkSpecial : Skill
+{
+    public HollowBulwarkSpecial()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "闭合";
+    public override int EnergyCost => 3;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Survivability, 5),
+            CustomStep(
+                _ =>
+                {
+                    int currentBlock = OwnerCharater?.Block ?? 0;
+                    if (currentBlock > 0)
+                        OwnerCharater?.UpdataBlock(currentBlock, source: OwnerCharater);
+
+                    return Task.CompletedTask;
+                },
+                _ => ["格挡翻倍."]
+            )
+        );
+    }
+}

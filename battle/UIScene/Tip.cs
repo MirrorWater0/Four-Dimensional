@@ -167,6 +167,17 @@ public partial class Tip : Control
             UpdateTooltipLayout();
     }
 
+    public void RefreshTextSizeFromSettings()
+    {
+        ApplyDescriptionTheme();
+        MarkLayoutDirty();
+        if (Visible)
+        {
+            UpdateTooltipLayout();
+            UpdateTooltipPosition();
+        }
+    }
+
     /// <summary>
     /// Hide the tooltip
     /// </summary>
@@ -306,7 +317,10 @@ public partial class Tip : Control
 
         Description.AutowrapMode = WrapMode;
         Description.CustomMinimumSize = new Vector2(MinContentWidth, 0);
-        Description.AddThemeFontSizeOverride("normal_font_size", NormalFontSize);
+        Description.AddThemeFontSizeOverride(
+            "normal_font_size",
+            UserSettings.ScaleTextFontSize(NormalFontSize)
+        );
         Description.AddThemeConstantOverride("outline_size", OutlineSize);
         Description.AddThemeColorOverride("default_color", DefaultColor);
         Description.AddThemeColorOverride("font_outline_color", OutlineColor);

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://4opia7kg26cu"]
 
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="1_otmua"]
-[ext_resource type="Script" path="res://Event/TargetSelectOverlay.cs" id="2_target_select_script"]
+[ext_resource type="Script" uid="uid://du4lavdry08un" path="res://Event/TargetSelectOverlay.cs" id="2_target_select_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_select_panel"]
 bg_color = Color(0.04, 0.06, 0.1, 0.98)
@@ -52,7 +52,6 @@ corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [node name="TargetSelectOverlay" type="Control" unique_id=637401648]
-visible = false
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1640.0

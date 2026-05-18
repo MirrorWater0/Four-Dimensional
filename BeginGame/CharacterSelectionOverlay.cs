@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Godot;
 
@@ -13,20 +14,41 @@ public partial class CharacterSelectionOverlay : Control
     private const int MaxSeedValue = 999_999_999;
     private const float EnterAnimationDuration = 0.24f;
     private const float ExitAnimationDuration = 0.18f;
+    private const float MaskTransitionDuration = 0.22f;
     private const float PanelEnterSlideOffset = 28f;
     private const float PanelExitSlideOffset = 18f;
+    private const float PreviewSwitchFadeInDuration = 0.16f;
+    private const float PreviewSwitchImageOffset = 8f;
+    private const float PreviewSwitchStartAlpha = 0.88f;
+    private const string CharacterCardScenePath = "res://BeginGame/CharacterSelectButton.tscn";
 
     private sealed class CharacterOption
     {
         public PlayerInfoStructure Info;
         public Texture2D Portrait;
-        public Button CardButton;
-        public Label SelectedBadge;
+        public Texture2D Hero;
+        public Texture2D Icon;
+        public CharacterSelectButton CardButton;
         public bool Hovered;
     }
 
     private readonly List<CharacterOption> _options = new();
     private readonly List<CharacterOption> _selectedOptions = new();
+    private CharacterOption _focusedOption;
+    private static readonly Dictionary<string, string> CharacterHeroPaths = new()
+    {
+        ["Echo"] = "res://asset/generated/character_select/EchoHero.png",
+        ["Kasiya"] = "res://asset/generated/character_select/KasiyaHero.png",
+        ["Mariya"] = "res://asset/generated/character_select/MariyaHero.png",
+        ["Nightingale"] = "res://asset/generated/character_select/NightingaleHero.png",
+    };
+    private static readonly Dictionary<string, string> CharacterIconPaths = new()
+    {
+        ["Echo"] = "res://asset/svg/CharacterIcon/Echo.svg",
+        ["Kasiya"] = "res://asset/svg/CharacterIcon/Kasiya.svg",
+        ["Mariya"] = "res://asset/svg/CharacterIcon/Mariya.svg",
+        ["Nightingale"] = "res://asset/svg/CharacterIcon/Nightingale.svg",
+    };
 
     private Action<PlayerInfoStructure[], int, int> _confirmAction;
     private int _requiredSelectionCount = DefaultRequiredSelectionCount;
@@ -37,11 +59,23 @@ public partial class CharacterSelectionOverlay : Control
     private bool _normalizingSeedInput;
     private bool _difficultyTooltipVisible;
     private Tween _overlayTween;
+    private Tween _previewTween;
     private Tip _difficultyTooltip;
+    private PackedScene _characterCardScene;
+    private int _previewAnimationSerial;
+    private bool _heroImagePositionCaptured;
+    private Vector2 _heroImageRestPosition;
 
     private ColorRect Shade => field ??= GetNodeOrNull<ColorRect>("Shade");
+    private TextureRect HeroImage => field ??= GetNodeOrNull<TextureRect>("HeroImage");
     private Control Panel => field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel");
+    private Label TitleLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Title");
+    private Label EyebrowLabel =>
+        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Eyebrow");
+    private Label HintLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/HintLabel");
     private Label StatusLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/StatusLabel");
+    private HBoxContainer TeamSlotsContainer =>
+        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamSlots");
     private HFlowContainer CardGrid =>
         field ??= GetNodeOrNull<HFlowContainer>("SafeArea/Center/Panel/Margin/VBox/CardGrid");
     private Button ConfirmButton =>
@@ -69,17 +103,11 @@ public partial class CharacterSelectionOverlay : Control
     private Tip DifficultyTooltip => _difficultyTooltip ??= EnsureDifficultyTooltip();
     private LineEdit SeedInput =>
         field ??= GetNodeOrNull<LineEdit>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedInput");
-    private Button CardTemplate =>
-        field ??= GetNodeOrNull<Button>("Templates/CharacterCardTemplate");
-
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
         FocusMode = FocusModeEnum.All;
         ProcessMode = ProcessModeEnum.Always;
-
-        if (CardTemplate != null)
-            CardTemplate.Visible = false;
 
         if (CancelButton != null)
         {
@@ -115,6 +143,7 @@ public partial class CharacterSelectionOverlay : Control
 
     public override void _ExitTree()
     {
+        _previewTween?.Kill();
         HideDifficultyTooltip();
     }
 
@@ -193,7 +222,8 @@ public partial class CharacterSelectionOverlay : Control
     public void Open(
         IReadOnlyList<PlayerInfoStructure> availableCharacters,
         int requiredSelectionCount,
-        Action<PlayerInfoStructure[], int, int> confirmAction
+        Action<PlayerInfoStructure[], int, int> confirmAction,
+        bool playEnterAnimation = true
     )
     {
         _openRequested = true;
@@ -209,7 +239,10 @@ public partial class CharacterSelectionOverlay : Control
         _isClosing = false;
         Visible = true;
         Modulate = Colors.White;
-        _ = PlayEnterAnimationAsync();
+        if (playEnterAnimation)
+            _ = PlayEnterAnimationAsync();
+        else
+            ApplyOpenedVisualState();
     }
 
     private void PopulateCharacters(IReadOnlyList<PlayerInfoStructure> availableCharacters)
@@ -227,6 +260,8 @@ public partial class CharacterSelectionOverlay : Control
                     ? null
                     : GD.Load<Texture2D>(availableCharacters[i].PortaitPath),
             };
+            option.Hero = LoadHeroTexture(option.Info);
+            option.Icon = LoadCharacterIcon(option.Info);
 
             option.CardButton = CreateCharacterCard(option);
             if (option.CardButton == null)
@@ -239,15 +274,18 @@ public partial class CharacterSelectionOverlay : Control
         for (int i = 0; i < Math.Min(_requiredSelectionCount, _options.Count); i++)
             _selectedOptions.Add(_options[i]);
 
+        _focusedOption = _options.FirstOrDefault();
         RefreshSelectionState();
+        RefreshFocusedCharacterPreview(animate: false);
     }
 
-    private Button CreateCharacterCard(CharacterOption option)
+    private CharacterSelectButton CreateCharacterCard(CharacterOption option)
     {
-        if (CardTemplate == null || option == null)
+        if (option == null)
             return null;
 
-        var card = CardTemplate.Duplicate() as Button;
+        _characterCardScene ??= GD.Load<PackedScene>(CharacterCardScenePath);
+        var card = _characterCardScene?.Instantiate<CharacterSelectButton>();
         if (card == null)
             return null;
 
@@ -259,30 +297,8 @@ public partial class CharacterSelectionOverlay : Control
         card.ActionMode = BaseButton.ActionModeEnum.Press;
         card.MouseFilter = MouseFilterEnum.Stop;
         card.FocusMode = FocusModeEnum.None;
-        IgnoreChildMouseFilters(card);
+        card.SetCharacter(option.Icon, option.Portrait, option.Info);
 
-        var portrait = card.GetNodeOrNull<TextureRect>("Content/Stack/PortraitFrame/PortraitMargin/Portrait");
-        var nameLabel = card.GetNodeOrNull<Label>("Content/Stack/NameLabel");
-        var statsLabel = card.GetNodeOrNull<Label>("Content/Stack/StatsLabel");
-        var passiveNameLabel = card.GetNodeOrNull<Label>("Content/Stack/PassiveNameLabel");
-        var passiveDescriptionLabel =
-            card.GetNodeOrNull<RichTextLabel>("Content/Stack/PassiveDescriptionLabel");
-
-        if (portrait != null)
-            portrait.Texture = option.Portrait;
-        if (nameLabel != null)
-            nameLabel.Text = option.Info.CharacterName;
-        if (statsLabel != null)
-        {
-            statsLabel.Text =
-                $"生命 {option.Info.LifeMax}   力量 {option.Info.Power}   生存 {option.Info.Survivability}   速度 {option.Info.Speed}";
-        }
-        if (passiveNameLabel != null)
-            passiveNameLabel.Text = option.Info.PassiveName;
-        if (passiveDescriptionLabel != null)
-            passiveDescriptionLabel.Text = FormatPassiveDescription(option.Info.PassiveDescription);
-
-        option.SelectedBadge = card.GetNodeOrNull<Label>("SelectedBadge");
         ApplyCardVisualState(option);
         card.MouseEntered += () =>
         {
@@ -303,20 +319,35 @@ public partial class CharacterSelectionOverlay : Control
         if (option == null)
             return;
 
-        if (_selectedOptions.Remove(option))
+        bool wasSelected = _selectedOptions.Contains(option);
+        if (wasSelected)
         {
-            RefreshSelectionState();
-            return;
+            _focusedOption = option;
+        }
+        else if (_selectedOptions.Count < _requiredSelectionCount)
+        {
+            _selectedOptions.Add(option);
+            _focusedOption = option;
+        }
+        else if (_selectedOptions.Count > 0)
+        {
+            int replaceIndex = _focusedOption != null
+                ? _selectedOptions.IndexOf(_focusedOption)
+                : -1;
+            if (replaceIndex < 0)
+                replaceIndex = _selectedOptions.Count - 1;
+
+            _selectedOptions[replaceIndex] = option;
+            _focusedOption = option;
+        }
+        else
+        {
+            _selectedOptions.Add(option);
+            _focusedOption = option;
         }
 
-        if (_selectedOptions.Count >= _requiredSelectionCount)
-        {
-            UpdateStatusText(selectionFull: true);
-            return;
-        }
-
-        _selectedOptions.Add(option);
         RefreshSelectionState();
+        RefreshFocusedCharacterPreview();
     }
 
     private CharacterOption FindOptionAtGlobalPosition(Vector2 globalPosition)
@@ -355,20 +386,30 @@ public partial class CharacterSelectionOverlay : Control
         {
             var option = _options[i];
             bool selected = _selectedOptions.Contains(option);
-            ApplyCardVisualState(option, selected);
+            ApplyCardVisualState(option);
 
-            int selectionIndex = _selectedOptions.IndexOf(option);
-            if (option.SelectedBadge != null)
-            {
-                option.SelectedBadge.Visible = selected;
-                option.SelectedBadge.Text = selected ? $"已选 #{selectionIndex + 1}" : string.Empty;
-            }
+            int selectedIndex = _selectedOptions.IndexOf(option);
+            bool focused = option == _focusedOption;
+            option.CardButton?.SetBadge(
+                selectedIndex >= 0 || focused,
+                selectedIndex >= 0
+                    ? focused
+                        ? $"入队 #{selectedIndex + 1}  查看"
+                        : $"入队 #{selectedIndex + 1}"
+                    : "预览中"
+            );
         }
 
         bool exactSelection = _selectedOptions.Count == _requiredSelectionCount;
         if (ConfirmButton != null)
+        {
             ConfirmButton.Disabled = !exactSelection;
+            ConfirmButton.Text = exactSelection
+                ? "确认并开始"
+                : $"确认并开始 {_selectedOptions.Count}/{_requiredSelectionCount}";
+        }
 
+        RefreshTeamSlots();
         UpdateStatusText(selectionFull: false);
     }
 
@@ -377,21 +418,335 @@ public partial class CharacterSelectionOverlay : Control
         if (StatusLabel == null)
             return;
 
-        string selectionText;
-        if (selectionFull)
-        {
-            selectionText =
-                $"已选满 {_requiredSelectionCount}/{_requiredSelectionCount}，如需更换请先取消一名角色。";
-        }
+        if (_focusedOption == null)
+            StatusLabel.Text = BuildSquadStatusText();
         else
+            StatusLabel.Text =
+                $"{BuildSquadStatusText()}    |    查看 {_focusedOption.Info.CharacterName}：生命 {_focusedOption.Info.LifeMax}    力量 {_focusedOption.Info.Power}    生存 {_focusedOption.Info.Survivability}    速度 {_focusedOption.Info.Speed}";
+    }
+
+    private string BuildSquadStatusText()
+    {
+        string names = _selectedOptions.Count == 0
+            ? "未选择"
+            : string.Join(" / ", _selectedOptions.Select(option => option.Info.CharacterName));
+        return $"出战队伍 {_selectedOptions.Count}/{_requiredSelectionCount}：{names}";
+    }
+
+    private void RefreshTeamSlots()
+    {
+        var container = TeamSlotsContainer;
+        if (container == null)
+            return;
+
+        ClearChildren(container);
+
+        for (int i = 0; i < _requiredSelectionCount; i++)
         {
-            var _selectedCharacterNames = _selectedOptions;
-            selectionText = _selectedOptions.Count == _requiredSelectionCount
-                ? $"已选择 {_selectedCharacterNames.Count}/{_requiredSelectionCount}。确认后将以当前顺序建立队伍。"
-                : $"已选择 {_selectedCharacterNames.Count}/{_requiredSelectionCount}。还需要补满角色才能开始。";
+            CharacterOption option = i < _selectedOptions.Count ? _selectedOptions[i] : null;
+            var slot = CreateTeamSlot(option, i);
+            container.AddChild(slot);
+        }
+    }
+
+    private Button CreateTeamSlot(CharacterOption option, int index)
+    {
+        bool filled = option != null;
+        bool focused = filled && option == _focusedOption;
+        var slot = new Button
+        {
+            Name = $"TeamSlot{index + 1}",
+            CustomMinimumSize = new Vector2(196f, 54f),
+            FocusMode = FocusModeEnum.None,
+            MouseFilter = MouseFilterEnum.Stop,
+            Disabled = !filled,
+        };
+        slot.AddThemeStyleboxOverride("normal", CreateTeamSlotStyleBox(filled, focused, 0.24f));
+        slot.AddThemeStyleboxOverride("hover", CreateTeamSlotStyleBox(filled, true, 0.38f));
+        slot.AddThemeStyleboxOverride("pressed", CreateTeamSlotStyleBox(filled, true, 0.44f));
+        slot.AddThemeStyleboxOverride("disabled", CreateTeamSlotStyleBox(false, false, 0.16f));
+
+        var margin = new MarginContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        margin.AddThemeConstantOverride("margin_left", 8);
+        margin.AddThemeConstantOverride("margin_top", 6);
+        margin.AddThemeConstantOverride("margin_right", 8);
+        margin.AddThemeConstantOverride("margin_bottom", 6);
+        slot.AddChild(margin);
+
+        var row = new HBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        row.AddThemeConstantOverride("separation", 8);
+        margin.AddChild(row);
+
+        var portrait = new TextureRect
+        {
+            CustomMinimumSize = new Vector2(42f, 42f),
+            Texture = option?.Icon ?? option?.Portrait,
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        row.AddChild(portrait);
+
+        var textStack = new VBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        textStack.AddThemeConstantOverride("separation", 0);
+        row.AddChild(textStack);
+
+        var positionLabel = new Label
+        {
+            Text = filled ? $"#{index + 1} 出战" : $"#{index + 1} 空位",
+            MouseFilter = MouseFilterEnum.Ignore,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        positionLabel.AddThemeFontSizeOverride("font_size", 15);
+        positionLabel.AddThemeColorOverride(
+            "font_color",
+            filled ? new Color(1f, 0.84f, 0.48f, 0.96f) : new Color(0.78f, 0.84f, 0.92f, 0.46f)
+        );
+        textStack.AddChild(positionLabel);
+
+        var nameLabel = new Label
+        {
+            Text = filled ? option.Info.CharacterName : "点击角色加入",
+            MouseFilter = MouseFilterEnum.Ignore,
+            ClipText = true,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        nameLabel.AddThemeFontSizeOverride("font_size", 18);
+        nameLabel.AddThemeColorOverride(
+            "font_color",
+            filled ? new Color(0.96f, 0.98f, 1f, 0.96f) : new Color(0.78f, 0.84f, 0.92f, 0.56f)
+        );
+        textStack.AddChild(nameLabel);
+
+        if (filled)
+        {
+            slot.Pressed += () =>
+            {
+                RemoveFromTeam(option);
+                RefreshSelectionState();
+            };
         }
 
-        StatusLabel.Text = selectionText;
+        return slot;
+    }
+
+    private void RemoveFromTeam(CharacterOption option)
+    {
+        if (option == null)
+            return;
+
+        int removedIndex = _selectedOptions.IndexOf(option);
+        if (removedIndex < 0)
+            return;
+
+        _selectedOptions.RemoveAt(removedIndex);
+    }
+
+    private static StyleBoxFlat CreateTeamSlotStyleBox(bool filled, bool focused, float alpha)
+    {
+        Color borderColor = focused
+            ? new Color(1.00f, 0.88f, 0.56f, 0.90f)
+            : filled
+                ? new Color(0.78f, 0.88f, 1.00f, 0.34f)
+                : new Color(0.70f, 0.80f, 0.92f, 0.18f);
+
+        return new StyleBoxFlat
+        {
+            BgColor = filled
+                ? new Color(0.06f, 0.09f, 0.13f, alpha)
+                : new Color(0.05f, 0.07f, 0.10f, alpha),
+            BorderColor = borderColor,
+            BorderWidthLeft = focused ? 3 : 1,
+            BorderWidthTop = focused ? 3 : 1,
+            BorderWidthRight = focused ? 3 : 1,
+            BorderWidthBottom = focused ? 3 : 1,
+            CornerRadiusTopLeft = 10,
+            CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10,
+            CornerRadiusBottomRight = 10,
+            ContentMarginLeft = 0,
+            ContentMarginTop = 0,
+            ContentMarginRight = 0,
+            ContentMarginBottom = 0,
+        };
+    }
+
+    private void RefreshFocusedCharacterPreview(bool animate = true)
+    {
+        if (_focusedOption == null)
+            return;
+
+        if (!animate || !Visible || !IsInsideTree())
+        {
+            ApplyFocusedCharacterPreview(_focusedOption);
+            ResetPreviewVisualState();
+            return;
+        }
+
+        _ = PlayFocusedCharacterPreviewSwitchAsync(_focusedOption);
+    }
+
+    private async Task PlayFocusedCharacterPreviewSwitchAsync(CharacterOption option)
+    {
+        if (option == null || !IsInsideTree())
+            return;
+
+        int serial = ++_previewAnimationSerial;
+        _previewTween?.Kill();
+        CaptureHeroImageRestPosition();
+
+        ApplyFocusedCharacterPreview(option);
+        CaptureHeroImageRestPosition();
+        if (HeroImage != null)
+        {
+            HeroImage.Position = _heroImageRestPosition + new Vector2(PreviewSwitchImageOffset, 0f);
+            SetCanvasItemAlpha(HeroImage, PreviewSwitchStartAlpha);
+        }
+
+        SetCanvasItemAlpha(EyebrowLabel, PreviewSwitchStartAlpha);
+        SetCanvasItemAlpha(TitleLabel, PreviewSwitchStartAlpha);
+        SetCanvasItemAlpha(StatusLabel, PreviewSwitchStartAlpha);
+        SetCanvasItemAlpha(HintLabel, PreviewSwitchStartAlpha);
+
+        _previewTween = CreateTween();
+        _previewTween.SetEase(Tween.EaseType.Out);
+        _previewTween.SetTrans(Tween.TransitionType.Cubic);
+        AddPreviewFadeTweens(_previewTween, 1f, PreviewSwitchFadeInDuration);
+
+        if (HeroImage != null)
+        {
+            _previewTween
+                .Parallel()
+                .TweenProperty(
+                    HeroImage,
+                    "position:x",
+                    _heroImageRestPosition.X,
+                    PreviewSwitchFadeInDuration
+                );
+        }
+
+        await ToSignal(_previewTween, Tween.SignalName.Finished);
+        if (serial != _previewAnimationSerial || !GodotObject.IsInstanceValid(this))
+            return;
+
+        ResetPreviewVisualState();
+    }
+
+    private void ApplyFocusedCharacterPreview(CharacterOption option)
+    {
+        if (option == null)
+            return;
+
+        if (HeroImage != null)
+            HeroImage.Texture = option.Hero ?? option.Portrait;
+
+        if (EyebrowLabel != null)
+            EyebrowLabel.Text = "角色档案";
+
+        if (TitleLabel != null)
+            TitleLabel.Text = option.Info.CharacterName ?? "Character";
+
+        if (HintLabel != null)
+        {
+            string passiveName = string.IsNullOrWhiteSpace(option.Info.PassiveName)
+                ? "被动"
+                : option.Info.PassiveName;
+            string passiveDesc = string.IsNullOrWhiteSpace(option.Info.PassiveDescription)
+                ? "-"
+                : option.Info.PassiveDescription;
+            HintLabel.Text = $"{passiveName}\n{StripBbcode(passiveDesc)}";
+        }
+    }
+
+    private void AddPreviewFadeTweens(Tween tween, float alpha, float duration)
+    {
+        if (tween == null)
+            return;
+
+        if (HeroImage != null)
+            tween.TweenProperty(HeroImage, "modulate:a", alpha, duration);
+
+        TweenTextFade(tween, EyebrowLabel, alpha, duration);
+        TweenTextFade(tween, TitleLabel, alpha, duration);
+        TweenTextFade(tween, StatusLabel, alpha, duration);
+        TweenTextFade(tween, HintLabel, alpha, duration);
+    }
+
+    private static void TweenTextFade(Tween tween, CanvasItem item, float alpha, float duration)
+    {
+        if (tween == null || item == null)
+            return;
+
+        tween.Parallel().TweenProperty(item, "modulate:a", alpha, duration);
+    }
+
+    private void ResetPreviewVisualState()
+    {
+        CaptureHeroImageRestPosition();
+        if (HeroImage != null)
+        {
+            HeroImage.Position = _heroImageRestPosition;
+            SetCanvasItemAlpha(HeroImage, 1f);
+        }
+
+        SetCanvasItemAlpha(EyebrowLabel, 1f);
+        SetCanvasItemAlpha(TitleLabel, 1f);
+        SetCanvasItemAlpha(StatusLabel, 1f);
+        SetCanvasItemAlpha(HintLabel, 1f);
+    }
+
+    private void CaptureHeroImageRestPosition()
+    {
+        if (_heroImagePositionCaptured || HeroImage == null)
+            return;
+
+        _heroImageRestPosition = HeroImage.Position;
+        _heroImagePositionCaptured = true;
+    }
+
+    private static Texture2D LoadHeroTexture(PlayerInfoStructure info)
+    {
+        if (
+            !string.IsNullOrWhiteSpace(info.CharacterName)
+            && CharacterHeroPaths.TryGetValue(info.CharacterName, out string heroPath)
+        )
+            return PreloadeScene.GetTexture(heroPath) ?? GD.Load<Texture2D>(heroPath);
+
+        return null;
+    }
+
+    private static Texture2D LoadCharacterIcon(PlayerInfoStructure info)
+    {
+        if (
+            !string.IsNullOrWhiteSpace(info.CharacterName)
+            && CharacterIconPaths.TryGetValue(info.CharacterName, out string iconPath)
+        )
+            return PreloadeScene.GetTexture(iconPath) ?? GD.Load<Texture2D>(iconPath);
+
+        return null;
+    }
+
+    private static string StripBbcode(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        return Regex.Replace(text, "\\[[^\\]]+\\]", string.Empty);
     }
 
     private void ConfirmSelection()
@@ -451,6 +806,25 @@ public partial class CharacterSelectionOverlay : Control
 
     private async Task CloseAsync()
     {
+        SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
+        if (transitionLayer != null)
+        {
+            _isClosing = true;
+            _isAnimating = true;
+            _overlayTween?.Kill();
+            _previewTween?.Kill();
+            SetSelectionControlsEnabled(false);
+            HideDifficultyTooltip();
+
+            await transitionLayer.FadeToBlackAsync(MaskTransitionDuration);
+
+            if (GodotObject.IsInstanceValid(this))
+                QueueFree();
+
+            await transitionLayer.FadeFromBlackAsync(MaskTransitionDuration);
+            return;
+        }
+
         await PlayExitAnimationAsync();
 
         if (GodotObject.IsInstanceValid(this))
@@ -501,6 +875,15 @@ public partial class CharacterSelectionOverlay : Control
             SetCanvasItemAlpha(panel, 1f);
         }
 
+        _isAnimating = false;
+    }
+
+    private void ApplyOpenedVisualState()
+    {
+        _overlayTween?.Kill();
+        SetCanvasItemAlpha(Shade, 1f);
+        if (Panel != null)
+            SetCanvasItemAlpha(Panel, 1f);
         _isAnimating = false;
     }
 
@@ -792,7 +1175,10 @@ public partial class CharacterSelectionOverlay : Control
             return;
 
         foreach (Node child in parent.GetChildren())
+        {
+            parent.RemoveChild(child);
             child.QueueFree();
+        }
     }
 
     private static void IgnoreChildMouseFilters(Node parent)
@@ -814,13 +1200,12 @@ public partial class CharacterSelectionOverlay : Control
         if (option == null)
             return;
 
-        bool selected =
-            selectedOverride
-            ?? _selectedOptions.Contains(option);
-        ApplyCardStyle(option.CardButton, selected, option.Hovered);
+        bool selected = selectedOverride ?? _selectedOptions.Contains(option);
+        bool focused = option == _focusedOption;
+        ApplyCardStyle(option.CardButton, selected, focused, option.Hovered);
     }
 
-    private static void ApplyCardStyle(Button card, bool selected, bool hovered)
+    private static void ApplyCardStyle(Button card, bool selected, bool focused, bool hovered)
     {
         if (card == null)
             return;
@@ -831,17 +1216,17 @@ public partial class CharacterSelectionOverlay : Control
         card.Scale = Vector2.One;
         card.ZIndex = hovered ? 8 : 0;
 
-        card.AddThemeStyleboxOverride("normal", CreateCardStyleBox(selected, hovered, 0.22f));
-        card.AddThemeStyleboxOverride("hover", CreateCardStyleBox(selected, true, 0.38f));
-        card.AddThemeStyleboxOverride("pressed", CreateCardStyleBox(selected, true, 0.50f));
-        card.AddThemeStyleboxOverride("focus", CreateCardStyleBox(selected, true, 0.38f));
+        card.AddThemeStyleboxOverride("normal", CreateCardStyleBox(selected, focused, hovered, 0.22f));
+        card.AddThemeStyleboxOverride("hover", CreateCardStyleBox(selected, true, true, 0.38f));
+        card.AddThemeStyleboxOverride("pressed", CreateCardStyleBox(selected, true, true, 0.50f));
+        card.AddThemeStyleboxOverride("focus", CreateCardStyleBox(selected, true, true, 0.38f));
     }
 
-    private static StyleBoxFlat CreateCardStyleBox(bool selected, bool hovered, float alpha)
+    private static StyleBoxFlat CreateCardStyleBox(bool selected, bool focused, bool hovered, float alpha)
     {
         Color borderColor = selected
             ? new Color(1.00f, 0.88f, 0.56f, hovered ? 1.00f : 0.90f)
-            : hovered
+            : focused || hovered
                 ? new Color(0.78f, 0.93f, 1.00f, 0.92f)
                 : new Color(0.70f, 0.80f, 0.92f, 0.24f);
 
@@ -849,12 +1234,14 @@ public partial class CharacterSelectionOverlay : Control
         {
             BgColor = selected
                 ? new Color(0.16f, 0.22f, 0.31f, alpha + (hovered ? 0.30f : 0.22f))
-                : new Color(0.07f, 0.10f, 0.14f, alpha + (hovered ? 0.24f : 0.0f)),
+                : focused
+                    ? new Color(0.10f, 0.16f, 0.22f, alpha + 0.18f)
+                    : new Color(0.07f, 0.10f, 0.14f, alpha + (hovered ? 0.24f : 0.0f)),
             BorderColor = borderColor,
-            BorderWidthLeft = selected || hovered ? 4 : 1,
-            BorderWidthTop = selected || hovered ? 4 : 1,
-            BorderWidthRight = selected || hovered ? 4 : 1,
-            BorderWidthBottom = selected || hovered ? 4 : 1,
+            BorderWidthLeft = selected || focused || hovered ? 4 : 1,
+            BorderWidthTop = selected || focused || hovered ? 4 : 1,
+            BorderWidthRight = selected || focused || hovered ? 4 : 1,
+            BorderWidthBottom = selected || focused || hovered ? 4 : 1,
             CornerRadiusTopLeft = 18,
             CornerRadiusTopRight = 18,
             CornerRadiusBottomLeft = 18,

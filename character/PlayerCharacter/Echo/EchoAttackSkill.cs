@@ -91,7 +91,7 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = -1;
+    private const int BaseDamage = 0;
     private const int VulnerableStacks = 2;
 
     public EchoPuncture()
@@ -118,9 +118,7 @@ public partial class EchoPuncture : Skill
 
 public partial class Extract : Skill
 {
-    private const int BaseDamage = 12;
-    private const int EnergyGain = 2;
-    private const int WeakenStacks = 3;
+    private const int BaseDamage = 7;
     private const string PrimaryTargetKey = "萃取目标";
 
     public Extract()
@@ -136,26 +134,33 @@ public partial class Extract : Skill
         return new SkillPlan(
             this,
             AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
-            ConditionStep(
-                condition: TargetHasWeaken,
-                conditionDescription: "攻击目标拥有虚弱",
-                EnergyStep(EnergyGain)
-            )
+            EnergyStep(_ => GetTotalHostileWeakenStacks()),
+            TextStep($"获得等同于敌方全阵{Buff.BuffName.Weaken.GetDescription()}层数总和的能量。")
         );
     }
 
-    private bool TargetHasWeaken()
-    {
-        Character target = GetStoredTarget(PrimaryTargetKey);
-        return target?.AttackBuffs?.Any(buff =>
+    private static int GetWeakenStacks(Character target) =>
+        target
+            ?.AttackBuffs?.FirstOrDefault(buff =>
                 buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
-            ) == true;
+            )
+            ?.Stack ?? 0;
+
+    private int GetTotalHostileWeakenStacks()
+    {
+        return OwnerCharater
+                ?.BattleNode?.GetOrderedTeamCharacters(
+                    !OwnerCharater.IsPlayer,
+                    includeSummons: true,
+                    dyingFilter: true
+                )
+                ?.Sum(GetWeakenStacks) ?? 0;
     }
 }
 
 public partial class BladeOfSlaughter : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 7;
     private const string PrimaryTargetKey = "弑杀之刃目标";
 
     public BladeOfSlaughter()
@@ -190,7 +195,7 @@ public partial class BladeOfSlaughter : Skill
 
 public partial class DisasterImpact : Skill
 {
-    private const int BaseDamage = -3;
+    private const int BaseDamage = 0;
     private const int DisasterStacks = 10;
 
     public DisasterImpact()
@@ -213,4 +218,112 @@ public partial class DisasterImpact : Skill
             )
         );
     }
+}
+
+public class EchonicResonance : Skill
+{
+    private const int PaidEnergyPerCast = 1;
+    private const int PowerGainPerCast = 1;
+
+    public EchonicResonance()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "回响共鸣";
+    public override int EnergyCost => XEnergyCost;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
+            EnergyTimesWhileStep(
+                paidEnergyPerLoop: PaidEnergyPerCast,
+                loopSteps:
+                [
+                    AttackPrimaryStep(baseDamage: -2, powerMultiplier: 1),
+                    ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
+                ]
+            )
+        );
+    }
+}
+
+public class SonicBoom : Skill
+{
+    private const int BaseDamage = 0;
+    private const int ExtraTimes = 2;
+
+    public SonicBoom()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "音爆";
+    public override int EnergyCost => 4;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AoeDamageStep(baseDamage: 3, target: HostileTargets(0)),
+            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
+        );
+    }
+}
+
+public class PhaseEcho : Skill
+{
+    int damage = 10;
+    int PowerGain = -2;
+
+    public PhaseEcho()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "相位回声";
+    public override int EnergyCost => 1;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AoeDamageStep(baseDamage: damage),
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
+        );
+    }
+}
+
+public class ReverbChain : Skill
+{
+    private const int BaseDamage = 0;
+
+    public ReverbChain()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "回声连奏";
+    public override int EnergyCost => 3;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            TextStep("释放x次(x为本场战斗中其他己方角色的行动次数)。"),
+            EnergyTimesWhileStep(
+                times: GetLoopTimes,
+                loopSteps: [AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1)]
+            )
+        );
+    }
+
+    private int GetLoopTimes() =>
+        OwnerCharater?.BattleNode?.GetAlliedActionCountExcludingSelf(OwnerCharater) ?? 0;
 }

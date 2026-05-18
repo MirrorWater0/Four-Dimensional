@@ -7,7 +7,6 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
-    private const int EnergyGain = 1;
     private const int BaseBlock = 5;
 
     public SoundBarrier()
@@ -20,8 +19,7 @@ public partial class SoundBarrier : Skill
     {
         return new SkillPlan(
             this,
-            EnergyStep(EnergyGain),
-            BlockStep(0, BaseBlock),
+            BlockStep(0, BaseBlock, 2),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
@@ -30,7 +28,7 @@ public partial class SoundBarrier : Skill
 public partial class SonicDeflection : Skill
 {
     private const int DamageImmuneStacks = 2;
-    private const int BaseBlock = -2;
+    private const int BaseBlock = 0;
 
     public SonicDeflection()
         : base(SkillTypes.Survive)
@@ -50,30 +48,7 @@ public partial class SonicDeflection : Skill
                 stacks: DamageImmuneStacks,
                 target: TargetReference.Self
             ),
-            ModifyPropertyStep(PropertyType.Survivability, -2, TargetReference.Self)
-        );
-    }
-}
-
-public partial class TuningStance : Skill
-{
-    private const int BaseBlock = 7;
-    public override int EnergyCost => 2;
-
-    public TuningStance()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "韵律";
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            BlockStep(0, BaseBlock),
-            EnergyStep(1, TargetReference.All)
+            ModifyPropertyStep(PropertyType.Survivability, -3, TargetReference.Self)
         );
     }
 }
@@ -133,31 +108,6 @@ public partial class DissonantField : Skill
     }
 }
 
-public partial class RelayShift : Skill
-{
-    private const int BaseBlock = 2;
-    public override int EnergyCost => 2;
-
-    public RelayShift()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "后撤步";
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            SwapPositionFriendlyStep(relativeIndexA: 0, relativeIndexB: 1),
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock),
-            EnergyStep(1, TargetReference.Previous),
-            CarryStep(target: TargetReference.Previous, skillIndex: 2)
-        );
-    }
-}
-
 public partial class Shelter : Skill
 {
     private const int BaseBlock = -3;
@@ -178,11 +128,10 @@ public partial class Shelter : Skill
             this,
             BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
             ApplyBuffFriendly(
-                buffName: Buff.BuffName.CardRefresh,
+                buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,
                 target: TargetReference.All
-            ),
-            DrawReserveStep(1)
+            )
         );
     }
 }

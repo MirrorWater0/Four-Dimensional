@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class StartInterface : CanvasLayer
@@ -9,6 +10,7 @@ public partial class StartInterface : CanvasLayer
     private const int RequiredCharacterSelectionCount = 4;
     private const float MenuButtonHoverTextOffset = 20f;
     private const float MenuButtonHoverDuration = 0.12f;
+    private const float CharacterSelectionTransitionDuration = 0.22f;
 
     private sealed class MenuButtonVisuals
     {
@@ -46,6 +48,7 @@ public partial class StartInterface : CanvasLayer
     private Label StatusLine =>
         field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/StatusLine");
     private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
+    private bool _isCharacterSelectionTransitioning;
     private CharacterSelectionOverlay CharacterSelection =>
         GetNodeOrNull<CharacterSelectionOverlay>("CharacterSelectionOverlay");
 
@@ -179,9 +182,55 @@ public partial class StartInterface : CanvasLayer
 
     private void OpenCharacterSelection()
     {
-        if (CharacterSelection != null)
+        _ = OpenCharacterSelectionAsync();
+    }
+
+    private async Task OpenCharacterSelectionAsync()
+    {
+        if (_isCharacterSelectionTransitioning || CharacterSelection != null)
             return;
 
+        _isCharacterSelectionTransitioning = true;
+        SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
+
+        try
+        {
+            if (transitionLayer != null)
+                await transitionLayer.FadeToBlackAsync(CharacterSelectionTransitionDuration);
+
+            var overlay = CreateCharacterSelectionOverlay();
+            if (overlay == null)
+            {
+                if (transitionLayer != null)
+                    await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+                return;
+            }
+
+            AddChild(overlay);
+            overlay.Open(
+                BuildDefaultRoster(),
+                RequiredCharacterSelectionCount,
+                BeginNewRunFromSelection,
+                playEnterAnimation: transitionLayer == null
+            );
+
+            if (transitionLayer != null)
+                await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+        }
+        catch (Exception e)
+        {
+            GD.PushError($"Open character selection transition failed: {e}");
+            if (transitionLayer != null)
+                await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+        }
+        finally
+        {
+            _isCharacterSelectionTransitioning = false;
+        }
+    }
+
+    private CharacterSelectionOverlay CreateCharacterSelectionOverlay()
+    {
         var scene = GD.Load<PackedScene>(CharacterSelectionOverlayScenePath);
         if (scene == null)
         {
@@ -190,7 +239,7 @@ public partial class StartInterface : CanvasLayer
             GD.PushError(
                 $"Character selection scene failed to load: {CharacterSelectionOverlayScenePath}"
             );
-            return;
+            return null;
         }
 
         var overlay = scene.Instantiate<CharacterSelectionOverlay>();
@@ -199,16 +248,11 @@ public partial class StartInterface : CanvasLayer
             if (StatusLine != null)
                 StatusLine.Text = "角色选择界面实例化失败。";
             GD.PushError("Character selection scene failed to instantiate.");
-            return;
+            return null;
         }
 
         overlay.Name = "CharacterSelectionOverlay";
-        AddChild(overlay);
-        overlay.Open(
-            BuildDefaultRoster(),
-            RequiredCharacterSelectionCount,
-            BeginNewRunFromSelection
-        );
+        return overlay;
     }
 
     private void BeginNewRunFromSelection(PlayerInfoStructure[] selectedCharacters, int seed, int difficulty)

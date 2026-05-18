@@ -5,12 +5,12 @@ using Godot;
 public partial class Inexorability : EnemyCharacter
 {
     private const int HurtPowerDown = 2;
-    private const int AllyDyingPowerGain = 2;
+    private const int AllyDyingPowerGain = 4;
 
     public const string PassiveNameText = "不可违逆";
     public static string PassiveDescriptionText =>
         $"受到攻击时：攻击者失去{HurtPowerDown}点力量。\n"
-        + $"敌方有角色进入濒死时：获得{AllyDyingPowerGain}点力量。";
+        + $"有角色进入濒死时：获得{AllyDyingPowerGain}点力量。";
 
     private Func<Character, Character, Task> _allyDyingHandler;
 
@@ -21,7 +21,7 @@ public partial class Inexorability : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        _allyDyingHandler ??= OnHostileDying;
+        _allyDyingHandler ??= OnAnyDying;
         if (BattleNode != null && !BattleNode.DyingEmitList.Contains(_allyDyingHandler))
             BattleNode.DyingEmitList.Add(_allyDyingHandler);
     }
@@ -56,14 +56,9 @@ public partial class Inexorability : EnemyCharacter
         await source.DescendingProperties(PropertyType.Power, HurtPowerDown, this);
     }
 
-    private Task OnHostileDying(Character target, Character source)
+    private Task OnAnyDying(Character target, Character source)
     {
-        if (
-            target == null
-            || target.IsPlayer == IsPlayer
-            || target.BattleNode != BattleNode
-            || State != CharacterState.Normal
-        )
+        if (target == null || target.BattleNode != BattleNode || State != CharacterState.Normal)
         {
             return Task.CompletedTask;
         }
@@ -88,9 +83,9 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 85;
+        MaxLife = 64;
         Power = 7;
-        Survivability = 9;
+        Survivability = 5;
         Speed = 8;
         SkillIDs =
         [
@@ -163,7 +158,7 @@ public partial class InexorabilitySurvive : Skill
 public partial class InexorabilitySpecial : Skill
 {
     private const int SelfPowerGain = 4;
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 15;
     private const int PowerMultiplier = 2;
 
     public InexorabilitySpecial()
@@ -179,13 +174,12 @@ public partial class InexorabilitySpecial : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            BlockStep(0, 8),
             AoeDamageStep(
                 baseDamage: BaseDamage,
                 powerMultiplier: PowerMultiplier,
                 target: HostileTargetsEachRowLast()
-            )
+            ),
+            ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
 }

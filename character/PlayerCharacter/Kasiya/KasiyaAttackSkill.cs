@@ -7,7 +7,7 @@ public partial class KasiyaAttackSkill { }
 public partial class Determination : Skill
 {
     private const int DamageImmuneStacks = 1;
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 6;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -33,7 +33,7 @@ public partial class Determination : Skill
 
 public partial class Smite : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 7;
     private const int SurvivalDown = 5;
 
     public Smite()
@@ -56,7 +56,7 @@ public partial class Smite : Skill
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 5;
 
     public Charge()
         : base(Skill.SkillTypes.Attack)
@@ -89,7 +89,7 @@ public partial class Charge : Skill
 
 public partial class Vower : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 7;
 
     public Vower()
         : base(Skill.SkillTypes.Attack)
@@ -148,7 +148,7 @@ public partial class VulnerablePurge : Skill
 
 public partial class VulnerabilityStrike : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 7;
     private const string TargetKey = "vulnerability_strike_target";
     private bool _targetHadVulnerable;
 
@@ -194,6 +194,81 @@ public partial class VulnerabilityStrike : Skill
                 ConsumeVulnerableSnapshotOrCheckCurrentTarget,
                 $"出手前目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
                 AttackPrimaryStep(TargetKey, baseDamage: BaseDamage, prefix: "额外造成")
+            )
+        );
+    }
+}
+
+public class TerminateLight : Skill
+{
+    private const int BaseDamage = 7;
+
+    public TerminateLight()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "终末之光";
+    public override int EnergyCost => 2;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 3),
+            HurtFriendly(16, 0),
+            ModifyPropertyStep(PropertyType.Power, -2)
+        );
+    }
+}
+
+public class VulnerabilityConversion : Skill
+{
+    public VulnerabilityConversion()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "万军取敌";
+    public override int EnergyCost => 2;
+
+    private static int GetVulnerableStacks(Character target) =>
+        target
+            ?.HurtBuffs?.FirstOrDefault(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
+            )
+            ?.Stack ?? 0;
+
+    private int GetTotalHostileVulnerableStacks()
+    {
+        return OwnerCharater
+                ?.BattleNode?.GetOrderedTeamCharacters(
+                    !OwnerCharater.IsPlayer,
+                    includeSummons: true,
+                    dyingFilter: true
+                )
+                ?.Sum(GetVulnerableStacks) ?? 0;
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackPrimaryStep(baseDamage: 7, powerMultiplier: 2),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Vulnerable,
+                stacks: 1,
+                target: HostileTargets(1)
+            ),
+            ModifyPropertyStep(
+                PropertyType.Power,
+                _ => GetTotalHostileVulnerableStacks(),
+                TargetReference.Self
+            ),
+            TextStep(
+                $"获得等同于敌方所有角色{Buff.BuffName.Vulnerable.GetDescription()}层数总和的力量。"
             )
         );
     }

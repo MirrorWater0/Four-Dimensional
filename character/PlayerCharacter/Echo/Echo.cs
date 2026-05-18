@@ -25,7 +25,7 @@ public partial class Echo : PlayerCharacter
         base.Initialize();
         _passiveSkillUseCount = 0;
         PassiveName = PassiveNameText;
-        PassiveDescription = PassiveDescriptionText;
+        UpdatePassiveDescription();
         BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
     }
 
@@ -47,10 +47,21 @@ public partial class Echo : PlayerCharacter
 
         _passiveSkillUseCount++;
         if (_passiveSkillUseCount < PassiveSkillUseThreshold)
+        {
+            UpdatePassiveDescription();
             return;
+        }
 
         _passiveSkillUseCount = 0;
+        UpdatePassiveDescription();
         UpdataEnergy(PassiveEnergyGain, this);
+    }
+
+    private void UpdatePassiveDescription()
+    {
+        PassiveDescription =
+            $"{PassiveDescriptionText}\n当前计数：{_passiveSkillUseCount}/{PassiveSkillUseThreshold}";
+        InvalidateSkillTooltipCache();
     }
 }
 
@@ -61,10 +72,10 @@ public partial class PlayerCharacterRegistry
         CharacterName = "Echo",
         PassiveName = global::Echo.PassiveNameText,
         PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 43,
-        Power = 6,
-        Survivability = 8,
-        Speed = 7,
+        LifeMax = 28,
+        Power = 5,
+        Survivability = 6,
+        Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],

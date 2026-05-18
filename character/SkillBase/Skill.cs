@@ -58,6 +58,8 @@ public partial class Skill
     public SkillID? SkillId { get; internal set; }
     public virtual int EnergyCost => GetDefaultEnergyCost();
     public virtual bool ExhaustsAfterUse => false;
+    public virtual bool ExhaustsAtTurnEndInHand => false;
+    public virtual bool CanBePlayed => SkillType != SkillTypes.none;
     public bool Enable;
     public string Description;
     public bool Upgraded = false;
@@ -174,12 +176,7 @@ public partial class Skill
     /// <summary>
     /// For non-battle usage (e.g. previews), set preview stats so UpdateDescription can work without a Character instance.
     /// </summary>
-    public void SetPreviewStats(
-        int power,
-        int survivability,
-        int energy = 1,
-        bool isPlayer = true
-    )
+    public void SetPreviewStats(int power, int survivability, int energy = 1, bool isPlayer = true)
     {
         _previewPower = power;
         _previewSurvivability = survivability;
@@ -270,8 +267,13 @@ public partial class Skill
         if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
             return false;
 
+        if (!CanBePlayed)
+            return false;
+
         return availableEnergy >= CardEnergyCost;
     }
+
+    public virtual void OnDrawnToHand(PlayerCharacter player) { }
 
     public bool TrySpendDisplayedEnergy()
     {
@@ -363,9 +365,11 @@ public partial class Skill
         };
     }
 
-    private static int GetBattleRow(int positionIndex) => positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
+    private static int GetBattleRow(int positionIndex) =>
+        positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
 
-    private static int GetBattleCol(int positionIndex) => positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
+    private static int GetBattleCol(int positionIndex) =>
+        positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
 
     private static bool HasInvisibleBuff(Character target) =>
         target?.StartActionBuffs?.Any(buff =>
@@ -377,13 +381,14 @@ public partial class Skill
             buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
         ) == true;
 
-    private Character[] FilterHostileTargetSequence(
+    public static Character[] FilterHostileTargetSequence(
         IEnumerable<Character> orderedTargets,
-        bool returnDummyWhenEmpty
+        bool returnDummyWhenEmpty = false,
+        Character dummyTarget = null
     )
     {
-        Character[] ordered = orderedTargets?.Where(target => target != null).ToArray()
-            ?? Array.Empty<Character>();
+        Character[] ordered =
+            orderedTargets?.Where(target => target != null).ToArray() ?? Array.Empty<Character>();
         Character[] visibleTargets = ordered.Where(target => !HasInvisibleBuff(target)).ToArray();
 
         // If everyone is invisible, fall back to the original ordered sequence and
@@ -395,11 +400,50 @@ public partial class Skill
         if (targets.Length > 0 || !returnDummyWhenEmpty)
             return targets;
 
-        Character dummy = OwnerCharater?.BattleNode?.dummy;
-        return dummy != null ? [dummy] : Array.Empty<Character>();
+        return dummyTarget != null ? [dummyTarget] : Array.Empty<Character>();
     }
 
-    private Character[] GetHostileTargetsInTeamOrder(bool dyingFilter, bool returnDummyWhenEmpty = false)
+    public static Character[] ChooseHostileTargetsByOrder(
+        Character owner,
+        bool byBehindRow = false,
+        bool returnDummyWhenEmpty = true,
+        bool normalOnly = true,
+        bool dyingFilter = false
+    )
+    {
+        if (owner?.BattleNode == null)
+            return Array.Empty<Character>();
+
+        int attackerRow = GetBattleRow(owner.PositionIndex);
+
+        IEnumerable<Character> source = owner
+            .BattleNode.GetOrderedTeamCharacters(
+                !owner.IsPlayer,
+                includeSummons: true,
+                dyingFilter: dyingFilter
+            )
+            .Where(target => target != null);
+
+        if (normalOnly)
+            source = source.Where(target => target.State == Character.CharacterState.Normal);
+
+        IEnumerable<Character> ordered = byBehindRow
+            ? source
+                .OrderBy(target => Math.Abs(GetBattleRow(target.PositionIndex) - attackerRow))
+                .ThenBy(target => GetBattleRow(target.PositionIndex))
+                .ThenByDescending(target => GetBattleCol(target.PositionIndex))
+            : source
+                .OrderBy(target => Math.Abs(GetBattleRow(target.PositionIndex) - attackerRow))
+                .ThenBy(target => GetBattleRow(target.PositionIndex))
+                .ThenBy(target => GetBattleCol(target.PositionIndex));
+
+        return FilterHostileTargetSequence(ordered, returnDummyWhenEmpty, owner.BattleNode?.dummy);
+    }
+
+    private Character[] GetHostileTargetsInTeamOrder(
+        bool dyingFilter,
+        bool returnDummyWhenEmpty = false
+    )
     {
         if (OwnerCharater?.BattleNode == null)
             return Array.Empty<Character>();
@@ -409,38 +453,16 @@ public partial class Skill
             includeSummons: true,
             dyingFilter: dyingFilter
         );
-        return FilterHostileTargetSequence(orderedTargets, returnDummyWhenEmpty);
+        return FilterHostileTargetSequence(
+            orderedTargets,
+            returnDummyWhenEmpty,
+            OwnerCharater.BattleNode?.dummy
+        );
     }
 
     public Character[] ChosetargetByOrder(bool byBehindRow = false)
     {
-        if (OwnerCharater?.BattleNode == null)
-            return [];
-
-        int attackerRow = GetBattleRow(OwnerCharater.PositionIndex);
-
-        IEnumerable<Character> source = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
-            !OwnerCharater.IsPlayer,
-            includeSummons: true
-        );
-
-        var ordered = byBehindRow
-            ? source
-                .Where(x => x != null)
-                .OrderBy(x => Math.Abs(GetBattleRow(x.PositionIndex) - attackerRow))
-                .ThenBy(x => GetBattleRow(x.PositionIndex))
-                .ThenByDescending(x => GetBattleCol(x.PositionIndex))
-                .Where(x => x.State == Character.CharacterState.Normal)
-                .ToArray()
-            : source
-                .Where(x => x != null)
-                .OrderBy(x => Math.Abs(GetBattleRow(x.PositionIndex) - attackerRow))
-                .ThenBy(x => GetBattleRow(x.PositionIndex))
-                .ThenBy(x => GetBattleCol(x.PositionIndex))
-                .Where(x => x.State == Character.CharacterState.Normal)
-                .ToArray();
-
-        return FilterHostileTargetSequence(ordered, returnDummyWhenEmpty: true);
+        return ChooseHostileTargetsByOrder(OwnerCharater, byBehindRow, returnDummyWhenEmpty: true);
     }
 
     private static bool IsDummyTarget(Skill skill, Character target)
@@ -581,6 +603,7 @@ public partial class Skill
         second.OriginalPosition = secondTarget;
         battle.RefreshSummonPositions(first);
         battle.RefreshSummonPositions(second);
+        battle.RefreshTurnOrderPreview();
 
         await Task.WhenAll(
             TweenSpriteProgress(first, 0f, appearDuration),
@@ -723,8 +746,7 @@ public partial class Skill
 
     private static bool CanContinueAttack(Character owner, Character target)
     {
-        return
-            owner != null
+        return owner != null
             && owner.State != Character.CharacterState.Dying
             && target != null
             && target.State == Character.CharacterState.Normal;
@@ -1042,6 +1064,23 @@ public partial class Skill
             SkillID.InexorabilityAttack => new InexorabilityAttack(),
             SkillID.InexorabilitySurvive => new InexorabilitySurvive(),
             SkillID.InexorabilitySpecial => new InexorabilitySpecial(),
+            SkillID.GraveWraithAttack => new GraveWraithAttack(),
+            SkillID.GraveWraithSurvive => new GraveWraithSurvive(),
+            SkillID.GraveWraithSpecial => new GraveWraithSpecial(),
+            SkillID.DeathAttack => new DeathAttack(),
+            SkillID.DeathSurvive => new DeathSurvive(),
+            SkillID.DeathSpecial => new DeathSpecial(),
+            SkillID.VoidAcolyteAttack => new VoidAcolyteAttack(),
+            SkillID.VoidAcolyteSurvive => new VoidAcolyteSurvive(),
+            SkillID.VoidAcolyteSpecial => new VoidAcolyteSpecial(),
+            SkillID.VoidStatus => new VoidStatus(),
+            SkillID.WoundStatus => new WoundStatus(),
+            SkillID.HollowBulwarkAttack => new HollowBulwarkAttack(),
+            SkillID.HollowBulwarkSurvive => new HollowBulwarkSurvive(),
+            SkillID.HollowBulwarkSpecial => new HollowBulwarkSpecial(),
+            SkillID.MarrowReaverAttack => new MarrowReaverAttack(),
+            SkillID.MarrowReaverSurvive => new MarrowReaverSurvive(),
+            SkillID.MarrowReaverSpecial => new MarrowReaverSpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicGuard => new BasicGuard(),
@@ -1367,6 +1406,39 @@ public enum SkillID
     InexorabilityAttack = 91,
     InexorabilitySurvive = 92,
     InexorabilitySpecial = 93,
+    #endregion
+
+    #region GraveWraith
+    GraveWraithAttack = 115,
+    GraveWraithSurvive = 116,
+    GraveWraithSpecial = 117,
+    #endregion
+
+    #region Death
+    DeathAttack = 118,
+    DeathSurvive = 119,
+    DeathSpecial = 120,
+    #endregion
+
+    #region VoidAcolyte
+    VoidAcolyteAttack = 121,
+    VoidAcolyteSurvive = 122,
+    VoidAcolyteSpecial = 123,
+    VoidStatus = 124,
+    #endregion
+
+    WoundStatus = 131,
+
+    #region HollowBulwark
+    HollowBulwarkAttack = 125,
+    HollowBulwarkSurvive = 126,
+    HollowBulwarkSpecial = 127,
+    #endregion
+
+    #region MarrowReaver
+    MarrowReaverAttack = 128,
+    MarrowReaverSurvive = 129,
+    MarrowReaverSpecial = 130,
     #endregion
 
     #region Basis

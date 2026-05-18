@@ -15,7 +15,9 @@ public partial class Map : Control
     public TextureRect GameMap => field ??= GetNode("GameMap") as TextureRect;
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
-    public Label RegionLabel => field ??= GetNodeOrNull<Label>("UI/RegionLabel");
+    public Label RegionLabel =>
+        field ??= GetNodeOrNull<Label>("MapLabel/RegionLabel")
+            ?? GetNodeOrNull<Label>("UI/RegionLabel");
     public Label DifficultyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
@@ -374,6 +376,12 @@ public partial class Map : Control
         _targetPos = Camera.ClampToBoundary(new Vector2(Camera.WorldLeftBoundary, Camera.FixedCenterY));
         SetCameraPosition(_targetPos);
         UpdateMiniMapIndicator();
+    }
+
+    public void ForceUpdateRegionLabel()
+    {
+        _regionLabelInitialized = false;
+        UpdateRegionLabel();
     }
 
     private void ApplyWheelMove(float deltaX)

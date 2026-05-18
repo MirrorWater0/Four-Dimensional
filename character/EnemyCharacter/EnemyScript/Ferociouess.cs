@@ -90,9 +90,9 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 35;
+        MaxLife = 26;
         Power = 5;
-        Survivability = 11;
+        Survivability = 5;
         Speed = 7;
         SkillIDs =
         [

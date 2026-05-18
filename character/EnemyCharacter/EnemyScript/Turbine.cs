@@ -79,10 +79,10 @@ public partial class TurbineRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
-        MaxLife = 50;
-        Power = 7;
-        Survivability = 9;
-        Speed = 6;
+        MaxLife = 45;
+        Power = 10;
+        Survivability = 5;
+        Speed = 7;
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
 
         PassiveName = global::Turbine.PassiveNameText;
@@ -130,7 +130,7 @@ public partial class TurbineSurvive : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "护压循环";
+    public override string SkillName { get; set; } = "循环";
 
     protected override SkillPlan BuildPlan()
     {
@@ -138,15 +138,16 @@ public partial class TurbineSurvive : Skill
             this,
             BlockStep(0, BaseSurvivabilityGain, SurvivabilityMultiplier),
             ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next),
-            EnergyStep(AllyEnergyGain, TargetReference.Next)
+            EnergyStep(AllyEnergyGain, TargetReference.All)
         );
     }
 }
 
 public partial class TurbineSpecial : Skill
 {
-    private const int SelfPowerGain = 3;
+    private const int SelfPowerGain = 10;
     private const int ThornStacks = 8;
+    private const int WoundCount = 1;
 
     public TurbineSpecial()
         : base(SkillTypes.Special)
@@ -168,7 +169,13 @@ public partial class TurbineSpecial : Skill
                 stacks: ThornStacks,
                 target: TargetReference.Self
             ),
-            CarryStep(target: TargetReference.Previous, skillIndex: 1)
+            CarryStep(target: TargetReference.Previous, skillIndex: 1),
+            AddStatusCardsToDrawPileStep(
+                SkillID.WoundStatus,
+                WoundCount,
+                HostileTargets(),
+                "敌方全阵"
+            )
         );
     }
 }

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://dxvldl73uw02a"]
 
 [ext_resource type="Script" uid="uid://cgpmcjgic6wbb" path="res://Map/Map.cs" id="1_exof5"]
-[ext_resource type="Texture2D" uid="uid://dumj1lsd56obi" path="res://asset/Map/pandemos_empire_krita.jpg" id="1_we4l4"]
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
@@ -18,8 +17,6 @@
 background_mode = 3
 glow_enabled = true
 glow_intensity = 3.0
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ehio4"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_panel"]
 bg_color = Color(0.017500002, 0.034833334, 0.05, 0.42352942)
@@ -181,15 +178,6 @@ metadata/_edit_lock_ = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1386322302]
 environment = SubResource("Environment_cccvd")
-
-[node name="GameMap" type="TextureRect" parent="." unique_id=394882337]
-visible = false
-material = SubResource("ShaderMaterial_ehio4")
-layout_mode = 0
-offset_right = 1956.0
-offset_bottom = 1095.0
-texture = ExtResource("1_we4l4")
-metadata/_edit_lock_ = true
 
 [node name="DragButton" type="Button" parent="." unique_id=121878651]
 self_modulate = Color(1, 1, 1, 0)

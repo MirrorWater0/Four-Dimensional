@@ -889,6 +889,7 @@ autoplay = &"intention"
 normal_material = SubResource("ShaderMaterial_n13y5")
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=914609816]
+visible = false
 top_level = true
 material = SubResource("ShaderMaterial_3q742")
 position = Vector2(0, 159)

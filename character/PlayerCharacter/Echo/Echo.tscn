@@ -44,7 +44,7 @@ shader_parameter/beam_color = Color(0, 1, 1, 1)
 script = ExtResource("1_p8ruw")
 Sprite = NodePath("SpineSprite")
 
-[node name="Sprite" parent="." index="7" unique_id=968479023]
+[node name="Sprite" parent="." index="8" unique_id=968479023]
 visible = false
 material = SubResource("ShaderMaterial_1vdpg")
 texture = ExtResource("5_jxkbc")
@@ -52,7 +52,7 @@ texture = ExtResource("5_jxkbc")
 [node name="Special" parent="Intention" parent_id_path=PackedInt32Array(1751708892) index="1" unique_id=1589759617]
 material = SubResource("ShaderMaterial_dx2yc")
 
-[node name="SpineSprite" parent="." index="11" unique_id=313145576]
+[node name="SpineSprite" parent="." index="12" unique_id=313145576]
 skeleton_data_res = ExtResource("6_hb044")
 normal_material = SubResource("ShaderMaterial_6byvp")
 preview_skin = "default"

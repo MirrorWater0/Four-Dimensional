@@ -486,33 +486,6 @@ public partial class Battle
         );
     }
 
-    public void RecordCardDrawReserveChange(Character target, int delta, Character source = null)
-    {
-        if (delta == 0)
-            return;
-
-        string sourceText = FormatRecordSource(source);
-        string targetText = FormatRecordActor(target, RecordTargetColor);
-        string action = delta > 0 ? "\u83b7\u5f97" : "\u5931\u53bb";
-        AppendRecordLine(
-            $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] \u70b9\u62bd\u5361\u50a8\u5907",
-            indent: true
-        );
-    }
-
-    public void RecordCardDrawReserveUse(Character actor, int reserveCost, int drawnCards)
-    {
-        if (actor == null || reserveCost <= 0 || drawnCards <= 0)
-            return;
-
-        string sourceText = FormatRecordSource(actor);
-        string targetText = FormatRecordActor(actor, RecordTargetColor);
-        AppendRecordLine(
-            $"{sourceText} -> {targetText}  \u4f7f\u7528  [color={RecordNeutralColor}]{reserveCost}[/color] \u70b9\u62bd\u5361\u50a8\u5907\uff0c\u62bd\u53d6  [color={RecordNeutralColor}]{drawnCards}[/color] \u5f20\u724c",
-            indent: true
-        );
-    }
-
     public void RecordPropertyChange(
         Character target,
         PropertyType type,
@@ -547,6 +520,30 @@ public partial class Battle
         string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
         AppendRecordLine(
             $"{sourceText} -> {targetText}  获得  [color={RecordNeutralColor}]{stacks}[/color] 层{buffName.GetDescription()}",
+            indent: true
+        );
+    }
+
+    public void RecordStatusCardInsert(
+        Character target,
+        SkillID skillId,
+        int count,
+        bool toHand = false,
+        Character source = null
+    )
+    {
+        if (target == null || count <= 0)
+            return;
+
+        string sourceText = FormatRecordSource(source);
+        string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
+        Skill skill = Skill.GetSkill(skillId);
+        string skillName = string.IsNullOrWhiteSpace(skill?.SkillName)
+            ? skillId.ToString()
+            : skill.SkillName;
+        string destination = toHand ? "手牌" : "抽牌堆";
+        AppendRecordLine(
+            $"{sourceText} -> {targetText}  向{destination}塞入  [color={RecordNeutralColor}]{count}[/color] 张[color={RecordSkillColor}]{skillName}[/color]",
             indent: true
         );
     }

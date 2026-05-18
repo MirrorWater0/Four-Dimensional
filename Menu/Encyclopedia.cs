@@ -276,6 +276,11 @@ public partial class Encyclopedia : Control
             new TurbineRegedit(),
             new BlackHawkRegedit(),
             new InexorabilityRegedit(),
+            new GraveWraithRegedit(),
+            new VoidAcolyteRegedit(),
+            new HollowBulwarkRegedit(),
+            new MarrowReaverRegedit(),
+            new DeathRegedit(),
         ];
     }
 

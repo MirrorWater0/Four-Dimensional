@@ -7,7 +7,7 @@ public partial class NightingaleAttackSkill { }
 
 public partial class ShadowAmbush : Skill
 {
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 7;
     int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
@@ -39,8 +39,8 @@ public partial class ShadowAmbush : Skill
 
 public partial class ShadowExecution : Skill
 {
-    private const int BaseDamage = 17;
-    private const int DoubleStrikeBaseDamage = -3;
+    private const int BaseDamage = 8;
+    private const int DoubleStrikeBaseDamage = 0;
     private const string KillTargetKey = "目标";
 
     public ShadowExecution()
@@ -67,7 +67,7 @@ public partial class ShadowExecution : Skill
 
 public partial class BreakStrike : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 7;
 
     public BreakStrike()
         : base(SkillTypes.Attack)
@@ -103,8 +103,8 @@ public partial class BreakStrike : Skill
 
 public partial class StasisBlade : Skill
 {
-    private const int BaseDamage = 12;
-    private const int SpeedDown = 5;
+    private const int BaseDamage = 7;
+    private const int SpeedDown = 4;
 
     public StasisBlade()
         : base(SkillTypes.Attack)
@@ -148,7 +148,7 @@ public partial class ContinuousPierce : Skill
             ConditionStep(
                 () => IsAtFullLife,
                 "满血",
-                AttackPrimaryStep(baseDamage: -3, powerMultiplier: 1, prefix: "额外造成", times: 2),
+                AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, prefix: "额外造成", times: 2),
                 HurtFriendly(SelfDamage, 0)
             )
         );
@@ -157,7 +157,7 @@ public partial class ContinuousPierce : Skill
 
 public partial class RuinBlade : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 4;
 
     public RuinBlade()
         : base(SkillTypes.Attack)

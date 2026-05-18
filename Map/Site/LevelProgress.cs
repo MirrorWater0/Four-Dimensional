@@ -5,7 +5,9 @@ using Godot;
 
 public partial class LevelProgress : Control
 {
-    private const int MapLength = 12; // Number of stages
+    private const int RegionOneMapLength = 12; // Number of stages
+    private const int RegionTwoMapLength = RegionOneMapLength - 2;
+    private static int MapLength => GameInfo.CurrentLevel > 0 ? RegionTwoMapLength : RegionOneMapLength;
     private const int MaxMapHeight = 4; // Maximum vertical slots per stage
     private const int BossSlot = 1;
     private const int PathCount = 6;
@@ -612,9 +614,15 @@ public partial class LevelProgress : Control
         }
     }
 
-    public void AdvanceToNextRegion()
+    public async void AdvanceToNextRegion()
     {
+        var transition = SceneTransitionLayer.Ensure(this);
+        if (transition != null)
+            await transition.FadeToBlackAsync(0.36f);
+
         GameInfo.CurrentLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
+        GameInfo.TransitionEnergy = GameInfo.TransitionEnergyMax;
+        bool showBossRelicChoice = GameInfo.CurrentLevel == 1;
         GameInfo.FirstLevelState.Clear();
         _manualLock = false;
         _manualLockSawBlockingUi = false;
@@ -624,8 +632,20 @@ public partial class LevelProgress : Control
         RefreshNodeInteractivity();
 
         _map ??= GetParent() as Map;
+        if (_map?.PlayerResourceState != null)
+            _map.PlayerResourceState.TransitionEnergy = GameInfo.TransitionEnergy;
+        _map?.ForceUpdateRegionLabel();
         _map?.ResetCameraToStart();
         SaveSystem.SaveAll();
+
+        if (GetTree() != null)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        if (transition != null)
+            await transition.FadeFromBlackAsync(0.36f);
+
+        if (showBossRelicChoice)
+            BossRelicChoice.Show(this);
     }
 
     private static int BuildMapSeed()

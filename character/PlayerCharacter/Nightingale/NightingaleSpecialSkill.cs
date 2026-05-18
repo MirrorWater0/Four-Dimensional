@@ -47,7 +47,6 @@ public partial class TempoSurge : Skill
 
 public partial class LongNight : Skill
 {
-    private const int SpeedLoss = 3;
 
     public override string SkillName { get; set; } = "长夜";
     public override int EnergyCost => 3;
@@ -153,7 +152,8 @@ public partial class CurtainCallMoment : Skill
 
 public partial class SunMoonCycle : Skill
 {
-    private const int DrawReserveGain = 4;
+    private const int DrawCount = 2;
+    private const int CardRefreshStacks = 2;
     public override bool ExhaustsAfterUse => true;
 
     public SunMoonCycle()
@@ -167,7 +167,15 @@ public partial class SunMoonCycle : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, DrawReserveStep(DrawReserveGain));
+        return new SkillPlan(
+            this,
+            DrawCardsStep(DrawCount),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: CardRefreshStacks,
+                target: TargetReference.All
+            )
+        );
     }
 }
 

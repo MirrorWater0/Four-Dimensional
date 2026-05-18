@@ -99,11 +99,11 @@ public partial class AimTarget : ColorRect
         if (battle == null)
             return null;
 
-        var candidates = new List<Character>();
-        if (battle.PlayersList != null)
-            candidates.AddRange(battle.PlayersList.Where(x => x != null));
-        if (battle.EnemiesList != null)
-            candidates.AddRange(battle.EnemiesList.Where(x => x != null));
+        var candidates = battle
+            .GetTeamCharacters(isPlayer: true, includeSummons: true)
+            .Concat(battle.GetTeamCharacters(isPlayer: false, includeSummons: true))
+            .Where(x => x != null)
+            .ToList();
 
         Character best = null;
         int bestZ = int.MinValue;

@@ -39,9 +39,12 @@ public partial class Character : Node2D
         get => _state;
         set
         {
+            bool changed = _state != value;
             _state = value;
             if (_state == CharacterState.Dying)
                 BattleNode?.ClearNextActionPreviewCharacter(this);
+            if (changed)
+                BattleNode?.RefreshTurnOrderPreview();
             RefreshBattleActionPoinUi();
         }
     }
@@ -178,6 +181,35 @@ public partial class Character : Node2D
     public void ConfigureCombatStats(int power, int survivability, int speed, int maxLife)
     {
         SetCombatStats(power, survivability, speed, maxLife);
+    }
+
+    public void ApplyCombatStatMultiplier(float multiplier, bool refillLife = false)
+    {
+        if (multiplier <= 0f)
+            return;
+
+        SetCombatStats(
+            ScaleCombatStat(BattlePower, multiplier),
+            ScaleCombatStat(BattleSurvivability, multiplier),
+            ScaleCombatStat(Speed, multiplier),
+            ScaleCombatStat(BattleMaxLife, multiplier)
+        );
+
+        Life = refillLife ? BattleMaxLife : Math.Min(Life, BattleMaxLife);
+        SyncLifeBarsToCurrent(syncBufferValue: true);
+        PowerIconLabel.Text = BattlePower.ToString();
+        SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+        SpeedIconLabel.Text = Speed.ToString();
+        EnergeIconLabel.Text = Energy.ToString();
+        InvalidateHoverTooltipCache();
+    }
+
+    private static int ScaleCombatStat(int value, float multiplier)
+    {
+        if (value <= 0)
+            return value;
+
+        return Math.Max(1, Mathf.CeilToInt(value * multiplier));
     }
 
     public virtual void Initialize()
@@ -386,7 +418,6 @@ public partial class Character : Node2D
             BuffTooltip.SetText(GetOrBuildBuffTooltipText());
             BattleNode?.LogHoverPerfWork(this, "character-hover-bufftip", stepStartUsec);
         }
-
     }
 
     private string BuildSkillTooltipText()
@@ -408,7 +439,7 @@ public partial class Character : Node2D
 
         const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
-        const int skillNameFontSize = 32;
+        int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
 
         var validSkills = Skills.Where(x => x != null).ToArray();
         for (int i = 0; i < validSkills.Length; i++)
@@ -452,22 +483,18 @@ public partial class Character : Node2D
             player.BattleNode?.GetExhaustedBattleCardPile(player) ?? Array.Empty<SkillID>();
 
         const string skillNameColor = "#b56bff";
-        const int skillNameFontSize = 32;
+        int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
         sb.Append(
             $"[font_size={skillNameFontSize}][color={skillNameColor}]抽牌堆[/color][/font_size]\n"
         );
         AppendSkillPileLines(sb, GetSkillsFromIds(drawPileIds), emptyText: "空");
 
         sb.Append("\n[hr]\n");
-        sb.Append(
-            $"[font_size={skillNameFontSize}][color=#9cdacf]弃牌堆[/color][/font_size]\n"
-        );
+        sb.Append($"[font_size={skillNameFontSize}][color=#9cdacf]弃牌堆[/color][/font_size]\n");
         AppendSkillPileLines(sb, GetSkillsFromIds(discardPileIds), emptyText: "空");
 
         sb.Append("\n[hr]\n");
-        sb.Append(
-            $"[font_size={skillNameFontSize}][color=#ffb86b]消耗卡堆[/color][/font_size]\n"
-        );
+        sb.Append($"[font_size={skillNameFontSize}][color=#ffb86b]消耗卡堆[/color][/font_size]\n");
         AppendSkillPileLines(sb, GetSkillsFromIds(exhaustedIds), emptyText: "空");
     }
 
@@ -482,8 +509,9 @@ public partial class Character : Node2D
             return Array.Empty<SkillID>();
         }
 
-        return (GameInfo.PlayerCharacters[characterIndex].GainedSkills ?? new List<SkillID>())
-            .ToArray();
+        return (
+            GameInfo.PlayerCharacters[characterIndex].GainedSkills ?? new List<SkillID>()
+        ).ToArray();
     }
 
     private static Skill[] GetSkillsFromIds(IEnumerable<SkillID> skillIds)
@@ -516,9 +544,9 @@ public partial class Character : Node2D
     {
         string[] names = FormatStackedSkillNames(
             skills
-            .Where(skill => skill.SkillType == skillType)
-            .Select(skill => skill.SkillName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Where(skill => skill.SkillType == skillType)
+                .Select(skill => skill.SkillName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
         );
         if (names.Length == 0)
             return;
@@ -544,7 +572,7 @@ public partial class Character : Node2D
             return;
 
         const string passiveColor = "#ffd36b";
-        const int titleFontSize = 30;
+        int titleFontSize = UserSettings.ScaleTextFontSize(30);
 
         string title = string.IsNullOrWhiteSpace(passiveName) ? "Passive" : passiveName;
         sb.Append(
@@ -564,6 +592,11 @@ public partial class Character : Node2D
         return GetOrBuildSkillTooltipText();
     }
 
+    public string GetBuffTooltipText()
+    {
+        return GetOrBuildBuffTooltipText();
+    }
+
     public void InvalidateHoverTooltipCache()
     {
         _skillTooltipCacheDirty = true;
@@ -576,6 +609,25 @@ public partial class Character : Node2D
     {
         _skillTooltipCacheDirty = true;
         _cachedSkillTooltipText = null;
+        RefreshVisibleSkillTooltipText();
+    }
+
+    public void RefreshSkillTooltipTextFromSettings()
+    {
+        InvalidateSkillTooltipCache();
+
+        if (_localSkillTooltip != null && GodotObject.IsInstanceValid(_localSkillTooltip))
+            _localSkillTooltip.PreloadText(GetOrBuildSkillTooltipText());
+
+        if (
+            _isHoverframeHovered
+            && SkillTooltip != null
+            && GodotObject.IsInstanceValid(SkillTooltip)
+        )
+        {
+            SkillTooltip.FollowMouse = true;
+            SkillTooltip.SetText(GetOrBuildSkillTooltipText());
+        }
     }
 
     public void InvalidateBuffTooltipCache()
@@ -593,6 +645,32 @@ public partial class Character : Node2D
         }
 
         return _cachedSkillTooltipText;
+    }
+
+    private void RefreshVisibleSkillTooltipText()
+    {
+        if (!_isHoverframeHovered || State == CharacterState.Dying)
+            return;
+
+        string skillText = GetOrBuildSkillTooltipText();
+        if (_localSkillTooltip != null && GodotObject.IsInstanceValid(_localSkillTooltip))
+        {
+            if (_localSkillTooltip.Visible)
+                _localSkillTooltip.SetText(skillText);
+            else
+                _localSkillTooltip.PreloadText(skillText);
+            return;
+        }
+
+        if (
+            SkillTooltip != null
+            && GodotObject.IsInstanceValid(SkillTooltip)
+            && SkillTooltip.Visible
+        )
+        {
+            SkillTooltip.FollowMouse = true;
+            SkillTooltip.SetText(skillText);
+        }
     }
 
     private string GetOrBuildBuffTooltipText()
@@ -890,16 +968,14 @@ public partial class Character : Node2D
 
     private void ApplyTurnOrderPreviewStyle(int order, bool isCurrent)
     {
-        Color accent = isCurrent
-            ? new Color(1f, 0.84f, 0.33f, 1f)
-            : IsPlayer
-                ? new Color(0.42f, 0.88f, 1f, 1f)
-                : new Color(1f, 0.47f, 0.42f, 1f);
-        Color fill = isCurrent
-            ? new Color(0.22f, 0.16f, 0.05f, 0.92f)
-            : IsPlayer
-                ? new Color(0.05f, 0.14f, 0.22f, 0.88f)
-                : new Color(0.2f, 0.07f, 0.08f, 0.88f);
+        Color accent =
+            isCurrent ? new Color(1f, 0.84f, 0.33f, 1f)
+            : IsPlayer ? new Color(0.42f, 0.88f, 1f, 1f)
+            : new Color(1f, 0.47f, 0.42f, 1f);
+        Color fill =
+            isCurrent ? new Color(0.22f, 0.16f, 0.05f, 0.92f)
+            : IsPlayer ? new Color(0.05f, 0.14f, 0.22f, 0.88f)
+            : new Color(0.2f, 0.07f, 0.08f, 0.88f);
         Color glow = accent with { A = isCurrent ? 0.95f : 0.72f };
         Color valueColor = isCurrent
             ? new Color(1f, 0.95f, 0.78f, 1f)
@@ -956,7 +1032,7 @@ public partial class Character : Node2D
             ClearOwnedSummonsBlock();
         }
 
-        UpdataEnergy(TurnStartEnergyGain);
+        UpdataEnergy(TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this));
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -1036,7 +1112,7 @@ public partial class Character : Node2D
 
         global::Number.Spawn(this, (-(int)damage).ToString(), Colors.Red);
 
-        BattleNode.BattleAnimationPlayer.Play("hit");
+        BattleNode?.PlayHitEffect();
 
         int incomingDamage = Math.Max((int)damage, 0);
         int previousBlock = Block;
@@ -1049,6 +1125,8 @@ public partial class Character : Node2D
         UpdataBlock(0);
         AnimateLifeBarsAfterDamage();
         BattleNode?.RecordDamage(this, actualDamage, blockedDamage, source);
+        if (actualDamage > 0)
+            source?.OnDealUnblockedDamage(this, actualDamage, damageKind);
 
         PlayHurtMoveTween();
         Tween tween = CreateTween();
@@ -1084,7 +1162,15 @@ public partial class Character : Node2D
         _hurtMoveTween
             .TweenProperty(this, "position", OriginalPosition, 0.2f)
             .SetEase(Tween.EaseType.In);
-        _hurtMoveTween.Finished += () => _hurtMoveTween = null;
+        Tween activeTween = _hurtMoveTween;
+        _hurtMoveTween.Finished += () =>
+        {
+            if (_hurtMoveTween != activeTween)
+                return;
+
+            Position = OriginalPosition;
+            _hurtMoveTween = null;
+        };
     }
 
     public virtual void Recover(int num, bool rebirth = false, Character source = null)
@@ -1159,8 +1245,18 @@ public partial class Character : Node2D
 
     public virtual void DisableSkill() { }
 
+    public virtual void OnDealUnblockedDamage(
+        Character target,
+        int actualDamage,
+        DamageKind damageKind
+    ) { }
+
     public virtual void UpdataEnergy(int num, Character source = null)
     {
+        if (num > 0)
+        {
+            BattleNode?.BattleAnimationPlayer?.Play("blue");
+        }
         Energy += num;
         EnergeIconLabel.Text = Energy.ToString();
         InvalidateSkillTooltipCache();
@@ -1186,6 +1282,7 @@ public partial class Character : Node2D
         }
         Block = Math.Clamp(Block + num, 0, 999);
         BlockLabel.Text = Block.ToString();
+        BattleNode?.RefreshEnemyIntentionPreviews();
 
         if (num > 0)
         {
@@ -1254,6 +1351,7 @@ public partial class Character : Node2D
         );
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, -value, source);
+        BattleNode?.RefreshEnemyIntentionPreviews();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
@@ -1306,6 +1404,7 @@ public partial class Character : Node2D
         );
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
+        BattleNode?.RefreshEnemyIntentionPreviews();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
@@ -1334,10 +1433,10 @@ public partial class Character : Node2D
         CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
         AddChild(characterEffect);
         characterEffect.Animation.Play("absorb");
-        if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
-        {
-            BattleNode.BattleAnimationPlayer.Play("blue");
-        }
+        // if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
+        // {
+        //     BattleNode.BattleAnimationPlayer.Play("blue");
+        // }
     }
 
     public void TriggerPassive(Skill skill, bool allowWhenDying = false)

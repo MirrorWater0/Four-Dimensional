@@ -18,6 +18,8 @@ public partial class EnemyCharacter : Character
     public const int NextActionEnergyPreviewBonus = 2;
     private static readonly Color IntentionTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
+    private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
+    private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 36f);
     private static readonly Color IntentionDamageColor = new(1f, 0.84f, 0.63f, 1f);
     private static readonly Color IntentionDamageOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
@@ -34,6 +36,7 @@ public partial class EnemyCharacter : Character
     private int _intentionPreviewHoverDepth;
     private readonly List<Label> _intentionDamageLabels = new();
     private readonly Dictionary<string, Line2D> _intentPreviewLines = new();
+    private Label _intentionDamageSummaryLabel;
 
     public override void _Ready()
     {
@@ -56,6 +59,7 @@ public partial class EnemyCharacter : Character
     public override async Task Dying(Character source = null)
     {
         _intentionPreviewHoverDepth = 0;
+        HideIntentionDamageSummary();
         HideIntentionTargetPreview();
         HideAttackIntentCurve();
         await base.Dying(source);
@@ -78,6 +82,22 @@ public partial class EnemyCharacter : Character
                 Skills = new Skill[3];
         }
         base.Initialize();
+    }
+
+    protected Character[] ChooseHostileTargetsByOrder(
+        bool byBehindRow = false,
+        bool returnDummyWhenEmpty = true,
+        bool normalOnly = true,
+        bool dyingFilter = false
+    )
+    {
+        return Skill.ChooseHostileTargetsByOrder(
+            this,
+            byBehindRow,
+            returnDummyWhenEmpty,
+            normalOnly,
+            dyingFilter
+        );
     }
 
     public override async void StartAction()
@@ -175,6 +195,7 @@ public partial class EnemyCharacter : Character
     public async Task DisappearIntention()
     {
         HideIntentionTargetPreview();
+        HideIntentionDamageSummary();
         Buff.GhostExplode(IntentionContorl, new Vector2(2, 2), useOffsetMotion: false);
         await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
         AttackIntention.Visible = false;
@@ -191,6 +212,7 @@ public partial class EnemyCharacter : Character
         var skill = GetCurrentIntentionSkill();
         if (skill == null)
         {
+            HideIntentionDamageSummary();
             IntentionContorl.Visible = false;
             return;
         }
@@ -218,8 +240,52 @@ public partial class EnemyCharacter : Character
             .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
             .SetEase(Tween.EaseType.Out);
 
+        RefreshIntentionDamageSummary();
+
         if (_intentionPreviewHoverDepth > 0)
             ShowIntentionTargetPreview();
+    }
+
+    public void RefreshIntentionDamageSummary()
+    {
+        if (State == CharacterState.Dying)
+        {
+            HideIntentionDamageSummary();
+            return;
+        }
+
+        var skill = GetCurrentIntentionSkill();
+        if (skill == null)
+        {
+            HideIntentionDamageSummary();
+            return;
+        }
+
+        string text = BuildIntentionDamageSummaryText(skill);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            HideIntentionDamageSummary();
+            return;
+        }
+
+        Label label = GetOrCreateIntentionDamageSummaryLabel();
+        label.Text = text;
+        label.Visible = true;
+
+        Vector2 size = label.GetCombinedMinimumSize();
+        if (size == Vector2.Zero)
+            size = IntentionDamageSummaryFallbackSize;
+        label.Size = size;
+        label.Position = IntentionDamageSummaryOffset;
+
+        if (_intentionPreviewHoverDepth > 0)
+            ShowIntentionTargetPreview();
+    }
+
+    private void HideIntentionDamageSummary()
+    {
+        if (GodotObject.IsInstanceValid(_intentionDamageSummaryLabel))
+            _intentionDamageSummaryLabel.Visible = false;
     }
 
     private void OnIntentionPreviewHoverEntered()
@@ -322,6 +388,15 @@ public partial class EnemyCharacter : Character
     {
         var skill = GetCurrentIntentionSkill();
         return skill?.GetPreviewHostileDamageEntries() ?? Array.Empty<Skill.PreviewDamageEntry>();
+    }
+
+    public Skill.PreviewDamageEntry[] GetCurrentIntentionPreviewDamageEntries(
+        bool includeTargetVulnerable
+    )
+    {
+        var skill = GetCurrentIntentionSkill();
+        return skill?.GetPreviewHostileDamageEntries(includeTargetVulnerable)
+            ?? Array.Empty<Skill.PreviewDamageEntry>();
     }
 
     public Character[] GetCurrentIntentionPreviewDebuffTargets()
@@ -611,6 +686,98 @@ public partial class EnemyCharacter : Character
         label.AddThemeColorOverride("font_color", IntentionDamageColor);
         label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
         return label;
+    }
+
+    private Label GetOrCreateIntentionDamageSummaryLabel()
+    {
+        if (GodotObject.IsInstanceValid(_intentionDamageSummaryLabel))
+            return _intentionDamageSummaryLabel;
+
+        _intentionDamageSummaryLabel = new Label
+        {
+            Name = "DamageSummary",
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            ClipText = false,
+            ZIndex = 2,
+        };
+        _intentionDamageSummaryLabel.AddThemeFontSizeOverride("font_size", 22);
+        _intentionDamageSummaryLabel.AddThemeConstantOverride("outline_size", 4);
+        _intentionDamageSummaryLabel.AddThemeColorOverride("font_color", IntentionDamageColor);
+        _intentionDamageSummaryLabel.AddThemeColorOverride(
+            "font_outline_color",
+            IntentionDamageOutlineColor
+        );
+        IntentionContorl.AddChild(_intentionDamageSummaryLabel);
+        return _intentionDamageSummaryLabel;
+    }
+
+    private string BuildIntentionDamageSummaryText(Skill skill)
+    {
+        if (skill == null)
+            return string.Empty;
+
+        Skill.PreviewDamageEntry[] entries = skill
+            .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
+            .Where(entry =>
+                entry.Target != null
+                && GodotObject.IsInstanceValid(entry.Target)
+                && entry.Target.State == CharacterState.Normal
+                && entry.Damage > 0
+            )
+            .ToArray();
+        if (entries.Length == 0)
+            return string.Empty;
+
+        var uniqueTargets = entries
+            .Select(entry => entry.Target)
+            .Where(target => target != null && GodotObject.IsInstanceValid(target))
+            .Distinct()
+            .ToArray();
+        if (uniqueTargets.Length == 0)
+            return string.Empty;
+
+        string[] damageTexts = entries
+            .Select(FormatIntentionDamageEntry)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .Distinct()
+            .ToArray();
+        if (damageTexts.Length == 0)
+            return string.Empty;
+
+        string text = string.Join("/", damageTexts);
+        if (uniqueTargets.Length <= 1)
+            return text;
+
+        return $"{text}（{BuildIntentionDamageTargetSuffix(uniqueTargets.Length)}）";
+    }
+
+    private string BuildIntentionDamageTargetSuffix(int targetCount)
+    {
+        int allHostileCount =
+            BattleNode
+                ?.GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
+                .Count(target =>
+                    target != null
+                    && GodotObject.IsInstanceValid(target)
+                    && target.State == CharacterState.Normal
+                ) ?? 0;
+        return allHostileCount > 0 && targetCount >= allHostileCount ? "全体" : $"{targetCount}个";
+    }
+
+    private static string FormatIntentionDamageEntry(Skill.PreviewDamageEntry entry)
+    {
+        int hitCount = Math.Max(entry.HitCount, 1);
+        int damage = Math.Max(entry.Damage, 0);
+        if (hitCount <= 1)
+            return damage.ToString();
+
+        if (damage % hitCount == 0)
+            return $"{damage / hitCount}x{hitCount}";
+
+        return $"{damage}({hitCount}段)";
     }
 
     private void ShowDamageLabel(Label label, Skill.PreviewDamageEntry entry, Vector2 targetScreenPosition)

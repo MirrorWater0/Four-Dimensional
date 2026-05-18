@@ -105,6 +105,7 @@ public partial class Skill
             catalog,
             SkillRarity.Rare,
             SkillID.DisasterImpact,
+            SkillID.TerminateLight,
             SkillID.VoidForm,
             SkillID.EchoForm,
             SkillID.BarrierDuplication,

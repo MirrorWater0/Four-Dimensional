@@ -63,6 +63,7 @@ public partial class Reward : CanvasLayer
         public RelicID RelicId;
         public ItemID ItemId;
         public int SkillGroupIndex = -1;
+        public bool ForceRareSkillReward;
         public SkillID?[] OfferedSkillIds;
         public int[] OfferedPlayerIndexes;
     }
@@ -183,12 +184,13 @@ public partial class Reward : CanvasLayer
     }
 
     /// <summary>Add a skill reward entry to the inventory list.</summary>
-    public CardSlot AddSkillRewardEntry(string title = "技能奖励")
+    public CardSlot AddSkillRewardEntry(string title = "技能奖励", bool forceRare = false)
     {
         var entry = new RewardEntry
         {
             Kind = RewardKind.Skill,
             SkillGroupIndex = _nextSkillRewardGroupIndex++,
+            ForceRareSkillReward = forceRare,
         };
         var card = CreateRewardCard(title, "点击展开技能卡");
         if (card == null)
@@ -570,21 +572,27 @@ public partial class Reward : CanvasLayer
                     avoidSkillIds.Add(priorSkillId.Value);
             }
 
-            entry.OfferedSkillIds[i] = PickSkillId(players[i], rng, avoidSkillIds);
+            entry.OfferedSkillIds[i] = PickSkillId(
+                players[i],
+                rng,
+                avoidSkillIds,
+                entry.ForceRareSkillReward ? Skill.SkillRarity.Rare : null
+            );
         }
     }
 
     private static SkillID? PickSkillId(
         PlayerInfoStructure info,
         Random rng,
-        ISet<SkillID> avoidSkillIds = null
+        ISet<SkillID> avoidSkillIds = null,
+        Skill.SkillRarity? forcedRarity = null
     )
     {
         var pool = info.AllSkills;
         if (pool == null || pool.Length == 0)
             return null;
 
-        Skill.SkillRarity rolledRarity = Skill.RollRewardRarity(rng);
+        Skill.SkillRarity rolledRarity = forcedRarity ?? Skill.RollRewardRarity(rng);
         SkillID[] filteredPool = GetRewardSkillPoolForRarity(pool, rolledRarity);
         if (filteredPool.Length == 0)
             filteredPool = pool;

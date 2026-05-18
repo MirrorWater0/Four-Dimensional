@@ -5,7 +5,11 @@ using Godot;
 
 public partial class LevelNode : ColorRect
 {
-    private const int WeakEnemyStageCount = 5;
+    private const int WeakEnemyStageCount = 3;
+    private const float RegionTwoEliteStatMultiplier = 1.3f;
+    internal const float RegionTwoBossStatMultiplier = 1.5f;
+    private const int PlayerFormationRandomSalt = unchecked((int)0x51f15e0d);
+    private const int EnemyFormationRandomSalt = unchecked((int)0x2a7f3c19);
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
     );
@@ -98,7 +102,7 @@ public partial class LevelNode : ColorRect
         if (!_isNodeHovered)
             return;
 
-        if (State != LevelState.Completed || !IsVisibleInTree() || HasVisibleBlockingSiteUi())
+        if (!ShouldShowHoverTip() || HasVisibleBlockingSiteUi())
         {
             HideHoverTip();
             return;
@@ -247,6 +251,12 @@ public partial class LevelNode : ColorRect
 
         if (isBoss)
         {
+            if (GameInfo.CurrentLevel <= 0 && levelProgress != null)
+            {
+                levelProgress.AdvanceToNextRegion();
+                return;
+            }
+
             CompleteRunAfterFinalBoss();
             return;
         }
@@ -371,7 +381,8 @@ public partial class LevelNode : ColorRect
             return;
 
         var positions = Enumerable.Range(1, 9).ToList();
-        Random rng = new Random(RandomNum);
+        Random rng = new Random(HashFormationSeed(RandomNum, PlayerFormationRandomSalt));
+        var pickedPositions = new List<int>(GameInfo.PlayerCharacters.Length);
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
@@ -379,9 +390,15 @@ public partial class LevelNode : ColorRect
                 break;
 
             int positionPickIndex = rng.Next(positions.Count);
-            GameInfo.PlayerCharacters[i].PositionIndex = positions[positionPickIndex];
+            pickedPositions.Add(positions[positionPickIndex]);
             positions.RemoveAt(positionPickIndex);
         }
+
+        if (IsSameFormationPattern(pickedPositions, EnemiesRegeditList))
+            OffsetFormationPattern(pickedPositions);
+
+        for (int i = 0; i < pickedPositions.Count; i++)
+            GameInfo.PlayerCharacters[i].PositionIndex = pickedPositions[i];
     }
 
     public void GotoEvent()
@@ -449,7 +466,7 @@ public partial class LevelNode : ColorRect
     public static void RandomPosition<T>(List<T> list, int RandomNum)
         where T : EnemyRegedit
     {
-        Random random = new Random(RandomNum);
+        Random random = new Random(HashFormationSeed(RandomNum, EnemyFormationRandomSalt));
         var positions = Enumerable.Range(1, 9).ToList();
 
         foreach (var enemy in list)
@@ -475,11 +492,49 @@ public partial class LevelNode : ColorRect
         }
     }
 
+    private static int HashFormationSeed(int baseSeed, int salt)
+    {
+        unchecked
+        {
+            int hash = (int)2166136261;
+            hash = (hash ^ baseSeed) * 16777619;
+            hash = (hash ^ salt) * 16777619;
+            return hash;
+        }
+    }
+
+    private static bool IsSameFormationPattern(
+        IReadOnlyList<int> playerPositions,
+        IReadOnlyList<EnemyRegedit> enemies
+    )
+    {
+        if (playerPositions == null || enemies == null || playerPositions.Count != enemies.Count)
+            return false;
+
+        for (int i = 0; i < playerPositions.Count; i++)
+        {
+            if (enemies[i] == null || enemies[i].PositionIndex != playerPositions[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    private static void OffsetFormationPattern(List<int> positions)
+    {
+        if (positions == null || positions.Count <= 1)
+            return;
+
+        int first = positions[0];
+        positions.RemoveAt(0);
+        positions.Add(first);
+    }
+
     public List<EnemyRegedit> GetNormalEnemies()
     {
         var rng = new Random(RandomNum);
-        EnemyRegedit[] weakEnemyRegedits = BuildWeakEnemyCatalog();
-        EnemyRegedit[] strongEnemyRegedits = BuildStrongEnemyCatalog();
+        EnemyRegedit[] weakEnemyRegedits = BuildWeakEnemyCatalogForCurrentRegion();
+        EnemyRegedit[] strongEnemyRegedits = BuildStrongEnemyCatalogForCurrentRegion();
 
         List<EnemyRegedit> list = new()
         {
@@ -509,10 +564,7 @@ public partial class LevelNode : ColorRect
                 list.Add(weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit());
             }
         }
-        if (GameInfo.IsRegionTwoUnlocked())
-            ApplyRegionTwoModifiers(list);
-        else
-            RandomPosition(list, RandomNum);
+        RandomPosition(list, RandomNum);
         // var list = new List<EnemyRegedit>
         // {
         //     new WarRegedit(){ PositionIndex = 5 },
@@ -524,73 +576,118 @@ public partial class LevelNode : ColorRect
     {
         List<EnemyRegedit> list = new() { new ArroganceRegedit() };
         list[0].PositionIndex = 5;
-        if (GameInfo.IsRegionTwoUnlocked())
-            ApplyRegionTwoModifiers(list);
+        if (GameInfo.CurrentLevel > 0)
+            ApplyStatMultiplier(list[0], RegionTwoEliteStatMultiplier);
         return list;
     }
 
     public List<EnemyRegedit> GetBossEnemies()
     {
-        List<EnemyRegedit> list = new() { new WarRegedit() { PositionIndex = 5 } };
-        if (GameInfo.IsRegionTwoUnlocked())
-            ApplyRegionTwoModifiers(list);
+        EnemyRegedit boss = PickBossForThisNode();
+        boss.PositionIndex = 5;
+        if (GameInfo.CurrentLevel > 0)
+            ApplyStatMultiplier(boss, RegionTwoBossStatMultiplier);
+        List<EnemyRegedit> list = new() { boss };
         return list;
     }
 
-    private void ApplyRegionTwoModifiers(List<EnemyRegedit> list)
+    private EnemyRegedit PickBossForThisNode()
     {
-        if (list == null || list.Count == 0)
-            return;
+        EnemyRegedit[] bossPool = BuildBossCatalog();
+        HashSet<string> defeatedBossNames = GetDefeatedBossNames();
+        EnemyRegedit[] availableBosses = bossPool
+            .Where(boss => boss != null && !defeatedBossNames.Contains(GetBossIdentity(boss)))
+            .ToArray();
 
-        list.Add(CreateRegionTwoWeakEnemy());
+        EnemyRegedit[] pickPool = availableBosses.Length > 0 ? availableBosses : bossPool;
+        if (pickPool.Length == 0)
+            return new WarRegedit();
 
-        foreach (var enemy in list)
-            ApplyRegionTwoStatBonus(enemy);
-
-        RandomPosition(list, RandomNum);
+        int index = (int)(Math.Abs((long)RandomNum) % pickPool.Length);
+        return pickPool[index].GetRegedit();
     }
 
-    private EnemyRegedit CreateRegionTwoWeakEnemy()
+    private static EnemyRegedit[] BuildBossCatalog()
     {
-        var weakEnemyRegedits = BuildWeakEnemyCatalog();
-        var rng = new Random(RandomNum ^ unchecked((int)0x5f3759df));
-        return weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit();
+        return [new WarRegedit(), new DeathRegedit()];
     }
 
-    private static EnemyRegedit[] BuildWeakEnemyCatalog()
+    private static HashSet<string> GetDefeatedBossNames()
     {
-        return
-        [
-            new EvilRegedit(),
-            new FearWormRegedit(),
-            new AlienBodyRegedit(),
-        ];
+        return GameInfo
+                .CompletedLevelNodeRecords?.Values.Where(record =>
+                    record != null && record.NodeType == LevelType.Boss
+                )
+                .SelectMany(record => record.EnemyNames ?? new List<string>())
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Select(NormalizeBossIdentity)
+                .ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
     }
 
-    private static EnemyRegedit[] BuildStrongEnemyCatalog()
-    {
-        return
-        [
-            new FerociouessRegedit(),
-            new BlackHawkRegedit(),
-            new InexorabilityRegedit(),
-        ];
-    }
+    private static string GetBossIdentity(EnemyRegedit boss) =>
+        NormalizeBossIdentity(boss?.CharacterName);
 
-    private static void ApplyRegionTwoStatBonus(EnemyRegedit enemy)
+    private static string NormalizeBossIdentity(string name) =>
+        string.IsNullOrWhiteSpace(name) ? string.Empty : name.Trim();
+
+    private static void ApplyStatMultiplier(EnemyRegedit enemy, float multiplier)
     {
         if (enemy == null)
             return;
 
-        enemy.MaxLife = ScaleDown(enemy.MaxLife, 1.2f);
-        enemy.Power = ScaleDown(enemy.Power, 1.1f);
-        enemy.Survivability = ScaleDown(enemy.Survivability, 1.1f);
-        enemy.Speed = ScaleDown(enemy.Speed, 1.1f);
+        enemy.Power = ScaleStat(enemy.Power, multiplier);
+        enemy.Survivability = ScaleStat(enemy.Survivability, multiplier);
+        enemy.Speed = ScaleStat(enemy.Speed, multiplier);
+        enemy.MaxLife = ScaleStat(enemy.MaxLife, multiplier);
     }
 
-    private static int ScaleDown(int value, float multiplier)
+    private static int ScaleStat(int value, float multiplier)
     {
-        return (int)MathF.Floor(value * multiplier);
+        if (value <= 0)
+            return value;
+
+        return Math.Max(1, Mathf.CeilToInt(value * multiplier));
+    }
+
+    private static EnemyRegedit[] BuildWeakEnemyCatalogForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0
+            ? BuildRegionTwoWeakEnemyCatalog()
+            : BuildRegionOneWeakEnemyCatalog();
+    }
+
+    private static EnemyRegedit[] BuildStrongEnemyCatalogForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0
+            ? BuildRegionTwoStrongEnemyCatalog()
+            : BuildRegionOneStrongEnemyCatalog();
+    }
+
+    private static EnemyRegedit[] BuildRegionOneWeakEnemyCatalog()
+    {
+        return [new EvilRegedit(), new FearWormRegedit(), new AlienBodyRegedit()];
+    }
+
+    private static EnemyRegedit[] BuildRegionOneStrongEnemyCatalog()
+    {
+        return [new FerociouessRegedit(), new BlackHawkRegedit(), new InexorabilityRegedit()];
+    }
+
+    private static EnemyRegedit[] BuildRegionTwoWeakEnemyCatalog()
+    {
+        return
+        [
+            new ArmonRegedit(),
+            new RedHuskRegedit(),
+            new TurbineRegedit(),
+            new VoidAcolyteRegedit(),
+            new HollowBulwarkRegedit(),
+        ];
+    }
+
+    private static EnemyRegedit[] BuildRegionTwoStrongEnemyCatalog()
+    {
+        return [new GraveWraithRegedit(), new MarrowReaverRegedit()];
     }
 
     private void UpdateHoverTipIfVisible()
@@ -611,22 +708,43 @@ public partial class LevelNode : ColorRect
 
     private string BuildHoverTipText()
     {
+        string bossPreview = BuildBossPreviewText();
         string summary = GameInfo.GetLevelNodeCompletionSummary(SelfCoordinate);
         string dropPreview = GameInfo.BuildBattleRewardDropPreviewText();
         if (string.IsNullOrWhiteSpace(summary))
         {
+            if (!string.IsNullOrWhiteSpace(bossPreview))
+                return ColorizeHoverTipText(bossPreview);
+
             string emptyRecordText = "[b]节点记录[/b]\n该节点暂无完成记录。";
             if (!string.IsNullOrWhiteSpace(dropPreview))
                 emptyRecordText += $"\n\n{dropPreview}";
-            emptyRecordText = GlobalFunction.ColorizeNumbers(emptyRecordText);
-            return GlobalFunction.ColorizeKeywords(emptyRecordText);
+            return ColorizeHoverTipText(emptyRecordText);
         }
 
-        string text = $"[b]节点记录[/b]\n{summary}";
+        string text = string.IsNullOrWhiteSpace(bossPreview)
+            ? $"[b]节点记录[/b]\n{summary}"
+            : $"{bossPreview}\n\n[b]节点记录[/b]\n{summary}";
 
+        return ColorizeHoverTipText(text);
+    }
+
+    private string BuildBossPreviewText()
+    {
+        if (Type != LevelType.Boss)
+            return string.Empty;
+
+        EnemyRegedit boss = GetBossEnemies().FirstOrDefault();
+        string bossName = string.IsNullOrWhiteSpace(boss?.CharacterName)
+            ? "未知"
+            : boss.CharacterName;
+        return $"[b]Boss[/b]\n即将遭遇：[color=#ff6b8b]{bossName}[/color]";
+    }
+
+    private static string ColorizeHoverTipText(string text)
+    {
         text = GlobalFunction.ColorizeNumbers(text);
-        text = GlobalFunction.ColorizeKeywords(text);
-        return text;
+        return GlobalFunction.ColorizeKeywords(text);
     }
 
     private Tip EnsureHoverTip()
@@ -661,7 +779,7 @@ public partial class LevelNode : ColorRect
 
     private void TryShowHoverTip()
     {
-        if (!_isNodeHovered || State != LevelState.Completed || !IsVisibleInTree())
+        if (!ShouldShowHoverTip())
         {
             HideHoverTip();
             return;
@@ -692,6 +810,13 @@ public partial class LevelNode : ColorRect
             tip.SetText(text);
             _lastHoverTipText = text;
         }
+    }
+
+    private bool ShouldShowHoverTip()
+    {
+        return _isNodeHovered
+            && IsVisibleInTree()
+            && (State == LevelState.Completed || Type == LevelType.Boss);
     }
 
     private void HideHoverTip()

@@ -12,6 +12,7 @@ public partial class GameStatistics : CanvasLayer
     private const float NodeDiamondWrapperSize = 36f;
     private const float NodeGridCellMinWidth = 44f;
     private const float NodeGridCellHeight = 36f;
+    private const int NodeRegionRowSeparation = 14;
     private const float NodeHoverScale = 1.25f;
     private const float HistoryPageSwitchOffset = 64f;
 
@@ -406,6 +407,8 @@ public partial class GameStatistics : CanvasLayer
         ClearChildren(NodeRows);
         if (NodeRows == null)
             return;
+
+        NodeRows.AddThemeConstantOverride("separation", NodeRegionRowSeparation);
 
         var records =
             _currentRecord?.NodeRecords?.Where(record => record != null).ToList()

@@ -18,7 +18,7 @@ public static partial class GameInfo
     public const int MinDifficulty = 0;
     public const int MaxDifficulty = 5;
 
-    private const int StarterRelicCount = 2;
+    private const int StarterRelicCount = 1;
     private const int StarterElectricityCoinBonus = 100;
     private const int StarterPropertyBonus = 1;
     private const int StarterLifeMaxBonus = 5;
@@ -130,7 +130,7 @@ public static partial class GameInfo
     {
         return bonus switch
         {
-            GameDifficultyBonus.RandomRelics => "\u5f00\u5c402\u968f\u673a\u9057\u7269",
+            GameDifficultyBonus.RandomRelics => "\u5f00\u5c401\u968f\u673a\u9057\u7269",
             GameDifficultyBonus.FreeRetreat =>
                 "\u64a4\u9000\u4e0d\u6d88\u8017\u6838\u5fc3\u80fd\u6e90",
             GameDifficultyBonus.RandomTalentPoints =>

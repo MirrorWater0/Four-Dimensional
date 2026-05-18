@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
 [ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
-[ext_resource type="Shader" uid="uid://453beusi04od" path="res://shader/DrawReserveIcon.gdshader" id="8_drawreserve"]
 [ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
@@ -153,46 +152,34 @@ tracks/2/keys = {
 tracks/3/type = "value"
 tracks/3/imported = false
 tracks/3/enabled = true
-tracks/3/path = NodePath("ColorRect2:color")
+tracks/3/path = NodePath("bg:self_modulate")
 tracks/3/interp = 1
 tracks/3/loop_wrap = true
 tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Color(0, 0, 0, 0)]
+"values": [Color(1, 1, 1, 1)]
 }
 tracks/4/type = "value"
 tracks/4/imported = false
 tracks/4/enabled = true
-tracks/4/path = NodePath("bg:self_modulate")
+tracks/4/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
 tracks/4/interp = 1
 tracks/4/loop_wrap = true
 tracks/4/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Color(1, 1, 1, 1)]
+"values": [Color(1, 1, 1, 0)]
 }
 tracks/5/type = "value"
 tracks/5/imported = false
 tracks/5/enabled = true
-tracks/5/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
+tracks/5/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
 tracks/5/interp = 1
 tracks/5/loop_wrap = true
 tracks/5/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-tracks/6/type = "value"
-tracks/6/imported = false
-tracks/6/enabled = true
-tracks/6/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
-tracks/6/interp = 1
-tracks/6/loop_wrap = true
-tracks/6/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
@@ -212,22 +199,6 @@ tracks/0/keys = {
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
 "values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
-}
-
-[sub_resource type="Animation" id="Animation_r8nfv"]
-resource_name = "end"
-length = 0.7
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("ColorRect2:color")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.7),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [Color(0, 0, 0, 0), Color(0, 0, 0, 1)]
 }
 
 [sub_resource type="Animation" id="Animation_xpomc"]
@@ -284,25 +255,12 @@ tracks/0/keys = {
 "update": 0,
 "values": [Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)]
 }
-tracks/1/type = "value"
-tracks/1/imported = false
-tracks/1/enabled = true
-tracks/1/path = NodePath("ColorRect2:color")
-tracks/1/interp = 1
-tracks/1/loop_wrap = true
-tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.233333, 0.833333),
-"transitions": PackedFloat32Array(1, 1, 1),
-"update": 0,
-"values": [Color(0, 0, 0, 1), Color(0, 0, 0, 1), Color(1, 1, 1, 0)]
-}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_od72c"]
 _data = {
 &"Incapacitate": SubResource("Animation_4km6a"),
 &"RESET": SubResource("Animation_0jh7n"),
 &"blue": SubResource("Animation_ttuon"),
-&"end": SubResource("Animation_r8nfv"),
 &"hit": SubResource("Animation_xpomc"),
 &"start": SubResource("Animation_8cf7v")
 }
@@ -328,17 +286,6 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uifq5"]
 shader = SubResource("Shader_1euq2")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_drawreserve"]
-resource_local_to_scene = true
-shader = ExtResource("8_drawreserve")
-shader_parameter/card_color = Color(0.55, 0.9, 1, 0.95)
-shader_parameter/back_card_color = Color(0.1178, 0.46097004, 0.62, 0.7647059)
-shader_parameter/line_color = Color(0.9, 1, 1, 1)
-shader_parameter/arrow_color = Color(0.7, 0.95, 1, 0.92)
-shader_parameter/glow = 1.0
-shader_parameter/back_card_rotation_degrees = 20.5
-shader_parameter/front_card_rotation_degrees = 5.7
-
 [sub_resource type="Theme" id="Theme_d0b6a"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jhxqk"]
@@ -346,8 +293,8 @@ resource_local_to_scene = true
 shader = ExtResource("7_r8nfv")
 
 [sub_resource type="Gradient" id="Gradient_4km6a"]
-offsets = PackedFloat32Array(0.88961, 1)
-colors = PackedColorArray(1, 1, 1, 0, 1, 0, 0, 0.33333334)
+offsets = PackedFloat32Array(0.91972476, 1)
+colors = PackedColorArray(1, 0.53999996, 0.53999996, 0, 1, 0, 0, 0.19215687)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_ttuon"]
 gradient = SubResource("Gradient_4km6a")
@@ -472,7 +419,7 @@ z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
 offset_left = 2.0
 offset_top = 704.0
-offset_right = 2127.5557
+offset_right = 1959.778
 offset_bottom = 1039.0
 scale = Vector2(0.9, 0.9)
 mouse_filter = 2
@@ -516,60 +463,55 @@ theme_override_font_sizes/font_size = 22
 disabled = true
 text = "结束回合"
 
-[node name="DrawReserveButton" type="Button" parent="BattleActionButtons" unique_id=1518664473]
-custom_minimum_size = Vector2(70, 72)
+[node name="DrawPileButton" type="Button" parent="BattleActionButtons" unique_id=1198832786]
+custom_minimum_size = Vector2(144, 72)
 layout_mode = 0
-offset_left = 287.0
-offset_top = 165.0
-offset_right = 411.0
-offset_bottom = 237.0
+offset_left = -1489.0
+offset_top = 303.0
+offset_right = -1345.0
+offset_bottom = 375.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 22
 disabled = true
-text = "抽卡储备"
+text = "抽牌堆 0"
 
-[node name="Icon" type="ColorRect" parent="BattleActionButtons/DrawReserveButton" unique_id=1518664474]
-material = SubResource("ShaderMaterial_drawreserve")
+[node name="DiscardPileButton" type="Button" parent="BattleActionButtons" unique_id=906387459]
+custom_minimum_size = Vector2(144, 72)
 layout_mode = 0
-offset_left = -25.0
-offset_top = 10.0
-offset_right = 23.0
-offset_bottom = 58.0
-mouse_filter = 2
+offset_left = 282.0
+offset_top = 296.0
+offset_right = 426.0
+offset_bottom = 368.0
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 22
+disabled = true
+text = "弃牌堆 0"
 
-[node name="ReserveCountLabel" type="Label" parent="BattleActionButtons/DrawReserveButton" unique_id=1518664476]
+[node name="ManualTargetInfoButton" type="Button" parent="BattleActionButtons" unique_id=514264369]
+custom_minimum_size = Vector2(46, 46)
 layout_mode = 0
-offset_left = -21.0
-offset_top = 57.0
-offset_right = 27.0
-offset_bottom = 83.0
-theme_override_colors/font_color = Color(0.88, 0.98, 1, 1)
-theme_override_colors/font_outline_color = Color(0.01, 0.03, 0.06, 0.95)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 18
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
+offset_left = 300.0
+offset_top = -22.0
+offset_right = 346.0
+offset_bottom = 24.0
+tooltip_text = "查看己方角色信息"
+focus_mode = 0
+mouse_default_cursor_shape = 2
+disabled = true
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]
+z_index = 20
 position = Vector2(960, 540)
 position_smoothing_enabled = true
 metadata/_edit_lock_ = true
 
-[node name="ColorRect2" type="ColorRect" parent="." unique_id=1212388883]
-z_index = 5
-offset_right = 1920.0
-offset_bottom = 1080.0
-mouse_filter = 2
-color = Color(0, 0, 0, 0)
-metadata/_edit_lock_ = true
-
 [node name="Retreat" type="Button" parent="." unique_id=1228269267]
-offset_left = 1824.0
-offset_top = 984.0
-offset_right = 1924.0
-offset_bottom = 1084.0
+offset_left = 1797.0
+offset_top = 69.0
+offset_right = 1857.0
+offset_bottom = 129.0
 theme = SubResource("Theme_d0b6a")
 disabled = true
 text = "
@@ -578,20 +520,22 @@ text = "
 [node name="ColorRect" type="ColorRect" parent="Retreat" unique_id=1694008529]
 material = SubResource("ShaderMaterial_jhxqk")
 layout_mode = 0
-offset_right = 100.0
-offset_bottom = 100.0
+offset_right = 60.0
+offset_bottom = 60.0
 mouse_filter = 1
 
 [node name="Label" type="Label" parent="Retreat" unique_id=160334765]
 layout_mode = 0
-offset_left = 17.0
-offset_top = 23.0
-offset_right = 92.0
-offset_bottom = 72.0
+offset_left = 4.0
+offset_top = 11.0
+offset_right = 54.0
+offset_bottom = 46.0
 theme = ExtResource("7_wuq8c")
+theme_override_font_sizes/font_size = 25
 text = "撤退"
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1029581787]
+layer = 8
 
 [node name="start" type="Label" parent="CanvasLayer" unique_id=315968776]
 offset_left = 609.0
@@ -623,6 +567,7 @@ metadata/_edit_lock_ = true
 
 [node name="ColorRect" type="NinePatchRect" parent="CanvasLayer" unique_id=561768639]
 self_modulate = Color(1, 1, 1, 0)
+z_index = 4
 offset_right = 1920.0
 offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_ttuon")
@@ -721,6 +666,57 @@ process_material = SubResource("ParticleProcessMaterial_4km6a")
 position = Vector2(4784, 512)
 BattleMaxLife = 100000
 Sprite = NodePath(".")
+
+[node name="BattlePileOverlayLayer" type="CanvasLayer" parent="." unique_id=1139398316]
+layer = 100
+
+[node name="PileOverlayRoot" type="Control" parent="BattlePileOverlayLayer" unique_id=45099534]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Mask" type="ColorRect" parent="BattlePileOverlayLayer/PileOverlayRoot" unique_id=188935048]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.68)
+
+[node name="Scroll" type="ScrollContainer" parent="BattlePileOverlayLayer/PileOverlayRoot" unique_id=2006174248]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 112.0
+offset_top = 80.0
+offset_right = -112.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="BattlePileOverlayLayer/PileOverlayRoot/Scroll" unique_id=272271973]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Grid" type="GridContainer" parent="BattlePileOverlayLayer/PileOverlayRoot/Scroll/Margin" unique_id=1609928340]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 22
+columns = 6
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=209018588]
 layer = 6

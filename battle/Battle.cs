@@ -20,9 +20,11 @@ public partial class Battle : Node2D
     private readonly CancellationTokenSource _lifetimeCts = new();
     private readonly Dictionary<string, PlayerBattleCardPiles> _playerBattleCardPiles = new();
     private readonly Dictionary<string, Random> _playerBattleSkillRandoms = new();
-    private int _cardDrawReserve;
     private ulong _battleInstanceId;
     private bool _retreating;
+    private Tween _screenShakeTween;
+    private Vector2 _battleBasePosition;
+    private bool _battleBasePositionInitialized;
 
     private sealed class PlayerBattleCardPiles
     {
@@ -48,7 +50,87 @@ public partial class Battle : Node2D
         field ??= GetNode<AnimationPlayer>("BattlePlayer");
     public CharacterControl CharacterControl =>
         field ??= GetNode<CharacterControl>("CharacterControl");
+    private NinePatchRect HitScreenFlash =>
+        field ??= GetNode<NinePatchRect>("CanvasLayer/ColorRect");
+    private ColorRect BackgroundRect =>
+        field ??= GetNode<ColorRect>("bg");
 
+    public void PlayHitEffect()
+    {
+        if (HitScreenFlash != null && GodotObject.IsInstanceValid(HitScreenFlash))
+        {
+            HitScreenFlash.SelfModulate = new Color(1, 1, 1, 1);
+            Tween flashTween = CreateTween();
+            flashTween.TweenInterval(0.333333f);
+            flashTween.TweenProperty(HitScreenFlash, "self_modulate", new Color(1, 1, 1, 0), 0.166667f);
+        }
+
+        if (BackgroundRect != null && GodotObject.IsInstanceValid(BackgroundRect))
+        {
+            Tween bgTween = CreateTween();
+            bgTween.TweenProperty(BackgroundRect, "self_modulate", new Color(0.4f, 0.4f, 0.4f, 1), 0.1f);
+            bgTween.TweenInterval(0.233333f);
+            bgTween.TweenProperty(BackgroundRect, "self_modulate", new Color(1, 1, 1, 1), 0.133334f);
+        }
+
+        PlayCameraShake();
+    }
+
+    private void CacheBattleBasePosition()
+    {
+        if (_battleBasePositionInitialized)
+            return;
+
+        _battleBasePosition = Position;
+        _battleBasePositionInitialized = true;
+    }
+
+    private void PlayCameraShake()
+    {
+        CacheBattleBasePosition();
+        if (!_battleBasePositionInitialized)
+            return;
+
+        float shakeScale = UserSettings.GetBattleShakeMultiplier();
+        if (shakeScale <= 0.0f)
+            return;
+
+        if (_screenShakeTween != null && GodotObject.IsInstanceValid(_screenShakeTween))
+            _screenShakeTween.Kill();
+
+        Position = _battleBasePosition;
+        _screenShakeTween = CreateTween();
+        _screenShakeTween.TweenProperty(
+            this,
+            "position",
+            _battleBasePosition + new Vector2(15, 10) * shakeScale,
+            0.045f
+        ).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        _screenShakeTween.TweenProperty(
+            this,
+            "position",
+            _battleBasePosition + new Vector2(20, -5) * shakeScale,
+            0.04f
+        ).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        _screenShakeTween.TweenProperty(
+            this,
+            "position",
+            _battleBasePosition + new Vector2(10, 10) * shakeScale,
+            0.035f
+        ).SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        _screenShakeTween
+            .TweenProperty(this, "position", _battleBasePosition, 0.06f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        _screenShakeTween.Finished += OnCameraShakeFinished;
+    }
+
+    private void OnCameraShakeFinished()
+    {
+        Position = _battleBasePosition;
+
+        _screenShakeTween = null;
+    }
     public ObservableList<Skill> UsedSkills = new ObservableList<Skill>();
     public Button RetreatButton => field ??= GetNode<Button>("Retreat");
     public bool SuppressActionPoinGainThisTurn { get; set; }
@@ -113,7 +195,7 @@ public partial class Battle : Node2D
     private const float FormationGapX = 280f;
     private const float FormationSkew = 10f;
     private const float FormationRowOffset = 100f;
-    private const int MaxFormationSlots = 9;
+    public const int MaxFormationSlots = 9;
     private const int MaxBattleTurns = 100;
     private const int PostActionDelayMs = 800;
     private const int BattleOverDelayMs = 5000;
@@ -121,7 +203,7 @@ public partial class Battle : Node2D
     private const int EnemyActionPoinHintDelayMs = 400;
     private const int BattleStartEffectIntervalMs = 100;
     private const int ActionPoinTriggerThreshold = 100;
-    private const int PlayerDyingCoreEnergyCost = 5;
+    private const int PlayerDyingCoreEnergyCost = 10;
     private const int ManualRetreatCoreEnergyCost = 10;
     private const int PartyDefeatedCoreEnergyCost = 10;
     private const int EarlyBattleBonusSkillRewardBattles = 3;
@@ -145,6 +227,7 @@ public partial class Battle : Node2D
         HideEnemyAttackPreview();
         FreeEnemyAttackPreviewLabels();
         TryCancelLifetime();
+        MapNode?.Camera?.MakeCurrent();
     }
 
     public override async void _Ready()
@@ -158,6 +241,7 @@ public partial class Battle : Node2D
         var token = _lifetimeCts.Token;
         InitDummy();
         InitializeBattleUi();
+        CacheBattleBasePosition();
         InitializeBattleCharacters();
         SetCharaterPostion();
         RefreshTurnOrderPreview();
@@ -261,7 +345,6 @@ public partial class Battle : Node2D
         _enemyActionCount = 0;
         _playerBattleCardPiles.Clear();
         _playerBattleSkillRandoms.Clear();
-        _cardDrawReserve = 0;
         _characterActionCounts.Clear();
         _pendingExtraActions.Clear();
         _activeExtraActionCharacters.Clear();
@@ -318,7 +401,76 @@ public partial class Battle : Node2D
         return pickedSkill;
     }
 
-    public void DiscardBattleSkill(Character actor, Skill skill)
+    public void AddPlayerBattleStatusCardsToDrawPile(
+        PlayerCharacter player,
+        SkillID skillId,
+        int count,
+        Character source = null
+    )
+    {
+        if (count <= 0 || player == null || !GodotObject.IsInstanceValid(player))
+            return;
+
+        PlayerBattleCardPiles piles = GetOrCreatePlayerBattleCardPiles(player);
+        if (piles == null)
+            return;
+
+        if (piles.DrawPile.Count == 0 && piles.DiscardPile.Count > 0)
+        {
+            piles.DrawPile.AddRange(piles.DiscardPile);
+            piles.DiscardPile.Clear();
+        }
+
+        Random rng = GetOrCreatePlayerBattleSkillRandom(player);
+        for (int i = 0; i < count; i++)
+        {
+            int insertIndex = rng.Next(piles.DrawPile.Count + 1);
+            piles.DrawPile.Insert(insertIndex, skillId);
+        }
+
+        player.InvalidateSkillTooltipCache();
+        RecordStatusCardInsert(player, skillId, count, source: source);
+    }
+
+    public int AddPlayerBattleStatusCardsToHand(
+        PlayerCharacter player,
+        SkillID skillId,
+        int count,
+        Character source = null
+    )
+    {
+        if (count <= 0 || player == null || !GodotObject.IsInstanceValid(player))
+            return 0;
+
+        if (player.Skills == null)
+            return 0;
+
+        int added = 0;
+        for (int i = 0; i < player.Skills.Length && added < count; i++)
+        {
+            if (player.Skills[i] != null)
+                continue;
+
+            Skill skill = Skill.GetSkill(skillId);
+            if (skill == null)
+                continue;
+
+            skill.OwnerCharater = player;
+            skill.UpdateDescription();
+            player.Skills[i] = skill;
+            added++;
+        }
+
+        if (added > 0)
+        {
+            player.InvalidateSkillTooltipCache();
+            RecordStatusCardInsert(player, skillId, added, toHand: true, source: source);
+        }
+
+        return added;
+    }
+
+    public void DiscardBattleSkill(Character actor, Skill skill, bool atTurnEnd = false)
     {
         if (actor is not PlayerCharacter player || skill == null || !skill.SkillId.HasValue)
         {
@@ -330,7 +482,7 @@ public partial class Battle : Node2D
             return;
 
         SkillID skillId = skill.SkillId.Value;
-        if (skill.ExhaustsAfterUse)
+        if (skill.ExhaustsAfterUse || (atTurnEnd && skill.ExhaustsAtTurnEndInHand))
             piles.Exhausted.Add(skillId);
         else
             piles.DiscardPile.Add(skillId);
@@ -346,53 +498,6 @@ public partial class Battle : Node2D
 
     public SkillID[] GetExhaustedBattleCardPile(PlayerCharacter player) =>
         GetOrCreatePlayerBattleCardPiles(player)?.Exhausted.ToArray() ?? Array.Empty<SkillID>();
-
-    public int GetCardDrawReserve() => _cardDrawReserve;
-
-    public void AddCardDrawReserve(int amount, Character source = null)
-    {
-        if (amount == 0)
-            return;
-
-        int previousReserve = _cardDrawReserve;
-        _cardDrawReserve = Math.Max(0, _cardDrawReserve + amount);
-        int appliedAmount = _cardDrawReserve - previousReserve;
-        if (appliedAmount != 0)
-            RecordCardDrawReserveChange(source, appliedAmount, source);
-    }
-
-    public bool CanSpendCardDrawReserveToDraw(PlayerCharacter player)
-    {
-        if (
-            player == null
-            || !GodotObject.IsInstanceValid(player)
-            || player.State == Character.CharacterState.Dying
-        )
-        {
-            return false;
-        }
-
-        if (GetCardDrawReserve() <= 0)
-            return false;
-
-        if (player.Skills == null || player.Skills.All(skill => skill != null))
-            return false;
-
-        return HasDrawablePlayerBattleSkill(player);
-    }
-
-    public bool TrySpendCardDrawReserveToDraw(PlayerCharacter player)
-    {
-        if (!CanSpendCardDrawReserveToDraw(player))
-            return false;
-
-        if (!player.TryDrawBattleCards(1))
-            return false;
-
-        _cardDrawReserve = Math.Max(0, _cardDrawReserve - 1);
-        RecordCardDrawReserveUse(player, reserveCost: 1, drawnCards: 1);
-        return true;
-    }
 
     public bool HasDrawablePlayerBattleSkill(
         PlayerCharacter player,
@@ -724,6 +829,7 @@ public partial class Battle : Node2D
 
     public void RefreshTurnOrderPreview()
     {
+        RefreshEnemyIntentionDamageSummaries();
         UserSettings.EnsureLoaded();
         if (!UserSettings.ShowBattleTurnOrderPreview || !IsBattleAlive())
         {
@@ -777,6 +883,40 @@ public partial class Battle : Node2D
     public void RefreshTurnOrderPreviewFromSettings() => RefreshTurnOrderPreview();
 
     public void RefreshEnemyAttackPreviewFromSettings() => RefreshEnemyAttackPreview();
+
+    public void RefreshEnemyIntentionPreviews()
+    {
+        RefreshEnemyIntentionDamageSummaries();
+        RefreshEnemyAttackPreview();
+    }
+
+    public void RefreshTextSizeFromSettings()
+    {
+        CharacterControl?.RefreshTextSizeFromSettings();
+
+        foreach (
+            var character in GetTeamCharacters(isPlayer: true, includeSummons: true)
+                .Concat(GetTeamCharacters(isPlayer: false, includeSummons: true))
+        )
+        {
+            if (character != null && GodotObject.IsInstanceValid(character))
+                character.RefreshSkillTooltipTextFromSettings();
+        }
+    }
+
+    public void RefreshBattleCardDescriptionModeFromSettings()
+    {
+        CharacterControl?.RefreshDisplayedSkillDescriptions();
+
+        foreach (
+            var character in GetTeamCharacters(isPlayer: true, includeSummons: true)
+                .Concat(GetTeamCharacters(isPlayer: false, includeSummons: true))
+        )
+        {
+            if (character != null && GodotObject.IsInstanceValid(character))
+                character.RefreshSkillTooltipTextFromSettings();
+        }
+    }
 
     private int GetPreviewExtraActionCount(Character character)
     {
@@ -860,9 +1000,10 @@ public partial class Battle : Node2D
             return false;
 
         ulong id = character.GetInstanceId();
-        if (!orderByCharacter.ContainsKey(id))
-            orderByCharacter[id] = nextOrder;
+        if (orderByCharacter.ContainsKey(id))
+            return true;
 
+        orderByCharacter[id] = nextOrder;
         nextOrder++;
         return true;
     }
@@ -874,6 +1015,15 @@ public partial class Battle : Node2D
         {
             if (character != null && GodotObject.IsInstanceValid(character))
                 character.HideTurnOrderPreview();
+        }
+    }
+
+    private void RefreshEnemyIntentionDamageSummaries()
+    {
+        foreach (var enemy in EnemiesList)
+        {
+            if (enemy != null && GodotObject.IsInstanceValid(enemy))
+                enemy.RefreshIntentionDamageSummary();
         }
     }
 
@@ -1425,6 +1575,7 @@ public partial class Battle : Node2D
         summon.BindToSummoner(summoner);
         summon.PositionIndex = slot;
         InitializeCharacter(summon);
+        ApplyBossSummonStatMultiplierIfNeeded(summon, summoner);
 
         var teamSummons = summon.IsPlayer ? PlayerSummons : EnemySummons;
         if (!teamSummons.Contains(summon))
@@ -1437,6 +1588,22 @@ public partial class Battle : Node2D
         RefreshSummonPositions(summoner);
         RecordSummon(summon, summoner);
         return summon;
+    }
+
+    private void ApplyBossSummonStatMultiplierIfNeeded(SummonCharacter summon, Character summoner)
+    {
+        if (
+            summon == null
+            || summoner == null
+            || summoner.IsPlayer
+            || CurrentLevelNode?.Type != LevelNode.LevelType.Boss
+            || GameInfo.CurrentLevel <= 0
+        )
+        {
+            return;
+        }
+
+        summon.ApplyCombatStatMultiplier(LevelNode.RegionTwoBossStatMultiplier, refillLife: true);
     }
 
     public void RemoveSummon(SummonCharacter summon, bool queueFree = true)
@@ -1760,6 +1927,16 @@ public partial class Battle : Node2D
             SetExtraActionState(actingCharacter, isExtraAction);
             try
             {
+                if (
+                    isExtraAction
+                    && SuppressActionPoinGainThisTurn
+                    && actingCharacter is PlayerCharacter extraActionPlayer
+                    && GodotObject.IsInstanceValid(extraActionPlayer)
+                )
+                {
+                    extraActionPlayer.TryDrawBattleCards(1);
+                }
+
                 await StartActionAndWaitForNext(actingCharacter);
             }
             finally
@@ -2118,7 +2295,6 @@ public partial class Battle : Node2D
             if (burstActor is PlayerCharacter player && GodotObject.IsInstanceValid(player))
             {
                 player.UpdataEnergy(1, player);
-                AddCardDrawReserve(1, player);
             }
 
             SetNextActionPreviewCharacter(GetNextLivingCharacter(team));
@@ -2321,12 +2497,12 @@ public partial class Battle : Node2D
             return;
 
         reward.ClearRewardItems();
+        var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
         int skillRewardGroups = GetSkillRewardGroupCount();
         for (int i = 0; i < skillRewardGroups; i++)
-            reward.AddSkillRewardEntry();
+            reward.AddSkillRewardEntry(forceRare: levelType == LevelNode.LevelType.Boss);
 
         var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
-        var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
         bool addRelic = ShouldAddRelicReward(levelType);
         bool addRegionalBonusRelic = ShouldAddRegionalBonusRelicReward(levelType);
         bool addItem = GameInfo.RollBattleItemDrop(rng);
@@ -2357,12 +2533,12 @@ public partial class Battle : Node2D
 
     private static bool ShouldAddRelicReward(LevelNode.LevelType levelType)
     {
-        return levelType is LevelNode.LevelType.Boss or LevelNode.LevelType.Elite;
+        return levelType == LevelNode.LevelType.Elite;
     }
 
     private bool ShouldAddRegionalBonusRelicReward(LevelNode.LevelType levelType)
     {
-        if (!IsBattleNode(levelType))
+        if (!IsBattleNode(levelType) || levelType == LevelNode.LevelType.Boss)
             return false;
 
         return GetCurrentRegionalBattleNumber() == RegionalBonusRelicBattleNumber;
