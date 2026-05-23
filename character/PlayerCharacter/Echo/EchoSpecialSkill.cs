@@ -50,6 +50,7 @@ public class VoidForm : Skill
     public VoidForm()
         : base(SkillTypes.Special)
     {
+        SkillName = "虚空形态";
         UpdateDescription();
     }
 
@@ -64,6 +65,79 @@ public class VoidForm : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Void,
                 stacks: VoidStacks,
+                target: TargetReference.Self
+            )
+        );
+    }
+}
+
+public partial class Purity : Skill
+{
+    private const int EnergyGain = 2;
+
+    public Purity()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "纯净";
+    public override int EnergyCost => 0;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(this, EnergyStep(EnergyGain));
+    }
+}
+
+public partial class CursePower : Skill
+{
+    private const int CursePowerStacks = 1;
+
+    public CursePower()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "咒力";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.CursePower,
+                stacks: CursePowerStacks,
+                target: TargetReference.Self
+            )
+        );
+    }
+}
+
+public partial class WeakeningField : Skill
+{
+    private const int WeakeningFieldStacks = 1;
+
+    public WeakeningField()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "虚弱立场";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.WeakeningField,
+                stacks: WeakeningFieldStacks,
                 target: TargetReference.Self
             )
         );

@@ -51,7 +51,7 @@ try {
     $form.Add($fileContent, "image", [System.IO.Path]::GetFileName($refPath))
 
     $response = $client.PostAsync(
-        "https://www.traxnode.com/v1/images/edits",
+        "https://api.traxnode.com/v1/images/edits",
         $form
     ).GetAwaiter().GetResult()
 

@@ -31,6 +31,7 @@ public partial class MouseTrail : CanvasLayer
     private const float MotionResponse = 0.02f;
 
     private Node2D _targetNode;
+    private Line2D _trailLine;
     private Control _cursor;
     private ShaderMaterial _cursorMaterial;
     private Label _stutterLabel;
@@ -52,6 +53,7 @@ public partial class MouseTrail : CanvasLayer
     public override void _Ready()
     {
         _targetNode = GetNodeOrNull<Node2D>("Node2D");
+        _trailLine = GetNodeOrNull<Line2D>("Line2D");
         _cursor = GetNodeOrNull<Control>("Cursor");
         _cursorMaterial = _cursor?.Material as ShaderMaterial;
         if (_cursor != null)
@@ -75,6 +77,20 @@ public partial class MouseTrail : CanvasLayer
     {
         if (Input.MouseMode == Input.MouseModeEnum.Hidden)
             Input.MouseMode = Input.MouseModeEnum.Visible;
+    }
+
+    public void SetUseSystemCursor(bool useSystemCursor)
+    {
+        if (_targetNode != null)
+            _targetNode.Visible = !useSystemCursor;
+        if (_trailLine != null)
+            _trailLine.Visible = !useSystemCursor;
+        if (_cursor != null)
+            _cursor.Visible = !useSystemCursor;
+
+        Input.MouseMode = useSystemCursor
+            ? Input.MouseModeEnum.Visible
+            : Input.MouseModeEnum.Hidden;
     }
 
     public override void _Input(InputEvent @event)

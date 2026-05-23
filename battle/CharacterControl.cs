@@ -71,6 +71,7 @@ public partial class CharacterControl : Control
     private readonly Queue<QueuedCardPlay> _queuedCardPlays = new();
     private readonly Queue<QueuedCardPlay> _queuedFollowUpCardPlays = new();
     private readonly HashSet<int> _queuedCardIndices = new();
+    private Skill[] _displayedSkills = new Skill[HandCardCapacity];
     private SkillID?[] _displayedSkillIds = new SkillID?[HandCardCapacity];
     private bool[] _cardDisplayInitialized = new bool[HandCardCapacity];
     private PlayerCharacter _activePlayer;
@@ -107,6 +108,7 @@ public partial class CharacterControl : Control
 
     public override void _Ready()
     {
+        SkillCard.PrewarmExhaustEffect();
         BuildActionAreaUi();
         SetProcess(false);
         SetProcessInput(true);
@@ -491,6 +493,49 @@ public partial class CharacterControl : Control
         return _cards[index];
     }
 
+    public async Task PlayHandCardExhaustAnimationAsync(
+        PlayerCharacter player,
+        IReadOnlyCollection<int> indexes,
+        float duration = CardPlayVanishDuration
+    )
+    {
+        if (
+            player == null
+            || player != _activePlayer
+            || indexes == null
+            || indexes.Count == 0
+            || !IsInsideTree()
+        )
+        {
+            return;
+        }
+
+        bool playedAny = false;
+        foreach (int index in indexes)
+        {
+            if (!IsCardIndexValid(index))
+                continue;
+
+            SkillCard card = _cards[index];
+            if (card == null || !GodotObject.IsInstanceValid(card) || !card.Visible)
+                continue;
+
+            playedAny = true;
+            card.Button.Disabled = true;
+            card.PlayExhaustEffect(duration);
+        }
+
+        if (!playedAny)
+            return;
+
+        await ToSignal(GetTree().CreateTimer(duration), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    public void RefreshCurrentTurnUi()
+    {
+        RefreshTurnUi();
+    }
+
     private bool TryBindActionAreaUiFromScene()
     {
         _root = GetNodeOrNull<VBoxContainer>("ActionAreaRoot");
@@ -709,7 +754,7 @@ public partial class CharacterControl : Control
         if (button == null)
             return;
 
-        button.Text = "\u7ed3\u675f\u56de\u5408";
+        button.Text = "结束回合";
         button.FocusMode = FocusModeEnum.None;
         button.MouseFilter = MouseFilterEnum.Stop;
         button.AddThemeFontSizeOverride("font_size", 22);
@@ -939,6 +984,50 @@ public partial class CharacterControl : Control
         return indexes.ToArray();
     }
 
+    private void PrepareNewHandCardSlotForRightEntry(int index)
+    {
+        if (
+            index < 0
+            || index >= _cardSlots.Length
+            || _cardRow == null
+            || !GodotObject.IsInstanceValid(_cardRow)
+        )
+        {
+            return;
+        }
+
+        Control slot = _cardSlots[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        float rightMostX = -1f;
+        float rowY = slot.Position.Y;
+        bool foundVisibleSlot = false;
+
+        for (int i = 0; i < _cardSlots.Length; i++)
+        {
+            if (i == index || _cards[i] == null || !_cards[i].Visible)
+                continue;
+
+            Control otherSlot = _cardSlots[i];
+            if (otherSlot == null || !GodotObject.IsInstanceValid(otherSlot))
+                continue;
+
+            if (!foundVisibleSlot)
+            {
+                rowY = otherSlot.Position.Y;
+                foundVisibleSlot = true;
+            }
+            rightMostX = Mathf.Max(rightMostX, otherSlot.Position.X);
+        }
+
+        float startX = rightMostX >= 0f
+            ? rightMostX + cardSize.X + HandCardGap
+            : Math.Max(0f, (_cardRow.Size.X - cardSize.X) * 0.5f);
+        slot.Position = new Vector2(startX, rowY);
+    }
+
     private void RefreshTurnUi()
     {
         if (!_uiBuilt)
@@ -946,6 +1035,7 @@ public partial class CharacterControl : Control
 
         bool updateLayout = !_suppressNextRefreshLayout;
         _suppressNextRefreshLayout = false;
+        Skill[] previousDisplayedSkills = _displayedSkills.ToArray();
         SkillID?[] previousDisplayedSkillIds = _displayedSkillIds.ToArray();
         if (
             _activePlayer == null
@@ -1007,15 +1097,23 @@ public partial class CharacterControl : Control
             skill.UpdateDescription();
 
             bool isNewCardForHand =
-                !_cardDisplayInitialized[i] || _displayedSkillIds[i] != skill.SkillId;
+                !_cardDisplayInitialized[i] || !ReferenceEquals(_displayedSkills[i], skill);
             bool movedFromAnotherSlot =
                 isNewCardForHand
-                && WasSkillAlreadyDisplayed(previousDisplayedSkillIds, skill.SkillId);
+                && WasSkillAlreadyDisplayed(previousDisplayedSkills, skill);
             bool shouldAnimate = isNewCardForHand && !movedFromAnotherSlot;
+            bool shouldResetDisplayState = !card.Visible || isNewCardForHand;
 
             card.Visible = true;
             if (shouldAnimate)
-                card.ResetState();
+                PrepareNewHandCardSlotForRightEntry(i);
+            if (shouldResetDisplayState)
+            {
+                if (shouldAnimate)
+                    card.ResetState();
+                else
+                    card.RestoreDisplayState();
+            }
 
             card.SetSkill(skill);
             card.CharacterName.Text = _activePlayer.CharacterName;
@@ -1034,6 +1132,7 @@ public partial class CharacterControl : Control
                 card.StartAnimation(0.05f * i);
             }
 
+            _displayedSkills[i] = skill;
             _displayedSkillIds[i] = skill.SkillId;
             _cardDisplayInitialized[i] = true;
 
@@ -1072,14 +1171,11 @@ public partial class CharacterControl : Control
             LayoutActionCards();
     }
 
-    private static bool WasSkillAlreadyDisplayed(
-        SkillID?[] previousDisplayedSkillIds,
-        SkillID? skillId
-    )
+    private static bool WasSkillAlreadyDisplayed(Skill[] previousDisplayedSkills, Skill skill)
     {
-        return skillId.HasValue
-            && previousDisplayedSkillIds != null
-            && previousDisplayedSkillIds.Any(id => id == skillId);
+        return skill != null
+            && previousDisplayedSkills != null
+            && previousDisplayedSkills.Any(previousSkill => ReferenceEquals(previousSkill, skill));
     }
 
     private Task HandleCardPressedAsync(int index, bool allowSuppressedPress = false)
@@ -1492,7 +1588,7 @@ public partial class CharacterControl : Control
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.Disabled = true;
         card.SetSkill(skill);
-        card.EnergyCost.Text = "耗能：0";
+        card.EnergyCost.Text = "耗能:0";
         card.CharacterName.Text = $"{actor.CharacterName} | 连携";
         return card;
     }
@@ -1525,7 +1621,7 @@ public partial class CharacterControl : Control
         card.Visible = true;
         card.ResetState();
         card.SetSkill(play.Skill);
-        card.EnergyCost.Text = "耗能：0";
+        card.EnergyCost.Text = "耗能:0";
         card.CharacterName.Text = $"{play.Actor.CharacterName} | 连携";
         card.Button.Disabled = true;
         card.HoverHint.Visible = false;
@@ -1618,12 +1714,34 @@ public partial class CharacterControl : Control
         if (play?.Skill?.RequiresManualFriendlyTarget() != true)
             return true;
 
+        if (!HasManualFriendlyTargetCandidates(play.Skill))
+            return true;
+
         Character target = await ShowManualTargetPickerAsync(play.Skill, play.Card);
         if (target == null || !GodotObject.IsInstanceValid(target))
             return false;
 
         play.Skill.SetManualFriendlyTarget(target);
         return play.Skill.HasManualFriendlyTarget();
+    }
+
+    private bool HasManualFriendlyTargetCandidates(Skill skill)
+    {
+        if (skill?.OwnerCharater == null || BattleNode == null)
+            return false;
+
+        bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
+        bool allowDying = skill.ManualFriendlyTargetAllowsDying();
+        Character owner = skill.OwnerCharater;
+
+        return BattleNode
+            .GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true)
+            .Any(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && (allowDying || character.State != Character.CharacterState.Dying)
+                && (!excludeSelf || character != owner)
+            );
     }
 
     private void EnsureManualTargetPickerUi()
@@ -2320,6 +2438,7 @@ public partial class CharacterControl : Control
     {
         for (int i = 0; i < _displayedSkillIds.Length; i++)
         {
+            _displayedSkills[i] = null;
             _displayedSkillIds[i] = null;
             _cardDisplayInitialized[i] = false;
         }
@@ -2330,6 +2449,7 @@ public partial class CharacterControl : Control
         if (index < 0 || index >= _displayedSkillIds.Length)
             return;
 
+        _displayedSkills[index] = null;
         _displayedSkillIds[index] = null;
         _cardDisplayInitialized[index] = false;
     }

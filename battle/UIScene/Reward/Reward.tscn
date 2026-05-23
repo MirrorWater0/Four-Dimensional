@@ -156,7 +156,7 @@ offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("3_f2bgc")
-CardHeight = 126.0
+CardHeight = 84.0
 CardSpacing = 12.0
 ScrollStep = 70.0
 HorizontalPadding = 26.0
@@ -425,7 +425,7 @@ offset_right = 560.0
 offset_bottom = 200.0
 theme_override_constants/separation = 60
 
-[node name="SkillRewardSkipButton" type="Button" parent="."]
+[node name="SkillRewardSkipButton" type="Button" parent="." unique_id=1941787308]
 visible = false
 z_index = 3
 anchors_preset = 8
@@ -442,3 +442,139 @@ grow_vertical = 2
 theme = SubResource("Theme_button")
 theme_override_font_sizes/font_size = 18
 text = "跳过"
+
+[node name="TalentTreeOverlay" type="Control" parent="."]
+visible = false
+z_index = 4
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Backdrop" type="ColorRect" parent="TalentTreeOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+color = Color(0.02, 0.04, 0.08, 0.8)
+
+[node name="TalentPanel" type="Panel" parent="TalentTreeOverlay"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -265.0
+offset_right = 420.0
+offset_bottom = 265.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+
+[node name="Inner" type="Panel" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="Header" type="HBoxContainer" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 26.0
+offset_top = 20.0
+offset_right = -26.0
+offset_bottom = 60.0
+grow_horizontal = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="TalentTreeOverlay/TalentPanel/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.92, 0.96, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.08, 0.14, 0.24, 0.6)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 22
+text = "天赋树"
+
+[node name="PointLabel" type="Label" parent="TalentTreeOverlay/TalentPanel/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.56, 1)
+theme_override_font_sizes/font_size = 18
+text = "剩余天赋点 0"
+horizontal_alignment = 2
+
+[node name="TopLine" type="ColorRect" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 68.0
+offset_right = -24.0
+offset_bottom = 70.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.42, 0.65, 0.88, 0.46)
+
+[node name="Hint" type="Label" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 26.0
+offset_top = 78.0
+offset_right = -26.0
+offset_bottom = 104.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.95, 0.72)
+theme_override_font_sizes/font_size = 14
+text = "拾取后可立即点亮天赋"
+horizontal_alignment = 1
+
+[node name="TalentTreeRoot" type="Control" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 70.0
+offset_top = 124.0
+offset_right = -70.0
+offset_bottom = -78.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Footer" type="HBoxContainer" parent="TalentTreeOverlay/TalentPanel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -58.0
+offset_right = -24.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 2
+
+[node name="CloseButton" type="Button" parent="TalentTreeOverlay/TalentPanel/Footer"]
+layout_mode = 2
+custom_minimum_size = Vector2(132, 38)
+theme = SubResource("Theme_button")
+theme_override_font_sizes/font_size = 18
+text = "完成"

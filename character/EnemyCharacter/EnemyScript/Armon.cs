@@ -89,8 +89,8 @@ public partial class ArmonRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
         MaxLife = 64;
-        Power = 14;
-        Survivability = 5;
+        Power = 21;
+        Survivability = 14;
         Speed = 7;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
@@ -101,9 +101,7 @@ public partial class ArmonRegedit : EnemyRegedit
 
 public partial class ArmonAttack : Skill
 {
-    private const int BaseDamage = 18;
-    private const int SelfPowerGain = 5;
-    private const int SelfSurvivabilityGain = 2;
+    private const int BaseDamage = 0;
 
     public ArmonAttack()
         : base(SkillTypes.Attack)
@@ -117,11 +115,9 @@ public partial class ArmonAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(BaseDamage),
-            BlockStep(-1),
-            BlockStep(1),
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
+            AttackStep(BaseDamage),
+            BlockStep(target: TargetReference.Previous),
+            BlockStep(target: TargetReference.Next)
         );
     }
 }
@@ -129,8 +125,7 @@ public partial class ArmonAttack : Skill
 public partial class ArmonSurvive : Skill
 {
     private const int BaseBlock = 0;
-    private const int PowerGain = 5;
-    private const int EnergyGain = 1;
+    private const int EnergyGain = 2;
 
     public ArmonSurvive()
         : base(SkillTypes.Survive)
@@ -144,8 +139,8 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, 2),
-            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            AddStatusCardsToDrawPileStep(SkillID.StunStatus, 2, HostileTargetReference.All),
             EnergyStep(EnergyGain)
         );
     }
@@ -169,15 +164,12 @@ public partial class ArmonSpecial : Skill
     {
         return new SkillPlan(
             this,
+            AttackStep(baseDamage: 0),
             EnergyTimesWhileStep(
                 paidEnergyPerLoop: 2,
                 loopSteps: new[]
                 {
-                    ModifyPropertyStep(
-                        PropertyType.Power,
-                        PowerGainPerEnergy,
-                        TargetReference.All
-                    ),
+                    ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy, TargetReference.All),
                     ModifyPropertyStep(
                         PropertyType.Survivability,
                         SurvivabilityGainPerEnergy,

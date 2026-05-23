@@ -3,11 +3,11 @@ using Godot;
 
 public partial class VoidAcolyte : EnemyCharacter
 {
-    private const int StartRebirthStacks = 9;
+    private const int StartRebirthStacks = 8;
 
-    public const string PassiveNameText = "空壳复苏";
+    public const string PassiveNameText = "虚壳复苏";
     public static string PassiveDescriptionText =>
-        $"战斗开始时: 获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}.";
+        $"战斗开始时：获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
 
     public override string CharacterName { get; set; } = "虚空侍从";
 
@@ -37,8 +37,8 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
 
         MaxLife = 23;
-        Power = 8;
-        Survivability = 5;
+        Power = 11;
+        Survivability = 0;
         Speed = 8;
         SkillIDs =
         [
@@ -54,7 +54,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
 
 public partial class VoidAcolyteAttack : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 0;
 
     public VoidAcolyteAttack()
         : base(SkillTypes.Attack)
@@ -66,7 +66,7 @@ public partial class VoidAcolyteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackPrimaryStep(baseDamage: BaseDamage, 2));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, 2));
     }
 }
 
@@ -87,7 +87,7 @@ public partial class VoidAcolyteSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -95,7 +95,6 @@ public partial class VoidAcolyteSurvive : Skill
 
 public partial class VoidAcolyteSpecial : Skill
 {
-    private const string TargetKey = "void-acolyte-target";
     private const int VoidCardsInserted = 2;
 
     public VoidAcolyteSpecial()
@@ -110,8 +109,12 @@ public partial class VoidAcolyteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(30, powerMultiplier: 1, storeAs: TargetKey),
-            AddStatusCardsToDrawPileStep(SkillID.VoidStatus, VoidCardsInserted, TargetKey)
+            AttackStep(10, multiplier: 1),
+            AddStatusCardsToDrawPileStep(
+                SkillID.VoidStatus,
+                VoidCardsInserted,
+                HostileTargetReference.AttackKey
+            )
         );
     }
 }

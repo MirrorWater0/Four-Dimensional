@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://c4g6k7xc1fxmf"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://weakeningfield" path="res://shader/Icon/BuffIcon/WeakeningField.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_weakening_field"]
+shader = ExtResource("2_shd")
+shader_parameter/field_color = Color(0.25, 0.72, 1, 1)
+shader_parameter/weak_color = Color(0.55, 0.22, 0.92, 1)
+shader_parameter/shield_color = Color(0.9, 0.98, 1, 1)
+shader_parameter/core_color = Color(0.04, 0.03, 0.12, 1)
+shader_parameter/animation_speed = 1.0
+shader_parameter/glow_strength = 0.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_weakening_field")

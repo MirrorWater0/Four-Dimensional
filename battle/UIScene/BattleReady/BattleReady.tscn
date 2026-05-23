@@ -849,7 +849,7 @@ size_flags_horizontal = 3
 theme = ExtResource("10_btn")
 theme_override_font_sizes/font_size = 16
 toggle_mode = true
-text = "Mariya"
+text = "玛瑞娅"
 flat = true
 
 [node name="NightingaleButton" type="Button" parent="CharacterSelectRoot/CharacterSelectPanel/CharacterSelectList" unique_id=157315113]

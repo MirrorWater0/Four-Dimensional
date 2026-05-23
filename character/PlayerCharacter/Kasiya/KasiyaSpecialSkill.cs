@@ -6,7 +6,7 @@ public partial class ReadyStance : Skill
 {
     private const int EnergyGain = 5;
 
-    public override string SkillName { get; set; } = "\u80fd\u91cf\u7206\u53d1";
+    public override string SkillName { get; set; } = "能量爆发";
     public override int EnergyCost => 3;
 
     public ReadyStance()
@@ -41,7 +41,7 @@ public class HolySeal : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Stun,
                 stacks: StunStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             )
         );
     }
@@ -58,7 +58,7 @@ public class AegisPledge : Skill
     }
 
     public override string SkillName { get; set; } = "壁垒誓约";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()
     {
@@ -73,9 +73,36 @@ public class AegisPledge : Skill
     }
 }
 
+public class HopeBeacon : Skill
+{
+    private const int BeaconStacks = 1;
+
+    public HopeBeacon()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "希望灯塔";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Beacon,
+                stacks: BeaconStacks,
+                target: TargetReference.Self
+            )
+        );
+    }
+}
+
 public class WarGodWill : Skill
 {
-    private const int PowerGain = 5;
+    private const int PowerGain = 4;
 
     public WarGodWill()
         : base(SkillTypes.Special)
@@ -97,7 +124,7 @@ public class WarGodWill : Skill
 
 public class DemonForm : Skill
 {
-    private const int DemonStacks = 6;
+    private const int DemonStacks = 5;
 
     public DemonForm()
         : base(SkillTypes.Special)

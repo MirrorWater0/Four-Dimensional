@@ -124,7 +124,7 @@ public partial class AlienBodyAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(BaseDamage),
+            AttackStep(BaseDamage),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown)
         );
     }
@@ -147,8 +147,8 @@ public partial class AlienBodySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown)
+            BlockStep(baseBlock: BaseBlock),
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, HostileTargetReference.One)
         );
     }
 }
@@ -172,8 +172,8 @@ public partial class AlienBodySpecial : Skill
         return new SkillPlan(
             this,
             CarryStep(target: TargetReference.Previous, skillIndex: 2),
-            LowerTargetPropertyStep(PropertyType.Power, PowerDown),
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown)
+            LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, HostileTargetReference.One)
         );
     }
 }

@@ -19,7 +19,7 @@ public partial class SoundBarrier : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
@@ -42,7 +42,7 @@ public partial class SonicDeflection : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -53,10 +53,38 @@ public partial class SonicDeflection : Skill
     }
 }
 
+public partial class DeflectionShield : Skill
+{
+    private const int BaseBlock = 8;
+    private const int DamageImmuneStacks = 1;
+
+    public DeflectionShield()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "偏折之盾";
+    public override int EnergyCost => 1;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.DamageImmune,
+                stacks: DamageImmuneStacks,
+                target: TargetReference.Next
+            )
+        );
+    }
+}
+
 public partial class ResonantWard : Skill
 {
-    private const int DebuffImmunityStacks = 2;
-    private const int BaseBlock = 1;
+    private const int DebuffImmunityStacks = 1;
+    private const int BaseBlock = 8;
 
     public ResonantWard()
         : base(SkillTypes.Survive)
@@ -64,7 +92,7 @@ public partial class ResonantWard : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "回响护佑";
+    public override string SkillName { get; set; } = "电磁排斥";
 
     protected override SkillPlan BuildPlan()
     {
@@ -73,16 +101,16 @@ public partial class ResonantWard : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                target: TargetReference.Self
+                target: TargetReference.All
             ),
-            BlockStep(0, BaseBlock, 1)
+            BlockStep(baseBlock: BaseBlock)
         );
     }
 }
 
 public partial class DissonantField : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 8;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;
 
@@ -98,7 +126,7 @@ public partial class DissonantField : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -110,7 +138,7 @@ public partial class DissonantField : Skill
 
 public partial class Shelter : Skill
 {
-    private const int BaseBlock = -3;
+    private const int BaseBlock = 0;
     private const int CardRefreshStacks = 1;
 
     public Shelter()
@@ -126,7 +154,7 @@ public partial class Shelter : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, survivabilityMultiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,

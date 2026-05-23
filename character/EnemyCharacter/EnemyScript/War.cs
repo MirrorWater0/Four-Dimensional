@@ -52,8 +52,19 @@ public partial class War : EnemyCharacter
         if (emptySlots.Length == 0)
             return Task.CompletedTask;
 
+        var playerOccupiedRows = BattleNode
+            .GetTeamCharacters(isPlayer: true, includeSummons: false)
+            .Where(x => x != null && GodotObject.IsInstanceValid(x) && x.PositionIndex > 0)
+            .Select(x => (x.PositionIndex - 1) % 3)
+            .ToHashSet();
+
+        int[] prioritizedSlots = emptySlots
+            .Where(slot => playerOccupiedRows.Contains((slot - 1) % 3))
+            .ToArray();
+
         Random random = BattleNode.BattleIntentionRandom ?? new Random();
-        int chosenSlot = emptySlots[random.Next(emptySlots.Length)];
+        int[] pickPool = prioritizedSlots.Length > 0 ? prioritizedSlots : emptySlots;
+        int chosenSlot = pickPool[random.Next(pickPool.Length)];
         int slotSelector = chosenSlot - PositionIndex;
 
         using var _ = BeginEffectSource("被动");
@@ -118,7 +129,7 @@ public partial class WarRegedit : EnemyRegedit
 
         MaxLife = 278;
         Power = 10;
-        Survivability = 10;
+        Survivability = 15;
         Speed = 12;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
@@ -144,7 +155,7 @@ public partial class WarAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 2),
+            AttackStep(baseDamage: BaseDamage, multiplier: 2),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
         );
     }
@@ -153,7 +164,7 @@ public partial class WarAttack : Skill
 public partial class WarSurvive : Skill
 {
     private const int BaseBlock = 10;
-    private const int SelfSurvivabilityGain = 2;
+    private const int SelfSurvivabilityGain = 3;
     private const int ThrallBlock = 0;
 
     public WarSurvive()
@@ -168,9 +179,9 @@ public partial class WarSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             BlockSummonsStep(baseBlock: ThrallBlock),
-            HealStep(0, 0),
+            HealStep(0),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
@@ -193,10 +204,9 @@ public partial class WarSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 0),
+            AttackStep(baseDamage: 0),
             SummonStep(1, War.ThrallScene),
             SummonStep(-1, War.ThrallScene),
-            ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain),
             ModifyPropertyStep(PropertyType.Power, 2)
         );
     }

@@ -14,9 +14,16 @@ public partial class Reward : CanvasLayer
     private static readonly PackedScene RewardItemScene = GD.Load<PackedScene>(
         "res://Equipment/CardSlot.tscn"
     );
+    private static readonly PackedScene TipScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/Tip.tscn"
+    );
 
     private const int ExpectedSkillSlots = 4;
     private const string RuntimeRewardMeta = "reward_runtime";
+    private const float TalentNodeWidth = 76f;
+    private const float TalentNodeHeight = 76f;
+    private const float TalentNodeLabelHeight = 22f;
+    private const float TalentLineThickness = 5f;
 
     private InventoryGrid InventoryGridNode => field ??= GetNode<InventoryGrid>("Panel/Inventory");
     private Button SkillRewardButton => field ??= GetNodeOrNull<Button>("Panel/Inventory/Button");
@@ -29,6 +36,20 @@ public partial class Reward : CanvasLayer
     private Button SkipButton => field ??= GetNodeOrNull<Button>("Panel/Decor/SkipButton");
     private Button SkillRewardSkipButton =>
         field ??= GetNodeOrNull<Button>("SkillRewardSkipButton");
+    private Control TalentOverlay =>
+        field ??= GetNodeOrNull<Control>("TalentTreeOverlay");
+    private ColorRect TalentOverlayBackdrop =>
+        field ??= GetNodeOrNull<ColorRect>("TalentTreeOverlay/Backdrop");
+    private Panel TalentPanel =>
+        field ??= GetNodeOrNull<Panel>("TalentTreeOverlay/TalentPanel");
+    private Label TalentCharacterLabel =>
+        field ??= GetNodeOrNull<Label>("TalentTreeOverlay/TalentPanel/Header/Title");
+    private Label TalentPointLabel =>
+        field ??= GetNodeOrNull<Label>("TalentTreeOverlay/TalentPanel/Header/PointLabel");
+    private Control TalentTreeRoot =>
+        field ??= GetNodeOrNull<Control>("TalentTreeOverlay/TalentPanel/TalentTreeRoot");
+    private Button TalentCloseButton =>
+        field ??= GetNodeOrNull<Button>("TalentTreeOverlay/TalentPanel/Footer/CloseButton");
     public Map MapNode => field ??= GetNode<Map>("/root/Map");
 
     private readonly List<SkillCard> _skillRewardSlots = new();
@@ -46,15 +67,20 @@ public partial class Reward : CanvasLayer
     private Tween _maskTween;
     private Vector2 _panelBasePosition;
     private bool _panelBaseCached;
+    private bool _battleTalentPointRewardGranted;
     private int _nextSkillRewardGroupIndex;
     private bool _skillRewardOffersGenerated;
+    private bool _isTalentTreeOpen;
+    private int _activeTalentCharacterIndex = -1;
     private const float RewardReflowDuration = 0.18f;
+    public bool AllowRareSkillRewards { get; set; } = true;
 
     private enum RewardKind
     {
         Skill,
         Relic,
         Item,
+        TalentPoint,
     }
 
     private sealed class RewardEntry
@@ -64,8 +90,11 @@ public partial class Reward : CanvasLayer
         public ItemID ItemId;
         public int SkillGroupIndex = -1;
         public bool ForceRareSkillReward;
+        public bool AllowRareSkillReward = true;
         public SkillID?[] OfferedSkillIds;
         public int[] OfferedPlayerIndexes;
+        public string TalentPointCharacterName;
+        public int TalentPointAmount;
     }
 
     // Call from anywhere (e.g. Battle) to show the reward UI.
@@ -129,11 +158,16 @@ public partial class Reward : CanvasLayer
             SkipButton.Pressed += SkipRewards;
         if (SkillRewardSkipButton != null)
             SkillRewardSkipButton.Pressed += SkipSkillRewardSelection;
+        if (TalentOverlay != null)
+            TalentOverlay.Visible = false;
+        if (TalentCloseButton != null)
+            TalentCloseButton.Pressed += CloseTalentRewardTree;
     }
 
     public void SetCompleteNodeOnClose(LevelNode node)
     {
         _completeNodeOnClose = node;
+        _battleTalentPointRewardGranted = false;
     }
 
     /// <summary>Show reward UI. Default to a skill reward entry if none exists.</summary>
@@ -184,17 +218,20 @@ public partial class Reward : CanvasLayer
     }
 
     /// <summary>Add a skill reward entry to the inventory list.</summary>
-    public CardSlot AddSkillRewardEntry(string title = "技能奖励", bool forceRare = false)
+    public CardSlot AddSkillRewardEntry(string title = null, bool forceRare = false)
     {
+        title ??= I18n.Tr("ui.reward.skill_reward", "技能奖励");
         var entry = new RewardEntry
         {
             Kind = RewardKind.Skill,
             SkillGroupIndex = _nextSkillRewardGroupIndex++,
             ForceRareSkillReward = forceRare,
+            AllowRareSkillReward = AllowRareSkillRewards,
         };
-        var card = CreateRewardCard(title, "点击展开技能卡");
+        var card = CreateRewardCard(title, I18n.Tr("ui.reward.click_expand_skill", "点击展开技能卡"));
         if (card == null)
             return null;
+        card.ConfigureSkillRewardStyle();
         _skillRewardOffersGenerated = false;
         RegisterRewardControl(card, entry, isRuntime: true);
         return card;
@@ -204,11 +241,13 @@ public partial class Reward : CanvasLayer
     public CardSlot AddRelicRewardEntry(RelicID relicId, string displayName = null)
     {
         var relic = Relic.Create(relicId);
-        string title = displayName ?? $"遗物 · {relic.RelicName}";
+        string title = displayName
+            ?? I18n.Format("ui.reward.relic_title", "遗物 · {name}", ("name", relic.RelicName));
         var entry = new RewardEntry { Kind = RewardKind.Relic, RelicId = relicId };
-        var card = CreateRewardCard(title, "点击领取遗物");
+        var card = CreateRewardCard(title, I18n.Tr("ui.reward.click_claim_relic", "点击领取遗物"));
         if (card == null)
             return null;
+        card.ConfigureRelicRewardStyle(relicId);
         RegisterRewardControl(card, entry, isRuntime: true);
         return card;
     }
@@ -216,12 +255,36 @@ public partial class Reward : CanvasLayer
     /// <summary>Add a consumable item reward entry to the inventory list.</summary>
     public CardSlot AddItemRewardEntry(ItemID itemId, string displayName = null)
     {
-        string title = displayName ?? $"道具 · {GetItemName(itemId)}";
+        string title = displayName
+            ?? I18n.Format("ui.reward.item_title", "道具 · {name}", ("name", GetItemName(itemId)));
         string detail = GetItemDescription(itemId);
         var entry = new RewardEntry { Kind = RewardKind.Item, ItemId = itemId };
         var card = CreateRewardCard(title, detail);
         if (card == null)
             return null;
+        card.ConfigureItemRewardStyle(itemId);
+        RegisterRewardControl(card, entry, isRuntime: true);
+        return card;
+    }
+
+    /// <summary>Add a talent point reward entry to the inventory list.</summary>
+    public CardSlot AddTalentPointRewardEntry(TalentPointRewardResult talentReward)
+    {
+        if (!talentReward.Granted)
+            return null;
+
+        string title = I18n.Tr("ui.reward.talent_points", "天赋点");
+        string detail = talentReward.CharacterName;
+        var entry = new RewardEntry
+        {
+            Kind = RewardKind.TalentPoint,
+            TalentPointCharacterName = talentReward.CharacterName,
+            TalentPointAmount = talentReward.Amount,
+        };
+        var card = CreateRewardCard(title, detail);
+        if (card == null)
+            return null;
+        card.ConfigureTalentPointRewardStyle();
         RegisterRewardControl(card, entry, isRuntime: true);
         return card;
     }
@@ -234,8 +297,10 @@ public partial class Reward : CanvasLayer
         if (_rewardEntries.ContainsKey(button))
             return;
 
-        button.Text = "技能奖励";
+        button.Text = I18n.Tr("ui.reward.skill_reward", "技能奖励");
         button.Visible = true;
+        button.Text = string.Empty;
+        ConfigureStaticSkillRewardButton(button);
         button.Disabled = false;
         button.Modulate = new Color(1, 1, 1, 1);
         RegisterRewardControl(
@@ -250,6 +315,74 @@ public partial class Reward : CanvasLayer
         if (_rewardEntries.Values.Any(entry => entry.Kind == RewardKind.Skill))
             return;
         AddSkillRewardEntry();
+    }
+
+    private static void ConfigureStaticSkillRewardButton(Button button)
+    {
+        if (button == null)
+            return;
+
+        const string iconName = "SkillRewardIcon";
+        const string labelName = "RewardLabel";
+        var icon = button.GetNodeOrNull<ColorRect>(iconName);
+        if (icon == null)
+        {
+            icon = new ColorRect
+            {
+                Name = iconName,
+                Color = Colors.White,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            button.AddChild(icon);
+        }
+
+        if (icon.Material == null)
+        {
+            var shader = GD.Load<Shader>("res://shader/Effect/SkillRewardIcon.gdshader");
+            if (shader != null)
+            {
+                icon.Material = new ShaderMaterial
+                {
+                    Shader = shader,
+                    ResourceLocalToScene = true,
+                };
+            }
+        }
+
+        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        icon.AnchorTop = 0.5f;
+        icon.AnchorBottom = 0.5f;
+        icon.OffsetLeft = 18f;
+        icon.OffsetTop = -34f;
+        icon.OffsetRight = 86f;
+        icon.OffsetBottom = 34f;
+
+        var label = button.GetNodeOrNull<Label>(labelName);
+        if (label == null)
+        {
+            label = new Label
+            {
+                Name = labelName,
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            };
+            button.AddChild(label);
+        }
+
+        label.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        label.OffsetLeft = 104f;
+        label.OffsetTop = 6f;
+        label.OffsetRight = -18f;
+        label.OffsetBottom = -6f;
+        label.Text = I18n.Tr("ui.reward.skill_reward_with_hint", "技能奖励\n点击展开技能卡");
+        label.HorizontalAlignment = HorizontalAlignment.Left;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.ClipText = true;
+        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeColorOverride("font_color", new Color(0.9f, 0.96f, 1f, 1f));
+        label.AddThemeColorOverride("font_shadow_color", new Color(0f, 0.08f, 0.16f, 0.78f));
+        label.AddThemeConstantOverride("shadow_offset_x", 1);
+        label.AddThemeConstantOverride("shadow_offset_y", 1);
     }
 
     private CardSlot CreateRewardCard(string title, string detail)
@@ -342,6 +475,9 @@ public partial class Reward : CanvasLayer
         if (!_rewardEntries.TryGetValue(control, out var entry))
             return;
 
+        if (control is CardSlot card)
+            card.Unselect();
+
         switch (entry.Kind)
         {
             case RewardKind.Skill:
@@ -354,6 +490,17 @@ public partial class Reward : CanvasLayer
                 break;
             case RewardKind.Item:
                 if (GrantItemReward(entry.ItemId))
+                {
+                    RemoveRewardControlWithReflow(control);
+                    TryCloseIfDone();
+                }
+                else
+                {
+                    PlayRewardRejected(control);
+                }
+                break;
+            case RewardKind.TalentPoint:
+                if (GrantTalentPointReward())
                 {
                     RemoveRewardControlWithReflow(control);
                     TryCloseIfDone();
@@ -492,6 +639,7 @@ public partial class Reward : CanvasLayer
             SkillID? pickedId = i < _offeredSkillIds.Length ? _offeredSkillIds[i] : null;
             if (pickedId == null)
             {
+                slot.PreviewCharacterName = string.Empty;
                 slot.SetSkill(null);
                 slot.Button.Disabled = true;
                 continue;
@@ -500,14 +648,19 @@ public partial class Reward : CanvasLayer
             var skill = Skill.GetSkill(pickedId.Value);
             if (skill == null)
             {
+                slot.PreviewCharacterName = string.Empty;
                 slot.SetSkill(null);
                 slot.Button.Disabled = true;
                 continue;
             }
 
             var info = players[playerIndex];
-            slot.CharacterName.Text = GameInfo.PlayerCharacters[playerIndex].CharacterName;
-            skill.SetPreviewStats(info.Power, info.Survivability, 1);
+            slot.PreviewCharacterName = GameInfo.PlayerCharacters[playerIndex].CharacterName;
+            skill.SetPreviewStats(
+                TalentTree.GetEffectivePower(info),
+                TalentTree.GetEffectiveSurvivability(info),
+                1
+            );
             slot.SetSkill(skill);
         }
     }
@@ -576,7 +729,8 @@ public partial class Reward : CanvasLayer
                 players[i],
                 rng,
                 avoidSkillIds,
-                entry.ForceRareSkillReward ? Skill.SkillRarity.Rare : null
+                entry.ForceRareSkillReward ? Skill.SkillRarity.Rare : null,
+                entry.AllowRareSkillReward
             );
         }
     }
@@ -585,15 +739,23 @@ public partial class Reward : CanvasLayer
         PlayerInfoStructure info,
         Random rng,
         ISet<SkillID> avoidSkillIds = null,
-        Skill.SkillRarity? forcedRarity = null
+        Skill.SkillRarity? forcedRarity = null,
+        bool allowRare = true
     )
     {
         var pool = info.AllSkills;
         if (pool == null || pool.Length == 0)
             return null;
 
-        Skill.SkillRarity rolledRarity = forcedRarity ?? Skill.RollRewardRarity(rng);
-        SkillID[] filteredPool = GetRewardSkillPoolForRarity(pool, rolledRarity);
+        Skill.SkillRarity rolledRarity = forcedRarity ?? Skill.RollRewardRarity(rng, allowRare);
+        if (!allowRare && rolledRarity == Skill.SkillRarity.Rare)
+            rolledRarity = Skill.SkillRarity.Uncommon;
+
+        SkillID[] filteredPool = GetRewardSkillPoolForRarity(pool, rolledRarity, allowRare);
+        if (filteredPool.Length == 0)
+            filteredPool = allowRare
+                ? pool
+                : pool.Where(skillId => Skill.GetRarity(skillId) != Skill.SkillRarity.Rare).ToArray();
         if (filteredPool.Length == 0)
             filteredPool = pool;
 
@@ -610,7 +772,10 @@ public partial class Reward : CanvasLayer
             else
             {
                 SkillID[] fullPoolNonDuplicate = pool
-                    .Where(skillId => !avoidSkillIds.Contains(skillId))
+                    .Where(skillId =>
+                        !avoidSkillIds.Contains(skillId)
+                        && (allowRare || Skill.GetRarity(skillId) != Skill.SkillRarity.Rare)
+                    )
                     .ToArray();
                 if (fullPoolNonDuplicate.Length > 0)
                     pickPool = fullPoolNonDuplicate;
@@ -622,14 +787,15 @@ public partial class Reward : CanvasLayer
 
     private static SkillID[] GetRewardSkillPoolForRarity(
         IEnumerable<SkillID> pool,
-        Skill.SkillRarity rolledRarity
+        Skill.SkillRarity rolledRarity,
+        bool allowRare = true
     )
     {
         SkillID[] sourcePool = (pool ?? Array.Empty<SkillID>()).ToArray();
         if (sourcePool.Length == 0)
             return Array.Empty<SkillID>();
 
-        foreach (Skill.SkillRarity rarity in Skill.GetRewardRarityFallbackOrder(rolledRarity))
+        foreach (Skill.SkillRarity rarity in Skill.GetRewardRarityFallbackOrder(rolledRarity, allowRare))
         {
             SkillID[] filtered = Skill.FilterSkillPoolByRarity(sourcePool, rarity);
             if (filtered.Length > 0)
@@ -726,6 +892,402 @@ public partial class Reward : CanvasLayer
             return false;
 
         return ConsumeItem.TryAddItem(resourceState, itemId, syncGameInfo: true);
+    }
+
+    private bool GrantTalentPointReward()
+    {
+        if (_battleTalentPointRewardGranted)
+            return true;
+
+        var talentReward = GameInfo.TryGrantBattleTalentPointReward(_completeNodeOnClose);
+        if (!talentReward.Granted)
+            return false;
+
+        _battleTalentPointRewardGranted = true;
+        PrintTalentPointReward(talentReward);
+        OpenTalentRewardTree(talentReward.CharacterName);
+        return true;
+    }
+
+    private void OpenTalentRewardTree(string characterName)
+    {
+        int characterIndex = FindPlayerIndexByCharacterName(characterName);
+        if (characterIndex < 0 || TalentOverlay == null)
+            return;
+
+        _activeTalentCharacterIndex = characterIndex;
+        _isTalentTreeOpen = true;
+        InventoryGridNode?.SetInputBlocked(true);
+        ShowSkillMask(true);
+
+        if (TalentCharacterLabel != null)
+            TalentCharacterLabel.Text = I18n.Format(
+                "ui.common.talent_tree_title",
+                "{name} 天赋树",
+                ("name", characterName)
+            );
+
+        TalentOverlay.Visible = true;
+        TalentOverlay.Modulate = new Color(1f, 1f, 1f, 0f);
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(TalentOverlay, "modulate:a", 1.0f, 0.18f);
+        if (TalentPanel != null)
+        {
+            TalentPanel.Scale = new Vector2(0.96f, 0.96f);
+            tween
+                .TweenProperty(TalentPanel, "scale", Vector2.One, 0.2f)
+                .SetEase(Tween.EaseType.Out)
+                .SetTrans(Tween.TransitionType.Cubic);
+        }
+
+        RefreshTalentRewardTree(characterIndex);
+    }
+
+    private void CloseTalentRewardTree()
+    {
+        _isTalentTreeOpen = false;
+        _activeTalentCharacterIndex = -1;
+        HideTalentTooltip();
+        InventoryGridNode?.SetInputBlocked(false);
+        ShowSkillMask(false);
+
+        if (TalentOverlay != null)
+            TalentOverlay.Visible = false;
+
+        ClearTalentRewardTree();
+        TryCloseIfDone();
+    }
+
+    private int FindPlayerIndexByCharacterName(string characterName)
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || string.IsNullOrWhiteSpace(characterName))
+            return -1;
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            if (string.Equals(players[i].CharacterName, characterName, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
+
+    private void RefreshTalentRewardTree(int characterIndex)
+    {
+        ClearTalentRewardTree();
+
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+        {
+            if (TalentPointLabel != null)
+                TalentPointLabel.Text = I18n.Tr("ui.common.talent_points_zero", "天赋点 0");
+            return;
+        }
+
+        var info = players[characterIndex];
+        info.UnlockedTalents ??= new List<string>();
+        players[characterIndex] = info;
+        GameInfo.PlayerCharacters = players;
+
+        if (TalentPointLabel != null)
+            TalentPointLabel.Text = I18n.Format(
+                "ui.common.remaining_talent_points",
+                "剩余天赋点 {value}",
+                ("value", info.TalentPoints)
+            );
+
+        var nodes = TalentTree.GetNodes(info.CharacterName);
+        var nodesById = nodes.ToDictionary(node => node.Id);
+
+        foreach (var node in nodes)
+        {
+            foreach (string prerequisiteId in node.Prerequisites)
+            {
+                if (!nodesById.TryGetValue(prerequisiteId, out var prerequisite))
+                    continue;
+
+                bool active =
+                    TalentTree.HasUnlocked(info, prerequisite.Id)
+                    && TalentTree.HasUnlocked(info, node.Id);
+                AddTalentConnection(prerequisite.Position, node.Position, active);
+            }
+        }
+
+        foreach (var node in nodes)
+        {
+            bool unlocked = TalentTree.HasUnlocked(info, node.Id);
+            bool canUnlock = TalentTree.CanUnlock(info, node, out string reason);
+            TalentTreeRoot?.AddChild(
+                CreateTalentNodeControl(characterIndex, node, unlocked, canUnlock, reason)
+            );
+        }
+    }
+
+    private void ClearTalentRewardTree()
+    {
+        if (TalentTreeRoot == null)
+            return;
+
+        for (int i = TalentTreeRoot.GetChildCount() - 1; i >= 0; i--)
+        {
+            var child = TalentTreeRoot.GetChild(i);
+            TalentTreeRoot.RemoveChild(child);
+            child.QueueFree();
+        }
+    }
+
+    private Control CreateTalentNodeControl(
+        int characterIndex,
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        var wrapper = new Control
+        {
+            Position = node.Position,
+            Size = new Vector2(TalentNodeWidth, TalentNodeHeight + TalentNodeLabelHeight),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+
+        var button = new Button
+        {
+            Position = Vector2.Zero,
+            Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
+            Text = GetTalentIconText(node),
+            TooltipText = string.Empty,
+            FocusMode = Control.FocusModeEnum.None,
+            Flat = false,
+            Disabled = false,
+        };
+
+        button.AddThemeFontSizeOverride("font_size", 30);
+        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
+        button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateTalentNodeStyle(unlocked, canUnlock, 0.22f)
+        );
+        button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
+        button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
+        button.MouseExited += HideTalentTooltip;
+        button.Pressed += () => OnTalentRewardNodePressed(characterIndex, node.Id);
+
+        var progressLabel = new Label
+        {
+            Position = new Vector2(0f, TalentNodeHeight - 2f),
+            Size = new Vector2(TalentNodeWidth, TalentNodeLabelHeight),
+            Text = unlocked ? "1/1" : "0/1",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        progressLabel.AddThemeFontSizeOverride("font_size", 15);
+        progressLabel.AddThemeColorOverride(
+            "font_color",
+            unlocked ? new Color(1f, 0.88f, 0.54f, 1f)
+                : canUnlock ? new Color(0.82f, 0.94f, 1f, 0.95f)
+                : new Color(0.58f, 0.64f, 0.72f, 0.72f)
+        );
+
+        wrapper.AddChild(button);
+        wrapper.AddChild(progressLabel);
+        return wrapper;
+    }
+
+    private void ShowTalentTooltip(
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        var tip = EnsureGlobalTooltip();
+        if (tip == null)
+            return;
+
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(24f, 20f);
+        tip.MinContentWidth = 360f;
+        tip.SetText(BuildTalentTooltipText(node, unlocked, canUnlock, reason));
+    }
+
+    private void HideTalentTooltip()
+    {
+        EnsureGlobalTooltip()?.HideTooltip();
+    }
+
+    private static string BuildTalentTooltipText(
+        TalentNodeDefinition node,
+        bool unlocked,
+        bool canUnlock,
+        string reason
+    )
+    {
+        string stateText = unlocked
+            ? I18n.Tr("ui.common.unlocked", "已点亮")
+            : canUnlock ? I18n.Tr("ui.common.available_to_unlock", "可点亮")
+            : reason;
+        string stateColor = unlocked ? "#ffd987" : canUnlock ? "#9ff5ff" : "#9aa3b5";
+        string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
+        string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
+            ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
+            : node.EffectDescription;
+
+        return $"[b]{node.DisplayName}[/b]\n"
+            + I18n.Format(
+                "ui.common.talent_stage_cost_bbcode",
+                "[color=#cfd6e6]阶段 {stage} / 消耗 {cost} 点天赋点[/color]\n",
+                ("stage", node.Stage + 1),
+                ("cost", node.Cost)
+            )
+            + $"[color={stateColor}]{stateText}[/color]\n\n"
+            + I18n.Format(
+                "ui.common.description_bbcode",
+                "[color=#9fb5d6]说明[/color]\n{value}\n\n",
+                ("value", description)
+            )
+            + I18n.Format(
+                "ui.common.effect_bbcode",
+                "[color=#ffd987]效果[/color]\n{value}",
+                ("value", effect)
+            );
+    }
+
+    private static StyleBoxFlat CreateTalentNodeStyle(
+        bool unlocked,
+        bool canUnlock,
+        float hoverBoost
+    )
+    {
+        Color borderColor =
+            unlocked ? new Color(1f, 0.78f, 0.38f, 0.88f)
+            : canUnlock ? new Color(0.56f, 0.82f, 1f, 0.72f)
+            : new Color(0.35f, 0.44f, 0.55f, 0.46f);
+        Color bgColor =
+            unlocked ? new Color(0.34f, 0.22f, 0.08f, 0.56f + hoverBoost)
+            : canUnlock ? new Color(0.08f, 0.17f, 0.25f, 0.54f + hoverBoost)
+            : new Color(0.05f, 0.08f, 0.12f, 0.38f);
+
+        return new StyleBoxFlat
+        {
+            BgColor = bgColor,
+            BorderColor = borderColor,
+            BorderWidthLeft = 4,
+            BorderWidthTop = 4,
+            BorderWidthRight = 4,
+            BorderWidthBottom = 4,
+            CornerRadiusTopLeft = 38,
+            CornerRadiusTopRight = 38,
+            CornerRadiusBottomRight = 38,
+            CornerRadiusBottomLeft = 38,
+            ContentMarginLeft = 6,
+            ContentMarginRight = 6,
+            ContentMarginTop = 6,
+            ContentMarginBottom = 6,
+        };
+    }
+
+    private static string GetTalentIconText(TalentNodeDefinition node)
+    {
+        if (node.Id.EndsWith(".Core", StringComparison.Ordinal))
+            return "✦";
+        if (node.Id.EndsWith(".Attack1", StringComparison.Ordinal))
+            return "◇";
+        if (node.Id.EndsWith(".Attack2", StringComparison.Ordinal))
+            return "✧";
+        if (node.Id.EndsWith(".Survive1", StringComparison.Ordinal))
+            return "◆";
+        return "✹";
+    }
+
+    private void AddTalentConnection(Vector2 fromPosition, Vector2 toPosition, bool active)
+    {
+        Color color = active
+            ? new Color(1f, 0.76f, 0.36f, 0.72f)
+            : new Color(0.48f, 0.62f, 0.78f, 0.28f);
+        Vector2 start = fromPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+        Vector2 end = toPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+        AddTalentLine(start, end, color);
+    }
+
+    private void AddTalentLine(Vector2 start, Vector2 end, Color color)
+    {
+        if (TalentTreeRoot == null)
+            return;
+
+        var line = new Line2D
+        {
+            Points = [start, end],
+            Width = TalentLineThickness,
+            DefaultColor = color,
+            Antialiased = true,
+        };
+        TalentTreeRoot.AddChild(line);
+    }
+
+    private void OnTalentRewardNodePressed(int characterIndex, string talentId)
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || characterIndex < 0 || characterIndex >= players.Length)
+            return;
+
+        var info = players[characterIndex];
+        if (TalentTree.TryUnlock(ref info, talentId, out string message))
+        {
+            players[characterIndex] = info;
+            GameInfo.PlayerCharacters = players;
+            SaveSystem.SaveAll();
+        }
+
+        GD.Print(message);
+        RefreshTalentRewardTree(characterIndex);
+
+        if (players[characterIndex].TalentPoints <= 0)
+            CloseTalentRewardTree();
+    }
+
+    private CanvasLayer EnsureTipLayer()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer != null)
+            return layer;
+
+        layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+        root.AddChild(layer);
+        return layer;
+    }
+
+    private Tip EnsureGlobalTooltip()
+    {
+        var layer = EnsureTipLayer();
+        if (layer == null)
+            return null;
+
+        var tip = layer.GetNodeOrNull<Tip>("Tip");
+        if (tip != null)
+            return tip;
+
+        if (TipScene == null)
+            return null;
+
+        tip = TipScene.Instantiate<Tip>();
+        tip.Name = "Tip";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(24f, 20f);
+        layer.AddChild(tip);
+        return tip;
     }
 
     private void PlayRewardRejected(Control control)
@@ -843,6 +1405,8 @@ public partial class Reward : CanvasLayer
     {
         if (_isSkillRewardOpen)
             return;
+        if (_isTalentTreeOpen)
+            return;
         if (_rewardEntries.Count > 0)
             return;
         CloseReward();
@@ -850,6 +1414,7 @@ public partial class Reward : CanvasLayer
 
     private void CloseReward()
     {
+        HideTalentTooltip();
         PlayOutroAnimation(() =>
         {
             if (BG != null)
@@ -862,6 +1427,8 @@ public partial class Reward : CanvasLayer
 
     private void SkipRewards()
     {
+        if (_isTalentTreeOpen)
+            CloseTalentRewardTree();
         ResetSkillRewardPanel();
         ClearRewardItems(clearStatic: true);
         CloseReward();
@@ -1036,11 +1603,19 @@ public partial class Reward : CanvasLayer
             return;
 
         int rewardCoin = GetElectricityCoinReward(node);
-        var talentReward = GameInfo.TryGrantEliteTalentPointReward(node);
+        var talentReward = _battleTalentPointRewardGranted
+            ? default
+            : GameInfo.TryGrantBattleTalentPointReward(node);
         if (talentReward.Granted)
         {
+            _battleTalentPointRewardGranted = true;
             GD.Print(
-                $"精英奖励：{talentReward.CharacterName} 获得 {talentReward.Amount} 点天赋点。"
+                I18n.Format(
+                    "ui.reward.elite_talent_reward_log",
+                    "精英奖励：{name} 获得 {amount} 点天赋点。",
+                    ("name", talentReward.CharacterName),
+                    ("amount", talentReward.Amount)
+                )
             );
         }
 
@@ -1052,13 +1627,25 @@ public partial class Reward : CanvasLayer
         node.Completed();
     }
 
+    private static void PrintTalentPointReward(TalentPointRewardResult talentReward)
+    {
+        GD.Print(
+            I18n.Format(
+                "ui.reward.battle_talent_reward_log",
+                "战斗奖励：{name} 获得 {amount} 点天赋点。",
+                ("name", talentReward.CharacterName),
+                ("amount", talentReward.Amount)
+            )
+        );
+    }
+
     private static int GetElectricityCoinReward(LevelNode node)
     {
         int baseReward = node.Type switch
         {
             LevelNode.LevelType.Boss => 150,
-            LevelNode.LevelType.Elite => 60,
-            _ => 40,
+            LevelNode.LevelType.Elite => 40,
+            _ => 30,
         };
         int offset = new Random(node.RandomNum).Next(-10, 11);
         return Relic.ApplyElectricityCoinBonus(Math.Max(0, baseReward + offset));
@@ -1071,10 +1658,10 @@ public partial class Reward : CanvasLayer
 
         var segments = new List<string>();
 
-        AddStat(segments, equip.Power, "力量");
-        AddStat(segments, equip.Survivability, "生存");
-        AddStat(segments, equip.Speed, "速度");
-        AddStat(segments, equip.MaxLife, "生命");
+        AddStat(segments, equip.Power, I18n.Tr("property.power", "力量"));
+        AddStat(segments, equip.Survivability, I18n.Tr("property.survivability", "生存"));
+        AddStat(segments, equip.Speed, I18n.Tr("property.speed", "速度"));
+        AddStat(segments, equip.MaxLife, I18n.Tr("ui.common.life", "生命"));
 
         return string.Join("  ", segments);
     }
@@ -1098,6 +1685,6 @@ public partial class Reward : CanvasLayer
 
     private static string GetItemDescription(ItemID itemId)
     {
-        return ConsumeItem.GetItemDescription(itemId, "点击后选择角色");
+        return ConsumeItem.GetItemDescription(itemId, I18n.Tr("ui.reward.item_use_select_character", "点击后选择角色"));
     }
 }

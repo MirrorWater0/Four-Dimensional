@@ -6,7 +6,7 @@ public partial class NightingaleSurviveSkill { }
 public partial class VeilStep : Skill
 {
     private const int InvisibleStacks = 3;
-    private const int BaseBlock = 3;
+    private const int BaseBlock = 8;
     public override int EnergyCost => 0;
 
     public VeilStep()
@@ -26,7 +26,11 @@ public partial class VeilStep : Skill
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(relativeIndex: 1, baseBlock: BaseBlock, survivabilityMultiplier: 2)
+            BlockStep(
+                target: TargetReference.Next,
+                baseBlock: BaseBlock,
+                multiplier: 1
+            )
         );
     }
 }
@@ -53,34 +57,7 @@ public partial class FlashOfLight : Skill
                 stacks: VulnerableStacks,
                 target: HostileTargetsEachRowFirst()
             ),
-            BlockStep(0, BaseBlock)
-        );
-    }
-}
-
-public partial class Swift : Skill
-{
-    private const int SpeedGain = 2;
-    private const int SurvivabilityGain = 3;
-
-    public Swift()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "迅捷";
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ModifyPropertyStep(PropertyType.Speed, SpeedGain),
-            ModifyPropertyStep(
-                type: PropertyType.Survivability,
-                value: SurvivabilityGain,
-                target: TargetReference.All
-            )
+            BlockStep(baseBlock: BaseBlock)
         );
     }
 }
@@ -102,8 +79,8 @@ public partial class AfterimageWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
-            BlockStep(relativeIndex: 1, baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Afterimage,
                 stacks: AfterimageStacks,
@@ -120,7 +97,7 @@ public partial class AfterimageWard : Skill
 
 public partial class StarWard : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
     private const int ExtraPowerStacks = 2;
 
     public StarWard()
@@ -135,7 +112,11 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 1),
+            BlockStep(
+                target: TargetReference.Previous,
+                baseBlock: BaseBlock,
+                multiplier: 1
+            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
@@ -147,7 +128,7 @@ public partial class StarWard : Skill
 
 public partial class TwilightParadox : Skill
 {
-    private const int BaseBlock = 9;
+    private const int BaseBlock = 8;
     private const int VulnerableStacks = 15;
     private const int DamageImmuneStacks = 5;
 
@@ -163,16 +144,20 @@ public partial class TwilightParadox : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: -1, baseBlock: BaseBlock, survivabilityMultiplier: 2),
+            BlockStep(
+                target: TargetReference.Previous,
+                baseBlock: BaseBlock,
+                multiplier: 2
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             )
         );
     }

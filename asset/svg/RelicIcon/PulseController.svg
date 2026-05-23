@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="case" x1="26" y1="22" x2="102" y2="106" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8ffff"/>
+      <stop offset="0.42" stop-color="#79e8ff"/>
+      <stop offset="1" stop-color="#5b67ff"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="22" y1="64" x2="106" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe082"/>
+      <stop offset="0.5" stop-color="#7fffe6"/>
+      <stop offset="1" stop-color="#ff6fd8"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="27" y="29" width="74" height="70" rx="14" stroke="url(#case)" stroke-width="7"/>
+    <path d="M45 29V17M83 29V17M45 111V99M83 111V99" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M18 50h18M92 50h18M18 78h18M92 78h18" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M39 66h12l7-18 11 35 8-17h12" stroke="url(#pulse)" stroke-width="7"/>
+    <circle cx="64" cy="64" r="32" stroke="#d9fbff" stroke-width="4" opacity="0.35"/>
+    <circle cx="64" cy="64" r="18" stroke="#ffd97f" stroke-width="4" opacity="0.65"/>
+    <path d="M48 45c9-8 23-8 32 0" stroke="#f8ffff" stroke-width="4" opacity="0.8"/>
+  </g>
+</svg>

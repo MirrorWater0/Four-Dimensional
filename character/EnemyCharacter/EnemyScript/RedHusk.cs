@@ -35,9 +35,9 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 56;
-        Power = 18;
-        Survivability = 5;
+        MaxLife = 66;
+        Power = 17;
+        Survivability = 15;
         Speed = 7;
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
@@ -48,7 +48,7 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 3;
     private const int VulnerableStacks = 2;
 
     public RedHuskAttack()
@@ -63,12 +63,15 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, byBehindRow: true),
-            ModifyPropertyStep(PropertyType.Power, 8),
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: 1,
+                target: HostileTargetReference.Two
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(1, byBehindRow: true)
+                target: HostileTargetReference.AttackKey
             )
         );
     }
@@ -76,8 +79,8 @@ public partial class RedHuskAttack : Skill
 
 public partial class RedHuskSurvive : Skill
 {
-    private const int BaseBlock = 1;
-    private const int SurvivabilityDown = 9;
+    private const int BaseBlock = 0;
+    private const int SurvivabilityDown = 3;
 
     public RedHuskSurvive()
         : base(SkillTypes.Survive)
@@ -91,13 +94,8 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, 2),
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                SurvivabilityDown,
-                target: HostileTargets(1, byBehindRow: true),
-                permanent: false
-            )
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            ModifyPropertyStep(PropertyType.Power, 5)
         );
     }
 }
@@ -120,6 +118,7 @@ public partial class RedHuskSpecial : Skill
     {
         return new SkillPlan(
             this,
+            AttackStep(baseDamage: 0),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,
@@ -129,8 +128,7 @@ public partial class RedHuskSpecial : Skill
                 buffName: Buff.BuffName.RebirthI,
                 stacks: RebirthStacks,
                 target: TargetReference.Self
-            ),
-            ModifyPropertyStep(PropertyType.Power, 5)
+            )
         );
     }
 }

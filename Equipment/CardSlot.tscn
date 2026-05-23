@@ -2,21 +2,23 @@
 
 [ext_resource type="Script" uid="uid://ihft21au1h7i" path="res://Equipment/CardSlot.cs" id="1_ykovi"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
-content_margin_left = 10.0
-content_margin_top = 10.0
-content_margin_right = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0.21568628, 0.28627452, 0.44313726, 0.39215687)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cardslot_panel"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.035, 0.055, 0.09, 0.86)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.654902, 0.8392157, 1, 0.4)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+border_color = Color(0.654902, 0.839216, 1, 0.321569)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0.08, 0.18, 0.22)
+shadow_size = 8
 
 [sub_resource type="Shader" id="Shader_ykovi"]
 code = "shader_type canvas_item;
@@ -91,25 +93,44 @@ hue_variation_max = 0.009999977
 
 [node name="Card" type="Control" unique_id=147534562]
 clip_contents = true
-custom_minimum_size = Vector2(0, 110)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 167.0
-offset_bottom = 110.0
+offset_right = 380.0
+offset_bottom = 84.0
 size_flags_horizontal = 3
 script = ExtResource("1_ykovi")
 
-[node name="Panel" type="PanelContainer" parent="." unique_id=1308259784]
-layout_mode = 0
-offset_right = 168.0
-offset_bottom = 110.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+[node name="Panel" type="Panel" parent="." unique_id=539037983]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_cardslot_panel")
 
 [node name="Label" type="Label" parent="Panel" unique_id=1222242650]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 104.0
+offset_top = 6.0
+offset_right = -18.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.08, 0.16, 0.78)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 18
 text = "裂隙短刃
-+8 力量  +4 速度"
+"
+vertical_alignment = 1
+autowrap_mode = 2
+clip_text = true
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=1885642541]
 top_level = true

@@ -31,7 +31,7 @@ public partial class EnemyCharacter : Character
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
-    public int IntentionIndex;
+    public int IntentionIndex = -1;
     private Character[] _intentionPreviewTargets = Array.Empty<Character>();
     private int _intentionPreviewHoverDepth;
     private readonly List<Label> _intentionDamageLabels = new();
@@ -131,11 +131,12 @@ public partial class EnemyCharacter : Character
             return -1;
 
         int availableEnergy = Math.Max(Energy + energyPreviewBonus, 0);
+        int avoidIndex = GetRepeatIntentionAvoidIndex(availableEnergy);
         float totalWeight = 0f;
         float[] weights = new float[Skills.Length];
         for (int i = 0; i < Skills.Length; i++)
         {
-            float weight = GetIntentionWeight(Skills[i], availableEnergy);
+            float weight = i == avoidIndex ? 0f : GetIntentionWeight(Skills[i], availableEnergy);
             weights[i] = weight;
             totalWeight += weight;
         }
@@ -162,6 +163,23 @@ public partial class EnemyCharacter : Character
         {
             if (weights[i] > 0f)
                 return i;
+        }
+
+        return -1;
+    }
+
+    private int GetRepeatIntentionAvoidIndex(int availableEnergy)
+    {
+        if (IntentionIndex < 0 || IntentionIndex >= (Skills?.Length ?? 0))
+            return -1;
+
+        if (!CanUseIntentionSkill(Skills[IntentionIndex], availableEnergy))
+            return -1;
+
+        for (int i = 0; i < Skills.Length; i++)
+        {
+            if (i != IntentionIndex && CanUseIntentionSkill(Skills[i], availableEnergy))
+                return IntentionIndex;
         }
 
         return -1;

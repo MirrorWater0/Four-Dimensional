@@ -15,10 +15,8 @@ uniform vec2 offset_step = vec2(0.12, -0.05); // How far apart the cards are spa
 float rounded_box(vec2 uv, vec2 pos, vec2 size, float radius) {
 	vec2 d = abs(uv - pos) - size + radius;
 	float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - radius;
-	
-	// Smoothstep handles Anti-Aliasing (soft edges)
-	// Change 0.005 to a lower number for sharper, harder edges
-	return 1.0 - smoothstep(0.0, 0.01, dist);
+	float aa = max(fwidth(dist), 0.0015);
+	return 1.0 - smoothstep(0.0, max(0.01, aa), dist);
 }
 
 void fragment() {

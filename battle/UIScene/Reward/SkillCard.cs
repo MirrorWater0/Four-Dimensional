@@ -54,6 +54,7 @@ public partial class SkillCard : SubViewportContainer
         field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
     public Skill CurrentSkill { get; set; }
     public string PreviewCharacterName { get; set; }
+    public string DisplayNameOverride { get; set; }
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
 
@@ -71,9 +72,11 @@ public partial class SkillCard : SubViewportContainer
     private StyleBoxFlat _bg2Style;
     private StyleBoxFlat _artFrameStyle;
     private ShaderMaterial _defaultCardMaterial;
-    private Character[] _previewTargets = Array.Empty<Character>();
+    private Character[] _previewHostileTargets = Array.Empty<Character>();
+    private Character[] _previewFriendlyTargets = Array.Empty<Character>();
     private readonly List<Label> _previewDamageLabels = new();
-    private static readonly Color TargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
     private static readonly Color DamagePreviewColor = new(1f, 0.84f, 0.63f, 1f);
     private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
@@ -88,6 +91,7 @@ public partial class SkillCard : SubViewportContainer
         "res://shader/Effect/CardExhaust.gdshader"
     );
     private static NoiseTexture2D _cardExhaustNoiseTexture;
+    private static ShaderMaterial _cardExhaustMaterialTemplate;
     private static Texture2D _defaultSkillIcon;
     private Tip _keywordTooltip;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
@@ -232,14 +236,20 @@ public partial class SkillCard : SubViewportContainer
         }
 
         CurrentSkill.UpdateDescription();
-        NameLabel.Text = CurrentSkill.SkillName ?? string.Empty;
+        NameLabel.Text = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
+        CharacterName.Text =
+            PreviewCharacterName
+            ?? CurrentSkill.OwnerCharater?.CharacterName
+            ?? string.Empty;
         bool isStatusCard = IsStatusCard(CurrentSkill);
-        string skillTypeText = isStatusCard ? "状态" : CurrentSkill.SkillType.GetDescription();
+        string skillTypeText = isStatusCard
+            ? I18n.Tr("ui.encyclopedia.skill_type.status", "状态")
+            : CurrentSkill.SkillType.GetDescription();
         TypeLabel.Text = skillTypeText;
         Description.Text = CurrentSkill.Description ?? string.Empty;
         EnergyCost.Text = isStatusCard
-            ? "不可打出"
-            : $"\u8017\u80fd\uff1a{CurrentSkill.CardEnergyCostText}";
+            ? I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出")
+            : I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", CurrentSkill.CardEnergyCostText));
         ApplyRarityStyles(CurrentSkill.Rarity);
         if (isStatusCard)
             ApplyStatusCardStyle();
@@ -389,18 +399,7 @@ public partial class SkillCard : SubViewportContainer
         _hoverTween?.Kill();
         _motionTween?.Kill();
 
-        Color accentColor = Skill.GetRarityBorderColor(
-            CurrentSkill?.Rarity ?? Skill.SkillRarity.Common
-        );
-        var shader = new ShaderMaterial { Shader = CardExhaustShader, ResourceLocalToScene = true };
-        shader.SetShaderParameter("exhaust_progress", 0f);
-        shader.SetShaderParameter("ember_color", new Color(0.50f, 0.62f, 1f, 1f));
-        shader.SetShaderParameter("ash_color", new Color(0.09f, 0.075f, 0.105f, 1f));
-        shader.SetShaderParameter("edge_width", 0.07f);
-        shader.SetShaderParameter("noise_scale", 1.35f);
-        shader.SetShaderParameter("ember_amount", 0.48f);
-        shader.SetShaderParameter("aberration_amount", 0.006f);
-        shader.SetShaderParameter("noise_tex", GetCardExhaustNoiseTexture());
+        var shader = CreateCardExhaustMaterial();
         shader.SetShaderParameter("noise_offset", CreateCardExhaustNoiseOffset());
         Material = shader;
 
@@ -509,6 +508,41 @@ public partial class SkillCard : SubViewportContainer
             Mathf.PosMod((float)(tick * 0.173), 1f),
             Mathf.PosMod((float)(tick * 0.317 + 0.41), 1f)
         );
+    }
+
+    public static void PrewarmExhaustEffect()
+    {
+        if (CardExhaustShader == null)
+            return;
+
+        _cardExhaustMaterialTemplate ??= CreateCardExhaustMaterialTemplate();
+        GetCardExhaustNoiseTexture();
+    }
+
+    private static ShaderMaterial CreateCardExhaustMaterial()
+    {
+        PrewarmExhaustEffect();
+        ShaderMaterial shader =
+            _cardExhaustMaterialTemplate?.Duplicate() as ShaderMaterial
+            ?? CreateCardExhaustMaterialTemplate();
+        shader.ResourceLocalToScene = true;
+        shader.SetShaderParameter("exhaust_progress", 0f);
+        return shader;
+    }
+
+    private static ShaderMaterial CreateCardExhaustMaterialTemplate()
+    {
+        var shader = new ShaderMaterial { Shader = CardExhaustShader, ResourceLocalToScene = true };
+        shader.SetShaderParameter("exhaust_progress", 0f);
+        shader.SetShaderParameter("ember_color", new Color(0.50f, 0.62f, 1f, 1f));
+        shader.SetShaderParameter("ash_color", new Color(0.09f, 0.075f, 0.105f, 1f));
+        shader.SetShaderParameter("edge_width", 0.07f);
+        shader.SetShaderParameter("noise_scale", 1.35f);
+        shader.SetShaderParameter("ember_amount", 0.48f);
+        shader.SetShaderParameter("aberration_amount", 0.006f);
+        shader.SetShaderParameter("noise_tex", GetCardExhaustNoiseTexture());
+        shader.SetShaderParameter("noise_offset", Vector2.Zero);
+        return shader;
     }
 
     public override void _ExitTree()
@@ -656,29 +690,52 @@ public partial class SkillCard : SubViewportContainer
         if (CurrentSkill == null)
             return;
 
-        _previewTargets = CurrentSkill.GetPreviewHostileTargets();
-        if (_previewTargets == null || _previewTargets.Length == 0)
-        {
-            _previewTargets = Array.Empty<Character>();
-            return;
-        }
+        _previewHostileTargets = CurrentSkill.GetPreviewHostileTargets();
+        _previewFriendlyTargets = CurrentSkill.GetPreviewFriendlyTargets();
 
-        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
-            target.ShowTargetPreview(TargetPreviewColor);
+        foreach (
+            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
+            target.ShowTargetPreview(HostileTargetPreviewColor);
+
+        foreach (
+            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
+            target.ShowTargetPreview(FriendlyTargetPreviewColor);
     }
 
     private void HideTargetPreview()
     {
-        if (_previewTargets == null || _previewTargets.Length == 0)
+        if (
+            (_previewHostileTargets == null || _previewHostileTargets.Length == 0)
+            && (_previewFriendlyTargets == null || _previewFriendlyTargets.Length == 0)
+        )
         {
-            _previewTargets = Array.Empty<Character>();
+            _previewHostileTargets = Array.Empty<Character>();
+            _previewFriendlyTargets = Array.Empty<Character>();
             return;
         }
 
-        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
+        foreach (
+            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
             target.HideTargetPreview();
 
-        _previewTargets = Array.Empty<Character>();
+        foreach (
+            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
+            target.HideTargetPreview();
+
+        _previewHostileTargets = Array.Empty<Character>();
+        _previewFriendlyTargets = Array.Empty<Character>();
     }
 
     private void ShowDamagePreview()
@@ -774,7 +831,7 @@ public partial class SkillCard : SubViewportContainer
     {
         label.Text =
             entry.HitCount > 1
-                ? $"{entry.Damage}({entry.HitCount}\u6b21)"
+                ? $"{entry.Damage}({entry.HitCount}次)"
                 : entry.Damage.ToString();
         label.AddThemeColorOverride("font_color", DamagePreviewColor);
         label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);

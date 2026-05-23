@@ -25,23 +25,21 @@ public partial class ShadowAmbush : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             ConditionStep(
                 () => hasInvisible,
                 $"拥有{Buff.BuffName.Invisible.GetDescription()}",
-                AttackPrimaryStep(baseDamage: BaseDamage, prefix: "额外造成"),
+                AttackStep(baseDamage: BaseDamage, prefix: "额外造成"),
                 EnergyStep(1)
-            ),
-            ModifyPropertyStep(PropertyType.Power, GainPower)
+            )
         );
     }
 }
 
 public partial class ShadowExecution : Skill
 {
-    private const int BaseDamage = 8;
-    private const int DoubleStrikeBaseDamage = 0;
-    private const string KillTargetKey = "目标";
+    private const int BaseDamage = 10;
+    private const int DoubleStrikeBaseDamage = 10;
 
     public ShadowExecution()
         : base(SkillTypes.Attack)
@@ -55,11 +53,11 @@ public partial class ShadowExecution : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: KillTargetKey),
+            AttackStep(baseDamage: BaseDamage),
             ConditionStep(
-                () => GetStoredTarget(KillTargetKey)?.State == Character.CharacterState.Dying,
+                () => GetAttackTarget()?.State == Character.CharacterState.Dying,
                 "击杀目标",
-                AttackPrimaryStep(baseDamage: DoubleStrikeBaseDamage, times: 2)
+                AttackStep(baseDamage: DoubleStrikeBaseDamage, times: 1)
             )
         );
     }
@@ -96,7 +94,7 @@ public partial class BreakStrike : Skill
                 },
                 _ => new[] { "去掉目标的格挡。" }
             ),
-            AttackPrimaryStep(baseDamage: BaseDamage)
+            AttackStep(baseDamage: BaseDamage)
         );
     }
 }
@@ -118,8 +116,8 @@ public partial class StasisBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown)
+            AttackStep(baseDamage: BaseDamage),
+            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown, HostileTargetReference.One)
         );
     }
 }
@@ -144,12 +142,12 @@ public partial class ContinuousPierce : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             ConditionStep(
                 () => IsAtFullLife,
                 "满血",
-                AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, prefix: "额外造成", times: 2),
-                HurtFriendly(SelfDamage, 0)
+                AttackStep(baseDamage: 0, multiplier: 1, prefix: "额外造成", times: 2),
+                HurtFriendly(SelfDamage, TargetReference.Self)
             )
         );
     }
@@ -171,7 +169,7 @@ public partial class RuinBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, times: 1),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 1),
             CarryStep(target: TargetReference.ManualFriendly, skillIndex: 1)
         );
     }

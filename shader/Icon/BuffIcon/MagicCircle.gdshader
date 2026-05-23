@@ -23,14 +23,16 @@ float sdTriangle(in vec2 p, in float r) {
 
 // 将距离转换为线条
 float draw_line(float dist, float thickness, float smoothing) {
-    return smoothstep(thickness + smoothing, thickness, abs(dist));
+    float aa = max(fwidth(dist), 0.0015);
+    float edge = max(smoothing, aa);
+    return smoothstep(thickness + edge, thickness - edge, abs(dist));
 }
 
 void fragment() {
     // 归一化 UV 到 -0.5 ~ 0.5
     vec2 uv = UV - 0.5;
     float s = size * 0.5;
-    float smoothing = 0.025; // 抗锯齿平滑度
+    float smoothing = max(0.025, fwidth(length(uv))); // 抗锯齿平滑度
 
     // 1. 外圆环
     float ring1 = draw_line(sdCircle(uv, s), line_thickness, smoothing);
@@ -46,7 +48,9 @@ void fragment() {
     float tri2 = draw_line(sdTriangle(uv_flipped, s * 0.75), line_thickness * 0.8, smoothing);
     
     // 5. 中心小圆点
-    float center_dot = smoothstep(line_thickness * 1.5, 0.0, length(uv) - 0.01);
+    float center_dist = length(uv) - 0.01;
+    float center_aa = max(fwidth(center_dist), 0.0015);
+    float center_dot = smoothstep(line_thickness * 1.5 + center_aa, 0.0, center_dist);
 
     // 合并所有形状 (取最大值)
     float final_shape = max(max(ring1, ring2), max(tri1, tri2));
@@ -61,5 +65,5 @@ void fragment() {
     vec3 final_rgb = magic_color.rgb;
     float final_alpha = clamp(final_shape + glow, 0.0, 1.0) * magic_color.a;
 
-    COLOR = vec4(final_rgb, final_alpha);
+    COLOR *= vec4(final_rgb, final_alpha);
 }

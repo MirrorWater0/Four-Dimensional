@@ -47,7 +47,9 @@ public enum EnemiesEnum
     Inexorability,
     GraveWraith,
     VoidAcolyte,
+    VoidRotor,
     HollowBulwark,
     MarrowReaver,
+    FearElite,
     Death,
 }

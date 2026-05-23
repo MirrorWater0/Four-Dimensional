@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 10;
+    private const int DisasterStacks = 8;
     private const float MoveDuration = 0.22f;
 
     public const string PassiveNameText = "终末游行";
@@ -115,9 +115,9 @@ public partial class DeathRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Death.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
 
-        MaxLife = 300;
-        Power = 8;
-        Survivability = 10;
+        MaxLife = 450;
+        Power = 12;
+        Survivability = 15;
         Speed = 16;
         SkillIDs = [SkillID.DeathAttack, SkillID.DeathSurvive, SkillID.DeathSpecial];
 
@@ -144,7 +144,7 @@ public partial class DeathAttack : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: BaseDamage,
                 target: HostileTargets(TargetCount),
                 times: HitCount
@@ -170,7 +170,7 @@ public partial class DeathSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             HealStep(Heal, target: TargetReference.Self)
         );
     }
@@ -178,8 +178,8 @@ public partial class DeathSurvive : Skill
 
 public partial class DeathSpecial : Skill
 {
-    private const int SelfPowerGain = 4;
-    private const int DisasterStacks = 10;
+    private const int SelfPowerGain = 3;
+    private const int DisasterStacks = 9;
 
     public DeathSpecial()
         : base(SkillTypes.Special)

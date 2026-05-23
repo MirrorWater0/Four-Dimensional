@@ -37,6 +37,25 @@ public partial class GameStatistics : CanvasLayer
         );
     private Label DescriptionLabel =>
         field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Description");
+    private Label EyebrowLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Eyebrow");
+    private Label TitleLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Title");
+    private Label RelicTitleLabel =>
+        field ??=
+            GetNodeOrNull<Label>(
+                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin/RelicVBox/RelicTitle"
+            );
+    private Label EquipmentTitleLabel =>
+        field ??=
+            GetNodeOrNull<Label>(
+                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentTitle"
+            );
+    private Label CharacterSelectHeaderLabel =>
+        field ??=
+            GetNodeOrNull<Label>(
+                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectHeader"
+            );
     private HBoxContainer SummaryRow =>
         field ??= GetNodeOrNull<HBoxContainer>(
             "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SummaryRow"
@@ -126,6 +145,7 @@ public partial class GameStatistics : CanvasLayer
     public override void _Ready()
     {
         Visible = false;
+        LocalizeStaticTexts();
 
         EnsureExitButtonAction();
 
@@ -295,7 +315,9 @@ public partial class GameStatistics : CanvasLayer
         bool hasRecord = _currentRecord != null;
         SeedCopyButton.Visible = hasRecord;
         SeedCopyButton.Disabled = !hasRecord;
-        SeedCopyButton.Text = hasRecord ? $"Seed: {_currentRecord.Seed}" : "Seed: -";
+        SeedCopyButton.Text = hasRecord
+            ? I18n.Format("ui.map.seed", "Seed: {value}", ("value", _currentRecord.Seed))
+            : I18n.Tr("ui.statistics.seed_placeholder", "Seed: -");
     }
 
     private async void CopyCurrentSeedToClipboard()
@@ -306,7 +328,11 @@ public partial class GameStatistics : CanvasLayer
         string seedText = _currentRecord.Seed.ToString();
         DisplayServer.ClipboardSet(seedText);
 
-        SeedCopyButton.Text = $"Copied: {seedText}";
+        SeedCopyButton.Text = I18n.Format(
+            "ui.statistics.seed_copied",
+            "Copied: {value}",
+            ("value", seedText)
+        );
         await ToSignal(GetTree().CreateTimer(0.9f), SceneTreeTimer.SignalName.Timeout);
 
         if (GodotObject.IsInstanceValid(this))
@@ -341,6 +367,24 @@ public partial class GameStatistics : CanvasLayer
             ?? new List<RunHistoryRecord>();
     }
 
+    private void LocalizeStaticTexts()
+    {
+        if (EyebrowLabel != null)
+            EyebrowLabel.Text = I18n.Tr("ui.statistics.eyebrow", "RUN ARCHIVE");
+        if (TitleLabel != null)
+            TitleLabel.Text = I18n.Tr("ui.statistics.title", "历史记录");
+        if (DescriptionLabel != null)
+            DescriptionLabel.Text = I18n.Tr("ui.statistics.description", "节点记录");
+        if (RelicTitleLabel != null)
+            RelicTitleLabel.Text = I18n.Tr("ui.common.relics", "遗物");
+        if (EquipmentTitleLabel != null)
+            EquipmentTitleLabel.Text = I18n.Tr("ui.statistics.equipment", "装备");
+        if (CharacterSelectHeaderLabel != null)
+            CharacterSelectHeaderLabel.Text = I18n.Tr("ui.statistics.character_select", "人物选择");
+        if (SeedCopyButton != null)
+            SeedCopyButton.Text = I18n.Tr("ui.statistics.seed_placeholder", "Seed: -");
+    }
+
     private void RefreshSummary()
     {
         ClearChildren(SummaryRow);
@@ -348,38 +392,46 @@ public partial class GameStatistics : CanvasLayer
         if (_currentRecord == null)
         {
             if (DescriptionLabel != null)
-                DescriptionLabel.Text = "暂无历史游戏记录。本局结束后会在这里留下路线、遗物和技能快照。";
+                DescriptionLabel.Text = I18n.Tr(
+                    "ui.statistics.no_history_description",
+                    "暂无历史游戏记录。本局结束后会在这里留下路线、遗物和技能快照。"
+                );
 
-            AddSummaryChip("暂无记录", Colors.White, new Color(0.20f, 0.25f, 0.32f, 0.88f));
+            AddSummaryChip(I18n.Tr("ui.statistics.no_records", "暂无记录"), Colors.White, new Color(0.20f, 0.25f, 0.32f, 0.88f));
             return;
         }
 
         if (DescriptionLabel != null)
         {
-            DescriptionLabel.Text =
-                $"第 {_currentRecord.RunIndex} 局 · {(_currentRecord.Victory ? "胜利" : "战败")} · 鼠标移到节点、遗物或技能上查看细节";
+            DescriptionLabel.Text = I18n.Format(
+                "ui.statistics.run_description",
+                "第 {run} 局 · {result} · 鼠标移到节点、遗物或技能上查看细节",
+                ("run", _currentRecord.RunIndex),
+                ("result", _currentRecord.Victory ? I18n.Tr("ui.common.victory", "胜利") : I18n.Tr("ui.common.defeat", "战败"))
+            );
         }
 
         AppendHistoryProgressToDescription();
 
         AddSummaryChip(
-            _currentRecord.Victory ? "胜利" : "战败",
+            _currentRecord.Victory ? I18n.Tr("ui.common.victory", "胜利") : I18n.Tr("ui.common.defeat", "战败"),
             Colors.White,
             _currentRecord.Victory
                 ? new Color(0.12f, 0.42f, 0.30f, 0.92f)
                 : new Color(0.48f, 0.18f, 0.16f, 0.92f)
         );
         AddSummaryChip(
-            $"难度 {_currentRecord.Difficulty}",
+            I18n.Format("ui.common.difficulty_value", "难度 {value}", ("value", _currentRecord.Difficulty)),
             Colors.White,
             new Color(0.22f, 0.18f, 0.36f, 0.92f)
         );
-        AddSummaryChip($"节点 {_currentRecord.NodesVisited}", Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
-        AddSummaryChip($"敌人 {_currentRecord.EnemiesDefeated}", Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
-        AddSummaryChip($"精英 {_currentRecord.EliteDefeated}", Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.nodes_chip", "节点 {value}", ("value", _currentRecord.NodesVisited)), Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.enemies_chip", "敌人 {value}", ("value", _currentRecord.EnemiesDefeated)), Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.elites_chip", "精英 {value}", ("value", _currentRecord.EliteDefeated)), Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
         AddSummaryChip($"Boss {_currentRecord.BossDefeated}", Colors.White, new Color(0.34f, 0.14f, 0.26f, 0.92f));
-        AddSummaryChip($"电力币 {_currentRecord.ElectricityCoinGained}", Colors.White, new Color(0.18f, 0.28f, 0.40f, 0.92f));
-        AddSummaryChip($"遗物 {_currentRecord.RelicGained}", Colors.White, new Color(0.32f, 0.24f, 0.12f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.coins_chip", "电力币 {value}", ("value", _currentRecord.ElectricityCoinGained)), Colors.White, new Color(0.18f, 0.28f, 0.40f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.relics_chip", "遗物 {value}", ("value", _currentRecord.RelicGained)), Colors.White, new Color(0.32f, 0.24f, 0.12f, 0.92f));
+        AddSummaryChip(I18n.Format("ui.statistics.talents_chip", "天赋 {value}", ("value", CountRunTalents(_currentRecord))), Colors.White, new Color(0.26f, 0.18f, 0.36f, 0.92f));
     }
 
     private void AddSummaryChip(string text, Color fontColor, Color bgColor)
@@ -399,7 +451,7 @@ public partial class GameStatistics : CanvasLayer
         if (DescriptionLabel == null || historyCount <= 1 || _selectedHistoryIndex < 0)
             return;
 
-        DescriptionLabel.Text += $" ({_selectedHistoryIndex + 1}/{historyCount})";
+        DescriptionLabel.Text += I18n.Format("ui.statistics.progress_suffix", " ({current}/{total})", ("current", _selectedHistoryIndex + 1), ("total", historyCount));
     }
 
     private void RefreshNodeRoute()
@@ -415,7 +467,7 @@ public partial class GameStatistics : CanvasLayer
             ?? new List<LevelNodeCompletionRecord>();
         if (records.Count == 0)
         {
-            NodeRows.AddChild(CreateEmptyLabel("没有节点记录"));
+            NodeRows.AddChild(CreateEmptyLabel(I18n.Tr("ui.statistics.no_node_records", "没有节点记录")));
             return;
         }
 
@@ -434,7 +486,7 @@ public partial class GameStatistics : CanvasLayer
             };
             row.AddThemeConstantOverride("separation", 14);
 
-            var regionLabel = CreateLabel($"区域 {group.Key + 1}", 18, new Color(0.72f, 0.84f, 0.94f, 0.84f));
+            var regionLabel = CreateLabel(I18n.Format("ui.statistics.region", "区域 {index}", ("index", group.Key + 1)), 18, new Color(0.72f, 0.84f, 0.94f, 0.84f));
             regionLabel.CustomMinimumSize = new Vector2(72f, NodeGridCellHeight);
             regionLabel.VerticalAlignment = VerticalAlignment.Center;
             row.AddChild(regionLabel);
@@ -521,7 +573,7 @@ public partial class GameStatistics : CanvasLayer
             ?? new List<RunHistoryRelicRecord>();
         if (relics.Count == 0)
         {
-            RelicGrid.AddChild(CreateEmptyLabel("没有遗物"));
+            RelicGrid.AddChild(CreateEmptyLabel(I18n.Tr("ui.statistics.no_relics", "没有遗物")));
             return;
         }
 
@@ -625,7 +677,7 @@ public partial class GameStatistics : CanvasLayer
 
         if (count == 0)
         {
-            var empty = CreateLabel("暂无角色", 18, new Color(0.74f, 0.82f, 0.90f, 0.62f), HorizontalAlignment.Center);
+            var empty = CreateLabel(I18n.Tr("ui.statistics.no_characters", "暂无角色"), 18, new Color(0.74f, 0.82f, 0.90f, 0.62f), HorizontalAlignment.Center);
             empty.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
             CharacterButtonList.AddChild(empty);
             return;
@@ -654,7 +706,7 @@ public partial class GameStatistics : CanvasLayer
             Flat = true,
             FocusMode = Control.FocusModeEnum.None,
             Text = string.IsNullOrWhiteSpace(character?.CharacterName)
-                ? $"角色 {index + 1}"
+                ? I18n.Format("ui.common.character_n", "角色 {index}", ("index", index + 1))
                 : character.CharacterName,
         };
         button.AddThemeFontSizeOverride("font_size", 18);
@@ -792,15 +844,75 @@ public partial class GameStatistics : CanvasLayer
         var characters = GetCharacterRecords();
         if (characters.Count == 0)
         {
-            SkillColumns.AddChild(CreateEmptyLabel("没有技能记录"));
+            SkillColumns.AddChild(CreateEmptyLabel(I18n.Tr("ui.statistics.no_skill_records", "没有技能记录")));
             return;
         }
 
         _selectedCharacterIndex = Mathf.Clamp(_selectedCharacterIndex, 0, characters.Count - 1);
         var character = characters[_selectedCharacterIndex];
 
+        SkillColumns.AddChild(CreateCharacterSnapshotColumn(character));
         foreach (var skillType in _skillTypes)
             SkillColumns.AddChild(CreateSkillTypeColumn(character, skillType));
+    }
+
+    private Control CreateCharacterSnapshotColumn(RunHistoryCharacterSkillRecord character)
+    {
+        var column = new VBoxContainer
+        {
+            CustomMinimumSize = new Vector2(190f, 170f),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+        column.AddThemeConstantOverride("separation", 8);
+
+        var title = CreateLabel(
+            I18n.Tr("ui.statistics.final_state", "最终状态"),
+            22,
+            new Color(1.00f, 0.86f, 0.48f, 1f),
+            HorizontalAlignment.Center
+        );
+        title.CustomMinimumSize = new Vector2(0f, 28f);
+        title.VerticalAlignment = VerticalAlignment.Center;
+        column.AddChild(title);
+
+        column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.life_line", "生命 {value}", ("value", character.MaxLife)), new Color(0.96f, 0.92f, 0.82f, 0.96f)));
+        column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.power_line", "力量 {value}", ("value", character.Power)), new Color(1.00f, 0.56f, 0.42f, 0.96f)));
+        column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.survivability_line", "生存 {value}", ("value", character.Survivability)), new Color(0.50f, 0.82f, 1.00f, 0.96f)));
+        column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.speed_line", "速度 {value}", ("value", character.Speed)), new Color(0.74f, 1.00f, 0.72f, 0.96f)));
+
+        int talentCount = character.UnlockedTalentIds?.Count
+            ?? character.UnlockedTalentNames?.Count
+            ?? 0;
+        column.AddChild(
+            CreateCharacterStatLine(
+                I18n.Format("ui.statistics.talent_line", "天赋 {count} / 剩余 {remaining}", ("count", talentCount), ("remaining", character.TalentPoints)),
+                new Color(0.88f, 0.74f, 1.00f, 0.96f)
+            )
+        );
+
+        string tooltip = BuildCharacterSnapshotTooltip(character);
+        column.MouseEntered += () =>
+        {
+            TweenHover(column, 1.02f);
+            ShowTooltip(tooltip);
+        };
+        column.MouseExited += () =>
+        {
+            TweenHover(column, 1f);
+            HideTooltip();
+        };
+
+        return column;
+    }
+
+    private static Label CreateCharacterStatLine(string text, Color color)
+    {
+        var label = CreateLabel(text, 18, color, HorizontalAlignment.Center);
+        label.CustomMinimumSize = new Vector2(0f, 24f);
+        label.VerticalAlignment = VerticalAlignment.Center;
+        return label;
     }
 
     private Control CreateSkillTypeColumn(
@@ -837,7 +949,7 @@ public partial class GameStatistics : CanvasLayer
 
         if (skillNames.Count == 0 && skillIds.Count == 0)
         {
-            flow.AddChild(CreateEmptyLabel("未获得"));
+            flow.AddChild(CreateEmptyLabel(I18n.Tr("ui.statistics.not_acquired", "未获得")));
         }
         else
         {
@@ -909,7 +1021,7 @@ public partial class GameStatistics : CanvasLayer
         };
 
         var label = CreateLabel(
-            string.IsNullOrWhiteSpace(skillName) ? "未知技能" : skillName,
+            string.IsNullOrWhiteSpace(skillName) ? I18n.Tr("ui.common.unknown_skill", "未知技能") : skillName,
             18,
             new Color(0.92f, 0.96f, 1f, 0.94f)
         );
@@ -939,6 +1051,19 @@ public partial class GameStatistics : CanvasLayer
                 ?.Where(record => record != null)
                 .ToList()
             ?? new List<RunHistoryCharacterSkillRecord>();
+    }
+
+    private static int CountRunTalents(RunHistoryRecord record)
+    {
+        return record
+                ?.CharacterSkillRecords
+                ?.Where(character => character != null)
+                .Sum(character =>
+                    character.UnlockedTalentIds?.Count
+                    ?? character.UnlockedTalentNames?.Count
+                    ?? 0
+                )
+            ?? 0;
     }
 
     private List<RunHistoryEquipmentRecord> GetEquipmentRecords()
@@ -980,12 +1105,20 @@ public partial class GameStatistics : CanvasLayer
     private string BuildNodeTooltip(LevelNodeCompletionRecord record)
     {
         if (record == null)
-            return "未知节点";
+            return I18n.Tr("ui.common.unknown_node", "未知节点");
 
         var sb = new StringBuilder(256);
         string order = record.CompletionOrder > 0 ? record.CompletionOrder.ToString() : "?";
         sb.Append($"[b]#{order} {GetNodeTypeLabel(record.NodeType)}[/b]");
-        sb.Append($"\n区域：{record.MapLevel + 1}  坐标：{record.Coordinate.X},{record.Coordinate.Y}");
+        sb.Append(
+            I18n.Format(
+                "ui.statistics.node_location",
+                "\n区域：{region}  坐标：{x},{y}",
+                ("region", record.MapLevel + 1),
+                ("x", record.Coordinate.X),
+                ("y", record.Coordinate.Y)
+            )
+        );
 
         string summary = record.Summary;
         if (string.IsNullOrWhiteSpace(summary))
@@ -1001,23 +1134,23 @@ public partial class GameStatistics : CanvasLayer
     {
         var parts = new List<string>();
         if (record.EnemyNames != null && record.EnemyNames.Count > 0)
-            parts.Add($"敌人：{string.Join("，", record.EnemyNames)}");
+            parts.Add(I18n.Format("ui.statistics.node_enemies", "敌人：{value}", ("value", string.Join("，", record.EnemyNames))));
         if (record.ElectricityCoinChange != 0)
-            parts.Add($"电力币：{FormatSigned(record.ElectricityCoinChange)}");
+            parts.Add(I18n.Format("ui.statistics.node_coins", "电力币：{value}", ("value", FormatSigned(record.ElectricityCoinChange))));
         if (record.TransitionEnergyChange != 0)
-            parts.Add($"核心能源：{FormatSigned(record.TransitionEnergyChange)}");
-        AppendJoined(parts, "技能", record.SkillChanges);
-        AppendJoined(parts, "道具", record.GainedItems);
-        AppendJoined(parts, "装备", record.EquipmentChanges);
-        AppendJoined(parts, "遗物", record.RelicChanges);
-        AppendJoined(parts, "备注", record.Notes);
-        return parts.Count == 0 ? "无额外记录" : string.Join("\n", parts);
+            parts.Add(I18n.Format("ui.statistics.node_core_energy", "核心能源：{value}", ("value", FormatSigned(record.TransitionEnergyChange))));
+        AppendJoined(parts, I18n.Tr("ui.statistics.skills", "技能"), record.SkillChanges);
+        AppendJoined(parts, I18n.Tr("ui.statistics.items", "道具"), record.GainedItems);
+        AppendJoined(parts, I18n.Tr("ui.statistics.equipment", "装备"), record.EquipmentChanges);
+        AppendJoined(parts, I18n.Tr("ui.statistics.relics", "遗物"), record.RelicChanges);
+        AppendJoined(parts, I18n.Tr("ui.statistics.notes", "备注"), record.Notes);
+        return parts.Count == 0 ? I18n.Tr("ui.statistics.no_extra_record", "无额外记录") : string.Join("\n", parts);
     }
 
     private string BuildRelicTooltip(RunHistoryRelicRecord record)
     {
         if (record == null)
-            return "未知遗物";
+            return I18n.Tr("ui.common.unknown_relic", "未知遗物");
 
         var relic = Relic.Create(record.RelicID);
         string name = string.IsNullOrWhiteSpace(record.RelicName)
@@ -1039,14 +1172,70 @@ public partial class GameStatistics : CanvasLayer
             return ColorizeTooltip($"[b]{name}[/b]  [color=#cccccc]({GetSkillTypeLabel(skill.SkillType)})[/color]\n{description}");
         }
 
-        string fallbackName = string.IsNullOrWhiteSpace(skillName) ? "未知技能" : skillName;
+        string fallbackName = string.IsNullOrWhiteSpace(skillName) ? I18n.Tr("ui.common.unknown_skill", "未知技能") : skillName;
         return ColorizeTooltip($"[b]{fallbackName}[/b]  [color=#cccccc]({GetSkillTypeLabel(type)})[/color]");
+    }
+
+    private string BuildCharacterSnapshotTooltip(RunHistoryCharacterSkillRecord character)
+    {
+        if (character == null)
+            return I18n.Tr("ui.common.unknown_character", "未知角色");
+
+        var sb = new StringBuilder(256);
+        string name = string.IsNullOrWhiteSpace(character.CharacterName)
+            ? I18n.Tr("ui.common.character", "角色")
+            : character.CharacterName;
+        int talentCount = character.UnlockedTalentIds?.Count
+            ?? character.UnlockedTalentNames?.Count
+            ?? 0;
+
+        sb.Append(I18n.Format("ui.statistics.character_snapshot_title", "[b]{name}[/b]  [color=#cccccc](最终状态)[/color]", ("name", name)));
+        sb.Append(
+            I18n.Format(
+                "ui.statistics.character_snapshot_stats",
+                "\n生命 {life}  力量 {power}  生存 {survivability}  速度 {speed}",
+                ("life", character.MaxLife),
+                ("power", character.Power),
+                ("survivability", character.Survivability),
+                ("speed", character.Speed)
+            )
+        );
+        sb.Append(
+            I18n.Format(
+                "ui.statistics.character_snapshot_talent",
+                "\n天赋：{count}  剩余点：{remaining}",
+                ("count", talentCount),
+                ("remaining", character.TalentPoints)
+            )
+        );
+
+        var talentEffects = character.UnlockedTalentEffects ?? new List<string>();
+        var talentNames = character.UnlockedTalentNames ?? new List<string>();
+
+        if (talentEffects.Count > 0)
+        {
+            sb.Append(I18n.Tr("ui.statistics.unlocked_talents_header", "\n[hr]\n[b]已点亮天赋[/b]"));
+            foreach (string talent in talentEffects.Where(value => !string.IsNullOrWhiteSpace(value)))
+                sb.Append($"\n{talent}");
+        }
+        else if (talentNames.Count > 0)
+        {
+            sb.Append(I18n.Tr("ui.statistics.unlocked_talents_header", "\n[hr]\n[b]已点亮天赋[/b]"));
+            foreach (string talent in talentNames.Where(value => !string.IsNullOrWhiteSpace(value)))
+                sb.Append($"\n{talent}");
+        }
+        else
+        {
+            sb.Append(I18n.Tr("ui.statistics.no_unlocked_talents", "\n[hr]\n未点亮天赋"));
+        }
+
+        return ColorizeTooltip(sb.ToString());
     }
 
     private string BuildEquipmentTooltip(RunHistoryEquipmentRecord record)
     {
         if (record == null)
-            return "未知装备";
+            return I18n.Tr("ui.common.unknown_equipment", "未知装备");
 
         var sb = new StringBuilder(160);
         string name = string.IsNullOrWhiteSpace(record.DisplayName)
@@ -1074,10 +1263,10 @@ public partial class GameStatistics : CanvasLayer
             return string.Empty;
 
         var parts = new List<string>();
-        AddEquipmentStat(parts, "力量", record.Power);
-        AddEquipmentStat(parts, "生存", record.Survivability);
-        AddEquipmentStat(parts, "速度", record.Speed);
-        AddEquipmentStat(parts, "生命上限", record.MaxLife);
+        AddEquipmentStat(parts, I18n.Tr("property.power", "力量"), record.Power);
+        AddEquipmentStat(parts, I18n.Tr("property.survivability", "生存"), record.Survivability);
+        AddEquipmentStat(parts, I18n.Tr("property.speed", "速度"), record.Speed);
+        AddEquipmentStat(parts, I18n.Tr("property.max_life", "生命上限"), record.MaxLife);
         return string.Join("  ", parts);
     }
 
@@ -1230,12 +1419,12 @@ public partial class GameStatistics : CanvasLayer
     {
         return type switch
         {
-            LevelNode.LevelType.Normal => "普通战斗",
-            LevelNode.LevelType.Elite => "精英战斗",
-            LevelNode.LevelType.Boss => "首领战斗",
-            LevelNode.LevelType.Event => "事件",
-            LevelNode.LevelType.Shop => "商店",
-            _ => "未知节点",
+            LevelNode.LevelType.Normal => I18n.Tr("ui.statistics.node_type.normal", "普通战斗"),
+            LevelNode.LevelType.Elite => I18n.Tr("ui.statistics.node_type.elite", "精英战斗"),
+            LevelNode.LevelType.Boss => I18n.Tr("ui.statistics.node_type.boss", "首领战斗"),
+            LevelNode.LevelType.Event => I18n.Tr("ui.statistics.node_type.event", "事件"),
+            LevelNode.LevelType.Shop => I18n.Tr("ui.statistics.node_type.shop", "商店"),
+            _ => I18n.Tr("ui.common.unknown_node", "未知节点"),
         };
     }
 
@@ -1254,10 +1443,10 @@ public partial class GameStatistics : CanvasLayer
     {
         return type switch
         {
-            Skill.SkillTypes.Attack => "攻击",
-            Skill.SkillTypes.Survive => "生存",
-            Skill.SkillTypes.Special => "特殊",
-            _ => "其它",
+            Skill.SkillTypes.Attack => I18n.Tr("skill_type.attack", "攻击"),
+            Skill.SkillTypes.Survive => I18n.Tr("skill_type.survive", "生存"),
+            Skill.SkillTypes.Special => I18n.Tr("skill_type.special", "特殊"),
+            _ => I18n.Tr("ui.statistics.skill_type.other", "其它"),
         };
     }
 

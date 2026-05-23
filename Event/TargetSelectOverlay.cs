@@ -37,6 +37,9 @@ public partial class TargetSelectOverlay : Control
     {
         CacheBaseLayout();
         Visible = false;
+        TitleLabel.Text = I18n.Tr("ui.event.target_select.title", "选择作用角色");
+        HintLabel.Text = I18n.Tr("ui.event.target_select.hint", "请选择一名角色作为该选项的目标");
+        CancelButton.Text = I18n.Tr("ui.common.cancel", "取消");
         for (int i = 0; i < CharacterButtons.Count; i++)
         {
             int capturedIndex = i;
@@ -49,7 +52,7 @@ public partial class TargetSelectOverlay : Control
     {
         players ??= Array.Empty<PlayerInfoStructure>();
         HintLabel.Text = string.IsNullOrWhiteSpace(hintText)
-            ? "请选择一名角色作为该选项的目标"
+            ? I18n.Tr("ui.event.target_select.hint", "请选择一名角色作为该选项的目标")
             : hintText;
 
         for (int i = 0; i < CharacterButtons.Count; i++)
@@ -61,7 +64,7 @@ public partial class TargetSelectOverlay : Control
             if (exists)
             {
                 string name = string.IsNullOrWhiteSpace(players[i].CharacterName)
-                    ? $"角色 {i + 1}"
+                    ? I18n.Format("ui.common.character_n", "角色 {index}", ("index", i + 1))
                     : players[i].CharacterName;
                 button.Text = name;
             }

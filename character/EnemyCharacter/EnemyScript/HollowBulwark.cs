@@ -39,8 +39,8 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
         MaxLife = 26;
-        Power = 16;
-        Survivability = 5;
+        Power = 3;
+        Survivability = 20;
         Speed = 6;
         SkillIDs =
         [
@@ -68,12 +68,12 @@ public partial class HollowBulwarkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(
+            AttackStep(
                 baseDamage: skill => (skill?.OwnerCharater?.Block ?? 0) / 2,
                 prefix: "造成当前格挡/2（",
                 suffix: "）点伤害。"
             ),
-            BlockStep(0)
+            BlockStep()
         );
     }
 }
@@ -95,11 +95,11 @@ public partial class HollowBulwarkSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock, 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
-                target: HostileTargets(1),
+                target: HostileTargetReference.One,
                 permanent: false
             )
         );
@@ -121,6 +121,7 @@ public partial class HollowBulwarkSpecial : Skill
     {
         return new SkillPlan(
             this,
+            AttackStep(18),
             ModifyPropertyStep(PropertyType.Survivability, 5),
             CustomStep(
                 _ =>

@@ -9,10 +9,10 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private const string TutorialSection = "Tutorial";
     private const string BattleTutorialSeenKey = "BattleTutorialSeenV5";
     private const string BattleSpeedTutorialBody =
-        "\u4e0a\u65b9\u662f\u53cc\u65b9\u884c\u52a8\u70b9\u6570\u6761\u3002\u5de6\u8fb9\u7684\u6570\u5b57\u662f\u5f53\u524d\u884c\u52a8\u70b9\uff0c\u62ec\u53f7\u91cc\u662f\u8be5\u9635\u8425\u5b58\u6d3b\u6210\u5458\u7684\u603b\u901f\u5ea6\u3002\n\n"
-        + "\u4e00\u540d\u89d2\u8272\u884c\u52a8\u7ed3\u675f\u540e\uff0c\u6240\u5c5e\u9635\u8425\u4f1a\u6309\u603b\u901f\u5ea6\u83b7\u5f97\u884c\u52a8\u70b9\u3002\u603b\u901f\u5ea6\u8d8a\u9ad8\uff0c\u6761\u6da8\u5f97\u8d8a\u5feb\uff1b\u51cf\u5458\u6216\u901f\u5ea6\u88ab\u964d\u4f4e\u65f6\uff0c\u7d2f\u79ef\u4e5f\u4f1a\u53d8\u6162\u3002\n\n"
-        + "\u961f\u4f0d\u5185\u90e8\u4ecd\u7136\u6309\u9635\u4f4d\u987a\u5e8f\u8f6e\u6d41\u51fa\u624b\uff0c\u884c\u52a8\u540e\u6392\u5230\u961f\u5c3e\u3002\u5f53\u4e00\u65b9\u884c\u52a8\u70b9\u8fbe\u5230 100 \u65f6\uff0c\u8be5\u9635\u8425\u4f1a\u5728\u6b63\u5e38\u8f6e\u6d41\u4e4b\u5916\u83b7\u5f97\u4e00\u6b21\u989d\u5916\u51fa\u624b\u673a\u4f1a\uff0c\u5e76\u7ed9\u8fd9\u6b21\u884c\u52a8\u7684\u89d2\u8272 1 \u70b9\u80fd\u91cf\u548c 1 \u70b9\u62bd\u5361\u50a8\u5907\u3002\n\n"
-        + "\u6240\u4ee5\uff0c\u901f\u5ea6\u4e0d\u53ea\u51b3\u5b9a\u8c01\u5148\u52a8\uff0c\u4e5f\u4f1a\u5f71\u54cd\u54ea\u4e00\u65b9\u80fd\u66f4\u9891\u7e41\u62a2\u5230\u989d\u5916\u56de\u5408\u3002";
+        "上方是双方行动点数条。左边的数字是当前行动点，括号里是该阵营存活成员的总速度。\n\n"
+        + "一名角色行动结束后，所属阵营会按总速度获得行动点。总速度越高，条涨得越快；减员或速度被降低时，累积也会变慢。\n\n"
+        + "队伍内部仍然按阵位顺序轮流出手，行动后排到队尾。当一方行动点达到 100 时，该阵营会在正常轮流之外获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点抽卡储备。\n\n"
+        + "所以，速度不只决定谁先动，也会影响哪一方能更频繁抢到额外回合。";
 
     private readonly List<TutorialStep> _steps = new();
     private TaskCompletionSource<bool> _completion;
@@ -202,10 +202,10 @@ public partial class BattleTutorialOverlay : CanvasLayer
                     battle => (Control)GetItemContainer(battle) ?? GetRelicContainer(battle)
                 ),
                 new TutorialStep(
-                    "\u6838\u5fc3\u80fd\u6e90",
-                    "\u5730\u56fe\u8d44\u6e90\u680f\u4e2d\u7684\u6838\u5fc3\u80fd\u6e90\u662f\u6574\u6b21\u884c\u52a8\u7684\u5b89\u5168\u9600\uff0c\u4e0a\u9650\u4e3a 100\uff0c\u4f1a\u4ee5\u8fde\u7eed\u8fdb\u5ea6\u6761\u663e\u793a\u5f53\u524d\u5269\u4f59\u503c\u3002\n\n"
-                        + "\u6211\u65b9\u975e\u53ec\u5524\u89d2\u8272\u8fdb\u5165\u6fd2\u6b7b\u65f6\uff0c\u6263\u9664 5 \u70b9\u6838\u5fc3\u80fd\u6e90\uff1b\u624b\u52a8\u64a4\u9000\u65f6\u6263\u9664 10 \u70b9\u3002\n\n"
-                        + "\u5982\u679c\u6211\u65b9\u5168\u5458\u6fd2\u6b7b\uff0c\u4e0d\u4f1a\u7acb\u523b\u6e38\u620f\u5931\u8d25\uff1a\u4f1a\u6263\u9664 10 \u70b9\u6838\u5fc3\u80fd\u6e90\u5e76\u64a4\u56de\u5730\u56fe\u3002\u5f53\u6838\u5fc3\u80fd\u6e90\u964d\u5230 0 \u65f6\uff0c\u624d\u4f1a\u5224\u5b9a\u672c\u6b21\u6e38\u620f\u5931\u8d25\u3002",
+                    "核心能源",
+                    "地图资源栏中的核心能源是整次行动的安全阀，上限为 100，会以连续进度条显示当前剩余值。\n\n"
+                        + "我方非召唤角色进入濒死时，扣除 5 点核心能源；手动撤退时扣除 10 点。\n\n"
+                        + "如果我方全员濒死，不会立刻游戏失败：会扣除 10 点核心能源并撤回地图。当核心能源降到 0 时，才会判定本次游戏失败。",
                     battle => GetCoreEnergyControl(battle)
                 ),
                 new TutorialStep(

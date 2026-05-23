@@ -24,9 +24,11 @@ public partial class SkillButton : Button
     private ColorRect TerminateSkillIcon => field ??= GetNode<ColorRect>("TerminateSkillIcon");
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
-    private Character[] _previewTargets = Array.Empty<Character>();
+    private Character[] _previewHostileTargets = Array.Empty<Character>();
+    private Character[] _previewFriendlyTargets = Array.Empty<Character>();
     private readonly List<Label> _previewDamageLabels = new();
-    private static readonly Color TargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
     private static readonly Color DamagePreviewColor = new(1f, 0.84f, 0.63f, 1f);
     private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
@@ -192,16 +194,25 @@ public partial class SkillButton : Button
         if (SelfSkill == null)
             return;
 
-        _previewTargets = SelfSkill.GetPreviewHostileTargets();
-        if (_previewTargets == null || _previewTargets.Length == 0)
+        _previewHostileTargets = SelfSkill.GetPreviewHostileTargets();
+        _previewFriendlyTargets = SelfSkill.GetPreviewFriendlyTargets();
+
+        foreach (
+            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
         {
-            _previewTargets = Array.Empty<Character>();
-            return;
+            target.ShowTargetPreview(HostileTargetPreviewColor);
         }
 
-        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
+        foreach (
+            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
         {
-            target.ShowTargetPreview(TargetPreviewColor);
+            target.ShowTargetPreview(FriendlyTargetPreviewColor);
         }
     }
 
@@ -232,18 +243,36 @@ public partial class SkillButton : Button
 
     private void HideTargetPreview()
     {
-        if (_previewTargets == null || _previewTargets.Length == 0)
+        if (
+            (_previewHostileTargets == null || _previewHostileTargets.Length == 0)
+            && (_previewFriendlyTargets == null || _previewFriendlyTargets.Length == 0)
+        )
         {
-            _previewTargets = Array.Empty<Character>();
+            _previewHostileTargets = Array.Empty<Character>();
+            _previewFriendlyTargets = Array.Empty<Character>();
             return;
         }
 
-        foreach (var target in _previewTargets.Where(GodotObject.IsInstanceValid))
+        foreach (
+            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
         {
             target.HideTargetPreview();
         }
 
-        _previewTargets = Array.Empty<Character>();
+        foreach (
+            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
+                GodotObject.IsInstanceValid
+            )
+        )
+        {
+            target.HideTargetPreview();
+        }
+
+        _previewHostileTargets = Array.Empty<Character>();
+        _previewFriendlyTargets = Array.Empty<Character>();
     }
 
     private void HideDamagePreview()

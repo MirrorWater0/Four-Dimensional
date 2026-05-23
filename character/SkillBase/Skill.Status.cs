@@ -8,7 +8,11 @@ public partial class VoidStatus : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "虚空";
+    public override string SkillName
+    {
+        get => I18n.Tr("skill.void_status.name", "虚空");
+        set { }
+    }
     public override int EnergyCost => 0;
     public override bool CanBePlayed => false;
     public override bool ExhaustsAtTurnEndInHand => true;
@@ -23,7 +27,14 @@ public partial class VoidStatus : Skill
 
     public override void UpdateDescription()
     {
-        SetDescriptionLines($"抽到时: 失去{EnergyLossOnDraw}点能量.", "虚无.");
+        SetDescriptionLines(
+            I18n.Format(
+                "skill.void_status.desc.on_draw_lose_energy",
+                "抽到时: 失去{amount}点能量.",
+                ("amount", EnergyLossOnDraw)
+            ),
+            I18n.Tr("skill.status.desc.ethereal", "虚无.")
+        );
     }
 }
 
@@ -35,12 +46,46 @@ public partial class WoundStatus : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "伤口";
+    public override string SkillName
+    {
+        get => I18n.Tr("skill.wound_status.name", "伤口");
+        set { }
+    }
     public override int EnergyCost => 0;
     public override bool CanBePlayed => false;
 
     public override void UpdateDescription()
     {
-        SetDescriptionLines("状态牌。", "不可打出。");
+        SetDescriptionLines(
+            I18n.Tr("skill.status.desc.status_card", "状态牌。"),
+            I18n.Tr("skill.status.desc.unplayable", "不可打出。")
+        );
+    }
+}
+
+public partial class StunStatus : Skill
+{
+    public StunStatus()
+        : base(SkillTypes.none)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName
+    {
+        get => I18n.Tr("skill.stun_status.name", "眩晕");
+        set { }
+    }
+    public override int EnergyCost => 0;
+    public override bool CanBePlayed => false;
+    public override bool ExhaustsAtTurnEndInHand => true;
+
+    public override void UpdateDescription()
+    {
+        SetDescriptionLines(
+            I18n.Tr("skill.status.desc.status_card", "状态牌。"),
+            I18n.Tr("skill.status.desc.unplayable", "不可打出。"),
+            I18n.Tr("skill.status.desc.ethereal", "虚无。")
+        );
     }
 }

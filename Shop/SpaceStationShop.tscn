@@ -4,7 +4,7 @@
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="2_bxft0"]
 [ext_resource type="Shader" uid="uid://d87jvnuogxn0" path="res://shader/UI/SpaceStationShopAccent.gdshader" id="3_shop_accent"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_bxft0"]
 shader = ExtResource("2_bxft0")
 shader_parameter/color_top = Color(0.02, 0.05, 0.1, 1)
 shader_parameter/color_mid = Color(0.03, 0.02, 0.06, 1)
@@ -22,19 +22,11 @@ shader_parameter/flow_strength = 0.18
 shader_parameter/line_breath = 0.22
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.04, 0.07, 0.1, 0.88)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.28, 0.62, 0.72, 0.4)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
-bg_color = Color(0.03, 0.05, 0.08, 0.72)
+bg_color = Color(0.0296, 0.04975999, 0.08, 0.28235295)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -119,7 +111,6 @@ shader_parameter/corner_size = 0.09
 shader_parameter/slant = 0.32
 shader_parameter/alpha_scale = 0.66
 
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
 bg_color = Color(0.08, 0.11, 0.14, 0.38)
 border_width_left = 2
@@ -193,22 +184,18 @@ metadata/_edit_lock_ = true
 
 [node name="BG" type="ColorRect" parent="." unique_id=794907811]
 z_index = -2
-material = SubResource("ShaderMaterial_bg")
+material = SubResource("ShaderMaterial_bxft0")
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(1, 1, 1, 0.72)
 
 [node name="Panel" type="PanelContainer" parent="." unique_id=185374979]
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.07
-anchor_top = 0.07
-anchor_right = 0.93
-anchor_bottom = 0.93
-offset_bottom = 47.599976
+anchor_right = 1.0
+anchor_bottom = 1.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Inner" type="PanelContainer" parent="Panel" unique_id=559504060]
@@ -328,96 +315,141 @@ toggle_mode = true
 text = "道具"
 flat = true
 
-[node name="ContentArea" type="Control" parent="Panel/MainLayout" unique_id=1644216060]
-clip_contents = true
+[node name="ContentArea" type="ScrollContainer" parent="Panel/MainLayout" unique_id=1644216060]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+horizontal_scroll_mode = 0
 
-[node name="CatalogViewport" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=341993371]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 148.4
-grow_horizontal = 2
-grow_vertical = 2
+[node name="Sections" type="VBoxContainer" parent="Panel/MainLayout/ContentArea" unique_id=1644216061]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="TopSpacer" type="Control" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216068]
+custom_minimum_size = Vector2(0, 132)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="TopRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216065]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="StatColumn" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow" unique_id=1644216066]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="StatTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn" unique_id=1644216062]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "属性模块"
+
+[node name="StatPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn" unique_id=1377609489]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
-[node name="CatalogMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/CatalogViewport" unique_id=1896004102]
+[node name="StatMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn/StatPanel" unique_id=1431825810]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="CatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/CatalogViewport/CatalogMargin" unique_id=36665217]
+[node name="StatOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn/StatPanel/StatMargin" unique_id=1810312140]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 18
 columns = 2
 
-[node name="StatPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=1377609489]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 155.4
-offset_right = -12.400024
-offset_bottom = -51.599976
-grow_horizontal = 2
-grow_vertical = 2
+[node name="ItemColumn" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow" unique_id=1644216067]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+theme_override_constants/separation = 50
+
+[node name="RelicTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn" unique_id=1644216064]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "遗物模块"
+
+[node name="RelicViewport" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn" unique_id=341993371]
+custom_minimum_size = Vector2(440, 174)
+layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
-[node name="StatMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/StatPanel" unique_id=1431825810]
+[node name="RelicMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/RelicViewport" unique_id=1896004102]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="StatOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/StatPanel/StatMargin" unique_id=1810312140]
+[node name="RelicGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/RelicViewport/RelicMargin" unique_id=36665217]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/h_separation = 18
+theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 18
-columns = 2
+columns = 3
 
-[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea" unique_id=2003971415]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = 153.4
-offset_right = -14.400024
-offset_bottom = -53.599976
-grow_horizontal = 2
-grow_vertical = 2
+[node name="PotionTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn" unique_id=1644216069]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "道具模块"
+
+[node name="PotionViewport" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn" unique_id=1644216070]
+custom_minimum_size = Vector2(440, 174)
+layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
 
-[node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/SkillPanel" unique_id=53835426]
+[node name="PotionMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/PotionViewport" unique_id=1644216071]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PotionGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/PotionViewport/PotionMargin" unique_id=1644216072]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 40
+theme_override_constants/v_separation = 18
+columns = 3
+
+[node name="SkillTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216063]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "技能模块"
+
+[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=2003971415]
+custom_minimum_size = Vector2(0, 760)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel" unique_id=53835426]
 layout_mode = 2
 theme_override_constants/margin_left = 6
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 6
 theme_override_constants/margin_bottom = 6
 
-[node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin" unique_id=409129123]
+[node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin" unique_id=409129123]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin/VBox" unique_id=1103841539]
+[node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox" unique_id=1103841539]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 4
 
-[node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/SkillPanel/Margin/VBox" unique_id=746639838]
+[node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox" unique_id=746639838]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.76, 0.84, 0.9, 0.68)
 theme_override_font_sizes/font_size = 13
@@ -495,7 +527,6 @@ offset_bottom = 122.0
 theme_override_colors/font_color = Color(0.72, 0.84, 0.88, 0.62)
 theme_override_font_sizes/font_size = 14
 text = "通过模块按钮切换商店区块。"
-
 
 [node name="CloseButton" type="Button" parent="Panel/Decor" unique_id=1471276139]
 layout_mode = 1

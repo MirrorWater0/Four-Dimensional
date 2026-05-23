@@ -101,5 +101,5 @@ void fragment() {
     vec3 final_rgb = rgb + glow_color.rgb * glow * glow_color.a;
     float final_alpha = clamp(alpha + glow * 0.32 + edge_accum * 0.08, 0.0, 1.0);
 
-    COLOR = mix(bg_color, vec4(final_rgb, final_alpha), final_alpha);
+    COLOR *= mix(bg_color, vec4(final_rgb, final_alpha), final_alpha);
 }

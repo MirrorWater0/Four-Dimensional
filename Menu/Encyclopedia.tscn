@@ -1,21 +1,12 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://cdci2et1afgcp"]
 
-[ext_resource type="Script" path="res://Menu/Encyclopedia.cs" id="1_encyclopedia"]
+[ext_resource type="Script" uid="uid://cobs3ofqku6jo" path="res://Menu/Encyclopedia.cs" id="1_encyclopedia"]
+[ext_resource type="Script" path="res://Menu/SettingsDropdown.cs" id="21_settings_dropdown"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer_panel"]
-bg_color = Color(0.0352941, 0.0588235, 0.0901961, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.458824, 0.678431, 0.858824, 0.38)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-shadow_color = Color(0, 0, 0, 0.42)
-shadow_size = 28
-shadow_offset = Vector2(0, 12)
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
+shadow_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_panel"]
 bg_color = Color(0.0705882, 0.105882, 0.14902, 0.82)
@@ -29,7 +20,7 @@ corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
-[node name="Encyclopedia" type="Control"]
+[node name="Encyclopedia" type="Control" unique_id=512219392]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -38,75 +29,66 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_encyclopedia")
 
-[node name="Backdrop" type="ColorRect" parent="."]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=1757257361]
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
-color = Color(0.0117647, 0.0196078, 0.0313726, 0.84)
+color = Color(0.0117647, 0.0196078, 0.0313726, 0.92)
 
-[node name="CenterPanel" type="PanelContainer" parent="."]
-offset_left = -760.0
-offset_top = -420.0
-offset_right = 760.0
-offset_bottom = 420.0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
+[node name="CenterPanel" type="PanelContainer" parent="." unique_id=1493620159]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_outer_panel")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel"]
+[node name="Margin" type="MarginContainer" parent="CenterPanel" unique_id=2061435302]
 layout_mode = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 24
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
 
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin"]
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin" unique_id=497572036]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 10
 
-[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/Root"]
+[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/Root" unique_id=2038018031]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="TitleBox" type="VBoxContainer" parent="CenterPanel/Margin/Root/Header"]
+[node name="TitleBox" type="VBoxContainer" parent="CenterPanel/Margin/Root/Header" unique_id=224044411]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ArchiveTag" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
-layout_mode = 2
-text = "ARCHIVE"
-theme_override_font_sizes/font_size = 18
-modulate = Color(0.58, 0.78, 0.94, 0.78)
-
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
-layout_mode = 2
-text = "百科"
-theme_override_font_sizes/font_size = 38
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox" unique_id=1200563604]
 modulate = Color(0.96, 0.99, 1, 1)
-
-[node name="CloseButton" type="Button" parent="CenterPanel/Margin/Root/Header"]
-custom_minimum_size = Vector2(110, 46)
 layout_mode = 2
-text = "关闭"
+theme_override_font_sizes/font_size = 38
+text = "卡牌图鉴"
+
+[node name="CloseButton" type="Button" parent="CenterPanel/Margin/Root/Header" unique_id=2118931169]
+custom_minimum_size = Vector2(70, 46)
+layout_mode = 2
+text = "X"
 clip_text = true
 
-[node name="Body" type="HBoxContainer" parent="CenterPanel/Margin/Root"]
+[node name="Body" type="HBoxContainer" parent="CenterPanel/Margin/Root" unique_id=788602678]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 16
+theme_override_constants/separation = 18
 
-[node name="ModulePanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body"]
-custom_minimum_size = Vector2(190, 0)
+[node name="ModulePanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body" unique_id=80833540]
+custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel"]
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel" unique_id=129822352]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -115,127 +97,220 @@ theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 14
 
-[node name="ModuleButtons" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin"]
+[node name="SkillFilterPanel" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin" unique_id=2024345680]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="TypeSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=580352163]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection" unique_id=1126582020]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin" unique_id=1836602386]
+layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="BuffButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
-custom_minimum_size = Vector2(0, 54)
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin/Root" unique_id=1330518719]
+modulate = Color(0.9, 0.98, 1, 1)
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "类型"
+
+[node name="TypeFilterGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin/Root" unique_id=2028538111]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Buff"
-clip_text = true
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
 
-[node name="SkillsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
-custom_minimum_size = Vector2(0, 54)
+[node name="RaritySection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=1674699401]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "人物技能"
-clip_text = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="RelicsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
-custom_minimum_size = Vector2(0, 54)
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection" unique_id=885722946]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin" unique_id=1889081436]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin/Root" unique_id=258908791]
+modulate = Color(0.9, 0.98, 1, 1)
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "稀有度"
+
+[node name="RarityFilterList" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin/Root" unique_id=1471174190]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "遗物"
-clip_text = true
+theme_override_constants/separation = 8
 
-[node name="ItemsButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
-custom_minimum_size = Vector2(0, 54)
+[node name="CostSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=2093543855]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "道具"
-clip_text = true
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="EnemiesButton" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/ModuleButtons"]
-custom_minimum_size = Vector2(0, 54)
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection" unique_id=147422309]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin" unique_id=29291071]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin/Root" unique_id=1873020723]
+modulate = Color(0.9, 0.98, 1, 1)
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "费用"
+
+[node name="CostFilterGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin/Root" unique_id=1854324044]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "敌人"
-clip_text = true
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 3
 
-[node name="Content" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body"]
+[node name="SortSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=2130908693]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="SearchRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection" unique_id=155844579]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
-[node name="ModuleTitle" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
-custom_minimum_size = Vector2(180, 0)
+[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin" unique_id=1407447721]
 layout_mode = 2
-text = "Buff"
-theme_override_font_sizes/font_size = 26
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root" unique_id=301693681]
+modulate = Color(0.9, 0.98, 1, 1)
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "排序"
+
+[node name="SkillSortOptionHost" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root" unique_id=407887535]
+layout_mode = 2
+
+[node name="SkillSortOptionHostInner" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root/SkillSortOptionHost" unique_id=1739137728]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SkillSortOption" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root/SkillSortOptionHost/SkillSortOptionHostInner" unique_id=1984864709]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+mouse_default_cursor_shape = 2
+script = ExtResource("21_settings_dropdown")
+
+[node name="Content" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body" unique_id=481712010]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="SearchRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1676039092]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="ModuleTitle" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=162253235]
 modulate = Color(0.92, 0.97, 1, 1)
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "卡牌图鉴"
 
-[node name="SearchBox" type="LineEdit" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
+[node name="SearchBox" type="LineEdit" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=775425656]
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-placeholder_text = "在当前模块内搜索名称、类型或描述"
+placeholder_text = "搜索卡牌名称、类型或描述"
 
-[node name="CountLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
+[node name="CountLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=1180591402]
+modulate = Color(0.7, 0.82, 0.92, 0.82)
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
+theme_override_font_sizes/font_size = 18
 text = "0/0"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 18
-modulate = Color(0.7, 0.82, 0.92, 0.82)
 
-[node name="CharacterFilterRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+[node name="CharacterFilterRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1310224283]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="CharacterFilterLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+[node name="CharacterFilterLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=2128639654]
+modulate = Color(0.76, 0.88, 0.98, 0.92)
 custom_minimum_size = Vector2(64, 0)
 layout_mode = 2
-text = "人物"
-vertical_alignment = 1
 theme_override_font_sizes/font_size = 20
-modulate = Color(0.76, 0.88, 0.98, 0.92)
+text = "角色"
+vertical_alignment = 1
 
-[node name="EchoButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+[node name="EchoButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=1392850629]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Echo"
 clip_text = true
 
-[node name="KasiyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+[node name="KasiyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=380175374]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Kasiya"
 clip_text = true
 
-[node name="MariyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+[node name="MariyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=868775161]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Mariya"
+text = "玛瑞娅"
 clip_text = true
 
-[node name="NightingaleButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"]
+[node name="NightingaleButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=641557052]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Nightingale"
 clip_text = true
 
-[node name="Split" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content"]
+[node name="Split" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1862864668]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 14
+theme_override_constants/separation = 0
 
-[node name="ListPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split"]
-custom_minimum_size = Vector2(390, 0)
+[node name="SkillGridPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split" unique_id=1347687484]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+theme_override_styles/panel = SubResource("StyleBoxFlat_outer_panel")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel"]
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel" unique_id=1222318233]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -244,23 +319,26 @@ theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 12
 
-[node name="ListScroll" type="ScrollContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel/Margin"]
+[node name="GridScroll" type="ScrollContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel/Margin" unique_id=886183611]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ResultList" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/ListPanel/Margin/ListScroll"]
+[node name="SkillGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel/Margin/GridScroll" unique_id=581039083]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 8
+theme_override_constants/h_separation = 30
+theme_override_constants/v_separation = 20
+columns = 5
 
-[node name="DetailPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split"]
+[node name="DetailPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split" unique_id=1987715101]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel"]
+[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel" unique_id=197939493]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -269,12 +347,22 @@ theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="DetailLabel" type="RichTextLabel" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin"]
+[node name="DetailRoot" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin" unique_id=1654433048]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-bbcode_enabled = true
-scroll_active = true
-fit_content = false
-text = "请选择一个条目。"
+theme_override_constants/separation = 14
+
+[node name="DetailCardHost" type="CenterContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot" unique_id=1314284169]
+visible = false
+custom_minimum_size = Vector2(0, 340)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DetailLabel" type="RichTextLabel" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot" unique_id=132591955]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_font_sizes/normal_font_size = 19
+bbcode_enabled = true
+text = "请选择一个条目。"

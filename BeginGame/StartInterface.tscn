@@ -4,40 +4,40 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
-content_margin_left = 26.0
-content_margin_top = 14.0
-content_margin_right = 26.0
-content_margin_bottom = 14.0
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
 bg_color = Color(0.03, 0.05, 0.08, 0)
 border_width_left = 4
 border_width_bottom = 1
 border_color = Color(0.78, 0.86, 0.95, 0.28)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-content_margin_left = 26.0
-content_margin_top = 14.0
-content_margin_right = 26.0
-content_margin_bottom = 14.0
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
 bg_color = Color(0.1, 0.16, 0.24, 0.46)
 border_width_left = 7
 border_width_bottom = 1
 border_color = Color(0.96, 0.9, 0.74, 0.88)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-content_margin_left = 26.0
-content_margin_top = 14.0
-content_margin_right = 26.0
-content_margin_bottom = 14.0
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
 bg_color = Color(0.08, 0.13, 0.2, 0.34)
 border_width_left = 6
 border_width_bottom = 1
 border_color = Color(0.93, 0.88, 0.7, 0.78)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-content_margin_left = 26.0
-content_margin_top = 14.0
-content_margin_right = 26.0
-content_margin_bottom = 14.0
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
 bg_color = Color(0.04, 0.05, 0.06, 0.08)
 border_width_left = 4
 border_width_bottom = 1
@@ -167,12 +167,16 @@ custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 color = Color(0.78, 0.88, 0.98, 0.22)
 
-[node name="Buttons" type="VBoxContainer" parent="Layout/CenterPanel/Margin/VBox" unique_id=740281463]
+[node name="ButtonsWrap" type="MarginContainer" parent="Layout/CenterPanel/Margin/VBox" unique_id=2081323020]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/margin_right = 300
 
-[node name="Button" type="Button" parent="Layout/CenterPanel/Margin/VBox/Buttons" unique_id=1860835836]
-custom_minimum_size = Vector2(0, 80)
+[node name="Buttons" type="VBoxContainer" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap" unique_id=740281463]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Button" type="Button" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons" unique_id=1860835836]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.96, 0.94, 0.82, 1)
@@ -181,7 +185,7 @@ theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.68, 0.78)
 theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 0.48)
 theme_override_constants/outline_size = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -190,8 +194,8 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "开始新游戏"
 alignment = 0
 
-[node name="Button2" type="Button" parent="Layout/CenterPanel/Margin/VBox/Buttons" unique_id=1800242370]
-custom_minimum_size = Vector2(0, 80)
+[node name="Button2" type="Button" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons" unique_id=1800242370]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.96, 0.94, 0.82, 1)
@@ -200,7 +204,7 @@ theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.68, 0.78)
 theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 0.48)
 theme_override_constants/outline_size = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -209,8 +213,8 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "继续游戏"
 alignment = 0
 
-[node name="StatisticsButton" type="Button" parent="Layout/CenterPanel/Margin/VBox/Buttons" unique_id=1159768108]
-custom_minimum_size = Vector2(0, 80)
+[node name="StatisticsButton" type="Button" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons" unique_id=1159768108]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.96, 0.94, 0.82, 1)
@@ -219,7 +223,7 @@ theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.68, 0.78)
 theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 0.48)
 theme_override_constants/outline_size = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -228,8 +232,8 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "统计"
 alignment = 0
 
-[node name="Button3" type="Button" parent="Layout/CenterPanel/Margin/VBox/Buttons" unique_id=1832904159]
-custom_minimum_size = Vector2(0, 80)
+[node name="EncyclopediaButton" type="Button" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons" unique_id=1188303452]
+custom_minimum_size = Vector2(0, 68)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.96, 0.94, 0.82, 1)
@@ -238,7 +242,26 @@ theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.68, 0.78)
 theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 0.48)
 theme_override_constants/outline_size = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 36
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
+text = "百科"
+alignment = 0
+
+[node name="Button3" type="Button" parent="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons" unique_id=1832904159]
+custom_minimum_size = Vector2(0, 68)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.96, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.96, 0.94, 0.82, 1)
+theme_override_colors/font_hover_color = Color(1, 0.98, 0.92, 1)
+theme_override_colors/font_disabled_color = Color(0.55, 0.6, 0.68, 0.78)
+theme_override_colors/font_outline_color = Color(0.03, 0.05, 0.08, 0.48)
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("2_font")
+theme_override_font_sizes/font_size = 36
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -287,5 +310,5 @@ text = "01"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[connection signal="pressed" from="Layout/CenterPanel/Margin/VBox/Buttons/Button" to="." method="Start"]
-[connection signal="pressed" from="Layout/CenterPanel/Margin/VBox/Buttons/Button2" to="." method="continueGame"]
+[connection signal="pressed" from="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/Button" to="." method="Start"]
+[connection signal="pressed" from="Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/Button2" to="." method="continueGame"]

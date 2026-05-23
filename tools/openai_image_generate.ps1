@@ -1,7 +1,7 @@
 param(
     [string]$EnvFile = "C:\tmp\openai.env",
     [string]$KeyFile = "C:\tmp\key.txt",
-    [string]$BaseUrl = "https://www.traxnode.com/v1",
+    [string]$BaseUrl = "https://api.traxnode.com/v1",
     [string]$Model = "gpt-image-2",
 
     [Parameter(Mandatory = $true)]

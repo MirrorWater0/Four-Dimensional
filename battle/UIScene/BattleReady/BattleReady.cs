@@ -277,7 +277,7 @@ public partial class BattleReady : Control
             new Color(0.88f, 0.94f, 1f),
             HorizontalAlignment.Left
         );
-        statTitle.Text = "属性";
+        statTitle.Text = I18n.Tr("ui.common.attributes", "属性");
         detailStack.AddChild(statTitle);
 
         var statGrid = new GridContainer
@@ -290,10 +290,10 @@ public partial class BattleReady : Control
         statGrid.AddThemeConstantOverride("v_separation", 8);
         detailStack.AddChild(statGrid);
 
-        AddPreviewStat(statGrid, "生命", "LifeMax", new Color(1f, 0.48f, 0.52f));
-        AddPreviewStat(statGrid, "力量", "Power", new Color(1f, 0.78f, 0.38f));
-        AddPreviewStat(statGrid, "生存", "Survivability", new Color(0.54f, 1f, 0.99f));
-        AddPreviewStat(statGrid, "速度", "Speed", new Color(0.64f, 0.9f, 1f));
+        AddPreviewStat(statGrid, I18n.Tr("ui.common.life", "生命"), "LifeMax", new Color(1f, 0.48f, 0.52f));
+        AddPreviewStat(statGrid, I18n.Tr("property.power", "力量"), "Power", new Color(1f, 0.78f, 0.38f));
+        AddPreviewStat(statGrid, I18n.Tr("property.survivability", "生存"), "Survivability", new Color(0.54f, 1f, 0.99f));
+        AddPreviewStat(statGrid, I18n.Tr("property.speed", "速度"), "Speed", new Color(0.64f, 0.9f, 1f));
 
         var separator = new ColorRect
         {
@@ -406,7 +406,6 @@ public partial class BattleReady : Control
             return;
 
         _characterPreviewSpineQualityApplied = true;
-        _characterPreviewSpineViewport.Size *= CharacterPreviewSpineRenderScale;
         _characterPreviewSpineWorld.Position *= CharacterPreviewSpineRenderScale;
     }
 
@@ -499,20 +498,18 @@ public partial class BattleReady : Control
         var info = players[characterIndex];
         RefreshCharacterPreviewVisual(info);
         _characterPreviewNameLabel.Text = string.IsNullOrWhiteSpace(info.CharacterName)
-            ? $"角色{characterIndex + 1}"
+            ? I18n.Format("ui.common.character_n_compact", "角色{index}", ("index", characterIndex + 1))
             : info.CharacterName;
 
         SetPreviewStat("LifeMax", info.LifeMax);
-        SetPreviewStat("Power", info.Power);
-        SetPreviewStat("Survivability", info.Survivability);
-        SetPreviewStat("Speed", info.Speed);
+        SetPreviewStat("Power", TalentTree.GetEffectivePower(info));
+        SetPreviewStat("Survivability", TalentTree.GetEffectiveSurvivability(info));
+        SetPreviewStat("Speed", TalentTree.GetEffectiveSpeed(info));
 
         string passiveName = string.IsNullOrWhiteSpace(info.PassiveName)
-            ? "被动"
+            ? I18n.Tr("ui.common.passive", "被动")
             : info.PassiveName;
-        string passiveDescription = string.IsNullOrWhiteSpace(info.PassiveDescription)
-            ? "-"
-            : info.PassiveDescription;
+        string passiveDescription = TalentTree.GetPassiveDescription(info);
         passiveDescription = GlobalFunction.ColorizeKeywords(
             GlobalFunction.ColorizeNumbers(passiveDescription)
         );
@@ -563,6 +560,7 @@ public partial class BattleReady : Control
                 return false;
 
             spineSprite.GetParent()?.RemoveChild(spineSprite);
+            ClearOwnerRecursive(spineSprite);
             _characterPreviewSpineWorld.AddChild(spineSprite);
             _characterPreviewSpineModel = spineSprite;
             ConfigureCharacterPreviewSpineModel(spineSprite, info.CharacterName);
@@ -572,6 +570,16 @@ public partial class BattleReady : Control
         {
             instance.QueueFree();
         }
+    }
+
+    private static void ClearOwnerRecursive(Node node)
+    {
+        if (node == null)
+            return;
+
+        node.Owner = null;
+        foreach (Node child in node.GetChildren())
+            ClearOwnerRecursive(child);
     }
 
     private void ConfigureCharacterPreviewSpineModel(Node2D spineModel, string characterName)
@@ -667,9 +675,14 @@ public partial class BattleReady : Control
         if (skill == null)
             return null;
 
-        skill.SetPreviewStats(character.Power, character.Survivability, 1);
+        skill.SetPreviewStats(
+            TalentTree.GetEffectivePower(character),
+            TalentTree.GetEffectiveSurvivability(character),
+            1
+        );
 
         var card = SkillCardScene.Instantiate<SkillCard>();
+        string displayName = GetSkillDisplayName(skill, entry.Count);
         card.Name = $"SkillCard_{entry.SkillId}";
         card.ConfigureDisplayScale(BattleReadySkillCardScale);
         card.AutoPressEffect = false;
@@ -677,10 +690,11 @@ public partial class BattleReady : Control
         card.Button.ButtonPressed = false;
         card.Button.FocusMode = Control.FocusModeEnum.None;
         card.PreviewCharacterName = character.CharacterName;
+        card.DisplayNameOverride = displayName;
         card.CharacterName.Text = character.CharacterName ?? string.Empty;
         card.SetSkill(skill);
         card.CharacterName.Text = character.CharacterName ?? string.Empty;
-        card.NameLabel.Text = GetSkillDisplayName(skill, entry.Count);
+        card.NameLabel.Text = displayName;
         return card;
     }
 
@@ -692,7 +706,7 @@ public partial class BattleReady : Control
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
         {
             if (TalentPointLabel != null)
-                TalentPointLabel.Text = "天赋点 0";
+                TalentPointLabel.Text = I18n.Tr("ui.common.talent_points_zero", "天赋点 0");
             return;
         }
 
@@ -701,7 +715,11 @@ public partial class BattleReady : Control
         players[characterIndex] = info;
 
         if (TalentPointLabel != null)
-            TalentPointLabel.Text = $"天赋点 {info.TalentPoints}";
+            TalentPointLabel.Text = I18n.Format(
+                "ui.common.talent_points_value",
+                "天赋点 {value}",
+                ("value", info.TalentPoints)
+            );
 
         var nodes = TalentTree.GetNodes(info.CharacterName);
         var nodesById = nodes.ToDictionary(node => node.Id);
@@ -727,6 +745,54 @@ public partial class BattleReady : Control
             var button = CreateTalentNodeControl(characterIndex, node, unlocked, canUnlock, reason);
             TalentTreeRoot.AddChild(button);
         }
+    }
+
+    private async Task RefreshTalentTreeAnimatedAsync(int characterIndex)
+    {
+        if (
+            _currentMode != BattleReadyMode.Talent
+            || TalentTreeRoot == null
+            || !GodotObject.IsInstanceValid(TalentTreeRoot)
+            || !IsInsideTree()
+        )
+        {
+            RefreshTalentTree(characterIndex);
+            return;
+        }
+
+        _talentTreeSwitchTween?.Kill();
+
+        var root = TalentTreeRoot;
+        Vector2 basePosition = root.Position;
+        Color baseModulate = root.Modulate;
+
+        _talentTreeSwitchTween = CreateTween();
+        var exitTween = _talentTreeSwitchTween;
+        exitTween.SetParallel(true);
+        exitTween.SetEase(Tween.EaseType.In);
+        exitTween.SetTrans(Tween.TransitionType.Cubic);
+        exitTween.TweenProperty(root, "position", basePosition + new Vector2(-28f, 0f), 0.1f);
+        exitTween.TweenProperty(root, "modulate:a", 0.0f, 0.09f);
+        await ToSignal(exitTween, Tween.SignalName.Finished);
+
+        if (!GodotObject.IsInstanceValid(root) || !IsInsideTree())
+            return;
+
+        RefreshTalentTree(characterIndex);
+        root.Position = basePosition + new Vector2(34f, 0f);
+        root.Modulate = baseModulate with { A = 0.0f };
+
+        _talentTreeSwitchTween = CreateTween();
+        var enterTween = _talentTreeSwitchTween;
+        enterTween.SetParallel(true);
+        enterTween.SetEase(Tween.EaseType.Out);
+        enterTween.SetTrans(Tween.TransitionType.Cubic);
+        enterTween.TweenProperty(root, "position", basePosition, 0.18f);
+        enterTween.TweenProperty(root, "modulate:a", baseModulate.A, 0.16f);
+        await ToSignal(enterTween, Tween.SignalName.Finished);
+
+        if (_talentTreeSwitchTween == enterTween)
+            _talentTreeSwitchTween = null;
     }
 
     private void ClearTalentTree()
@@ -816,8 +882,14 @@ public partial class BattleReady : Control
             Position = node.Position,
             Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
             CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
-            Text =
-                $"{(unlocked ? "◆" : canUnlock ? "◇" : "·")} {node.DisplayName}\n阶段 {node.Stage + 1} / 消耗 {node.Cost}",
+            Text = I18n.Format(
+                "ui.battle_ready.talent_button",
+                "{icon} {name}\n阶段 {stage} / 消耗 {cost}",
+                ("icon", unlocked ? "◆" : canUnlock ? "◇" : "·"),
+                ("name", node.DisplayName),
+                ("stage", node.Stage + 1),
+                ("cost", node.Cost)
+            ),
             TooltipText = string.Empty,
             FocusMode = FocusModeEnum.None,
             Flat = false,
@@ -874,9 +946,9 @@ public partial class BattleReady : Control
         string reason
     )
     {
-        string stateText =
-            unlocked ? "已点亮"
-            : canUnlock ? "可点亮"
+        string stateText = unlocked
+            ? I18n.Tr("ui.common.unlocked", "已点亮")
+            : canUnlock ? I18n.Tr("ui.common.available_to_unlock", "可点亮")
             : reason;
         string stateColor =
             unlocked ? "#ffd987"
@@ -884,14 +956,27 @@ public partial class BattleReady : Control
             : "#9aa3b5";
         string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
         string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
-            ? "暂未配置效果。"
+            ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
             : node.EffectDescription;
 
         return $"[b]{node.DisplayName}[/b]\n"
-            + $"[color=#cfd6e6]阶段 {node.Stage + 1} / 消耗 {node.Cost} 点天赋点[/color]\n"
+            + I18n.Format(
+                "ui.common.talent_stage_cost_bbcode",
+                "[color=#cfd6e6]阶段 {stage} / 消耗 {cost} 点天赋点[/color]\n",
+                ("stage", node.Stage + 1),
+                ("cost", node.Cost)
+            )
             + $"[color={stateColor}]{stateText}[/color]\n\n"
-            + $"[color=#9fb5d6]说明[/color]\n{description}\n\n"
-            + $"[color=#ffd987]效果[/color]\n{effect}";
+            + I18n.Format(
+                "ui.common.description_bbcode",
+                "[color=#9fb5d6]说明[/color]\n{value}\n\n",
+                ("value", description)
+            )
+            + I18n.Format(
+                "ui.common.effect_bbcode",
+                "[color=#ffd987]效果[/color]\n{value}",
+                ("value", effect)
+            );
     }
 
     private static StyleBoxFlat CreateTalentNodeStyle(
@@ -974,6 +1059,7 @@ public partial class BattleReady : Control
         {
             players[characterIndex] = info;
             SaveSystem.SaveAll();
+            RefreshCharacterPreview(characterIndex);
         }
 
         GD.Print(message);
@@ -990,6 +1076,7 @@ public partial class BattleReady : Control
     private BattleReadyMode _currentMode = BattleReadyMode.Tactics;
     private Tween _modeSelectorTween;
     private Tween _characterSelectorTween;
+    private Tween _talentTreeSwitchTween;
     private readonly Dictionary<Control, Vector2> _basePositions = [];
 
     private readonly struct AssemblyItem(Control control, Vector2 offset, float delay)
@@ -1202,6 +1289,8 @@ public partial class BattleReady : Control
         {
             _modeSelectorTween?.Kill();
             _characterSelectorTween?.Kill();
+            _talentTreeSwitchTween?.Kill();
+            _talentTreeSwitchTween = null;
 
             UpdateModeButtonState(targetMode);
             UpdateModeSelectorPosition(targetMode, true);
@@ -1784,7 +1873,7 @@ public partial class BattleReady : Control
             var info = players[i];
             button.ToggleMode = true;
             button.Text = string.IsNullOrWhiteSpace(info.CharacterName)
-                ? $"角色{i + 1}"
+                ? I18n.Format("ui.common.character_n", "角色 {index}", ("index", i + 1))
                 : info.CharacterName;
 
             int capturedIndex = i;
@@ -1839,11 +1928,15 @@ public partial class BattleReady : Control
             return;
         }
 
+        bool animateTalentTreeSwitch = _currentMode == BattleReadyMode.Talent;
         _selectedCharacterIndex = characterIndex;
         UpdateCharacterButtonState(true);
         await ClearSkillContainer();
         PopulateSkillButtons(characterIndex);
-        RefreshTalentTree(characterIndex);
+        if (animateTalentTreeSwitch)
+            await RefreshTalentTreeAnimatedAsync(characterIndex);
+        else
+            RefreshTalentTree(characterIndex);
     }
 
     private void PopulateSkillButtons(int characterIndex)

@@ -52,7 +52,22 @@ public partial class Skill
         none,
     }
 
-    public virtual string SkillName { set; get; }
+    private string _skillName;
+    protected virtual string SkillNameKey => $"skill.{I18n.ToSnakeCase(GetType().Name)}.name";
+    public virtual string SkillName
+    {
+        get
+        {
+            if (I18n.HasTranslation(SkillNameKey))
+                return I18n.Tr(SkillNameKey, _skillName);
+
+            if (I18n.IsEnglishLocale())
+                return I18n.HumanizeSnakeCase(GetSkillNameToken());
+
+            return _skillName;
+        }
+        set => _skillName = value;
+    }
     public SkillTypes SkillType;
     public Character OwnerCharater;
     public SkillID? SkillId { get; internal set; }
@@ -71,6 +86,22 @@ public partial class Skill
     public Skill(SkillTypes skillType)
     {
         SkillType = skillType;
+    }
+
+    private string GetSkillNameToken()
+    {
+        const string prefix = "skill.";
+        const string suffix = ".name";
+        if (
+            SkillNameKey.StartsWith(prefix, StringComparison.Ordinal)
+            && SkillNameKey.EndsWith(suffix, StringComparison.Ordinal)
+            && SkillNameKey.Length > prefix.Length + suffix.Length
+        )
+        {
+            return SkillNameKey[prefix.Length..^suffix.Length];
+        }
+
+        return I18n.ToSnakeCase(GetType().Name);
     }
 
     public virtual async Task Effect()
@@ -196,19 +227,19 @@ public partial class Skill
     public bool RequiresExternalEnergyPayment => RequiredEnergyCost != 0;
     internal bool IsEnergyCostWaived => _energyCostWaiverDepth > 0;
 
-    protected int DamageFromPower(int baseDamage = 0, int powerMultiplier = 1, int clampMax = 9999)
+    protected int DamageFromPower(int baseDamage = 0, int multiplier = 1, int clampMax = 9999)
     {
-        int damage = baseDamage + OwnerPower * powerMultiplier;
+        int damage = baseDamage + OwnerPower * multiplier;
         return Math.Clamp(damage, 0, clampMax);
     }
 
     protected int BlockFromSurvivability(
         int baseBlock = 0,
-        int survivabilityMultiplier = 1,
+        int multiplier = 1,
         int clampMax = 999
     )
     {
-        int block = baseBlock + OwnerSurvivability * survivabilityMultiplier;
+        int block = baseBlock + OwnerSurvivability * multiplier;
         return Math.Clamp(block, 0, clampMax);
     }
 
@@ -773,7 +804,8 @@ public partial class Skill
         int damage,
         int times,
         bool playHitEffectForFirstHit,
-        bool delayAfterLastHit
+        bool delayAfterLastHit,
+        bool applyAttackBuff
     )
     {
         if (target == null || IsDummyTarget(this, target))
@@ -786,15 +818,10 @@ public partial class Skill
 
         await AttackAnimation(target);
 
-        for (int i = 0; i < times; i++)
+        int modifiedDamage = damage;
+        if (applyAttackBuff)
         {
-            if (!CanContinueAttack(OwnerCharater, target))
-                break;
-
-            if (playHitEffectForFirstHit || i > 0)
-                SpawnAttackHitEffect(target);
-
-            int modifiedDamage = Math.Clamp(
+            modifiedDamage = Math.Clamp(
                 AttackBuff.ApplyOutgoingDamageModifiers(
                     OwnerCharater,
                     damage,
@@ -804,6 +831,16 @@ public partial class Skill
                 0,
                 9999
             );
+        }
+
+        for (int i = 0; i < times; i++)
+        {
+            if (!CanContinueAttack(OwnerCharater, target))
+                break;
+
+            if (playHitEffectForFirstHit || i > 0)
+                SpawnAttackHitEffect(target);
+
             await target.GetHurt(
                 modifiedDamage,
                 OwnerCharater,
@@ -821,7 +858,8 @@ public partial class Skill
         bool byBehindRow = false,
         Character target = null,
         bool playHitEffectForFirstHit = false,
-        bool delayAfterLastHit = true
+        bool delayAfterLastHit = true,
+        bool applyAttackBuff = true
     )
     {
         Character resolvedTarget = target ?? ResolvePrimaryTarget(byBehindRow);
@@ -830,7 +868,8 @@ public partial class Skill
             damage,
             times,
             playHitEffectForFirstHit,
-            delayAfterLastHit
+            delayAfterLastHit,
+            applyAttackBuff
         );
     }
 
@@ -841,24 +880,39 @@ public partial class Skill
             return;
 
         int count = Math.Min(Num, targets.Length);
+        int modifiedDamage = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                OwnerCharater,
+                damage,
+                null,
+                consumeStacks: true
+            ),
+            0,
+            9999
+        );
+
         List<Task> tasks = new();
-        for (int i = 0; i < count; i++)
+        for (int hit = 0; hit < times; hit++)
         {
-            if (IsDummyTarget(this, targets[i]))
-                continue;
+            for (int i = 0; i < count; i++)
+            {
+                if (IsDummyTarget(this, targets[i]))
+                    continue;
 
-            tasks.Add(
-                Attack(
-                    damage,
-                    times: times,
-                    target: targets[i],
-                    playHitEffectForFirstHit: true,
-                    delayAfterLastHit: true
-                )
-            );
+                tasks.Add(
+                    Attack(
+                        modifiedDamage,
+                        times: 1,
+                        target: targets[i],
+                        playHitEffectForFirstHit: true,
+                        delayAfterLastHit: true,
+                        applyAttackBuff: false
+                    )
+                );
 
-            if (i < count - 1)
-                await YieldBatchedCombatFrameAsync();
+                if (i < count - 1)
+                    await YieldBatchedCombatFrameAsync();
+            }
         }
 
         if (tasks.Count > 0)
@@ -888,6 +942,7 @@ public partial class Skill
         if (target == null || IsDummyTarget(this, target))
             return;
 
+        AudioManager.PlayAttack(OwnerCharater);
         AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
         OwnerCharater.AddChild(attack);
         var effect = OwnerCharater.CharacterEffectScene.Instantiate() as CharacterEffect;
@@ -973,6 +1028,7 @@ public partial class Skill
             SkillID.PhaseEcho => new PhaseEcho(),
             SkillID.SoundBarrier => new SoundBarrier(),
             SkillID.SonicDeflection => new SonicDeflection(),
+            SkillID.DeflectionShield => new DeflectionShield(),
             SkillID.TuningStance => new TuningStance(),
             SkillID.ResonantWard => new ResonantWard(),
             SkillID.DissonantField => new DissonantField(),
@@ -981,6 +1037,9 @@ public partial class Skill
             SkillID.ResonanceShelter => new Shelter(),
             SkillID.VoidForm => new VoidForm(),
             SkillID.EchoForm => new EchoForm(),
+            SkillID.Purity => new Purity(),
+            SkillID.CursePower => new CursePower(),
+            SkillID.WeakeningField => new WeakeningField(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
@@ -988,10 +1047,12 @@ public partial class Skill
             SkillID.AbsouluteDefense => new AbsouluteDefense(),
             SkillID.TauntingGuard => new TauntingGuard(),
             SkillID.WeakpointBulwark => new WeakpointBulwark(),
+            SkillID.Purification => new Purification(),
             SkillID.ReadyStance => new ReadyStance(),
             SkillID.BarrierDuplication => new BarrierDuplication(),
             SkillID.HolySeal => new HolySeal(),
             SkillID.AegisPledge => new AegisPledge(),
+            SkillID.HopeBeacon => new HopeBeacon(),
             SkillID.WarGodWill => new WarGodWill(),
             SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
             SkillID.DemonForm => new DemonForm(),
@@ -1010,6 +1071,7 @@ public partial class Skill
             SkillID.Sacrifice => new Sacrifice(),
             SkillID.RearlineRevival => new RearlineRevival(),
             SkillID.GroupHealing => new GroupHealing(),
+            SkillID.StillWaterMirror => new StillWaterMirror(),
             SkillID.ShadowAmbush => new ShadowAmbush(),
             SkillID.ShadowExecution => new ShadowExecution(),
             SkillID.StasisBlade => new StasisBlade(),
@@ -1023,6 +1085,8 @@ public partial class Skill
             SkillID.CurtainCallMoment => new CurtainCallMoment(),
             SkillID.SunMoonCycle => new SunMoonCycle(),
             SkillID.ShadowForm => new ShadowForm(),
+            SkillID.BrightestMoment => new BrightestMoment(),
+            SkillID.EternalDark => new EternalDarkSkill(),
             SkillID.Vower => new Vower(),
             SkillID.FlashOfLight => new FlashOfLight(),
             SkillID.CrystalGuard => new CrystalGuard(),
@@ -1031,6 +1095,7 @@ public partial class Skill
             SkillID.EnergyRelay => new EnergyRelay(),
             SkillID.TouchOfGod => new TouchOfGod(),
             SkillID.Ragnarok => new Ragnarok(),
+            SkillID.HolyOfHolies => new HolyOfHolies(),
             SkillID.SanctuaryForm => new SanctuaryForm(),
             SkillID.Swift => new Swift(),
             SkillID.AfterimageWard => new AfterimageWard(),
@@ -1073,14 +1138,24 @@ public partial class Skill
             SkillID.VoidAcolyteAttack => new VoidAcolyteAttack(),
             SkillID.VoidAcolyteSurvive => new VoidAcolyteSurvive(),
             SkillID.VoidAcolyteSpecial => new VoidAcolyteSpecial(),
+            SkillID.VoidRotorAttack => new VoidRotorAttack(),
+            SkillID.VoidRotorSurvive => new VoidRotorSurvive(),
+            SkillID.VoidRotorSpecial => new VoidRotorSpecial(),
             SkillID.VoidStatus => new VoidStatus(),
             SkillID.WoundStatus => new WoundStatus(),
+            SkillID.StunStatus => new StunStatus(),
             SkillID.HollowBulwarkAttack => new HollowBulwarkAttack(),
             SkillID.HollowBulwarkSurvive => new HollowBulwarkSurvive(),
             SkillID.HollowBulwarkSpecial => new HollowBulwarkSpecial(),
             SkillID.MarrowReaverAttack => new MarrowReaverAttack(),
             SkillID.MarrowReaverSurvive => new MarrowReaverSurvive(),
             SkillID.MarrowReaverSpecial => new MarrowReaverSpecial(),
+            SkillID.AngerEliteAttack => new AngerEliteAttack(),
+            SkillID.AngerEliteSurvive => new AngerEliteSurvive(),
+            SkillID.AngerEliteSpecial => new AngerEliteSpecial(),
+            SkillID.FearEliteAttack => new FearEliteAttack(),
+            SkillID.FearEliteSurvive => new FearEliteSurvive(),
+            SkillID.FearEliteSpecial => new FearEliteSpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicGuard => new BasicGuard(),
@@ -1137,6 +1212,9 @@ public enum SkillID
     SonicDeflection = 13,
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
+    DeflectionShield = 143,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
     TuningStance = 14,
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
@@ -1159,6 +1237,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     EchoForm = 102,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    CursePower = 140,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    WeakeningField = 141,
     #endregion
 
     #region Kasiya
@@ -1198,6 +1282,9 @@ public enum SkillID
     WeakpointBulwark = 82,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Purification = 144,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
     ReadyStance = 114,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
@@ -1211,6 +1298,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     AegisPledge = 70,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    HopeBeacon = 139,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     WarGodWill = 109,
@@ -1272,10 +1362,16 @@ public enum SkillID
     GroupHealing = 83,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
+    StillWaterMirror = 142,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
     TouchOfGod = 95,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     Ragnarok = 96,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    HolyOfHolies = 148,
 
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     SanctuaryForm = 103,
@@ -1335,6 +1431,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     ShadowForm = 99,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    BrightestMoment = 137,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    EternalDark = 138,
     #endregion
 
     #endregion
@@ -1425,9 +1527,13 @@ public enum SkillID
     VoidAcolyteSurvive = 122,
     VoidAcolyteSpecial = 123,
     VoidStatus = 124,
+    VoidRotorAttack = 134,
+    VoidRotorSurvive = 135,
+    VoidRotorSpecial = 136,
     #endregion
 
     WoundStatus = 131,
+    StunStatus = 133,
 
     #region HollowBulwark
     HollowBulwarkAttack = 125,
@@ -1439,6 +1545,23 @@ public enum SkillID
     MarrowReaverAttack = 128,
     MarrowReaverSurvive = 129,
     MarrowReaverSpecial = 130,
+    #endregion
+
+    #region AngerElite
+    AngerEliteAttack = 145,
+    AngerEliteSurvive = 146,
+    AngerEliteSpecial = 147,
+    #endregion
+
+    #region FearElite
+    FearEliteAttack = 151,
+    FearEliteSurvive = 152,
+    FearEliteSpecial = 153,
+    #endregion
+
+    #region Echo
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    Purity = 132,
     #endregion
 
     #region Basis

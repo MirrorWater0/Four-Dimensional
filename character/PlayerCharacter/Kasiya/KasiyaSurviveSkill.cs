@@ -9,7 +9,7 @@ public partial class KasiyaSurviveSkill { }
 public partial class ShockWave : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = -3;
+    private const int BaseBlock = 4;
 
     public override string SkillName { get; set; } = "冲击波";
 
@@ -26,14 +26,9 @@ public partial class ShockWave : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(9)
+                target: HostileTargetReference.All
             ),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Weaken,
-                stacks: VulnerableStacks,
-                target: HostileTargets(9)
-            ),
-            BlockStep(0, BaseBlock)
+            BlockStep(baseBlock: BaseBlock)
         );
     }
 }
@@ -56,7 +51,7 @@ public partial class ReNewedSpirit : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: -3),
+            BlockStep(baseBlock: 0),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
@@ -66,7 +61,7 @@ public partial class ReNewedSpirit : Skill
 public partial class AbsouluteDefense : Skill
 {
     public override string SkillName { get; set; } = "绝对防御";
-    int basisBlock = -3;
+    int basisBlock = 0;
 
     public AbsouluteDefense()
         : base(SkillTypes.Survive)
@@ -76,18 +71,14 @@ public partial class AbsouluteDefense : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            BlockStep(0, basisBlock, survivabilityMultiplier: 3),
-            ApplyBuffFriendly(buffName: Buff.BuffName.Taunt, stacks: 1, target: TargetReference.Self)
-        );
+        return new SkillPlan(this, BlockStep(baseBlock: basisBlock, multiplier: 3));
     }
 }
 
 public partial class TauntingGuard : Skill
 {
-    private const int TauntStacks = 2;
-    private const int BaseBlock = 1;
+    private const int TauntStacks = 3;
+    private const int BaseBlock = 4;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
@@ -106,14 +97,14 @@ public partial class TauntingGuard : Skill
                 stacks: TauntStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(0, BaseBlock, survivabilityMultiplier: 2)
+            BlockStep(baseBlock: BaseBlock, multiplier: 2)
         );
     }
 }
 
 public partial class WeakpointBulwark : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 8;
 
     public override string SkillName { get; set; } = "蓄势待发";
 
@@ -127,7 +118,7 @@ public partial class WeakpointBulwark : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             new DoubleEnemyFormationVulnerableStep()
         );
     }
@@ -138,14 +129,7 @@ public partial class WeakpointBulwark : Skill
         {
             foreach (var target in GetTargets(skill))
             {
-                int vulnerableStacks = GetVulnerableStacks(target);
-                if (vulnerableStacks > 0)
-                    HurtBuff.BuffAdd(
-                        Buff.BuffName.Vulnerable,
-                        target,
-                        vulnerableStacks,
-                        skill?.OwnerCharater
-                    );
+                DoubleDebuffs(target, skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -153,6 +137,12 @@ public partial class WeakpointBulwark : Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
+            if (skill != null || skill == null)
+            {
+                yield return "令敌方全阵的负面状态层数翻倍。";
+                yield break;
+            }
+
             yield return $"令敌方全阵的{Buff.BuffName.Vulnerable.GetDescription()}层数翻倍。";
         }
 
@@ -175,16 +165,86 @@ public partial class WeakpointBulwark : Skill
                     .ToArray() ?? Array.Empty<Character>();
         }
 
-        private static int GetVulnerableStacks(Character target)
+        private static void DoubleDebuffs(Character target, Character source)
         {
-            return target
-                    ?.HurtBuffs?.FirstOrDefault(buff =>
-                        buff != null
-                        && buff.ThisBuffName == Buff.BuffName.Vulnerable
-                        && buff.Stack > 0
-                    )
-                    ?.Stack ?? 0;
+            if (target == null)
+                return;
+
+            foreach (var buff in GetNegativeBuffs(target).ToArray())
+                AddDebuffStacks(buff.ThisBuffName, target, buff.Stack, source);
         }
+
+        private static IEnumerable<Buff> GetNegativeBuffs(Character target)
+        {
+            IEnumerable<Buff> buffs = Enumerable.Empty<Buff>();
+            if (target.HurtBuffs != null)
+                buffs = buffs.Concat(target.HurtBuffs);
+            if (target.AttackBuffs != null)
+                buffs = buffs.Concat(target.AttackBuffs);
+            if (target.SkillBuffs != null)
+                buffs = buffs.Concat(target.SkillBuffs);
+            if (target.EndActionBuffs != null)
+                buffs = buffs.Concat(target.EndActionBuffs);
+
+            return buffs.Where(buff =>
+                buff != null && buff.Stack > 0 && Buff.IsDebuff(buff.ThisBuffName)
+            );
+        }
+
+        private static void AddDebuffStacks(
+            Buff.BuffName name,
+            Character target,
+            int stacks,
+            Character source
+        )
+        {
+            if (stacks <= 0)
+                return;
+
+            switch (name)
+            {
+                case Buff.BuffName.Vulnerable:
+                    HurtBuff.BuffAdd(name, target, stacks, source);
+                    break;
+                case Buff.BuffName.Weaken:
+                    AttackBuff.BuffAdd(name, target, stacks, source);
+                    break;
+                case Buff.BuffName.Stun:
+                    SkillBuff.BuffAdd(name, target, stacks, source);
+                    break;
+                case Buff.BuffName.Disaster:
+                    EndActionBuff.BuffAdd(name, target, stacks, source);
+                    break;
+            }
+        }
+    }
+}
+
+public partial class Purification : Skill
+{
+    private const int BaseBlock = 8;
+
+    public override string SkillName { get; set; } = "净化";
+
+    public Purification()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock),
+            CustomStep(
+                skill =>
+                    skill?.OwnerCharater?.BattleNode?.ExhaustAllPlayerBattleStatusCardsAsync(
+                        skill.OwnerCharater
+                    ) ?? Task.CompletedTask,
+                _ => new[] { "消耗所有角色的所有状态牌。" }
+            )
+        );
     }
 }
 
@@ -207,12 +267,25 @@ public partial class BarrierDuplication : Skill
                 {
                     int currentBlock = OwnerCharater?.Block ?? 0;
                     if (currentBlock > 0)
+                    {
+                        int previousBlock = OwnerCharater.Block;
                         OwnerCharater?.UpdataBlock(currentBlock, source: OwnerCharater);
+                        int gainedBlock = System.Math.Max(
+                            0,
+                            (OwnerCharater?.Block ?? 0) - previousBlock
+                        );
+                        SpecialBuff.TriggerBeaconBlockShare(
+                            OwnerCharater,
+                            gainedBlock,
+                            OwnerCharater
+                        );
+                    }
 
-                    return Task.CompletedTask;
+                    return System.Threading.Tasks.Task.CompletedTask;
                 },
                 _ => new[] { "格挡翻倍。" }
-            )
+            ),
+            BlockStep(baseBlock: 4)
         );
     }
 }

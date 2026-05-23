@@ -145,6 +145,7 @@ public partial class Battle : Node2D
     private readonly List<Label> _enemyAttackPreviewLabels = new();
     private Character[] _enemyAttackPreviewTargets = Array.Empty<Character>();
     private Character _nextActionPreviewCharacter;
+    private static readonly bool ShowNextActionGroundPreview = false;
     private bool _actionPoinUiRefreshScheduled;
     private bool _pendingPlayerActionPoinUiRefresh;
     private bool _pendingEnemyActionPoinUiRefresh;
@@ -204,8 +205,7 @@ public partial class Battle : Node2D
     private const int BattleStartEffectIntervalMs = 100;
     private const int ActionPoinTriggerThreshold = 100;
     private const int PlayerDyingCoreEnergyCost = 10;
-    private const int ManualRetreatCoreEnergyCost = 10;
-    private const int PartyDefeatedCoreEnergyCost = 10;
+    private const int ManualRetreatCoreEnergyCost = 5;
     private const int EarlyBattleBonusSkillRewardBattles = 3;
     private const int EarlyBattleExtraSkillRewardGroups = 1;
     private const int RegionalBonusRelicBattleNumber = 5;
@@ -264,6 +264,8 @@ public partial class Battle : Node2D
 
         PlayerActionPoin = 0;
         EnemyActionPoin = 0;
+        RequestActionPoinUiRefresh(isPlayer: true);
+        RequestActionPoinUiRefresh(isPlayer: false);
         await ApplyRelicBattleEffects(token);
         await BattleBegin1(token);
     }
@@ -465,6 +467,7 @@ public partial class Battle : Node2D
         {
             player.InvalidateSkillTooltipCache();
             RecordStatusCardInsert(player, skillId, added, toHand: true, source: source);
+            CharacterControl?.RefreshCurrentTurnUi();
         }
 
         return added;
@@ -488,6 +491,112 @@ public partial class Battle : Node2D
             piles.DiscardPile.Add(skillId);
 
         player.InvalidateSkillTooltipCache();
+    }
+
+    public async Task ExhaustAllPlayerBattleStatusCardsAsync(Character source = null)
+    {
+        var handStatusIndexes = new Dictionary<PlayerCharacter, List<int>>();
+
+        foreach (PlayerCharacter player in PlayersList.ToArray())
+        {
+            if (player == null || !GodotObject.IsInstanceValid(player))
+                continue;
+
+            PlayerBattleCardPiles piles = GetOrCreatePlayerBattleCardPiles(player);
+            if (piles == null)
+                continue;
+
+            bool changed = false;
+            changed |= MoveStatusCardsToExhausted(piles.DrawPile, piles.Exhausted);
+            changed |= MoveStatusCardsToExhausted(piles.DiscardPile, piles.Exhausted);
+
+            List<int> indexes = CollectHandStatusCardIndexes(player, piles);
+            if (indexes.Count > 0)
+            {
+                changed = true;
+                handStatusIndexes[player] = indexes;
+            }
+
+            if (changed)
+                player.InvalidateSkillTooltipCache();
+        }
+
+        if (
+            handStatusIndexes.Count > 0
+            && CharacterControl != null
+            && GodotObject.IsInstanceValid(CharacterControl)
+        )
+        {
+            await Task.WhenAll(
+                handStatusIndexes.Select(entry =>
+                    CharacterControl.PlayHandCardExhaustAnimationAsync(entry.Key, entry.Value)
+                )
+            );
+        }
+
+        foreach (var entry in handStatusIndexes)
+        {
+            PlayerCharacter player = entry.Key;
+            if (player == null || !GodotObject.IsInstanceValid(player))
+                continue;
+
+            foreach (int index in entry.Value)
+                player.RemoveBattleHandCardAt(index);
+        }
+
+        CharacterControl?.RefreshCurrentTurnUi();
+    }
+
+    private static List<int> CollectHandStatusCardIndexes(
+        PlayerCharacter player,
+        PlayerBattleCardPiles piles
+    )
+    {
+        var indexes = new List<int>();
+        if (player?.Skills == null || piles == null)
+            return indexes;
+
+        for (int i = 0; i < player.Skills.Length; i++)
+        {
+            Skill skill = player.Skills[i];
+            if (skill == null || !skill.SkillId.HasValue)
+                continue;
+
+            SkillID skillId = skill.SkillId.Value;
+            if (!IsBattleStatusCard(skillId))
+                continue;
+
+            piles.Exhausted.Add(skillId);
+            indexes.Add(i);
+        }
+
+        return indexes;
+    }
+
+    private static bool MoveStatusCardsToExhausted(List<SkillID> source, List<SkillID> exhausted)
+    {
+        if (source == null || exhausted == null || source.Count == 0)
+            return false;
+
+        bool movedAny = false;
+        for (int i = source.Count - 1; i >= 0; i--)
+        {
+            SkillID skillId = source[i];
+            if (!IsBattleStatusCard(skillId))
+                continue;
+
+            source.RemoveAt(i);
+            exhausted.Add(skillId);
+            movedAny = true;
+        }
+
+        return movedAny;
+    }
+
+    private static bool IsBattleStatusCard(SkillID skillId)
+    {
+        Skill skill = Skill.GetSkill(skillId);
+        return skill != null && (!skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none);
     }
 
     public SkillID[] GetDrawBattleCardPile(PlayerCharacter player) =>
@@ -782,7 +891,8 @@ public partial class Battle : Node2D
         }
 
         _nextActionPreviewCharacter = character;
-        character.ShowNextActionPreview();
+        if (ShowNextActionGroundPreview)
+            character.ShowNextActionPreview();
         RefreshTurnOrderPreview();
     }
 
@@ -795,7 +905,7 @@ public partial class Battle : Node2D
 
         Character previewCharacter = _nextActionPreviewCharacter;
         _nextActionPreviewCharacter = null;
-        if (GodotObject.IsInstanceValid(previewCharacter))
+        if (ShowNextActionGroundPreview && GodotObject.IsInstanceValid(previewCharacter))
             previewCharacter.HideNextActionPreview();
         RefreshTurnOrderPreview();
     }
@@ -840,29 +950,63 @@ public partial class Battle : Node2D
 
         var orderByCharacter = new Dictionary<ulong, int>();
         int nextOrder = 0;
+        var playerQueue = GetTurnOrderQueue(isPlayer: true);
+        var enemyQueue = GetTurnOrderQueue(isPlayer: false);
+        var previewExtraActions = GetPreviewExtraActionCounts(playerQueue, enemyQueue);
+        int previewPlayerActionPoin = PlayerActionPoin;
+        int previewEnemyActionPoin = EnemyActionPoin;
+        Character pendingExtraActionCharacter = null;
 
         AddTurnOrderEvent(CurrentActionCharacter, orderByCharacter, ref nextOrder);
 
-        int currentExtraActionCount = GetPreviewExtraActionCount(CurrentActionCharacter);
-        for (int i = 0; i < currentExtraActionCount; i++)
+        ApplyPreviewActionPoinGain(
+            CurrentActionCharacter,
+            ref previewPlayerActionPoin,
+            ref previewEnemyActionPoin,
+            suppressActionPoinGain: SuppressActionPoinGainThisTurn
+        );
+        while (TryConsumePreviewExtraAction(CurrentActionCharacter, previewExtraActions))
+        {
             AddTurnOrderEvent(CurrentActionCharacter, orderByCharacter, ref nextOrder);
+            ApplyPreviewActionPoinGain(
+                CurrentActionCharacter,
+                ref previewPlayerActionPoin,
+                ref previewEnemyActionPoin,
+                suppressActionPoinGain: SuppressActionPoinGainThisTurn
+            );
+        }
 
-        AddTurnOrderEvent(_nextActionPreviewCharacter, orderByCharacter, ref nextOrder);
+        bool nextTeamIsPlayer = GetPreviewContinuationTeam(
+            previewPlayerActionPoin,
+            previewEnemyActionPoin
+        );
 
-        bool nextTeamIsPlayer = GetPreviewContinuationTeam();
-        var playerQueue = GetTurnOrderQueue(isPlayer: true);
-        var enemyQueue = GetTurnOrderQueue(isPlayer: false);
         int previewCharacterCount = playerQueue.Count + enemyQueue.Count;
         int maxIterations = Math.Max(previewCharacterCount * 4, 8);
 
         for (int i = 0; i < maxIterations && orderByCharacter.Count < previewCharacterCount; i++)
         {
-            var preferredQueue = nextTeamIsPlayer ? playerQueue : enemyQueue;
-            var fallbackQueue = nextTeamIsPlayer ? enemyQueue : playerQueue;
-            if (!TryAddNextTurnOrderEvent(preferredQueue, orderByCharacter, ref nextOrder))
-                TryAddNextTurnOrderEvent(fallbackQueue, orderByCharacter, ref nextOrder);
+            Character simulatedCharacter = GetNextPreviewCharacter(
+                playerQueue,
+                enemyQueue,
+                ref previewPlayerActionPoin,
+                ref previewEnemyActionPoin,
+                ref nextTeamIsPlayer,
+                ref pendingExtraActionCharacter,
+                out bool triggeredByActionPoinBurst
+            );
+            if (simulatedCharacter == null)
+                break;
 
-            nextTeamIsPlayer = !nextTeamIsPlayer;
+            AddTurnOrderEvent(simulatedCharacter, orderByCharacter, ref nextOrder);
+            ApplyPreviewActionPoinGain(
+                simulatedCharacter,
+                ref previewPlayerActionPoin,
+                ref previewEnemyActionPoin,
+                triggeredByActionPoinBurst
+            );
+            if (TryConsumePreviewExtraAction(simulatedCharacter, previewExtraActions))
+                pendingExtraActionCharacter = simulatedCharacter;
         }
 
         foreach (var character in GetTeamCharacters(isPlayer: true, includeSummons: false)
@@ -944,18 +1088,69 @@ public partial class Battle : Node2D
         return count;
     }
 
-    private bool GetPreviewContinuationTeam()
+    private Dictionary<ulong, int> GetPreviewExtraActionCounts(
+        List<Character> playerQueue,
+        List<Character> enemyQueue
+    )
     {
+        var counts = new Dictionary<ulong, int>();
+        foreach (Character character in playerQueue
+            .Concat(enemyQueue)
+            .Append(CurrentActionCharacter)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.ParticipatesInTurnRotation
+                && IsCharacterAlive(character)
+            ))
+        {
+            int count = GetPreviewExtraActionCount(character);
+            if (count > 0)
+                counts[character.GetInstanceId()] = count;
+        }
+
+        return counts;
+    }
+
+    private static bool TryConsumePreviewExtraAction(
+        Character character,
+        Dictionary<ulong, int> previewExtraActions
+    )
+    {
+        if (
+            character == null
+            || previewExtraActions == null
+            || !previewExtraActions.TryGetValue(character.GetInstanceId(), out int count)
+            || count <= 0
+        )
+        {
+            return false;
+        }
+
+        count--;
+        if (count <= 0)
+            previewExtraActions.Remove(character.GetInstanceId());
+        else
+            previewExtraActions[character.GetInstanceId()] = count;
+
+        return true;
+    }
+
+    private bool GetPreviewContinuationTeam(
+        int previewPlayerActionPoin,
+        int previewEnemyActionPoin
+    )
+    {
+        if (previewPlayerActionPoin >= ActionPoinTriggerThreshold)
+            return true;
+        if (previewEnemyActionPoin >= ActionPoinTriggerThreshold)
+            return false;
+
         if (_nextActionPreviewCharacter != null && GodotObject.IsInstanceValid(_nextActionPreviewCharacter))
-            return !_nextActionPreviewCharacter.IsPlayer;
+            return _nextActionPreviewCharacter.IsPlayer;
 
         if (CurrentActionCharacter != null && GodotObject.IsInstanceValid(CurrentActionCharacter))
             return !CurrentActionCharacter.IsPlayer;
-
-        if (PlayerActionPoin >= ActionPoinTriggerThreshold)
-            return true;
-        if (EnemyActionPoin >= ActionPoinTriggerThreshold)
-            return false;
 
         return GetAliveTeamSpeed(isPlayer: true) >= GetAliveTeamSpeed(isPlayer: false);
     }
@@ -969,6 +1164,184 @@ public partial class Battle : Node2D
                 && IsCharacterAlive(character)
             )
             .ToList();
+
+    private void ApplyPreviewActionPoinGain(
+        Character character,
+        ref int previewPlayerActionPoin,
+        ref int previewEnemyActionPoin,
+        bool suppressActionPoinGain
+    )
+    {
+        if (
+            suppressActionPoinGain
+            || character == null
+            || !GodotObject.IsInstanceValid(character)
+            || !character.ParticipatesInTurnRotation
+            || !IsCharacterAlive(character)
+        )
+        {
+            return;
+        }
+
+        if (character.IsPlayer)
+            previewPlayerActionPoin += GetAliveTeamSpeed(isPlayer: true);
+        else
+            previewEnemyActionPoin += GetAliveTeamSpeed(isPlayer: false);
+    }
+
+    private bool TryConsumePreviewActionPoinBurst(
+        Character expectedCharacter,
+        List<Character> playerQueue,
+        List<Character> enemyQueue,
+        ref int previewPlayerActionPoin,
+        ref int previewEnemyActionPoin
+    )
+    {
+        if (
+            expectedCharacter == null
+            || !GodotObject.IsInstanceValid(expectedCharacter)
+            || !expectedCharacter.ParticipatesInTurnRotation
+            || !IsCharacterAlive(expectedCharacter)
+        )
+        {
+            return false;
+        }
+
+        if (
+            previewPlayerActionPoin >= ActionPoinTriggerThreshold
+            && expectedCharacter.IsPlayer
+            && playerQueue.Count > 0
+            && playerQueue[0] == expectedCharacter
+        )
+        {
+            previewPlayerActionPoin -= ActionPoinTriggerThreshold;
+            return true;
+        }
+
+        if (
+            previewEnemyActionPoin >= ActionPoinTriggerThreshold
+            && !expectedCharacter.IsPlayer
+            && enemyQueue.Count > 0
+            && enemyQueue[0] == expectedCharacter
+        )
+        {
+            previewEnemyActionPoin -= ActionPoinTriggerThreshold;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void AdvancePreviewQueueForCharacter(
+        Character character,
+        List<Character> playerQueue,
+        List<Character> enemyQueue
+    )
+    {
+        if (character == null)
+            return;
+
+        List<Character> queue = character.IsPlayer ? playerQueue : enemyQueue;
+        if (queue == null || queue.Count == 0)
+            return;
+
+        int index = queue.IndexOf(character);
+        if (index < 0)
+            return;
+
+        queue.RemoveAt(index);
+        queue.Add(character);
+    }
+
+    private Character GetNextPreviewCharacter(
+        List<Character> playerQueue,
+        List<Character> enemyQueue,
+        ref int previewPlayerActionPoin,
+        ref int previewEnemyActionPoin,
+        ref bool nextTeamIsPlayer,
+        ref Character pendingExtraActionCharacter,
+        out bool triggeredByActionPoinBurst
+    )
+    {
+        triggeredByActionPoinBurst = false;
+
+        if (
+            pendingExtraActionCharacter != null
+            && GodotObject.IsInstanceValid(pendingExtraActionCharacter)
+            && IsCharacterAlive(pendingExtraActionCharacter)
+        )
+        {
+            Character extraActionCharacter = pendingExtraActionCharacter;
+            pendingExtraActionCharacter = null;
+            nextTeamIsPlayer = !extraActionCharacter.IsPlayer;
+            return extraActionCharacter;
+        }
+
+        if (previewPlayerActionPoin >= ActionPoinTriggerThreshold)
+        {
+            Character playerBurstCharacter = ConsumePreviewBurstAndGetActor(
+                playerQueue,
+                ref previewPlayerActionPoin
+            );
+            if (playerBurstCharacter != null)
+            {
+                triggeredByActionPoinBurst = true;
+                nextTeamIsPlayer = false;
+                return playerBurstCharacter;
+            }
+        }
+
+        if (previewEnemyActionPoin >= ActionPoinTriggerThreshold)
+        {
+            Character enemyBurstCharacter = ConsumePreviewBurstAndGetActor(
+                enemyQueue,
+                ref previewEnemyActionPoin
+            );
+            if (enemyBurstCharacter != null)
+            {
+                triggeredByActionPoinBurst = true;
+                nextTeamIsPlayer = true;
+                return enemyBurstCharacter;
+            }
+        }
+
+        var preferredQueue = nextTeamIsPlayer ? playerQueue : enemyQueue;
+        Character nextCharacter = PopNextPreviewQueueCharacter(preferredQueue);
+        if (nextCharacter == null)
+        {
+            preferredQueue = nextTeamIsPlayer ? enemyQueue : playerQueue;
+            nextCharacter = PopNextPreviewQueueCharacter(preferredQueue);
+        }
+
+        if (nextCharacter != null)
+            nextTeamIsPlayer = !nextCharacter.IsPlayer;
+
+        return nextCharacter;
+    }
+
+    private static Character ConsumePreviewBurstAndGetActor(
+        List<Character> queue,
+        ref int previewActionPoin
+    )
+    {
+        Character burstActor = PopNextPreviewQueueCharacter(queue);
+        if (burstActor == null)
+            return null;
+
+        previewActionPoin -= ActionPoinTriggerThreshold;
+        return burstActor;
+    }
+
+    private static Character PopNextPreviewQueueCharacter(List<Character> queue)
+    {
+        if (queue == null || queue.Count == 0)
+            return null;
+
+        Character character = queue[0];
+        queue.RemoveAt(0);
+        queue.Add(character);
+        return character;
+    }
 
     private static bool TryAddNextTurnOrderEvent(
         List<Character> queue,
@@ -1001,7 +1374,10 @@ public partial class Battle : Node2D
 
         ulong id = character.GetInstanceId();
         if (orderByCharacter.ContainsKey(id))
+        {
+            nextOrder++;
             return true;
+        }
 
         orderByCharacter[id] = nextOrder;
         nextOrder++;
@@ -1442,8 +1818,7 @@ public partial class Battle : Node2D
 
         if (GodotObject.IsInstanceValid(label))
         {
-            if (speedValueChanged)
-                label.Text = currentValue.ToString();
+            label.Text = currentValue.ToString();
         }
 
         if (GodotObject.IsInstanceValid(totalLabel))
@@ -1989,9 +2364,7 @@ public partial class Battle : Node2D
     )
         where T : Character
     {
-        Character actionPoinBurstPreview = GetActionPoinBurstPreviewAfterCurrentAction(
-            actingCharacter
-        );
+        Character actionPoinBurstPreview = GetCurrentActionPoinBurstPreview();
         if (actionPoinBurstPreview != null)
             return actionPoinBurstPreview;
 
@@ -2000,27 +2373,12 @@ public partial class Battle : Node2D
             : GetNextLivingCharacter(rotatedCurrentTeam);
     }
 
-    private Character GetActionPoinBurstPreviewAfterCurrentAction(Character actingCharacter)
+    private Character GetCurrentActionPoinBurstPreview()
     {
-        int previewPlayerActionPoin = PlayerActionPoin;
-        int previewEnemyActionPoin = EnemyActionPoin;
-
-        if (
-            SuppressActionPoinGainThisTurn != true
-            && actingCharacter?.ParticipatesInTurnRotation == true
-        )
-        {
-            int actionCount = 1 + GetPreviewExtraActionCount(actingCharacter);
-            if (actingCharacter.IsPlayer)
-                previewPlayerActionPoin += GetAliveTeamSpeed(isPlayer: true) * actionCount;
-            else
-                previewEnemyActionPoin += GetAliveTeamSpeed(isPlayer: false) * actionCount;
-        }
-
-        if (previewPlayerActionPoin >= ActionPoinTriggerThreshold)
+        if (PlayerActionPoin >= ActionPoinTriggerThreshold)
             return GetNextLivingCharacter(PlayersList);
 
-        if (previewEnemyActionPoin >= ActionPoinTriggerThreshold)
+        if (EnemyActionPoin >= ActionPoinTriggerThreshold)
             return GetNextLivingCharacter(EnemiesList);
 
         return null;
@@ -2254,11 +2612,7 @@ public partial class Battle : Node2D
         }
         else
         {
-            ConsumeCoreEnergy(PartyDefeatedCoreEnergyCost);
-            if (IsCoreEnergyDepleted())
-                await HandleDefeatAsync();
-            else
-                Retreat();
+            Retreat(consumeTransitionEnergy: true);
         }
 
         if (delayAfterHandling)
@@ -2298,7 +2652,10 @@ public partial class Battle : Node2D
             }
 
             SetNextActionPreviewCharacter(GetNextLivingCharacter(team));
-            await CharacterAction(team, token);
+            Func<Character> getNextAfterBurstAction = burstActor.IsPlayer
+                ? () => GetNextLivingCharacter(EnemiesList)
+                : () => GetNextLivingCharacter(PlayersList);
+            await CharacterAction(team, token, getNextAfterBurstAction);
         }
         finally
         {
@@ -2498,9 +2855,17 @@ public partial class Battle : Node2D
 
         reward.ClearRewardItems();
         var levelType = CurrentLevelNode?.Type ?? LevelNode.LevelType.Normal;
+        bool allowRareSkillRewards = GetCompletedBattleCount() >= 3;
+        reward.AllowRareSkillRewards = allowRareSkillRewards;
         int skillRewardGroups = GetSkillRewardGroupCount();
         for (int i = 0; i < skillRewardGroups; i++)
-            reward.AddSkillRewardEntry(forceRare: levelType == LevelNode.LevelType.Boss);
+            reward.AddSkillRewardEntry(
+                forceRare: allowRareSkillRewards && levelType == LevelNode.LevelType.Boss
+            );
+
+        var talentRewardPreview = GameInfo.PreviewBattleTalentPointReward(CurrentLevelNode);
+        if (talentRewardPreview.Granted)
+            reward.AddTalentPointRewardEntry(talentRewardPreview);
 
         var rng = new Random(CurrentLevelNode?.RandomNum ?? System.Environment.TickCount);
         bool addRelic = ShouldAddRelicReward(levelType);
@@ -2515,20 +2880,24 @@ public partial class Battle : Node2D
 
     private static int GetSkillRewardGroupCount()
     {
-        int completedBattleCount =
-            GameInfo.CompletedLevelNodeRecords?.Values.Count(record =>
-                record != null
-                && record.NodeType
-                    is LevelNode.LevelType.Normal
-                        or LevelNode.LevelType.Elite
-                        or LevelNode.LevelType.Boss
-            ) ?? 0;
+        int completedBattleCount = GetCompletedBattleCount();
 
         int bonusGroups =
             completedBattleCount < EarlyBattleBonusSkillRewardBattles
                 ? EarlyBattleExtraSkillRewardGroups
                 : 0;
         return 1 + bonusGroups;
+    }
+
+    private static int GetCompletedBattleCount()
+    {
+        return GameInfo.CompletedLevelNodeRecords?.Values.Count(record =>
+            record != null
+            && record.NodeType
+                is LevelNode.LevelType.Normal
+                    or LevelNode.LevelType.Elite
+                    or LevelNode.LevelType.Boss
+        ) ?? 0;
     }
 
     private static bool ShouldAddRelicReward(LevelNode.LevelType levelType)
@@ -2598,6 +2967,7 @@ public partial class Battle : Node2D
             ItemID.Explosion,
             ItemID.ElectromagneticInterference,
             ItemID.SpaceOscillation,
+            ItemID.StreamingTransmission,
         ];
         reward.AddItemRewardEntry(PickRandom(itemPool, rng));
     }

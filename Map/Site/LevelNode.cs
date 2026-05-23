@@ -5,9 +5,11 @@ using Godot;
 
 public partial class LevelNode : ColorRect
 {
-    private const int WeakEnemyStageCount = 3;
-    private const float RegionTwoEliteStatMultiplier = 1.3f;
-    internal const float RegionTwoBossStatMultiplier = 1.5f;
+    private const int RegionOneStrongBattleStage = 5;
+    private const int RegionTwoStrongBattleStage = 2;
+    private const float RegionTwoEliteStatMultiplier = 1f;
+    private const float RegionTwoEliteMaxLifeMultiplier = 1f;
+    internal const float RegionTwoBossStatMultiplier = 1f;
     private const int PlayerFormationRandomSalt = unchecked((int)0x51f15e0d);
     private const int EnemyFormationRandomSalt = unchecked((int)0x2a7f3c19);
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
@@ -51,7 +53,7 @@ public partial class LevelNode : ColorRect
     );
     public static PackedScene EventScene = GD.Load<PackedScene>("res://Event/EventInterface.tscn");
     public Vector2I SelfCoordinate;
-    public ColorRect Ghost => field ??= GetNode("ghost") as ColorRect;
+    public ColorRect Ghost => field ??= GetNode<ColorRect>("ghost");
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public int RandomNum;
@@ -59,6 +61,8 @@ public partial class LevelNode : ColorRect
     private bool _isButtonHovered;
     private bool _isTypeLegendHighlighted;
     private string _lastHoverTipText;
+    private Tween _hoverScaleTween;
+    private Tween _mainVisualScaleTween;
 
     public override void _Ready()
     {
@@ -72,14 +76,12 @@ public partial class LevelNode : ColorRect
         Button.Disabled = true;
         Button.Disabled = State == LevelState.Locked;
         StartAnimation();
-        PivotOffset = Size / 2;
-        Ghost.PivotOffset = Ghost.Size / 2;
         Button.MouseEntered += () =>
         {
             _isButtonHovered = true;
             Ghost.Modulate = new Color(1, 1, 1, 1);
             Ghost.Scale = new Vector2(1f, 1f);
-            CreateTween().TweenProperty(this, "scale", new Vector2(1.2f, 1.2f), 0.2f);
+            TweenHoverScale(new Vector2(1.2f, 1.2f), 0.2f);
         };
         Button.MouseExited += () =>
         {
@@ -89,7 +91,7 @@ public partial class LevelNode : ColorRect
             if (_isTypeLegendHighlighted)
                 return;
             Ghost.Modulate = new Color(1, 1, 1, 0);
-            CreateTween().TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f);
+            TweenHoverScale(Vector2.One, 0.2f);
         };
         Button.Pressed += PressButton;
 
@@ -131,10 +133,7 @@ public partial class LevelNode : ColorRect
             Ghost.Modulate = new Color(1f, 1f, 1f, 0.92f);
             Ghost.Scale = new Vector2(1.1f, 1.1f);
             Modulate = new Color(1.28f, 1.28f, 1.28f, 1f);
-            CreateTween()
-                .TweenProperty(this, "scale", new Vector2(1.1f, 1.1f), 0.16f)
-                .SetTrans(Tween.TransitionType.Back)
-                .SetEase(Tween.EaseType.Out);
+            TweenHoverScale(new Vector2(1.1f, 1.1f), 0.16f);
             return;
         }
 
@@ -143,16 +142,13 @@ public partial class LevelNode : ColorRect
         {
             Ghost.Modulate = new Color(1, 1, 1, 1);
             Ghost.Scale = Vector2.One;
-            CreateTween().TweenProperty(this, "scale", new Vector2(1.2f, 1.2f), 0.12f);
+            TweenHoverScale(new Vector2(1.2f, 1.2f), 0.12f);
             return;
         }
 
         Ghost.Modulate = new Color(1, 1, 1, 0);
         Ghost.Scale = Vector2.One;
-        CreateTween()
-            .TweenProperty(this, "scale", Vector2.One, 0.16f)
-            .SetTrans(Tween.TransitionType.Quad)
-            .SetEase(Tween.EaseType.Out);
+        TweenHoverScale(Vector2.One, 0.16f);
     }
 
     public List<EnemyRegedit> ProduceEnemies()
@@ -440,14 +436,12 @@ public partial class LevelNode : ColorRect
     public Tween ExplodeAnimation()
     {
         IsAnimate = true;
+        _hoverScaleTween?.Kill();
+        Scale = Vector2.One;
         Ghost.Modulate = new Color(1, 1, 1, 1);
         Ghost.Scale = Vector2.One;
         Tween tween = CreateTween();
         tween.TweenProperty(Ghost, "scale", new Vector2(2.2f, 2.2f), 0.3f);
-        tween
-            .Parallel()
-            .TweenProperty(this, "scale", new Vector2(1f, 1f), 0.2f)
-            .SetEase(Tween.EaseType.Out);
         tween
             .Parallel()
             .TweenProperty(Ghost, "modulate", new Color(1, 1, 1, 0f), 0.3f)
@@ -461,6 +455,15 @@ public partial class LevelNode : ColorRect
             })
         );
         return tween;
+    }
+
+    private void TweenHoverScale(Vector2 targetScale, float duration)
+    {
+        _hoverScaleTween?.Kill();
+        _hoverScaleTween = CreateTween();
+        _hoverScaleTween.TweenProperty(this, "scale", targetScale, duration)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
     }
 
     public static void RandomPosition<T>(List<T> list, int RandomNum)
@@ -535,13 +538,14 @@ public partial class LevelNode : ColorRect
         var rng = new Random(RandomNum);
         EnemyRegedit[] weakEnemyRegedits = BuildWeakEnemyCatalogForCurrentRegion();
         EnemyRegedit[] strongEnemyRegedits = BuildStrongEnemyCatalogForCurrentRegion();
+        int strongBattleStage = GetStrongBattleStageForCurrentRegion();
 
         List<EnemyRegedit> list = new()
         {
             weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit(),
             weakEnemyRegedits[rng.Next(weakEnemyRegedits.Length)].GetRegedit(),
         };
-        if (SelfCoordinate.X >= WeakEnemyStageCount)
+        if (SelfCoordinate.X >= strongBattleStage)
         {
             bool useStrongFormation = rng.Next(0, 2) == 0;
             if (useStrongFormation)
@@ -572,12 +576,21 @@ public partial class LevelNode : ColorRect
         return list;
     }
 
+    private static int GetStrongBattleStageForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0 ? RegionTwoStrongBattleStage : RegionOneStrongBattleStage;
+    }
+
     public List<EnemyRegedit> GetEliteEnemies()
     {
-        List<EnemyRegedit> list = new() { new ArroganceRegedit() };
+        EnemyRegedit[] eliteCatalog = GameInfo.CurrentLevel > 0
+            ? [new FearEliteRegedit()]
+            : [new ArroganceRegedit(), new AngerEliteRegedit()];
+        var rng = new Random(RandomNum);
+        List<EnemyRegedit> list = new() { eliteCatalog[rng.Next(eliteCatalog.Length)].GetRegedit() };
         list[0].PositionIndex = 5;
         if (GameInfo.CurrentLevel > 0)
-            ApplyStatMultiplier(list[0], RegionTwoEliteStatMultiplier);
+            ApplyEliteRegionTwoMultiplier(list[0]);
         return list;
     }
 
@@ -593,18 +606,8 @@ public partial class LevelNode : ColorRect
 
     private EnemyRegedit PickBossForThisNode()
     {
-        EnemyRegedit[] bossPool = BuildBossCatalog();
-        HashSet<string> defeatedBossNames = GetDefeatedBossNames();
-        EnemyRegedit[] availableBosses = bossPool
-            .Where(boss => boss != null && !defeatedBossNames.Contains(GetBossIdentity(boss)))
-            .ToArray();
-
-        EnemyRegedit[] pickPool = availableBosses.Length > 0 ? availableBosses : bossPool;
-        if (pickPool.Length == 0)
-            return new WarRegedit();
-
-        int index = (int)(Math.Abs((long)RandomNum) % pickPool.Length);
-        return pickPool[index].GetRegedit();
+        EnemyRegedit boss = GameInfo.CurrentLevel > 0 ? new DeathRegedit() : new WarRegedit();
+        return boss.GetRegedit();
     }
 
     private static EnemyRegedit[] BuildBossCatalog()
@@ -639,6 +642,17 @@ public partial class LevelNode : ColorRect
         enemy.Survivability = ScaleStat(enemy.Survivability, multiplier);
         enemy.Speed = ScaleStat(enemy.Speed, multiplier);
         enemy.MaxLife = ScaleStat(enemy.MaxLife, multiplier);
+    }
+
+    private static void ApplyEliteRegionTwoMultiplier(EnemyRegedit enemy)
+    {
+        if (enemy == null)
+            return;
+
+        enemy.Power = ScaleStat(enemy.Power, RegionTwoEliteStatMultiplier);
+        enemy.Survivability = ScaleStat(enemy.Survivability, RegionTwoEliteStatMultiplier);
+        enemy.Speed = ScaleStat(enemy.Speed, RegionTwoEliteStatMultiplier);
+        enemy.MaxLife = ScaleStat(enemy.MaxLife, RegionTwoEliteMaxLifeMultiplier);
     }
 
     private static int ScaleStat(int value, float multiplier)
@@ -679,8 +693,8 @@ public partial class LevelNode : ColorRect
         [
             new ArmonRegedit(),
             new RedHuskRegedit(),
-            new TurbineRegedit(),
             new VoidAcolyteRegedit(),
+            new VoidRotorRegedit(),
             new HollowBulwarkRegedit(),
         ];
     }
@@ -716,15 +730,18 @@ public partial class LevelNode : ColorRect
             if (!string.IsNullOrWhiteSpace(bossPreview))
                 return ColorizeHoverTipText(bossPreview);
 
-            string emptyRecordText = "[b]节点记录[/b]\n该节点暂无完成记录。";
+            string emptyRecordText = I18n.Tr(
+                "ui.map.node_record_empty",
+                "[b]节点记录[/b]\n该节点暂无完成记录。"
+            );
             if (!string.IsNullOrWhiteSpace(dropPreview))
                 emptyRecordText += $"\n\n{dropPreview}";
             return ColorizeHoverTipText(emptyRecordText);
         }
 
         string text = string.IsNullOrWhiteSpace(bossPreview)
-            ? $"[b]节点记录[/b]\n{summary}"
-            : $"{bossPreview}\n\n[b]节点记录[/b]\n{summary}";
+            ? I18n.Format("ui.map.node_record_summary", "[b]节点记录[/b]\n{summary}", ("summary", summary))
+            : I18n.Format("ui.map.node_record_with_boss", "{boss}\n\n[b]节点记录[/b]\n{summary}", ("boss", bossPreview), ("summary", summary));
 
         return ColorizeHoverTipText(text);
     }
@@ -736,9 +753,13 @@ public partial class LevelNode : ColorRect
 
         EnemyRegedit boss = GetBossEnemies().FirstOrDefault();
         string bossName = string.IsNullOrWhiteSpace(boss?.CharacterName)
-            ? "未知"
+            ? I18n.Tr("ui.common.unknown", "未知")
             : boss.CharacterName;
-        return $"[b]Boss[/b]\n即将遭遇：[color=#ff6b8b]{bossName}[/color]";
+        return I18n.Format(
+            "ui.map.boss_preview",
+            "[b]Boss[/b]\n即将遭遇：[color=#ff6b8b]{name}[/color]",
+            ("name", bossName)
+        );
     }
 
     private static string ColorizeHoverTipText(string text)

@@ -49,5 +49,5 @@ void fragment() {
     vec4 shadow_col = shadow_color * shadow;
     vec4 brick_col = vec4(rgb, mask * fill_color.a);
     vec4 composed = mix(bg_color, shadow_col, shadow_col.a);
-    COLOR = mix(composed, brick_col, brick_col.a);
+    COLOR *= mix(composed, brick_col, brick_col.a);
 }

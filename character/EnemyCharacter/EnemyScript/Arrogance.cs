@@ -36,9 +36,9 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 135;
-        Power = 19;
-        Survivability = 5;
+        MaxLife = 145;
+        Power = 17;
+        Survivability = 15;
         Speed = 50;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
@@ -49,7 +49,7 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 5;
     private const int MaxTargets = 2;
 
     public ArroganceAttack()
@@ -64,8 +64,15 @@ public partial class ArroganceAttack : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
-            LowerTargetPropertyStep(PropertyType.Survivability, 5)
+            AttackStep(
+                baseDamage: BaseDamage,
+                target: HostileTargets(MaxTargets)
+            ),
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                5,
+                HostileTargetReference.AttackKey
+            )
         );
     }
 }
@@ -87,13 +94,13 @@ public partial class ArroganceSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, 4),
             ModifyPropertyStep(PropertyType.Power, 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(9)
+                target: HostileTargetReference.Nine
             )
         );
     }
@@ -117,8 +124,7 @@ public partial class ArroganceSpecial : Skill
         return new SkillPlan(
             this,
             HealStep(baseHeal: 0, target: TargetReference.Self),
-            BlockStep(relativeIndex: 0, baseBlock: 0),
-            ModifyPropertyStep(PropertyType.Power, 3),
+            BlockStep(baseBlock: 0),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

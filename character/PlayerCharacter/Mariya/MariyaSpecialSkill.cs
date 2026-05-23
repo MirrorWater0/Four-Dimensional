@@ -3,6 +3,7 @@ public partial class MariyaSpecialSkill { }
 public partial class EnergyTransfer : Skill
 {
     private const int AllyEnergyGain = 2;
+    public override int EnergyCost => 1;
 
     public EnergyTransfer()
         : base(SkillTypes.Special)
@@ -24,7 +25,6 @@ public partial class EnergyTransfer : Skill
 public partial class RebirthPrayer : Skill
 {
     private const int BaseRebirthHeal = 14;
-    private const string SharedTargetKey = "治疗目标";
 
     public RebirthPrayer()
         : base(SkillTypes.Special)
@@ -43,11 +43,10 @@ public partial class RebirthPrayer : Skill
                 baseHeal: BaseRebirthHeal,
                 target: TargetReference.ManualFriendly,
                 preferNonFull: true,
-                rebirth: true,
-                storeAs: SharedTargetKey
+                rebirth: true
             ),
-            BlockStep(SharedTargetKey, baseBlock: 10),
-            ModifyPropertyStep(SharedTargetKey, type: PropertyType.MaxLife, value: 10)
+            BlockStep(target: TargetReference.HealKey, baseBlock: 10),
+            ModifyPropertyStep(target: TargetReference.HealKey, type: PropertyType.MaxLife, value: 10)
         );
     }
 }
@@ -83,7 +82,7 @@ public partial class RearlineRevival : Skill
 
 public partial class GroupHealing : Skill
 {
-    private const int BaseHeal = 15;
+    private const int BaseHeal = 12;
 
     public GroupHealing()
         : base(SkillTypes.Special)
@@ -133,6 +132,33 @@ public partial class Ragnarok : Skill
                 buffName: Buff.BuffName.Divinity,
                 stacks: DivinityStacks,
                 target: TargetReference.Self
+            )
+        );
+    }
+}
+
+public partial class HolyOfHolies : Skill
+{
+    private const int SourceStacks = 1;
+
+    public HolyOfHolies()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "至圣";
+    public override int EnergyCost => 2;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Source,
+                stacks: SourceStacks,
+                target: TargetReference.All
             )
         );
     }

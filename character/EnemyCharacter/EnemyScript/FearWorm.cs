@@ -5,13 +5,13 @@ using Godot;
 public partial class FearWorm : EnemyCharacter
 {
     private const int PassiveAllyActionThreshold = 2;
-    private const int PassivePowerGain = 10;
+    private const int PassivePowerGain = 8;
     private int _passiveAllyActionCount;
     private Func<Character, Task> _allyActionEndedHandler;
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
-        $"\u5176\u4ed6\u5df1\u65b9\u89d2\u8272\u6bcf\u884c\u52a8{PassiveAllyActionThreshold}\u6b21\uff1a\u83b7\u5f97{PassivePowerGain}\u70b9\u529b\u91cf\u3002";
+        $"其他己方角色每行动{PassiveAllyActionThreshold}次：获得{PassivePowerGain}点力量。";
 
     public override void Initialize()
     {
@@ -57,7 +57,7 @@ public partial class FearWorm : EnemyCharacter
     private void UpdatePassiveDescription()
     {
         PassiveDescription =
-            $"{PassiveDescriptionText}\n\u5f53\u524d\u8ba1\u6570\uff1a{_passiveAllyActionCount}/{PassiveAllyActionThreshold}";
+            $"{PassiveDescriptionText}\n当前计数：{_passiveAllyActionCount}/{PassiveAllyActionThreshold}";
     }
 
     public override async void Passive(Skill skill)
@@ -108,7 +108,7 @@ public partial class FearWormAttack : Skill
         return new SkillPlan(
             this,
             EnergyStep(EnergyGain),
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: BaseDamage,
                 target: HostileTargets(MaxTargets),
                 times: 1,
@@ -139,7 +139,7 @@ public partial class FearWormSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
@@ -167,10 +167,9 @@ public partial class FearWormTermin : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Stun,
                 stacks: StunStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             ),
-            ModifyPropertyStep(PropertyType.Power, Power),
-            AttackPrimaryStep(BaseDamage)
+            AttackStep(BaseDamage)
         );
     }
 }

@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $key = (Get-Content -Raw -LiteralPath "C:\tmp\key.txt").Trim()
-$baseUrl = "https://www.traxnode.com/v1"
+$baseUrl = "https://api.traxnode.com/v1"
 $model = "gpt-image-2"
 $size = "1024x768"
 

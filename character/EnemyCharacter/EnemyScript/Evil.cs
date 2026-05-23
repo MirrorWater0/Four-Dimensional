@@ -72,7 +72,7 @@ public partial class EvilRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
         MaxLife = 30;
-        Power = 6;
+        Power = 5;
         Survivability = 5;
         Speed = 5;
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
@@ -84,7 +84,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 4;
+    private const int HitDamage = 6;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -96,17 +96,13 @@ public partial class EvilAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackPrimaryStep(HitDamage, times: 2),
-            ModifyPropertyStep(PropertyType.Power, 1)
-        );
+        return new SkillPlan(this, AttackStep(HitDamage, times: 2));
     }
 }
 
 public partial class EvilSurvive : Skill
 {
-    private const int SurvivabilityGain = 8;
+    private const int PowerGain = 2;
     private const int BaseBlock = 8;
     private const int DescendingNum = 4;
 
@@ -122,9 +118,8 @@ public partial class EvilSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            LowerTargetPropertyStep(PropertyType.Survivability, DescendingNum)
+            BlockStep(baseBlock: BaseBlock),
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
@@ -146,10 +141,9 @@ public partial class EvilTermin : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999),
             EnergyTimesWhileStep(
                 paidEnergyPerLoop: PaidEnergyPerHit,
-                loopSteps: [AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1, clampMax: 9999)]
+                loopSteps: [AttackStep(baseDamage: 0, multiplier: 1, clampMax: 9999)]
             )
         );
     }

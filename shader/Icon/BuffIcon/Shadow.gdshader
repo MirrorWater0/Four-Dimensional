@@ -16,7 +16,9 @@ vec2 rotate2d(vec2 point, float angle) {
 }
 
 float circle_mask(vec2 point, float radius, float blur) {
-    return 1.0 - smoothstep(radius, radius + blur, length(point));
+    float dist = length(point);
+    float aa = max(fwidth(dist), 0.0015);
+    return 1.0 - smoothstep(radius, radius + max(blur, aa), dist);
 }
 
 void fragment() {
@@ -24,14 +26,15 @@ void fragment() {
     float time = TIME * animation_speed;
     float dist = length(uv);
     float angle = atan(uv.y, uv.x);
+    float aa = max(fwidth(dist), 0.0015);
 
     vec2 swirl_uv = rotate2d(uv, dist * swirl_strength - time * 0.75);
 
-    float outer_ring = smoothstep(ring_width, 0.0, abs(dist - ring_radius));
-    float inner_ring = smoothstep(ring_width * 0.8, 0.0, abs(dist - (ring_radius - 0.08)));
+    float outer_ring = smoothstep(ring_width + aa, 0.0, abs(dist - ring_radius));
+    float inner_ring = smoothstep(ring_width * 0.8 + aa, 0.0, abs(dist - (ring_radius - 0.08)));
 
-    float shard_a = smoothstep(0.028, 0.0, abs(swirl_uv.x * 1.3 + swirl_uv.y) - 0.06);
-    float shard_b = smoothstep(0.028, 0.0, abs(swirl_uv.x * 1.3 - swirl_uv.y) - 0.06);
+    float shard_a = smoothstep(0.028 + aa, 0.0, abs(swirl_uv.x * 1.3 + swirl_uv.y) - 0.06);
+    float shard_b = smoothstep(0.028 + aa, 0.0, abs(swirl_uv.x * 1.3 - swirl_uv.y) - 0.06);
     float shard_fade = smoothstep(0.38, 0.12, dist);
     float shards = max(shard_a, shard_b) * shard_fade;
 
@@ -55,5 +58,5 @@ void fragment() {
     float alpha = clamp(shape + void_core * 0.45, 0.0, 1.0);
     alpha *= smoothstep(0.5, 0.43, dist);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

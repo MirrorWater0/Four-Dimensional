@@ -22,11 +22,17 @@ public partial class CharacterSelectButton : Button
             IconRect.Texture = icon ?? fallbackPortrait;
 
         if (NameLabel != null)
-            NameLabel.Text = info.CharacterName ?? "Character";
+            NameLabel.Text = info.CharacterName ?? I18n.Tr("ui.common.character", "Character");
 
         if (StatsLabel != null)
-            StatsLabel.Text =
-                $"生命 {info.LifeMax}  力量 {info.Power}  生存 {info.Survivability}  速度 {info.Speed}";
+            StatsLabel.Text = I18n.Format(
+                "ui.common.character_stats_inline",
+                "生命 {life}  力量 {power}  生存 {survivability}  速度 {speed}",
+                ("life", info.LifeMax),
+                ("power", info.Power),
+                ("survivability", info.Survivability),
+                ("speed", info.Speed)
+            );
     }
 
     public void SetBadge(bool visible, string text)

@@ -6,7 +6,7 @@ public partial class Turbine : EnemyCharacter
 {
     private const int StartThornStacks = 7;
     private const int ActionTriggerCount = 2;
-    private const int TriggerThornStacks = 4;
+    private const int TriggerThornStacks = 5;
 
     public const string PassiveNameText = "棘轮增压";
     public static string PassiveDescriptionText =>
@@ -79,9 +79,9 @@ public partial class TurbineRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
-        MaxLife = 45;
+        MaxLife = 65;
         Power = 10;
-        Survivability = 5;
+        Survivability = 10;
         Speed = 7;
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
 
@@ -107,7 +107,7 @@ public partial class TurbineAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(BaseDamage),
+            AttackStep(BaseDamage),
             ModifyPropertyStep(
                 PropertyType.Survivability,
                 AllySurvivabilityGain,
@@ -121,7 +121,7 @@ public partial class TurbineSurvive : Skill
 {
     private const int BaseSurvivabilityGain = 5;
     private const int SurvivabilityMultiplier = 2;
-    private const int AllyPowerGain = 3;
+    private const int AllyPowerGain = 5;
     private const int AllyEnergyGain = 2;
 
     public TurbineSurvive()
@@ -136,7 +136,10 @@ public partial class TurbineSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseSurvivabilityGain, SurvivabilityMultiplier),
+            BlockStep(
+                baseBlock: BaseSurvivabilityGain,
+                multiplier: SurvivabilityMultiplier
+            ),
             ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next),
             EnergyStep(AllyEnergyGain, TargetReference.All)
         );
@@ -162,18 +165,12 @@ public partial class TurbineSpecial : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            HealStep(0, TargetReference.Self),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Thorn,
-                stacks: ThornStacks,
-                target: TargetReference.Self
-            ),
+            AttackStep(10),
             CarryStep(target: TargetReference.Previous, skillIndex: 1),
             AddStatusCardsToDrawPileStep(
                 SkillID.WoundStatus,
                 WoundCount,
-                HostileTargets(),
+                HostileTargetReference.All,
                 "敌方全阵"
             )
         );

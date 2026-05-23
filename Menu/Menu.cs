@@ -1,3 +1,4 @@
+using System;
 using Godot;
 
 public partial class Menu : Control
@@ -5,6 +6,14 @@ public partial class Menu : Control
     private const float OpenDuration = 0.22f;
     private const float CloseDuration = 0.18f;
     private static readonly Vector2 ClosedPanelScale = new(0.92f, 0.92f);
+    private static readonly Vector2I[] ResolutionOptions =
+    {
+        new(1280, 720),
+        new(1366, 768),
+        new(1600, 900),
+        new(1920, 1080),
+        new(2560, 1440),
+    };
     private static readonly PackedScene EncyclopediaScene = GD.Load<PackedScene>(
         "res://Menu/Encyclopedia.tscn"
     );
@@ -13,6 +22,10 @@ public partial class Menu : Control
     private ColorRect GlowTopRight => field ??= GetNodeOrNull<ColorRect>("GlowTopRight");
     private ColorRect GlowBottomLeft => field ??= GetNodeOrNull<ColorRect>("GlowBottomLeft");
     private Control CenterPanel => field ??= GetNodeOrNull<Control>("CenterPanel");
+    private Label TagLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Tag");
+    private Label TitleLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Title");
+    private Label DescriptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Description");
     private Button SaveQuitButton =>
         field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/SaveQuitButton");
     private Button AbandonGameButton =>
@@ -27,6 +40,8 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/Buttons");
     private Control SettingsPanel =>
         field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/SettingsPanel");
+    private Label SettingsTitle =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/SettingsTitle");
     private CheckBox DescriptionModeCheckBox =>
         field ??= GetNodeOrNull<CheckBox>(
             "CenterPanel/Margin/VBox/SettingsPanel/DescriptionModeCheckBox"
@@ -39,13 +54,49 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<CheckBox>(
             "CenterPanel/Margin/VBox/SettingsPanel/EnemyAttackPreviewCheckBox"
         );
-    private OptionButton TextSizeOptionButton =>
-        field ??= GetNodeOrNull<OptionButton>(
+    private SettingsDropdown TextSizeOptionButton =>
+        field ??= GetNodeOrNull<SettingsDropdown>(
             "CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeOptionButton"
         );
-    private OptionButton BattleShakeOptionButton =>
-        field ??= GetNodeOrNull<OptionButton>(
+    private SettingsDropdown BattleShakeOptionButton =>
+        field ??= GetNodeOrNull<SettingsDropdown>(
             "CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow/BattleShakeOptionButton"
+        );
+    private Label LanguageLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/LanguageRow/LanguageLabel");
+    private SettingsDropdown LanguageOptionButton =>
+        field ??= GetNodeOrNull<SettingsDropdown>(
+            "CenterPanel/Margin/VBox/SettingsPanel/LanguageRow/LanguageOptionButton"
+        );
+    private Label ResolutionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow/ResolutionLabel");
+    private SettingsDropdown ResolutionOptionButton =>
+        field ??= GetNodeOrNull<SettingsDropdown>(
+            "CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow/ResolutionOptionButton"
+        );
+    private Label TextSizeLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeLabel");
+    private Label BattleShakeLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow/BattleShakeLabel");
+    private Label MasterVolumeLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeLabel");
+    private Label SfxVolumeLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeLabel");
+    private HSlider MasterVolumeSlider =>
+        field ??= GetNodeOrNull<HSlider>(
+            "CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeSlider"
+        );
+    private Label MasterVolumeValueLabel =>
+        field ??= GetNodeOrNull<Label>(
+            "CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeValueLabel"
+        );
+    private HSlider SfxVolumeSlider =>
+        field ??= GetNodeOrNull<HSlider>(
+            "CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeSlider"
+        );
+    private Label SfxVolumeValueLabel =>
+        field ??= GetNodeOrNull<Label>(
+            "CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeValueLabel"
         );
     private Button SettingsBackButton =>
         field ??= GetNodeOrNull<Button>(
@@ -93,6 +144,18 @@ public partial class Menu : Control
         ConfigureBattleShakeOptionButton();
         if (BattleShakeOptionButton != null)
             BattleShakeOptionButton.ItemSelected += OnBattleShakeSelected;
+        ConfigureLanguageOptionButton();
+        if (LanguageOptionButton != null)
+            LanguageOptionButton.ItemSelected += OnLanguageSelected;
+        ConfigureResolutionOptionButton();
+        if (ResolutionOptionButton != null)
+            ResolutionOptionButton.ItemSelected += OnResolutionSelected;
+        ConfigureVolumeSlider(MasterVolumeSlider);
+        if (MasterVolumeSlider != null)
+            MasterVolumeSlider.ValueChanged += OnMasterVolumeChanged;
+        ConfigureVolumeSlider(SfxVolumeSlider);
+        if (SfxVolumeSlider != null)
+            SfxVolumeSlider.ValueChanged += OnSfxVolumeChanged;
 
         if (SettingsBackButton != null)
             SettingsBackButton.Pressed += ShowMainPanel;
@@ -144,6 +207,7 @@ public partial class Menu : Control
     public void Close()
     {
         _transitionTween?.Kill();
+        CloseAllDropdowns();
 
         _transitionTween = CreateTween();
         _transitionTween.SetParallel(true);
@@ -268,6 +332,60 @@ public partial class Menu : Control
         UserSettings.SetBattleShakeLevel(level);
     }
 
+    private void OnLanguageSelected(long index)
+    {
+        if (LanguageOptionButton == null)
+            return;
+
+        int selectedIndex = (int)index;
+        string locale =
+            selectedIndex >= 0 && selectedIndex < LanguageOptionButton.ItemCount
+                ? LanguageOptionButton.GetItemMetadata(selectedIndex).AsString()
+                : "zh_CN";
+        locale = UserSettings.NormalizeLocale(locale);
+        UserSettings.SetLocale(locale);
+        I18n.SetLocale(locale);
+        RefreshLocalizedSettingsText();
+        RefreshSettingsPanel();
+    }
+
+    private void OnMasterVolumeChanged(double value)
+    {
+        int volume = UserSettings.NormalizeVolumePercent(Mathf.RoundToInt((float)value));
+        UserSettings.SetMasterVolumePercent(volume);
+        SetVolumeLabel(MasterVolumeValueLabel, volume);
+    }
+
+    private void OnResolutionSelected(long index)
+    {
+        if (ResolutionOptionButton == null)
+            return;
+
+        int selectedIndex = (int)index;
+        string metadata =
+            selectedIndex >= 0 && selectedIndex < ResolutionOptionButton.ItemCount
+                ? ResolutionOptionButton.GetItemMetadata(selectedIndex).AsString()
+                : "default";
+
+        if (string.Equals(metadata, "default", StringComparison.OrdinalIgnoreCase))
+        {
+            UserSettings.ClearWindowResolution();
+        }
+        else if (TryParseResolution(metadata, out Vector2I resolution))
+        {
+            UserSettings.SetWindowResolution(resolution.X, resolution.Y);
+        }
+
+        UserSettings.ApplyWindowSettings(GetWindow());
+    }
+
+    private void OnSfxVolumeChanged(double value)
+    {
+        int volume = UserSettings.NormalizeVolumePercent(Mathf.RoundToInt((float)value));
+        UserSettings.SetSfxVolumePercent(volume);
+        SetVolumeLabel(SfxVolumeValueLabel, volume);
+    }
+
     private void ShowSettingsPanel()
     {
         RefreshSettingsPanel();
@@ -279,6 +397,7 @@ public partial class Menu : Control
 
     private void ShowMainPanel()
     {
+        CloseAllDropdowns();
         if (SettingsPanel != null)
             SettingsPanel.Visible = false;
         if (MainButtons != null)
@@ -288,44 +407,62 @@ public partial class Menu : Control
     private void RefreshSettingsPanel()
     {
         UserSettings.EnsureLoaded();
+        RefreshLocalizedSettingsText();
+        RebuildLanguageOptionButton();
+        RebuildResolutionOptionButton();
+        RebuildTextSizeOptionButton();
+        RebuildBattleShakeOptionButton();
         if (DescriptionModeCheckBox != null)
             DescriptionModeCheckBox.ButtonPressed = UserSettings.UseCompactBattleCardDescriptions;
         if (TurnOrderPreviewCheckBox != null)
             TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
         if (EnemyAttackPreviewCheckBox != null)
             EnemyAttackPreviewCheckBox.ButtonPressed = UserSettings.ShowEnemyAttackPreview;
+        SelectResolutionOption(UserSettings.WindowWidth, UserSettings.WindowHeight);
         SelectTextSizeOption(UserSettings.TextSizeLevel);
         SelectBattleShakeOption(UserSettings.BattleShakeLevel);
+        SelectLanguageOption(UserSettings.Locale);
+        SetVolumeSliderValue(MasterVolumeSlider, MasterVolumeValueLabel, UserSettings.MasterVolumePercent);
+        SetVolumeSliderValue(SfxVolumeSlider, SfxVolumeValueLabel, UserSettings.SfxVolumePercent);
     }
 
     private void ConfigureTextSizeOptionButton()
     {
-        if (TextSizeOptionButton == null || TextSizeOptionButton.ItemCount > 0)
+        if (TextSizeOptionButton == null)
             return;
-
-        for (
-            int level = UserSettings.TextSizeLevelSmall;
-            level <= UserSettings.TextSizeLevelExtraLarge;
-            level++
-        )
-        {
-            TextSizeOptionButton.AddItem(UserSettings.GetTextSizeLevelLabel(level), level);
-        }
+        RebuildTextSizeOptionButton();
     }
 
     private void ConfigureBattleShakeOptionButton()
     {
-        if (BattleShakeOptionButton == null || BattleShakeOptionButton.ItemCount > 0)
+        if (BattleShakeOptionButton == null)
+            return;
+        RebuildBattleShakeOptionButton();
+    }
+
+    private void ConfigureLanguageOptionButton()
+    {
+        if (LanguageOptionButton == null)
+            return;
+        RebuildLanguageOptionButton();
+    }
+
+    private void ConfigureResolutionOptionButton()
+    {
+        if (ResolutionOptionButton == null)
+            return;
+        RebuildResolutionOptionButton();
+    }
+
+    private static void ConfigureVolumeSlider(HSlider slider)
+    {
+        if (slider == null)
             return;
 
-        for (
-            int level = UserSettings.BattleShakeLevelOff;
-            level <= UserSettings.BattleShakeLevelLarge;
-            level++
-        )
-        {
-            BattleShakeOptionButton.AddItem(UserSettings.GetBattleShakeLevelLabel(level), level);
-        }
+        slider.MinValue = 0;
+        slider.MaxValue = 100;
+        slider.Step = 1;
+        slider.Rounded = true;
     }
 
     private void SelectTextSizeOption(int level)
@@ -358,6 +495,159 @@ public partial class Menu : Control
             BattleShakeOptionButton.Select(i);
             return;
         }
+    }
+
+    private void SelectLanguageOption(string locale)
+    {
+        if (LanguageOptionButton == null)
+            return;
+
+        string normalizedLocale = UserSettings.NormalizeLocale(locale);
+        for (int i = 0; i < LanguageOptionButton.ItemCount; i++)
+        {
+            if (UserSettings.NormalizeLocale(LanguageOptionButton.GetItemMetadata(i).AsString()) != normalizedLocale)
+                continue;
+
+            LanguageOptionButton.Select(i);
+            return;
+        }
+    }
+
+    private void SelectResolutionOption(int width, int height)
+    {
+        if (ResolutionOptionButton == null)
+            return;
+
+        if (width <= 0 || height <= 0)
+        {
+            ResolutionOptionButton.Select(0);
+            return;
+        }
+
+        string target = $"{width}x{height}";
+        for (int i = 0; i < ResolutionOptionButton.ItemCount; i++)
+        {
+            if (!string.Equals(ResolutionOptionButton.GetItemMetadata(i).AsString(), target, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            ResolutionOptionButton.Select(i);
+            return;
+        }
+
+        ResolutionOptionButton.AddItem(GetResolutionLabel(new Vector2I(width, height)));
+        int customIndex = ResolutionOptionButton.ItemCount - 1;
+        ResolutionOptionButton.SetItemMetadata(customIndex, target);
+        ResolutionOptionButton.Select(customIndex);
+    }
+
+    private void RebuildTextSizeOptionButton()
+    {
+        if (TextSizeOptionButton == null)
+            return;
+
+        int selectedId =
+            TextSizeOptionButton.Selected >= 0 && TextSizeOptionButton.Selected < TextSizeOptionButton.ItemCount
+                ? TextSizeOptionButton.GetItemId(TextSizeOptionButton.Selected)
+                : UserSettings.TextSizeLevel;
+        TextSizeOptionButton.Clear();
+        for (
+            int level = UserSettings.TextSizeLevelSmall;
+            level <= UserSettings.TextSizeLevelExtraLarge;
+            level++
+        )
+        {
+            TextSizeOptionButton.AddItem(UserSettings.GetTextSizeLevelLabel(level), level);
+        }
+        SelectTextSizeOption(selectedId);
+    }
+
+    private void RebuildBattleShakeOptionButton()
+    {
+        if (BattleShakeOptionButton == null)
+            return;
+
+        int selectedId =
+            BattleShakeOptionButton.Selected >= 0 && BattleShakeOptionButton.Selected < BattleShakeOptionButton.ItemCount
+                ? BattleShakeOptionButton.GetItemId(BattleShakeOptionButton.Selected)
+                : UserSettings.BattleShakeLevel;
+        BattleShakeOptionButton.Clear();
+        for (
+            int level = UserSettings.BattleShakeLevelOff;
+            level <= UserSettings.BattleShakeLevelLarge;
+            level++
+        )
+        {
+            BattleShakeOptionButton.AddItem(UserSettings.GetBattleShakeLevelLabel(level), level);
+        }
+        SelectBattleShakeOption(selectedId);
+    }
+
+    private static void SetVolumeSliderValue(HSlider slider, Label label, int percent)
+    {
+        int normalizedPercent = UserSettings.NormalizeVolumePercent(percent);
+        if (slider != null)
+            slider.SetValueNoSignal(normalizedPercent);
+        SetVolumeLabel(label, normalizedPercent);
+    }
+
+    private static void SetVolumeLabel(Label label, int percent)
+    {
+        if (label != null)
+            label.Text = UserSettings.GetVolumePercentLabel(percent);
+    }
+
+    private void RefreshLocalizedSettingsText()
+    {
+        if (TagLabel != null)
+            TagLabel.Text = I18n.Tr("ui.menu.tag", "SYSTEM MENU");
+        if (TitleLabel != null)
+            TitleLabel.Text = I18n.Tr("ui.menu.title", "菜单");
+        if (DescriptionLabel != null)
+            DescriptionLabel.Text = I18n.Tr(
+                "ui.menu.description",
+                "保存当前进度、调整设置，或直接结束本局。"
+            );
+        if (ReturnButton != null)
+            ReturnButton.Text = I18n.Tr("ui.menu.return", "返回");
+        if (SaveQuitButton != null)
+            SaveQuitButton.Text = I18n.Tr("ui.menu.save_quit", "保存退出");
+        if (SettingsButton != null)
+            SettingsButton.Text = I18n.Tr("ui.menu.settings", "设置");
+        if (EncyclopediaButton != null)
+            EncyclopediaButton.Text = I18n.Tr("ui.menu.encyclopedia", "百科");
+        if (AbandonGameButton != null)
+            AbandonGameButton.Text = I18n.Tr("ui.menu.abandon", "放弃游戏");
+        if (SettingsTitle != null)
+            SettingsTitle.Text = I18n.Tr("ui.settings.title", "设置");
+        if (DescriptionModeCheckBox != null)
+            DescriptionModeCheckBox.Text = I18n.Tr(
+                "ui.settings.compact_card_description",
+                "战斗卡面显示总数值"
+            );
+        if (TurnOrderPreviewCheckBox != null)
+            TurnOrderPreviewCheckBox.Text = I18n.Tr(
+                "ui.settings.turn_order_preview",
+                "显示战斗出手顺序"
+            );
+        if (EnemyAttackPreviewCheckBox != null)
+            EnemyAttackPreviewCheckBox.Text = I18n.Tr(
+                "ui.settings.enemy_attack_preview",
+                "显示敌方攻击范围与累计伤害"
+            );
+        if (LanguageLabel != null)
+            LanguageLabel.Text = I18n.Tr("ui.settings.language", "语言");
+        if (ResolutionLabel != null)
+            ResolutionLabel.Text = I18n.Tr("ui.settings.resolution", "分辨率");
+        if (TextSizeLabel != null)
+            TextSizeLabel.Text = I18n.Tr("ui.settings.text_size", "文本大小");
+        if (BattleShakeLabel != null)
+            BattleShakeLabel.Text = I18n.Tr("ui.settings.battle_shake", "战斗震动");
+        if (MasterVolumeLabel != null)
+            MasterVolumeLabel.Text = I18n.Tr("ui.settings.master_volume", "主音量");
+        if (SfxVolumeLabel != null)
+            SfxVolumeLabel.Text = I18n.Tr("ui.settings.sfx_volume", "音效音量");
+        if (SettingsBackButton != null)
+            SettingsBackButton.Text = I18n.Tr("ui.common.back", "返回");
     }
 
     private static void RefreshTextSizeForTree(Node node)
@@ -413,5 +703,89 @@ public partial class Menu : Control
             CenterPanel.Scale = ClosedPanelScale;
             CenterPanel.Modulate = new Color(1, 1, 1, 0);
         }
+    }
+
+    private static string GetResolutionLabel(Vector2I resolution) =>
+        $"{resolution.X} x {resolution.Y}";
+
+    private static bool TryParseResolution(string value, out Vector2I resolution)
+    {
+        resolution = Vector2I.Zero;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        string[] parts = value.Split('x', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2)
+            return false;
+
+        if (!int.TryParse(parts[0], out int width) || !int.TryParse(parts[1], out int height))
+            return false;
+
+        width = UserSettings.NormalizeWindowDimension(width);
+        height = UserSettings.NormalizeWindowDimension(height);
+        if (width <= 0 || height <= 0)
+            return false;
+
+        resolution = new Vector2I(width, height);
+        return true;
+    }
+
+    private void RebuildLanguageOptionButton()
+    {
+        if (LanguageOptionButton == null)
+            return;
+
+        string selectedMetadata =
+            LanguageOptionButton.Selected >= 0 && LanguageOptionButton.Selected < LanguageOptionButton.ItemCount
+                ? LanguageOptionButton.GetItemMetadata(LanguageOptionButton.Selected).AsString()
+                : UserSettings.Locale;
+
+        LanguageOptionButton.Clear();
+        LanguageOptionButton.AddItem("简体中文", 0, "zh_CN");
+        LanguageOptionButton.AddItem("English", 1, "en");
+        SelectLanguageOption(selectedMetadata);
+    }
+
+    private void RebuildResolutionOptionButton()
+    {
+        if (ResolutionOptionButton == null)
+            return;
+
+        string selectedMetadata =
+            ResolutionOptionButton.Selected >= 0 && ResolutionOptionButton.Selected < ResolutionOptionButton.ItemCount
+                ? ResolutionOptionButton.GetItemMetadata(ResolutionOptionButton.Selected).AsString()
+                : UserSettings.HasCustomWindowResolution
+                    ? $"{UserSettings.WindowWidth}x{UserSettings.WindowHeight}"
+                    : "default";
+
+        ResolutionOptionButton.Clear();
+        ResolutionOptionButton.AddItem(
+            I18n.Tr("ui.settings.resolution_default", "默认（全屏）"),
+            0,
+            "default"
+        );
+
+        for (int i = 0; i < ResolutionOptions.Length; i++)
+        {
+            Vector2I resolution = ResolutionOptions[i];
+            ResolutionOptionButton.AddItem(
+                GetResolutionLabel(resolution),
+                i + 1,
+                $"{resolution.X}x{resolution.Y}"
+            );
+        }
+
+        if (TryParseResolution(selectedMetadata, out Vector2I selectedResolution))
+            SelectResolutionOption(selectedResolution.X, selectedResolution.Y);
+        else
+            SelectResolutionOption(0, 0);
+    }
+
+    private void CloseAllDropdowns()
+    {
+        LanguageOptionButton?.ClosePopup();
+        ResolutionOptionButton?.ClosePopup();
+        TextSizeOptionButton?.ClosePopup();
+        BattleShakeOptionButton?.ClosePopup();
     }
 }

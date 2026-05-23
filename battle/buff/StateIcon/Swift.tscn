@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://cvyvm0trmqikn"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://cebs6034s1p2v" path="res://shader/Icon/BuffIcon/Swift.gdshader" id="2_swift"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4whke"]
+resource_local_to_scene = true
+shader = ExtResource("2_swift")
+shader_parameter/card_color = Color(0.16, 0.58, 0.88, 0.92)
+shader_parameter/card_edge_color = Color(0.86, 0.98, 1, 1)
+shader_parameter/wind_color = Color(0.56, 0.95, 1, 0.95)
+shader_parameter/spark_color = Color(1, 0.94, 0.5, 1)
+shader_parameter/glow_color = Color(0.18, 0.78, 1, 0.5)
+shader_parameter/edge_width = 0.04800000193074
+shader_parameter/speed_line_width = 0.03300000086898
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_4whke")

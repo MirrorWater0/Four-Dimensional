@@ -3,6 +3,12 @@ using Godot;
 
 public partial class CardSlot : Control
 {
+    private static readonly Shader SkillRewardIconShader = GD.Load<Shader>(
+        "res://shader/Effect/SkillRewardIcon.gdshader"
+    );
+    private static readonly Shader TalentPointRewardIconShader = GD.Load<Shader>(
+        "res://shader/Effect/TalentPointReward.gdshader"
+    );
     private static readonly Color DefaultBorderColor = new("#a7d6ff52");
     private static readonly Color HoverBorderColor = new("#5cff8a");
     private static readonly Color SelectedBorderColor = Colors.Yellow;
@@ -13,6 +19,11 @@ public partial class CardSlot : Control
     private static readonly Color DisabledModulate = new(0.62f, 0.68f, 0.78f, 0.78f);
     private const float RejectShakeOffset = 10f;
     private const float RejectShakeStepDuration = 0.045f;
+    private const float RewardIconSize = 68f;
+    private const float TalentPointIconSize = 57f;
+    private const float RewardIconLeftPadding = 18f;
+    private const float RewardTextLeftPadding = 104f;
+    private const float RewardTextRightPadding = 18f;
 
     [Export]
     public float HoverBorderTweenDuration = 0.12f;
@@ -27,12 +38,13 @@ public partial class CardSlot : Control
     public delegate void ClickedEventHandler();
     public Label label => field ??= GetNodeOrNull<Label>("Panel/Label");
     private GpuParticles2D Particles => field ??= GetNodeOrNull<GpuParticles2D>("GPUParticles2D");
-    private PanelContainer Panel => field ??= GetNodeOrNull<PanelContainer>("Panel");
+    private Panel Panel => field ??= GetNodeOrNull<Panel>("Panel");
 
     public override void _Ready()
     {
         if (label != null)
             label.MouseFilter = MouseFilterEnum.Ignore;
+        ConfigureRewardLabelText();
 
         _runtimeStyleBox = Panel?.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
         if (_runtimeStyleBox != null && Panel != null)
@@ -136,9 +148,10 @@ public partial class CardSlot : Control
         if (Panel == null)
             return;
 
-        Panel.Position = Vector2.Zero;
         Panel.CustomMinimumSize = Size;
-        Panel.Size = Size;
+        Panel.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+        ConfigureRewardLabelText();
+        UpdateRewardIconLayout();
     }
 
     public void ResetPanelVisualState()
@@ -165,6 +178,87 @@ public partial class CardSlot : Control
 
         Modulate = _isInteractable ? EnabledModulate : DisabledModulate;
         ApplyBorderState();
+    }
+
+    public void ConfigureTalentPointRewardStyle()
+    {
+        ConfigureIconOnlyReward(CreateTalentPointRewardIcon(), TalentPointIconSize);
+        ConfigureTalentPointParticles();
+        ApplyBorderState();
+    }
+
+    public void ConfigureSkillRewardStyle()
+    {
+        var icon = new ColorRect
+        {
+            Name = "SkillRewardIcon",
+            Color = Colors.White,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        if (SkillRewardIconShader != null)
+        {
+            icon.Material = new ShaderMaterial
+            {
+                Shader = SkillRewardIconShader,
+                ResourceLocalToScene = true,
+            };
+        }
+
+        ConfigureIconOnlyReward(icon, RewardIconSize);
+    }
+
+    public void ConfigureRelicRewardStyle(RelicID relicId)
+    {
+        var icon = Relic.IconScene?.Instantiate<ColorRect>();
+        if (icon == null)
+            icon = new ColorRect { Color = Colors.White };
+
+        Relic.ApplyIconVisual(icon, relicId);
+        HideGeneratedIconText(icon);
+        ConfigureIconOnlyReward(icon, RewardIconSize);
+    }
+
+    public void ConfigureItemRewardStyle(ItemID itemId)
+    {
+        var icon = ConsumeItem.IconSence?.Instantiate<ColorRect>();
+        if (icon == null)
+            icon = new ColorRect { Color = Colors.White };
+
+        ConsumeItem.ConfigureIcon(icon, itemId);
+        ConfigureIconOnlyReward(icon, RewardIconSize);
+    }
+
+    public void ConfigureIconOnlyReward(Control icon, float iconSize = RewardIconSize)
+    {
+        if (label != null)
+        {
+            label.Visible = true;
+            ConfigureRewardLabelText();
+        }
+
+        RemoveRewardIcon();
+        _rewardIcon = icon;
+        _rewardIconSize = iconSize;
+        if (_rewardIcon == null)
+            return;
+
+        _rewardIcon.MouseFilter = MouseFilterEnum.Ignore;
+        _rewardIcon.CustomMinimumSize = Vector2.Zero;
+        _rewardIcon.SetAnchorsPreset(LayoutPreset.TopLeft);
+        _rewardIcon.OffsetLeft = 0f;
+        _rewardIcon.OffsetTop = 0f;
+        _rewardIcon.OffsetRight = 0f;
+        _rewardIcon.OffsetBottom = 0f;
+
+        Node parent = _rewardIcon.GetParent();
+        parent?.RemoveChild(_rewardIcon);
+        Node iconParent = Panel ?? (Node)this;
+        iconParent.AddChild(_rewardIcon);
+        if (Panel != null)
+            Panel.MoveChild(_rewardIcon, 0);
+        UpdateRewardIconLayout();
+        CallDeferred(nameof(UpdateRewardIconLayout));
     }
 
     public void PrepareForInsertVisual()
@@ -271,6 +365,7 @@ public partial class CardSlot : Control
     private void OnItemRectChanged()
     {
         SyncPanelSizeToCard();
+        UpdateRewardIconLayout();
         UpdateParticlesLayout();
     }
 
@@ -336,6 +431,116 @@ public partial class CardSlot : Control
         Particles.Emitting = true;
     }
 
+    private void ConfigureTalentPointParticles()
+    {
+        if (Particles == null)
+            return;
+
+        if (TalentPointRewardIconShader != null)
+        {
+            var material = new ShaderMaterial
+            {
+                Shader = TalentPointRewardIconShader,
+                ResourceLocalToScene = true,
+            };
+            material.SetShaderParameter("glow_color", new Color(1f, 0.75f, 0.12f, 1f));
+            Particles.Material = material;
+        }
+
+        Particles.Amount = 42;
+        Particles.Lifetime = 0.78f;
+        Particles.Explosiveness = 0.68f;
+
+        if (Particles.ProcessMaterial is ParticleProcessMaterial processMaterial)
+        {
+            var duplicated = processMaterial.Duplicate() as ParticleProcessMaterial;
+            if (duplicated != null)
+            {
+                duplicated.ScaleMin = 7.5f;
+                duplicated.ScaleMax = 28f;
+                duplicated.InitialVelocityMin = 120f;
+                duplicated.InitialVelocityMax = 210f;
+                duplicated.Gravity = new Vector3(0f, -6f, 0f);
+                duplicated.HueVariationMin = -0.02f;
+                duplicated.HueVariationMax = 0.04f;
+                Particles.ProcessMaterial = duplicated;
+            }
+        }
+    }
+
+    private ColorRect CreateTalentPointRewardIcon()
+    {
+        var icon = new ColorRect
+        {
+            Name = "TalentPointIcon",
+            MouseFilter = MouseFilterEnum.Ignore,
+            Color = Colors.White,
+        };
+
+        if (TalentPointRewardIconShader != null)
+        {
+            var material = new ShaderMaterial
+            {
+                Shader = TalentPointRewardIconShader,
+                ResourceLocalToScene = true,
+            };
+            material.SetShaderParameter("glow_color", new Color(1f, 0.78f, 0.16f, 1f));
+            material.SetShaderParameter("core_radius", 0.11f);
+            material.SetShaderParameter("glow_radius", 0.5f);
+            material.SetShaderParameter("glow_strength", 1.9f);
+            icon.Material = material;
+        }
+
+        return icon;
+    }
+
+    private void RemoveRewardIcon()
+    {
+        if (_rewardIcon == null)
+            return;
+
+        if (GodotObject.IsInstanceValid(_rewardIcon))
+            _rewardIcon.QueueFree();
+        _rewardIcon = null;
+    }
+
+    private void UpdateRewardIconLayout()
+    {
+        ConfigureRewardLabelText();
+        if (_rewardIcon == null || !GodotObject.IsInstanceValid(_rewardIcon))
+            return;
+
+        float size = Mathf.Max(1f, _rewardIconSize);
+        _rewardIcon.Position = new Vector2(
+            RewardIconLeftPadding,
+            Mathf.Max(0f, (Size.Y - size) * 0.5f)
+        );
+        _rewardIcon.Size = new Vector2(size, size);
+    }
+
+    private static void HideGeneratedIconText(Control icon)
+    {
+        icon.GetNodeOrNull<Label>("Label")?.Hide();
+        icon.GetNodeOrNull<Panel>("Panel")?.Hide();
+    }
+
+    private void ConfigureRewardLabelText()
+    {
+        if (label == null)
+            return;
+
+        label.Visible = true;
+        label.HorizontalAlignment = HorizontalAlignment.Left;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.ClipText = true;
+        label.SetAnchorsPreset(LayoutPreset.FullRect);
+        label.OffsetLeft = _rewardIcon == null ? RewardTextRightPadding : RewardTextLeftPadding;
+        label.OffsetTop = 6f;
+        label.OffsetRight = -RewardTextRightPadding;
+        label.OffsetBottom = -6f;
+    }
+
     private void UpdateParticlesLayout()
     {
         if (Particles == null)
@@ -373,6 +578,8 @@ public partial class CardSlot : Control
     private bool _isSelected;
     private bool _isHovered;
     private bool _isInteractable = true;
+    private Control _rewardIcon;
+    private float _rewardIconSize = RewardIconSize;
     private Vector2 _lastGlobalPos;
     private Vector2 _lastSize;
 }

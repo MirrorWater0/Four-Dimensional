@@ -21,7 +21,7 @@ public partial class Determination : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -48,8 +48,8 @@ public partial class Smite : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown),
-            AttackPrimaryStep(baseDamage: BaseDamage)
+            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown, HostileTargetReference.One),
+            AttackStep(baseDamage: BaseDamage)
         );
     }
 }
@@ -70,19 +70,24 @@ public partial class Charge : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: "charge_target"),
+            AttackStep(baseDamage: BaseDamage),
             BlockStep(
-                relativeIndex: 0,
                 baseBlock: _ =>
                     OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
                         source: OwnerCharater,
-                        target: GetStoredTarget("charge_target"),
+                        target: GetAttackTarget(),
                         includeBlockedDamage: true
                     ) ?? 0,
                 describe: false,
-                survivabilityMultiplier: 0
+                multiplier: 0
             ),
-            TextStep($"获得等同于此次造成伤害+{X(StatX.Survivability)}的格挡。")
+            TextStep(
+                I18n.Format(
+                    "skill.charge.text.block_from_damage_and_survivability",
+                    "获得等同于此次造成伤害+{survivability}的格挡。",
+                    ("survivability", X(StatX.Survivability))
+                )
+            )
         );
     }
 }
@@ -103,7 +108,7 @@ public partial class Vower : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             CarryStep(target: TargetReference.Previous, skillIndex: 2)
         );
     }
@@ -125,22 +130,22 @@ public partial class VulnerablePurge : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: BaseDamage,
-                powerMultiplier: 1,
-                target: HostileTargets(0),
+                multiplier: 1,
+                target: HostileTargetReference.All,
                 targetCondition: character =>
                     character?.HurtBuffs?.Any(buff =>
                         buff != null
                         && buff.ThisBuffName == Buff.BuffName.Vulnerable
                         && buff.Stack > 0
                     ) == true,
-                targetConditionDescription: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
+                conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: 1,
-                target: HostileTargets(0)
+                target: HostileTargetReference.All
             )
         );
     }
@@ -149,7 +154,6 @@ public partial class VulnerablePurge : Skill
 public partial class VulnerabilityStrike : Skill
 {
     private const int BaseDamage = 7;
-    private const string TargetKey = "vulnerability_strike_target";
     private bool _targetHadVulnerable;
 
     public VulnerabilityStrike()
@@ -168,7 +172,7 @@ public partial class VulnerabilityStrike : Skill
             return true;
         }
 
-        return TargetHasVulnerable(GetStoredTarget(TargetKey));
+        return TargetHasVulnerable(GetAttackTarget());
     }
 
     private static bool TargetHasVulnerable(Character target) =>
@@ -189,11 +193,15 @@ public partial class VulnerabilityStrike : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: TargetKey),
+            AttackStep(baseDamage: BaseDamage),
             ConditionStep(
                 ConsumeVulnerableSnapshotOrCheckCurrentTarget,
-                $"出手前目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
-                AttackPrimaryStep(TargetKey, baseDamage: BaseDamage, prefix: "额外造成")
+                $"使用技能前若目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
+                AttackStep(
+                    target: HostileTargetReference.AttackKey,
+                    baseDamage: BaseDamage,
+                    prefix: "额外造成"
+                )
             )
         );
     }
@@ -216,9 +224,8 @@ public class TerminateLight : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 3),
-            HurtFriendly(16, 0),
-            ModifyPropertyStep(PropertyType.Power, -2)
+            AttackStep(baseDamage: BaseDamage, multiplier: 3),
+            HurtFriendly(10)
         );
     }
 }
@@ -256,11 +263,11 @@ public class VulnerabilityConversion : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 7, powerMultiplier: 2),
+            AttackStep(baseDamage: 7, multiplier: 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: 1,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             ),
             ModifyPropertyStep(
                 PropertyType.Power,
@@ -268,7 +275,11 @@ public class VulnerabilityConversion : Skill
                 TargetReference.Self
             ),
             TextStep(
-                $"获得等同于敌方所有角色{Buff.BuffName.Vulnerable.GetDescription()}层数总和的力量。"
+                I18n.Format(
+                    "skill.vulnerability_conversion.text.total_vulnerable_power",
+                    "获得等同于敌方所有角色{buff}层数总和的力量。",
+                    ("buff", Buff.BuffName.Vulnerable.GetDescription())
+                )
             )
         );
     }

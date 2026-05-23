@@ -5,9 +5,15 @@ using Godot;
 
 public partial class Nightingale : PlayerCharacter
 {
+    private const int PassiveUpgradeVulnerableStacks = 1;
+
     public const string PassiveNameText = "夜光";
     public static string PassiveDescriptionText =>
-        $"队友结束回合时：追击一次：造成{PropertyType.Power.GetDescription()}点伤害。";
+        I18n.Format(
+            "character.nightingale.passive.description",
+            "队友结束回合时：追击一次：造成{power}点伤害。",
+            ("power", PropertyType.Power.GetDescription())
+        );
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Nightingale;
     public override string CharacterName { get; set; } = "Nightingale";
@@ -27,8 +33,23 @@ public partial class Nightingale : PlayerCharacter
             using var _ = BeginEffectSource("追击");
             await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
             var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = this };
-            await skill.Attack(BattlePower);
+            Character target = skill.ChosetargetByOrder().FirstOrDefault();
+            ApplyPassiveUpgradeBeforePursuit(target);
+            await skill.Attack(BattlePower, target: target);
         }
+    }
+
+    private void ApplyPassiveUpgradeBeforePursuit(Character target)
+    {
+        if (!HasPassiveTalentUpgrade() || target == null || target.State != CharacterState.Normal)
+            return;
+
+        bool targetHasVulnerable =
+            target.HurtBuffs?.Any(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
+            ) == true;
+        if (targetHasVulnerable)
+            HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PassiveUpgradeVulnerableStacks, this);
     }
 }
 
@@ -36,8 +57,11 @@ public partial class PlayerCharacterRegistry
 {
     public PlayerInfoStructure Nightingale = new PlayerInfoStructure()
     {
-        CharacterName = "Nightingale",
-        PassiveName = global::Nightingale.PassiveNameText,
+        CharacterName = I18n.Tr("character.nightingale.name", "Nightingale"),
+        PassiveName = I18n.Tr(
+            "character.nightingale.passive.name",
+            global::Nightingale.PassiveNameText
+        ),
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
         LifeMax = 25,
         Power = 6,

@@ -3,7 +3,7 @@ using Godot;
 public partial class WarThrall : SummonCharacter
 {
     internal const int MaxLifeStat = 18;
-    internal const int PowerStat = 3;
+    internal const int PowerStat = 5;
     internal const int SurvivabilityStat = 0;
     internal const int SpeedStat = 0;
 
@@ -50,7 +50,7 @@ public partial class WarThrallAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

@@ -39,54 +39,58 @@ public partial class Buff
         [BuffName.DamageImmune] = "res://battle/buff/StateIcon/Buffer.tscn",
         [BuffName.Vulnerable] = "res://battle/buff/StateIcon/Vulnerable.tscn",
         [BuffName.Weaken] = "res://battle/buff/StateIcon/Weaken.tscn",
+        [BuffName.Fear] = "res://battle/buff/StateIcon/Fear.tscn",
         [BuffName.Taunt] = "res://battle/buff/StateIcon/Aim.tscn",
         [BuffName.Thorn] = "res://battle/buff/StateIcon/Thorn.tscn",
         [BuffName.Stun] = "res://battle/buff/StateIcon/Stun.tscn",
         [BuffName.Pursuit] = "res://battle/buff/StateIcon/Pursuit.tscn",
         [BuffName.DebuffImmunity] = "res://battle/buff/StateIcon/DebuffImmunity.tscn",
         [BuffName.Invisible] = "res://battle/buff/StateIcon/Invisible.tscn",
+        [BuffName.EternalDark] = "res://battle/buff/StateIcon/EternalDark.tscn",
+        [BuffName.Swift] = "res://battle/buff/StateIcon/Swift.tscn",
         [BuffName.ExtraPower] = "res://battle/buff/StateIcon/ExtraPower.tscn",
         [BuffName.ExtraSurvivability] = "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
         [BuffName.ExtraTurn] = "res://battle/buff/StateIcon/ExtraTurn.tscn",
         [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
         [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
+        [BuffName.Beacon] = "res://battle/buff/StateIcon/Beacon.tscn",
         [BuffName.Afterimage] = "res://battle/buff/StateIcon/Afterimage.tscn",
         [BuffName.Disaster] = "res://battle/buff/StateIcon/Disaster.tscn",
         [BuffName.Divinity] = "res://battle/buff/StateIcon/Divinity.tscn",
         [BuffName.Echo] = "res://battle/buff/StateIcon/Echo.tscn",
+        [BuffName.CursePower] = "res://battle/buff/StateIcon/CursePower.tscn",
+        [BuffName.WeakeningField] = "res://battle/buff/StateIcon/WeakeningField.tscn",
         [BuffName.Shadow] = "res://battle/buff/StateIcon/Shadow.tscn",
         [BuffName.Demon] = "res://battle/buff/StateIcon/Demon.tscn",
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
         [BuffName.ExtraDraw] = "res://battle/buff/StateIcon/CardRefresh.tscn",
+        [BuffName.Source] = "res://battle/buff/StateIcon/Source.tscn",
     };
 
     private static string GetBuffNameKey(BuffName name)
     {
-        var field = typeof(BuffName).GetField(name.ToString());
-        return field
-                ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
-                .OfType<DescriptionAttribute>()
-                .FirstOrDefault()
-                ?.Description ?? name.ToString();
+        return $"buff.{I18n.ToSnakeCase(name.ToString())}.name";
     }
 
     public static string GetBuffDisplayName(BuffName name) =>
-        TranslationServer.Translate(GetBuffNameKey(name));
+        I18n.Tr(GetBuffNameKey(name), GetLegacyBuffName(name));
 
     public static string GetBuffEffectText(BuffName name)
     {
-        string key = name switch
+        string fallback = name switch
         {
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
+            BuffName.Fear => "使用攻击技能时，受到等同于层数的伤害。",
             BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
             BuffName.Thorn => "受到攻击时，对攻击者造成等同于层数的伤害。",
             BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
             BuffName.Pursuit => "回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
-            BuffName.Invisible => "无法被选为攻击目标；回合开始时消耗1层。",
+            BuffName.Invisible => "其他角色存活时,无法被选为攻击目标；回合开始时消耗1层。",
+            BuffName.Swift => "回合开始时，每层抽1张牌。",
             BuffName.ExtraPower => "获得力量时，额外获得等同于层数的力量。",
             BuffName.ExtraSurvivability => "获得生存时，额外获得等同于层数的生存。",
             BuffName.ExtraTurn => "回合结束时消耗1层，触发1个完整额外回合。",
@@ -102,14 +106,32 @@ public partial class Buff
             BuffName.Echo => "每回合前X张技能牌释放2次，X等同于层数。",
             BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
             BuffName.ExtraDraw => "回合开始时，每层额外抽1张牌并消耗1层。",
+            BuffName.Source => "回合开始时，每层获得1点能量。",
+            BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
+            BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/4的格挡。",
+            BuffName.CursePower => "每次攻击时，给予目标等同于层数的虚弱。",
+            BuffName.WeakeningField => "每给予一次虚弱，己方全阵获得3点格挡。",
             _ => string.Empty,
         };
 
-        if (false && name == BuffName.Stun)
-            key =
-                "ä¸‹1æ¬¡é‡Šæ”¾æŠ€èƒ½ä¼šè¢«é˜»æ­¢ï¼Œå¹¶å›ºå®šå¤±åŽ»1ç‚¹èƒ½é‡ï¼›è§¦å‘åŽæ¶ˆè€—1å±‚ã€‚";
+        if (string.IsNullOrWhiteSpace(fallback))
+            return string.Empty;
 
-        return string.IsNullOrWhiteSpace(key) ? string.Empty : TranslationServer.Translate(key);
+        string key = $"buff.{I18n.ToSnakeCase(name.ToString())}.effect";
+        return I18n.Tr(key, fallback);
+    }
+
+    private static string GetLegacyBuffName(BuffName name)
+    {
+        if (name == BuffName.Void)
+            return "虚空";
+
+        var field = typeof(BuffName).GetField(name.ToString());
+        return field
+                ?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .OfType<DescriptionAttribute>()
+                .FirstOrDefault()
+                ?.Description ?? name.ToString();
     }
 
     private static bool TryConsumeGhostExplodeBudget()
@@ -308,6 +330,9 @@ public partial class Buff
         [Description("虚弱")]
         Weaken,
 
+        [Description("恐惧")]
+        Fear,
+
         [Description("嘲讽")]
         Taunt,
 
@@ -325,6 +350,12 @@ public partial class Buff
 
         [Description("隐身")]
         Invisible,
+
+        [Description("永暗")]
+        EternalDark,
+
+        [Description("灯塔")]
+        Beacon,
 
         [Description("额外力量")]
         ExtraPower,
@@ -362,11 +393,23 @@ public partial class Buff
         [Description("回响")]
         Echo,
 
+        [Description("咒力")]
+        CursePower,
+
+        [Description("虚弱立场")]
+        WeakeningField,
+
         [Description("圣域")]
         Sanctuary,
 
         [Description("额外抽卡")]
         ExtraDraw,
+
+        [Description("迅捷")]
+        Swift,
+
+        [Description("源泉")]
+        Source,
     }
 
     public Character Owner;
@@ -391,11 +434,14 @@ public partial class Buff
             BuffName.DamageImmune => Nature.positive,
             BuffName.Vulnerable => Nature.negative,
             BuffName.Weaken => Nature.negative,
+            BuffName.Fear => Nature.negative,
             BuffName.Taunt => Nature.positive,
             BuffName.Thorn => Nature.positive,
             BuffName.Stun => Nature.negative,
             BuffName.Pursuit => Nature.positive,
             BuffName.DebuffImmunity => Nature.positive,
+            BuffName.EternalDark => Nature.positive,
+            BuffName.Swift => Nature.positive,
             BuffName.ExtraPower => Nature.positive,
             BuffName.ExtraSurvivability => Nature.positive,
             BuffName.ExtraTurn => Nature.positive,
@@ -405,11 +451,15 @@ public partial class Buff
             BuffName.Disaster => Nature.negative,
             BuffName.Divinity => Nature.positive,
             BuffName.Echo => Nature.positive,
+            BuffName.CursePower => Nature.positive,
+            BuffName.WeakeningField => Nature.positive,
             BuffName.Shadow => Nature.positive,
             BuffName.Demon => Nature.positive,
             BuffName.Void => Nature.positive,
             BuffName.Sanctuary => Nature.positive,
             BuffName.ExtraDraw => Nature.positive,
+            BuffName.Source => Nature.positive,
+            BuffName.Beacon => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -591,6 +641,7 @@ public partial class Buff
         existingBuff.BuffAddAnimation();
         target?.InvalidateBuffTooltipCache();
         RecordBuffGain(target, name, stack, source);
+        RefreshTurnOrderPreviewIfNeeded(target, name);
         return true;
     }
 
@@ -606,6 +657,13 @@ public partial class Buff
         buff.BuffAddAnimation();
         target.InvalidateBuffTooltipCache();
         RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
+        RefreshTurnOrderPreviewIfNeeded(target, buff.ThisBuffName);
+    }
+
+    protected static void RefreshTurnOrderPreviewIfNeeded(Character target, BuffName name)
+    {
+        if (name == BuffName.ExtraTurn)
+            target?.BattleNode?.RefreshTurnOrderPreview();
     }
 
     protected bool IsOwnerUnavailableForTrigger() =>
@@ -628,6 +686,7 @@ public partial class Buff
         buffs?.Remove((TBuff)this);
         Owner?.InvalidateBuffTooltipCache();
         Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
+        RefreshTurnOrderPreviewIfNeeded(Owner, ThisBuffName);
 
         if (showVanishHint)
             Hint(ThisBuffName, BuffHintLabel.Which.vanish);
@@ -787,6 +846,16 @@ public partial class StartActionBuff : Buff
                 Stack--;
                 UpdateStackLabel();
                 break;
+            case BuffName.EternalDark:
+                StartActionBuff.BuffAdd(BuffName.Invisible, Owner, Stack, Owner);
+                break;
+            case BuffName.Swift:
+                if (Owner is PlayerCharacter player)
+                    player.TryDrawBattleCards(Stack);
+                break;
+            case BuffName.Source:
+                Owner.UpdataEnergy(Stack, Owner);
+                break;
             case BuffName.Barricade:
                 // Passive effect: checked by Character.StartAction before block reset.
                 break;
@@ -816,6 +885,9 @@ public partial class StartActionBuff : Buff
             target?.StartActionBuffs == null
             || (
                 name != BuffName.Invisible
+                && name != BuffName.EternalDark
+                && name != BuffName.Swift
+                && name != BuffName.Source
                 && name != BuffName.Barricade
                 && name != BuffName.Afterimage
                 && name != BuffName.Divinity
@@ -909,6 +981,13 @@ public partial class AttackBuff : Buff
                     _ = Owner.IncreaseProperties(PropertyType.Power, currentStack, Owner);
                 }
                 break;
+            case BuffName.CursePower:
+                if (context.State == null && context.Target != null)
+                {
+                    using var _ = Owner?.BeginEffectSource(GetBuffDisplayName(ThisBuffName));
+                    AttackBuff.BuffAdd(BuffName.Weaken, context.Target, currentStack, Owner);
+                }
+                break;
         }
     }
 
@@ -963,9 +1042,20 @@ public partial class AttackBuff : Buff
             return;
 
         if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
+        {
+            if (name == BuffName.Weaken)
+                SpecialBuff.TriggerWeakeningFieldBlock(source);
             return;
+        }
 
-        if (target?.AttackBuffs == null || (name != BuffName.Weaken && name != BuffName.Shadow))
+        if (
+            target?.AttackBuffs == null
+            || (
+                name != BuffName.Weaken
+                && name != BuffName.Shadow
+                && name != BuffName.CursePower
+            )
+        )
             return;
 
         var buff = new AttackBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -974,6 +1064,8 @@ public partial class AttackBuff : Buff
 
         target.AttackBuffs.Add(buff);
         FinalizeBuffAdd(buff, target, source);
+        if (name == BuffName.Weaken)
+            SpecialBuff.TriggerWeakeningFieldBlock(source);
     }
 }
 
@@ -1033,6 +1125,13 @@ public partial class SkillBuff : Buff
                     skill?.QueueExtraSkillExecutions(1);
                 }
                 break;
+            case BuffName.Fear:
+                if (skill?.SkillType == Skill.SkillTypes.Attack && Owner != null && Stack > 0)
+                {
+                    triggered = true;
+                    await Owner.GetHurt(Stack, Owner);
+                }
+                break;
         }
 
         if (triggered)
@@ -1052,7 +1151,7 @@ public partial class SkillBuff : Buff
         if (TryStackExisting(target.SkillBuffs, name, stack, target, source))
             return;
 
-        if (name != BuffName.Stun && name != BuffName.Echo)
+        if (name != BuffName.Stun && name != BuffName.Echo && name != BuffName.Fear)
             return;
 
         var buff = new SkillBuff(target, name, stack) { BuffIcon = CreateBuffIcon(name) };
@@ -1077,6 +1176,7 @@ public partial class EndActionBuff : Buff
         Stack--;
         UpdateStackLabel();
         TweenLabel();
+        RefreshTurnOrderPreviewIfNeeded(Owner, ThisBuffName);
         return TryRemoveIfEmpty(Owner.EndActionBuffs, showVanishHint);
     }
 
@@ -1106,6 +1206,9 @@ public partial class EndActionBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+            return;
+
         if (target?.EndActionBuffs == null)
             return;
 
@@ -1133,8 +1236,78 @@ public partial class EndActionBuff : Buff
 
 public partial class SpecialBuff : Buff
 {
+    private static bool _sharingBeaconBlock;
+    private const int WeakeningFieldBlock = 3;
+
     public SpecialBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
+
+    public static void TriggerWeakeningFieldBlock(Character owner)
+    {
+        if (
+            owner?.SpecialBuffs == null
+            || owner.SpecialBuffs.All(x =>
+                x == null
+                || x.ThisBuffName != BuffName.WeakeningField
+                || x.Stack <= 0
+            )
+        )
+            return;
+
+        var allies = owner.BattleNode
+            ?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+            .Where(x => x != null && x.State != Character.CharacterState.Dying)
+            .ToArray();
+        if (allies == null || allies.Length == 0)
+            return;
+
+        using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.WeakeningField));
+        foreach (var ally in allies)
+            ally.UpdataBlock(WeakeningFieldBlock, source: owner);
+    }
+
+    public static void TriggerBeaconBlockShare(
+        Character owner,
+        int gainedBlock,
+        Character source = null
+    )
+    {
+        if (_sharingBeaconBlock || owner?.SpecialBuffs == null || gainedBlock <= 0)
+            return;
+
+        int beaconStacks = owner.SpecialBuffs
+            .Where(x => x != null && x.ThisBuffName == BuffName.Beacon && x.Stack > 0)
+            .Sum(x => x.Stack);
+        if (beaconStacks <= 0)
+            return;
+
+        int sharedBlock = gainedBlock * beaconStacks / 4;
+        if (sharedBlock <= 0)
+            return;
+
+        var allies = owner.BattleNode
+            ?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+            .Where(x =>
+                x != null
+                && x != owner
+                && x.State != Character.CharacterState.Dying
+            )
+            .ToArray();
+        if (allies == null || allies.Length == 0)
+            return;
+
+        _sharingBeaconBlock = true;
+        try
+        {
+            using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.Beacon));
+            foreach (var ally in allies)
+                ally.UpdataBlock(sharedBlock, source: owner);
+        }
+        finally
+        {
+            _sharingBeaconBlock = false;
+        }
+    }
 
     public static bool TryConsumeDebuffImmunity(Character target)
     {
@@ -1187,6 +1360,8 @@ public partial class SpecialBuff : Buff
             && name != BuffName.ExtraPower
             && name != BuffName.ExtraSurvivability
             && name != BuffName.ExtraDraw
+            && name != BuffName.Beacon
+            && name != BuffName.WeakeningField
         )
             return;
 

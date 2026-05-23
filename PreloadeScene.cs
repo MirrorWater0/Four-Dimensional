@@ -116,6 +116,8 @@ public partial class PreloadeScene : Node2D
     public override async void _Ready()
     {
         UserSettings.EnsureLoaded();
+        UserSettings.ApplyWindowSettings(GetWindow());
+        I18n.SetLocale(UserSettings.Locale);
 
         _sceneHolder = GetNodeOrNull<Node>("SceneHolder");
         _warmupHolder = GetNodeOrNull<Node>("WarmupHolder");
@@ -138,6 +140,7 @@ public partial class PreloadeScene : Node2D
         await WarmupInstantiateScenesAsync();
         await WarmupSkillsAsync();
         await WarmupShadersAsync();
+        SkillCard.PrewarmExhaustEffect();
         LoadMainSceneIntoHolder();
 
         if (BlackScreenMinTime > 0f)

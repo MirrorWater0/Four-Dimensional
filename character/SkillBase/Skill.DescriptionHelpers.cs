@@ -6,19 +6,18 @@ public partial class Skill
 {
     protected const string UnfixedPlaceholder = "x";
     protected const int TooltipTotalMax = 999;
-    public const string CarryKeyword = "\u8fde\u643a";
+    public const string CarryKeyword = "连携";
     public const string CarryKeywordEffectText =
-        "\u968f\u673a\u4ece\u76ee\u6807\u7684\u62bd\u724c\u5806\u548c\u5f03\u724c\u5806\u4e2d\u6253\u51fa1\u5f20\u724c\uff0c\u53ef\u6307\u5b9a\u7c7b\u578b\uff0c\u4e0d\u6d88\u8017\u80fd\u91cf\u3002";
-    public const string ExhaustKeyword = "\u6d88\u8017";
+        "随机从目标的抽牌堆和弃牌堆中打出1张牌，可指定类型，不消耗能量。";
+    public const string ExhaustKeyword = "消耗";
     public const string ExhaustKeywordEffectText =
-        "\u6253\u51fa\u540e\uff0c\u672c\u573a\u6218\u6597\u4e2d\u79fb\u51fa\u3002";
-    public const string VoidnessKeyword = "\u865a\u65e0";
+        "打出后，本场战斗中移出。";
+    public const string VoidnessKeyword = "虚无";
     public const string VoidnessKeywordEffectText =
-        "\u56de\u5408\u7ed3\u675f\u65f6\u82e5\u5728\u624b\u724c\u4e2d\u5219\u6d88\u8017\u3002";
-    public const string RebirthKeyword = "\u590d\u751f";
+        "回合结束时若在手牌中则消耗。";
+    public const string RebirthKeyword = "复生";
     public const string RebirthKeywordEffectText =
-        "\u53ef\u5bf9\u6fd2\u6b7b\u76ee\u6807\u751f\u6548\u3002";
-    private const string ExhaustKeywordLine = ExhaustKeyword + "\u3002";
+        "可对濒死目标生效。";
 
     protected enum StatX
     {
@@ -54,10 +53,10 @@ public partial class Skill
         {
             StatX.Power => GetPropertyLabel(PropertyType.Power),
             StatX.Survivability => GetPropertyLabel(PropertyType.Survivability),
-            StatX.Speed => "速度",
-            StatX.Energy => "能量",
-            StatX.Life => "生命",
-            StatX.MaxLife => "最大生命",
+            StatX.Speed => I18n.Tr("property.speed", "速度"),
+            StatX.Energy => I18n.Tr("keyword.energy", "能量"),
+            StatX.Life => I18n.Tr("ui.common.life", "生命"),
+            StatX.MaxLife => I18n.Tr("property.max_life", "最大生命"),
             _ => string.Empty,
         };
     }
@@ -166,7 +165,7 @@ public partial class Skill
         var plan = GetPlan();
         IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
         if (ExhaustsAfterUse)
-            lines = new[] { ExhaustKeywordLine }.Concat(lines);
+            lines = new[] { GetExhaustKeywordLine() }.Concat(lines);
 
         SetDescriptionLines(lines.ToArray());
     }
@@ -187,14 +186,14 @@ public partial class Skill
 
     protected string DamageFromPowerText(
         int baseDamage = 0,
-        int powerMultiplier = 1,
+        int multiplier = 1,
         int clampMax = 9999,
         int times = 1
     )
     {
         times = Math.Max(1, times);
-        int rawDamage = baseDamage + OwnerPower * powerMultiplier;
-        string basisText = FormatBasePlusX(baseDamage, StatX.Power, powerMultiplier);
+        int rawDamage = baseDamage + OwnerPower * multiplier;
+        string basisText = FormatBasePlusX(baseDamage, StatX.Power, multiplier);
         if (times > 1)
             basisText = $"({basisText})*{times}";
 
@@ -202,20 +201,16 @@ public partial class Skill
             return basisText;
 
         int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax) * times;
-        int modifiedDamage = 0;
         var previewState = new AttackBuff.PreviewState();
-        for (int i = 0; i < times; i++)
-        {
-            modifiedDamage += Math.Clamp(
-                AttackBuff.ApplyOutgoingDamageModifiers(
-                    OwnerCharater,
-                    rawDamage,
-                    previewState: previewState
-                ),
-                0,
-                clampMax
-            );
-        }
+        int modifiedDamage = Math.Clamp(
+            AttackBuff.ApplyOutgoingDamageModifiers(
+                OwnerCharater,
+                rawDamage,
+                previewState: previewState
+            ),
+            0,
+            clampMax
+        ) * times;
 
         if (UseCompactBattleCardDescription)
         {
@@ -223,7 +218,7 @@ public partial class Skill
             return BuildCompactBattleValueText(
                 totalDamage,
                 PropertyType.Power,
-                powerMultiplier,
+                multiplier,
                 times
             );
         }
@@ -236,17 +231,17 @@ public partial class Skill
 
     protected string BlockFromSurvivabilityText(
         int baseBlock = 0,
-        int survivabilityMultiplier = 1,
+        int multiplier = 1,
         int clampMax = 999
     )
     {
-        int totalBlock = baseBlock + OwnerSurvivability * survivabilityMultiplier;
+        int totalBlock = baseBlock + OwnerSurvivability * multiplier;
         if (UseCompactBattleCardDescription)
         {
             return BuildCompactBattleValueText(
                 Math.Clamp(totalBlock, 0, clampMax),
                 PropertyType.Survivability,
-                survivabilityMultiplier
+                multiplier
             );
         }
 
@@ -254,7 +249,7 @@ public partial class Skill
             baseBlock,
             totalBlock,
             StatX.Survivability,
-            xMultiplier: survivabilityMultiplier,
+            xMultiplier: multiplier,
             clampMax: clampMax
         );
     }
@@ -268,13 +263,13 @@ public partial class Skill
     {
         var hints = new List<string>();
         if (Math.Abs(propertyMultiplier) > 1)
-            hints.Add($"{Math.Abs(propertyMultiplier)}\u500d{GetPropertyLabel(scalingProperty)}\u52a0\u6210");
+            hints.Add($"{Math.Abs(propertyMultiplier)}倍{GetPropertyLabel(scalingProperty)}加成");
         if (times > 1)
-            hints.Add($"{times}\u6bb5");
+            hints.Add($"{times}段");
 
         return hints.Count == 0
             ? total.ToString()
-            : $"{total}\uff08{string.Join("\uff0c", hints)}\uff09";
+            : $"{total}（{string.Join("，", hints)}）";
     }
 
     protected static string GainPropertyText(PropertyType type, int value) =>
@@ -291,20 +286,20 @@ public partial class Skill
 
     protected string DamageLine(
         int baseDamage = 0,
-        int powerMultiplier = 1,
+        int multiplier = 1,
         string prefix = "造成",
         string suffix = "点伤害。",
         int clampMax = 9999,
         int times = 1
-    ) => $"{prefix}{DamageFromPowerText(baseDamage, powerMultiplier, clampMax, times)}{suffix}";
+    ) => $"{prefix}{DamageFromPowerText(baseDamage, multiplier, clampMax, times)}{suffix}";
 
     protected string BlockLine(
         int baseBlock = 0,
-        int survivabilityMultiplier = 1,
+        int multiplier = 1,
         string prefix = "获得",
         string suffix = "点格挡。",
         int clampMax = 999
-    ) => $"{prefix}{BlockFromSurvivabilityText(baseBlock, survivabilityMultiplier, clampMax)}{suffix}";
+    ) => $"{prefix}{BlockFromSurvivabilityText(baseBlock, multiplier, clampMax)}{suffix}";
 
     protected static string GainLine(PropertyType type, int value, string prefix = "获得") =>
         $"{prefix}{GainPropertyText(type, value)}。";
@@ -331,37 +326,56 @@ public partial class Skill
 
         var entries = new List<(int Index, string Text)>();
         if (skill.ExhaustsAfterUse)
-            entries.Add((-1, BuildKeywordTooltipEntry(ExhaustKeyword, ExhaustKeywordEffectText)));
+        {
+            entries.Add(
+                (-1, BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText()))
+            );
+        }
 
         string description = skill.Description ?? string.Empty;
         string plainDescription = StripBbCodeTags(description);
 
-        int carryIndex = plainDescription.IndexOf(CarryKeyword, StringComparison.Ordinal);
+        int carryIndex = FindKeywordIndex(plainDescription, GetCarryKeyword(), CarryKeyword);
         if (carryIndex >= 0)
-            entries.Add((carryIndex, BuildKeywordTooltipEntry(CarryKeyword, CarryKeywordEffectText)));
+        {
+            entries.Add(
+                (carryIndex, BuildKeywordTooltipEntry(GetCarryKeyword(), GetCarryKeywordEffectText()))
+            );
+        }
 
-        int voidnessIndex = plainDescription.IndexOf(VoidnessKeyword, StringComparison.Ordinal);
+        int voidnessIndex = FindKeywordIndex(plainDescription, GetVoidnessKeyword(), VoidnessKeyword);
         if (voidnessIndex >= 0)
             entries.Add(
                 (
                     voidnessIndex,
-                    BuildKeywordTooltipEntry(VoidnessKeyword, VoidnessKeywordEffectText)
+                    BuildKeywordTooltipEntry(
+                        GetVoidnessKeyword(),
+                        GetVoidnessKeywordEffectText()
+                    )
                 )
             );
 
-        int rebirthIndex = FindValidRebirthKeywordIndex(plainDescription);
+        int rebirthIndex = FindValidRebirthKeywordIndex(
+            plainDescription,
+            GetRebirthKeyword(),
+            RebirthKeyword
+        );
         if (rebirthIndex >= 0)
             entries.Add(
-                (rebirthIndex, BuildKeywordTooltipEntry(RebirthKeyword, RebirthKeywordEffectText))
+                (
+                    rebirthIndex,
+                    BuildKeywordTooltipEntry(GetRebirthKeyword(), GetRebirthKeywordEffectText())
+                )
             );
 
         foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
         {
             string displayName = Buff.GetBuffDisplayName(buffName);
-            if (string.IsNullOrWhiteSpace(displayName))
+            string fallbackName = buffName.GetDescription();
+            if (string.IsNullOrWhiteSpace(displayName) && string.IsNullOrWhiteSpace(fallbackName))
                 continue;
 
-            int matchIndex = plainDescription.IndexOf(displayName, StringComparison.Ordinal);
+            int matchIndex = FindKeywordIndex(plainDescription, displayName, fallbackName);
             if (matchIndex < 0)
                 continue;
 
@@ -379,15 +393,30 @@ public partial class Skill
             "\n\n",
             entries
                 .OrderBy(entry => entry.Index)
+                .DistinctBy(entry => entry.Text)
                 .Select(entry => entry.Text)
                 .Where(entry => !string.IsNullOrWhiteSpace(entry))
         );
     }
 
-    private static int FindValidRebirthKeywordIndex(string plainDescription)
+    private static int FindValidRebirthKeywordIndex(
+        string plainDescription,
+        string localizedKeyword,
+        string fallbackKeyword
+    )
     {
         if (string.IsNullOrEmpty(plainDescription))
             return -1;
+
+        int localizedIndex = FindKeywordIndex(plainDescription, localizedKeyword, fallbackKeyword);
+        if (localizedIndex < 0)
+            return -1;
+
+        string matchedKeyword = MatchKeyword(plainDescription, localizedIndex, localizedKeyword)
+            ? localizedKeyword
+            : fallbackKeyword;
+        if (!string.Equals(matchedKeyword, RebirthKeyword, StringComparison.Ordinal))
+            return localizedIndex;
 
         int searchStart = 0;
         while (searchStart < plainDescription.Length)
@@ -445,4 +474,91 @@ public partial class Skill
 
         return new string(buffer, 0, count);
     }
+
+    private static string GetCarryKeyword() => I18n.Tr("keyword.carry", CarryKeyword);
+
+    private static string GetCarryKeywordEffectText() =>
+        I18n.Tr("keyword.carry.effect", CarryKeywordEffectText);
+
+    private static string GetExhaustKeyword() => I18n.Tr("keyword.exhaust", ExhaustKeyword);
+
+    private static string GetExhaustKeywordEffectText() =>
+        I18n.Tr("keyword.exhaust.effect", ExhaustKeywordEffectText);
+
+    private static string GetVoidnessKeyword() => I18n.Tr("keyword.voidness", VoidnessKeyword);
+
+    private static string GetVoidnessKeywordEffectText() =>
+        I18n.Tr("keyword.voidness.effect", VoidnessKeywordEffectText);
+
+    private static string GetRebirthKeyword() => I18n.Tr("keyword.rebirth", RebirthKeyword);
+
+    private static string GetRebirthKeywordEffectText() =>
+        I18n.Tr("keyword.rebirth.effect", RebirthKeywordEffectText);
+
+    private static string GetExhaustKeywordLine() => $"{GetExhaustKeyword()}。";
+
+    private static int FindKeywordIndex(
+        string text,
+        string localizedKeyword,
+        string fallbackKeyword
+    )
+    {
+        int localizedIndex = FindTokenIndex(text, localizedKeyword);
+        int fallbackIndex = FindTokenIndex(text, fallbackKeyword);
+
+        if (localizedIndex < 0)
+            return fallbackIndex;
+        if (fallbackIndex < 0)
+            return localizedIndex;
+        return Math.Min(localizedIndex, fallbackIndex);
+    }
+
+    private static int FindTokenIndex(string text, string token)
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(token))
+            return -1;
+
+        int searchStart = 0;
+        while (searchStart <= text.Length - token.Length)
+        {
+            int index = text.IndexOf(token, searchStart, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+                return -1;
+
+            if (!ContainsLatinOrDigit(token) || HasWordBoundaryAround(text, index, token.Length))
+                return index;
+
+            searchStart = index + 1;
+        }
+
+        return -1;
+    }
+
+    private static bool MatchKeyword(string text, int index, string token)
+    {
+        return !string.IsNullOrWhiteSpace(token)
+            && index >= 0
+            && index + token.Length <= text.Length
+            && string.Equals(
+                text.Substring(index, token.Length),
+                token,
+                StringComparison.OrdinalIgnoreCase
+            );
+    }
+
+    private static bool HasWordBoundaryAround(string input, int index, int length)
+    {
+        bool leftOk = index == 0 || !IsWordChar(input[index - 1]);
+        int endIndex = index + length;
+        bool rightOk = endIndex >= input.Length || !IsWordChar(input[endIndex]);
+        return leftOk && rightOk;
+    }
+
+    private static bool ContainsLatinOrDigit(string text) => text.Any(IsWordChar);
+
+    private static bool IsWordChar(char ch) =>
+        (ch >= 'a' && ch <= 'z')
+        || (ch >= 'A' && ch <= 'Z')
+        || char.IsDigit(ch)
+        || ch == '_';
 }

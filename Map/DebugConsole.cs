@@ -181,7 +181,9 @@ public partial class DebugConsole : CanvasLayer
 
         ApplySharedUiState();
         CloseImmediate();
-        AppendInfo("调试控制台已就绪。按 ~ 或右上角齿轮打开。");
+        AppendInfo(
+            I18n.Tr("ui.debug_console.ready", "调试控制台已就绪。按 ~ 或右上角齿轮打开。")
+        );
     }
 
     public override void _Input(InputEvent @event)
@@ -304,16 +306,22 @@ public partial class DebugConsole : CanvasLayer
         _panel.CustomMinimumSize = new Vector2(PanelWidth, PanelHeight);
         _panel.AddThemeStyleboxOverride("panel", BuildPanelStyle());
 
-        title.Text = "GM Console";
+        title.Text = I18n.Tr("ui.debug_console.title", "GM Console");
         title.AddThemeFontSizeOverride("font_size", 34);
         title.Modulate = new Color(0.84f, 0.95f, 1f, 1f);
 
-        subtitle.Text = "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。";
+        subtitle.Text = I18n.Tr(
+            "ui.debug_console.subtitle",
+            "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。"
+        );
         subtitle.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         subtitle.AddThemeFontSizeOverride("font_size", 18);
         subtitle.Modulate = new Color(0.72f, 0.82f, 0.92f, 0.92f);
 
-        _input.PlaceholderText = "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20";
+        _input.PlaceholderText = I18n.Tr(
+            "ui.debug_console.placeholder",
+            "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20"
+        );
         _input.ClearButtonEnabled = true;
         _input.AddThemeFontSizeOverride("font_size", 20);
         _input.AddThemeColorOverride("font_color", new Color(NeutralColor));
@@ -326,19 +334,19 @@ public partial class DebugConsole : CanvasLayer
         _input.GuiInput -= OnInputGuiInput;
         _input.GuiInput += OnInputGuiInput;
 
-        runButton.Text = "执行";
+        runButton.Text = I18n.Tr("ui.debug_console.run", "执行");
         runButton.Pressed -= ExecuteCurrentInput;
         runButton.Pressed += ExecuteCurrentInput;
         runButton.AddThemeFontSizeOverride("font_size", 19);
         ApplyButtonTheme(runButton);
 
-        clearButton.Text = "清屏";
+        clearButton.Text = I18n.Tr("ui.debug_console.clear", "清屏");
         clearButton.Pressed -= ClearLog;
         clearButton.Pressed += ClearLog;
         clearButton.AddThemeFontSizeOverride("font_size", 19);
         ApplyButtonTheme(clearButton);
 
-        helpButton.Text = "帮助";
+        helpButton.Text = I18n.Tr("ui.debug_console.help", "帮助");
         helpButton.Pressed -= RefreshHelp;
         helpButton.Pressed += RefreshHelp;
         helpButton.AddThemeFontSizeOverride("font_size", 19);
@@ -391,7 +399,7 @@ public partial class DebugConsole : CanvasLayer
     {
         if (_help != null)
             _help.Text = BuildHelpText();
-        AppendInfo("帮助已刷新。");
+        AppendInfo(I18n.Tr("ui.debug_console.help_refreshed", "帮助已刷新。"));
     }
 
     private void BuildUi()
@@ -557,14 +565,17 @@ public partial class DebugConsole : CanvasLayer
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", 4);
 
-        var title = new Label { Text = "GM Console" };
+        var title = new Label { Text = I18n.Tr("ui.debug_console.title", "GM Console") };
         title.AddThemeFontSizeOverride("font_size", 34);
         title.Modulate = new Color(0.84f, 0.95f, 1f, 1f);
         box.AddChild(title);
 
         var hint = new Label
         {
-            Text = "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。",
+            Text = I18n.Tr(
+                "ui.debug_console.subtitle",
+                "支持加技能、装备、遗物、药水，以及改角色属性。输入 help 查看命令，~ / ESC 关闭。"
+            ),
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         hint.AddThemeFontSizeOverride("font_size", 18);
@@ -581,7 +592,10 @@ public partial class DebugConsole : CanvasLayer
 
         _input = new LineEdit
         {
-            PlaceholderText = "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20",
+            PlaceholderText = I18n.Tr(
+                "ui.debug_console.placeholder",
+                "例如：addskill Nightingale BreakStrike  或  setstat Echo power 20"
+            ),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             ClearButtonEnabled = true,
         };
@@ -595,19 +609,19 @@ public partial class DebugConsole : CanvasLayer
         _input.GuiInput += OnInputGuiInput;
         row.AddChild(_input);
 
-        var runButton = BuildActionButton("执行");
+        var runButton = BuildActionButton(I18n.Tr("ui.debug_console.run", "执行"));
         runButton.Pressed += ExecuteCurrentInput;
         row.AddChild(runButton);
 
-        var clearButton = BuildActionButton("清屏");
+        var clearButton = BuildActionButton(I18n.Tr("ui.debug_console.clear", "清屏"));
         clearButton.Pressed += () => _log.Text = string.Empty;
         row.AddChild(clearButton);
 
-        var helpButton = BuildActionButton("帮助");
+        var helpButton = BuildActionButton(I18n.Tr("ui.debug_console.help", "帮助"));
         helpButton.Pressed += () =>
         {
             _help.Text = BuildHelpText();
-            AppendInfo("帮助已刷新。");
+            AppendInfo(I18n.Tr("ui.debug_console.help_refreshed", "帮助已刷新。"));
         };
         row.AddChild(helpButton);
 

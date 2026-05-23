@@ -53,7 +53,13 @@ public partial class Character : Node2D
     //charater basic properties
     [Export]
     public Texture2D Portrait;
-    public virtual string CharacterName { get; set; }
+    private string _characterName;
+    protected virtual string CharacterNameKey => $"character.{I18n.ToSnakeCase(GetType().Name)}.name";
+    public virtual string CharacterName
+    {
+        get => I18n.Tr(CharacterNameKey, _characterName);
+        set => _characterName = value;
+    }
 
     [Export]
     public int BattleMaxLife { get; private set; }
@@ -67,7 +73,14 @@ public partial class Character : Node2D
     public int Block { get; protected set; }
     public int Energy { get; protected set; } = 1;
 
-    public virtual string PassiveName { get; set; }
+    private string _passiveName;
+    protected virtual string PassiveNameKey =>
+        $"character.{I18n.ToSnakeCase(GetType().Name)}.passive.name";
+    public virtual string PassiveName
+    {
+        get => I18n.Tr(PassiveNameKey, _passiveName);
+        set => _passiveName = value;
+    }
     public virtual string PassiveDescription { get; set; }
 
     //properties label
@@ -202,6 +215,7 @@ public partial class Character : Node2D
         SpeedIconLabel.Text = Speed.ToString();
         EnergeIconLabel.Text = Energy.ToString();
         InvalidateHoverTooltipCache();
+        RefreshBattleActionPoinUi();
     }
 
     private static int ScaleCombatStat(int value, float multiplier)
@@ -423,7 +437,9 @@ public partial class Character : Node2D
     private string BuildSkillTooltipText()
     {
         var sb = new StringBuilder(256);
-        string name = string.IsNullOrWhiteSpace(CharacterName) ? "Character" : CharacterName;
+        string name = string.IsNullOrWhiteSpace(CharacterName)
+            ? I18n.Tr("ui.common.character", "Character")
+            : CharacterName;
         sb.Append($"[b]{name}[/b]\n");
 
         AppendPassiveTooltip(sb);
@@ -454,7 +470,9 @@ public partial class Character : Node2D
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
-            sb.Append($"[color=#87ceeb]耗能[/color] {skill.CardEnergyCostText}\n");
+            sb.Append(
+                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", skill.CardEnergyCostText))}\n"
+            );
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
             else
@@ -485,17 +503,33 @@ public partial class Character : Node2D
         const string skillNameColor = "#b56bff";
         int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
         sb.Append(
-            $"[font_size={skillNameFontSize}][color={skillNameColor}]抽牌堆[/color][/font_size]\n"
+            $"[font_size={skillNameFontSize}][color={skillNameColor}]{I18n.Tr("ui.common.draw_pile", "抽牌堆")}[/color][/font_size]\n"
         );
-        AppendSkillPileLines(sb, GetSkillsFromIds(drawPileIds), emptyText: "空");
+        AppendSkillPileLines(
+            sb,
+            GetSkillsFromIds(drawPileIds),
+            emptyText: I18n.Tr("ui.common.empty", "空")
+        );
 
         sb.Append("\n[hr]\n");
-        sb.Append($"[font_size={skillNameFontSize}][color=#9cdacf]弃牌堆[/color][/font_size]\n");
-        AppendSkillPileLines(sb, GetSkillsFromIds(discardPileIds), emptyText: "空");
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color=#9cdacf]{I18n.Tr("ui.common.discard_pile", "弃牌堆")}[/color][/font_size]\n"
+        );
+        AppendSkillPileLines(
+            sb,
+            GetSkillsFromIds(discardPileIds),
+            emptyText: I18n.Tr("ui.common.empty", "空")
+        );
 
         sb.Append("\n[hr]\n");
-        sb.Append($"[font_size={skillNameFontSize}][color=#ffb86b]消耗卡堆[/color][/font_size]\n");
-        AppendSkillPileLines(sb, GetSkillsFromIds(exhaustedIds), emptyText: "空");
+        sb.Append(
+            $"[font_size={skillNameFontSize}][color=#ffb86b]{I18n.Tr("ui.common.exhaust_pile", "消耗卡堆")}[/color][/font_size]\n"
+        );
+        AppendSkillPileLines(
+            sb,
+            GetSkillsFromIds(exhaustedIds),
+            emptyText: I18n.Tr("ui.common.empty", "空")
+        );
     }
 
     private static SkillID[] GetOwnedPlayerSkillIds(int characterIndex)
@@ -574,9 +608,11 @@ public partial class Character : Node2D
         const string passiveColor = "#ffd36b";
         int titleFontSize = UserSettings.ScaleTextFontSize(30);
 
-        string title = string.IsNullOrWhiteSpace(passiveName) ? "Passive" : passiveName;
+        string title = string.IsNullOrWhiteSpace(passiveName)
+            ? I18n.Tr("ui.common.passive", "Passive")
+            : passiveName;
         sb.Append(
-            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc](被动)[/color]\n"
+            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc]({I18n.Tr("ui.common.passive_tag", "被动")})[/color]\n"
         );
 
         if (!string.IsNullOrWhiteSpace(passiveDesc))
@@ -1120,6 +1156,11 @@ public partial class Character : Node2D
         int blockedDamage = Math.Clamp(Math.Min(incomingDamage, previousBlock), 0, incomingDamage);
         int actualDamage = Math.Clamp(incomingDamage - previousBlock, 0, previousLife);
 
+        if (actualDamage > 0)
+            AudioManager.PlayHurt(this);
+        else if (blockedDamage > 0)
+            AudioManager.PlayBlockImpact(this);
+
         Life -= Math.Clamp((int)damage - Block, 0, Life);
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
         UpdataBlock(0);
@@ -1279,6 +1320,7 @@ public partial class Character : Node2D
             CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
             AddChild(characterEffect);
             characterEffect.Animation.Play("shield");
+            AudioManager.PlayBlockGain(this);
         }
         Block = Math.Clamp(Block + num, 0, 999);
         BlockLabel.Text = Block.ToString();

@@ -77,7 +77,13 @@ public partial class CharacterTargetCard : Control
         Portrait.Texture = target?.Portrait;
         StatsLabel.Text = target == null
             ? string.Empty
-            : $"生命 {target.Life}/{target.BattleMaxLife}  能量 {target.Energy}";
+            : I18n.Format(
+                "ui.manual_target.character_stats",
+                "生命 {life}/{max_life}  能量 {energy}",
+                ("life", target.Life),
+                ("max_life", target.BattleMaxLife),
+                ("energy", target.Energy)
+            );
     }
 
     public void SetSelectable(bool selectable)

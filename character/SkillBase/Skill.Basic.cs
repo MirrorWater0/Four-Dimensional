@@ -9,20 +9,20 @@ public partial class BasicAttack : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "基础攻击";
+    public override string SkillName { get; set; } = I18n.Tr("skill.basic_attack.name", "基础攻击");
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: PowerMultiplier)
+            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier)
         );
     }
 }
 
 public partial class BasicDefense : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 4;
     private const int SurvivabilityMultiplier = 1;
 
     public BasicDefense()
@@ -31,16 +31,15 @@ public partial class BasicDefense : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "基础防御";
+    public override string SkillName { get; set; } = I18n.Tr("skill.basic_defense.name", "基础防御");
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             BlockStep(
-                relativeIndex: 0,
                 baseBlock: BaseBlock,
-                survivabilityMultiplier: SurvivabilityMultiplier
+                multiplier: SurvivabilityMultiplier
             )
         );
     }
@@ -57,7 +56,7 @@ public partial class BasicGuard : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "护卫";
+    public override string SkillName { get; set; } = I18n.Tr("skill.basic_guard.name", "护卫");
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -65,7 +64,7 @@ public partial class BasicGuard : Skill
             BlockStep(
                 target: TargetReference.ManualFriendly,
                 baseBlock: BaseBlock,
-                survivabilityMultiplier: SurvivabilityMultiplier
+                multiplier: SurvivabilityMultiplier
             )
         );
     }
@@ -81,7 +80,7 @@ public partial class BasicSpecial : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "基础特殊";
+    public override string SkillName { get; set; } = I18n.Tr("skill.basic_special.name", "基础特殊");
     public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()

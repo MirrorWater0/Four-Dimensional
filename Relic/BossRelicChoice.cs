@@ -5,6 +5,8 @@ using Godot;
 public partial class BossRelicChoice : CanvasLayer
 {
     private const string NodeName = "BossRelicChoice";
+    private const int BossRelicOfferCount = 3;
+    private const int BossRelicOfferSeedSalt = unchecked((int)0xB05571C);
     private static readonly Vector2 CardSize = new(300f, 390f);
     private static readonly Color CardBackground = new(0.035f, 0.055f, 0.09f, 0.96f);
     private static readonly Color CardBorder = new(0.42f, 0.72f, 1f, 0.46f);
@@ -133,9 +135,12 @@ public partial class BossRelicChoice : CanvasLayer
             child.QueueFree();
 
         var owned = GameInfo.Relics;
+        var rng = CreateBossRelicOfferRandom();
         var relics = Relic
             .GetBossRelicOfferPool()
             .Where(id => owned == null || !owned.ContainsKey(id))
+            .OrderBy(_ => rng.Next())
+            .Take(BossRelicOfferCount)
             .ToArray();
         if (relics.Length == 0)
         {
@@ -147,6 +152,12 @@ public partial class BossRelicChoice : CanvasLayer
             _cardRow.AddChild(CreateRelicCard(relicId));
 
         return true;
+    }
+
+    private static Random CreateBossRelicOfferRandom()
+    {
+        int seed = GameInfo.Seed ^ (GameInfo.CurrentLevel * 7919) ^ BossRelicOfferSeedSalt;
+        return new Random(seed);
     }
 
     private Control CreateRelicCard(RelicID relicId)

@@ -28,7 +28,12 @@ public partial class PlayerCharacter : Character
             BattleNode != null && GodotObject.IsInstanceValid(BattleNode)
                 ? new Skill[MaxBattleHandSize]
                 : CreateFallbackSkillLoadout();
-        SetCombatStats(info.Power, info.Survivability, info.Speed, info.LifeMax);
+        SetCombatStats(
+            TalentTree.GetEffectivePower(info),
+            TalentTree.GetEffectiveSurvivability(info),
+            TalentTree.GetEffectiveSpeed(info),
+            info.LifeMax
+        );
         Life = BattleMaxLife;
         base.Initialize();
         IsPlayer = true;
@@ -92,6 +97,7 @@ public partial class PlayerCharacter : Character
             return false;
 
         InvalidateSkillTooltipCache();
+        BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
         return true;
     }
 
@@ -245,6 +251,14 @@ public partial class PlayerCharacter : Character
     public override void DisableSkill()
     {
         BattleNode?.CharacterControl?.SetPlayerInputsEnabled(this, enabled: false);
+    }
+
+    protected bool HasPassiveTalentUpgrade()
+    {
+        if (CharacterIndex < 0 || GameInfo.PlayerCharacters == null || CharacterIndex >= GameInfo.PlayerCharacters.Length)
+            return false;
+
+        return TalentTree.HasPassiveUpgrade(GameInfo.PlayerCharacters[CharacterIndex]);
     }
 
     private void EnsureBattleHandSize()

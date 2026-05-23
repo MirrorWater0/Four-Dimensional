@@ -37,12 +37,12 @@ public partial class Skill
         };
     }
 
-    public static SkillRarity RollRewardRarity(Random rng)
+    public static SkillRarity RollRewardRarity(Random rng, bool allowRare = true)
     {
         int roll = rng?.Next(100) ?? 0;
         if (roll < 60)
             return SkillRarity.Common;
-        if (roll < 90)
+        if (!allowRare || roll < 95)
             return SkillRarity.Uncommon;
         return SkillRarity.Rare;
     }
@@ -54,8 +54,17 @@ public partial class Skill
             .ToArray();
     }
 
-    public static SkillRarity[] GetRewardRarityFallbackOrder(SkillRarity rarity)
+    public static SkillRarity[] GetRewardRarityFallbackOrder(SkillRarity rarity, bool allowRare = true)
     {
+        if (!allowRare)
+        {
+            return rarity switch
+            {
+                SkillRarity.Uncommon => [SkillRarity.Uncommon, SkillRarity.Common],
+                _ => [SkillRarity.Common, SkillRarity.Uncommon],
+            };
+        }
+
         return rarity switch
         {
             SkillRarity.Rare => [SkillRarity.Rare, SkillRarity.Uncommon, SkillRarity.Common],
@@ -90,15 +99,20 @@ public partial class Skill
             SkillID.EnergyRelay,
             SkillID.GroupHealing,
             SkillID.TouchOfGod,
+            SkillID.HolyOfHolies,
             SkillID.StasisBlade,
             SkillID.ContinuousPierce,
             SkillID.RuinBlade,
             SkillID.LongNight,
+            SkillID.Swift,
+            SkillID.SunMoonCycle,
             SkillID.AfterimageWard,
             SkillID.StarWard,
             SkillID.WarGodWill,
             SkillID.TwilightParadox,
-            SkillID.ConcordSlash
+            SkillID.ConcordSlash,
+            SkillID.BarrierDuplication,
+            SkillID.EternalDark
         );
 
         AddRarity(
@@ -108,16 +122,18 @@ public partial class Skill
             SkillID.TerminateLight,
             SkillID.VoidForm,
             SkillID.EchoForm,
-            SkillID.BarrierDuplication,
+            SkillID.CursePower,
+            SkillID.WeakeningField,
             SkillID.AegisPledge,
+            SkillID.HopeBeacon,
             SkillID.DemonForm,
             SkillID.RearlineRevival,
             SkillID.Ragnarok,
             SkillID.SanctuaryForm,
             SkillID.RequiemBloom,
             SkillID.CurtainCallMoment,
-            SkillID.SunMoonCycle,
-            SkillID.ShadowForm
+            SkillID.ShadowForm,
+            SkillID.BrightestMoment
         );
 
         return catalog;

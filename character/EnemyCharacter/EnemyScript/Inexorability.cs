@@ -5,7 +5,7 @@ using Godot;
 public partial class Inexorability : EnemyCharacter
 {
     private const int HurtPowerDown = 2;
-    private const int AllyDyingPowerGain = 4;
+    private const int AllyDyingPowerGain = 3;
 
     public const string PassiveNameText = "不可违逆";
     public static string PassiveDescriptionText =>
@@ -84,7 +84,7 @@ public partial class InexorabilityRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
         MaxLife = 64;
-        Power = 7;
+        Power = 12;
         Survivability = 5;
         Speed = 8;
         SkillIDs =
@@ -101,9 +101,8 @@ public partial class InexorabilityRegedit : EnemyRegedit
 
 public partial class InexorabilityAttack : Skill
 {
-    private const int BaseDamage = 18;
-    private const int SelfEnergyGain = 2;
-    private const int AdjacentEnergyLoss = 1;
+    private const int BaseDamage = 8;
+    private const int SelfEnergyGain = 1;
 
     public InexorabilityAttack()
         : base(SkillTypes.Attack)
@@ -117,10 +116,8 @@ public partial class InexorabilityAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1, byBehindRow: true),
-            EnergyStep(SelfEnergyGain),
-            EnergyStep(-AdjacentEnergyLoss, TargetReference.Next),
-            EnergyStep(-AdjacentEnergyLoss, TargetReference.Previous)
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, byBehindRow: true),
+            EnergyStep(SelfEnergyGain)
         );
     }
 }
@@ -128,7 +125,7 @@ public partial class InexorabilityAttack : Skill
 public partial class InexorabilitySurvive : Skill
 {
     private const int BaseBlock = 16;
-    private const int SurvivabilityDown = 3;
+    private const int PowerGain = 6;
     private const int SelfEnergyGain = 1;
 
     public InexorabilitySurvive()
@@ -143,13 +140,8 @@ public partial class InexorabilitySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock, survivabilityMultiplier: 1),
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                SurvivabilityDown,
-                target: HostileTargets(1, byBehindRow: true),
-                permanent: false
-            ),
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
             EnergyStep(SelfEnergyGain)
         );
     }
@@ -157,8 +149,7 @@ public partial class InexorabilitySurvive : Skill
 
 public partial class InexorabilitySpecial : Skill
 {
-    private const int SelfPowerGain = 4;
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 0;
     private const int PowerMultiplier = 2;
 
     public InexorabilitySpecial()
@@ -174,12 +165,11 @@ public partial class InexorabilitySpecial : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: BaseDamage,
-                powerMultiplier: PowerMultiplier,
+                multiplier: PowerMultiplier,
                 target: HostileTargetsEachRowLast()
-            ),
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
+            )
         );
     }
 }

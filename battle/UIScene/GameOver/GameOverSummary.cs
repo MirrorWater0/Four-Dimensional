@@ -19,6 +19,24 @@ public partial class GameOverSummary : CanvasLayer
         field ??= GetNodeOrNull<RichTextLabel>("CenterPanel/Margin/VBox/SummaryText");
     private Button ReturnButton =>
         field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/HeaderRow/ReturnButton");
+    private Label EyebrowLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Eyebrow");
+    private Label TitleLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/HeaderRow/TitleBlock/Title");
+    private Label DescriptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/HeaderRow/TitleBlock/Description");
+    private Label ResultCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/ResultChip/Margin/VBox/Caption");
+    private Label DurationCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/DurationChip/Margin/VBox/Caption");
+    private Label NodeCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/NodeChip/Margin/VBox/Caption");
+    private Label EnemyCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/EnemyChip/Margin/VBox/Caption");
+    private Label CoinCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/CoinChip/Margin/VBox/Caption");
+    private Label LootCaptionLabel =>
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/LootChip/Margin/VBox/Caption");
     private Label ResultValue =>
         field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/StatRow/ResultChip/Margin/VBox/Value");
     private Label DurationValue =>
@@ -61,6 +79,7 @@ public partial class GameOverSummary : CanvasLayer
     {
         Visible = false;
         _centerPanelBasePosition = CenterPanel?.Position ?? Vector2.Zero;
+        LocalizeStaticTexts();
 
         if (ReturnButton != null)
             ReturnButton.Pressed += ReturnToTitle;
@@ -100,7 +119,12 @@ public partial class GameOverSummary : CanvasLayer
             return;
         }
 
-        SetLabelText(ResultValue, record.Victory ? "胜利" : "战败");
+        SetLabelText(
+            ResultValue,
+            record.Victory
+                ? I18n.Tr("ui.common.victory", "胜利")
+                : I18n.Tr("ui.common.defeat", "战败")
+        );
         SetLabelText(DurationValue, FormatDuration(record.SessionPlaySeconds));
         SetLabelText(NodeValue, record.NodesVisited.ToString());
         SetLabelText(
@@ -225,5 +249,34 @@ public partial class GameOverSummary : CanvasLayer
         return duration.TotalHours >= 1
             ? $"{(int)duration.TotalHours:00}:{duration.Minutes:00}:{duration.Seconds:00}"
             : $"{duration.Minutes:00}:{duration.Seconds:00}";
+    }
+
+    private void LocalizeStaticTexts()
+    {
+        if (EyebrowLabel != null)
+            EyebrowLabel.Text = I18n.Tr("ui.game_over.eyebrow", "RUN TERMINATED");
+        if (TitleLabel != null)
+            TitleLabel.Text = I18n.Tr("ui.game_over.title", "战败结算");
+        if (DescriptionLabel != null)
+        {
+            DescriptionLabel.Text = I18n.Tr(
+                "ui.game_over.description",
+                "终局数据会完整铺开，路线、战利品与技能快照都在这里。"
+            );
+        }
+        if (ReturnButton != null)
+            ReturnButton.Text = I18n.Tr("ui.game_over.return_to_title", "返回标题");
+        if (ResultCaptionLabel != null)
+            ResultCaptionLabel.Text = I18n.Tr("ui.game_over.result", "结果");
+        if (DurationCaptionLabel != null)
+            DurationCaptionLabel.Text = I18n.Tr("ui.game_over.duration", "时长");
+        if (NodeCaptionLabel != null)
+            NodeCaptionLabel.Text = I18n.Tr("ui.statistics.nodes", "节点");
+        if (EnemyCaptionLabel != null)
+            EnemyCaptionLabel.Text = I18n.Tr("ui.game_over.enemy_triplet", "敌 / 精 / Boss");
+        if (CoinCaptionLabel != null)
+            CoinCaptionLabel.Text = I18n.Tr("ui.statistics.coins", "电力币");
+        if (LootCaptionLabel != null)
+            LootCaptionLabel.Text = I18n.Tr("ui.game_over.loot_pair", "遗物 / 装备");
     }
 }

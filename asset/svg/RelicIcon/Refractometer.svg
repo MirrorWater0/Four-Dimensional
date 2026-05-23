@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="lens" x1="30" y1="28" x2="98" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5fdff"/>
+      <stop offset="0.45" stop-color="#75e8ff"/>
+      <stop offset="1" stop-color="#5977ff"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="18" y1="36" x2="111" y2="92" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe082"/>
+      <stop offset="0.5" stop-color="#7fe7ff"/>
+      <stop offset="1" stop-color="#ff7bd5"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M16 40h31" stroke="#ffe082" stroke-width="7"/>
+    <path d="M81 51l31-18" stroke="#ff7bd5" stroke-width="6"/>
+    <path d="M83 73l28 22" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M48 41l34 32" stroke="url(#beam)" stroke-width="7"/>
+    <circle cx="64" cy="64" r="31" fill="#102236" stroke="url(#lens)" stroke-width="7"/>
+    <path d="M46 82c12-7 24-25 34-45" stroke="#d9fbff" stroke-width="5" opacity="0.9"/>
+    <path d="M43 57c13 8 29 10 43 5" stroke="#7fe7ff" stroke-width="4" opacity="0.8"/>
+    <path d="M34 103h60" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M56 96h16" stroke="#ffd97f" stroke-width="5"/>
+  </g>
+</svg>

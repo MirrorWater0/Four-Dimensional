@@ -36,6 +36,7 @@ void fragment() {
     vec2 uv = UV - 0.5;
 	uv.y += 0.1;
 	uv*= 0.7;
+    float aa = max(max(fwidth(uv.x), fwidth(uv.y)), 0.0015);
     float a = -0.785398; // 旋转 45 度
     float s = sin(a), c = cos(a);
     vec2 p = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
@@ -60,7 +61,7 @@ void fragment() {
     float d = min(d_top, d_bottom);
 
     // 抗锯齿边缘
-    float alpha = smoothstep(0.015, -0.01, d);
+    float alpha = smoothstep(0.015 + aa, -0.01 - aa, d);
     
     vec3 col = sword_color.rgb * (1.1 - uv.y * 0.3);
     COLOR *= vec4(col, alpha);

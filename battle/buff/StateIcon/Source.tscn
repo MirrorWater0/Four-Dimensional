@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/Source.gdshader" id="2_source"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_source"]
+shader = ExtResource("2_source")
+shader_parameter/stream_color = Color(0.22, 0.84, 1, 1)
+shader_parameter/highlight_color = Color(0.9, 0.98, 1, 1)
+shader_parameter/pool_color = Color(0.06, 0.2, 0.34, 1)
+shader_parameter/sparkle_color = Color(0.62, 1, 0.96, 1)
+shader_parameter/animation_speed = 1.0
+shader_parameter/flow_strength = 0.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_source")

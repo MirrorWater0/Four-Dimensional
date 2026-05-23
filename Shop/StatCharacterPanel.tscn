@@ -6,12 +6,12 @@
 [ext_resource type="Shader" uid="uid://dp04sa26lq3vp" path="res://shader/Icon/Heart.gdshader" id="4_heart"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.06, 0.09, 0.14, 0.88)
+bg_color = Color(0.060200002, 0.08946001, 0.14, 0)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.36, 0.54, 0.74, 0.58)
+border_color = Color(0.3626, 0.53872, 0.74, 0.043137256)
 corner_radius_top_left = 14
 corner_radius_top_right = 14
 corner_radius_bottom_right = 14
@@ -30,12 +30,12 @@ corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon"]
-bg_color = Color(0.06, 0.1, 0.16, 0.98)
+bg_color = Color(0.0592, 0.09951998, 0.16, 0)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.84, 0.9, 1, 0.4)
+border_color = Color(0.84000003, 0.8986667, 1, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -80,7 +80,6 @@ shader_parameter/softness = 1.45
 [node name="StatCharacterPanel" type="PanelContainer" unique_id=1526595195]
 custom_minimum_size = Vector2(0, 238)
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
 [node name="Margin" type="MarginContainer" parent="." unique_id=304646089]
@@ -113,7 +112,6 @@ horizontal_alignment = 1
 [node name="Options" type="GridContainer" parent="Margin/VBox" unique_id=1546961421]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 mouse_filter = 2
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
@@ -123,7 +121,6 @@ columns = 4
 custom_minimum_size = Vector2(0, 128)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
 
 [node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Power" unique_id=728189068]
@@ -172,7 +169,6 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 128)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
 
 [node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Survivability" unique_id=666538829]
@@ -221,7 +217,6 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 128)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
 
 [node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/Speed" unique_id=1608805493]
@@ -270,7 +265,6 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 128)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_tile")
 
 [node name="Margin" type="MarginContainer" parent="Margin/VBox/Options/MaxLife" unique_id=758190421]
@@ -306,7 +300,7 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
 theme_override_font_sizes/font_size = 12
-text = "生命上限 +5"
+text = "生命上限 +4"
 horizontal_alignment = 1
 
 [node name="PriceLabel" type="Label" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=127622601]

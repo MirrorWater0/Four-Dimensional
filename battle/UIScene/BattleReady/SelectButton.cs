@@ -20,8 +20,6 @@ public partial class SelectButton : Control
     public Control Control => field ??= GetNode("Control") as Control;
     private Tip GlobalTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
 
-    public override void _Process(double delta) { }
-
     public override void _ExitTree()
     {
         if (GlobalTooltip != null)

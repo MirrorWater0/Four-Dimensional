@@ -196,7 +196,7 @@ public partial class PlayerResourceState : CanvasLayer
         _coreEnergyFillStyle = DuplicateBarStyle(bar, "fill");
         ResetCoreEnergyBarVisuals();
         if (CoreEnergyNameLabel != null)
-            CoreEnergyNameLabel.Text = "核心能源";
+            CoreEnergyNameLabel.Text = I18n.Tr("ui.common.core_energy", "核心能源");
         _lastTransitionEnergy = -1;
     }
 

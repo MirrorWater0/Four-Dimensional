@@ -26,13 +26,47 @@ public readonly struct TalentNodeDefinition(
 
 public static class TalentTree
 {
+    public const string CoreNodeSuffix = ".Core";
+    public const string SpeedNodeSuffix = ".Attack1";
+    public const string PowerBranchNodeSuffix = ".Survive1";
+    public const string PassiveUpgradeNodeSuffix = ".Attack2";
+    public const string SurvivabilityBranchNodeSuffix = ".Survive2";
+
     private static readonly Dictionary<string, TalentNodeDefinition[]> CharacterNodes =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["Echo"] = BuildCharacterNodes("Echo", "回声原点", "余响增幅", "频段守护", "共鸣延展", "折返信标"),
-            ["Kasiya"] = BuildCharacterNodes("Kasiya", "战术核心", "强袭矩阵", "护盾校准", "火力递进", "防线展开"),
-            ["Mariya"] = BuildCharacterNodes("Mariya", "祈愿起点", "星光裁断", "圣辉庇护", "追光连击", "复苏脉冲"),
-            ["Nightingale"] = BuildCharacterNodes("Nightingale", "暮色枢纽", "月相锋刃", "日冕屏障", "轮回加速", "悖论回响"),
+            ["Echo"] = BuildCharacterNodes(
+                "Echo",
+                "回声原点",
+                "调频加速",
+                "余响增幅",
+                "折返信标",
+                "频段守护"
+            ),
+            ["Kasiya"] = BuildCharacterNodes(
+                "Kasiya",
+                "战术核心",
+                "阵列加速",
+                "强袭矩阵",
+                "防线展开",
+                "护盾校准"
+            ),
+            ["Mariya"] = BuildCharacterNodes(
+                "Mariya",
+                "祈愿起点",
+                "祈福加速",
+                "星光裁断",
+                "复苏脉冲",
+                "圣辉庇护"
+            ),
+            ["Nightingale"] = BuildCharacterNodes(
+                "Nightingale",
+                "暮色枢纽",
+                "月影加速",
+                "月相锋刃",
+                "悖论回响",
+                "日冕屏障"
+            ),
         };
 
     public static IReadOnlyList<TalentNodeDefinition> GetNodes(string characterName)
@@ -110,20 +144,85 @@ public static class TalentTree
         info.TalentPoints = Math.Max(0, info.TalentPoints + amount);
     }
 
+    public static int GetEffectivePower(PlayerInfoStructure info) =>
+        info.Power + GetPowerBonus(info);
+
+    public static int GetEffectiveSurvivability(PlayerInfoStructure info) =>
+        info.Survivability + GetSurvivabilityBonus(info);
+
+    public static int GetEffectiveSpeed(PlayerInfoStructure info) =>
+        info.Speed + GetSpeedBonus(info);
+
+    public static bool HasPassiveUpgrade(PlayerInfoStructure info) =>
+        HasUnlocked(info, GetPassiveUpgradeTalentId(info.CharacterName));
+
+    public static string GetPassiveUpgradeTalentId(string characterName) =>
+        string.IsNullOrWhiteSpace(characterName)
+            ? string.Empty
+            : $"{characterName}{PassiveUpgradeNodeSuffix}";
+
+    public static string GetPassiveDescription(PlayerInfoStructure info)
+    {
+        string description = string.IsNullOrWhiteSpace(info.PassiveDescription)
+            ? "-"
+            : info.PassiveDescription;
+        return AppendPassiveUpgradeDescription(info.CharacterName, description, HasPassiveUpgrade(info));
+    }
+
+    public static string AppendPassiveUpgradeDescription(
+        string characterName,
+        string description,
+        bool hasPassiveUpgrade
+    )
+    {
+        if (!hasPassiveUpgrade)
+            return description;
+
+        string upgradeDescription = GetPassiveUpgradeEffectDescription(characterName);
+        return string.IsNullOrWhiteSpace(description)
+            ? upgradeDescription
+            : $"{description}\n{upgradeDescription}";
+    }
+
+    private static int GetPowerBonus(PlayerInfoStructure info)
+    {
+        int bonus = 0;
+        if (HasUnlocked(info, $"{info.CharacterName}{CoreNodeSuffix}"))
+            bonus += 1;
+        if (HasUnlocked(info, $"{info.CharacterName}{PowerBranchNodeSuffix}"))
+            bonus += 2;
+        return bonus;
+    }
+
+    private static int GetSurvivabilityBonus(PlayerInfoStructure info)
+    {
+        int bonus = 0;
+        if (HasUnlocked(info, $"{info.CharacterName}{CoreNodeSuffix}"))
+            bonus += 1;
+        if (HasUnlocked(info, $"{info.CharacterName}{SurvivabilityBranchNodeSuffix}"))
+            bonus += 2;
+        return bonus;
+    }
+
+    private static int GetSpeedBonus(PlayerInfoStructure info)
+    {
+        return HasUnlocked(info, $"{info.CharacterName}{SpeedNodeSuffix}") ? 1 : 0;
+    }
+
     private static TalentNodeDefinition[] BuildCharacterNodes(
         string characterName,
         string coreName,
-        string attackName,
-        string surviveName,
-        string attackAdvancedName,
-        string surviveAdvancedName
+        string speedName,
+        string powerBranchName,
+        string passiveUpgradeName,
+        string survivabilityBranchName
     )
     {
-        string coreId = $"{characterName}.Core";
-        string attackId = $"{characterName}.Attack1";
-        string surviveId = $"{characterName}.Survive1";
-        string attackAdvancedId = $"{characterName}.Attack2";
-        string surviveAdvancedId = $"{characterName}.Survive2";
+        string coreId = $"{characterName}{CoreNodeSuffix}";
+        string speedId = $"{characterName}{SpeedNodeSuffix}";
+        string powerBranchId = $"{characterName}{PowerBranchNodeSuffix}";
+        string passiveUpgradeId = $"{characterName}{PassiveUpgradeNodeSuffix}";
+        string survivabilityBranchId = $"{characterName}{SurvivabilityBranchNodeSuffix}";
 
         return
         [
@@ -131,51 +230,63 @@ public static class TalentTree
                 coreId,
                 coreName,
                 "第一阶段天赋节点，后续天赋需要从这里展开。",
-                "解锁该角色天赋树主干，开放后续分支节点。",
+                "+1 力量，+1 生存。",
                 0,
                 1,
                 new Vector2(330f, 304f)
             ),
             new TalentNodeDefinition(
-                attackId,
-                attackName,
-                "第二阶段攻击分支预留节点。",
-                "攻击分支预留效果，后续接入该角色攻击技能强化。",
+                speedId,
+                speedName,
+                "第二阶段天赋节点，进一步提升行动节奏。",
+                "+1 速度。",
                 1,
                 1,
                 new Vector2(330f, 184f),
                 coreId
             ),
             new TalentNodeDefinition(
-                surviveId,
-                surviveName,
-                "第二阶段生存分支预留节点。",
-                "生存分支预留效果，后续接入该角色防御或回复强化。",
+                powerBranchId,
+                powerBranchName,
+                "左分支天赋节点，强化输出能力。",
+                "+2 力量。",
                 2,
                 1,
                 new Vector2(178f, 64f),
-                attackId
+                speedId
             ),
             new TalentNodeDefinition(
-                attackAdvancedId,
-                attackAdvancedName,
-                "第三阶段攻击分支预留节点。",
-                "高级攻击分支预留效果，后续接入更强的输出强化。",
+                passiveUpgradeId,
+                passiveUpgradeName,
+                "中间的最终阶段天赋节点，强化角色被动。",
+                GetPassiveUpgradeEffectDescription(characterName),
                 2,
                 1,
                 new Vector2(330f, 64f),
-                attackId
+                speedId
             ),
             new TalentNodeDefinition(
-                surviveAdvancedId,
-                surviveAdvancedName,
-                "第三阶段生存分支预留节点。",
-                "高级生存分支预留效果，后续接入更强的生存强化。",
+                survivabilityBranchId,
+                survivabilityBranchName,
+                "右分支天赋节点，强化生存能力。",
+                "+2 生存。",
                 2,
                 1,
                 new Vector2(482f, 64f),
-                attackId
+                speedId
             ),
         ];
+    }
+
+    public static string GetPassiveUpgradeEffectDescription(string characterName)
+    {
+        return characterName switch
+        {
+            "Echo" => "被动强化：第一次回合开始时额外获得1点能量。",
+            "Nightingale" => "被动强化：追击前若目标有易伤，则给予1层易伤。",
+            "Mariya" => "被动强化：被动治疗量+8。",
+            "Kasiya" => "被动强化：其他角色打出特殊技能时获得1点生存。",
+            _ => "被动强化。",
+        };
     }
 }

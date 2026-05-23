@@ -35,18 +35,32 @@ public partial class StartInterface : CanvasLayer
     public static PackedScene _Nightingale = ResourceLoader.Load<PackedScene>(
         "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
     );
+    private static readonly PackedScene EncyclopediaScene = GD.Load<PackedScene>(
+        "res://Menu/Encyclopedia.tscn"
+    );
     private const string CharacterSelectionOverlayScenePath =
         "res://BeginGame/CharacterSelectionOverlay.tscn";
     private Button StartGameButton =>
-        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button");
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/Button");
     private Button ContinueGameButton =>
-        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button2");
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/Button2");
     private Button StatisticsButton =>
-        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/StatisticsButton");
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/StatisticsButton");
+    private Button EncyclopediaButton =>
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/EncyclopediaButton");
     private Button ExitGameButton =>
-        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/Buttons/Button3");
+        field ??= GetNodeOrNull<Button>("Layout/CenterPanel/Margin/VBox/ButtonsWrap/Buttons/Button3");
     private Label StatusLine =>
         field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/StatusLine");
+    private Label CodeLabel => field ??= GetNodeOrNull<Label>("Layout/CodeLabel");
+    private Label EyebrowLabel =>
+        field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/Eyebrow");
+    private Label TitleLabel =>
+        field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/Title");
+    private Label SubtitleLabel =>
+        field ??= GetNodeOrNull<Label>("Layout/CenterPanel/Margin/VBox/Subtitle");
+    private Label FooterTextLabel =>
+        field ??= GetNodeOrNull<Label>("Layout/Footer/FooterText");
     private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
     private bool _isCharacterSelectionTransitioning;
     private CharacterSelectionOverlay CharacterSelection =>
@@ -56,6 +70,7 @@ public partial class StartInterface : CanvasLayer
     {
         GetTree().Root.GetNodeOrNull<GameOverSummary>("GameOverSummary")?.QueueFree();
 
+        LocalizeStaticTexts();
         TryLoadAutosaveForMenu();
         RefreshContinueButtonState();
         SetupMenuButtonHoverAnimations();
@@ -65,6 +80,9 @@ public partial class StartInterface : CanvasLayer
 
         if (StatisticsButton != null)
             StatisticsButton.Pressed += ShowStatistics;
+
+        if (EncyclopediaButton != null)
+            EncyclopediaButton.Pressed += ShowEncyclopedia;
 
         if (ExitGameButton != null)
             ExitGameButton.Pressed += ExitGame;
@@ -235,7 +253,10 @@ public partial class StartInterface : CanvasLayer
         if (scene == null)
         {
             if (StatusLine != null)
-                StatusLine.Text = "角色选择界面加载失败，请检查 CharacterSelectionOverlay.tscn。";
+                StatusLine.Text = I18n.Tr(
+                    "ui.start.character_select_load_failed",
+                    "角色选择界面加载失败，请检查 CharacterSelectionOverlay.tscn。"
+                );
             GD.PushError(
                 $"Character selection scene failed to load: {CharacterSelectionOverlayScenePath}"
             );
@@ -246,7 +267,10 @@ public partial class StartInterface : CanvasLayer
         if (overlay == null)
         {
             if (StatusLine != null)
-                StatusLine.Text = "角色选择界面实例化失败。";
+                StatusLine.Text = I18n.Tr(
+                    "ui.start.character_select_instantiate_failed",
+                    "角色选择界面实例化失败。"
+                );
             GD.PushError("Character selection scene failed to instantiate.");
             return null;
         }
@@ -319,6 +343,22 @@ public partial class StartInterface : CanvasLayer
         GameStatistics.Show(this);
     }
 
+    private void ShowEncyclopedia()
+    {
+        if (GetNodeOrNull<Encyclopedia>("Encyclopedia") != null)
+            return;
+
+        var encyclopedia = EncyclopediaScene?.Instantiate<Encyclopedia>();
+        if (encyclopedia == null)
+        {
+            GD.PushError("Encyclopedia scene failed to instantiate from StartInterface.");
+            return;
+        }
+
+        encyclopedia.Name = "Encyclopedia";
+        AddChild(encyclopedia);
+    }
+
     private void TryLoadAutosaveForMenu()
     {
         if (!FileAccess.FileExists(AutosavePath))
@@ -346,9 +386,40 @@ public partial class StartInterface : CanvasLayer
             return;
 
         StatusLine.Text =
-            !hasAutosave ? "未检测到自动存档，只能开始新游戏。"
-            : GameInfo.RunFinished ? "当前自动存档已结算完成，请开始新一轮游戏。"
-            : "检测到自动存档，可以继续上一次游戏。";
+            !hasAutosave ? I18n.Tr("ui.start.status.no_autosave", "未检测到自动存档，只能开始新游戏。")
+            : GameInfo.RunFinished ? I18n.Tr("ui.start.status.finished_run", "当前自动存档已结算完成，请开始新一轮游戏。")
+            : I18n.Tr("ui.start.status.can_continue", "检测到自动存档，可以继续上一次游戏。");
+    }
+
+    private void LocalizeStaticTexts()
+    {
+        if (CodeLabel != null)
+            CodeLabel.Text = I18n.Tr("ui.start.code_label", "ASCENT LOG // AUTOSAVE READY");
+        if (EyebrowLabel != null)
+            EyebrowLabel.Text = I18n.Tr("ui.start.eyebrow", "AUTOSAVE ENABLED");
+        if (TitleLabel != null)
+            TitleLabel.Text = I18n.Tr("ui.start.title", "FOUR-DIMENSIONAL");
+        if (SubtitleLabel != null)
+        {
+            SubtitleLabel.Text = I18n.Tr(
+                "ui.start.subtitle",
+                "整理队伍，读取存档，或者直接开始新一轮游戏。"
+            );
+        }
+        if (StartGameButton != null)
+            StartGameButton.Text = I18n.Tr("ui.start.new_game", "开始新游戏");
+        if (ContinueGameButton != null)
+            ContinueGameButton.Text = I18n.Tr("ui.start.continue", "继续游戏");
+        if (StatisticsButton != null)
+            StatisticsButton.Text = I18n.Tr("ui.start.statistics", "统计");
+        if (EncyclopediaButton != null)
+            EncyclopediaButton.Text = I18n.Tr("ui.start.encyclopedia", "百科");
+        if (ExitGameButton != null)
+            ExitGameButton.Text = I18n.Tr("ui.start.exit", "退出游戏");
+        if (FooterTextLabel != null)
+            FooterTextLabel.Text = I18n.Tr("ui.start.footer", "SELECT A PATH");
+        if (StatusLine != null)
+            StatusLine.Text = I18n.Tr("ui.start.status.validating", "正在校验自动存档...");
     }
 
     private void SetupMenuButtonHoverAnimations()
@@ -356,6 +427,7 @@ public partial class StartInterface : CanvasLayer
         SetupMenuButtonHoverAnimation(StartGameButton);
         SetupMenuButtonHoverAnimation(ContinueGameButton);
         SetupMenuButtonHoverAnimation(StatisticsButton);
+        SetupMenuButtonHoverAnimation(EncyclopediaButton);
         SetupMenuButtonHoverAnimation(ExitGameButton);
     }
 

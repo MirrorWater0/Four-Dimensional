@@ -6,10 +6,12 @@ public partial class BattlePreview
     {
         var sb = new StringBuilder(128);
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命：{info.LifeMax}\n");
-        sb.Append($"力量：{info.Power}\n");
-        sb.Append($"生存：{info.Survivability}\n");
-        sb.Append($"速度：{info.Speed}\n");
+        sb.Append($"{I18n.Tr("ui.common.life", "生命")}：{info.LifeMax}\n");
+        sb.Append($"{I18n.Tr("property.power", "力量")}：{TalentTree.GetEffectivePower(info)}\n");
+        sb.Append(
+            $"{I18n.Tr("property.survivability", "生存")}：{TalentTree.GetEffectiveSurvivability(info)}\n"
+        );
+        sb.Append($"{I18n.Tr("property.speed", "速度")}：{TalentTree.GetEffectiveSpeed(info)}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);

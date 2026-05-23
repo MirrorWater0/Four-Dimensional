@@ -6,27 +6,26 @@ uniform float scale : hint_range(0.5, 1.0) = 0.8;                   // 图案整
 uniform float gap : hint_range(0.0, 0.5) = 0.05;                    // 四个方块之间的间距
 uniform float margin : hint_range(0.0, 0.5) = 0.02;                 // 整体四周的留白
 
+float rect_mask(float value, float start, float end, float aa) {
+    return smoothstep(start - aa, start + aa, value) * (1.0 - smoothstep(end - aa, end + aa, value));
+}
+
 void fragment() {
     vec2 uv = (UV - vec2(0.5)) / max(scale, 0.001) + vec2(0.5);
-    bool in_bounds = uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;
+    float aa = max(max(fwidth(uv.x), fwidth(uv.y)), 0.0015);
     
-    // 计算方块的有效绘制区间
-    // 横向逻辑：
-    // 左侧方块：从 margin 到 0.5 - gap/2
-    // 右侧方块：从 0.5 + gap/2 到 1.0 - margin
-    bool in_x = (uv.x > margin && uv.x < 0.5 - gap * 0.5) || 
-                (uv.x > 0.5 + gap * 0.5 && uv.x < 1.0 - margin);
-                
-    // 纵向逻辑：
-    // 上侧方块：从 margin 到 0.5 - gap/2
-    // 下侧方块：从 0.5 + gap/2 到 1.0 - margin
-    bool in_y = (uv.y > margin && uv.y < 0.5 - gap * 0.5) || 
-                (uv.y > 0.5 + gap * 0.5 && uv.y < 1.0 - margin);
+    float bounds_x = rect_mask(uv.x, 0.0, 1.0, aa);
+    float bounds_y = rect_mask(uv.y, 0.0, 1.0, aa);
+    float in_bounds = bounds_x * bounds_y;
 
-    // 只有当横向和纵向都在方块范围内时，才涂上颜色
-    if (in_bounds && in_x && in_y) {
-        COLOR *= block_color;
-    } else {
-        COLOR *= bg_color;
-    }
+    float left_x = rect_mask(uv.x, margin, 0.5 - gap * 0.5, aa);
+    float right_x = rect_mask(uv.x, 0.5 + gap * 0.5, 1.0 - margin, aa);
+    float top_y = rect_mask(uv.y, margin, 0.5 - gap * 0.5, aa);
+    float bottom_y = rect_mask(uv.y, 0.5 + gap * 0.5, 1.0 - margin, aa);
+
+    float in_x = max(left_x, right_x);
+    float in_y = max(top_y, bottom_y);
+    float mask = in_bounds * in_x * in_y;
+
+    COLOR *= mix(bg_color, block_color, mask);
 }

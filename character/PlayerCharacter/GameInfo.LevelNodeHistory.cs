@@ -93,12 +93,20 @@ public sealed class RunHistorySkillTypeRecord
 public sealed class RunHistoryCharacterSkillRecord
 {
     public string CharacterName;
+    public int MaxLife;
+    public int Power;
+    public int Survivability;
+    public int Speed;
+    public int TalentPoints;
+    public List<string> UnlockedTalentIds = new();
+    public List<string> UnlockedTalentNames = new();
+    public List<string> UnlockedTalentEffects = new();
     public List<RunHistorySkillTypeRecord> SkillTypeRecords = new();
 }
 
 public static partial class GameInfo
 {
-    public static Dictionary<Vector2I, LevelNodeCompletionRecord> CompletedLevelNodeRecords =
+    public static Dictionary<string, LevelNodeCompletionRecord> CompletedLevelNodeRecords =
         new();
     public static int CompletedLevelNodeRecordOrder;
 
@@ -179,7 +187,7 @@ public static partial class GameInfo
 
     public static void ResetLevelNodeCompletionRecords()
     {
-        CompletedLevelNodeRecords ??= new Dictionary<Vector2I, LevelNodeCompletionRecord>();
+        CompletedLevelNodeRecords ??= new Dictionary<string, LevelNodeCompletionRecord>();
         CompletedLevelNodeRecords.Clear();
         CompletedLevelNodeRecordOrder = 0;
         _activeLevelNodeSnapshot = null;
@@ -214,6 +222,7 @@ public static partial class GameInfo
         AppendRunRelicSection(sb, record);
         AppendRunEquipmentSection(sb, record);
         AppendRunSkillSection(sb, record);
+        AppendRunCharacterSnapshotSection(sb, record);
         return sb.ToString();
     }
 
@@ -437,6 +446,14 @@ public static partial class GameInfo
             var characterRecord = new RunHistoryCharacterSkillRecord
             {
                 CharacterName = GetPlayerName(player, i),
+                MaxLife = player.LifeMax,
+                Power = TalentTree.GetEffectivePower(player),
+                Survivability = TalentTree.GetEffectiveSurvivability(player),
+                Speed = TalentTree.GetEffectiveSpeed(player),
+                TalentPoints = player.TalentPoints,
+                UnlockedTalentIds = CopyStringList(player.UnlockedTalents),
+                UnlockedTalentNames = BuildUnlockedTalentNames(player),
+                UnlockedTalentEffects = BuildUnlockedTalentEffects(player),
             };
 
             foreach (var skillType in GetDisplaySkillTypes())
@@ -503,6 +520,33 @@ public static partial class GameInfo
         var characters = record.CharacterSkillRecords ?? new List<RunHistoryCharacterSkillRecord>();
         sb.Append("\n\n[b]角色技能[/b]");
         sb.Append($"\n总数：{CountRunSkills(characters)}");
+    }
+
+    private static void AppendRunCharacterSnapshotSection(StringBuilder sb, RunHistoryRecord record)
+    {
+        var characters =
+            record.CharacterSkillRecords?.Where(character => character != null).ToList()
+            ?? new List<RunHistoryCharacterSkillRecord>();
+        if (characters.Count == 0)
+            return;
+
+        sb.Append("\n\n[b]最终角色[/b]");
+        foreach (var character in characters)
+        {
+            string name = string.IsNullOrWhiteSpace(character.CharacterName)
+                ? "角色"
+                : character.CharacterName;
+            int talentCount = character.UnlockedTalentIds?.Count
+                ?? character.UnlockedTalentNames?.Count
+                ?? 0;
+            sb.Append(
+                $"\n{name}：生命 {character.MaxLife} / 力量 {character.Power} / 生存 {character.Survivability} / 速度 {character.Speed} / 天赋 {talentCount} / 剩余点 {character.TalentPoints}"
+            );
+
+            string talentText = BuildJoinedText(character.UnlockedTalentNames, "、");
+            if (!string.IsNullOrWhiteSpace(talentText))
+                sb.Append($"\n  已点亮：{talentText}");
+        }
     }
 
     private static void AppendHistoryNodeTotals(StringBuilder sb, RunHistoryRecord[] records)
@@ -608,6 +652,41 @@ public static partial class GameInfo
         return string.Join(separator, values.Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
+    private static List<string> BuildUnlockedTalentNames(PlayerInfoStructure player)
+    {
+        var result = new List<string>();
+        foreach (string talentId in player.UnlockedTalents ?? new List<string>())
+        {
+            var node = TalentTree
+                .GetNodes(player.CharacterName)
+                .FirstOrDefault(talent => talent.Id == talentId);
+            result.Add(string.IsNullOrWhiteSpace(node.DisplayName) ? talentId : node.DisplayName);
+        }
+
+        return result;
+    }
+
+    private static List<string> BuildUnlockedTalentEffects(PlayerInfoStructure player)
+    {
+        var result = new List<string>();
+        foreach (string talentId in player.UnlockedTalents ?? new List<string>())
+        {
+            var node = TalentTree
+                .GetNodes(player.CharacterName)
+                .FirstOrDefault(talent => talent.Id == talentId);
+            if (string.IsNullOrWhiteSpace(node.Id))
+                continue;
+
+            string name = string.IsNullOrWhiteSpace(node.DisplayName) ? talentId : node.DisplayName;
+            string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
+                ? "-"
+                : node.EffectDescription;
+            result.Add($"{name}：{effect}");
+        }
+
+        return result;
+    }
+
     private static int CountRunRelics(List<RunHistoryRelicRecord> relics)
     {
         if (relics == null || relics.Count == 0)
@@ -686,8 +765,8 @@ public static partial class GameInfo
 
         record.Summary = BuildLevelNodeSummary(record);
 
-        CompletedLevelNodeRecords ??= new Dictionary<Vector2I, LevelNodeCompletionRecord>();
-        CompletedLevelNodeRecords[node.SelfCoordinate] = record;
+        CompletedLevelNodeRecords ??= new Dictionary<string, LevelNodeCompletionRecord>();
+        CompletedLevelNodeRecords[GetLevelNodeRecordKey(record.MapLevel, node.SelfCoordinate)] = record;
 
         if (_activeLevelNodeSnapshot?.Coordinate == node.SelfCoordinate)
             _activeLevelNodeSnapshot = null;
@@ -703,22 +782,34 @@ public static partial class GameInfo
 
     public static string GetLevelNodeCompletionSummary(Vector2I coordinate)
     {
+        string key = GetLevelNodeRecordKey(CurrentLevel, coordinate);
         if (
             CompletedLevelNodeRecords == null
-            || !CompletedLevelNodeRecords.TryGetValue(coordinate, out var record)
+            || !CompletedLevelNodeRecords.TryGetValue(key, out var record)
             || record == null
         )
         {
-            return string.Empty;
+            record = CompletedLevelNodeRecords
+                ?.Values.FirstOrDefault(record =>
+                    record != null
+                    && record.MapLevel == CurrentLevel
+                    && record.Coordinate == coordinate
+                );
+
+            if (record == null)
+                return string.Empty;
         }
 
         if (!string.IsNullOrWhiteSpace(record.Summary))
             return record.Summary;
 
         record.Summary = BuildLevelNodeSummary(record);
-        CompletedLevelNodeRecords[coordinate] = record;
+        CompletedLevelNodeRecords[key] = record;
         return record.Summary;
     }
+
+    private static string GetLevelNodeRecordKey(int mapLevel, Vector2I coordinate) =>
+        $"{mapLevel}:{coordinate.X}:{coordinate.Y}";
 
     private static string BuildLevelNodeSummary(LevelNodeCompletionRecord record)
     {

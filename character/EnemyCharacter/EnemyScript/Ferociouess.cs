@@ -91,7 +91,7 @@ public partial class FerociouessRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
         MaxLife = 26;
-        Power = 5;
+        Power = 12;
         Survivability = 5;
         Speed = 7;
         SkillIDs =
@@ -108,7 +108,7 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 16;
+    private const int BaseDamage = 2;
     private const int SelfPowerGain = 2;
 
     public FerociouessAttack()
@@ -123,7 +123,10 @@ public partial class FerociouessAttack : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
+            AttackStep(
+                baseDamage: BaseDamage,
+                target: HostileTargetReference.All
+            ),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
@@ -147,7 +150,7 @@ public partial class FerociouessSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -156,16 +159,14 @@ public partial class FerociouessSurvive : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(0)
-            ),
-            ModifyPropertyStep(PropertyType.Power, 3)
+                target: HostileTargetReference.All
+            )
         );
     }
 }
 
 public partial class FerociouessSpecial : Skill
 {
-    private const int BaseDamage = 5;
     private const int BurstPowerMultiplier = 2;
 
     public FerociouessSpecial()
@@ -181,11 +182,10 @@ public partial class FerociouessSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: 0,
-                powerMultiplier: BurstPowerMultiplier,
-                target: HostileTargets(0)
+                multiplier: BurstPowerMultiplier,
+                target: HostileTargetReference.All
             )
         );
     }

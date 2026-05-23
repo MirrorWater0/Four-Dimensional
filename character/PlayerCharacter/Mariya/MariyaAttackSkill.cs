@@ -7,7 +7,7 @@ public partial class MariyaAttackSkill { }
 public partial class MendSlash : Skill
 {
     private const int BaseDamage = 7;
-    private const int BaseHeal = 5;
+    private const int BaseHeal = 0;
 
     public MendSlash()
         : base(SkillTypes.Attack)
@@ -15,16 +15,16 @@ public partial class MendSlash : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "愈合斩";
+    public override string SkillName { get; set; } = "愈合之刃";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             HealStep(
                 baseHeal: BaseHeal,
-                target: TargetReference.FrontMost,
+                target: TargetReference.All,
                 preferNonFull: true,
                 rebirth: false
             )
@@ -34,7 +34,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 10;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -48,7 +48,7 @@ public partial class SwapSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             SwapPositionFriendlyStep(relativeIndexA: -1, relativeIndexB: 1)
         );
     }
@@ -57,7 +57,6 @@ public partial class SwapSlash : Skill
 public partial class SiphonSlash : Skill
 {
     private const int BaseDamage = 5;
-    private const string AttackTargetKey = "siphon_target";
 
     public SiphonSlash()
         : base(SkillTypes.Attack)
@@ -71,13 +70,13 @@ public partial class SiphonSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: AttackTargetKey),
+            AttackStep(baseDamage: BaseDamage),
             HealStep(
                 baseHeal: _ =>
                     (
                         OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
                             source: OwnerCharater,
-                            target: GetStoredTarget(AttackTargetKey)
+                            target: GetAttackTarget()
                         ) ?? 0
                     ) / 2,
                 target: TargetReference.LowestLife,
@@ -92,7 +91,7 @@ public partial class ShatterSlash : Skill
     private const int BaseDamage = 9;
     private const int RequiredHitCount = 4;
     private const int RebirthStacks = 1;
-    private const int NextAllySelfDamage = 15;
+    private const int NextAllySelfDamage = 23;
 
     private int _recordedHitCount;
 
@@ -117,7 +116,10 @@ public partial class ShatterSlash : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0)),
+            AttackStep(
+                baseDamage: BaseDamage,
+                target: HostileTargetReference.All
+            ),
             ConditionStep(
                 () => _recordedHitCount >= RequiredHitCount,
                 $"命中至少{RequiredHitCount}个敌人",
@@ -127,7 +129,7 @@ public partial class ShatterSlash : Skill
                     target: TargetReference.Next
                 )
             ),
-            HurtFriendly(NextAllySelfDamage, index: 1)
+            HurtFriendly(NextAllySelfDamage, TargetReference.Next)
         );
     }
 }
@@ -150,8 +152,11 @@ public partial class ChargedBlade : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(
+                baseDamage: BaseDamage,
+                target: HostileTargets(MaxTargets)
+            ),
+            AttackStep(baseDamage: BaseDamage),
             ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
         );
     }
@@ -174,9 +179,9 @@ public partial class CrescentWind : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: BaseDamage,
-                powerMultiplier: 1,
+                multiplier: 1,
                 target: HostileTargetsEachRowFirst()
             ),
             ApplyBuffHostile(
@@ -205,7 +210,7 @@ public partial class ArcTrack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             DrawCardsStep(
                 _ => GetAllAllyWithOrder(dyingFilter: true).Length / 2,
                 "每有2名己方角色存活，抽1张牌"
@@ -232,13 +237,17 @@ public partial class Sacrifice : Skill
     {
         return new SkillPlan(
             this,
-            HurtFriendly(allyHurt, all: true),
+            HurtFriendly(allyHurt, TargetReference.All),
             ModifyPropertyStep(
                 type: PropertyType.MaxLife,
                 value: -DeMax,
                 target: TargetReference.All
             ),
-            AoeDamageStep(baseDamage: basisDamage, powerMultiplier: 2, target: HostileTargets(0))
+            AttackStep(
+                baseDamage: basisDamage,
+                multiplier: 2,
+                target: HostileTargetReference.All
+            )
         );
     }
 }

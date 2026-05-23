@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://b4i6folibqjya"]
+
+[ext_resource type="Script" uid="uid://17y24fe7hfod" path="res://Audio/AudioManager.cs" id="1"]
+
+[node name="AudioManager" type="Node" unique_id=1535016815]
+process_mode = 3
+script = ExtResource("1")
+
+[node name="AttackPlayer" type="AudioStreamPlayer" parent="." unique_id=2016564275]
+pitch_scale = 0.61
+
+[node name="HurtPlayer" type="AudioStreamPlayer" parent="." unique_id=268489212]
+pitch_scale = 1.8
+
+[node name="BlockGainPlayer" type="AudioStreamPlayer" parent="." unique_id=2129259566]
+
+[node name="BlockImpactPlayer" type="AudioStreamPlayer" parent="." unique_id=154081632]

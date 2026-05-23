@@ -20,6 +20,29 @@ public partial class Map : Control
             ?? GetNodeOrNull<Label>("UI/RegionLabel");
     public Label DifficultyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
+    private Label TransitionEnergyLabel =>
+        field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Label");
+    private Label RelicLabel =>
+        field ??= GetNodeOrNull<Label>("PlayerResourceState/RelicContainer/Label");
+    private Label ReadyButtonLabel =>
+        field ??= GetNodeOrNull<Label>("UI/ReadyButton/Label");
+    private Label NodeLegendTitleLabel =>
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Title");
+    private Label NodeLegendNormalLabel =>
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row/Label");
+    private Label NodeLegendEventLabel =>
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row/Label");
+    private Label NodeLegendShopLabel =>
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row/Label");
+    private Label NodeLegendEliteLabel =>
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row/Label");
+    private Label NodeLegendBossLabel =>
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row/Label");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
     private TextureRect MiniMapPreview => field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
     private Control MiniMapPlayerIndicator =>
@@ -223,7 +246,8 @@ public partial class Map : Control
             return;
         }
 
-        SeedLabel.Text = $"Seed: {GameInfo.Seed}";
+        LocalizeStaticTexts();
+        SeedLabel.Text = I18n.Format("ui.map.seed", "Seed: {value}", ("value", GameInfo.Seed));
         if (DifficultyLabel != null)
         {
             int difficulty = Math.Clamp(
@@ -231,7 +255,11 @@ public partial class Map : Control
                 GameInfo.MinDifficulty,
                 GameInfo.MaxDifficulty
             );
-            DifficultyLabel.Text = $"难度 {difficulty}";
+            DifficultyLabel.Text = I18n.Format(
+                "ui.common.difficulty_value",
+                "难度 {value}",
+                ("value", difficulty)
+            );
         }
         UpdateRegionLabel();
         Camera.LimitEnabled = false;
@@ -524,10 +552,43 @@ public partial class Map : Control
 
         _regionLabelInitialized = true;
         _lastRegionTwoUnlocked = regionTwoUnlocked;
-        RegionLabel.Text = regionTwoUnlocked ? "区域 2" : "区域 1";
+        RegionLabel.Text = I18n.Tr(
+            regionTwoUnlocked ? "ui.map.region_2" : "ui.map.region_1",
+            regionTwoUnlocked ? "区域 2" : "区域 1"
+        );
         RegionLabel.Modulate = regionTwoUnlocked
             ? new Color(1f, 0.88f, 0.38f, 0.96f)
             : new Color(0.7f, 0.92f, 1f, 0.92f);
+    }
+
+    private void LocalizeStaticTexts()
+    {
+        if (TransitionEnergyLabel != null)
+            TransitionEnergyLabel.Text = I18n.Tr("ui.common.core_energy", "跃迁能量");
+
+        if (RelicLabel != null)
+            RelicLabel.Text = I18n.Tr("ui.common.relics", "遗物");
+
+        if (ReadyButtonLabel != null)
+            ReadyButtonLabel.Text = I18n.Tr("ui.map.tactic", "战术");
+
+        if (NodeLegendTitleLabel != null)
+            NodeLegendTitleLabel.Text = I18n.Tr("ui.map.legend_title", "节点图式");
+
+        if (NodeLegendNormalLabel != null)
+            NodeLegendNormalLabel.Text = I18n.Tr("ui.map.node_type.normal", "普通战斗");
+
+        if (NodeLegendEventLabel != null)
+            NodeLegendEventLabel.Text = I18n.Tr("ui.map.node_type.event", "事件");
+
+        if (NodeLegendShopLabel != null)
+            NodeLegendShopLabel.Text = I18n.Tr("ui.map.node_type.shop", "商店");
+
+        if (NodeLegendEliteLabel != null)
+            NodeLegendEliteLabel.Text = I18n.Tr("ui.map.node_type.elite", "精英");
+
+        if (NodeLegendBossLabel != null)
+            NodeLegendBossLabel.Text = I18n.Tr("ui.map.node_type.boss", "首领");
     }
 
     private void GetCameraHorizontalCenterBoundary(out float minX, out float maxX)

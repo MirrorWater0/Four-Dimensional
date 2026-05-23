@@ -7,7 +7,7 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 9;
+    private const int BaseBlock = 5;
     private const int PowerGain = 4;
 
     public FinalGuard()
@@ -22,7 +22,7 @@ public partial class FinalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
@@ -34,7 +34,7 @@ public partial class FinalGuard : Skill
 
 public partial class CrystalGuard : Skill
 {
-    private const int BaseBlock = 2;
+    private const int BaseBlock = 5;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -46,15 +46,42 @@ public partial class CrystalGuard : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(TargetReference.All, baseBlock: BaseBlock));
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, target: TargetReference.All));
+    }
+}
+
+public partial class StillWaterMirror : Skill
+{
+    private const int BaseBlock = 8;
+    private const int SurvivabilityGain = 4;
+
+    public StillWaterMirror()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "明镜止水";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock),
+            ModifyPropertyStep(
+                type: PropertyType.Survivability,
+                value: SurvivabilityGain,
+                target: TargetReference.ManualFriendly
+            )
+        );
     }
 }
 
 public partial class QuietVeil : Skill
 {
     private const int InvisibleStacks = 2;
-    private const int MaxLifeGain = 10;
-    private const int SurvivabilityGain = 6;
+    private const int MaxLifeGain = 8;
+    private const int SurvivabilityGain = 3;
     private const int BaseHeal = 5;
 
     public QuietVeil()
@@ -95,7 +122,7 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: 0),
+            BlockStep(baseBlock: 0),
             EnergyStep(delta: 1, target: TargetReference.Next),
             EnergyStep(delta: 1, target: TargetReference.Previous)
         );
@@ -104,7 +131,7 @@ public partial class EnergyRelay : Skill
 
 public partial class TouchOfGod : Skill
 {
-    private const int BaseBlock = -3;
+    private const int BaseBlock = 0;
     private const int DivinityStacks = 1;
     public override int EnergyCost => 1;
 
@@ -120,7 +147,7 @@ public partial class TouchOfGod : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(relativeIndex: 0, baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Divinity,
                 stacks: DivinityStacks,

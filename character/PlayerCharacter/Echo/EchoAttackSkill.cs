@@ -20,9 +20,9 @@ public partial class SacredOnslaught : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(
+            AttackStep(
                 baseDamage: 0,
-                powerMultiplier: 1,
+                multiplier: 1,
                 target: HostileTargets(MaxTargets),
                 times: 1
             ),
@@ -83,8 +83,8 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargets(1))
+            AttackStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2),
+            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.One)
         );
     }
 }
@@ -106,11 +106,11 @@ public partial class EchoPuncture : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, times: 2),
+            AttackStep(baseDamage: BaseDamage, times: 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             )
         );
     }
@@ -119,7 +119,6 @@ public partial class EchoPuncture : Skill
 public partial class Extract : Skill
 {
     private const int BaseDamage = 7;
-    private const string PrimaryTargetKey = "萃取目标";
 
     public Extract()
         : base(SkillTypes.Attack)
@@ -133,9 +132,15 @@ public partial class Extract : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
+            AttackStep(baseDamage: BaseDamage),
             EnergyStep(_ => GetTotalHostileWeakenStacks()),
-            TextStep($"获得等同于敌方全阵{Buff.BuffName.Weaken.GetDescription()}层数总和的能量。")
+            TextStep(
+                I18n.Format(
+                    "skill.extract.text.total_weaken_energy",
+                    "获得等同于敌方全阵{buff}层数总和的能量。",
+                    ("buff", Buff.BuffName.Weaken.GetDescription())
+                )
+            )
         );
     }
 
@@ -161,7 +166,6 @@ public partial class Extract : Skill
 public partial class BladeOfSlaughter : Skill
 {
     private const int BaseDamage = 7;
-    private const string PrimaryTargetKey = "弑杀之刃目标";
 
     public BladeOfSlaughter()
         : base(SkillTypes.Attack)
@@ -175,21 +179,9 @@ public partial class BladeOfSlaughter : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage, storeAs: PrimaryTargetKey),
-            ConditionStep(
-                condition: TargetHasWeaken,
-                conditionDescription: "攻击目标拥有虚弱",
-                CarryStep(target: TargetReference.Previous, skillIndex: 1)
-            )
+            AttackStep(baseDamage: BaseDamage),
+            CarryStep(target: TargetReference.Previous, skillIndex: 1)
         );
-    }
-
-    private bool TargetHasWeaken()
-    {
-        Character target = GetStoredTarget(PrimaryTargetKey);
-        return target?.AttackBuffs?.Any(buff =>
-                buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
-            ) == true;
     }
 }
 
@@ -210,11 +202,11 @@ public partial class DisasterImpact : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Disaster,
                 stacks: DisasterStacks,
-                target: HostileTargets(1)
+                target: HostileTargetReference.One
             )
         );
     }
@@ -238,12 +230,11 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: 0, powerMultiplier: 1),
             EnergyTimesWhileStep(
                 paidEnergyPerLoop: PaidEnergyPerCast,
                 loopSteps:
                 [
-                    AttackPrimaryStep(baseDamage: -2, powerMultiplier: 1),
+                    AttackStep(baseDamage: 0, multiplier: 1),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )
@@ -269,8 +260,15 @@ public class SonicBoom : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: 3, target: HostileTargets(0)),
-            AoeDamageStep(baseDamage: BaseDamage, target: HostileTargets(0), times: ExtraTimes)
+            AttackStep(
+                baseDamage: 0,
+                target: HostileTargetReference.All
+            ),
+            AttackStep(
+                baseDamage: BaseDamage,
+                target: HostileTargetReference.All,
+                times: ExtraTimes
+            )
         );
     }
 }
@@ -293,7 +291,10 @@ public class PhaseEcho : Skill
     {
         return new SkillPlan(
             this,
-            AoeDamageStep(baseDamage: damage),
+            AttackStep(
+                baseDamage: damage,
+                target: HostileTargetReference.All
+            ),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -316,10 +317,15 @@ public class ReverbChain : Skill
     {
         return new SkillPlan(
             this,
-            TextStep("释放x次(x为本场战斗中其他己方角色的行动次数)。"),
+            TextStep(
+                I18n.Tr(
+                    "skill.reverb_chain.text.loop_by_allied_actions",
+                    "释放x次(x为本场战斗中其他己方角色的行动次数)。"
+                )
+            ),
             EnergyTimesWhileStep(
                 times: GetLoopTimes,
-                loopSteps: [AttackPrimaryStep(baseDamage: BaseDamage, powerMultiplier: 1)]
+                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: 1)]
             )
         );
     }

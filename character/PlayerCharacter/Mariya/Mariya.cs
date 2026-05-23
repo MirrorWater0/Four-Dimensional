@@ -5,10 +5,15 @@ using Godot;
 public partial class Mariya : PlayerCharacter
 {
     private const int PassiveHealBase = 8;
+    private const int PassiveUpgradeHealBonus = 8;
 
     public const string PassiveNameText = "治愈";
     public static string PassiveDescriptionText =>
-        $"回合结束时：回复最低生命队友{PassiveHealBase}点基础生命。";
+        I18n.Format(
+            "character.mariya.passive.description",
+            "回合结束时：回复最低生命队友{heal}点基础生命。",
+            ("heal", PassiveHealBase)
+        );
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Mariya;
     public override string CharacterName { get; set; } = "Mariya";
@@ -45,7 +50,8 @@ public partial class Mariya : PlayerCharacter
         if (target == null)
             return;
 
-        target.Recover(PassiveHealBase, source: this);
+        int heal = PassiveHealBase + (HasPassiveTalentUpgrade() ? PassiveUpgradeHealBonus : 0);
+        target.Recover(heal, source: this);
     }
 }
 
@@ -53,8 +59,8 @@ public partial class PlayerCharacterRegistry
 {
     public PlayerInfoStructure Mariya = new PlayerInfoStructure()
     {
-        CharacterName = "Mariya",
-        PassiveName = global::Mariya.PassiveNameText,
+        CharacterName = I18n.Tr("character.mariya.name", "玛瑞娅"),
+        PassiveName = I18n.Tr("character.mariya.passive.name", global::Mariya.PassiveNameText),
         PassiveDescription = global::Mariya.PassiveDescriptionText,
         LifeMax = 22,
         Power = 4,

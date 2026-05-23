@@ -4,13 +4,16 @@ using Godot;
 
 public partial class Kasiya : PlayerCharacter
 {
-    private const int PassiveAttackBaseHeal = -7;
-    private const int PassiveSurvivePowerGain = 1;
+    private const int PassiveAttackBaseHeal = -4;
+    private const int PassiveUpgradeSpecialSurvivabilityGain = 1;
 
     public const string PassiveNameText = "战意";
     public static string PassiveDescriptionText =>
-        $"当其他队友使用攻击技能：回复{PassiveAttackBaseHeal}点基础生命。\n"
-        + $"当其他队友使用生存技能：获得{PassiveSurvivePowerGain}点力量。";
+        I18n.Format(
+            "character.kasiya.passive.description",
+            "当其他队友使用攻击技能：回复{heal}点基础生命。",
+            ("heal", PassiveAttackBaseHeal)
+        );
 
     Label label => field ??= GetNode<Label>("Label");
     public override PackedScene CharaterScene { get; set; } = StartInterface._Kasiya;
@@ -43,8 +46,12 @@ public partial class Kasiya : PlayerCharacter
             return;
         }
 
-        if (skill.SkillType == Skill.SkillTypes.Survive)
-            await IncreaseProperties(PropertyType.Power, PassiveSurvivePowerGain, this);
+        if (skill.SkillType == Skill.SkillTypes.Special && HasPassiveTalentUpgrade())
+            await IncreaseProperties(
+                PropertyType.Survivability,
+                PassiveUpgradeSpecialSurvivabilityGain,
+                this
+            );
     }
 }
 
@@ -52,10 +59,10 @@ public partial class PlayerCharacterRegistry
 {
     public PlayerInfoStructure Kasiya = new PlayerInfoStructure()
     {
-        CharacterName = "Kasiya",
-        PassiveName = global::Kasiya.PassiveNameText,
+        CharacterName = I18n.Tr("character.kasiya.name", "Kasiya"),
+        PassiveName = I18n.Tr("character.kasiya.passive.name", global::Kasiya.PassiveNameText),
         PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 31,
+        LifeMax = 28,
         Power = 6,
         Survivability = 6,
         Speed = 6,

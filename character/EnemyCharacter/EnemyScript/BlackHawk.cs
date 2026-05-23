@@ -61,9 +61,9 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 50;
-        Power = 10;
-        Survivability = 5;
+        MaxLife = 60;
+        Power = 7;
+        Survivability = 10;
         Speed = 11;
         SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
 
@@ -89,13 +89,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(
-                baseDamage: 0,
-                powerMultiplier: PowerMultiplier,
-                times: 3,
-                prefix: "每段造成",
-                suffix: "点伤害，共3段。"
-            ),
+            AttackStep(baseDamage: 0, multiplier: PowerMultiplier, times: 3),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -103,7 +97,7 @@ public partial class BlackHawkAttack : Skill
 
 public partial class BlackHawkSurvive : Skill
 {
-    private const int HealAmount = 5;
+    private const int HealAmount = 10;
     private const int InvisibleStacks = 2;
 
     public BlackHawkSurvive()
@@ -118,28 +112,19 @@ public partial class BlackHawkSurvive : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(HealAmount, TargetReference.Self, descriptionOverride: $"治疗{HealAmount}点。"),
-            HealStep(
-                HealAmount,
-                TargetReference.Previous,
-                descriptionOverride: $"上一位角色治疗{HealAmount}点。"
-            ),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self),
-            ApplyBuffFriendly(
-                Buff.BuffName.Invisible,
-                InvisibleStacks,
-                TargetReference.Previous
-            )
+            HealStep(HealAmount, TargetReference.Previous),
+            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.Previous),
+            ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
 }
 
 public partial class BlackHawkSpecial : Skill
 {
-    private const int SurvivabilityDown = 4;
     private const int VulnerableStacks = 6;
     private const int MaxTargets = 2;
     int rtimes = 3;
+
     public BlackHawkSpecial()
         : base(SkillTypes.Special)
     {
@@ -153,15 +138,14 @@ public partial class BlackHawkSpecial : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown),
             ApplyBuffHostile(Buff.BuffName.Vulnerable, VulnerableStacks),
             EnergyTimesWhileStep(
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AoeDamageStep(
+                    AttackStep(
                         baseDamage: 0,
-                        powerMultiplier: 1,
+                        multiplier: 1,
                         target: HostileTargets(MaxTargets)
                     ),
                 ]

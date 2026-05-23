@@ -15,6 +15,8 @@ public partial class LevelProgress : Control
     private const int MaxEliteNodes = 6;
     private const int MinShopNodes = 2;
     private const int MaxShopNodes = 5;
+    private const int RegionTwoMaxEliteNodes = MaxEliteNodes - 1;
+    private const int RegionTwoMaxShopNodes = MaxShopNodes - 1;
     private const int FirstEliteStage = 3;
     private const int FirstShopStage = 1;
     private const int EventChancePercent = 24;
@@ -696,12 +698,12 @@ public partial class LevelProgress : Control
         var accessWay = _accessWayScene.Instantiate<ProgressBar>();
         _connectionContainer.AddChild(accessWay);
 
-        Vector2 nodeCenterOffset = new Vector2(40, 40);
+        Vector2 nodeCenterOffset = from.Size * 0.5f;
         Vector2 fromCenter = from.Position + nodeCenterOffset;
         Vector2 toCenter = to.Position + nodeCenterOffset;
         Vector2 direction = (toCenter - fromCenter).Normalized();
 
-        float halfSize = 40f;
+        float halfSize = Mathf.Max(nodeCenterOffset.X, nodeCenterOffset.Y);
         float maxComponent = Mathf.Max(Mathf.Abs(direction.X), Mathf.Abs(direction.Y));
         float distToEdge = (maxComponent > 0.001f) ? (halfSize / maxComponent) : halfSize;
         float margin = 5f;
@@ -836,8 +838,10 @@ public partial class LevelProgress : Control
             }
         }
 
-        int shopCount = rng.Next(MinShopNodes, MaxShopNodes + 1);
-        int eliteCount = rng.Next(MinEliteNodes, MaxEliteNodes + 1);
+        int maxShopNodes = GetMaxShopNodesForCurrentRegion();
+        int maxEliteNodes = GetMaxEliteNodesForCurrentRegion();
+        int shopCount = rng.Next(MinShopNodes, maxShopNodes + 1);
+        int eliteCount = rng.Next(MinEliteNodes, maxEliteNodes + 1);
         AssignDistributedNodeType(
             LevelNode.LevelType.Shop,
             shopCount,
@@ -864,6 +868,16 @@ public partial class LevelProgress : Control
                 node.ColorChose();
             }
         }
+    }
+
+    private static int GetMaxEliteNodesForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxEliteNodes : MaxEliteNodes;
+    }
+
+    private static int GetMaxShopNodesForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxShopNodes : MaxShopNodes;
     }
 
     private void AssignDistributedNodeType(

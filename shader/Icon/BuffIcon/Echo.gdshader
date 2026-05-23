@@ -10,7 +10,8 @@ uniform float thickness : hint_range(0.5, 2.5) = 1.0;
 
 float ring_mask(float dist, float radius, float width)
 {
-    return smoothstep(width, 0.0, abs(dist - radius));
+    float aa = max(fwidth(dist), 0.0015);
+    return smoothstep(width + aa, 0.0, abs(dist - radius));
 }
 
 void fragment()
@@ -19,6 +20,7 @@ void fragment()
     float time = TIME * animation_speed;
     float dist = length(uv);
     float angle = atan(uv.y, uv.x);
+    float aa = max(fwidth(dist), 0.0015);
     float ring_thickness = max(thickness, 0.001);
     float arc_threshold = mix(0.72, 0.56, clamp((ring_thickness - 0.5) / 2.0, 0.0, 1.0));
 
@@ -33,7 +35,7 @@ void fragment()
 
     float radial_wave = sin(dist * 34.0 - time * 5.2);
     float angular_wave = sin(angle * 6.0 + time * 2.0);
-    float echo_arcs = smoothstep(0.36, arc_threshold, radial_wave * 0.65 + angular_wave * 0.35);
+    float echo_arcs = smoothstep(0.36 - aa, arc_threshold + aa, radial_wave * 0.65 + angular_wave * 0.35);
     echo_arcs *= smoothstep(0.43, 0.08, dist);
 
     float core = 1.0 - smoothstep(0.05, 0.16, dist);

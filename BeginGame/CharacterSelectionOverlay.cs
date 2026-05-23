@@ -74,6 +74,8 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Eyebrow");
     private Label HintLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/HintLabel");
     private Label StatusLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/StatusLabel");
+    private Label TeamLabel =>
+        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamLabel");
     private HBoxContainer TeamSlotsContainer =>
         field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamSlots");
     private HFlowContainer CardGrid =>
@@ -100,6 +102,8 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Label>(
             "SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox/DifficultyLabel"
         );
+    private Label SeedLabel =>
+        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedLabel");
     private Tip DifficultyTooltip => _difficultyTooltip ??= EnsureDifficultyTooltip();
     private LineEdit SeedInput =>
         field ??= GetNodeOrNull<LineEdit>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedInput");
@@ -108,6 +112,7 @@ public partial class CharacterSelectionOverlay : Control
         MouseFilter = MouseFilterEnum.Stop;
         FocusMode = FocusModeEnum.All;
         ProcessMode = ProcessModeEnum.Always;
+        LocalizeStaticTexts();
 
         if (CancelButton != null)
         {
@@ -228,7 +233,12 @@ public partial class CharacterSelectionOverlay : Control
     {
         _openRequested = true;
         _confirmAction = confirmAction;
-        _selectedDifficulty = MinDifficulty;
+        UserSettings.EnsureLoaded();
+        _selectedDifficulty = Math.Clamp(
+            UserSettings.LastSelectedDifficulty,
+            MinDifficulty,
+            MaxDifficulty
+        );
         _requiredSelectionCount = Math.Max(
             1,
             Math.Min(requiredSelectionCount, availableCharacters?.Count ?? DefaultRequiredSelectionCount)
@@ -394,9 +404,17 @@ public partial class CharacterSelectionOverlay : Control
                 selectedIndex >= 0 || focused,
                 selectedIndex >= 0
                     ? focused
-                        ? $"入队 #{selectedIndex + 1}  查看"
-                        : $"入队 #{selectedIndex + 1}"
-                    : "预览中"
+                        ? I18n.Format(
+                            "ui.character_select.badge.selected_view",
+                            "入队 #{index}  查看",
+                            ("index", selectedIndex + 1)
+                        )
+                        : I18n.Format(
+                            "ui.character_select.badge.selected",
+                            "入队 #{index}",
+                            ("index", selectedIndex + 1)
+                        )
+                    : I18n.Tr("ui.character_select.badge.previewing", "预览中")
             );
         }
 
@@ -405,8 +423,13 @@ public partial class CharacterSelectionOverlay : Control
         {
             ConfirmButton.Disabled = !exactSelection;
             ConfirmButton.Text = exactSelection
-                ? "确认并开始"
-                : $"确认并开始 {_selectedOptions.Count}/{_requiredSelectionCount}";
+                ? I18n.Tr("ui.character_select.confirm", "确认并开始")
+                : I18n.Format(
+                    "ui.character_select.confirm_progress",
+                    "确认并开始 {selected}/{required}",
+                    ("selected", _selectedOptions.Count),
+                    ("required", _requiredSelectionCount)
+                );
         }
 
         RefreshTeamSlots();
@@ -421,16 +444,30 @@ public partial class CharacterSelectionOverlay : Control
         if (_focusedOption == null)
             StatusLabel.Text = BuildSquadStatusText();
         else
-            StatusLabel.Text =
-                $"{BuildSquadStatusText()}    |    查看 {_focusedOption.Info.CharacterName}：生命 {_focusedOption.Info.LifeMax}    力量 {_focusedOption.Info.Power}    生存 {_focusedOption.Info.Survivability}    速度 {_focusedOption.Info.Speed}";
+            StatusLabel.Text = I18n.Format(
+                "ui.character_select.status.inspect",
+                "{squad}    |    查看 {name}：生命 {life}    力量 {power}    生存 {survivability}    速度 {speed}",
+                ("squad", BuildSquadStatusText()),
+                ("name", _focusedOption.Info.CharacterName),
+                ("life", _focusedOption.Info.LifeMax),
+                ("power", _focusedOption.Info.Power),
+                ("survivability", _focusedOption.Info.Survivability),
+                ("speed", _focusedOption.Info.Speed)
+            );
     }
 
     private string BuildSquadStatusText()
     {
         string names = _selectedOptions.Count == 0
-            ? "未选择"
+            ? I18n.Tr("ui.character_select.none_selected", "未选择")
             : string.Join(" / ", _selectedOptions.Select(option => option.Info.CharacterName));
-        return $"出战队伍 {_selectedOptions.Count}/{_requiredSelectionCount}：{names}";
+        return I18n.Format(
+            "ui.character_select.squad_status",
+            "出战队伍 {selected}/{required}：{names}",
+            ("selected", _selectedOptions.Count),
+            ("required", _requiredSelectionCount),
+            ("names", names)
+        );
     }
 
     private void RefreshTeamSlots()
@@ -508,7 +545,9 @@ public partial class CharacterSelectionOverlay : Control
 
         var positionLabel = new Label
         {
-            Text = filled ? $"#{index + 1} 出战" : $"#{index + 1} 空位",
+            Text = filled
+                ? I18n.Format("ui.character_select.slot.filled", "#{index} 出战", ("index", index + 1))
+                : I18n.Format("ui.character_select.slot.empty", "#{index} 空位", ("index", index + 1)),
             MouseFilter = MouseFilterEnum.Ignore,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -521,7 +560,9 @@ public partial class CharacterSelectionOverlay : Control
 
         var nameLabel = new Label
         {
-            Text = filled ? option.Info.CharacterName : "点击角色加入",
+            Text = filled
+                ? option.Info.CharacterName
+                : I18n.Tr("ui.character_select.slot.click_to_join", "点击角色加入"),
             MouseFilter = MouseFilterEnum.Ignore,
             ClipText = true,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -656,15 +697,15 @@ public partial class CharacterSelectionOverlay : Control
             HeroImage.Texture = option.Hero ?? option.Portrait;
 
         if (EyebrowLabel != null)
-            EyebrowLabel.Text = "角色档案";
+            EyebrowLabel.Text = I18n.Tr("ui.character_select.profile", "角色档案");
 
         if (TitleLabel != null)
-            TitleLabel.Text = option.Info.CharacterName ?? "Character";
+            TitleLabel.Text = option.Info.CharacterName ?? I18n.Tr("ui.common.character", "Character");
 
         if (HintLabel != null)
         {
             string passiveName = string.IsNullOrWhiteSpace(option.Info.PassiveName)
-                ? "被动"
+                ? I18n.Tr("ui.common.passive", "被动")
                 : option.Info.PassiveName;
             string passiveDesc = string.IsNullOrWhiteSpace(option.Info.PassiveDescription)
                 ? "-"
@@ -796,11 +837,12 @@ public partial class CharacterSelectionOverlay : Control
         SetSelectionControlsEnabled(false);
 
         if (ConfirmButton != null)
-            ConfirmButton.Text = "启动中...";
+            ConfirmButton.Text = I18n.Tr("ui.character_select.starting", "启动中...");
 
         if (GetTree() != null)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
+        UserSettings.SetLastSelectedDifficulty(difficulty);
         _confirmAction?.Invoke(selectedCharacters, seed, difficulty);
     }
 
@@ -992,13 +1034,40 @@ public partial class CharacterSelectionOverlay : Control
     private void RefreshDifficultyState()
     {
         if (DifficultyValueLabel != null)
-            DifficultyValueLabel.Text = $"难度 {_selectedDifficulty}";
+            DifficultyValueLabel.Text = I18n.Format(
+                "ui.common.difficulty_value",
+                "难度 {value}",
+                ("value", _selectedDifficulty)
+            );
 
         if (DifficultyMinusButton != null)
             DifficultyMinusButton.Disabled = _selectedDifficulty <= MinDifficulty;
 
         if (DifficultyPlusButton != null)
             DifficultyPlusButton.Disabled = _selectedDifficulty >= MaxDifficulty;
+    }
+
+    private void LocalizeStaticTexts()
+    {
+        if (TeamLabel != null)
+            TeamLabel.Text = I18n.Tr("ui.character_select.team", "TEAM");
+        if (SeedLabel != null)
+            SeedLabel.Text = I18n.Tr("ui.character_select.seed", "SEED");
+        if (SeedInput != null)
+        {
+            SeedInput.PlaceholderText = I18n.Tr(
+                "ui.character_select.seed_placeholder",
+                "empty = random, 0-999999999"
+            );
+        }
+        if (DifficultyLabel != null)
+            DifficultyLabel.Text = I18n.Tr("ui.character_select.difficulty", "DIFFICULTY");
+        if (CancelButton != null)
+            CancelButton.Text = I18n.Tr("ui.common.cancel", "返回");
+        if (EyebrowLabel != null)
+            EyebrowLabel.Text = I18n.Tr("ui.character_select.eyebrow", "SQUAD SELECTION");
+        if (HintLabel != null)
+            HintLabel.Text = I18n.Tr("ui.common.passive", "被动");
     }
 
     private void ShowDifficultyTooltip()

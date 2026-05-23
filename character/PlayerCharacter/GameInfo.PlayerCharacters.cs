@@ -95,6 +95,7 @@ public static partial class GameInfo
 
         info.AllSkills = Skill.GetPlayerSkillPool(info.CharacterName);
         NormalizeTakenSkillsForPool(ref info);
+        NormalizeStarterBattleDeckIfNeeded(ref info);
         EnsureTakenSkillsAreTracked(ref info);
     }
 
@@ -206,6 +207,13 @@ public static partial class GameInfo
         )
             ? NightingaleStarterBattleDeck
             : StarterBattleDeck;
+    }
+
+    private static void NormalizeStarterBattleDeckIfNeeded(ref PlayerInfoStructure info)
+    {
+        info.GainedSkills ??= new List<SkillID>();
+        if (IsStarterBasicOnlyDeck(info.GainedSkills))
+            info.GainedSkills = new List<SkillID>(GetStarterBattleDeck(info));
     }
 
     private static SkillID PickReplacementSkill(

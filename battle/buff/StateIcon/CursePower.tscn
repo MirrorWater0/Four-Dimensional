@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dqs8qgouc120t"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://cursepowerbuff" path="res://shader/Icon/BuffIcon/CursePower.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_curse_power"]
+shader = ExtResource("2_shd")
+shader_parameter/curse_color = Color(0.42, 0.1, 0.72, 1)
+shader_parameter/rune_color = Color(0.95, 0.5, 1, 1)
+shader_parameter/core_color = Color(0.08, 0.01, 0.12, 1)
+shader_parameter/spark_color = Color(1, 0.9, 0.55, 1)
+shader_parameter/animation_speed = 1.0
+shader_parameter/glow_strength = 0.85
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_curse_power")

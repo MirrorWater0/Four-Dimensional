@@ -15,13 +15,18 @@ public partial class SpaceStationShop : Control
     private const int RareSkillOfferBasePrice = 120;
     private const int SkillOfferPriceVariance = 10;
     private const int StatOfferBasePrice = 20;
+    private const int SpeedOfferPriceBonus = 10;
+    private const int MaxLifeOfferPriceBonus = 10;
     private const int StatOfferPriceVariance = 5;
     private const int EquipmentOfferBasePrice = 100;
     private const int EquipmentOfferPriceVariance = 20;
     private const int PotionOfferBasePrice = 25;
     private const int PotionOfferPriceVariance = 5;
+    private const int PotionOfferPriceBonus = 15;
+    private const int PotionOfferCount = 3;
     private const int RelicOfferCount = 3;
-    private const int RelicOfferBasePrice = 120;
+    private static readonly bool SinglePageLayoutEnabled = true;
+    private const int RelicOfferBasePrice = 150;
     private const int RelicOfferPriceVariance = 20;
     private const float ModuleSelectorTweenDuration = 0.06f;
     private const float ModuleContentFadeOutDuration = 0.10f;
@@ -33,6 +38,8 @@ public partial class SpaceStationShop : Control
     private const float ModuleItemExitOffsetX = 28f;
     private const float ModuleItemExitOffsetY = 8f;
     private const float StatPanelHoverDuration = 0.14f;
+    private const float CatalogOfferHoverDuration = 0.12f;
+    private const float CatalogOfferHoverScale = 1.12f;
     private static readonly Vector2 CompactCatalogTileSize = new(118f, 138f);
     private static readonly Vector2 CompactCatalogIconFrameSize = new(82f, 82f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(250f, 400f);
@@ -47,6 +54,7 @@ public partial class SpaceStationShop : Control
         ItemID.Guard,
         ItemID.ElectromagneticInterference,
         ItemID.SpaceOscillation,
+        ItemID.StreamingTransmission,
     ];
 
     [Export(PropertyHint.Range, "0.35,0.80,0.01")]
@@ -110,7 +118,6 @@ public partial class SpaceStationShop : Control
         public ItemID ItemId;
         public Control View;
         public CardSlot Card;
-        public PanelContainer IconFrame;
         public ColorRect IconRect;
         public Label PriceLabel;
     }
@@ -180,23 +187,37 @@ public partial class SpaceStationShop : Control
     private Control TopLine => field ??= GetNode<Control>("Panel/Decor/TopLine");
     private Control FooterLine => field ??= GetNode<Control>("Panel/Decor/FooterLine");
     private Control StatPanel =>
-        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/StatPanel");
+        field ??= GetNode<Control>(
+            "Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn/StatPanel"
+        );
     private GridContainer StatOffersContainer =>
         field ??= GetNode<GridContainer>(
-            "Panel/MainLayout/ContentArea/StatPanel/StatMargin/StatOffers"
+            "Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn/StatPanel/StatMargin/StatOffers"
         );
-    private GridContainer CatalogGrid =>
+    private GridContainer CatalogGrid => RelicGrid;
+    private GridContainer RelicGrid =>
         field ??= GetNode<GridContainer>(
-            "Panel/MainLayout/ContentArea/CatalogViewport/CatalogMargin/CatalogGrid"
+            "Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/RelicViewport/RelicMargin/RelicGrid"
+        );
+    private GridContainer PotionGrid =>
+        field ??= GetNode<GridContainer>(
+            "Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/PotionViewport/PotionMargin/PotionGrid"
         );
     private GridContainer SkillOffersContainer =>
         field ??= GetNode<GridContainer>(
-            "Panel/MainLayout/ContentArea/SkillPanel/Margin/VBox/SkillOffers"
+            "Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox/SkillOffers"
         );
-    private Control CatalogViewport =>
-        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/CatalogViewport");
+    private Control CatalogViewport => RelicViewport;
+    private Control RelicViewport =>
+        field ??= GetNode<Control>(
+            "Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/RelicViewport"
+        );
+    private Control PotionViewport =>
+        field ??= GetNode<Control>(
+            "Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/PotionViewport"
+        );
     private Control SkillPanel =>
-        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/SkillPanel");
+        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/Sections/SkillPanel");
     private Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
     private PlayerResourceState ResourceState =>
         field ??= GetNodeOrNull<PlayerResourceState>("/root/Map/PlayerResourceState");
@@ -218,6 +239,7 @@ public partial class SpaceStationShop : Control
     private Control _moduleTransitionBlocker;
     private readonly Dictionary<Control, Vector2> _assemblyBasePositions = new();
     private readonly Dictionary<Control, Tween> _statPanelHoverTweens = new();
+    private readonly Dictionary<Control, Tween> _catalogOfferHoverTweens = new();
     private Vector2 _panelBasePosition;
     private bool _catalogOffersBuilt;
     private bool _skillOffersBuilt;
@@ -226,6 +248,7 @@ public partial class SpaceStationShop : Control
     private Task _catalogBuildTask;
     private Task _skillBuildTask;
     private Task _statBuildTask;
+    private Task _singlePageRevealTask;
 
     public static SpaceStationShop Show(Node caller)
     {
@@ -296,12 +319,23 @@ public partial class SpaceStationShop : Control
             parent.MoveChild(this, parent.GetChildCount() - 1);
 
         ApplyModuleVisibility();
-        UpdateModuleButtons();
-        SnapModuleSelectorToCurrentButton();
+        if (!SinglePageLayoutEnabled)
+        {
+            UpdateModuleButtons();
+            SnapModuleSelectorToCurrentButton();
+        }
         RestoreModuleTransitionVisualState(_currentModule);
         RefreshShopState();
         RestoreAssemblyVisualState();
         CaptureTransitionBases();
+        if (SinglePageLayoutEnabled)
+        {
+            ApplyPreIntroVisualState();
+            SetUiInteractive(false);
+            StartSinglePageReveal();
+            return;
+        }
+
         ApplyPreIntroVisualState();
         SetUiInteractive(false);
         PlayIntroAnimation();
@@ -319,6 +353,7 @@ public partial class SpaceStationShop : Control
         HideButton.Pressed += HideOnly;
         WireModuleButtons();
         BindModuleSelector();
+        HideSinglePageContentBeforeLayout();
         BuildShop();
         PanelNode.ItemRectChanged += UpdatePanelPivot;
         MainLayoutNode.ItemRectChanged += UpdateModuleTransitionBlockerLayout;
@@ -327,6 +362,7 @@ public partial class SpaceStationShop : Control
         UpdateModuleTransitionBlockerLayout();
         UpdatePanelPivot();
         EnsureInputBlocker();
+        ConfigureSinglePageLayout();
 
         if (startHidden)
         {
@@ -334,6 +370,15 @@ public partial class SpaceStationShop : Control
             _isClosing = false;
             SetUiInteractive(false);
             Visible = false;
+            return;
+        }
+
+        if (SinglePageLayoutEnabled)
+        {
+            CaptureTransitionBases();
+            ApplyPreIntroVisualState();
+            SetUiInteractive(false);
+            StartSinglePageReveal();
             return;
         }
 
@@ -350,11 +395,13 @@ public partial class SpaceStationShop : Control
         foreach (var tween in _statPanelHoverTweens.Values)
             tween?.Kill();
         _statPanelHoverTweens.Clear();
+        KillCatalogOfferHoverTweens();
         HideRelicTip();
     }
 
     private void BuildShop()
     {
+        KillCatalogOfferHoverTweens();
         ClearStatOffers();
         ClearCatalogCards();
         ClearSkillCards();
@@ -368,6 +415,7 @@ public partial class SpaceStationShop : Control
         _catalogBuildTask = null;
         _skillBuildTask = null;
         _statBuildTask = null;
+        _singlePageRevealTask = null;
 
         StartStatOfferBuild();
 
@@ -405,6 +453,59 @@ public partial class SpaceStationShop : Control
             return;
 
         await EnsureSkillOffersBuiltAsync();
+    }
+
+    private async Task WarmupSinglePageOffersAsync()
+    {
+        HideSinglePageContentBeforeLayout();
+        SetUiInteractive(false);
+
+        await EnsureStatOffersBuiltAsync();
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await EnsureCatalogOffersBuiltAsync();
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await EnsureSkillOffersBuiltAsync();
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        await AwaitSinglePageLayoutSettledAsync();
+        if (!IsInsideTree() || _isClosing)
+            return;
+
+        CaptureTransitionBases();
+        PlayIntroAnimation();
+        _singlePageRevealTask = null;
+    }
+
+    private void StartSinglePageReveal()
+    {
+        if (!SinglePageLayoutEnabled)
+            return;
+
+        _singlePageRevealTask ??= WarmupSinglePageOffersAsync();
+    }
+
+    private async Task AwaitSinglePageLayoutSettledAsync()
+    {
+        StatOffersContainer.QueueSort();
+        RelicGrid.QueueSort();
+        PotionGrid.QueueSort();
+        SkillOffersContainer.QueueSort();
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private void HideSinglePageContentBeforeLayout()
+    {
+        if (!SinglePageLayoutEnabled)
+            return;
+
+        SetControlAlpha(ContentAreaNode, 0.0f);
     }
 
     private async Task EnsureModuleOffersBuiltAsync(ShopModule module)
@@ -451,7 +552,9 @@ public partial class SpaceStationShop : Control
             NormalizeModuleContentLayouts();
             ApplyModuleVisibility();
             SnapModuleContentVisualState();
-            if (_currentModule is ShopModule.Relic or ShopModule.Potion)
+            if (SinglePageLayoutEnabled)
+                RefreshShopState();
+            else if (_currentModule is ShopModule.Relic or ShopModule.Potion)
                 RefreshCurrentModuleState();
         }
         finally
@@ -471,6 +574,9 @@ public partial class SpaceStationShop : Control
 
     private void NormalizeModuleContentLayouts()
     {
+        if (SinglePageLayoutEnabled)
+            return;
+
         if (
             CatalogViewport == null
             || !GodotObject.IsInstanceValid(CatalogViewport)
@@ -485,6 +591,20 @@ public partial class SpaceStationShop : Control
 
         CopyModuleRootLayout(CatalogViewport, StatPanel);
         CopyModuleRootLayout(CatalogViewport, SkillPanel);
+    }
+
+    private void ConfigureSinglePageLayout()
+    {
+        if (!SinglePageLayoutEnabled || !IsInsideTree())
+            return;
+
+        ModulePanelNode.Visible = false;
+        ModulePanelNode.MouseFilter = MouseFilterEnum.Ignore;
+        ModulePanelNode.CustomMinimumSize = Vector2.Zero;
+        MainLayoutNode.Set("theme_override_constants/separation", 0);
+        ContentAreaNode.ClipContents = true;
+        CatalogTitle.Text = "空间站补给";
+        CatalogHint.Text = "属性、技能、遗物与道具集中展示在同一页。";
     }
 
     private static void CopyModuleRootLayout(Control source, Control target)
@@ -562,14 +682,16 @@ public partial class SpaceStationShop : Control
                     PropertyType.Speed,
                     1,
                     ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
+                        + SpeedOfferPriceBonus
                 );
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("MaxLife"),
                     i,
                     characterName,
                     PropertyType.MaxLife,
-                    5,
+                    4,
                     ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
+                        + MaxLifeOfferPriceBonus
                 );
 
                 if (i + 1 < ShopCharacterCount)
@@ -625,13 +747,15 @@ public partial class SpaceStationShop : Control
     private async Task BuildPotionOffersAsync()
     {
         var rng = CreateShopRandom(0x7091);
-        for (int i = 0; i < PotionCatalog.Length; i++)
+        ItemID[] potionPool = PotionCatalog.OrderBy(_ => rng.Next()).Take(PotionOfferCount).ToArray();
+        for (int i = 0; i < potionPool.Length; i++)
         {
             AddPotionOffer(
-                PotionCatalog[i],
+                potionPool[i],
                 ComputeShopPrice(rng, PotionOfferBasePrice, PotionOfferPriceVariance)
+                    + PotionOfferPriceBonus
             );
-            if (i + 1 < PotionCatalog.Length)
+            if (i + 1 < potionPool.Length)
                 await YieldOfferBuildFramesAsync();
         }
     }
@@ -821,33 +945,25 @@ public partial class SpaceStationShop : Control
         if (offer == null)
             return;
 
-        var frame = new PanelContainer
+        var frame = new VBoxContainer
         {
             Name = $"RelicOffer{_catalogOffers.Count}",
             CustomMinimumSize = CompactCatalogTileSize,
             MouseFilter = MouseFilterEnum.Stop,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            Alignment = BoxContainer.AlignmentMode.Center,
         };
-        frame.AddThemeStyleboxOverride("panel", CreateRelicTileStyle());
+        frame.AddThemeConstantOverride("separation", 6);
 
-        var center = new CenterContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        frame.AddChild(center);
-
-        var iconFrame = new PanelContainer
+        var iconHolder = new Control
         {
             CustomMinimumSize = CompactCatalogIconFrameSize,
             MouseFilter = MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
-        iconFrame.AddThemeStyleboxOverride("panel", CreateRelicIconFrameStyle());
-        center.AddChild(iconFrame);
+        frame.AddChild(iconHolder);
 
         var icon = Relic.IconScene.Instantiate<ColorRect>();
         icon.Name = "RelicIcon";
@@ -864,9 +980,12 @@ public partial class SpaceStationShop : Control
         var panel = icon.GetNodeOrNull<Panel>("Panel");
         if (panel != null)
             panel.Visible = false;
-        iconFrame.AddChild(icon);
+        iconHolder.AddChild(icon);
 
         ApplyRelicIconShader(icon, offer.RelicId);
+
+        var priceLabel = CreateCatalogPriceLabel();
+        frame.AddChild(priceLabel);
 
         frame.GuiInput += @event =>
         {
@@ -876,13 +995,22 @@ public partial class SpaceStationShop : Control
                 return;
             OnCatalogOfferPressed(offer);
         };
-        frame.MouseEntered += () => ShowRelicTip(offer);
-        frame.MouseExited += HideRelicTip;
+        frame.Resized += () => UpdateCatalogOfferPivot(frame);
+        frame.MouseEntered += () =>
+        {
+            ShowRelicTip(offer);
+            AnimateCatalogOfferHover(frame, true);
+        };
+        frame.MouseExited += () =>
+        {
+            HideRelicTip();
+            AnimateCatalogOfferHover(frame, false);
+        };
 
-        CatalogGrid.AddChild(frame);
+        RelicGrid.AddChild(frame);
         offer.View = frame;
-        offer.IconFrame = iconFrame;
         offer.IconRect = icon;
+        offer.PriceLabel = priceLabel;
     }
 
     private void SetupPotionCard(CatalogOffer offer)
@@ -890,55 +1018,25 @@ public partial class SpaceStationShop : Control
         if (offer == null)
             return;
 
-        var frame = new PanelContainer
+        var frame = new VBoxContainer
         {
             Name = $"PotionOffer{_catalogOffers.Count}",
             CustomMinimumSize = CompactCatalogTileSize,
             MouseFilter = MouseFilterEnum.Stop,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        frame.AddThemeStyleboxOverride("panel", CreatePotionTileStyle());
-
-        var margin = new MarginContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        margin.AddThemeConstantOverride("margin_left", 10);
-        margin.AddThemeConstantOverride("margin_top", 10);
-        margin.AddThemeConstantOverride("margin_right", 10);
-        margin.AddThemeConstantOverride("margin_bottom", 10);
-        frame.AddChild(margin);
-
-        var vbox = new VBoxContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
             Alignment = BoxContainer.AlignmentMode.Center,
         };
-        vbox.AddThemeConstantOverride("separation", 8);
-        margin.AddChild(vbox);
+        frame.AddThemeConstantOverride("separation", 8);
 
-        var iconCenter = new CenterContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        vbox.AddChild(iconCenter);
-
-        var iconFrame = new PanelContainer
+        var iconHolder = new Control
         {
             CustomMinimumSize = CompactCatalogIconFrameSize,
             MouseFilter = MouseFilterEnum.Ignore,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
-        iconFrame.AddThemeStyleboxOverride("panel", CreatePotionIconFrameStyle());
-        iconCenter.AddChild(iconFrame);
+        frame.AddChild(iconHolder);
 
         var icon = new ColorRect
         {
@@ -952,10 +1050,10 @@ public partial class SpaceStationShop : Control
         icon.OffsetRight = -10f;
         icon.OffsetBottom = -10f;
         ConsumeItem.ConfigureIcon(icon, offer.ItemId);
-        iconFrame.AddChild(icon);
+        iconHolder.AddChild(icon);
 
-        var priceLabel = CreatePotionPriceLabel();
-        vbox.AddChild(priceLabel);
+        var priceLabel = CreateCatalogPriceLabel();
+        frame.AddChild(priceLabel);
 
         frame.GuiInput += @event =>
         {
@@ -965,12 +1063,20 @@ public partial class SpaceStationShop : Control
                 return;
             OnCatalogOfferPressed(offer);
         };
-        frame.MouseEntered += () => ShowCatalogTip(BuildItemTooltip(offer));
-        frame.MouseExited += HideRelicTip;
+        frame.Resized += () => UpdateCatalogOfferPivot(frame);
+        frame.MouseEntered += () =>
+        {
+            ShowCatalogTip(BuildItemTooltip(offer));
+            AnimateCatalogOfferHover(frame, true);
+        };
+        frame.MouseExited += () =>
+        {
+            HideRelicTip();
+            AnimateCatalogOfferHover(frame, false);
+        };
 
-        CatalogGrid.AddChild(frame);
+        PotionGrid.AddChild(frame);
         offer.View = frame;
-        offer.IconFrame = iconFrame;
         offer.IconRect = icon;
         offer.PriceLabel = priceLabel;
     }
@@ -1076,6 +1182,70 @@ public partial class SpaceStationShop : Control
         };
     }
 
+    private void AnimateCatalogOfferHover(Control view, bool hovered)
+    {
+        if (view == null || !GodotObject.IsInstanceValid(view))
+            return;
+
+        if (_catalogOfferHoverTweens.TryGetValue(view, out var previousTween))
+        {
+            previousTween?.Kill();
+            _catalogOfferHoverTweens.Remove(view);
+        }
+
+        UpdateCatalogOfferPivot(view);
+        if (hovered)
+            view.ZIndex = 20;
+
+        var tween = CreateTween();
+        _catalogOfferHoverTweens[view] = tween;
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+        float targetScale = hovered ? CatalogOfferHoverScale : 1.0f;
+        tween.TweenProperty(
+            view,
+            "scale",
+            new Vector2(targetScale, targetScale),
+            CatalogOfferHoverDuration
+        );
+        tween.Finished += () =>
+        {
+            if (
+                _catalogOfferHoverTweens.TryGetValue(view, out var activeTween)
+                && activeTween == tween
+            )
+                _catalogOfferHoverTweens.Remove(view);
+            if (!hovered && GodotObject.IsInstanceValid(view))
+                view.ZIndex = 0;
+        };
+    }
+
+    private static void UpdateCatalogOfferPivot(Control view)
+    {
+        if (view == null || !GodotObject.IsInstanceValid(view))
+            return;
+
+        view.PivotOffset = view.Size * 0.5f;
+    }
+
+    private void KillCatalogOfferHoverTweens()
+    {
+        foreach (var tween in _catalogOfferHoverTweens.Values)
+            tween?.Kill();
+        _catalogOfferHoverTweens.Clear();
+    }
+
+    private void KillCatalogOfferHoverTween(Control view)
+    {
+        if (view == null)
+            return;
+        if (!_catalogOfferHoverTweens.TryGetValue(view, out var tween))
+            return;
+
+        tween?.Kill();
+        _catalogOfferHoverTweens.Remove(view);
+    }
+
     private static Control CreateSkillOfferCardHolder(
         SkillCard card,
         Vector2 cardSize,
@@ -1137,7 +1307,7 @@ public partial class SpaceStationShop : Control
         return label;
     }
 
-    private static Label CreatePotionPriceLabel()
+    private static Label CreateCatalogPriceLabel()
     {
         var label = new Label
         {
@@ -1185,6 +1355,7 @@ public partial class SpaceStationShop : Control
             return;
 
         offer.Sold = true;
+        HideRelicTip();
         SetStatus($"已购入：{offer.Title}");
         RefreshShopState();
     }
@@ -1376,6 +1547,15 @@ public partial class SpaceStationShop : Control
 
     private void RefreshCurrentModuleState()
     {
+        if (SinglePageLayoutEnabled)
+        {
+            RefreshShopState();
+            return;
+        }
+
+        if (_currentModule == ShopModule.Relic)
+            ApplyCombinedItemModuleText();
+
         switch (_currentModule)
         {
             case ShopModule.Stat:
@@ -1430,35 +1610,29 @@ public partial class SpaceStationShop : Control
         if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
             return;
 
+        offer.View.Visible = true;
+        if (offer.Sold)
+        {
+            ApplyCatalogOfferSoldPlaceholder(offer);
+            return;
+        }
+
         bool canBuy =
-            !offer.Sold
-            && GetCurrentCurrency() >= offer.Price
+            GetCurrentCurrency() >= offer.Price
             && (offer.Kind != OfferKind.Item || CanStoreItem());
         if (offer.Kind == OfferKind.Relic)
         {
-            offer.View.Modulate = offer.Sold
-                ? new Color(0.64f, 0.7f, 0.8f, 0.42f)
-                : (canBuy ? Colors.White : new Color(0.9f, 0.9f, 0.96f, 0.7f));
+            offer.View.Modulate = canBuy ? Colors.White : new Color(0.9f, 0.9f, 0.96f, 0.7f);
+            SetCatalogOfferPriceLabel(offer, canBuy);
             return;
         }
 
         if (offer.Kind == OfferKind.Item)
         {
-            offer.View.MouseFilter = offer.Sold ? MouseFilterEnum.Ignore : MouseFilterEnum.Stop;
-            offer.View.Modulate = offer.Sold
-                ? new Color(0.64f, 0.7f, 0.8f, 0.48f)
-                : (canBuy ? Colors.White : new Color(0.86f, 0.89f, 0.94f, 0.72f));
+            offer.View.MouseFilter = MouseFilterEnum.Stop;
+            offer.View.Modulate = canBuy ? Colors.White : new Color(0.86f, 0.89f, 0.94f, 0.72f);
 
-            if (offer.PriceLabel != null && GodotObject.IsInstanceValid(offer.PriceLabel))
-            {
-                offer.PriceLabel.Text = offer.Sold ? "已售" : $"{offer.Price} 电力币";
-                offer.PriceLabel.AddThemeColorOverride(
-                    "font_color",
-                    offer.Sold ? new Color(0.74f, 0.8f, 0.88f, 0.72f)
-                        : canBuy ? new Color(1f, 0.88f, 0.4f, 0.98f)
-                        : new Color(0.92f, 0.76f, 0.58f, 0.9f)
-                );
-            }
+            SetCatalogOfferPriceLabel(offer, canBuy);
             return;
         }
 
@@ -1472,6 +1646,31 @@ public partial class SpaceStationShop : Control
             : "余额不足";
         offer.Card.label.Text =
             $"{offer.Title}\n{offer.Detail}\n价格 {offer.Price} 电力币\n{stateLine}";
+    }
+
+    private void ApplyCatalogOfferSoldPlaceholder(CatalogOffer offer)
+    {
+        if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
+            return;
+
+        offer.View.MouseFilter = MouseFilterEnum.Ignore;
+        KillCatalogOfferHoverTween(offer.View);
+        offer.View.Scale = Vector2.One;
+        offer.View.ZIndex = 0;
+        offer.View.Modulate = offer.View.Modulate with { A = 0.0f };
+    }
+
+    private static void SetCatalogOfferPriceLabel(CatalogOffer offer, bool canBuy)
+    {
+        if (offer?.PriceLabel == null || !GodotObject.IsInstanceValid(offer.PriceLabel))
+            return;
+
+        offer.PriceLabel.Text = canBuy ? $"{offer.Price} 电力币" : $"需 {offer.Price} 电力币";
+        offer.PriceLabel.AddThemeColorOverride(
+            "font_color",
+            canBuy ? new Color(1f, 0.88f, 0.4f, 0.98f)
+                : new Color(0.92f, 0.76f, 0.58f, 0.9f)
+        );
     }
 
     private void RefreshSkillOfferCard(SkillOffer offer)
@@ -1564,57 +1763,6 @@ public partial class SpaceStationShop : Control
         offer.PriceLabel.AddThemeColorOverride("font_color", color);
     }
 
-    private static StyleBoxFlat CreateRelicIconFrameStyle()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0.08f, 0.12f, 0.18f, 0.96f),
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            BorderColor = new Color(0.95f, 0.78f, 0.42f, 0.9f),
-            CornerRadiusTopLeft = 6,
-            CornerRadiusTopRight = 6,
-            CornerRadiusBottomLeft = 6,
-            CornerRadiusBottomRight = 6,
-        };
-    }
-
-    private static StyleBoxFlat CreatePotionTileStyle()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0.06f, 0.1f, 0.14f, 0.88f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            BorderColor = new Color(0.4f, 0.68f, 0.8f, 0.34f),
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomLeft = 12,
-            CornerRadiusBottomRight = 12,
-        };
-    }
-
-    private static StyleBoxFlat CreateRelicTileStyle()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0.07f, 0.1f, 0.15f, 0.9f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            BorderColor = new Color(0.78f, 0.66f, 0.34f, 0.44f),
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomLeft = 12,
-            CornerRadiusBottomRight = 12,
-        };
-    }
-
     private static StyleBoxFlat CreateStatOfferHoverStyle()
     {
         return new StyleBoxFlat
@@ -1629,23 +1777,6 @@ public partial class SpaceStationShop : Control
             CornerRadiusTopRight = 10,
             CornerRadiusBottomLeft = 10,
             CornerRadiusBottomRight = 10,
-        };
-    }
-
-    private static StyleBoxFlat CreatePotionIconFrameStyle()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0.1f, 0.16f, 0.24f, 0.96f),
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            BorderColor = new Color(0.62f, 0.86f, 0.98f, 0.6f),
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomLeft = 12,
-            CornerRadiusBottomRight = 12,
         };
     }
 
@@ -1718,23 +1849,18 @@ public partial class SpaceStationShop : Control
         var relic = new Relic(offer.RelicId);
         string title = $"[color=#b78cff]{relic.RelicName}[/color]";
         string effect = GlobalFunction.ColorizeNumbers(relic.RelicDescription);
-        string price = offer.Sold
-            ? "[color=#aab6c6]Sold[/color]"
-            : $"[color=#ffd24a]Price {offer.Price} EC[/color]";
-        return $"{title}\n{effect}\n{price}";
+        return $"{title}\n{effect}";
     }
+
     private static string BuildItemTooltip(CatalogOffer offer)
     {
         string title = $"[color=#84d8ff]{ConsumeItem.GetItemName(offer.ItemId)}[/color]";
         string effect = GlobalFunction.ColorizeNumbers(
             ConsumeItem.GetItemDescription(offer.ItemId)
         );
-        string price = offer.Sold
-            ? "[color=#aab6c6]Sold[/color]"
-            : $"[color=#ffd24a]Price {offer.Price} EC[/color]";
         string carryHint =
             $"[color=#9cdacf]Can carry up to {GameInfo.ItemsMaxCount} items[/color]";
-        return $"{title}\n{effect}\n{price}\n{carryHint}";
+        return $"{title}\n{effect}\n{carryHint}";
     }
     private static int GetRelicAddAmount(RelicID relicId)
     {
@@ -1749,7 +1875,10 @@ public partial class SpaceStationShop : Control
 
     private void ClearCatalogCards()
     {
-        foreach (var child in CatalogGrid.GetChildren())
+        foreach (var child in RelicGrid.GetChildren())
+            child.QueueFree();
+
+        foreach (var child in PotionGrid.GetChildren())
             child.QueueFree();
     }
 
@@ -1805,16 +1934,28 @@ public partial class SpaceStationShop : Control
 
     private void WireModuleButtons()
     {
+        if (SinglePageLayoutEnabled)
+        {
+            ModulePanelNode.Visible = false;
+            ModulePanelNode.MouseFilter = MouseFilterEnum.Ignore;
+            return;
+        }
+
         StatModuleButton.Pressed += () => RequestModuleChange(ShopModule.Stat);
         SkillModuleButton.Pressed += () => RequestModuleChange(ShopModule.Skill);
         EquipmentModuleButton.Visible = false;
         EquipmentModuleButton.Disabled = true;
+        RelicModuleButton.Text = "物品";
         RelicModuleButton.Pressed += () => RequestModuleChange(ShopModule.Relic);
-        PotionModuleButton.Pressed += () => RequestModuleChange(ShopModule.Potion);
+        PotionModuleButton.Visible = false;
+        PotionModuleButton.Disabled = true;
     }
 
     private void BindModuleSelector()
     {
+        if (SinglePageLayoutEnabled)
+            return;
+
         ModuleSelector.Resized += OnModuleSelectorLayoutChanged;
         StatModuleButton.Resized += OnModuleSelectorLayoutChanged;
         SkillModuleButton.Resized += OnModuleSelectorLayoutChanged;
@@ -1847,6 +1988,9 @@ public partial class SpaceStationShop : Control
 
     private void RequestModuleChange(ShopModule module)
     {
+        if (SinglePageLayoutEnabled)
+            return;
+
         if (_isClosing || _isTransitioning || _currentModule == module)
             return;
 
@@ -1895,7 +2039,8 @@ public partial class SpaceStationShop : Control
     private async Task AwaitModuleContentLayoutStabilizedAsync()
     {
         StatOffersContainer.QueueSort();
-        CatalogGrid.QueueSort();
+        RelicGrid.QueueSort();
+        PotionGrid.QueueSort();
         SkillOffersContainer.QueueSort();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -2177,13 +2322,48 @@ public partial class SpaceStationShop : Control
         ApplyModuleVisibility();
         if (snapVisualState)
             SnapModuleContentVisualState();
-        UpdateModuleButtons();
-        UpdateModuleSelectorPosition(animateSelector);
+        if (!SinglePageLayoutEnabled)
+        {
+            UpdateModuleButtons();
+            UpdateModuleSelectorPosition(animateSelector);
+        }
         RefreshCurrentModuleState();
     }
 
     private void ApplyModuleVisibility()
     {
+        if (SinglePageLayoutEnabled)
+        {
+            StatPanel.Visible = true;
+            RelicViewport.Visible = true;
+            PotionViewport.Visible = true;
+            SkillPanel.Visible = true;
+            RelicGrid.Columns = 3;
+            PotionGrid.Columns = 3;
+            RelicGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            PotionGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            RelicGrid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            PotionGrid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            StatPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            SkillPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            RelicViewport.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            PotionViewport.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+
+            for (int i = 0; i < _catalogOffers.Count; i++)
+            {
+                var offer = _catalogOffers[i];
+                if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
+                    continue;
+                offer.View.Visible = true;
+                if (offer.Sold)
+                    ApplyCatalogOfferSoldPlaceholder(offer);
+            }
+
+            CatalogTitle.Text = "空间站补给";
+            CatalogHint.Text = "属性、技能、遗物与道具集中展示在同一页。";
+            return;
+        }
+
         bool statModule = _currentModule == ShopModule.Stat;
         bool skillModule = _currentModule == ShopModule.Skill;
         bool compactCatalogModule =
@@ -2247,10 +2427,26 @@ public partial class SpaceStationShop : Control
         }
     }
 
+    private void ApplyCombinedItemModuleText()
+    {
+        CatalogTitle.Text = "物品模块";
+        CatalogHint.Text =
+            "遗物与战斗道具合并陈列，悬停查看效果，点击图标购买。";
+    }
+
     private void SnapModuleContentVisualState()
     {
         SetControlAlpha(CatalogTitle, 1.0f);
         SetControlAlpha(CatalogHint, 1.0f);
+        if (SinglePageLayoutEnabled)
+        {
+            SetControlAlpha(StatPanel, 1.0f);
+            SetControlAlpha(SkillPanel, 1.0f);
+            SetControlAlpha(RelicViewport, 1.0f);
+            SetControlAlpha(PotionViewport, 1.0f);
+            return;
+        }
+
         SetControlAlpha(StatPanel, _currentModule == ShopModule.Stat ? 1.0f : 0.0f);
         SetControlAlpha(SkillPanel, _currentModule == ShopModule.Skill ? 1.0f : 0.0f);
         SetControlAlpha(
@@ -2764,7 +2960,7 @@ public partial class SpaceStationShop : Control
         {
             ShopModule.Skill => kind == OfferKind.Skill,
             ShopModule.Equipment => kind == OfferKind.Equipment,
-            ShopModule.Relic => kind == OfferKind.Relic,
+            ShopModule.Relic => kind is OfferKind.Relic or OfferKind.Item,
             ShopModule.Potion => kind == OfferKind.Item,
             _ => false,
         };

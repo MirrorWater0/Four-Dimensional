@@ -10,6 +10,12 @@ public static class UserSettings
     private const string EnemyAttackPreviewKey = "EnemyAttackPreview";
     private const string TextSizeLevelKey = "TextSizeLevel";
     private const string BattleShakeLevelKey = "BattleShakeLevel";
+    private const string LastSelectedDifficultyKey = "LastSelectedDifficulty";
+    private const string MasterVolumePercentKey = "MasterVolumePercent";
+    private const string SfxVolumePercentKey = "SfxVolumePercent";
+    private const string LocaleKey = "Locale";
+    private const string WindowWidthKey = "WindowWidth";
+    private const string WindowHeightKey = "WindowHeight";
 
     public const int TextSizeLevelSmall = 0;
     public const int TextSizeLevelStandard = 1;
@@ -28,6 +34,13 @@ public static class UserSettings
     public static bool ShowEnemyAttackPreview { get; private set; }
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
     public static int BattleShakeLevel { get; private set; } = BattleShakeLevelStandard;
+    public static int LastSelectedDifficulty { get; private set; }
+    public static int MasterVolumePercent { get; private set; } = 100;
+    public static int SfxVolumePercent { get; private set; } = 100;
+    public static string Locale { get; private set; } = "zh_CN";
+    public static int WindowWidth { get; private set; }
+    public static int WindowHeight { get; private set; }
+    public static bool HasCustomWindowResolution => WindowWidth > 0 && WindowHeight > 0;
 
     public static void EnsureLoaded()
     {
@@ -58,6 +71,26 @@ public static class UserSettings
             );
             BattleShakeLevel = NormalizeBattleShakeLevel(
                 config.GetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel).AsInt32()
+            );
+            LastSelectedDifficulty = NormalizeDifficulty(
+                config
+                    .GetValue(SectionName, LastSelectedDifficultyKey, LastSelectedDifficulty)
+                    .AsInt32()
+            );
+            MasterVolumePercent = NormalizeVolumePercent(
+                config.GetValue(SectionName, MasterVolumePercentKey, MasterVolumePercent).AsInt32()
+            );
+            SfxVolumePercent = NormalizeVolumePercent(
+                config.GetValue(SectionName, SfxVolumePercentKey, SfxVolumePercent).AsInt32()
+            );
+            Locale = NormalizeLocale(
+                config.GetValue(SectionName, LocaleKey, Locale).AsString()
+            );
+            WindowWidth = NormalizeWindowDimension(
+                config.GetValue(SectionName, WindowWidthKey, WindowWidth).AsInt32()
+            );
+            WindowHeight = NormalizeWindowDimension(
+                config.GetValue(SectionName, WindowHeightKey, WindowHeight).AsInt32()
             );
         }
 
@@ -99,20 +132,78 @@ public static class UserSettings
         Save();
     }
 
+    public static void SetLastSelectedDifficulty(int value)
+    {
+        EnsureLoaded();
+        LastSelectedDifficulty = NormalizeDifficulty(value);
+        Save();
+    }
+
+    public static void SetMasterVolumePercent(int value)
+    {
+        EnsureLoaded();
+        MasterVolumePercent = NormalizeVolumePercent(value);
+        Save();
+        AudioManager.RefreshSettings();
+    }
+
+    public static void SetSfxVolumePercent(int value)
+    {
+        EnsureLoaded();
+        SfxVolumePercent = NormalizeVolumePercent(value);
+        Save();
+        AudioManager.RefreshSettings();
+    }
+
+    public static void SetLocale(string value)
+    {
+        EnsureLoaded();
+        Locale = NormalizeLocale(value);
+        Save();
+    }
+
+    public static void SetWindowResolution(int width, int height)
+    {
+        EnsureLoaded();
+        WindowWidth = NormalizeWindowDimension(width);
+        WindowHeight = NormalizeWindowDimension(height);
+        Save();
+    }
+
+    public static void ClearWindowResolution()
+    {
+        EnsureLoaded();
+        WindowWidth = 0;
+        WindowHeight = 0;
+        Save();
+    }
+
     public static int NormalizeTextSizeLevel(int value) =>
         Math.Clamp(value, TextSizeLevelSmall, TextSizeLevelExtraLarge);
 
     public static int NormalizeBattleShakeLevel(int value) =>
         Math.Clamp(value, BattleShakeLevelOff, BattleShakeLevelLarge);
 
+    public static int NormalizeDifficulty(int value) =>
+        Math.Clamp(value, GameInfo.MinDifficulty, GameInfo.MaxDifficulty);
+
+    public static int NormalizeVolumePercent(int value) => Math.Clamp(value, 0, 100);
+
+    public static int NormalizeWindowDimension(int value) => value > 0 ? value : 0;
+
+    public static string NormalizeLocale(string value)
+    {
+        return string.Equals(value, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "zh_CN";
+    }
+
     public static string GetTextSizeLevelLabel(int value)
     {
         return NormalizeTextSizeLevel(value) switch
         {
-            TextSizeLevelSmall => "小",
-            TextSizeLevelLarge => "大",
-            TextSizeLevelExtraLarge => "特大",
-            _ => "标准",
+            TextSizeLevelSmall => I18n.Tr("ui.settings.option.small", "小"),
+            TextSizeLevelLarge => I18n.Tr("ui.settings.option.large", "大"),
+            TextSizeLevelExtraLarge => I18n.Tr("ui.settings.option.extra_large", "特大"),
+            _ => I18n.Tr("ui.settings.option.standard", "标准"),
         };
     }
 
@@ -120,11 +211,19 @@ public static class UserSettings
     {
         return NormalizeBattleShakeLevel(value) switch
         {
-            BattleShakeLevelOff => "关闭",
-            BattleShakeLevelSmall => "小",
-            BattleShakeLevelLarge => "大",
-            _ => "标准",
+            BattleShakeLevelOff => I18n.Tr("ui.settings.option.off", "关闭"),
+            BattleShakeLevelSmall => I18n.Tr("ui.settings.option.small", "小"),
+            BattleShakeLevelLarge => I18n.Tr("ui.settings.option.large", "大"),
+            _ => I18n.Tr("ui.settings.option.standard", "标准"),
         };
+    }
+
+    public static string GetVolumePercentLabel(int value)
+    {
+        int normalized = NormalizeVolumePercent(value);
+        return normalized == 0
+            ? I18n.Tr("ui.settings.option.muted", "静音")
+            : $"{normalized}%";
     }
 
     public static float GetBattleShakeMultiplier()
@@ -152,6 +251,23 @@ public static class UserSettings
         return Math.Max(8, baseFontSize + delta);
     }
 
+    public static void ApplyWindowSettings(Window window = null)
+    {
+        EnsureLoaded();
+        window ??= (Engine.GetMainLoop() as SceneTree)?.Root;
+        if (window == null)
+            return;
+
+        if (!HasCustomWindowResolution)
+        {
+            window.Mode = Window.ModeEnum.Fullscreen;
+            return;
+        }
+
+        window.Mode = Window.ModeEnum.Windowed;
+        window.Size = new Vector2I(WindowWidth, WindowHeight);
+    }
+
     public static void Save()
     {
         var config = new ConfigFile();
@@ -164,6 +280,12 @@ public static class UserSettings
         config.SetValue(SectionName, EnemyAttackPreviewKey, ShowEnemyAttackPreview);
         config.SetValue(SectionName, TextSizeLevelKey, TextSizeLevel);
         config.SetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel);
+        config.SetValue(SectionName, LastSelectedDifficultyKey, LastSelectedDifficulty);
+        config.SetValue(SectionName, MasterVolumePercentKey, MasterVolumePercent);
+        config.SetValue(SectionName, SfxVolumePercentKey, SfxVolumePercent);
+        config.SetValue(SectionName, LocaleKey, Locale);
+        config.SetValue(SectionName, WindowWidthKey, WindowWidth);
+        config.SetValue(SectionName, WindowHeightKey, WindowHeight);
         config.Save(SettingsPath);
     }
 }

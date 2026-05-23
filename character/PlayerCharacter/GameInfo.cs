@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using Godot;
@@ -214,11 +215,11 @@ public static class GlobalFunction
 
         input = CompactDescriptionPunctuation(input);
 
-        // Only process outside BBCode tags to avoid corrupting things like [color=#87CEEB].
-        // "Cambridge Blue" is commonly represented as #A3C1AD.
-        const string cambridgeBlue = "#9cdacf";
+        var keywords = BuildLocalizedKeywordEntries();
+        if (keywords.Count == 0)
+            return input;
 
-        StringBuilder builder = new StringBuilder(input.Length * 2);
+        StringBuilder builder = new(input.Length * 2);
         bool inTag = false;
 
         for (int i = 0; i < input.Length; i++)
@@ -239,32 +240,13 @@ public static class GlobalFunction
                 continue;
             }
 
-            if (!inTag)
+            if (!inTag && TryMatchKeyword(input, i, keywords, out var match))
             {
-                if (i + 2 <= input.Length)
-                {
-                    string two = input.Substring(i, 2);
-                    string color = two switch
-                    {
-                        "伤害" => "#ffc9c9",
-                        "格挡" => cambridgeBlue,
-                        "能量" => "#c9cdff",
-                        "消耗" => "#ffb86b",
-                        "\u865a\u65e0" => "#b9a6ff",
-                        "\u590d\u751f" when IsValidRebirthKeywordMatch(input, i) => "#a8f0ad",
-                        "\u8fde\u643a" => "#a8f0ad",
-                        _ => null,
-                    };
-
-                    if (color != null)
-                    {
-                        builder.Append($"[color={color}]");
-                        builder.Append(two);
-                        builder.Append("[/color]");
-                        i += 1;
-                        continue;
-                    }
-                }
+                builder.Append($"[color={match.Color}]");
+                builder.Append(input, i, match.Text.Length);
+                builder.Append("[/color]");
+                i += match.Text.Length - 1;
+                continue;
             }
 
             builder.Append(ch);
@@ -273,18 +255,153 @@ public static class GlobalFunction
         return builder.ToString();
     }
 
+    private readonly record struct KeywordColorEntry(
+        string Text,
+        string Color,
+        bool UseWordBoundary = false,
+        bool UseRebirthValidation = false
+    );
+
+    private static List<KeywordColorEntry> BuildLocalizedKeywordEntries()
+    {
+        const string cambridgeBlue = "#9cdacf";
+        List<KeywordColorEntry> entries = new();
+
+        AddKeywordVariants(entries, "keyword.damage", "伤害", "#ffc9c9");
+        AddKeywordVariants(entries, "keyword.block", "格挡", cambridgeBlue);
+        AddKeywordVariants(entries, "keyword.energy", "能量", "#c9cdff");
+        AddKeywordVariants(entries, "keyword.exhaust", "消耗", "#ffb86b");
+        AddKeywordVariants(entries, "keyword.voidness", "虚无", "#b9a6ff");
+        AddKeywordVariants(
+            entries,
+            "keyword.rebirth",
+            "复生",
+            "#a8f0ad",
+            useRebirthValidation: true
+        );
+        AddKeywordVariants(entries, "keyword.carry", "连携", "#a8f0ad");
+
+        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
+        {
+            AddKeyword(entries, Buff.GetBuffDisplayName(buffName), "#a8f0ad");
+            AddKeyword(entries, buffName.GetDescription(), "#a8f0ad");
+        }
+
+        return entries
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Text))
+            .Distinct()
+            .OrderByDescending(entry => entry.Text.Length)
+            .ToList();
+    }
+
+    private static void AddKeywordVariants(
+        ICollection<KeywordColorEntry> entries,
+        string key,
+        string fallback,
+        string color,
+        bool useRebirthValidation = false
+    )
+    {
+        AddKeyword(
+            entries,
+            I18n.Tr(key, fallback),
+            color,
+            useRebirthValidation: useRebirthValidation
+        );
+        AddKeyword(entries, fallback, color, useRebirthValidation: useRebirthValidation);
+    }
+
+    private static void AddKeyword(
+        ICollection<KeywordColorEntry> entries,
+        string text,
+        string color,
+        bool useRebirthValidation = false
+    )
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        entries.Add(
+            new KeywordColorEntry(
+                text,
+                color,
+                UseWordBoundary: ContainsLatinOrDigit(text),
+                UseRebirthValidation: useRebirthValidation
+            )
+        );
+    }
+
+    private static bool TryMatchKeyword(
+        string input,
+        int index,
+        IEnumerable<KeywordColorEntry> keywords,
+        out KeywordColorEntry match
+    )
+    {
+        foreach (var entry in keywords)
+        {
+            if (index + entry.Text.Length > input.Length)
+                continue;
+
+            if (
+                !string.Equals(
+                    input.Substring(index, entry.Text.Length),
+                    entry.Text,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                continue;
+            }
+
+            if (
+                entry.UseRebirthValidation
+                && entry.Text == "复生"
+                && !IsValidRebirthKeywordMatch(input, index)
+            )
+            {
+                continue;
+            }
+
+            if (entry.UseWordBoundary && !HasWordBoundaryAround(input, index, entry.Text.Length))
+                continue;
+
+            match = entry;
+            return true;
+        }
+
+        match = default;
+        return false;
+    }
+
+    private static bool HasWordBoundaryAround(string input, int index, int length)
+    {
+        bool leftOk = index == 0 || !IsWordChar(input[index - 1]);
+        int endIndex = index + length;
+        bool rightOk = endIndex >= input.Length || !IsWordChar(input[endIndex]);
+        return leftOk && rightOk;
+    }
+
+    private static bool ContainsLatinOrDigit(string text) => text.Any(IsWordChar);
+
+    private static bool IsWordChar(char ch) =>
+        (ch >= 'a' && ch <= 'z')
+        || (ch >= 'A' && ch <= 'Z')
+        || char.IsDigit(ch)
+        || ch == '_';
+
     public static bool IsValidRebirthKeywordMatch(string input, int index)
     {
         if (string.IsNullOrEmpty(input) || index < 0 || index + 2 > input.Length)
             return false;
 
-        if (!string.Equals(input.Substring(index, 2), "\u590d\u751f", StringComparison.Ordinal))
+        if (!string.Equals(input.Substring(index, 2), "复生", StringComparison.Ordinal))
             return false;
 
         char? previous = FindPreviousPlainChar(input, index);
         char? next = FindNextPlainChar(input, index + 2);
 
-        return previous is not ('\u56de' or '\u6062') && next != '\u547d';
+        return previous is not ('回' or '恢') && next != '命';
     }
 
     private static char? FindPreviousPlainChar(string input, int startIndex)
@@ -373,6 +490,9 @@ public static class EnumExtensions
 
     public static string GetDescription(this Enum value)
     {
+        if (value is Buff.BuffName.Void)
+            return $"[color={BuffColor}]虚空[/color]";
+
         FieldInfo fi = value.GetType().GetField(value.ToString());
         DescriptionAttribute[] attributes =
             fi == null
@@ -381,17 +501,15 @@ public static class EnumExtensions
                     fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
 
         // 获取特性中写的字符串（作为翻译 Key）
-        string key = attributes.Length > 0 ? attributes[0].Description : value.ToString();
+        string fallback = attributes.Length > 0 ? attributes[0].Description : value.ToString();
+        string key = I18n.GetEnumKey(value) ?? fallback;
 
-        // 【核心】：调用 Godot 的翻译函数 Tr()
-        // 如果翻译表中能找到这个 Key，它会返回当前语言的文字；找不到则返回 Key 本身。
-        string translated = TranslationServer.Translate(key);
+        string translated = I18n.Tr(key, fallback);
 
         // Buff 名称默认蓝色高亮，便于在技能描述和提示中快速识别。
         if (value.GetType() == typeof(Buff.BuffName))
             return $"[color={BuffColor}]{translated}[/color]";
 
         return translated;
-        // 在 Godot 4.x 中，通常也可以直接用 GodotObject.Tr(key)
     }
 }

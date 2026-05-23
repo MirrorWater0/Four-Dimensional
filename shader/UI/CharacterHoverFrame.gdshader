@@ -2,21 +2,21 @@ shader_type canvas_item;
 
 uniform vec4 line_color : source_color = vec4(0.90, 0.97, 1.00, 1.0);
 uniform vec4 accent_color : source_color = vec4(0.34, 0.86, 1.00, 1.0);
-uniform vec4 fill_color : source_color = vec4(0.03, 0.16, 0.24, 0.18);
+uniform vec4 fill_color : source_color = vec4(0.03, 0.16, 0.24, 0.08);
 
 uniform float border_size : hint_range(0.004, 0.08) = 0.018;
 uniform float inner_line_offset : hint_range(0.01, 0.18) = 0.06;
 uniform float inner_line_size : hint_range(0.001, 0.03) = 0.004;
 uniform float corner_cut : hint_range(0.02, 0.24) = 0.085;
 uniform float corner_length : hint_range(0.03, 0.28) = 0.14;
-uniform float glow_size : hint_range(0.01, 0.12) = 0.045;
+uniform float glow_size : hint_range(0.01, 0.12) = 0.032;
 uniform float pulse_speed : hint_range(0.0, 6.0) = 1.5;
 uniform float sweep_speed : hint_range(0.0, 3.0) = 0.3;
-uniform float sweep_width : hint_range(0.02, 0.25) = 0.09;
+uniform float sweep_width : hint_range(0.02, 0.25) = 0.045;
 uniform float ring_flow_speed : hint_range(0.0, 4.0) = 0.55;
-uniform float ring_flow_width : hint_range(0.04, 0.45) = 0.18;
-uniform float ring_trail_strength : hint_range(0.0, 1.5) = 0.7;
-uniform float ring_glow_strength : hint_range(0.0, 2.5) = 0.95;
+uniform float ring_flow_width : hint_range(0.04, 0.45) = 0.052;
+uniform float ring_trail_strength : hint_range(0.0, 1.5) = 0.5;
+uniform float ring_glow_strength : hint_range(0.0, 2.5) = 0.45;
 uniform float ring_aspect : hint_range(0.2, 1.5) = 0.56;
 
 const float TAU_VALUE = 6.28318530718;
@@ -76,8 +76,8 @@ void fragment() {
 	float orbit_core = exp(-pow(orbit_distance / max(ring_flow_width * 0.22, 0.001), 2.0));
 	float orbit_tail_phase = fract(orbit_head - orbit_phase + 1.0);
 	float orbit_tail = smoothstep(ring_flow_width, 0.0, orbit_tail_phase) * (1.0 - orbit_core * 0.4);
-	float orbit_lane = max(outer_frame, inner_frame * 0.5 + corner_brace * 0.8 + diagonal_cap * 0.45);
-	float orbit_glow_lane = max(glow_outer, orbit_lane);
+	float orbit_lane = max(outer_frame, inner_frame * 0.72 + corner_brace * 0.95 + diagonal_cap * 0.55);
+	float orbit_glow_lane = max(outer_frame * 0.75, inner_frame * 0.45 + corner_brace * 0.55);
 	float orbit_flicker = 0.84 + 0.16 * sin(TIME * 6.0 + orbit_phase * TAU_VALUE * 4.0);
 	float ring_flow = orbit_lane * (orbit_core + orbit_tail * ring_trail_strength) * orbit_flicker;
 	float ring_glow = orbit_glow_lane * (orbit_core * ring_glow_strength + orbit_tail * ring_trail_strength * 0.45);
@@ -89,9 +89,9 @@ void fragment() {
 	rgb += accent_color.rgb * corner_brace * (0.8 + pulse * 0.25);
 	rgb += mix(line_color.rgb, accent_color.rgb, 0.75) * diagonal_cap * 0.85;
 	rgb += accent_color.rgb * sweep * 0.8;
-	rgb += accent_color.rgb * glow_outer * 0.2;
-	rgb += mix(accent_color.rgb, vec3(1.0), 0.38) * ring_flow * 1.15;
-	rgb += accent_color.rgb * ring_glow * 0.42;
+	rgb += accent_color.rgb * glow_outer * 0.08;
+	rgb += mix(accent_color.rgb, vec3(1.0), 0.46) * ring_flow * 1.28;
+	rgb += accent_color.rgb * ring_glow * 0.24;
 
 	float alpha = 0.0;
 	alpha += fill * fill_color.a;
@@ -99,9 +99,9 @@ void fragment() {
 	alpha = max(alpha, inner_frame * line_color.a * 0.85);
 	alpha = max(alpha, corner_brace * accent_color.a);
 	alpha = max(alpha, diagonal_cap * accent_color.a * 0.9);
-	alpha = max(alpha, glow_outer * 0.22);
+	alpha = max(alpha, glow_outer * 0.1);
 	alpha = max(alpha, ring_flow * accent_color.a * 0.95);
-	alpha = max(alpha, ring_glow * 0.2);
+	alpha = max(alpha, ring_glow * 0.12);
 	alpha = clamp(alpha, 0.0, 1.0);
 
 	COLOR = vec4(rgb, alpha) * modulate_color;

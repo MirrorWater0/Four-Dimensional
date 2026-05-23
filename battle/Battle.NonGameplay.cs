@@ -91,9 +91,9 @@ public partial class Battle
     private const string RecordHealColor = "#6bff8f";
     private const string RecordNeutralColor = "#d9e2f2";
     private const string ActionPoinTooltipText =
-        "[b]\u884c\u52a8\u70b9\u4e0e\u901f\u5ea6[/b]\n"
-        + "\u6761\u4e0a\u6570\u5b57\u662f\u5f53\u524d\u884c\u52a8\u70b9\uff0c\u62ec\u53f7\u91cc\u662f\u8be5\u9635\u8425\u5b58\u6d3b\u6210\u5458\u7684\u603b\u901f\u5ea6\u3002\n\n"
-        + "\u89d2\u8272\u884c\u52a8\u7ed3\u675f\u540e\uff0c\u6240\u5c5e\u9635\u8425\u6309\u603b\u901f\u5ea6\u7d2f\u79ef\u884c\u52a8\u70b9\u3002\u8fbe\u5230 100 \u65f6\uff0c\u8be5\u9635\u8425\u83b7\u5f97\u4e00\u6b21\u989d\u5916\u51fa\u624b\u673a\u4f1a\uff0c\u5e76\u7ed9\u8fd9\u6b21\u884c\u52a8\u7684\u89d2\u8272 1 \u70b9\u80fd\u91cf\u548c 1 \u70b9\u62bd\u5361\u50a8\u5907\u3002";
+        "[b]行动点与速度[/b]\n"
+        + "条上数字是当前行动点，括号里是该阵营存活成员的总速度。\n\n"
+        + "角色行动结束后，所属阵营按总速度累积行动点。达到 100 时，该阵营获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点抽卡储备。";
 
     private bool _recordInitialized;
     private bool _actionPoinTooltipInitialized;
@@ -578,6 +578,8 @@ public partial class Battle
 
     private void OnSkillUsed(Skill skill)
     {
+        Relic.ApplySkillUsedRelicEffects(skill);
+
         var record = BattleRecord;
         if (skill == null || record == null)
         {

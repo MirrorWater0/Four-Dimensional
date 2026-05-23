@@ -6,16 +6,23 @@ using Godot;
 
 public partial class Relic
 {
-    private const int BlessingDamage = 30;
+    private const int BlessingDamage = 20;
     private const int MatrixShieldBlock = 15;
     private const int BackpackExtraDrawStacks = 1;
     private const int EnergyTankEnergy = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
-    private const int PhilosophersStoneEnemyPower = 5;
+    private const int PhilosophersStoneEnemyPower = 4;
     private const int EternalGlassDrawBonus = 1;
     private const int KingsSwordPartyPower = 4;
+    private const int RefractometerDamageImmuneStacks = 1;
+    private const int PurifierDebuffImmunityStacks = 1;
+    private const int PulseControllerStunStacks = 1;
+    private const int PulseControllerVulnerableStacks = 3;
+    private const int PulseControllerWeakenStacks = 3;
+    private const int KnightHelmetMinimumCost = 2;
+    private const int KnightHelmetBlock = 6;
 
     public RelicID ID;
     public string RelicName;
@@ -49,6 +56,9 @@ public partial class Relic
             RelicID.Backpack,
             RelicID.EnergyTank,
             RelicID.FusionCore,
+            RelicID.Refractometer,
+            RelicID.Purifier,
+            RelicID.KnightHelmet,
         };
 
         for (int i = 0; i < pool.Length; i++)
@@ -77,16 +87,25 @@ public partial class Relic
             RelicID.Backpack => new Relic(RelicID.Backpack),
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
             RelicID.FusionCore => new Relic(RelicID.FusionCore),
+            RelicID.Refractometer => new Relic(RelicID.Refractometer),
+            RelicID.Purifier => new Relic(RelicID.Purifier),
+            RelicID.KnightHelmet => new Relic(RelicID.KnightHelmet),
             RelicID.PhilosophersStone => new Relic(RelicID.PhilosophersStone),
             RelicID.EternalGlass => new Relic(RelicID.EternalGlass),
             RelicID.KingsSword => new Relic(RelicID.KingsSword),
+            RelicID.PulseController => new Relic(RelicID.PulseController),
             _ => new Relic(RelicID.curse),
         };
     }
 
     public static RelicID[] GetBossRelicOfferPool()
     {
-        return [RelicID.PhilosophersStone, RelicID.EternalGlass, RelicID.KingsSword];
+        return [
+            RelicID.PhilosophersStone,
+            RelicID.EternalGlass,
+            RelicID.KingsSword,
+            RelicID.PulseController,
+        ];
     }
 
     public static int GetAcquireAmount(RelicID relicID)
@@ -126,9 +145,13 @@ public partial class Relic
             RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
             RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
+            RelicID.Refractometer => "res://asset/svg/RelicIcon/Refractometer.svg",
+            RelicID.Purifier => "res://asset/svg/RelicIcon/Purifier.svg",
+            RelicID.KnightHelmet => "res://asset/svg/RelicIcon/KnightHelmet.svg",
             RelicID.PhilosophersStone => "res://asset/svg/RelicIcon/PhilosophersStone.svg",
             RelicID.EternalGlass => "res://asset/svg/RelicIcon/EternalGlass.svg",
             RelicID.KingsSword => "res://asset/svg/RelicIcon/KingsSword.svg",
+            RelicID.PulseController => "res://asset/svg/RelicIcon/PulseController.svg",
             _ => null,
         };
     }
@@ -254,6 +277,23 @@ public partial class Relic
         return HasRelic(RelicID.EternalGlass) ? EternalGlassDrawBonus : 0;
     }
 
+    public static void ApplySkillUsedRelicEffects(Skill skill)
+    {
+        if (
+            skill?.OwnerCharater == null
+            || !skill.OwnerCharater.IsPlayer
+            || skill.OwnerCharater.State == Character.CharacterState.Dying
+            || skill.CardEnergyCost < KnightHelmetMinimumCost
+            || !HasRelic(RelicID.KnightHelmet)
+        )
+        {
+            return;
+        }
+
+        using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.KnightHelmet));
+        skill.OwnerCharater.UpdataBlock(KnightHelmetBlock, source: skill.OwnerCharater);
+    }
+
     private static bool HasRelic(RelicID relicId) =>
         GameInfo.Relics != null && GameInfo.Relics.ContainsKey(relicId);
 
@@ -311,11 +351,22 @@ public partial class Relic
                 break;
             case RelicID.FusionCore:
                 break;
+            case RelicID.Refractometer:
+                ApplyRefractometerEffect(battle);
+                break;
+            case RelicID.Purifier:
+                ApplyDebuffImmunityToPlayers(battle, PurifierDebuffImmunityStacks);
+                break;
+            case RelicID.KnightHelmet:
+                break;
             case RelicID.PhilosophersStone:
                 await ApplyPowerToEnemies(battle, PhilosophersStoneEnemyPower);
                 break;
             case RelicID.EternalGlass:
             case RelicID.KingsSword:
+                break;
+            case RelicID.PulseController:
+                ApplyPulseControllerEffect(battle);
                 break;
             case RelicID.curse:
                 break;
@@ -343,22 +394,6 @@ public partial class Relic
 
     private static string GetRelicName(RelicID relicID)
     {
-        if (relicID == RelicID.EnergyTank)
-            return "\u80fd\u91cf\u50a8\u7f50";
-        if (relicID == RelicID.FusionCore)
-            return "\u805a\u53d8\u6838\u5fc3";
-
-        if (relicID == RelicID.MatrixShield)
-            return "矩阵护盾";
-        if (relicID == RelicID.Backpack)
-            return "背包";
-        if (relicID == RelicID.PhilosophersStone)
-            return "贤者之石";
-        if (relicID == RelicID.EternalGlass)
-            return "亘古琉璃";
-        if (relicID == RelicID.KingsSword)
-            return "王者之剑";
-
         return relicID switch
         {
             RelicID.Blessing => "祝福",
@@ -369,28 +404,23 @@ public partial class Relic
             RelicID.Heptagon => "七边形",
             RelicID.Octagon => "八边形",
             RelicID.CompressionCore => "压缩核心",
+            RelicID.MatrixShield => "矩阵护盾",
+            RelicID.Backpack => "背包",
+            RelicID.EnergyTank => "能量储罐",
+            RelicID.FusionCore => "聚变核心",
+            RelicID.Refractometer => "折射仪",
+            RelicID.Purifier => "净化器",
+            RelicID.KnightHelmet => "骑士头盔",
+            RelicID.PhilosophersStone => "贤者之石",
+            RelicID.EternalGlass => "亘古琉璃",
+            RelicID.KingsSword => "王者之剑",
+            RelicID.PulseController => "脉冲控制仪",
             _ => "诅咒",
         };
     }
 
     private static string GetRelicDescription(RelicID relicID)
     {
-        if (relicID == RelicID.EnergyTank)
-            return $"\u6218\u6597\u5f00\u59cb\u65f6\u524d2\u4f4d\u89d2\u8272\u83b7\u5f97{EnergyTankEnergy}\u70b9\u80fd\u91cf\u3002";
-        if (relicID == RelicID.FusionCore)
-            return $"\u5df1\u65b9\u884c\u52a8\u6bcf{FusionCoreActionInterval}\u6b21\u884c\u52a8\u5f53\u524d\u89d2\u8272\u83b7\u5f97{FusionCoreEnergy}\u70b9\u80fd\u91cf\u3002";
-
-        if (relicID == RelicID.MatrixShield)
-            return $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。";
-        if (relicID == RelicID.Backpack)
-            return $"战斗开始时前2位角色获得{BackpackExtraDrawStacks}层额外抽卡。";
-        if (relicID == RelicID.PhilosophersStone)
-            return $"回合开始时获得的能量+{PhilosophersStoneEnergyBonus}。战斗开始时所有敌人获得{PhilosophersStoneEnemyPower}点力量。";
-        if (relicID == RelicID.EternalGlass)
-            return $"回合开始时抽牌数+{EternalGlassDrawBonus}。";
-        if (relicID == RelicID.KingsSword)
-            return $"拾起时全体角色增加{KingsSwordPartyPower}点力量。";
-
         return relicID switch
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
@@ -401,6 +431,17 @@ public partial class Relic
             RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
+            RelicID.MatrixShield => $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。",
+            RelicID.Backpack => $"战斗开始时前2位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
+            RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
+            RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
+            RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
+            RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
+            RelicID.KnightHelmet => $"每当角色打出{KnightHelmetMinimumCost}费及以上的卡牌时，获得{KnightHelmetBlock}点格挡。",
+            RelicID.PhilosophersStone => $"回合开始时获得的能量+{PhilosophersStoneEnergyBonus}。战斗开始时所有敌人获得{PhilosophersStoneEnemyPower}点力量。",
+            RelicID.EternalGlass => $"回合开始时抽牌数+{EternalGlassDrawBonus}。",
+            RelicID.KingsSword => $"拾起时全体角色增加{KingsSwordPartyPower}点力量。",
+            RelicID.PulseController => $"战斗开始时随机一名敌人获得{PulseControllerStunStacks}层{Buff.BuffName.Stun.GetDescription()}、{PulseControllerVulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}和{PulseControllerWeakenStacks}层{Buff.BuffName.Weaken.GetDescription()}。",
             _ => "暂无效果。",
         };
     }
@@ -432,7 +473,7 @@ public partial class Relic
                 continue;
 
             await player.IncreaseProperties(PropertyType.MaxLife, 8);
-            player.Recover(0);
+            player.Recover(2);
         }
     }
 
@@ -488,6 +529,78 @@ public partial class Relic
 
             player.UpdataEnergy(energy, player);
         }
+    }
+
+    private static void ApplyRefractometerEffect(Battle battle)
+    {
+        if (battle?.PlayersList == null)
+            return;
+
+        Character[] candidates = battle
+            .PlayersList.Where(player =>
+                player != null
+                && GodotObject.IsInstanceValid(player)
+                && player.State != Character.CharacterState.Dying
+            )
+            .Cast<Character>()
+            .ToArray();
+        if (candidates.Length == 0)
+            return;
+
+        int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x4EF1AC70);
+        var rng = new Random(seed);
+        Character target = candidates[rng.Next(candidates.Length)];
+        HurtBuff.BuffAdd(
+            Buff.BuffName.DamageImmune,
+            target,
+            RefractometerDamageImmuneStacks,
+            target
+        );
+    }
+
+    private static void ApplyDebuffImmunityToPlayers(Battle battle, int stacks)
+    {
+        if (battle?.PlayersList == null || stacks <= 0)
+            return;
+
+        for (int i = 0; i < battle.PlayersList.Count; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (
+                player == null
+                || !GodotObject.IsInstanceValid(player)
+                || player.State == Character.CharacterState.Dying
+            )
+            {
+                continue;
+            }
+
+            SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, player, stacks, player);
+        }
+    }
+
+    private static void ApplyPulseControllerEffect(Battle battle)
+    {
+        if (battle?.EnemiesList == null)
+            return;
+
+        Character[] candidates = battle
+            .EnemiesList.Where(enemy =>
+                enemy != null
+                && GodotObject.IsInstanceValid(enemy)
+                && enemy.State != Character.CharacterState.Dying
+            )
+            .Cast<Character>()
+            .ToArray();
+        if (candidates.Length == 0)
+            return;
+
+        int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x51A7C011);
+        var rng = new Random(seed);
+        Character target = candidates[rng.Next(candidates.Length)];
+        SkillBuff.BuffAdd(Buff.BuffName.Stun, target, PulseControllerStunStacks, target);
+        HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PulseControllerVulnerableStacks, target);
+        AttackBuff.BuffAdd(Buff.BuffName.Weaken, target, PulseControllerWeakenStacks, target);
     }
 
     private static void ApplyExtraDrawToFrontPlayers(Battle battle, int stacks)
@@ -691,8 +804,12 @@ public enum RelicID
     Backpack,
     EnergyTank,
     FusionCore,
+    Refractometer,
+    Purifier,
+    KnightHelmet,
     PhilosophersStone,
     EternalGlass,
     KingsSword,
+    PulseController,
     curse,
 }

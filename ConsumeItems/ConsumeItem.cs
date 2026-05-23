@@ -13,6 +13,7 @@ public partial class ConsumeItem
         PropertyIncrease,
         Damage,
         Buff,
+        DrawCards,
     }
 
     private readonly record struct ItemConfig(
@@ -48,6 +49,7 @@ public partial class ConsumeItem
             6,
             BuffName: Buff.BuffName.Vulnerable
         ),
+        [ItemID.StreamingTransmission] = new("流式传输", ItemEffectType.DrawCards, 3),
     };
 
     public static PackedScene IconSence = GD.Load<PackedScene>(
@@ -165,6 +167,7 @@ public partial class ConsumeItem
             ItemEffectType.Damage => $"{targetPrefix}，造成{config.Value}伤害。",
             ItemEffectType.Buff =>
                 $"{targetPrefix}，给予{config.Value}层{Buff.GetBuffDisplayName(config.BuffName)}。",
+            ItemEffectType.DrawCards => $"{targetPrefix}，抽{config.Value}张牌。",
             _ => string.Empty,
         };
     }
@@ -199,6 +202,8 @@ public partial class ConsumeItem
                 "res://shader/Icon/ComsumeItems/ElectromagneticInterferenceItem.gdshader",
             ItemID.SpaceOscillation =>
                 "res://shader/Icon/ComsumeItems/SpaceOscillationItem.gdshader",
+            ItemID.StreamingTransmission =>
+                "res://shader/Icon/ComsumeItems/StreamingTransmissionItem.gdshader",
             _ => null,
         };
     }
@@ -258,6 +263,10 @@ public partial class ConsumeItem
             case ItemEffectType.Buff:
                 ApplyBuffItemEffect(target, config);
                 break;
+            case ItemEffectType.DrawCards:
+                if (target is PlayerCharacter playerCharacter)
+                    playerCharacter.TryDrawBattleCards(config.Value);
+                break;
         }
     }
 
@@ -289,4 +298,5 @@ public enum ItemID
     Explosion,
     ElectromagneticInterference,
     SpaceOscillation,
+    StreamingTransmission,
 }

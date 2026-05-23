@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://d4eternaldark"]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" uid="uid://bt8n7eternaldk" path="res://shader/Icon/BuffIcon/EternalDark.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_eternal_dark"]
+shader = ExtResource("2_shd")
+shader_parameter/abyss_color = Color(0.015, 0.005, 0.035, 1)
+shader_parameter/dark_violet = Color(0.18, 0.035, 0.34, 1)
+shader_parameter/rim_color = Color(0.72, 0.46, 1, 1)
+shader_parameter/star_color = Color(0.96, 0.86, 1, 1)
+shader_parameter/animation_speed = 1.0
+shader_parameter/eclipse_radius = 0.24
+shader_parameter/ring_width = 0.032
+shader_parameter/star_strength = 1.0
+
+[node name="Icon" unique_id=1043864828 instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_eternal_dark")

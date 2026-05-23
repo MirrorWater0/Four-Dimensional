@@ -11,7 +11,7 @@ using Godot;
 public partial class InventoryGrid : Control
 {
     [Export]
-    public float CardHeight = 130.0f;
+    public float CardHeight = 80.0f;
 
     [Export]
     public float CardSpacing = 10.0f;
@@ -136,11 +136,17 @@ public partial class InventoryGrid : Control
             y -= CardSpacing;
 
         _contentHeight = Mathf.Max(y, innerViewportHeight);
-        Size = new Vector2(availableWidth, _contentHeight);
-        CustomMinimumSize = Size;
+        SetContentSize(new Vector2(availableWidth, _contentHeight));
 
         ClampScrollOffset();
         ApplyScrollOffset();
+    }
+
+    private void SetContentSize(Vector2 contentSize)
+    {
+        CustomMinimumSize = contentSize;
+        if (AnchorLeft == AnchorRight && AnchorTop == AnchorBottom)
+            Size = contentSize;
     }
 
     /// <summary>

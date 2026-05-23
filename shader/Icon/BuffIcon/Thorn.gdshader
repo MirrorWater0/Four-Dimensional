@@ -14,6 +14,7 @@ void fragment() {
     // 2. 转换到极坐标
     float angle = atan(uv.y, uv.x); // 弧度: -PI 到 PI
     float dist = length(uv);        // 当前点到中心的距离
+    float aa = max(fwidth(dist), 0.0015);
     
     // 3. 计算锯齿波 (计算当前角度下，边缘应该在哪个半径上)
     // tau 是 2*PI
@@ -27,7 +28,8 @@ void fragment() {
     
     // 4. 绘制纯色遮罩
     // 如果点到中心的距离 < 当前角度的边界半径，则着色
-    float mask = smoothstep(radius_at_angle, radius_at_angle - smoothing, dist);
+    float edge = max(smoothing, aa);
+    float mask = smoothstep(radius_at_angle + edge, radius_at_angle - edge, dist);
     
     // 5. 输出纯色
     COLOR *= vec4(color.rgb, mask * color.a);

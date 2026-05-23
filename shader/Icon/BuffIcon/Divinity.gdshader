@@ -12,6 +12,11 @@ vec2 rotate(vec2 uv, float angle) {
     return vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
 }
 
+float aa_width(float sdf)
+{
+    return max(fwidth(sdf), 0.0015);
+}
+
 void fragment() {
     // 1. 坐标中心化 (范围 -0.5 到 0.5)
     vec2 uv = UV - 0.5;
@@ -34,9 +39,10 @@ void fragment() {
     float breathe = sin(t * 2.0) * 0.015;
     // 菱形 SDF 公式：abs(x) + abs(y)
     float d_crystal = (abs(uv.x) * 1.5 + abs(uv.y)) - (0.12 + breathe);
+    float crystal_aa = aa_width(d_crystal);
     
     // 晶体实体 (平滑边缘)
-    float crystal_solid = smoothstep(0.01, 0.0, d_crystal);
+    float crystal_solid = smoothstep(crystal_aa, -crystal_aa, d_crystal);
     // 晶体外发光 (使用 exp 函数模拟光线的自然物理衰减)
     float crystal_glow = exp(-max(d_crystal, 0.0) * 25.0);
 
@@ -47,13 +53,14 @@ void fragment() {
     vec2 uv_halo = rotate(uv, -t * 0.5);
     // 圆环 SDF
     float d_ring = abs(length(uv_halo) - 0.28) - 0.008;
+    float ring_aa = aa_width(d_ring);
     
     // 利用极坐标 (atan) 把圆环切断，产生 8 段“刻文”感
     float angle = atan(uv_halo.y, uv_halo.x);
     float ring_dash = smoothstep(-0.2, 0.2, sin(angle * 8.0)); 
     
     // 光环实体与发光
-    float ring_solid = smoothstep(0.01, 0.0, d_ring) * ring_dash;
+    float ring_solid = smoothstep(ring_aa, -ring_aa, d_ring) * ring_dash;
     float ring_glow = exp(-max(d_ring, 0.0) * 40.0) * ring_dash * 0.8;
 
     // ==========================================

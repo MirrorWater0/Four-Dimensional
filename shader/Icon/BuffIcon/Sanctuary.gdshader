@@ -18,7 +18,8 @@ vec2 rotate2d(vec2 point, float angle)
 
 float ring_mask(float dist, float radius, float width)
 {
-    return smoothstep(width, 0.0, abs(dist - radius));
+    float aa = max(fwidth(dist), 0.0015);
+    return smoothstep(width + aa, 0.0, abs(dist - radius));
 }
 
 void fragment()
@@ -27,13 +28,14 @@ void fragment()
     float time = TIME * animation_speed;
     float dist = length(uv);
     float pulse = 1.0 + sin(time * 2.1) * 0.035 * pulse_strength;
+    float aa = max(fwidth(dist), 0.0015);
 
     float outer_ring = ring_mask(dist, 0.29 * pulse, 0.018);
     float inner_ring = ring_mask(dist, 0.20 * pulse, 0.028);
 
     vec2 rotated = rotate2d(uv, 0.7853982);
-    float vertical = smoothstep(0.075, 0.0, abs(rotated.x)) * smoothstep(0.19, 0.045, abs(rotated.y));
-    float horizontal = smoothstep(0.075, 0.0, abs(rotated.y)) * smoothstep(0.19, 0.045, abs(rotated.x));
+    float vertical = smoothstep(0.075 + aa, 0.0, abs(rotated.x)) * smoothstep(0.19 + aa, 0.045 - aa, abs(rotated.y));
+    float horizontal = smoothstep(0.075 + aa, 0.0, abs(rotated.y)) * smoothstep(0.19 + aa, 0.045 - aa, abs(rotated.x));
     float cross = max(vertical, horizontal);
 
     float core = 1.0 - smoothstep(0.08, 0.16, dist);
@@ -63,5 +65,5 @@ void fragment()
     color += ring_color.rgb * (outer_ring * 0.85 + inner_ring * 0.55 + sigils * 0.7);
     color += glow_color.rgb * (cross + aura * 0.6 + rays);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

@@ -66,7 +66,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
         MaxLife = 77;
         Power = 15;
-        Survivability = 5;
+        Survivability = 15;
         Speed = 12;
         SkillIDs =
         [
@@ -82,7 +82,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 0;
 
     public MarrowReaverAttack()
         : base(SkillTypes.Attack)
@@ -96,16 +96,16 @@ public partial class MarrowReaverAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackPrimaryStep(baseDamage: BaseDamage),
-            ModifyPropertyStep(PropertyType.Power, 3)
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Three),
+            ModifyPropertyStep(PropertyType.Survivability, 5)
         );
     }
 }
 
 public partial class MarrowReaverSurvive : Skill
 {
-    private const int BaseBlock = 20;
-    private const int PowerGain = 6;
+    private const int BaseBlock = 0;
+    private const int PowerGain = 5;
 
     public MarrowReaverSurvive()
         : base(SkillTypes.Survive)
@@ -119,7 +119,7 @@ public partial class MarrowReaverSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0, BaseBlock),
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -127,7 +127,7 @@ public partial class MarrowReaverSurvive : Skill
 
 public partial class MarrowReaverSpecial : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 0;
     private const int HitCount = 2;
 
     public MarrowReaverSpecial()
@@ -140,6 +140,10 @@ public partial class MarrowReaverSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackPrimaryStep(baseDamage: BaseDamage, times: HitCount));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, times: HitCount),
+            HealStep(0)
+        );
     }
 }

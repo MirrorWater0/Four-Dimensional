@@ -1,0 +1,31 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://character/CharacterTemplate.tscn" id="1_template"]
+[ext_resource type="Texture2D" path="res://asset/EnemyCharater/AngerElite.png" id="2_portrait"]
+[ext_resource type="Script" path="res://character/EnemyCharacter/EnemyScript/Anger.cs" id="3_script"]
+[ext_resource type="Shader" path="res://shader/Icon/TerminateSkill.gdshader" id="4_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_anger_elite"]
+resource_local_to_scene = true
+shader = ExtResource("4_shader")
+shader_parameter/symbol_color = Color(1, 0.76, 0.72, 1)
+shader_parameter/thickness = 0.00499999988824
+shader_parameter/main_length = 1.35
+shader_parameter/main_width = 1.02
+shader_parameter/small_length = 0.52
+shader_parameter/small_width = 0.68
+shader_parameter/petal_overall_size = 0.46
+shader_parameter/petal_pinch = 0.72
+shader_parameter/ring_radius = 0.7
+shader_parameter/glow_intensity = 0.64
+shader_parameter/tip_softness = 1.25
+
+[node name="AngerElite" instance=ExtResource("1_template")]
+script = ExtResource("3_script")
+
+[node name="Sprite" parent="." index="7"]
+position = Vector2(-18, -18)
+texture = ExtResource("2_portrait")
+
+[node name="Special" parent="Intention" index="1"]
+material = SubResource("ShaderMaterial_anger_elite")

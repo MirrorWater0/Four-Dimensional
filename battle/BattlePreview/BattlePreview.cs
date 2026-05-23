@@ -576,8 +576,16 @@ public partial class BattlePreview : Control
         int playerTotal = CalculatePlayerTotalSpeed();
         int enemyTotal = CalculateEnemyTotalSpeed();
 
-        SetSpeedLabel(PlayerSpeedLabel, "我方总速度", playerTotal);
-        SetSpeedLabel(EnemySpeedLabel, "敌方总速度", enemyTotal);
+        SetSpeedLabel(
+            PlayerSpeedLabel,
+            I18n.Tr("ui.battle_preview.player_speed_total", "我方总速度"),
+            playerTotal
+        );
+        SetSpeedLabel(
+            EnemySpeedLabel,
+            I18n.Tr("ui.battle_preview.enemy_speed_total", "敌方总速度"),
+            enemyTotal
+        );
     }
 
     private static void SetSpeedLabel(RichTextLabel label, string title, int total)
@@ -599,7 +607,7 @@ public partial class BattlePreview : Control
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var info = GameInfo.PlayerCharacters[i];
-            sum += info.Speed;
+            sum += TalentTree.GetEffectiveSpeed(info);
         }
 
         return sum;
@@ -659,10 +667,10 @@ public partial class BattlePreview : Control
     {
         var sb = new StringBuilder(128);
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命：{info.LifeMax}\n");
-        sb.Append($"力量：{info.Power}\n");
-        sb.Append($"生存：{info.Survivability}\n");
-        sb.Append($"速度：{info.Speed}\n");
+        sb.Append($"{I18n.Tr("ui.common.life", "生命")}：{info.LifeMax}\n");
+        sb.Append($"{I18n.Tr("property.power", "力量")}：{info.Power}\n");
+        sb.Append($"{I18n.Tr("property.survivability", "生存")}：{info.Survivability}\n");
+        sb.Append($"{I18n.Tr("property.speed", "速度")}：{info.Speed}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
@@ -673,15 +681,13 @@ public partial class BattlePreview : Control
     private static string BuildEnemyPropertyText(EnemyRegedit regedit)
     {
         var sb = new StringBuilder(128);
-        string name = string.IsNullOrWhiteSpace(regedit.CharacterName)
-            ? "Enemy"
-            : regedit.CharacterName;
+        string name = LocalizationHelper.GetEnemyDisplayName(regedit);
 
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"生命 {regedit.MaxLife}\n");
-        sb.Append($"力量 {regedit.Power}\n");
-        sb.Append($"生存 {regedit.Survivability}\n");
-        sb.Append($"速度 {regedit.Speed}\n");
+        sb.Append($"{I18n.Tr("ui.common.life", "生命")} {regedit.MaxLife}\n");
+        sb.Append($"{I18n.Tr("property.power", "力量")} {regedit.Power}\n");
+        sb.Append($"{I18n.Tr("property.survivability", "生存")} {regedit.Survivability}\n");
+        sb.Append($"{I18n.Tr("property.speed", "速度")} {regedit.Speed}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
@@ -696,14 +702,17 @@ public partial class BattlePreview : Control
             .Where(x => x != null && x.SkillType != Skill.SkillTypes.none)
             .ToArray();
 
-        return BuildOwnedSkillNameTooltipText(name, info.PassiveName, info.PassiveDescription, skills);
+        return BuildOwnedSkillNameTooltipText(
+            name,
+            info.PassiveName,
+            TalentTree.GetPassiveDescription(info),
+            skills
+        );
     }
 
     private static string BuildEnemySkillText(EnemyRegedit regedit)
     {
-        string name = string.IsNullOrWhiteSpace(regedit.CharacterName)
-            ? "Enemy"
-            : regedit.CharacterName;
+        string name = LocalizationHelper.GetEnemyDisplayName(regedit);
 
         var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
         var skills = ids.Select(Skill.GetSkill).Where(x => x != null).ToArray();
@@ -713,7 +722,12 @@ public partial class BattlePreview : Control
             skill.UpdateDescription();
         }
 
-        return BuildSkillTooltipText(name, regedit.PassiveName, regedit.PassiveDescription, skills);
+        return BuildSkillTooltipText(
+            name,
+            LocalizationHelper.GetEnemyPassiveName(regedit),
+            LocalizationHelper.GetEnemyPassiveDescription(regedit),
+            skills
+        );
     }
 
     private static string BuildSkillTooltipText(
@@ -747,7 +761,9 @@ public partial class BattlePreview : Control
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
-            sb.Append($"[color=#87ceeb]耗能[/color] {skill.CardEnergyCostText}\n");
+            sb.Append(
+                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", skill.CardEnergyCostText))}\n"
+            );
 
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
@@ -780,7 +796,7 @@ public partial class BattlePreview : Control
         const string skillNameColor = "#b56bff";
         const int skillNameFontSize = 32;
         sb.Append(
-            $"[font_size={skillNameFontSize}][color={skillNameColor}]已拥有技能[/color][/font_size]\n"
+            $"[font_size={skillNameFontSize}][color={skillNameColor}]{I18n.Tr("ui.common.owned_skills", "已拥有技能")}[/color][/font_size]\n"
         );
 
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Attack);
@@ -830,9 +846,11 @@ public partial class BattlePreview : Control
         const string passiveColor = "#ffd36b";
         const int titleFontSize = 30;
 
-        string title = string.IsNullOrWhiteSpace(passiveName) ? "Passive" : passiveName;
+        string title = string.IsNullOrWhiteSpace(passiveName)
+            ? I18n.Tr("ui.common.passive", "Passive")
+            : passiveName;
         sb.Append(
-            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc](被动)[/color]\n"
+            $"[font_size={titleFontSize}][color={passiveColor}]{title}[/color][/font_size]  [color=#cccccc]({I18n.Tr("ui.common.passive_tag", "被动")})[/color]\n"
         );
 
         if (!string.IsNullOrWhiteSpace(passiveDesc))
@@ -852,7 +870,7 @@ public partial class BattlePreview : Control
     private static string GuessNameFromScenePath(string scenePath)
     {
         if (string.IsNullOrWhiteSpace(scenePath))
-            return "Character";
+            return I18n.Tr("ui.common.character", "Character");
 
         string normalized = scenePath.Replace('\\', '/');
         int slash = normalized.LastIndexOf('/');

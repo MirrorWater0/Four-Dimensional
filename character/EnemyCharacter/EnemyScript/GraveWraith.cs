@@ -55,10 +55,10 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 60;
-        Power = 18;
-        Survivability = 5;
-        Speed = 8;
+        MaxLife = 70;
+        Power = 50;
+        Survivability = 20;
+        Speed = 9;
         SkillIDs =
         [
             SkillID.GraveWraithAttack,
@@ -73,7 +73,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 16;
+    private const int BaseDamage = 0;
 
     public GraveWraithAttack()
         : base(SkillTypes.Attack)
@@ -85,13 +85,13 @@ public partial class GraveWraithAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackPrimaryStep(baseDamage: BaseDamage));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage));
     }
 }
 
 public partial class GraveWraithSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 0;
 
     public GraveWraithSurvive()
         : base(SkillTypes.Survive)
@@ -103,7 +103,11 @@ public partial class GraveWraithSurvive : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(0, BaseBlock));
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock, multiplier: 3),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2)
+        );
     }
 }
 
@@ -125,8 +129,8 @@ public partial class GraveWraithSpecial : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
+            AttackStep(baseDamage: 0, multiplier: 1),
+            LowerTargetPropertyStep(PropertyType.Survivability, 99, HostileTargetReference.All)
         );
     }
 }
