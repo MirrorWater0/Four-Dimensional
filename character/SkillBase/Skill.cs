@@ -306,6 +306,8 @@ public partial class Skill
 
     public virtual void OnDrawnToHand(PlayerCharacter player) { }
 
+    public virtual Task OnTurnEndInHand(PlayerCharacter player) => Task.CompletedTask;
+
     public bool TrySpendDisplayedEnergy()
     {
         if (CardEnergyCost <= 0)
@@ -1143,7 +1145,8 @@ public partial class Skill
             SkillID.VoidRotorSpecial => new VoidRotorSpecial(),
             SkillID.VoidStatus => new VoidStatus(),
             SkillID.WoundStatus => new WoundStatus(),
-            SkillID.StunStatus => new StunStatus(),
+            SkillID.DazeStatus => new DazeStatus(),
+            SkillID.PlagueStatus => new PlagueStatus(),
             SkillID.HollowBulwarkAttack => new HollowBulwarkAttack(),
             SkillID.HollowBulwarkSurvive => new HollowBulwarkSurvive(),
             SkillID.HollowBulwarkSpecial => new HollowBulwarkSpecial(),
@@ -1533,7 +1536,8 @@ public enum SkillID
     #endregion
 
     WoundStatus = 131,
-    StunStatus = 133,
+    DazeStatus = 133,
+    PlagueStatus = 154,
 
     #region HollowBulwark
     HollowBulwarkAttack = 125,

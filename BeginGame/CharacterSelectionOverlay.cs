@@ -37,10 +37,10 @@ public partial class CharacterSelectionOverlay : Control
     private CharacterOption _focusedOption;
     private static readonly Dictionary<string, string> CharacterHeroPaths = new()
     {
-        ["Echo"] = "res://asset/generated/character_select/EchoHero.png",
-        ["Kasiya"] = "res://asset/generated/character_select/KasiyaHero.png",
-        ["Mariya"] = "res://asset/generated/character_select/MariyaHero.png",
-        ["Nightingale"] = "res://asset/generated/character_select/NightingaleHero.png",
+        ["Echo"] = "res://asset/UI/CharacterSelect/EchoHero.png",
+        ["Kasiya"] = "res://asset/UI/CharacterSelect/KasiyaHero.png",
+        ["Mariya"] = "res://asset/UI/CharacterSelect/MariyaHero.png",
+        ["Nightingale"] = "res://asset/UI/CharacterSelect/NightingaleHero.png",
     };
     private static readonly Dictionary<string, string> CharacterIconPaths = new()
     {
@@ -693,8 +693,7 @@ public partial class CharacterSelectionOverlay : Control
         if (option == null)
             return;
 
-        if (HeroImage != null)
-            HeroImage.Texture = option.Hero ?? option.Portrait;
+        ApplyHeroTexture(option);
 
         if (EyebrowLabel != null)
             EyebrowLabel.Text = I18n.Tr("ui.character_select.profile", "角色档案");
@@ -760,24 +759,57 @@ public partial class CharacterSelectionOverlay : Control
         _heroImagePositionCaptured = true;
     }
 
+    private void ApplyHeroTexture(CharacterOption option)
+    {
+        if (HeroImage == null || option == null)
+            return;
+
+        HeroImage.Texture = option.Hero ?? option.Portrait;
+        HeroImage.StretchMode =
+            option.Hero != null
+                ? TextureRect.StretchModeEnum.KeepAspectCovered
+                : TextureRect.StretchModeEnum.KeepAspectCentered;
+    }
+
     private static Texture2D LoadHeroTexture(PlayerInfoStructure info)
     {
-        if (
-            !string.IsNullOrWhiteSpace(info.CharacterName)
-            && CharacterHeroPaths.TryGetValue(info.CharacterName, out string heroPath)
-        )
+        string characterKey = ResolveCharacterAssetKey(info);
+        if (!string.IsNullOrWhiteSpace(characterKey)
+            && CharacterHeroPaths.TryGetValue(characterKey, out string heroPath))
+        {
             return PreloadeScene.GetTexture(heroPath) ?? GD.Load<Texture2D>(heroPath);
+        }
 
         return null;
     }
 
     private static Texture2D LoadCharacterIcon(PlayerInfoStructure info)
     {
-        if (
-            !string.IsNullOrWhiteSpace(info.CharacterName)
-            && CharacterIconPaths.TryGetValue(info.CharacterName, out string iconPath)
-        )
+        string characterKey = ResolveCharacterAssetKey(info);
+        if (!string.IsNullOrWhiteSpace(characterKey)
+            && CharacterIconPaths.TryGetValue(characterKey, out string iconPath))
+        {
             return PreloadeScene.GetTexture(iconPath) ?? GD.Load<Texture2D>(iconPath);
+        }
+
+        return null;
+    }
+
+    private static string ResolveCharacterAssetKey(PlayerInfoStructure info)
+    {
+        string scenePath = info.CharacterScenePath ?? string.Empty;
+        foreach (string key in CharacterHeroPaths.Keys)
+        {
+            if (scenePath.Contains($"/{key}/", StringComparison.OrdinalIgnoreCase))
+                return key;
+        }
+
+        string name = info.CharacterName ?? string.Empty;
+        foreach (string key in CharacterHeroPaths.Keys)
+        {
+            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase))
+                return key;
+        }
 
         return null;
     }

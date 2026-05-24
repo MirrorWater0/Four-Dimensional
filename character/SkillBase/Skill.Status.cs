@@ -1,3 +1,5 @@
+using System.Threading.Tasks;
+
 public partial class VoidStatus : Skill
 {
     private const int EnergyLossOnDraw = 1;
@@ -63,9 +65,9 @@ public partial class WoundStatus : Skill
     }
 }
 
-public partial class StunStatus : Skill
+public partial class DazeStatus : Skill
 {
-    public StunStatus()
+    public DazeStatus()
         : base(SkillTypes.none)
     {
         UpdateDescription();
@@ -73,7 +75,7 @@ public partial class StunStatus : Skill
 
     public override string SkillName
     {
-        get => I18n.Tr("skill.stun_status.name", "眩晕");
+        get => I18n.Tr("skill.daze_status.name", "晕眩");
         set { }
     }
     public override int EnergyCost => 0;
@@ -86,6 +88,47 @@ public partial class StunStatus : Skill
             I18n.Tr("skill.status.desc.status_card", "状态牌。"),
             I18n.Tr("skill.status.desc.unplayable", "不可打出。"),
             I18n.Tr("skill.status.desc.ethereal", "虚无。")
+        );
+    }
+}
+
+public partial class PlagueStatus : Skill
+{
+    private const int DamageAtTurnEnd = 5;
+
+    public PlagueStatus()
+        : base(SkillTypes.none)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName
+    {
+        get => I18n.Tr("skill.plague_status.name", "瘟疫");
+        set { }
+    }
+    public override int EnergyCost => 1;
+    public override bool CanBePlayed => true;
+    public override bool ExhaustsAfterUse => true;
+
+    public override async Task OnTurnEndInHand(PlayerCharacter player)
+    {
+        if (player == null || player.State == Character.CharacterState.Dying)
+            return;
+
+        await player.GetHurt(DamageAtTurnEnd, damageKind: Character.DamageKind.Other);
+    }
+
+    public override void UpdateDescription()
+    {
+        SetDescriptionLines(
+            I18n.Tr("skill.status.desc.status_card", "状态牌。"),
+            $"{I18n.Tr("keyword.exhaust", "消耗")}。",
+            I18n.Format(
+                "skill.plague_status.desc.turn_end_damage",
+                "回合结束时若在手牌中：受到{amount}点伤害。",
+                ("amount", DamageAtTurnEnd)
+            )
         );
     }
 }

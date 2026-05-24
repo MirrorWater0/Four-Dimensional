@@ -55,7 +55,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 70;
+        MaxLife = 100;
         Power = 50;
         Survivability = 20;
         Speed = 9;

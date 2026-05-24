@@ -168,6 +168,8 @@
   "skill.vulnerability_conversion.text.total_vulnerable_power": "Gain Power equal to the total {buff} stacks on all enemy characters.",
   "skill.brightest_moment.text.lose_invisible_gain_survivability": "Lose all Invisible stacks. For each stack lost, all allies gain 2 Survivability.",
   "skill.status.desc.on_draw_lose_energy": "When drawn: lose {amount} Energy.",
+  "skill.plague_status.name": "Plague",
+  "skill.plague_status.desc.turn_end_damage": "At turn end, if in hand: take {amount} damage.",
   "skill.status.desc.ethereal": "Ethereal.",
   "skill.status.desc.status_card": "Status card.",
   "skill.status.desc.unplayable": "Unplayable.",

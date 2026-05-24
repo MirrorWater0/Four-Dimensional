@@ -97,7 +97,7 @@ public partial class VoidRotorSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddStatusCardsToDrawPileStep(SkillID.StunStatus, 2, HostileTargetReference.One)
+            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 2, HostileTargetReference.One)
         );
     }
 }
@@ -105,7 +105,7 @@ public partial class VoidRotorSurvive : Skill
 public partial class VoidRotorSpecial : Skill
 {
     private const int BaseDamage = 0;
-    private const int StunCardsPerTarget = 2;
+    private const int DazeCardsPerTarget = 2;
     private const int RandomTargetCount = 2;
 
     public VoidRotorSpecial()
@@ -123,8 +123,8 @@ public partial class VoidRotorSpecial : Skill
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 3),
             AddStatusCardsToDrawPileStep(
-                SkillID.StunStatus,
-                StunCardsPerTarget,
+                SkillID.DazeStatus,
+                DazeCardsPerTarget,
                 HostileTargetReference.Two
             )
         );

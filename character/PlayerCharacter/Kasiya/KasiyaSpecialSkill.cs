@@ -102,7 +102,7 @@ public class HopeBeacon : Skill
 
 public class WarGodWill : Skill
 {
-    private const int PowerGain = 4;
+    private const int PowerGain = 3;
 
     public WarGodWill()
         : base(SkillTypes.Special)

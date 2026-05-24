@@ -4122,20 +4122,29 @@ public partial class Skill
                         .Select(x => x.Target)
                         .FirstOrDefault(target => target != null)
                     ?? group.Key,
-                });
+                })
+                .ToArray();
+
+            foreach (var animationGroup in affectedOwners
+                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
+                .GroupBy(entry => entry.Player.BattleNode.CharacterControl))
+            {
+                await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
+                    animationGroup.Select(
+                            entry =>
+                                new CharacterControl.StatusCardInsertAnimationEntry(
+                                    entry.VisualTarget,
+                                    _statusSkillId,
+                                    _count,
+                                    skill.OwnerCharater
+                                )
+                        )
+                        .ToArray()
+                );
+            }
 
             foreach (var entry in affectedOwners)
             {
-                if (entry.Player.BattleNode.CharacterControl != null)
-                {
-                    await entry.Player.BattleNode.CharacterControl.PlayStatusCardInsertAnimationAsync(
-                        entry.VisualTarget,
-                        _statusSkillId,
-                        _count,
-                        skill.OwnerCharater
-                    );
-                }
-
                 entry.Player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
                     entry.Player,
                     _statusSkillId,

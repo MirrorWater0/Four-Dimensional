@@ -90,6 +90,27 @@ public partial class CharacterControl : Control
     private bool _manualTargetPickerTemporarilyHidden;
     private TaskCompletionSource<Character> _manualTargetCompletion;
 
+    public readonly struct StatusCardInsertAnimationEntry
+    {
+        public StatusCardInsertAnimationEntry(
+            Character target,
+            SkillID statusSkillId,
+            int count,
+            Character source = null
+        )
+        {
+            Target = target;
+            StatusSkillId = statusSkillId;
+            Count = count;
+            Source = source;
+        }
+
+        public Character Target { get; }
+        public SkillID StatusSkillId { get; }
+        public int Count { get; }
+        public Character Source { get; }
+    }
+
     private sealed class QueuedCardPlay
     {
         public Character Actor { get; init; }
@@ -104,6 +125,16 @@ public partial class CharacterControl : Control
         public bool QueueFreeCardAfterVanish { get; init; }
         public bool FreeEnergyCost { get; init; }
         public TaskCompletionSource<bool> Completion { get; init; }
+    }
+
+    private sealed class StatusInsertPreviewCard
+    {
+        public SkillCard Card { get; init; }
+        public Character Target { get; init; }
+        public Vector2 Scale { get; init; }
+        public Vector2 CardSize { get; init; }
+        public int TargetIndex { get; set; }
+        public int TargetCount { get; set; }
     }
 
     public override void _Ready()
@@ -298,37 +329,81 @@ public partial class CharacterControl : Control
         RefreshTurnUi();
     }
 
-    public async Task PlayStatusCardInsertAnimationAsync(
+    public Task PlayStatusCardInsertAnimationAsync(
         Character target,
         SkillID statusSkillId,
         int count,
         Character source = null
     )
     {
-        if (count <= 0 || !IsInsideTree())
+        return PlayStatusCardInsertAnimationAsync(
+            new[] { new StatusCardInsertAnimationEntry(target, statusSkillId, count, source) }
+        );
+    }
+
+    public async Task PlayStatusCardInsertAnimationAsync(
+        IReadOnlyList<StatusCardInsertAnimationEntry> entries
+    )
+    {
+        if (entries == null || entries.Count == 0 || !IsInsideTree())
             return;
 
-        Skill statusSkill = Skill.GetSkill(statusSkillId);
-        if (statusSkill == null)
+        var expandedEntries = new List<(Character Target, Character Source, Skill StatusSkill)>();
+        var statusSkillCache = new Dictionary<SkillID, Skill>();
+        foreach (StatusCardInsertAnimationEntry entry in entries)
+        {
+            if (entry.Count <= 0)
+                continue;
+
+            if (!statusSkillCache.TryGetValue(entry.StatusSkillId, out Skill statusSkill))
+            {
+                statusSkill = Skill.GetSkill(entry.StatusSkillId);
+                statusSkillCache[entry.StatusSkillId] = statusSkill;
+            }
+
+            if (statusSkill == null)
+                continue;
+
+            for (int i = 0; i < entry.Count; i++)
+                expandedEntries.Add((entry.Target, entry.Source, statusSkill));
+        }
+
+        if (expandedEntries.Count == 0)
             return;
 
         CanvasLayer overlay = EnsureCardPlayOverlay();
         if (overlay == null)
             return;
 
-        var cards = new List<SkillCard>(count);
-        Vector2 scale = BattleCardScale * StatusInsertCardScale;
-        Vector2 cardSize = BattleCardBaseSize * scale;
+        var cards = new List<StatusInsertPreviewCard>(expandedEntries.Count);
         Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
-        float gap = Math.Min(28f, Math.Max(10f, 180f / Math.Max(1, count)));
-        float totalWidth = count * cardSize.X + Math.Max(0, count - 1) * gap;
-        float startX = viewportSize.X * 0.5f - totalWidth * 0.5f;
-        float y = viewportSize.Y * 0.46f - cardSize.Y * 0.5f;
-        Vector2 spawnPosition = new(viewportSize.X * 0.5f - cardSize.X * 0.5f, y - 42f);
+        Vector2 scale = GetStatusInsertScale(expandedEntries.Count, viewportSize);
+        Vector2 cardSize = BattleCardBaseSize * scale;
+        float gap = GetStatusInsertGap(cardSize);
+        int columns = GetStatusInsertColumns(expandedEntries.Count, cardSize, gap, viewportSize);
+        int rows = Mathf.CeilToInt(expandedEntries.Count / (float)columns);
+        float rowGap = GetStatusInsertRowGap(cardSize);
+        float totalHeight = rows * cardSize.Y + Math.Max(0, rows - 1) * rowGap;
+        float startY = Mathf.Clamp(
+            viewportSize.Y * 0.47f - totalHeight * 0.5f,
+            42f,
+            Math.Max(42f, viewportSize.Y - totalHeight - 42f)
+        );
+        Vector2 spawnPosition = new(
+            viewportSize.X * 0.5f - cardSize.X * 0.5f,
+            startY - 42f
+        );
+        float stagger = GetStatusInsertStagger(expandedEntries.Count);
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < expandedEntries.Count; i++)
         {
-            SkillCard card = CreateStatusInsertPreviewCard(statusSkill, target, source, scale);
+            var entry = expandedEntries[i];
+            SkillCard card = CreateStatusInsertPreviewCard(
+                entry.StatusSkill,
+                entry.Target,
+                entry.Source,
+                scale
+            );
             if (card == null)
                 continue;
 
@@ -338,17 +413,34 @@ public partial class CharacterControl : Control
             card.Scale = scale * 0.72f;
             card.Modulate = new Color(1f, 1f, 1f, 0f);
             card.ZIndex = TemporaryCarryCardZIndex + i;
-            cards.Add(card);
+            cards.Add(
+                new StatusInsertPreviewCard
+                {
+                    Card = card,
+                    Target = entry.Target,
+                    Scale = scale,
+                    CardSize = cardSize,
+                }
+            );
 
-            Vector2 arrangedPosition = new(startX + i * (cardSize.X + gap), y);
+            Vector2 arrangedPosition = GetStatusInsertArrangedPosition(
+                i,
+                expandedEntries.Count,
+                columns,
+                cardSize,
+                gap,
+                rowGap,
+                viewportSize,
+                startY
+            );
             Tween arrangeTween = card.CreateTween();
             arrangeTween.SetParallel(true);
             arrangeTween
                 .TweenProperty(card, "modulate:a", 1f, StatusInsertArrangeDuration)
-                .SetDelay(i * StatusInsertStagger);
+                .SetDelay(i * stagger);
             arrangeTween
                 .TweenProperty(card, "scale", scale, StatusInsertArrangeDuration)
-                .SetDelay(i * StatusInsertStagger)
+                .SetDelay(i * stagger)
                 .SetTrans(Tween.TransitionType.Back)
                 .SetEase(Tween.EaseType.Out);
             arrangeTween
@@ -358,7 +450,7 @@ public partial class CharacterControl : Control
                     arrangedPosition,
                     StatusInsertArrangeDuration
                 )
-                .SetDelay(i * StatusInsertStagger)
+                .SetDelay(i * stagger)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
         }
@@ -366,28 +458,35 @@ public partial class CharacterControl : Control
         if (cards.Count == 0)
             return;
 
+        AssignStatusInsertTargetOffsets(cards);
+
         await ToSignal(
             GetTree()
                 .CreateTimer(
                     StatusInsertArrangeDuration
                         + StatusInsertHoldDuration
-                        + StatusInsertStagger * cards.Count
+                        + stagger * Math.Max(0, cards.Count - 1)
                 ),
             SceneTreeTimer.SignalName.Timeout
         );
 
-        Vector2 targetPosition = GetStatusInsertTargetPosition(target, cardSize);
         float maxDelay = 0f;
         for (int i = 0; i < cards.Count; i++)
         {
-            SkillCard card = cards[i];
+            StatusInsertPreviewCard preview = cards[i];
+            SkillCard card = preview.Card;
             if (card == null || !GodotObject.IsInstanceValid(card))
                 continue;
 
-            float delay = i * StatusInsertStagger;
+            float delay = i * stagger;
             maxDelay = Math.Max(maxDelay, delay);
+            Vector2 targetPosition = GetStatusInsertTargetPosition(preview.Target, preview.CardSize);
             Vector2 hitPosition =
-                targetPosition + new Vector2((i - (cards.Count - 1) * 0.5f) * 8f, 0f);
+                targetPosition
+                + new Vector2(
+                    (preview.TargetIndex - (preview.TargetCount - 1) * 0.5f) * 8f,
+                    0f
+                );
             Tween flyTween = card.CreateTween();
             flyTween.SetParallel(true);
             flyTween
@@ -396,7 +495,7 @@ public partial class CharacterControl : Control
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
             flyTween
-                .TweenProperty(card, "scale", scale * 0.18f, StatusInsertFlyDuration)
+                .TweenProperty(card, "scale", preview.Scale * 0.18f, StatusInsertFlyDuration)
                 .SetDelay(delay)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
@@ -410,8 +509,92 @@ public partial class CharacterControl : Control
             SceneTreeTimer.SignalName.Timeout
         );
 
-        foreach (SkillCard card in cards)
-            QueueFreeTemporaryCard(card);
+        foreach (StatusInsertPreviewCard preview in cards)
+            QueueFreeTemporaryCard(preview.Card);
+    }
+
+    private static Vector2 GetStatusInsertScale(int count, Vector2 viewportSize)
+    {
+        float scaleFactor = StatusInsertCardScale;
+        while (scaleFactor > 0.46f)
+        {
+            Vector2 scale = BattleCardScale * scaleFactor;
+            Vector2 cardSize = BattleCardBaseSize * scale;
+            float gap = GetStatusInsertGap(cardSize);
+            int columns = GetStatusInsertColumns(count, cardSize, gap, viewportSize);
+            int rows = Mathf.CeilToInt(count / (float)columns);
+            float rowGap = GetStatusInsertRowGap(cardSize);
+            float totalHeight = rows * cardSize.Y + Math.Max(0, rows - 1) * rowGap;
+            if (totalHeight <= viewportSize.Y * 0.68f)
+                return scale;
+
+            scaleFactor -= 0.04f;
+        }
+
+        return BattleCardScale * Math.Max(0.46f, scaleFactor);
+    }
+
+    private static float GetStatusInsertGap(Vector2 cardSize)
+    {
+        return Math.Min(28f, Math.Max(10f, cardSize.X * 0.12f));
+    }
+
+    private static float GetStatusInsertRowGap(Vector2 cardSize)
+    {
+        return Math.Min(24f, Math.Max(12f, cardSize.Y * 0.08f));
+    }
+
+    private static float GetStatusInsertStagger(int count)
+    {
+        if (count <= 1)
+            return 0f;
+
+        return Math.Min(StatusInsertStagger, 0.18f / (count - 1));
+    }
+
+    private static int GetStatusInsertColumns(
+        int count,
+        Vector2 cardSize,
+        float gap,
+        Vector2 viewportSize
+    )
+    {
+        float availableWidth = Math.Max(cardSize.X, viewportSize.X - 96f);
+        int maxColumns = Math.Max(1, Mathf.FloorToInt((availableWidth + gap) / (cardSize.X + gap)));
+        return Math.Max(1, Math.Min(count, maxColumns));
+    }
+
+    private static Vector2 GetStatusInsertArrangedPosition(
+        int index,
+        int count,
+        int columns,
+        Vector2 cardSize,
+        float gap,
+        float rowGap,
+        Vector2 viewportSize,
+        float startY
+    )
+    {
+        int row = index / columns;
+        int column = index % columns;
+        int rowCount = Math.Min(columns, count - row * columns);
+        float rowWidth = rowCount * cardSize.X + Math.Max(0, rowCount - 1) * gap;
+        float startX = viewportSize.X * 0.5f - rowWidth * 0.5f;
+        return new Vector2(startX + column * (cardSize.X + gap), startY + row * (cardSize.Y + rowGap));
+    }
+
+    private static void AssignStatusInsertTargetOffsets(List<StatusInsertPreviewCard> cards)
+    {
+        foreach (var group in cards.GroupBy(card => card.Target))
+        {
+            int count = group.Count();
+            int index = 0;
+            foreach (StatusInsertPreviewCard card in group)
+            {
+                card.TargetIndex = index++;
+                card.TargetCount = count;
+            }
+        }
     }
 
     private SkillCard CreateStatusInsertPreviewCard(

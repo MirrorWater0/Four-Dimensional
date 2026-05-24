@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://deepg4xj0moq0"
-path="res://.godot/imported/EchoHero.png-df8848038b6aaebbdde8d90c069eefde.ctex"
+uid="uid://dymus00ioh5xn"
+path="res://.godot/imported/MariyaHero.png-473035c9b1d8681bc9c3087e1d557176.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/generated/character_select/EchoHero.png"
-dest_files=["res://.godot/imported/EchoHero.png-df8848038b6aaebbdde8d90c069eefde.ctex"]
+source_file="res://asset/UI/CharacterSelect/MariyaHero.png"
+dest_files=["res://.godot/imported/MariyaHero.png-473035c9b1d8681bc9c3087e1d557176.ctex"]
 
 [params]
 

@@ -514,7 +514,7 @@ public partial class Encyclopedia : Control
                     ? I18n.Tr("ui.encyclopedia.skill_type.status", "状态")
                     : skill.SkillType.GetDescription();
                 string rarityText = GetRarityLabel(rarity);
-                string costText = isStatusCard
+                string costText = !skill.CanBePlayed
                     ? I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出")
                     : skill.CardEnergyCostText;
                 string description = string.IsNullOrWhiteSpace(skill.Description)
@@ -1251,7 +1251,7 @@ public partial class Encyclopedia : Control
         if (skill == null)
             return SkillCostFilter.All;
 
-        if (!skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none)
+        if (!skill.CanBePlayed)
             return SkillCostFilter.X;
 
         if (skill.UsesXEnergyCost)
@@ -1271,7 +1271,7 @@ public partial class Encyclopedia : Control
         if (skill == null)
             return int.MaxValue;
 
-        if (!skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none)
+        if (!skill.CanBePlayed)
             return 100;
 
         if (skill.UsesXEnergyCost)

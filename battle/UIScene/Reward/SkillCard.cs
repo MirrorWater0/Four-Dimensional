@@ -247,9 +247,13 @@ public partial class SkillCard : SubViewportContainer
             : CurrentSkill.SkillType.GetDescription();
         TypeLabel.Text = skillTypeText;
         Description.Text = CurrentSkill.Description ?? string.Empty;
-        EnergyCost.Text = isStatusCard
+        EnergyCost.Text = !CurrentSkill.CanBePlayed
             ? I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出")
-            : I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", CurrentSkill.CardEnergyCostText));
+            : I18n.Format(
+                "ui.reward.energy_cost",
+                "耗能:{cost}",
+                ("cost", CurrentSkill.CardEnergyCostText)
+            );
         ApplyRarityStyles(CurrentSkill.Rarity);
         if (isStatusCard)
             ApplyStatusCardStyle();

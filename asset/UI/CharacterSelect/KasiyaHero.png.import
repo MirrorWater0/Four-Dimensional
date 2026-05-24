@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bd0wea5fpdxwd"
-path="res://.godot/imported/KasiyaHero.png-654fb65dfb16b9dd07aea50ea3e27ca5.ctex"
+path="res://.godot/imported/KasiyaHero.png-8e35035dc9151c95575265009f2af122.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/generated/character_select/KasiyaHero.png"
-dest_files=["res://.godot/imported/KasiyaHero.png-654fb65dfb16b9dd07aea50ea3e27ca5.ctex"]
+source_file="res://asset/UI/CharacterSelect/KasiyaHero.png"
+dest_files=["res://.godot/imported/KasiyaHero.png-8e35035dc9151c95575265009f2af122.ctex"]
 
 [params]
 

@@ -144,11 +144,7 @@ public partial class DeathAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargets(TargetCount),
-                times: HitCount
-            )
+            AttackStep(baseDamage: BaseDamage, target: HostileTargets(TargetCount), times: HitCount)
         );
     }
 }
@@ -170,7 +166,7 @@ public partial class DeathSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
             HealStep(Heal, target: TargetReference.Self)
         );
     }
@@ -179,7 +175,7 @@ public partial class DeathSurvive : Skill
 public partial class DeathSpecial : Skill
 {
     private const int SelfPowerGain = 3;
-    private const int DisasterStacks = 9;
+    private const int DisasterStacks = 7;
 
     public DeathSpecial()
         : base(SkillTypes.Special)
@@ -195,7 +191,8 @@ public partial class DeathSpecial : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks)
+            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks),
+            AddStatusCardsToDrawPileStep(SkillID.PlagueStatus, 2, HostileTargetReference.All)
         );
     }
 }

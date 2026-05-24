@@ -88,7 +88,7 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 64;
+        MaxLife = 74;
         Power = 21;
         Survivability = 14;
         Speed = 7;
@@ -140,7 +140,7 @@ public partial class ArmonSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            AddStatusCardsToDrawPileStep(SkillID.StunStatus, 2, HostileTargetReference.All),
+            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 2, HostileTargetReference.All),
             EnergyStep(EnergyGain)
         );
     }

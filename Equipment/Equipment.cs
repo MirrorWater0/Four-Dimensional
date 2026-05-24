@@ -102,7 +102,7 @@ public partial class Equipment
             Survivability = -1,
             Speed = -1,
             MaxLife = 0,
-            Description = "战斗开始时，如果敌方有与装备者站位相同的角色，令其获得1层眩晕。",
+            Description = "战斗开始时，如果敌方有与装备者站位相同的角色，令其获得1层晕眩。",
         },
         new Equipment
         {

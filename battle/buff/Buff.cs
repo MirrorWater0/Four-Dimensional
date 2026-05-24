@@ -339,7 +339,7 @@ public partial class Buff
         [Description("荆棘")]
         Thorn,
 
-        [Description("眩晕")]
+        [Description("晕眩")]
         Stun,
 
         [Description("追击")]

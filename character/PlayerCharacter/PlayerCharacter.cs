@@ -214,6 +214,32 @@ public partial class PlayerCharacter : Character
             InvalidateSkillTooltipCache();
     }
 
+    public async Task DiscardBattleHandAtTurnEndAsync()
+    {
+        if (Skills == null || BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
+            return;
+
+        bool discardedAny = false;
+        for (int i = 0; i < Skills.Length; i++)
+        {
+            Skill skill = Skills[i];
+            if (skill == null)
+                continue;
+
+            await skill.OnTurnEndInHand(this);
+
+            if (Skills[i] != skill)
+                continue;
+
+            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
+            Skills[i] = null;
+            discardedAny = true;
+        }
+
+        if (discardedAny)
+            InvalidateSkillTooltipCache();
+    }
+
     public override void OnActionStart()
     {
         base.OnActionStart();
@@ -240,12 +266,17 @@ public partial class PlayerCharacter : Character
         }
 
         BattleNode.RetreatButton.Disabled = true;
-        DiscardBattleHand();
         BattleNode.CharacterControl?.DisablePlayerActions(this);
         var mapNode = BattleNode.MapNode;
         if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
             mapNode.PlayerResourceState?.SetItemsEnabled(false);
         base.OnActionEnd();
+    }
+
+    protected override async Task ResolveTurnEndPhaseAsync()
+    {
+        await DiscardBattleHandAtTurnEndAsync();
+        await base.ResolveTurnEndPhaseAsync();
     }
 
     public override void DisableSkill()

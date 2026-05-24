@@ -23,18 +23,17 @@ config/features=PackedStringArray("4.6", "C#", "Mobile")
 AudioManager="*res://Audio/AudioManager.tscn"
 MouseTrail="*uid://d0hwex3fc1sp4"
 
+[debug]
+
+file_logging/enable_file_logging=true
+file_logging/max_log_files=20
+
 [display]
 
 window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/size/mode=3
 window/stretch/mode="viewport"
-
-[debug]
-
-file_logging/enable_file_logging=true
-file_logging/log_path="user://logs/godot.log"
-file_logging/max_log_files=20
 
 [dotnet]
 
