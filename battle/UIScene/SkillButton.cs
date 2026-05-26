@@ -426,7 +426,7 @@ public partial class SkillButton : Button
             GlobalFunction.ColorizeNumbers(effectText)
         );
         string plainBuffName = Buff.GetBuffDisplayName(buffName);
-        return $"[outline_size=0][color=#a8f0ad]{plainBuffName}[/color][/outline_size]\n{formattedEffect}";
+        return $"{Buff.BuildTooltipIconTag(buffName)}          [outline_size=0][color=#a8f0ad]{plainBuffName}[/color][/outline_size]\n{formattedEffect}";
     }
 
     private static string StripBbCodeTags(string text)

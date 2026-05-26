@@ -300,7 +300,7 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
 theme_override_font_sizes/font_size = 12
-text = "生命上限 +4"
+text = "生命上限 +3"
 horizontal_alignment = 1
 
 [node name="PriceLabel" type="Label" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=127622601]

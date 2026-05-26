@@ -32,6 +32,39 @@ public partial class FinalGuard : Skill
     }
 }
 
+public partial class RebirthPrayer : Skill
+{
+    private const int BaseRebirthHeal = 10;
+
+    public RebirthPrayer()
+        : base(SkillTypes.Survive)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "复苏祷告";
+    public override int EnergyCost => 2;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            HealStep(
+                baseHeal: BaseRebirthHeal,
+                target: TargetReference.ManualFriendly,
+                preferNonFull: true,
+                rebirth: true
+            ),
+            BlockStep(target: TargetReference.HealKey, baseBlock: 0),
+            ModifyPropertyStep(
+                target: TargetReference.HealKey,
+                type: PropertyType.MaxLife,
+                value: 8
+            )
+        );
+    }
+}
+
 public partial class CrystalGuard : Skill
 {
     private const int BaseBlock = 5;

@@ -1,21 +1,17 @@
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 using Godot;
 
 public partial class Armon : EnemyCharacter
 {
     private const int FirstTurnEndBlockMultiplier = 2;
-    private const int SecondTurnStartPowerGain = 10;
 
-    private int _turnStartCount;
     private bool _grantedFirstTurnEndBlock;
 
     public const string PassiveNameText = "矩阵核心";
 
     public static string UpdatedPassiveDescriptionText =>
-        $"第一次回合结束时：全阵获得{FirstTurnEndBlockMultiplier}x（生存）点格挡。\n"
-        + $"第二次回合开始时：全阵获得{SecondTurnStartPowerGain}点力量。";
+        $"第一次回合结束时：全阵获得{FirstTurnEndBlockMultiplier}x（生存）点格挡。";
 
     public override string CharacterName { get; set; } = "Armon";
 
@@ -24,17 +20,7 @@ public partial class Armon : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = UpdatedPassiveDescriptionText;
-        _turnStartCount = 0;
         _grantedFirstTurnEndBlock = false;
-    }
-
-    public override async void OnTurnStart()
-    {
-        base.OnTurnStart();
-
-        _turnStartCount++;
-        if (_turnStartCount == 2)
-            await GrantFormationPower();
     }
 
     public override void OnTurnEnd()
@@ -63,20 +49,6 @@ public partial class Armon : EnemyCharacter
             ally.UpdataBlock(block, source: this);
         }
     }
-
-    private async Task GrantFormationPower()
-    {
-        using var _ = BeginEffectSource("被动");
-        if (BattleNode == null)
-            return;
-
-        var allies = BattleNode
-            .GetTeamCharacters(IsPlayer, includeSummons: true)
-            .Where(x => x != null && x.State == CharacterState.Normal)
-            .ToArray();
-        for (int i = 0; i < allies.Length; i++)
-            await allies[i].IncreaseProperties(PropertyType.Power, SecondTurnStartPowerGain, this);
-    }
 }
 
 public partial class ArmonRegedit : EnemyRegedit
@@ -89,7 +61,7 @@ public partial class ArmonRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
         MaxLife = 74;
-        Power = 21;
+        Power = 20;
         Survivability = 14;
         Speed = 7;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
@@ -140,7 +112,7 @@ public partial class ArmonSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 2, HostileTargetReference.All),
+            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 1, HostileTargetReference.All),
             EnergyStep(EnergyGain)
         );
     }
@@ -148,7 +120,7 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int PowerGainPerEnergy = 3;
+    private const int PowerGainPerEnergy = 2;
     private const int SurvivabilityGainPerEnergy = 2;
 
     public ArmonSpecial()

@@ -93,7 +93,7 @@ public static partial class GameInfo
             info.PositionIndex = defaultPositionIndex;
         }
 
-        info.AllSkills = Skill.GetPlayerSkillPool(info.CharacterName);
+        info.AllSkills = Skill.GetPlayerSkillPool(info.CharacterName, info.CharacterScenePath);
         NormalizeTakenSkillsForPool(ref info);
         NormalizeStarterBattleDeckIfNeeded(ref info);
         EnsureTakenSkillsAreTracked(ref info);

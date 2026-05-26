@@ -173,14 +173,29 @@ public partial class Frame : ColorRect
 
     public void TweenUIshader(string var, float val, float duration)
     {
+        ShaderMaterial material = Material as ShaderMaterial;
+        if (material == null)
+            return;
+
         CreateTween()
             .TweenMethod(
                 Callable.From<float>(value =>
                     ((ShaderMaterial)Material).SetShaderParameter(var, value)
                 ),
-                ((ShaderMaterial)Material).GetShaderParameter(var),
+                GetShaderParameterFloat(material, var),
                 val,
                 duration
             );
+    }
+
+    private static float GetShaderParameterFloat(ShaderMaterial material, string parameterName)
+    {
+        Variant value = material.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
     }
 }

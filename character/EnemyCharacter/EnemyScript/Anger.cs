@@ -39,6 +39,7 @@ public partial class Anger : EnemyCharacter
             || skill.OwnerCharater.IsPlayer == IsPlayer
             || skill.SkillType == Skill.SkillTypes.Attack
             || skill.SkillType == Skill.SkillTypes.none
+            || skill.IsStatusCard
         )
         {
             return;
@@ -58,8 +59,8 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 168;
-        Power = 13;
+        MaxLife = 148;
+        Power = 11;
         Survivability = 10;
         Speed = 34;
         SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive, SkillID.AngerEliteSpecial];
@@ -71,7 +72,7 @@ public partial class AngerEliteRegedit : EnemyRegedit
 
 public partial class AngerEliteAttack : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 13;
 
     public AngerEliteAttack()
         : base(SkillTypes.Attack)
@@ -126,9 +127,6 @@ public partial class AngerEliteSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier));
     }
 }

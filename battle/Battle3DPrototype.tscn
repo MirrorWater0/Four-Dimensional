@@ -1,0 +1,497 @@
+[gd_scene format=3 uid="uid://brhdi6rvqsssa"]
+
+[ext_resource type="Texture2D" uid="uid://buwln2vgwau50" path="res://asset/PlayerCharater/Mariya/MariyaPortrait.png" id="3_mariya"]
+[ext_resource type="Texture2D" uid="uid://db7jlo741jfmu" path="res://asset/PlayerCharater/Nightingale/NightingalePortrait.png" id="4_nightingale"]
+[ext_resource type="Texture2D" uid="uid://bs2wj3jsfrg2a" path="res://asset/EnemyCharater/VoidAcolyte.png" id="7_voidacolyte"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://d3koluvdwkgf6" path="res://asset/PlayerCharater/Echo/Echo_skeleton_data_resource.tres" id="8_echo_spine"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://b33uiy2f51sf0" path="res://asset/PlayerCharater/Kasiya/Kasiya_skeleton_data_resource.tres" id="9_kasiya_spine"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://cg30bhevhtx8l" path="res://asset/EnemyCharater/Evil/Evil_skeleton_data_resource.tres" id="10_evil_spine"]
+[ext_resource type="SpineSkeletonDataResource" uid="uid://d2vqiyfi701p0" path="res://asset/EnemyCharater/FearWorm/FearWorm_skeleton_data_resource.tres" id="11_fearworm_spine"]
+[ext_resource type="Script" uid="uid://785tunxxmoss" path="res://character/PlayerCharacter/spine_sprite.gd" id="12_spine_script"]
+[ext_resource type="Shader" uid="uid://bymfuv7reqeku" path="res://shader/Effect/SpineCharacter.gdshader" id="13_spine_shader"]
+[ext_resource type="Shader" uid="uid://cbu3v2iauiawe" path="res://shader/BG1.gdshader" id="14_bg1"]
+
+[sub_resource type="Environment" id="BattleEnvironment"]
+background_mode = 3
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 1.0
+glow_strength = 1.42
+glow_hdr_threshold = 0.9
+glow_hdr_scale = 1.8
+
+[sub_resource type="ShaderMaterial" id="BattleBackgroundMaterial"]
+shader = ExtResource("14_bg1")
+shader_parameter/moduate = Color(0.0564, 0.21494661, 0.47, 1)
+shader_parameter/star_color_shift = 1.0
+
+[sub_resource type="ViewportTexture" id="BattleBackgroundViewportTexture"]
+viewport_path = NodePath("BattleBackgroundViewport")
+
+[sub_resource type="ShaderMaterial" id="EchoSpineMaterial"]
+resource_local_to_scene = true
+shader = ExtResource("13_spine_shader")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="KasiyaSpineMaterial"]
+resource_local_to_scene = true
+shader = ExtResource("13_spine_shader")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="EvilSpineMaterial"]
+resource_local_to_scene = true
+shader = ExtResource("13_spine_shader")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="FearWormSpineMaterial"]
+resource_local_to_scene = true
+shader = ExtResource("13_spine_shader")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="GroundMaterial"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.06, 0.12, 0.18, 0)
+
+[sub_resource type="PlaneMesh" id="GroundMesh"]
+size = Vector2(12, 7.5)
+
+[sub_resource type="StandardMaterial3D" id="PlayerGridMaterial"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(0.2, 0.85, 1, 0.34)
+
+[sub_resource type="BoxMesh" id="GridRowLineMesh"]
+size = Vector3(3.96, 0.045, 0.045)
+
+[sub_resource type="BoxMesh" id="GridDepthLineMesh"]
+size = Vector3(0.045, 0.045, 4.44)
+
+[sub_resource type="StandardMaterial3D" id="PlayerSlotMaterial"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0.45, 0.95, 1, 0.92)
+
+[sub_resource type="BoxMesh" id="SlotMarkerMesh"]
+size = Vector3(0.18, 0.08, 0.18)
+
+[sub_resource type="ViewportTexture" id="EchoViewportTexture"]
+viewport_path = NodePath("CharacterViewports/EchoViewport")
+
+[sub_resource type="ViewportTexture" id="MariyaViewportTexture"]
+viewport_path = NodePath("CharacterViewports/MariyaViewport")
+
+[sub_resource type="ViewportTexture" id="KasiyaViewportTexture"]
+viewport_path = NodePath("CharacterViewports/KasiyaViewport")
+
+[sub_resource type="ViewportTexture" id="NightingaleViewportTexture"]
+viewport_path = NodePath("CharacterViewports/NightingaleViewport")
+
+[sub_resource type="StandardMaterial3D" id="EnemyGridMaterial"]
+transparency = 1
+no_depth_test = true
+shading_mode = 0
+albedo_color = Color(1, 0.25, 0.36, 0.34)
+
+[sub_resource type="StandardMaterial3D" id="EnemySlotMaterial"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(1, 0.48, 0.56, 0.92)
+
+[sub_resource type="ViewportTexture" id="EvilViewportTexture"]
+viewport_path = NodePath("CharacterViewports/EvilViewport")
+
+[sub_resource type="ViewportTexture" id="FearWormViewportTexture"]
+viewport_path = NodePath("CharacterViewports/FearWormViewport")
+
+[sub_resource type="ViewportTexture" id="VoidAcolyteViewportTexture"]
+viewport_path = NodePath("CharacterViewports/VoidAcolyteViewport")
+
+[node name="Battle3DPrototype" type="Node3D" unique_id=1210641324]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=683983866]
+environment = SubResource("BattleEnvironment")
+
+[node name="BattleBackgroundViewport" type="SubViewport" parent="." unique_id=772357654]
+handle_input_locally = false
+size = Vector2i(1920, 1080)
+render_target_update_mode = 4
+
+[node name="bg" type="ColorRect" parent="BattleBackgroundViewport" unique_id=263664415]
+material = SubResource("BattleBackgroundMaterial")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BattleBackgroundPlane" type="Sprite3D" parent="." unique_id=811067564]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, -7)
+pixel_size = 0.02
+billboard = 1
+texture = SubResource("BattleBackgroundViewportTexture")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=107355789]
+transform = Transform3D(1, 0, 0, 0, 0.8982578, 0.4394689, 0, -0.4394689, 0.8982578, 0, 3, 6)
+current = true
+fov = 55.2
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=253357455]
+transform = Transform3D(0.90630776, -0.36599818, 0.21130912, 0, 0.49999997, 0.86602545, -0.42261827, -0.7848856, 0.45315385, 0, 0, 0)
+light_energy = 1.6
+
+[node name="CharacterViewports" type="Node" parent="." unique_id=1413512623]
+
+[node name="EchoViewport" type="SubViewport" parent="CharacterViewports" unique_id=1756674798]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="CharacterViewports/EchoViewport" unique_id=1727942731]
+position = Vector2(500, 1100)
+
+[node name="SpineSprite" type="SpineSprite" parent="CharacterViewports/EchoViewport/World" unique_id=482961468]
+skeleton_data_res = ExtResource("8_echo_spine")
+normal_material = SubResource("EchoSpineMaterial")
+preview_skin = "default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+position = Vector2(50, -400)
+scale = Vector2(0.4, 0.4)
+script = ExtResource("12_spine_script")
+
+[node name="KasiyaViewport" type="SubViewport" parent="CharacterViewports" unique_id=404829093]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="CharacterViewports/KasiyaViewport" unique_id=2021373440]
+position = Vector2(500, 1100)
+
+[node name="SpineSprite" type="SpineSprite" parent="CharacterViewports/KasiyaViewport/World" unique_id=7688635]
+skeleton_data_res = ExtResource("9_kasiya_spine")
+normal_material = SubResource("KasiyaSpineMaterial")
+preview_skin = "Default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+position = Vector2(50, -400)
+scale = Vector2(0.4, 0.4)
+script = ExtResource("12_spine_script")
+
+[node name="MariyaViewport" type="SubViewport" parent="CharacterViewports" unique_id=91439675]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterViewports/MariyaViewport" unique_id=2061895379]
+position = Vector2(493, 677)
+scale = Vector2(0.4, 0.4)
+texture = ExtResource("3_mariya")
+
+[node name="NightingaleViewport" type="SubViewport" parent="CharacterViewports" unique_id=1330170072]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterViewports/NightingaleViewport" unique_id=993561129]
+position = Vector2(531, 629)
+scale = Vector2(0.4, 0.4)
+texture = ExtResource("4_nightingale")
+
+[node name="EvilViewport" type="SubViewport" parent="CharacterViewports" unique_id=1473685826]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="CharacterViewports/EvilViewport" unique_id=1238275142]
+position = Vector2(500, 1100)
+
+[node name="SpineSprite" type="SpineSprite" parent="CharacterViewports/EvilViewport/World" unique_id=810865430]
+skeleton_data_res = ExtResource("10_evil_spine")
+normal_material = SubResource("EvilSpineMaterial")
+preview_skin = "Default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+position = Vector2(50, -400)
+scale = Vector2(0.4, 0.4)
+script = ExtResource("12_spine_script")
+
+[node name="FearWormViewport" type="SubViewport" parent="CharacterViewports" unique_id=953585504]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="World" type="Node2D" parent="CharacterViewports/FearWormViewport" unique_id=1364418612]
+position = Vector2(500, 1100)
+
+[node name="SpineSprite" type="SpineSprite" parent="CharacterViewports/FearWormViewport/World" unique_id=1539381]
+skeleton_data_res = ExtResource("11_fearworm_spine")
+normal_material = SubResource("FearWormSpineMaterial")
+preview_skin = "Default"
+preview_animation = "animation"
+preview_frame = false
+preview_time = 0.0
+position = Vector2(50, -400)
+scale = Vector2(0.4, 0.4)
+script = ExtResource("12_spine_script")
+
+[node name="VoidAcolyteViewport" type="SubViewport" parent="CharacterViewports" unique_id=693870437]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1000, 1200)
+render_target_update_mode = 4
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterViewports/VoidAcolyteViewport" unique_id=2087067267]
+position = Vector2(492, 638)
+scale = Vector2(0.4, 0.4)
+texture = ExtResource("7_voidacolyte")
+
+[node name="GroundPlane" type="MeshInstance3D" parent="." unique_id=1326652179]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.015, -1)
+material_override = SubResource("GroundMaterial")
+mesh = SubResource("GroundMesh")
+
+[node name="PlayerGridRoot" type="Node3D" parent="." unique_id=777193594]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.2, 0, 1.4)
+
+[node name="RowLine0" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1146520305]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0.74)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine1" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=102658263]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -0.74)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine2" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=249227768]
+transform = Transform3D(0.99999213, 0, 0.0039967597, 0, 1, 0, -0.0039967597, 0, 0.99999213, 0, 0.025, -2.2200003)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine3" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=672558957]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -3.7)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="DepthLine0" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1245069412]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.98, 0.025, -1.48)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine1" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=575893261]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.66, 0.025, -1.48)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine2" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=379803145]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66, 0.025, -1.48)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine3" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=657933600]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.98, 0.025, -1.48)
+material_override = SubResource("PlayerGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="Slot1" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1221797225]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, 0)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot2" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=2127438079]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, 0)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot3" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=780483636]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, 0)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot4" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1847892383]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, -1.48)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot5" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1051476447]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, -1.48)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot6" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=558109026]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, -1.48)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot7" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=595930343]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, -2.96)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot8" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1718599774]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, -2.96)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot9" type="MeshInstance3D" parent="PlayerGridRoot" unique_id=1025796855]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, -2.96)
+material_override = SubResource("PlayerSlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="PlayerCharacters" type="Node3D" parent="PlayerGridRoot" unique_id=1454250029]
+
+[node name="Echo" type="Sprite3D" parent="PlayerGridRoot/PlayerCharacters" unique_id=960664161]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.875, 0)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("EchoViewportTexture")
+
+[node name="Mariya" type="Sprite3D" parent="PlayerGridRoot/PlayerCharacters" unique_id=1720052345]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("MariyaViewportTexture")
+
+[node name="Kasiya" type="Sprite3D" parent="PlayerGridRoot/PlayerCharacters" unique_id=1412191646]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.875, -1.48)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("KasiyaViewportTexture")
+
+[node name="Nightingale" type="Sprite3D" parent="PlayerGridRoot/PlayerCharacters" unique_id=1711657312]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, -1.48)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("NightingaleViewportTexture")
+
+[node name="EnemyGridRoot" type="Node3D" parent="." unique_id=2090332395]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 1, 3.2, 0, 1.4)
+
+[node name="RowLine0" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1093784214]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0.74)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine1" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=706142159]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -0.74)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine2" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1908119583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -2.22)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="RowLine3" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=842510641]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, -3.7)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridRowLineMesh")
+
+[node name="DepthLine0" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1385919016]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.98, 0.025, -1.48)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine1" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=405120556]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.66, 0.025, -1.48)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine2" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1664719629]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.66, 0.025, -1.48)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="DepthLine3" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1570493111]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.98, 0.025, -1.48)
+material_override = SubResource("EnemyGridMaterial")
+mesh = SubResource("GridDepthLineMesh")
+
+[node name="Slot1" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=704708711]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, 0)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot2" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=875663658]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, 0)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot3" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1350788212]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, 0)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot4" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1052208694]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, -1.48)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot5" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1579163403]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, -1.48)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot6" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1030491289]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, -1.48)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot7" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1536723463]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.32, 0.095, -2.96)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot8" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=171760676]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, -2.96)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="Slot9" type="MeshInstance3D" parent="EnemyGridRoot" unique_id=1872767218]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.32, 0.095, -2.96)
+material_override = SubResource("EnemySlotMaterial")
+mesh = SubResource("SlotMarkerMesh")
+
+[node name="EnemyCharacters" type="Node3D" parent="EnemyGridRoot" unique_id=995432823]
+
+[node name="Evil" type="Sprite3D" parent="EnemyGridRoot/EnemyCharacters" unique_id=2137570207]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -1.32, 0.875, 0)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("EvilViewportTexture")
+
+[node name="FearWorm" type="Sprite3D" parent="EnemyGridRoot/EnemyCharacters" unique_id=1459907328]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0.875, -1.48)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("FearWormViewportTexture")
+
+[node name="VoidAcolyte" type="Sprite3D" parent="EnemyGridRoot/EnemyCharacters" unique_id=2009832927]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 1.32, 0.875, -2.96)
+pixel_size = 0.00175
+billboard = 1
+texture = SubResource("VoidAcolyteViewportTexture")

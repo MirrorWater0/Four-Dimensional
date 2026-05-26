@@ -97,7 +97,7 @@ public static partial class GameInfo
 
     private static bool HasReachedTalentPointRewardLimit(PlayerInfoStructure info)
     {
-        var nodes = TalentTree.GetNodes(info.CharacterName);
+        var nodes = TalentTree.GetNodes(info);
         if (nodes.Count == 0)
             return true;
 

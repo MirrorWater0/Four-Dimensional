@@ -5,7 +5,7 @@ public partial class VoidStatus : Skill
     private const int EnergyLossOnDraw = 1;
 
     public VoidStatus()
-        : base(SkillTypes.none)
+        : base(SkillTypes.Status)
     {
         UpdateDescription();
     }
@@ -43,7 +43,7 @@ public partial class VoidStatus : Skill
 public partial class WoundStatus : Skill
 {
     public WoundStatus()
-        : base(SkillTypes.none)
+        : base(SkillTypes.Status)
     {
         UpdateDescription();
     }
@@ -68,7 +68,7 @@ public partial class WoundStatus : Skill
 public partial class DazeStatus : Skill
 {
     public DazeStatus()
-        : base(SkillTypes.none)
+        : base(SkillTypes.Status)
     {
         UpdateDescription();
     }
@@ -97,7 +97,7 @@ public partial class PlagueStatus : Skill
     private const int DamageAtTurnEnd = 5;
 
     public PlagueStatus()
-        : base(SkillTypes.none)
+        : base(SkillTypes.Status)
     {
         UpdateDescription();
     }

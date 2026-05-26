@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text;
 using Godot;
 
 public partial class Tip : Control
@@ -8,6 +10,10 @@ public partial class Tip : Control
     private static readonly Color DefaultOutlineColor = new Color(0.01f, 0.02f, 0.05f, 0.64f);
     private const float FadeInDuration = 0.12f;
     private const float DefaultFadeOutDuration = 0.1f;
+    private const string BuffIconTagPrefix = "[buff_icon=";
+    private const string BuffIconTagSuffix = "]";
+    private const float BuffTooltipIconSize = 24f;
+    private const float BuffTooltipIconSourceSize = 40f;
 
     [Export]
     public bool FollowMouse = true;
@@ -51,6 +57,20 @@ public partial class Tip : Control
     private bool _positionDirty = true;
     private string _lastText = string.Empty;
     private Tween _fadeTween;
+    private readonly List<BuffIconPlacement> _buffIconPlacements = new();
+    private readonly List<ColorRect> _buffTooltipIcons = new();
+
+    private readonly struct BuffIconPlacement
+    {
+        public readonly Buff.BuffName BuffName;
+        public readonly int LineIndex;
+
+        public BuffIconPlacement(Buff.BuffName buffName, int lineIndex)
+        {
+            BuffName = buffName;
+            LineIndex = lineIndex;
+        }
+    }
 
     public Panel bg => field ??= GetNode<Panel>("bg");
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("Description");
@@ -158,8 +178,9 @@ public partial class Tip : Control
         string normalizedText = text ?? string.Empty;
         if (!string.Equals(_lastText, normalizedText, StringComparison.Ordinal))
         {
-            Description.Text = normalizedText;
+            Description.Text = ExtractBuffIconTags(normalizedText);
             _lastText = normalizedText;
+            RebuildBuffTooltipIcons();
             MarkLayoutDirty();
         }
 
@@ -247,8 +268,9 @@ public partial class Tip : Control
         if (!string.Equals(_lastText, normalizedText, StringComparison.Ordinal))
         {
             ApplyDescriptionTheme();
-            Description.Text = normalizedText;
+            Description.Text = ExtractBuffIconTags(normalizedText);
             _lastText = normalizedText;
+            RebuildBuffTooltipIcons();
             MarkLayoutDirty();
             textChanged = true;
         }
@@ -306,6 +328,7 @@ public partial class Tip : Control
         if (bg != null)
             bg.Size = new Vector2(contentWidth, contentHeight) + ContentPadding;
 
+        PositionBuffTooltipIcons();
         _layoutDirty = false;
         _positionDirty = true;
     }
@@ -337,6 +360,99 @@ public partial class Tip : Control
         Vector2 viewportSize = viewport.GetVisibleRect().Size;
         Position = CalculateAnchorPosition(anchorPos, tooltipSize, viewportSize);
         _positionDirty = false;
+    }
+
+    private string ExtractBuffIconTags(string text)
+    {
+        _buffIconPlacements.Clear();
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        var cleaned = new StringBuilder(text.Length);
+        int lineIndex = 0;
+        for (int i = 0; i < text.Length;)
+        {
+            if (text[i] == '\n')
+            {
+                cleaned.Append(text[i]);
+                i++;
+                lineIndex++;
+                continue;
+            }
+
+            if (text.IndexOf(BuffIconTagPrefix, i, StringComparison.Ordinal) == i)
+            {
+                int nameStart = i + BuffIconTagPrefix.Length;
+                int tagEnd = text.IndexOf(BuffIconTagSuffix, nameStart, StringComparison.Ordinal);
+                if (tagEnd > nameStart)
+                {
+                    string nameText = text.Substring(nameStart, tagEnd - nameStart);
+                    if (Enum.TryParse(nameText, out Buff.BuffName buffName))
+                        _buffIconPlacements.Add(new BuffIconPlacement(buffName, lineIndex));
+
+                    i = tagEnd + BuffIconTagSuffix.Length;
+                    continue;
+                }
+            }
+
+            cleaned.Append(text[i]);
+            i++;
+        }
+
+        return cleaned.ToString();
+    }
+
+    private void RebuildBuffTooltipIcons()
+    {
+        ClearBuffTooltipIcons();
+        foreach (var placement in _buffIconPlacements)
+        {
+            var icon = Buff.CreateBuffTooltipIcon(placement.BuffName);
+            if (icon == null)
+                continue;
+
+            icon.Visible = false;
+            icon.ZIndex = 1;
+            icon.Size = new Vector2(BuffTooltipIconSourceSize, BuffTooltipIconSourceSize);
+            icon.Scale = Vector2.One * (BuffTooltipIconSize / BuffTooltipIconSourceSize);
+            AddChild(icon);
+            _buffTooltipIcons.Add(icon);
+        }
+    }
+
+    private void ClearBuffTooltipIcons()
+    {
+        for (int i = 0; i < _buffTooltipIcons.Count; i++)
+        {
+            var icon = _buffTooltipIcons[i];
+            if (icon != null && GodotObject.IsInstanceValid(icon))
+            {
+                icon.Visible = false;
+                icon.QueueFree();
+            }
+        }
+
+        _buffTooltipIcons.Clear();
+    }
+
+    private void PositionBuffTooltipIcons()
+    {
+        if (_buffTooltipIcons.Count == 0 || Description == null)
+            return;
+
+        float lineHeight = UserSettings.ScaleTextFontSize(NormalFontSize) + 4f;
+        float x = Description.Position.X + 1f;
+        int count = Math.Min(_buffTooltipIcons.Count, _buffIconPlacements.Count);
+        for (int i = 0; i < count; i++)
+        {
+            var icon = _buffTooltipIcons[i];
+            if (icon == null || !GodotObject.IsInstanceValid(icon))
+                continue;
+
+            float y = Description.Position.Y + _buffIconPlacements[i].LineIndex * lineHeight + 6f;
+            icon.Position = new Vector2(x, y);
+            icon.Visible = true;
+        }
     }
 
     private void MarkLayoutDirty()

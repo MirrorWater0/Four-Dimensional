@@ -71,10 +71,45 @@ public static class TalentTree
 
     public static IReadOnlyList<TalentNodeDefinition> GetNodes(string characterName)
     {
-        return !string.IsNullOrWhiteSpace(characterName)
-            && CharacterNodes.TryGetValue(characterName, out var nodes)
+        string characterKey = ResolveCharacterKey(characterName);
+        return !string.IsNullOrWhiteSpace(characterKey)
+            && CharacterNodes.TryGetValue(characterKey, out var nodes)
             ? nodes
             : Array.Empty<TalentNodeDefinition>();
+    }
+
+    public static IReadOnlyList<TalentNodeDefinition> GetNodes(PlayerInfoStructure info) =>
+        GetNodes(ResolveCharacterKey(info));
+
+    public static string ResolveCharacterKey(PlayerInfoStructure info)
+    {
+        string sceneKey = ExtractCharacterKeyFromScenePath(info.CharacterScenePath);
+        return !string.IsNullOrWhiteSpace(sceneKey)
+            ? ResolveCharacterKey(sceneKey)
+            : ResolveCharacterKey(info.CharacterName);
+    }
+
+    private static string ResolveCharacterKey(string characterNameOrKey)
+    {
+        if (string.IsNullOrWhiteSpace(characterNameOrKey))
+            return string.Empty;
+
+        if (CharacterNodes.ContainsKey(characterNameOrKey))
+            return characterNameOrKey;
+
+        string normalized = characterNameOrKey.Trim();
+        return CharacterNodes.Keys.FirstOrDefault(key =>
+                string.Equals(key, normalized, StringComparison.OrdinalIgnoreCase)
+            ) ?? normalized;
+    }
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        string[] parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : string.Empty;
     }
 
     public static bool HasUnlocked(PlayerInfoStructure info, string talentId)
@@ -123,7 +158,7 @@ public static class TalentTree
     {
         info.UnlockedTalents ??= new List<string>();
 
-        var node = GetNodes(info.CharacterName).FirstOrDefault(talent => talent.Id == talentId);
+        var node = GetNodes(info).FirstOrDefault(talent => talent.Id == talentId);
         if (string.IsNullOrWhiteSpace(node.Id))
         {
             message = "未找到天赋";
@@ -154,19 +189,23 @@ public static class TalentTree
         info.Speed + GetSpeedBonus(info);
 
     public static bool HasPassiveUpgrade(PlayerInfoStructure info) =>
-        HasUnlocked(info, GetPassiveUpgradeTalentId(info.CharacterName));
+        HasUnlocked(info, GetPassiveUpgradeTalentId(ResolveCharacterKey(info)));
 
     public static string GetPassiveUpgradeTalentId(string characterName) =>
-        string.IsNullOrWhiteSpace(characterName)
+        string.IsNullOrWhiteSpace(ResolveCharacterKey(characterName))
             ? string.Empty
-            : $"{characterName}{PassiveUpgradeNodeSuffix}";
+            : $"{ResolveCharacterKey(characterName)}{PassiveUpgradeNodeSuffix}";
 
     public static string GetPassiveDescription(PlayerInfoStructure info)
     {
         string description = string.IsNullOrWhiteSpace(info.PassiveDescription)
             ? "-"
             : info.PassiveDescription;
-        return AppendPassiveUpgradeDescription(info.CharacterName, description, HasPassiveUpgrade(info));
+        return AppendPassiveUpgradeDescription(
+            ResolveCharacterKey(info),
+            description,
+            HasPassiveUpgrade(info)
+        );
     }
 
     public static string AppendPassiveUpgradeDescription(
@@ -187,9 +226,10 @@ public static class TalentTree
     private static int GetPowerBonus(PlayerInfoStructure info)
     {
         int bonus = 0;
-        if (HasUnlocked(info, $"{info.CharacterName}{CoreNodeSuffix}"))
+        string characterKey = ResolveCharacterKey(info);
+        if (HasUnlocked(info, $"{characterKey}{CoreNodeSuffix}"))
             bonus += 1;
-        if (HasUnlocked(info, $"{info.CharacterName}{PowerBranchNodeSuffix}"))
+        if (HasUnlocked(info, $"{characterKey}{PowerBranchNodeSuffix}"))
             bonus += 2;
         return bonus;
     }
@@ -197,16 +237,18 @@ public static class TalentTree
     private static int GetSurvivabilityBonus(PlayerInfoStructure info)
     {
         int bonus = 0;
-        if (HasUnlocked(info, $"{info.CharacterName}{CoreNodeSuffix}"))
+        string characterKey = ResolveCharacterKey(info);
+        if (HasUnlocked(info, $"{characterKey}{CoreNodeSuffix}"))
             bonus += 1;
-        if (HasUnlocked(info, $"{info.CharacterName}{SurvivabilityBranchNodeSuffix}"))
+        if (HasUnlocked(info, $"{characterKey}{SurvivabilityBranchNodeSuffix}"))
             bonus += 2;
         return bonus;
     }
 
     private static int GetSpeedBonus(PlayerInfoStructure info)
     {
-        return HasUnlocked(info, $"{info.CharacterName}{SpeedNodeSuffix}") ? 1 : 0;
+        string characterKey = ResolveCharacterKey(info);
+        return HasUnlocked(info, $"{characterKey}{SpeedNodeSuffix}") ? 1 : 0;
     }
 
     private static TalentNodeDefinition[] BuildCharacterNodes(
@@ -282,7 +324,7 @@ public static class TalentTree
     {
         return characterName switch
         {
-            "Echo" => "被动强化：第一次回合开始时额外获得1点能量。",
+            "Echo" => "被动强化：前2次回合开始时额外获得1点能量。",
             "Nightingale" => "被动强化：追击前若目标有易伤，则给予1层易伤。",
             "Mariya" => "被动强化：被动治疗量+8。",
             "Kasiya" => "被动强化：其他角色打出特殊技能时获得1点生存。",

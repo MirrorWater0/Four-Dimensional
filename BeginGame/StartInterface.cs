@@ -195,6 +195,7 @@ public partial class StartInterface : CanvasLayer
 
     private void ExitGame()
     {
+        PreloadeScene.ReleaseCachedResources();
         GetTree().Quit();
     }
 

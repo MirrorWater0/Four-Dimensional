@@ -18,7 +18,13 @@ public partial class BattleReady : Control
     public static PackedScene PortaitScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/PortaitFrame.tscn"
     );
-    public Control Grid => field ??= ResolveNode<Control>("FormationModeRoot/GridContainer");
+    private static readonly Shader TalentUnlockShockWaveShader = GD.Load<Shader>(
+        "res://shader/shockwave.gdshader"
+    );
+    private static readonly Shader TalentUnlockSparkLightShader = GD.Load<Shader>(
+        "res://shader/Effect/SparkLight.gdshader"
+    );
+    public Control Grid => field ??= GetNodeOrNull<Control>("FormationModeRoot/GridContainer");
     private Control FormationModeRoot => field ??= ResolveNode<Control>("FormationModeRoot");
     private Control CharacterPreviewRoot => _characterPreviewRoot ??= CreateCharacterPreviewRoot();
     private Control TacticsModeRoot => field ??= ResolveNode<Control>("TacticsModeRoot");
@@ -47,24 +53,12 @@ public partial class BattleReady : Control
             "TacticsModeRoot/SkillContainer/SkillScrollMargin/SkillGrid"
         );
     private Control CharacterSelectRoot => field ??= ResolveNode<Control>("CharacterSelectRoot");
-    private Control FormationFrame =>
-        field ??= ResolveNode<Control>("FormationModeRoot/FormationFrame");
     private Control FormationHeaderFrame =>
         field ??= ResolveNode<Control>("FormationModeRoot/FormationHeaderFrame");
-    private Control SkillAreaFrame =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/SkillAreaFrame");
     private Control SkillAreaHeaderFrame =>
         field ??= ResolveNode<Control>("TacticsModeRoot/SkillAreaHeaderFrame");
     private Control SkillAreaHeader =>
         field ??= ResolveNode<Control>("TacticsModeRoot/SkillAreaHeaderFrame/SkillAreaHeader");
-    private Control SkillTypeFrame =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/SkillTypeFrame");
-    private Control SkillTypeIcons =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/SkillTypeFrame/SkillTypeIcons");
-    private Control SkillDividers =>
-        field ??= ResolveNode<Control>("TacticsModeRoot/SkillDividers");
-    private Control TalentTreeFrame =>
-        field ??= ResolveNode<Control>("TalentModeRoot/TalentTreeFrame");
     private Control TalentTreeHeaderFrame =>
         field ??= ResolveNode<Control>("TalentModeRoot/TalentTreeHeaderFrame");
     private Control TalentPointFrame =>
@@ -481,8 +475,11 @@ public partial class BattleReady : Control
 
     private void InitializeCharacterPreview()
     {
-        Grid.Visible = false;
-        Grid.MouseFilter = MouseFilterEnum.Ignore;
+        if (Grid != null)
+        {
+            Grid.Visible = false;
+            Grid.MouseFilter = MouseFilterEnum.Ignore;
+        }
         CharacterPreviewRoot.Visible = true;
         RefreshCharacterPreview(_selectedCharacterIndex);
     }
@@ -690,6 +687,7 @@ public partial class BattleReady : Control
         card.Button.ButtonPressed = false;
         card.Button.FocusMode = Control.FocusModeEnum.None;
         card.PreviewCharacterName = character.CharacterName;
+        card.PreviewCharacterKey = ExtractCharacterKeyFromScenePath(character.CharacterScenePath);
         card.DisplayNameOverride = displayName;
         card.CharacterName.Text = character.CharacterName ?? string.Empty;
         card.SetSkill(skill);
@@ -721,7 +719,7 @@ public partial class BattleReady : Control
                 ("value", info.TalentPoints)
             );
 
-        var nodes = TalentTree.GetNodes(info.CharacterName);
+        var nodes = TalentTree.GetNodes(info);
         var nodesById = nodes.ToDictionary(node => node.Id);
 
         foreach (var node in nodes)
@@ -819,6 +817,7 @@ public partial class BattleReady : Control
             Size = new Vector2(TalentNodeWidth, TalentNodeHeight + TalentNodeLabelHeight),
             MouseFilter = MouseFilterEnum.Ignore,
         };
+        wrapper.SetMeta("talent_id", node.Id);
 
         var button = new Button
         {
@@ -1048,14 +1047,15 @@ public partial class BattleReady : Control
         TalentTreeRoot.AddChild(line);
     }
 
-    private void OnTalentNodePressed(int characterIndex, string talentId)
+    private async void OnTalentNodePressed(int characterIndex, string talentId)
     {
         var players = GameInfo.PlayerCharacters;
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
             return;
 
         var info = players[characterIndex];
-        if (TalentTree.TryUnlock(ref info, talentId, out string message))
+        bool unlocked = TalentTree.TryUnlock(ref info, talentId, out string message);
+        if (unlocked)
         {
             players[characterIndex] = info;
             SaveSystem.SaveAll();
@@ -1064,6 +1064,120 @@ public partial class BattleReady : Control
 
         GD.Print(message);
         RefreshTalentTree(characterIndex);
+        if (unlocked)
+            await PlayTalentUnlockEffectAsync(FindTalentNodeControl(talentId));
+    }
+
+    private Control FindTalentNodeControl(string talentId)
+    {
+        if (TalentTreeRoot == null || string.IsNullOrWhiteSpace(talentId))
+            return null;
+
+        foreach (var child in TalentTreeRoot.GetChildren())
+        {
+            if (child is Control control && (string)control.GetMeta("talent_id", string.Empty) == talentId)
+                return control;
+        }
+
+        return null;
+    }
+
+    private async Task PlayTalentUnlockEffectAsync(Control nodeControl)
+    {
+        if (nodeControl == null || !GodotObject.IsInstanceValid(nodeControl) || !IsInsideTree())
+            return;
+
+        var shockWave = CreateTalentUnlockEffectRect(
+            TalentUnlockShockWaveShader,
+            new Vector2(-104f, -104f),
+            new Vector2(284f, 284f)
+        );
+        var sparkLight = CreateTalentUnlockEffectRect(
+            TalentUnlockSparkLightShader,
+            new Vector2(-62f, -62f),
+            new Vector2(200f, 200f)
+        );
+
+        if (shockWave == null || sparkLight == null)
+            return;
+
+        nodeControl.AddChild(shockWave);
+        nodeControl.AddChild(sparkLight);
+
+        Vector2 baseScale = nodeControl.Scale;
+        nodeControl.PivotOffset = new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
+        tween.TweenProperty(nodeControl, "scale", baseScale, 0.22f).SetDelay(0.12f);
+        tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
+        tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
+        tween.TweenMethod(
+            Callable.From<float>(value =>
+                ((ShaderMaterial)shockWave.Material).SetShaderParameter("progress", value)
+            ),
+            0.24f,
+            1f,
+            0.42f
+        );
+        tween.TweenMethod(
+            Callable.From<float>(value =>
+                ((ShaderMaterial)sparkLight.Material).SetShaderParameter("progress", value)
+            ),
+            0f,
+            1f,
+            0.38f
+        );
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        if (GodotObject.IsInstanceValid(shockWave))
+            shockWave.QueueFree();
+        if (GodotObject.IsInstanceValid(sparkLight))
+            sparkLight.QueueFree();
+        if (GodotObject.IsInstanceValid(nodeControl))
+        {
+            nodeControl.Scale = baseScale;
+            nodeControl.Modulate = Colors.White;
+        }
+    }
+
+    private static ColorRect CreateTalentUnlockEffectRect(
+        Shader shader,
+        Vector2 position,
+        Vector2 size
+    )
+    {
+        if (shader == null)
+            return null;
+
+        var material = new ShaderMaterial { Shader = shader, ResourceLocalToScene = true };
+        if (shader == TalentUnlockShockWaveShader)
+        {
+            material.SetShaderParameter("line_color", new Color(1f, 0.95f, 0.68f, 1f));
+            material.SetShaderParameter("glow_color", new Color(1f, 0.7f, 0.22f, 1f));
+            material.SetShaderParameter("progress", 1f);
+            material.SetShaderParameter("base_thickness", 0.005f);
+            material.SetShaderParameter("max_thickness", 0.0f);
+            material.SetShaderParameter("glow_intensity", 19.0f);
+        }
+        else
+        {
+            material.SetShaderParameter("main_color", new Color(1f, 0.72f, 0.24f, 1f));
+            material.SetShaderParameter("progress", 1f);
+            material.SetShaderParameter("glow_intensity", 25.0f);
+            material.SetShaderParameter("ray_count", 15.0f);
+        }
+
+        return new ColorRect
+        {
+            Position = position,
+            Size = size,
+            Material = material,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
     }
 
     private PortaitFrame _dragTarget;
@@ -1200,19 +1314,13 @@ public partial class BattleReady : Control
         [
             new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
             new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
-            new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.04f),
             new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.08f),
             new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.12f),
-            new AssemblyItem(SkillAreaFrame, new Vector2(96f, 18f), 0.00f),
             new AssemblyItem(SkillAreaHeaderFrame, new Vector2(78f, 0f), 0.06f),
             new AssemblyItem(SkillAreaHeader, new Vector2(78f, 0f), 0.1f),
-            new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.12f),
-            new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.16f),
-            new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.16f),
             new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.18f),
             new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.20f),
             new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.22f),
-            new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.2f),
             new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.24f),
             new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.2f),
         ];
@@ -1226,7 +1334,6 @@ public partial class BattleReady : Control
             [
                 new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.08f),
-                new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.1f),
                 new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.14f),
                 new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.18f),
                 new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.16f),
@@ -1235,7 +1342,6 @@ public partial class BattleReady : Control
             [
                 new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.08f),
-                new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.10f),
                 new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.14f),
                 new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.16f),
                 new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.18f),
@@ -1245,12 +1351,8 @@ public partial class BattleReady : Control
             [
                 new AssemblyItem(ModeSelectorRoot, new Vector2(0f, -26f), 0.00f),
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.08f),
-                new AssemblyItem(SkillAreaFrame, new Vector2(96f, 18f), 0.08f),
                 new AssemblyItem(SkillAreaHeaderFrame, new Vector2(78f, 0f), 0.12f),
                 new AssemblyItem(SkillAreaHeader, new Vector2(78f, 0f), 0.14f),
-                new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.16f),
-                new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.2f),
-                new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.22f),
                 new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.28f),
                 new AssemblyItem(TopAccent, new Vector2(0f, -40f), 0.18f),
             ],
@@ -1423,14 +1525,12 @@ public partial class BattleReady : Control
             BattleReadyMode.Formation =>
             [
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
-                new AssemblyItem(FormationFrame, new Vector2(-74f, 22f), 0.04f),
                 new AssemblyItem(FormationHeaderFrame, new Vector2(-92f, 0f), 0.08f),
                 new AssemblyItem(CharacterPreviewRoot, new Vector2(-60f, 28f), 0.12f),
             ],
             BattleReadyMode.Talent =>
             [
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
-                new AssemblyItem(TalentTreeFrame, new Vector2(72f, 8f), 0.06f),
                 new AssemblyItem(TalentTreeHeaderFrame, new Vector2(58f, 0f), 0.10f),
                 new AssemblyItem(TalentPointFrame, new Vector2(50f, -4f), 0.12f),
                 new AssemblyItem(TalentTreeRoot, new Vector2(66f, 12f), 0.14f),
@@ -1438,12 +1538,8 @@ public partial class BattleReady : Control
             _ =>
             [
                 new AssemblyItem(CharacterSelectRoot, new Vector2(-88f, 24f), 0.00f),
-                new AssemblyItem(SkillAreaFrame, new Vector2(96f, 18f), 0.00f),
                 new AssemblyItem(SkillAreaHeaderFrame, new Vector2(78f, 0f), 0.06f),
                 new AssemblyItem(SkillAreaHeader, new Vector2(78f, 0f), 0.10f),
-                new AssemblyItem(SkillTypeFrame, new Vector2(66f, 0f), 0.12f),
-                new AssemblyItem(SkillTypeIcons, new Vector2(54f, -18f), 0.16f),
-                new AssemblyItem(SkillDividers, new Vector2(60f, 24f), 0.20f),
                 new AssemblyItem(SkillContainer, new Vector2(88f, 14f), 0.26f),
             ],
         };
@@ -1471,6 +1567,11 @@ public partial class BattleReady : Control
         };
         root.Visible = visible;
         root.MouseFilter = visible ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        if (visible)
+        {
+            foreach (var item in GetModeItems(mode))
+                item.Control.Visible = true;
+        }
 
         bool showCharacterSelector =
             _currentMode
@@ -1672,6 +1773,8 @@ public partial class BattleReady : Control
     {
         if (_currentMode != BattleReadyMode.Formation || !FormationModeRoot.Visible)
             return;
+        if (Grid == null)
+            return;
         if (!Grid.Visible)
             return;
 
@@ -1716,10 +1819,7 @@ public partial class BattleReady : Control
     public void InitializePostion()
     {
         if (Grid == null)
-        {
-            GD.PushError("BattleReady: Formation grid is missing.");
             return;
-        }
 
         Color accentColor = new Color(0.69f, 0.75f, 0.80f);
         for (int i = 0; i < Grid.GetChildCount(); i++)
@@ -2106,5 +2206,14 @@ public partial class BattleReady : Control
         var preview = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
         if (preview != null)
             preview.SetPortraitPostion();
+    }
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : null;
     }
 }

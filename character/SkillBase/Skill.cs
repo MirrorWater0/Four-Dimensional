@@ -40,16 +40,19 @@ public partial class Skill
     public enum SkillTypes
     {
         [Description("攻击")]
-        Attack,
+        Attack = 0,
 
         [Description("生存")]
-        Survive,
+        Survive = 1,
 
         [Description("特殊")]
-        Special,
+        Special = 2,
 
         [Description("无")]
-        none,
+        none = 3,
+
+        [Description("状态")]
+        Status = 4,
     }
 
     private string _skillName;
@@ -74,7 +77,8 @@ public partial class Skill
     public virtual int EnergyCost => GetDefaultEnergyCost();
     public virtual bool ExhaustsAfterUse => false;
     public virtual bool ExhaustsAtTurnEndInHand => false;
-    public virtual bool CanBePlayed => SkillType != SkillTypes.none;
+    public virtual bool CanBePlayed => SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
+    public bool IsStatusCard => SkillType == SkillTypes.Status;
     public bool Enable;
     public string Description;
     public bool Upgraded = false;
@@ -655,11 +659,25 @@ public partial class Skill
         Tween tween = character.CreateTween();
         tween.TweenMethod(
             Callable.From<float>(value => material.SetShaderParameter("progress", value)),
-            (float)material.GetShaderParameter("progress"),
+            GetShaderParameterFloat(material, "progress"),
             target,
             Math.Max(0f, duration)
         );
         await character.ToSignal(tween, "finished");
+    }
+
+    private static float GetShaderParameterFloat(ShaderMaterial material, string parameterName)
+    {
+        if (material == null)
+            return 0f;
+
+        Variant value = material.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
     }
 
     private static async Task TweenCharacterPosition(
@@ -971,6 +989,8 @@ public partial class Skill
         Skill carriedSkill = target.BattleNode?.DrawCarrySkill(target, skillType);
         if (carriedSkill == null)
             return;
+
+        Relic.ApplyCarryRelicEffects(target);
 
         carriedSkill.OwnerCharater = target;
         carriedSkill.UpdateDescription();

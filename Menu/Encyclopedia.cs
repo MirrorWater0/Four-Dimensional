@@ -390,6 +390,7 @@ public partial class Encyclopedia : Control
     {
         var button = GetNode<Button>(nodePath);
         ApplyButtonTheme(button);
+        button.Text = GetPlayerCharacterDisplayName(character);
         button.Pressed += () => SelectSkillCharacter(character);
         _characterFilterButtons[character] = button;
     }
@@ -505,7 +506,7 @@ public partial class Encyclopedia : Control
                 skill.SetPreviewStats(0, 0, 1);
                 skill.UpdateDescription();
 
-                bool isStatusCard = !skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none;
+                bool isStatusCard = skill.IsStatusCard;
                 SkillTypeFilter typeFilter = ToSkillTypeFilter(skill.SkillType, isStatusCard);
                 Skill.SkillRarity rarity = skill.Rarity;
                 SkillCostFilter costFilter = ToSkillCostFilter(skill);
@@ -783,6 +784,7 @@ public partial class Encyclopedia : Control
         foreach (var pair in _characterFilterButtons)
         {
             bool selected = pair.Key == _selectedSkillCharacter;
+            pair.Value.Text = GetPlayerCharacterDisplayName(pair.Key);
             pair.Value.Disabled = selected;
             pair.Value.Modulate = selected ? new Color(0.74f, 0.9f, 1f, 1f) : Colors.White;
         }

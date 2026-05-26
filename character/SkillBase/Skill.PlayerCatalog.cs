@@ -49,6 +49,45 @@ public partial class Skill
         return GetPlayerSkillPool(characterKey);
     }
 
+    public static SkillID[] GetPlayerSkillPool(string characterName, string characterScenePath)
+    {
+        return TryResolvePlayerCharacterKey(characterName, characterScenePath, out var characterKey)
+            ? GetPlayerSkillPool(characterKey)
+            : Array.Empty<SkillID>();
+    }
+
+    public static bool TryResolvePlayerCharacterKey(
+        string characterName,
+        string characterScenePath,
+        out PlayerCharacterKey characterKey
+    )
+    {
+        if (
+            !string.IsNullOrWhiteSpace(characterName)
+            && PlayerCharacterKeyMap.TryGetValue(characterName, out characterKey)
+        )
+        {
+            return true;
+        }
+
+        string scenePath = characterScenePath ?? string.Empty;
+        foreach (PlayerCharacterKey key in Enum.GetValues<PlayerCharacterKey>())
+        {
+            string keyText = key.ToString();
+            if (
+                scenePath.Contains($"/{keyText}/", StringComparison.OrdinalIgnoreCase)
+                || scenePath.EndsWith($"/{keyText}.tscn", StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                characterKey = key;
+                return true;
+            }
+        }
+
+        characterKey = default;
+        return false;
+    }
+
     public static SkillID[] GetPlayerSkillPool(PlayerCharacterKey characterKey)
     {
         return PlayerSkillPools.TryGetValue(characterKey, out var pool)

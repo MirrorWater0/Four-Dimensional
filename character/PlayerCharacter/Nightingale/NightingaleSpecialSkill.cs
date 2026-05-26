@@ -190,12 +190,7 @@ public partial class Swift : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Swift,
                 stacks: SwiftStacks,
-                target: TargetReference.Self
-            ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Swift,
-                stacks: SwiftStacks,
-                target: TargetReference.Previous
+                target: TargetReference.All
             )
         );
     }

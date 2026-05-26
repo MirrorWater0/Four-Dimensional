@@ -12,6 +12,7 @@ public partial class Relic
     private const int EnergyTankEnergy = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
+    private const int MechanicalEnergyConverterEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
     private const int PhilosophersStoneEnemyPower = 4;
     private const int EternalGlassDrawBonus = 1;
@@ -56,6 +57,7 @@ public partial class Relic
             RelicID.Backpack,
             RelicID.EnergyTank,
             RelicID.FusionCore,
+            RelicID.MechanicalEnergyConverter,
             RelicID.Refractometer,
             RelicID.Purifier,
             RelicID.KnightHelmet,
@@ -87,6 +89,7 @@ public partial class Relic
             RelicID.Backpack => new Relic(RelicID.Backpack),
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
             RelicID.FusionCore => new Relic(RelicID.FusionCore),
+            RelicID.MechanicalEnergyConverter => new Relic(RelicID.MechanicalEnergyConverter),
             RelicID.Refractometer => new Relic(RelicID.Refractometer),
             RelicID.Purifier => new Relic(RelicID.Purifier),
             RelicID.KnightHelmet => new Relic(RelicID.KnightHelmet),
@@ -145,6 +148,7 @@ public partial class Relic
             RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
             RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
+            RelicID.MechanicalEnergyConverter => "res://asset/svg/RelicIcon/MechanicalEnergyConverter.svg",
             RelicID.Refractometer => "res://asset/svg/RelicIcon/Refractometer.svg",
             RelicID.Purifier => "res://asset/svg/RelicIcon/Purifier.svg",
             RelicID.KnightHelmet => "res://asset/svg/RelicIcon/KnightHelmet.svg",
@@ -264,6 +268,23 @@ public partial class Relic
         }
     }
 
+    public static void ApplyCarryRelicEffects(Character carriedCharacter)
+    {
+        if (
+            carriedCharacter is not PlayerCharacter
+            || carriedCharacter.State == Character.CharacterState.Dying
+            || !HasRelic(RelicID.MechanicalEnergyConverter)
+        )
+        {
+            return;
+        }
+
+        using var _ = carriedCharacter.BeginEffectSource(
+            GetRelicName(RelicID.MechanicalEnergyConverter)
+        );
+        carriedCharacter.UpdataEnergy(MechanicalEnergyConverterEnergy, carriedCharacter);
+    }
+
     public static int GetTurnStartEnergyGainBonus(Character character)
     {
         if (character is not PlayerCharacter)
@@ -350,6 +371,7 @@ public partial class Relic
                 ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
                 break;
             case RelicID.FusionCore:
+            case RelicID.MechanicalEnergyConverter:
                 break;
             case RelicID.Refractometer:
                 ApplyRefractometerEffect(battle);
@@ -408,6 +430,7 @@ public partial class Relic
             RelicID.Backpack => "背包",
             RelicID.EnergyTank => "能量储罐",
             RelicID.FusionCore => "聚变核心",
+            RelicID.MechanicalEnergyConverter => "机械能转换器",
             RelicID.Refractometer => "折射仪",
             RelicID.Purifier => "净化器",
             RelicID.KnightHelmet => "骑士头盔",
@@ -435,6 +458,7 @@ public partial class Relic
             RelicID.Backpack => $"战斗开始时前2位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
             RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
+            RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
             RelicID.KnightHelmet => $"每当角色打出{KnightHelmetMinimumCost}费及以上的卡牌时，获得{KnightHelmetBlock}点格挡。",
@@ -812,4 +836,5 @@ public enum RelicID
     KingsSword,
     PulseController,
     curse,
+    MechanicalEnergyConverter,
 }

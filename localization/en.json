@@ -331,6 +331,7 @@
   "ui.statistics.no_history_description": "No run history yet. Route, relic, and skill snapshots will appear here after a run ends.",
   "ui.statistics.no_records": "No Records",
   "ui.statistics.run_description": "Run {run} · {result} · Hover nodes, relics, or skills to view details",
+  "ui.statistics.duration_chip": "Time {value}",
   "ui.statistics.nodes_chip": "Nodes {value}",
   "ui.statistics.enemies_chip": "Enemies {value}",
   "ui.statistics.elites_chip": "Elites {value}",

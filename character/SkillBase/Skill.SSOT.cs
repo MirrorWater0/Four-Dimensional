@@ -4107,25 +4107,18 @@ public partial class Skill
             if (skill == null || _count <= 0)
                 return;
 
-            Character[] targets = skill.ResolveHostileTargets(_hostileTarget);
+            Character[] targets = ResolveStatusInsertTargets(skill);
             if (targets.Length == 0)
                 return;
 
-            var affectedOwners = targets
+            var affectedTargets = targets
                 .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
                 .Where(x => x.Player != null && x.Player.BattleNode != null)
-                .GroupBy(x => x.Player)
-                .Select(group => new
-                {
-                    Player = group.Key,
-                    VisualTarget = group
-                        .Select(x => x.Target)
-                        .FirstOrDefault(target => target != null)
-                    ?? group.Key,
-                })
+                .GroupBy(x => x.Target)
+                .Select(group => group.First())
                 .ToArray();
 
-            foreach (var animationGroup in affectedOwners
+            foreach (var animationGroup in affectedTargets
                 .Where(entry => entry.Player.BattleNode.CharacterControl != null)
                 .GroupBy(entry => entry.Player.BattleNode.CharacterControl))
             {
@@ -4133,7 +4126,7 @@ public partial class Skill
                     animationGroup.Select(
                             entry =>
                                 new CharacterControl.StatusCardInsertAnimationEntry(
-                                    entry.VisualTarget,
+                                    entry.Target,
                                     _statusSkillId,
                                     _count,
                                     skill.OwnerCharater
@@ -4143,15 +4136,36 @@ public partial class Skill
                 );
             }
 
-            foreach (var entry in affectedOwners)
+            foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
             {
-                entry.Player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
-                    entry.Player,
+                PlayerCharacter player = playerGroup.Key;
+                player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                    player,
                     _statusSkillId,
-                    _count,
+                    _count * playerGroup.Count(),
                     skill.OwnerCharater
                 );
             }
+        }
+
+        private Character[] ResolveStatusInsertTargets(Skill skill)
+        {
+            if (skill?.OwnerCharater?.BattleNode == null)
+                return Array.Empty<Character>();
+
+            if (
+                _hostileTarget.Kind == HostileTargetSelection._Kind.Ordered
+                && _hostileTarget.MaxTargets <= 0
+            )
+            {
+                return skill.OwnerCharater.BattleNode.GetOrderedTeamCharacters(
+                    !skill.OwnerCharater.IsPlayer,
+                    includeSummons: true,
+                    dyingFilter: true
+                );
+            }
+
+            return skill.ResolveHostileTargets(_hostileTarget);
         }
 
         public override IEnumerable<string> Describe(Skill skill)

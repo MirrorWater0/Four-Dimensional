@@ -71,7 +71,7 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 30;
+        MaxLife = 28;
         Power = 5;
         Survivability = 5;
         Speed = 5;

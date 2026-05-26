@@ -425,6 +425,15 @@ public partial class GameStatistics : CanvasLayer
             Colors.White,
             new Color(0.22f, 0.18f, 0.36f, 0.92f)
         );
+        AddSummaryChip(
+            I18n.Format(
+                "ui.statistics.duration_chip",
+                "时长 {value}",
+                ("value", FormatRunDuration(_currentRecord.SessionPlaySeconds))
+            ),
+            Colors.White,
+            new Color(0.15f, 0.25f, 0.34f, 0.92f)
+        );
         AddSummaryChip(I18n.Format("ui.statistics.nodes_chip", "节点 {value}", ("value", _currentRecord.NodesVisited)), Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.enemies_chip", "敌人 {value}", ("value", _currentRecord.EnemiesDefeated)), Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.elites_chip", "精英 {value}", ("value", _currentRecord.EliteDefeated)), Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
@@ -1446,6 +1455,7 @@ public partial class GameStatistics : CanvasLayer
             Skill.SkillTypes.Attack => I18n.Tr("skill_type.attack", "攻击"),
             Skill.SkillTypes.Survive => I18n.Tr("skill_type.survive", "生存"),
             Skill.SkillTypes.Special => I18n.Tr("skill_type.special", "特殊"),
+            Skill.SkillTypes.Status => I18n.Tr("ui.encyclopedia.skill_type.status", "状态"),
             _ => I18n.Tr("ui.statistics.skill_type.other", "其它"),
         };
     }
@@ -1459,6 +1469,29 @@ public partial class GameStatistics : CanvasLayer
     }
 
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
+
+    private static string FormatRunDuration(long totalSeconds)
+    {
+        totalSeconds = Math.Max(0, totalSeconds);
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+
+        if (I18n.IsEnglishLocale())
+        {
+            if (hours > 0)
+                return $"{hours}h {minutes:00}m {seconds:00}s";
+            if (minutes > 0)
+                return $"{minutes}m {seconds:00}s";
+            return $"{seconds}s";
+        }
+
+        if (hours > 0)
+            return $"{hours}小时{minutes}分{seconds}秒";
+        if (minutes > 0)
+            return $"{minutes}分{seconds}秒";
+        return $"{seconds}秒";
+    }
 
     private void PlayIntro()
     {

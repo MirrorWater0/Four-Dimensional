@@ -336,6 +336,7 @@ public partial class Map : Control
 
     public void CloseWindow()
     {
+        PreloadeScene.ReleaseCachedResources();
         GetTree().Quit();
     }
 

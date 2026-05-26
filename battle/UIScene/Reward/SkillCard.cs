@@ -54,6 +54,7 @@ public partial class SkillCard : SubViewportContainer
         field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
     public Skill CurrentSkill { get; set; }
     public string PreviewCharacterName { get; set; }
+    public string PreviewCharacterKey { get; set; }
     public string DisplayNameOverride { get; set; }
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
@@ -84,12 +85,12 @@ public partial class SkillCard : SubViewportContainer
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
     private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
-    private static readonly Shader DefaultCardShader = GD.Load<Shader>(
-        "res://shader/Effect/RewardCard.gdshader"
-    );
-    private static readonly Shader CardExhaustShader = GD.Load<Shader>(
-        "res://shader/Effect/CardExhaust.gdshader"
-    );
+    private static Shader _defaultCardShader;
+    private static Shader _cardExhaustShader;
+    private static Shader DefaultCardShader =>
+        _defaultCardShader ??= GD.Load<Shader>("res://shader/Effect/RewardCard.gdshader");
+    private static Shader CardExhaustShader =>
+        _cardExhaustShader ??= GD.Load<Shader>("res://shader/Effect/CardExhaust.gdshader");
     private static NoiseTexture2D _cardExhaustNoiseTexture;
     private static ShaderMaterial _cardExhaustMaterialTemplate;
     private static Texture2D _defaultSkillIcon;
@@ -258,7 +259,7 @@ public partial class SkillCard : SubViewportContainer
         if (isStatusCard)
             ApplyStatusCardStyle();
 
-        Texture2D skillPicture = GetSkillPictureTexture(CurrentSkill, PreviewCharacterName);
+        Texture2D skillPicture = GetSkillPictureTexture(CurrentSkill, PreviewCharacterName, PreviewCharacterKey);
         bool hasSkillPicture = skillPicture != null;
         if (SkillPicture != null)
         {
@@ -323,7 +324,7 @@ public partial class SkillCard : SubViewportContainer
         _progressTween
             .TweenMethod(
                 Callable.From<float>(value => shader.SetShaderParameter("progress", value)),
-                (float)shader.GetShaderParameter("progress"),
+                GetShaderParameterFloat(shader, "progress"),
                 1f,
                 0.3f
             )
@@ -377,7 +378,7 @@ public partial class SkillCard : SubViewportContainer
         _pressTween
             .TweenMethod(
                 Callable.From<float>(value => shader.SetShaderParameter("center_vanish", value)),
-                (float)shader.GetShaderParameter("center_vanish"),
+                GetShaderParameterFloat(shader, "center_vanish"),
                 1.0f,
                 0.4f
             )
@@ -523,6 +524,18 @@ public partial class SkillCard : SubViewportContainer
         GetCardExhaustNoiseTexture();
     }
 
+    public static void ClearSharedCaches()
+    {
+        TypeIconCache.Clear();
+        SkillIconCache.Clear();
+        SkillPictureCache.Clear();
+        _defaultSkillIcon = null;
+        _cardExhaustNoiseTexture = null;
+        _cardExhaustMaterialTemplate = null;
+        _defaultCardShader = null;
+        _cardExhaustShader = null;
+    }
+
     private static ShaderMaterial CreateCardExhaustMaterial()
     {
         PrewarmExhaustEffect();
@@ -580,12 +593,12 @@ public partial class SkillCard : SubViewportContainer
         return GetSkillTypeIconTexture(skill?.SkillType ?? Skill.SkillTypes.none);
     }
 
-    private static Texture2D GetSkillPictureTexture(Skill skill, string previewCharacterName = null)
+    private static Texture2D GetSkillPictureTexture(Skill skill, string previewCharacterName = null, string previewCharacterKey = null)
     {
         if (skill?.SkillId is not SkillID skillId)
             return null;
 
-        foreach (string path in EnumerateSkillPicturePaths(skill, skillId, previewCharacterName))
+        foreach (string path in EnumerateSkillPicturePaths(skill, skillId, previewCharacterName, previewCharacterKey))
         {
             if (
                 SkillPictureCache.TryGetValue(path, out Texture2D cachedTexture)
@@ -610,13 +623,14 @@ public partial class SkillCard : SubViewportContainer
     private static IEnumerable<string> EnumerateSkillPicturePaths(
         Skill skill,
         SkillID skillId,
-        string previewCharacterName = null
+        string previewCharacterName = null,
+        string previewCharacterKey = null
     )
     {
         string skillFileName = skillId.ToString();
         var searchedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string folder in GetSkillPictureFolders(skill, skillId, previewCharacterName))
+        foreach (string folder in GetSkillPictureFolders(skill, skillId, previewCharacterName, previewCharacterKey))
         {
             if (string.IsNullOrWhiteSpace(folder) || !searchedFolders.Add(folder))
                 continue;
@@ -636,9 +650,16 @@ public partial class SkillCard : SubViewportContainer
     private static IEnumerable<string> GetSkillPictureFolders(
         Skill skill,
         SkillID skillId,
-        string previewCharacterName = null
+        string previewCharacterName = null,
+        string previewCharacterKey = null
     )
     {
+        if (!string.IsNullOrWhiteSpace(previewCharacterKey))
+            yield return previewCharacterKey;
+
+        if (skill?.OwnerCharater is PlayerCharacter player && !string.IsNullOrWhiteSpace(player.CharacterKey))
+            yield return player.CharacterKey;
+
         if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
             yield return skill.OwnerCharater.CharacterName;
 
@@ -1043,8 +1064,7 @@ public partial class SkillCard : SubViewportContainer
         SetCardBeamColor(borderColor);
     }
 
-    private static bool IsStatusCard(Skill skill) =>
-        skill != null && (!skill.CanBePlayed || skill.SkillType == Skill.SkillTypes.none);
+    private static bool IsStatusCard(Skill skill) => skill?.IsStatusCard == true;
 
     private void EnsureStyleOverridesReady()
     {
@@ -1090,6 +1110,20 @@ public partial class SkillCard : SubViewportContainer
             return;
 
         shader.SetShaderParameter("beam_color", new Color(color.R, color.G, color.B, 1f));
+    }
+
+    private static float GetShaderParameterFloat(ShaderMaterial shader, string parameterName)
+    {
+        if (shader == null)
+            return 0f;
+
+        Variant value = shader.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
     }
 
     private static Color BlendSurface(Color baseColor, Color accentColor, float accentAmount)

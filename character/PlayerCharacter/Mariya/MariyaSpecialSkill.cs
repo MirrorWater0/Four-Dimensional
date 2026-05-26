@@ -22,39 +22,9 @@ public partial class EnergyTransfer : Skill
     }
 }
 
-public partial class RebirthPrayer : Skill
-{
-    private const int BaseRebirthHeal = 14;
-
-    public RebirthPrayer()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
-
-    public override string SkillName { get; set; } = "复苏祷告";
-    public override int EnergyCost => 2;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            HealStep(
-                baseHeal: BaseRebirthHeal,
-                target: TargetReference.ManualFriendly,
-                preferNonFull: true,
-                rebirth: true
-            ),
-            BlockStep(target: TargetReference.HealKey, baseBlock: 10),
-            ModifyPropertyStep(target: TargetReference.HealKey, type: PropertyType.MaxLife, value: 10)
-        );
-    }
-}
-
 public partial class RearlineRevival : Skill
 {
     private const int BaseRebirthHeal = 22;
-    private const int TargetCount = 2;
 
     public RearlineRevival()
         : base(SkillTypes.Special)
@@ -73,16 +43,16 @@ public partial class RearlineRevival : Skill
                 baseHeal: BaseRebirthHeal,
                 target: TargetReference.ManualFriendly,
                 preferNonFull: true,
-                rebirth: true,
-                repeatCount: TargetCount
-            )
+                rebirth: true
+            ),
+            ApplyBuffFriendly(Buff.BuffName.RebirthI, 2, TargetReference.HealKey)
         );
     }
 }
 
 public partial class GroupHealing : Skill
 {
-    private const int BaseHeal = 12;
+    private const int BaseHeal = 5;
 
     public GroupHealing()
         : base(SkillTypes.Special)
@@ -97,7 +67,7 @@ public partial class GroupHealing : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(type: PropertyType.MaxLife, value: 15, target: TargetReference.All),
+            ModifyPropertyStep(type: PropertyType.MaxLife, value: 13, target: TargetReference.All),
             HealStep(
                 baseHeal: BaseHeal,
                 target: TargetReference.All,

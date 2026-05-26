@@ -65,8 +65,8 @@ public partial class MarrowReaverRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
 
         MaxLife = 77;
-        Power = 15;
-        Survivability = 15;
+        Power = 14;
+        Survivability = 17;
         Speed = 12;
         SkillIDs =
         [
@@ -82,7 +82,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 3;
 
     public MarrowReaverAttack()
         : base(SkillTypes.Attack)
@@ -142,8 +142,7 @@ public partial class MarrowReaverSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: HitCount),
-            HealStep(0)
+            AttackStep(baseDamage: BaseDamage, times: HitCount, target: HostileTargetReference.Two)
         );
     }
 }

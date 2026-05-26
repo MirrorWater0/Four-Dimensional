@@ -55,8 +55,8 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 100;
-        Power = 50;
+        MaxLife = 85;
+        Power = 38;
         Survivability = 20;
         Speed = 9;
         SkillIDs =
@@ -105,17 +105,14 @@ public partial class GraveWraithSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 3),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2)
+            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1)
         );
     }
 }
 
 public partial class GraveWraithSpecial : Skill
 {
-    private const int SelfPowerGain = 10;
-    private const int SelfSurvivabilityGain = 10;
-
     public GraveWraithSpecial()
         : base(SkillTypes.Special)
     {

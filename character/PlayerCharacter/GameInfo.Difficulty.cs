@@ -21,7 +21,7 @@ public static partial class GameInfo
     private const int StarterRelicCount = 1;
     private const int StarterElectricityCoinBonus = 100;
     private const int StarterPropertyBonus = 1;
-    private const int StarterLifeMaxBonus = 5;
+    private const int StarterLifeMaxBonus = 3;
     private const int StarterTalentPointCharacterCount = 2;
     private const int StarterTalentPointAmount = 1;
 
@@ -137,7 +137,7 @@ public static partial class GameInfo
                 "开局随机2名角色各+1天赋点",
             GameDifficultyBonus.ElectricityCoin => "开局+100电力币",
             GameDifficultyBonus.PlayerStats =>
-                "全员力量/生存/速度+1，血量+5",
+                "全员力量/生存/速度+1，血量+3",
             _ => string.Empty,
         };
     }

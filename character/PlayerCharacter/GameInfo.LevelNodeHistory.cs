@@ -431,7 +431,7 @@ public static partial class GameInfo
             foreach (var skillId in player.GainedSkills ?? new List<SkillID>())
             {
                 var skill = Skill.GetSkill(skillId);
-                if (skill == null || skill.SkillType == Skill.SkillTypes.none)
+                if (skill == null || skill.SkillType == Skill.SkillTypes.none || skill.IsStatusCard)
                     continue;
 
                 if (!grouped.TryGetValue(skill.SkillType, out var skillIds))
@@ -657,9 +657,7 @@ public static partial class GameInfo
         var result = new List<string>();
         foreach (string talentId in player.UnlockedTalents ?? new List<string>())
         {
-            var node = TalentTree
-                .GetNodes(player.CharacterName)
-                .FirstOrDefault(talent => talent.Id == talentId);
+            var node = TalentTree.GetNodes(player).FirstOrDefault(talent => talent.Id == talentId);
             result.Add(string.IsNullOrWhiteSpace(node.DisplayName) ? talentId : node.DisplayName);
         }
 
@@ -671,9 +669,7 @@ public static partial class GameInfo
         var result = new List<string>();
         foreach (string talentId in player.UnlockedTalents ?? new List<string>())
         {
-            var node = TalentTree
-                .GetNodes(player.CharacterName)
-                .FirstOrDefault(talent => talent.Id == talentId);
+            var node = TalentTree.GetNodes(player).FirstOrDefault(talent => talent.Id == talentId);
             if (string.IsNullOrWhiteSpace(node.Id))
                 continue;
 

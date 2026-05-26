@@ -26,11 +26,7 @@ public partial class VeilStep : Skill
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(
-                target: TargetReference.Next,
-                baseBlock: BaseBlock,
-                multiplier: 1
-            )
+            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock, multiplier: 1)
         );
     }
 }
@@ -112,11 +108,7 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(
-                target: TargetReference.Previous,
-                baseBlock: BaseBlock,
-                multiplier: 1
-            ),
+            BlockStep(target: TargetReference.Previous, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
@@ -130,7 +122,7 @@ public partial class TwilightParadox : Skill
 {
     private const int BaseBlock = 8;
     private const int VulnerableStacks = 15;
-    private const int DamageImmuneStacks = 5;
+    private const int DamageImmuneStacks = 4;
 
     public TwilightParadox()
         : base(SkillTypes.Survive)
@@ -144,11 +136,7 @@ public partial class TwilightParadox : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(
-                target: TargetReference.Previous,
-                baseBlock: BaseBlock,
-                multiplier: 2
-            ),
+            BlockStep(target: TargetReference.Previous, baseBlock: BaseBlock, multiplier: 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,

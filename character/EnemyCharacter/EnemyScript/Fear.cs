@@ -123,10 +123,7 @@ public partial class FearEliteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargetReference.All
-            ),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             HealStep(15),
             ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.All)
         );

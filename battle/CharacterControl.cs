@@ -24,6 +24,7 @@ public partial class CharacterControl : Control
     private const float StatusInsertArrangeDuration = 0.22f;
     private const float StatusInsertHoldDuration = 0.22f;
     private const float StatusInsertFlyDuration = 0.34f;
+    private const float StatusInsertImpactFadeDuration = 0.12f;
     private const float StatusInsertStagger = 0.055f;
     private const float CardHoverLiftY = -22f;
     private const float CardHoverScaleMultiplier = 1.03f;
@@ -60,7 +61,14 @@ public partial class CharacterControl : Control
     private Button _endTurnButton;
     private Button _drawPileButton;
     private Button _discardPileButton;
+    private Button _exhaustedPileButton;
     private Button _manualTargetInfoButton;
+    private Tween _drawPileHoverTween;
+    private Tween _discardPileHoverTween;
+    private Tween _exhaustedPileHoverTween;
+    private Tween _drawPileShaderTween;
+    private Tween _discardPileShaderTween;
+    private Tween _exhaustedPileShaderTween;
     private CanvasLayer _pileOverlayLayer;
     private Control _pileOverlayRoot;
     private GridContainer _pileOverlayGrid;
@@ -394,6 +402,7 @@ public partial class CharacterControl : Control
             startY - 42f
         );
         float stagger = GetStatusInsertStagger(expandedEntries.Count);
+        var arrangeTasks = new List<Task>();
 
         for (int i = 0; i < expandedEntries.Count; i++)
         {
@@ -453,6 +462,7 @@ public partial class CharacterControl : Control
                 .SetDelay(i * stagger)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
+            arrangeTasks.Add(WaitForTweenFinishedAsync(arrangeTween));
         }
 
         if (cards.Count == 0)
@@ -460,17 +470,10 @@ public partial class CharacterControl : Control
 
         AssignStatusInsertTargetOffsets(cards);
 
-        await ToSignal(
-            GetTree()
-                .CreateTimer(
-                    StatusInsertArrangeDuration
-                        + StatusInsertHoldDuration
-                        + stagger * Math.Max(0, cards.Count - 1)
-                ),
-            SceneTreeTimer.SignalName.Timeout
-        );
+        await Task.WhenAll(arrangeTasks);
+        await ToSignal(GetTree().CreateTimer(StatusInsertHoldDuration), SceneTreeTimer.SignalName.Timeout);
 
-        float maxDelay = 0f;
+        var flyTasks = new List<Task>();
         for (int i = 0; i < cards.Count; i++)
         {
             StatusInsertPreviewCard preview = cards[i];
@@ -479,7 +482,6 @@ public partial class CharacterControl : Control
                 continue;
 
             float delay = i * stagger;
-            maxDelay = Math.Max(maxDelay, delay);
             Vector2 targetPosition = GetStatusInsertTargetPosition(preview.Target, preview.CardSize);
             Vector2 hitPosition =
                 targetPosition
@@ -495,22 +497,49 @@ public partial class CharacterControl : Control
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
             flyTween
-                .TweenProperty(card, "scale", preview.Scale * 0.18f, StatusInsertFlyDuration)
+                .TweenProperty(card, "scale", preview.Scale, StatusInsertFlyDuration)
                 .SetDelay(delay)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
             flyTween
-                .TweenProperty(card, "modulate:a", 0f, StatusInsertFlyDuration * 0.45f)
-                .SetDelay(delay + StatusInsertFlyDuration * 0.55f);
+                .TweenProperty(card, "modulate:a", 0.45f, StatusInsertFlyDuration / 3f)
+                .SetDelay(delay + StatusInsertFlyDuration * 2f / 3f)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.In);
+            flyTasks.Add(WaitForTweenFinishedAsync(flyTween));
         }
 
-        await ToSignal(
-            GetTree().CreateTimer(maxDelay + StatusInsertFlyDuration + 0.03f),
-            SceneTreeTimer.SignalName.Timeout
-        );
+        await Task.WhenAll(flyTasks);
+
+        var fadeTasks = new List<Task>();
+        foreach (StatusInsertPreviewCard preview in cards)
+        {
+            SkillCard card = preview.Card;
+            if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            Tween fadeTween = card.CreateTween();
+            fadeTween.SetParallel(true);
+            fadeTween.TweenProperty(card, "modulate:a", 0f, StatusInsertImpactFadeDuration);
+            fadeTween
+                .TweenProperty(card, "scale", preview.Scale * 0.08f, StatusInsertImpactFadeDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.In);
+            fadeTasks.Add(WaitForTweenFinishedAsync(fadeTween));
+        }
+
+        await Task.WhenAll(fadeTasks);
 
         foreach (StatusInsertPreviewCard preview in cards)
             QueueFreeTemporaryCard(preview.Card);
+    }
+
+    private async Task WaitForTweenFinishedAsync(Tween tween)
+    {
+        if (tween == null || !GodotObject.IsInstanceValid(tween))
+            return;
+
+        await ToSignal(tween, Tween.SignalName.Finished);
     }
 
     private static Vector2 GetStatusInsertScale(int count, Vector2 viewportSize)
@@ -625,8 +654,19 @@ public partial class CharacterControl : Control
         if (target == null || !GodotObject.IsInstanceValid(target))
             return viewportSize * 0.5f - cardSize * 0.5f;
 
-        Vector2 targetScreenPosition = target.GetGlobalTransformWithCanvas().Origin;
+        Vector2 targetScreenPosition = GetStatusInsertTargetScreenPosition(target);
         return targetScreenPosition - cardSize * 0.5f + new Vector2(0f, -24f);
+    }
+
+    private static Vector2 GetStatusInsertTargetScreenPosition(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return Vector2.Zero;
+
+        Node2D anchor = target.Sprite != null && GodotObject.IsInstanceValid(target.Sprite)
+            ? target.Sprite
+            : target;
+        return anchor.GetGlobalTransformWithCanvas().Origin;
     }
 
     private static IEnumerable<SkillCard> EnumerateSkillCards(Node node)
@@ -737,6 +777,9 @@ public partial class CharacterControl : Control
         _discardPileButton =
             actionButtonsRoot?.GetNodeOrNull<Button>("DiscardPileButton")
             ?? GetNodeOrNull<Button>("../BattleActionButtons/DiscardPileButton");
+        _exhaustedPileButton =
+            actionButtonsRoot?.GetNodeOrNull<Button>("ExhaustedPileButton")
+            ?? GetNodeOrNull<Button>("../BattleActionButtons/ExhaustedPileButton");
         _manualTargetInfoButton =
             actionButtonsRoot?.GetNodeOrNull<Button>("ManualTargetInfoButton")
             ?? GetNodeOrNull<Button>("../BattleActionButtons/ManualTargetInfoButton");
@@ -810,6 +853,7 @@ public partial class CharacterControl : Control
         {
             ConfigurePileButton(_drawPileButton, "抽牌堆");
             _drawPileButton.Disabled = true;
+            SyncPileButtonVisualState(_drawPileButton);
             _drawPileButton.Pressed += OnDrawPilePressed;
         }
 
@@ -817,7 +861,16 @@ public partial class CharacterControl : Control
         {
             ConfigurePileButton(_discardPileButton, "弃牌堆");
             _discardPileButton.Disabled = true;
+            SyncPileButtonVisualState(_discardPileButton);
             _discardPileButton.Pressed += OnDiscardPilePressed;
+        }
+
+        if (_exhaustedPileButton != null)
+        {
+            ConfigurePileButton(_exhaustedPileButton, "消耗牌堆");
+            _exhaustedPileButton.Disabled = true;
+            SyncPileButtonVisualState(_exhaustedPileButton);
+            _exhaustedPileButton.Pressed += OnExhaustedPilePressed;
         }
 
         if (_manualTargetInfoButton != null)
@@ -987,13 +1040,45 @@ public partial class CharacterControl : Control
         );
     }
 
-    private static void ConfigurePileButton(Button button, string text)
+    private void ConfigurePileButton(Button button, string text)
     {
         if (button == null)
             return;
 
-        ConfigureEndTurnButton(button);
-        button.Text = text;
+        button.Text = string.Empty;
+        button.TooltipText = text;
+        button.Flat = true;
+        button.FocusMode = FocusModeEnum.None;
+        button.MouseFilter = MouseFilterEnum.Stop;
+        button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+        button.AddThemeStyleboxOverride("normal", CreatePileButtonStyleBox());
+        button.AddThemeStyleboxOverride("hover", CreatePileButtonStyleBox());
+        button.AddThemeStyleboxOverride("pressed", CreatePileButtonStyleBox());
+        button.AddThemeStyleboxOverride("disabled", CreatePileButtonStyleBox());
+        button.AddThemeStyleboxOverride("focus", CreatePileButtonStyleBox());
+        button.PivotOffset = button.Size / 2f;
+        button.Resized += () =>
+        {
+            if (button == null || !GodotObject.IsInstanceValid(button))
+                return;
+
+            button.PivotOffset = button.Size / 2f;
+        };
+        button.MouseEntered += () => AnimatePileButtonHover(button, true);
+        button.MouseExited += () => AnimatePileButtonHover(button, false);
+        button.FocusEntered += () => AnimatePileButtonHover(button, true);
+        button.FocusExited += () => AnimatePileButtonHover(button, false);
+        button.ButtonDown += () => SetPileButtonPressedAmount(button, 1f, 0.08f);
+        button.ButtonUp += () => SetPileButtonPressedAmount(button, 0f, 0.12f);
+        button.VisibilityChanged += () =>
+        {
+            if (button == null || !GodotObject.IsInstanceValid(button))
+                return;
+
+            if (!button.Visible)
+                AnimatePileButtonHover(button, false);
+        };
+        SyncPileButtonVisualState(button);
     }
 
     private static void ConfigureManualTargetInfoButton(Button button)
@@ -1052,6 +1137,182 @@ public partial class CharacterControl : Control
             ContentMarginRight = 18,
             ContentMarginBottom = 12,
         };
+    }
+
+    private static StyleBoxFlat CreatePileButtonStyleBox()
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(1f, 1f, 1f, 0f),
+            BorderColor = new Color(1f, 1f, 1f, 0f),
+            BorderWidthLeft = 0,
+            BorderWidthTop = 0,
+            BorderWidthRight = 0,
+            BorderWidthBottom = 0,
+            CornerRadiusTopLeft = 8,
+            CornerRadiusTopRight = 8,
+            CornerRadiusBottomRight = 8,
+            CornerRadiusBottomLeft = 8,
+            ContentMarginLeft = 0,
+            ContentMarginTop = 0,
+            ContentMarginRight = 0,
+            ContentMarginBottom = 0,
+            ExpandMarginLeft = 1,
+            ExpandMarginTop = 1,
+            ExpandMarginRight = 1,
+            ExpandMarginBottom = 1,
+        };
+    }
+
+    private void SyncPileButtonVisualState(Button button)
+    {
+        Control icon = GetPileButtonIcon(button);
+        if (icon == null || !GodotObject.IsInstanceValid(icon) || icon.Material is not ShaderMaterial shader)
+            return;
+
+        shader.SetShaderParameter("disabled_amount", button.Disabled ? 1f : 0f);
+        if (button.Disabled)
+        {
+            shader.SetShaderParameter("hover_amount", 0f);
+            shader.SetShaderParameter("pressed_amount", 0f);
+            icon.Scale = Vector2.One;
+        }
+    }
+
+    private void AnimatePileButtonHover(Button button, bool hovered)
+    {
+        if (button == null || !GodotObject.IsInstanceValid(button))
+            return;
+
+        if (button.Disabled)
+            hovered = false;
+
+        Tween hoverTween = GetPileButtonHoverTween(button);
+        if (hoverTween != null && GodotObject.IsInstanceValid(hoverTween))
+            hoverTween.Kill();
+
+        Tween shaderTween = GetPileButtonShaderTween(button);
+        if (shaderTween != null && GodotObject.IsInstanceValid(shaderTween))
+            shaderTween.Kill();
+
+        Control icon = GetPileButtonIcon(button);
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
+            return;
+
+        icon.PivotOffset = icon.Size / 2f;
+        Vector2 targetScale = hovered ? new Vector2(1.10f, 1.10f) : Vector2.One;
+        Tween newHoverTween = icon.CreateTween();
+        newHoverTween
+            .TweenProperty(icon, "scale", targetScale, hovered ? 0.18f : 0.14f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+        SetPileButtonHoverTween(button, newHoverTween);
+
+        if (icon.Material is not ShaderMaterial shader)
+            return;
+
+        float from = GetShaderParameterFloat(shader, "hover_amount");
+        float to = hovered ? 1f : 0f;
+        Tween newShaderTween = icon.CreateTween();
+        newShaderTween
+            .TweenMethod(
+                Callable.From<float>(value =>
+                {
+                    if (
+                        GodotObject.IsInstanceValid(icon)
+                        && icon.Material is ShaderMaterial liveShader
+                    )
+                        liveShader.SetShaderParameter("hover_amount", value);
+                }),
+                from,
+                to,
+                hovered ? 0.20f : 0.12f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+        SetPileButtonShaderTween(button, newShaderTween);
+    }
+
+    private void SetPileButtonPressedAmount(Button button, float amount, float duration)
+    {
+        Control icon = GetPileButtonIcon(button);
+        if (icon == null || !GodotObject.IsInstanceValid(icon) || icon.Material is not ShaderMaterial shader)
+            return;
+
+        float from = GetShaderParameterFloat(shader, "pressed_amount");
+        icon.CreateTween()
+            .TweenMethod(
+                Callable.From<float>(value =>
+                {
+                    if (
+                        GodotObject.IsInstanceValid(icon)
+                        && icon.Material is ShaderMaterial liveShader
+                    )
+                        liveShader.SetShaderParameter("pressed_amount", value);
+                }),
+                from,
+                amount,
+                duration
+            )
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private static float GetShaderParameterFloat(ShaderMaterial shader, string parameterName)
+    {
+        if (shader == null)
+            return 0f;
+
+        Variant value = shader.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
+    }
+
+    private static Control GetPileButtonIcon(Button button)
+    {
+        return button?.GetNodeOrNull<Control>("PileIcon");
+    }
+
+    private Tween GetPileButtonHoverTween(Button button)
+    {
+        if (button == _drawPileButton)
+            return _drawPileHoverTween;
+        if (button == _discardPileButton)
+            return _discardPileHoverTween;
+        return _exhaustedPileHoverTween;
+    }
+
+    private void SetPileButtonHoverTween(Button button, Tween tween)
+    {
+        if (button == _drawPileButton)
+            _drawPileHoverTween = tween;
+        else if (button == _discardPileButton)
+            _discardPileHoverTween = tween;
+        else if (button == _exhaustedPileButton)
+            _exhaustedPileHoverTween = tween;
+    }
+
+    private Tween GetPileButtonShaderTween(Button button)
+    {
+        if (button == _drawPileButton)
+            return _drawPileShaderTween;
+        if (button == _discardPileButton)
+            return _discardPileShaderTween;
+        return _exhaustedPileShaderTween;
+    }
+
+    private void SetPileButtonShaderTween(Button button, Tween tween)
+    {
+        if (button == _drawPileButton)
+            _drawPileShaderTween = tween;
+        else if (button == _discardPileButton)
+            _discardPileShaderTween = tween;
+        else if (button == _exhaustedPileButton)
+            _exhaustedPileShaderTween = tween;
     }
 
     private void LayoutActionCards()
@@ -1244,13 +1505,24 @@ public partial class CharacterControl : Control
                 _endTurnButton.Disabled = true;
             if (_drawPileButton != null)
             {
-                _drawPileButton.Text = "抽牌堆";
+                _drawPileButton.Text = string.Empty;
+                _drawPileButton.TooltipText = "抽牌堆";
                 _drawPileButton.Disabled = true;
+                SyncPileButtonVisualState(_drawPileButton);
             }
             if (_discardPileButton != null)
             {
-                _discardPileButton.Text = "弃牌堆";
+                _discardPileButton.Text = string.Empty;
+                _discardPileButton.TooltipText = "弃牌堆";
                 _discardPileButton.Disabled = true;
+                SyncPileButtonVisualState(_discardPileButton);
+            }
+            if (_exhaustedPileButton != null)
+            {
+                _exhaustedPileButton.Text = string.Empty;
+                _exhaustedPileButton.TooltipText = "消耗牌堆";
+                _exhaustedPileButton.Disabled = true;
+                SyncPileButtonVisualState(_exhaustedPileButton);
             }
             if (_manualTargetInfoButton != null)
                 _manualTargetInfoButton.Disabled = true;
@@ -2641,6 +2913,7 @@ public partial class CharacterControl : Control
     {
         int drawCount = 0;
         int discardCount = 0;
+        int exhaustedCount = 0;
         bool canOpenPile =
             _activePlayer != null
             && GodotObject.IsInstanceValid(_activePlayer)
@@ -2656,18 +2929,31 @@ public partial class CharacterControl : Control
         {
             drawCount = BattleNode.GetDrawBattleCardPile(_activePlayer).Length;
             discardCount = BattleNode.GetDiscardBattleCardPile(_activePlayer).Length;
+            exhaustedCount = BattleNode.GetExhaustedBattleCardPile(_activePlayer).Length;
         }
 
         if (_drawPileButton != null)
         {
-            _drawPileButton.Text = $"抽牌堆 {drawCount}";
+            _drawPileButton.Text = string.Empty;
+            _drawPileButton.TooltipText = $"抽牌堆 {drawCount}";
             _drawPileButton.Disabled = !canOpenPile;
+            SyncPileButtonVisualState(_drawPileButton);
         }
 
         if (_discardPileButton != null)
         {
-            _discardPileButton.Text = $"弃牌堆 {discardCount}";
+            _discardPileButton.Text = string.Empty;
+            _discardPileButton.TooltipText = $"弃牌堆 {discardCount}";
             _discardPileButton.Disabled = !canOpenPile;
+            SyncPileButtonVisualState(_discardPileButton);
+        }
+
+        if (_exhaustedPileButton != null)
+        {
+            _exhaustedPileButton.Text = string.Empty;
+            _exhaustedPileButton.TooltipText = $"消耗牌堆 {exhaustedCount}";
+            _exhaustedPileButton.Disabled = !canOpenPile;
+            SyncPileButtonVisualState(_exhaustedPileButton);
         }
     }
 
@@ -2681,10 +2967,16 @@ public partial class CharacterControl : Control
         ShowCurrentPlayerPile(BattlePileKind.Discard);
     }
 
+    private void OnExhaustedPilePressed()
+    {
+        ShowCurrentPlayerPile(BattlePileKind.Exhausted);
+    }
+
     private enum BattlePileKind
     {
         Draw,
         Discard,
+        Exhausted,
     }
 
     private void ShowCurrentPlayerPile(BattlePileKind kind)
@@ -2704,10 +2996,13 @@ public partial class CharacterControl : Control
             return;
         }
 
-        SkillID[] pile =
-            kind == BattlePileKind.Draw
-                ? BattleNode.GetDrawBattleCardPile(_activePlayer)
-                : BattleNode.GetDiscardBattleCardPile(_activePlayer);
+        SkillID[] pile = kind switch
+        {
+            BattlePileKind.Draw => BattleNode.GetDrawBattleCardPile(_activePlayer),
+            BattlePileKind.Discard => BattleNode.GetDiscardBattleCardPile(_activePlayer),
+            BattlePileKind.Exhausted => BattleNode.GetExhaustedBattleCardPile(_activePlayer),
+            _ => Array.Empty<SkillID>(),
+        };
         ShowPileOverlay(_activePlayer, pile);
     }
 
@@ -2899,6 +3194,7 @@ public partial class CharacterControl : Control
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = true;
         card.PreviewCharacterName = player?.CharacterName;
+        card.PreviewCharacterKey = player?.CharacterKey;
         card.Button.ToggleMode = false;
         card.Button.ButtonPressed = false;
         card.Button.FocusMode = FocusModeEnum.None;

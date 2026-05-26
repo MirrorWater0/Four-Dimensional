@@ -54,7 +54,8 @@ public partial class Character : Node2D
     [Export]
     public Texture2D Portrait;
     private string _characterName;
-    protected virtual string CharacterNameKey => $"character.{I18n.ToSnakeCase(GetType().Name)}.name";
+    protected virtual string CharacterNameKey =>
+        $"character.{I18n.ToSnakeCase(GetType().Name)}.name";
     public virtual string CharacterName
     {
         get => I18n.Tr(CharacterNameKey, _characterName);
@@ -164,6 +165,9 @@ public partial class Character : Node2D
     private Tween _trailPreviewTween;
     private Tween _turnOrderPreviewTween;
     private bool _nextActionPreviewVisible;
+    private bool _turnOrderPreviewSceneRectCached;
+    private Vector2 _turnOrderPreviewScenePosition;
+    private Vector2 _turnOrderPreviewSceneSize;
     private bool _customTrailPreviewVisible;
     private Vector2 _customTrailPreviewTargetGlobalPosition;
     private Color _customTrailPreviewColor = new(1f, 0.42f, 0.32f, 0.78f);
@@ -552,7 +556,7 @@ public partial class Character : Node2D
     {
         return (skillIds ?? Array.Empty<SkillID>())
             .Select(Skill.GetSkill)
-            .Where(skill => skill != null && skill.SkillType != Skill.SkillTypes.none)
+            .Where(skill => skill != null)
             .ToArray();
     }
 
@@ -568,6 +572,7 @@ public partial class Character : Node2D
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Attack);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Survive);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Special);
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Status);
     }
 
     private static void AppendSkillPileNameLine(
@@ -732,10 +737,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -744,10 +746,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -756,10 +755,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in SkillBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -768,10 +764,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in AttackBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -780,10 +773,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -792,10 +782,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in HurtBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -804,10 +791,7 @@ public partial class Character : Node2D
         {
             foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0))
             {
-                sb.Append($"{Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n");
-                var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
-                if (!string.IsNullOrWhiteSpace(effect))
-                    sb.Append($"[color={colord}]{effect}[/color]\n");
+                AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
             }
         }
@@ -816,6 +800,19 @@ public partial class Character : Node2D
             sb.Append("None");
 
         return GlobalFunction.ColorizeNumbers(sb.ToString().TrimEnd());
+    }
+
+    private static void AppendBuffTooltipEntry(StringBuilder sb, Buff buff, string effectColor)
+    {
+        if (buff == null)
+            return;
+
+        sb.Append(
+            $"{Buff.BuildTooltipIconTag(buff.ThisBuffName)}       {Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n"
+        );
+        var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+        if (!string.IsNullOrWhiteSpace(effect))
+            sb.Append($"[color={effectColor}]{effect}[/color]\n");
     }
 
     public override void _Process(double delta)
@@ -988,10 +985,13 @@ public partial class Character : Node2D
             return;
 
         root.MouseFilter = Control.MouseFilterEnum.Ignore;
-        root.PivotOffset = root.Size / 2f;
+        CacheTurnOrderPreviewSceneRect(root);
+        ApplyTurnOrderPreviewLayout(root);
 
         if (TurnOrderPreviewCircle?.Material is ShaderMaterial material)
         {
+            TurnOrderPreviewCircle.Color = Colors.White;
+
             ShaderMaterial localMaterial = material;
             if (!material.ResourceLocalToScene)
             {
@@ -1004,39 +1004,49 @@ public partial class Character : Node2D
 
     private void ApplyTurnOrderPreviewStyle(int order, bool isCurrent)
     {
+        bool isNext = order == 1;
         Color accent =
-            isCurrent ? new Color(1f, 0.84f, 0.33f, 1f)
-            : IsPlayer ? new Color(0.42f, 0.88f, 1f, 1f)
-            : new Color(1f, 0.47f, 0.42f, 1f);
-        Color fill =
-            isCurrent ? new Color(0.22f, 0.16f, 0.05f, 0.92f)
-            : IsPlayer ? new Color(0.05f, 0.14f, 0.22f, 0.88f)
-            : new Color(0.2f, 0.07f, 0.08f, 0.88f);
-        Color glow = accent with { A = isCurrent ? 0.95f : 0.72f };
-        Color valueColor = isCurrent
-            ? new Color(1f, 0.95f, 0.78f, 1f)
-            : new Color(0.97f, 0.99f, 1f, 0.98f);
+            isCurrent ? new Color(1f, 0.22f, 0.18f, 1f)
+            : isNext ? new Color(1f, 0.88f, 0.18f, 1f)
+            : Colors.White;
+        Color glow = accent with
+        {
+            A =
+                isCurrent ? 0.22f
+                : isNext ? 0.18f
+                : 0.1f,
+        };
 
         if (TurnOrderPreviewCircle?.Material is ShaderMaterial material)
         {
-            material.SetShaderParameter("fill_color", fill);
             material.SetShaderParameter("rim_color", accent);
             material.SetShaderParameter("glow_color", glow);
-            material.SetShaderParameter("ring_width", isCurrent ? 0.1f : 0.085f);
-            material.SetShaderParameter("glow_size", isCurrent ? 0.16f : 0.11f);
-            material.SetShaderParameter("center_brightness", isCurrent ? 0.26f : 0.15f);
         }
+    }
 
-        if (TurnOrderPreviewLabel != null)
-        {
-            TurnOrderPreviewLabel.AddThemeColorOverride("font_color", valueColor);
-            TurnOrderPreviewLabel.AddThemeColorOverride(
-                "font_outline_color",
-                new Color(0.015f, 0.025f, 0.04f, 1f)
-            );
-            TurnOrderPreviewLabel.AddThemeConstantOverride("outline_size", isCurrent ? 7 : 6);
-            TurnOrderPreviewLabel.AddThemeFontSizeOverride("font_size", isCurrent ? 30 : 28);
-        }
+    private void CacheTurnOrderPreviewSceneRect(Control root)
+    {
+        if (_turnOrderPreviewSceneRectCached || root == null)
+            return;
+
+        _turnOrderPreviewScenePosition = root.Position;
+        _turnOrderPreviewSceneSize = root.Size;
+        _turnOrderPreviewSceneRectCached = true;
+    }
+
+    private void ApplyTurnOrderPreviewLayout(Control root)
+    {
+        if (root == null || !_turnOrderPreviewSceneRectCached)
+            return;
+
+        root.Size = _turnOrderPreviewSceneSize;
+        root.Position = IsPlayer
+            ? new Vector2(
+                -_turnOrderPreviewScenePosition.X - _turnOrderPreviewSceneSize.X,
+                _turnOrderPreviewScenePosition.Y
+            )
+            : _turnOrderPreviewScenePosition;
+        root.PivotOffset = root.Size / 2f;
     }
 
     protected virtual void ResolveTurnStartPhase()

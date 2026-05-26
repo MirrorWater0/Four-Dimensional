@@ -4,14 +4,13 @@ using Godot;
 public partial class AlienBody : EnemyCharacter
 {
     private const int PassiveTriggerTurn = 2;
-    private const int PassivePowerDown = 1;
     private const int PassiveSurvivabilityDown = 1;
 
     private int _turnStartCount;
 
     public const string PassiveNameText = "寄生馈赠";
     public static string PassiveDescriptionText =>
-        $"第{PassiveTriggerTurn}次回合开始时：永久降低目标{PassivePowerDown}点力量和{PassiveSurvivabilityDown}点生存。";
+        $"第{PassiveTriggerTurn}次回合开始时：永久减少目标{PassiveSurvivabilityDown}点生存。";
 
     public override string CharacterName { get; set; } = "AlienBody";
 
@@ -47,14 +46,12 @@ public partial class AlienBody : EnemyCharacter
         if (target == null)
             return;
 
-        await target.DescendingProperties(PropertyType.Power, PassivePowerDown, this);
         await target.DescendingProperties(
             PropertyType.Survivability,
             PassiveSurvivabilityDown,
             this
         );
 
-        ApplyPermanentPropertyLoss(target, PropertyType.Power, PassivePowerDown);
         ApplyPermanentPropertyLoss(target, PropertyType.Survivability, PassiveSurvivabilityDown);
     }
 
@@ -73,9 +70,6 @@ public partial class AlienBody : EnemyCharacter
         PlayerInfoStructure info = GameInfo.PlayerCharacters[index];
         switch (type)
         {
-            case PropertyType.Power:
-                info.Power -= loss;
-                break;
             case PropertyType.Survivability:
                 info.Survivability -= loss;
                 break;

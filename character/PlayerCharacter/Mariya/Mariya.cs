@@ -62,7 +62,7 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.mariya.name", "玛瑞娅"),
         PassiveName = I18n.Tr("character.mariya.passive.name", global::Mariya.PassiveNameText),
         PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 22,
+        LifeMax = 23,
         Power = 4,
         Survivability = 4,
         Speed = 7,

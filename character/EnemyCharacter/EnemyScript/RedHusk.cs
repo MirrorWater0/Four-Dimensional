@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 8;
+    private const int StartAutoArmorStacks = 5;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -48,7 +48,7 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 0;
     private const int VulnerableStacks = 2;
 
     public RedHuskAttack()
@@ -63,11 +63,7 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                multiplier: 1,
-                target: HostileTargetReference.Two
-            ),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -102,7 +98,7 @@ public partial class RedHuskSurvive : Skill
 
 public partial class RedHuskSpecial : Skill
 {
-    private const int AutoArmorStacks = 6;
+    private const int AutoArmorStacks = 3;
     private const int RebirthStacks = 1;
 
     public RedHuskSpecial()

@@ -38,7 +38,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
-        MaxLife = 26;
+        MaxLife = 6;
         Power = 3;
         Survivability = 20;
         Speed = 6;
@@ -72,16 +72,14 @@ public partial class HollowBulwarkAttack : Skill
                 baseDamage: skill => (skill?.OwnerCharater?.Block ?? 0) / 2,
                 prefix: "造成当前格挡/2（",
                 suffix: "）点伤害。"
-            ),
-            BlockStep()
+            )
         );
     }
 }
 
 public partial class HollowBulwarkSurvive : Skill
 {
-    private const int BaseBlock = 20;
-    private const int SurvivabilityDown = 4;
+    private const int BaseBlock = 0;
 
     public HollowBulwarkSurvive()
         : base(SkillTypes.Survive)
@@ -93,16 +91,7 @@ public partial class HollowBulwarkSurvive : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                SurvivabilityDown,
-                target: HostileTargetReference.One,
-                permanent: false
-            )
-        );
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, multiplier: 2));
     }
 }
 
@@ -115,13 +104,13 @@ public partial class HollowBulwarkSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "闭合";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(18),
+            AttackStep(16),
             ModifyPropertyStep(PropertyType.Survivability, 5),
             CustomStep(
                 _ =>

@@ -31,7 +31,7 @@ public static partial class GameInfo
 
     public static void InitNewGame()
     {
-        ElectricityCoin = 150;
+        ElectricityCoin = 100;
         TransitionEnergy = CoreEnergyDefaultMax;
         TransitionEnergyMax = CoreEnergyDefaultMax;
         CurrentLevel = 0;
@@ -81,12 +81,16 @@ public static class GlobalFunction
 {
     public static void TweenShader(Control node, string var, float val, float duration)
     {
+        ShaderMaterial material = node?.Material as ShaderMaterial;
+        if (material == null)
+            return;
+
         node.CreateTween()
             .TweenMethod(
                 Callable.From<float>(value =>
                     ((ShaderMaterial)node.Material).SetShaderParameter(var, value)
                 ),
-                ((ShaderMaterial)node.Material).GetShaderParameter(var),
+                GetShaderParameterFloat(material, var),
                 val,
                 duration
             );
@@ -94,15 +98,30 @@ public static class GlobalFunction
 
     public static void TweenShader(Node2D node, string var, float val, float duration)
     {
+        ShaderMaterial material = node?.Material as ShaderMaterial;
+        if (material == null)
+            return;
+
         node.CreateTween()
             .TweenMethod(
                 Callable.From<float>(value =>
                     ((ShaderMaterial)node.Material).SetShaderParameter(var, value)
                 ),
-                ((ShaderMaterial)node.Material).GetShaderParameter(var),
+                GetShaderParameterFloat(material, var),
                 val,
                 duration
             );
+    }
+
+    private static float GetShaderParameterFloat(ShaderMaterial material, string parameterName)
+    {
+        Variant value = material.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
     }
 
     private const string NumberColor = "#ffff00";

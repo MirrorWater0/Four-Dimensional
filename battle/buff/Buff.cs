@@ -108,7 +108,7 @@ public partial class Buff
             BuffName.ExtraDraw => "回合开始时，每层额外抽1张牌并消耗1层。",
             BuffName.Source => "回合开始时，每层获得1点能量。",
             BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
-            BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/4的格挡。",
+            BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
             BuffName.CursePower => "每次攻击时，给予目标等同于层数的虚弱。",
             BuffName.WeakeningField => "每给予一次虚弱，己方全阵获得3点格挡。",
             _ => string.Empty,
@@ -619,6 +619,22 @@ public partial class Buff
             scene = GD.Load<PackedScene>(scenePath);
 
         return scene?.Instantiate() as ColorRect;
+    }
+
+    public static string BuildTooltipIconTag(BuffName name) => $"[buff_icon={name}]";
+
+    public static ColorRect CreateBuffTooltipIcon(BuffName name)
+    {
+        var icon = CreateBuffIcon(name);
+        if (icon == null)
+            return null;
+
+        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+        icon.CustomMinimumSize = Vector2.Zero;
+        icon.Size = new Vector2(40f, 40f);
+        if (icon.GetChildOrNull<Label>(0) is Label stackLabel)
+            stackLabel.Visible = false;
+        return icon;
     }
 
     protected static bool TryStackExisting<TBuff>(
@@ -1281,7 +1297,7 @@ public partial class SpecialBuff : Buff
         if (beaconStacks <= 0)
             return;
 
-        int sharedBlock = gainedBlock * beaconStacks / 4;
+        int sharedBlock = gainedBlock * beaconStacks / 3;
         if (sharedBlock <= 0)
             return;
 

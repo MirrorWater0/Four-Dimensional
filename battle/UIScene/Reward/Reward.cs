@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Reward : CanvasLayer
@@ -16,6 +17,12 @@ public partial class Reward : CanvasLayer
     );
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
+    );
+    private static readonly Shader TalentUnlockShockWaveShader = GD.Load<Shader>(
+        "res://shader/shockwave.gdshader"
+    );
+    private static readonly Shader TalentUnlockSparkLightShader = GD.Load<Shader>(
+        "res://shader/Effect/SparkLight.gdshader"
     );
 
     private const int ExpectedSkillSlots = 4;
@@ -603,6 +610,7 @@ public partial class Reward : CanvasLayer
         if (_activeSkillRewardControl != null)
             _rewardEntries.TryGetValue(_activeSkillRewardControl, out activeEntry);
 
+        GameInfo.NormalizePlayerCharacters();
         var players =
             GameInfo.PlayerCharacters
             ?? throw new InvalidOperationException("GameInfo.PlayerCharacters is null.");
@@ -656,6 +664,7 @@ public partial class Reward : CanvasLayer
 
             var info = players[playerIndex];
             slot.PreviewCharacterName = GameInfo.PlayerCharacters[playerIndex].CharacterName;
+            slot.PreviewCharacterKey = ExtractCharacterKeyFromScenePath(GameInfo.PlayerCharacters[playerIndex].CharacterScenePath);
             skill.SetPreviewStats(
                 TalentTree.GetEffectivePower(info),
                 TalentTree.GetEffectiveSurvivability(info),
@@ -998,7 +1007,7 @@ public partial class Reward : CanvasLayer
                 ("value", info.TalentPoints)
             );
 
-        var nodes = TalentTree.GetNodes(info.CharacterName);
+        var nodes = TalentTree.GetNodes(info);
         var nodesById = nodes.ToDictionary(node => node.Id);
 
         foreach (var node in nodes)
@@ -1099,6 +1108,7 @@ public partial class Reward : CanvasLayer
 
         wrapper.AddChild(button);
         wrapper.AddChild(progressLabel);
+        wrapper.SetMeta("talent_id", node.Id);
         return wrapper;
     }
 
@@ -1233,14 +1243,15 @@ public partial class Reward : CanvasLayer
         TalentTreeRoot.AddChild(line);
     }
 
-    private void OnTalentRewardNodePressed(int characterIndex, string talentId)
+    private async void OnTalentRewardNodePressed(int characterIndex, string talentId)
     {
         var players = GameInfo.PlayerCharacters;
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
             return;
 
         var info = players[characterIndex];
-        if (TalentTree.TryUnlock(ref info, talentId, out string message))
+        bool unlocked = TalentTree.TryUnlock(ref info, talentId, out string message);
+        if (unlocked)
         {
             players[characterIndex] = info;
             GameInfo.PlayerCharacters = players;
@@ -1249,9 +1260,123 @@ public partial class Reward : CanvasLayer
 
         GD.Print(message);
         RefreshTalentRewardTree(characterIndex);
+        if (unlocked)
+            await PlayTalentUnlockEffectAsync(FindTalentRewardNodeControl(talentId));
 
         if (players[characterIndex].TalentPoints <= 0)
             CloseTalentRewardTree();
+    }
+
+    private Control FindTalentRewardNodeControl(string talentId)
+    {
+        if (TalentTreeRoot == null || string.IsNullOrWhiteSpace(talentId))
+            return null;
+
+        foreach (var child in TalentTreeRoot.GetChildren())
+        {
+            if (child is Control control && (string)control.GetMeta("talent_id", string.Empty) == talentId)
+                return control;
+        }
+
+        return null;
+    }
+
+    private async Task PlayTalentUnlockEffectAsync(Control nodeControl)
+    {
+        if (nodeControl == null || !GodotObject.IsInstanceValid(nodeControl) || !IsInsideTree())
+            return;
+
+        var shockWave = CreateTalentUnlockEffectRect(
+            TalentUnlockShockWaveShader,
+            new Vector2(-104f, -104f),
+            new Vector2(284f, 284f)
+        );
+        var sparkLight = CreateTalentUnlockEffectRect(
+            TalentUnlockSparkLightShader,
+            new Vector2(-62f, -62f),
+            new Vector2(200f, 200f)
+        );
+
+        if (shockWave == null || sparkLight == null)
+            return;
+
+        nodeControl.AddChild(shockWave);
+        nodeControl.AddChild(sparkLight);
+
+        Vector2 baseScale = nodeControl.Scale;
+        nodeControl.PivotOffset = new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
+
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
+        tween.TweenProperty(nodeControl, "scale", baseScale, 0.22f).SetDelay(0.12f);
+        tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
+        tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
+        tween.TweenMethod(
+            Callable.From<float>(value =>
+                ((ShaderMaterial)shockWave.Material).SetShaderParameter("progress", value)
+            ),
+            0.24f,
+            1f,
+            0.42f
+        );
+        tween.TweenMethod(
+            Callable.From<float>(value =>
+                ((ShaderMaterial)sparkLight.Material).SetShaderParameter("progress", value)
+            ),
+            0f,
+            1f,
+            0.38f
+        );
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+
+        if (GodotObject.IsInstanceValid(shockWave))
+            shockWave.QueueFree();
+        if (GodotObject.IsInstanceValid(sparkLight))
+            sparkLight.QueueFree();
+        if (GodotObject.IsInstanceValid(nodeControl))
+        {
+            nodeControl.Scale = baseScale;
+            nodeControl.Modulate = Colors.White;
+        }
+    }
+
+    private static ColorRect CreateTalentUnlockEffectRect(
+        Shader shader,
+        Vector2 position,
+        Vector2 size
+    )
+    {
+        if (shader == null)
+            return null;
+
+        var material = new ShaderMaterial { Shader = shader, ResourceLocalToScene = true };
+        if (shader == TalentUnlockShockWaveShader)
+        {
+            material.SetShaderParameter("line_color", new Color(1f, 0.95f, 0.68f, 1f));
+            material.SetShaderParameter("glow_color", new Color(1f, 0.7f, 0.22f, 1f));
+            material.SetShaderParameter("progress", 1f);
+            material.SetShaderParameter("base_thickness", 0.005f);
+            material.SetShaderParameter("max_thickness", 0.0f);
+            material.SetShaderParameter("glow_intensity", 19.0f);
+        }
+        else
+        {
+            material.SetShaderParameter("main_color", new Color(1f, 0.72f, 0.24f, 1f));
+            material.SetShaderParameter("progress", 1f);
+            material.SetShaderParameter("glow_intensity", 25.0f);
+            material.SetShaderParameter("ray_count", 15.0f);
+        }
+
+        return new ColorRect
+        {
+            Position = position,
+            Size = size,
+            Material = material,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
     }
 
     private CanvasLayer EnsureTipLayer()
@@ -1641,10 +1766,12 @@ public partial class Reward : CanvasLayer
 
     private static int GetElectricityCoinReward(LevelNode node)
     {
+        if (node.Type == LevelNode.LevelType.Elite)
+            return 0;
+
         int baseReward = node.Type switch
         {
             LevelNode.LevelType.Boss => 150,
-            LevelNode.LevelType.Elite => 40,
             _ => 30,
         };
         int offset = new Random(node.RandomNum).Next(-10, 11);
@@ -1686,5 +1813,14 @@ public partial class Reward : CanvasLayer
     private static string GetItemDescription(ItemID itemId)
     {
         return ConsumeItem.GetItemDescription(itemId, I18n.Tr("ui.reward.item_use_select_character", "点击后选择角色"));
+    }
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : null;
     }
 }

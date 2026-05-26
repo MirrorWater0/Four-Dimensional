@@ -14,6 +14,7 @@ public partial class PlayerCharacter : Character
     public List<Skill> UntakeSkills;
     public bool Istest;
     public int CharacterIndex;
+    public string CharacterKey { get; private set; }
 
     public override void Initialize()
     {
@@ -21,6 +22,7 @@ public partial class PlayerCharacter : Character
 
         PositionIndex = info.PositionIndex;
         CharacterName = info.CharacterName;
+        CharacterKey = ExtractCharacterKeyFromScenePath(info.CharacterScenePath);
         Portrait = LoadPortrait(info.PortaitPath);
         PassiveName = info.PassiveName;
         PassiveDescription = info.PassiveDescription;
@@ -39,6 +41,15 @@ public partial class PlayerCharacter : Character
         IsPlayer = true;
         BlockLabel.Position += new Vector2(230, 0);
         BlockLabel.HorizontalAlignment = HorizontalAlignment.Left;
+    }
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : null;
     }
 
     private static Texture2D LoadPortrait(string path)

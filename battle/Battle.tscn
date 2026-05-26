@@ -9,6 +9,8 @@
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
+[ext_resource type="Shader" uid="uid://cbu3v2iauiawe" path="res://shader/BG1.gdshader" id="14_bg1"]
+[ext_resource type="Shader" uid="uid://dfyb0vpf1xs5t" path="res://shader/UI/BattlePileIcon.gdshader" id="15_pileicon"]
 
 [sub_resource type="Environment" id="Environment_ttuon"]
 background_mode = 3
@@ -19,81 +21,10 @@ glow_strength = 1.42
 glow_hdr_threshold = 0.9
 glow_hdr_scale = 1.8
 
-[sub_resource type="Shader" id="Shader_vj222"]
-code = "shader_type canvas_item;
-//modified from @XorDev
-#define iTime TIME
-#define NUM_OCTAVES 20
-#define iResolution (1./SCREEN_PIXEL_SIZE)
-#define fragCoord ((UV * iResolution).xy)
-#define fragColor COLOR
-#define SCREEN_UV vec2(UV.x, 1.0 - UV.y)
-
-#define iterations 17
-#define formuparam 0.53
-
-#define volsteps 6
-#define stepsize 0.1
-
-#define zoom   1.800
-#define tile   0.850
-#define speed  0.006 
-
-#define brightness 0.0010
-#define darkmatter 0.300
-#define distfading 0.730
-#define saturation 0.850
-uniform vec4 moduate :source_color= vec4(1);
-
-void fragment()
-{
-	//get coords and direction
-	vec2 uv= UV;
-	uv.y*=iResolution.y/iResolution.x;
-	vec3 dir=vec3(uv*zoom,1.);
-	float time=iTime*speed+.25;
-
-	//mouse rotation
-	float a1=.5;
-	float a2=.8;
-	mat2 rot1=mat2(vec2(cos(a1),sin(a1)),vec2(-sin(a1),cos(a1)));
-	mat2 rot2=mat2(vec2(cos(a2),sin(a2)),vec2(-sin(a2),cos(a2)));
-	dir.xz*=rot1;
-	dir.xy*=rot2;
-	vec3 from=vec3(1.,.5,0.5);
-	from+=vec3(time*2.,time,-2.);
-	from.xz*=rot1;
-	from.xy*=rot2;
-	
-	//volumetric rendering
-	float s=0.1,fade=1.;
-	vec3 v=vec3(0.);
-	for (int r=0; r<volsteps; r++) {
-		vec3 p=from+s*dir*.5;
-		p = abs(vec3(tile)-mod(p,vec3(tile*2.))); // tiling fold
-		float pa,a=pa=0.;
-		for (int i=0; i<iterations; i++) { 
-			p=abs(p)/dot(p,p)-formuparam; // the magic formula
-			a+=abs(length(p)-pa); // absolute sum of average change
-			pa=length(p);
-		}
-		float dm=max(0.,darkmatter-a*a*.001); //dark matter
-		a*=a*a; // add contrast
-		if (r>6) fade*=1.-dm; // dark matter, don't render near
-		//v+=vec3(dm,dm*.5,0.);
-		v+=fade;
-		v+=vec3(s,s*s,s*s*s*s)*a*brightness*fade; // coloring based on distance
-		fade*=distfading; // distance fading
-		s+=stepsize;
-	}
-	v=mix(vec3(length(v)),v,saturation); //color adjust
-	fragColor = vec4(v*.0085,1.)*moduate;	
-	
-}"
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ts8fe"]
-shader = SubResource("Shader_vj222")
-shader_parameter/moduate = Color(0.03529412, 0.3254902, 1, 1)
+shader = ExtResource("14_bg1")
+shader_parameter/moduate = Color(0.0564, 0.21494661, 0.47, 1)
+shader_parameter/star_color_shift = 1.0
 
 [sub_resource type="Animation" id="Animation_4km6a"]
 resource_name = "Incapacitate"
@@ -286,6 +217,54 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uifq5"]
 shader = SubResource("Shader_1euq2")
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_draw_pile_icon"]
+resource_local_to_scene = true
+shader = ExtResource("15_pileicon")
+shader_parameter/back_card_color = Color(0.05, 0.12, 0.22, 0.78)
+shader_parameter/mid_card_color = Color(0.16, 0.35, 0.55, 0.72)
+shader_parameter/front_card_color = Color(0.46, 0.72, 0.95, 0.78)
+shader_parameter/edge_color = Color(0.72, 0.94, 1, 0.82)
+shader_parameter/shadow_color = Color(0.015, 0.035, 0.065, 0.56)
+shader_parameter/hover_amount = 0.0
+shader_parameter/disabled_amount = 1.0
+shader_parameter/pressed_amount = 0.0
+shader_parameter/stack_tilt = -0.1
+shader_parameter/fan_amount = 0.12
+shader_parameter/card_radius = 0.045
+shader_parameter/edge_width = 0.018
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_discard_pile_icon"]
+resource_local_to_scene = true
+shader = ExtResource("15_pileicon")
+shader_parameter/back_card_color = Color(0.22, 0.13, 0.04, 0.78)
+shader_parameter/mid_card_color = Color(0.56, 0.36, 0.12, 0.72)
+shader_parameter/front_card_color = Color(0.95, 0.72, 0.32, 0.78)
+shader_parameter/edge_color = Color(1, 0.88, 0.56, 0.82)
+shader_parameter/shadow_color = Color(0.07, 0.04, 0.015, 0.56)
+shader_parameter/hover_amount = 0.0
+shader_parameter/disabled_amount = 1.0
+shader_parameter/pressed_amount = 0.0
+shader_parameter/stack_tilt = 0.1
+shader_parameter/fan_amount = 0.12
+shader_parameter/card_radius = 0.045
+shader_parameter/edge_width = 0.018
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_exhausted_pile_icon"]
+resource_local_to_scene = true
+shader = ExtResource("15_pileicon")
+shader_parameter/back_card_color = Color(0.2, 0.035, 0.055, 0.8)
+shader_parameter/mid_card_color = Color(0.46, 0.11, 0.14, 0.74)
+shader_parameter/front_card_color = Color(0.86, 0.3, 0.3, 0.78)
+shader_parameter/edge_color = Color(1, 0.62, 0.58, 0.82)
+shader_parameter/shadow_color = Color(0.075, 0.018, 0.024, 0.58)
+shader_parameter/hover_amount = 0.0
+shader_parameter/disabled_amount = 1.0
+shader_parameter/pressed_amount = 0.0
+shader_parameter/stack_tilt = 0.0
+shader_parameter/fan_amount = 0.16
+shader_parameter/card_radius = 0.045
+shader_parameter/edge_width = 0.018
+
 [sub_resource type="Theme" id="Theme_d0b6a"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jhxqk"]
@@ -464,42 +443,82 @@ disabled = true
 text = "结束回合"
 
 [node name="DrawPileButton" type="Button" parent="BattleActionButtons" unique_id=1198832786]
-custom_minimum_size = Vector2(144, 72)
+custom_minimum_size = Vector2(70, 70)
 layout_mode = 0
-offset_left = -1489.0
-offset_top = 303.0
-offset_right = -1345.0
-offset_bottom = 375.0
+offset_left = -1486.0
+offset_top = 302.0
+offset_right = -1416.0
+offset_bottom = 372.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
-theme_override_font_sizes/font_size = 22
+tooltip_text = "抽牌堆"
 disabled = true
-text = "抽牌堆 0"
+flat = true
+
+[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/DrawPileButton" unique_id=388596969]
+material = SubResource("ShaderMaterial_draw_pile_icon")
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 0
+offset_right = 46.0
+offset_bottom = 46.0
+mouse_filter = 2
 
 [node name="DiscardPileButton" type="Button" parent="BattleActionButtons" unique_id=906387459]
-custom_minimum_size = Vector2(144, 72)
+custom_minimum_size = Vector2(70, 70)
 layout_mode = 0
-offset_left = 282.0
-offset_top = 296.0
-offset_right = 426.0
-offset_bottom = 368.0
+offset_left = 359.0
+offset_top = 304.0
+offset_right = 429.0
+offset_bottom = 374.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
-theme_override_font_sizes/font_size = 22
+tooltip_text = "弃牌堆"
+mouse_filter = 1
 disabled = true
-text = "弃牌堆 0"
+flat = true
+
+[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/DiscardPileButton" unique_id=1352855306]
+material = SubResource("ShaderMaterial_discard_pile_icon")
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 0
+offset_right = 46.0
+offset_bottom = 46.0
+mouse_filter = 1
+
+[node name="ExhaustedPileButton" type="Button" parent="BattleActionButtons" unique_id=1059610785]
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 0
+offset_left = -1487.0
+offset_top = 108.0
+offset_right = -1417.0
+offset_bottom = 178.0
+size_flags_horizontal = 4
+size_flags_vertical = 4
+tooltip_text = "消耗牌堆"
+mouse_filter = 1
+disabled = true
+flat = true
+
+[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/ExhaustedPileButton" unique_id=1621808690]
+material = SubResource("ShaderMaterial_exhausted_pile_icon")
+custom_minimum_size = Vector2(70, 70)
+layout_mode = 0
+offset_right = 46.0
+offset_bottom = 46.0
+mouse_filter = 1
 
 [node name="ManualTargetInfoButton" type="Button" parent="BattleActionButtons" unique_id=514264369]
 custom_minimum_size = Vector2(46, 46)
 layout_mode = 0
-offset_left = 300.0
-offset_top = -22.0
-offset_right = 346.0
-offset_bottom = 24.0
+offset_left = 383.0
+offset_top = -3.0
+offset_right = 429.0
+offset_bottom = 43.0
 tooltip_text = "查看己方角色信息"
 focus_mode = 0
 mouse_default_cursor_shape = 2
 disabled = true
+text = "i"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]
 z_index = 20
@@ -641,6 +660,7 @@ theme_override_font_sizes/font_size = 22
 text = "(0)"
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
+visible = false
 z_index = 2
 material = SubResource("ShaderMaterial_2bopn")
 position = Vector2(2392, 1112)
@@ -652,6 +672,7 @@ visibility_rect = Rect2(-2300, -1200, 2000, 1100)
 process_material = SubResource("ParticleProcessMaterial_4km6a")
 
 [node name="GPUParticles2D2" type="GPUParticles2D" parent="." unique_id=657114742]
+visible = false
 z_index = 2
 material = SubResource("ShaderMaterial_2bopn")
 position = Vector2(1688, 1480)
@@ -739,6 +760,7 @@ theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
 scroll_following = true
+metadata/_edit_lock_ = true
 
 [node name="RecordButton" type="Button" parent="UI" unique_id=413180388]
 offset_left = 1867.0

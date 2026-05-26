@@ -50,9 +50,23 @@ public partial class SiteButton : Button
         Tween tween = CreateTween();
         tween.TweenMethod(
             Callable.From<float>(value => mat.SetShaderParameter(var, value)),
-            mat.GetShaderParameter(var),
+            GetShaderParameterFloat(var),
             val,
             0.3f
         );
+    }
+
+    private float GetShaderParameterFloat(string parameterName)
+    {
+        if (mat == null)
+            return 0f;
+
+        Variant value = mat.GetShaderParameter(parameterName);
+        return value.VariantType switch
+        {
+            Variant.Type.Float => (float)value.AsDouble(),
+            Variant.Type.Int => value.AsInt64(),
+            _ => 0f,
+        };
     }
 }

@@ -10,6 +10,7 @@ uniform float triangle_flatten_max : hint_range(0.6, 1.8) = 1.18;
 uniform float triangle_drift : hint_range(0.0, 0.5) = 0.14;
 uniform float triangle_perspective : hint_range(0.0, 0.8) = 0.18;
 uniform float edge_softness : hint_range(0.001, 0.03) = 0.006;
+uniform float animation_speed : hint_range(0.0, 1.0) = 0.45;
 
 // 2D Rotation
 mat2 rot(float a) {
@@ -34,13 +35,14 @@ float random(float seed) {
 
 void fragment() {
     vec2 uv = UV;
+    float time = TIME * animation_speed;
     // Aspect ratio correction approximation
     vec2 aspect_uv = (uv - 0.5) * vec2(1.77, 1.0);
     
     vec4 color = mix(bg_color_top, bg_color_bottom, uv.y);
     
     // Floating Shards
-    for (float i = 0.0; i < 8.0; i++) {
+    for (float i = 0.0; i < 5.0; i++) {
         float r1 = random(i + 1.123);
         float r2 = random(i + 2.234);
         float r3 = random(i + 3.345);
@@ -51,22 +53,22 @@ void fragment() {
         
         // Calculate position with wrap-around
         vec2 pos = vec2(0.0);
-        pos.x = mod(r1 * 3.0 + dir.x * TIME * speed, 3.5) - 1.75; // Range [-1.75, 1.75]
-        pos.y = mod(r2 * 2.0 + dir.y * TIME * speed, 2.5) - 1.25; // Range [-1.25, 1.25]
+        pos.x = mod(r1 * 3.0 + dir.x * time * speed, 3.5) - 1.75; // Range [-1.75, 1.75]
+        pos.y = mod(r2 * 2.0 + dir.y * time * speed, 2.5) - 1.25; // Range [-1.25, 1.25]
 
         // A slow depth phase drives size / flattening like drifting in 3D space.
-        float depth_phase = 0.5 + 0.5 * sin(TIME * (0.25 + r2 * 0.35) + r1 * 6.28);
+        float depth_phase = 0.5 + 0.5 * sin(time * (0.25 + r2 * 0.35) + r1 * 6.28);
         float drift_strength = mix(0.45, 1.0, depth_phase);
         pos += vec2(
-            sin(TIME * (0.32 + r1 * 0.24) + r2 * 6.28),
-            cos(TIME * (0.28 + r3 * 0.20) + r1 * 6.28)
+            sin(time * (0.32 + r1 * 0.24) + r2 * 6.28),
+            cos(time * (0.28 + r3 * 0.20) + r1 * 6.28)
         ) * triangle_drift * drift_strength;
         
         vec2 p = aspect_uv - pos;
         
         // Rotation
         float rot_speed = (r2 - 0.5) * 0.4;
-        p = rot(TIME * rot_speed + r3 * 6.28 + depth_phase * 0.9) * p;
+        p = rot(time * rot_speed + r3 * 6.28 + depth_phase * 0.9) * p;
 
         // Width variation.
         p.x *= 0.72 + r1 * 0.95;

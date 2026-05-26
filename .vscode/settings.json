@@ -1,4 +1,8 @@
 {
-    "godotTools.editorPath.godot4": "c:\\Users\\86189\\Desktop\\Godot_v4.5.1-stable_mono_win64\\Godot_v4.5.1-stable_mono_win64.exe",
-    "git.enabled": false
+    "godotTools.editorPath.godot4": "c:\\Users\\86189\\Desktop\\Godot_v4.6-stable_mono_win64\\Godot_v4.6-stable_mono_win64.exe",
+    "git.enabled": false,
+    "files.associations": {
+        "*.gdshader": "godot-shader",
+        "*.gdshaderinc": "godot-shader"
+    }
 }

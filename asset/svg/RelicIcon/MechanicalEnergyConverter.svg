@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="metal" x1="26" y1="24" x2="102" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8ffff"/>
+      <stop offset="0.48" stop-color="#7fe7ff"/>
+      <stop offset="1" stop-color="#5968ff"/>
+    </linearGradient>
+    <linearGradient id="energy" x1="37" y1="91" x2="91" y2="37" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd97f"/>
+      <stop offset="0.5" stop-color="#7fffe6"/>
+      <stop offset="1" stop-color="#ff6fd8"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="64" cy="64" r="39" stroke="url(#metal)" stroke-width="7"/>
+    <circle cx="64" cy="64" r="16" stroke="#ffd97f" stroke-width="6"/>
+    <path d="M64 25v13M64 90v13M25 64h13M90 64h13" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M39 39l9 9M80 80l9 9M89 39l-9 9M48 80l-9 9" stroke="#d9fbff" stroke-width="5" opacity="0.75"/>
+    <path d="M63 48 52 68h15l-5 24 16-30H63z" stroke="url(#energy)" stroke-width="6"/>
+    <path d="M37 76c-7-13-5-30 6-41M91 52c7 13 5 30-6 41" stroke="#ffd97f" stroke-width="5"/>
+    <path d="M41 34h18M87 94H69" stroke="#ffd97f" stroke-width="5"/>
+  </g>
+</svg>

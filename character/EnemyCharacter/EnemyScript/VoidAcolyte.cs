@@ -3,7 +3,7 @@ using Godot;
 
 public partial class VoidAcolyte : EnemyCharacter
 {
-    private const int StartRebirthStacks = 8;
+    private const int StartRebirthStacks = 6;
 
     public const string PassiveNameText = "虚壳复苏";
     public static string PassiveDescriptionText =>
@@ -39,7 +39,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         MaxLife = 23;
         Power = 11;
         Survivability = 0;
-        Speed = 8;
+        Speed = 7;
         SkillIDs =
         [
             SkillID.VoidAcolyteAttack,
@@ -104,12 +104,13 @@ public partial class VoidAcolyteSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "虚空灌注";
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(10, multiplier: 1),
+            AttackStep(6, multiplier: 1, target: HostileTargetReference.Two),
             AddStatusCardsToDrawPileStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,

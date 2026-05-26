@@ -4,9 +4,10 @@ public partial class Echo : PlayerCharacter
 {
     private const int PassiveSkillUseThreshold = 2;
     private const int PassiveEnergyGain = 1;
-    private const int PassiveUpgradeFirstTurnEnergyGain = 1;
+    private const int PassiveUpgradeTurnStartEnergyGain = 1;
+    private const int PassiveUpgradeTurnStartTriggerLimit = 2;
     private int _passiveSkillUseCount;
-    private bool _hasGainedPassiveUpgradeFirstTurnEnergy;
+    private int _passiveUpgradeTurnStartTriggerCount;
 
     public const string PassiveNameText = "余响";
     public static string PassiveDescriptionText =>
@@ -31,7 +32,7 @@ public partial class Echo : PlayerCharacter
     {
         base.Initialize();
         _passiveSkillUseCount = 0;
-        _hasGainedPassiveUpgradeFirstTurnEnergy = false;
+        _passiveUpgradeTurnStartTriggerCount = 0;
         PassiveName = PassiveNameText;
         UpdatePassiveDescription();
         BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
@@ -50,12 +51,15 @@ public partial class Echo : PlayerCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-        if (_hasGainedPassiveUpgradeFirstTurnEnergy || !HasPassiveTalentUpgrade())
+        if (
+            !HasPassiveTalentUpgrade()
+            || _passiveUpgradeTurnStartTriggerCount >= PassiveUpgradeTurnStartTriggerLimit
+        )
             return;
 
-        _hasGainedPassiveUpgradeFirstTurnEnergy = true;
+        _passiveUpgradeTurnStartTriggerCount++;
         using var _ = BeginEffectSource("被动强化");
-        UpdataEnergy(PassiveUpgradeFirstTurnEnergyGain, this);
+        UpdataEnergy(PassiveUpgradeTurnStartEnergyGain, this);
         UpdatePassiveDescription();
     }
 
@@ -93,7 +97,7 @@ public partial class Echo : PlayerCharacter
                 "\n"
                 + I18n.Tr(
                     "character.echo.passive.upgrade",
-                    "被动强化：第一次回合开始时额外获得1点能量。"
+                    "被动强化：前2次回合开始时额外获得1点能量。"
                 );
         InvalidateSkillTooltipCache();
     }

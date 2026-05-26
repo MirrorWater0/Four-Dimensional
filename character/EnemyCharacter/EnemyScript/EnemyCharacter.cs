@@ -16,7 +16,8 @@ public partial class EnemyCharacter : Character
     private static readonly Color AttackIntentCurveColor = new(1f, 0.42f, 0.32f, 0.82f);
     private static readonly Color DebuffIntentCurveColor = new(0.52f, 0.94f, 1f, 0.88f);
     public const int NextActionEnergyPreviewBonus = 2;
-    private static readonly Color IntentionTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color IntentionHostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
+    private static readonly Color IntentionFriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
     private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
     private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 36f);
@@ -32,7 +33,8 @@ public partial class EnemyCharacter : Character
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex = -1;
-    private Character[] _intentionPreviewTargets = Array.Empty<Character>();
+    private Character[] _intentionPreviewHostileTargets = Array.Empty<Character>();
+    private Character[] _intentionPreviewFriendlyTargets = Array.Empty<Character>();
     private int _intentionPreviewHoverDepth;
     private readonly List<Label> _intentionDamageLabels = new();
     private readonly Dictionary<string, Line2D> _intentPreviewLines = new();
@@ -340,17 +342,30 @@ public partial class EnemyCharacter : Character
             return;
 
         ulong stepStartUsec = Time.GetTicksUsec();
-        _intentionPreviewTargets = skill
+        _intentionPreviewHostileTargets = skill
             .GetPreviewHostileTargets()
+            .Where(GodotObject.IsInstanceValid)
+            .Distinct()
+            .ToArray();
+        _intentionPreviewFriendlyTargets = skill
+            .GetPreviewFriendlyTargets()
             .Where(GodotObject.IsInstanceValid)
             .Distinct()
             .ToArray();
         BattleNode?.LogHoverPerfWork(this, "enemy-intention-targets", stepStartUsec);
 
         stepStartUsec = Time.GetTicksUsec();
-        for (int i = 0; i < _intentionPreviewTargets.Length; i++)
+        for (int i = 0; i < _intentionPreviewHostileTargets.Length; i++)
         {
-            _intentionPreviewTargets[i].ShowTargetPreview(IntentionTargetPreviewColor);
+            _intentionPreviewHostileTargets[i].ShowTargetPreview(
+                IntentionHostileTargetPreviewColor
+            );
+        }
+        for (int i = 0; i < _intentionPreviewFriendlyTargets.Length; i++)
+        {
+            _intentionPreviewFriendlyTargets[i].ShowTargetPreview(
+                IntentionFriendlyTargetPreviewColor
+            );
         }
         BattleNode?.LogHoverPerfWork(this, "enemy-intention-highlight", stepStartUsec);
 
@@ -366,20 +381,34 @@ public partial class EnemyCharacter : Character
 
     private void HideIntentionTargetPreview()
     {
-        if (_intentionPreviewTargets == null || _intentionPreviewTargets.Length == 0)
+        if (
+            (_intentionPreviewHostileTargets == null || _intentionPreviewHostileTargets.Length == 0)
+            && (
+                _intentionPreviewFriendlyTargets == null
+                || _intentionPreviewFriendlyTargets.Length == 0
+            )
+        )
         {
-            _intentionPreviewTargets = Array.Empty<Character>();
+            _intentionPreviewHostileTargets = Array.Empty<Character>();
+            _intentionPreviewFriendlyTargets = Array.Empty<Character>();
             ClearIntentionDamageLabels();
             return;
         }
 
-        for (int i = 0; i < _intentionPreviewTargets.Length; i++)
+        for (int i = 0; i < _intentionPreviewHostileTargets.Length; i++)
         {
-            if (GodotObject.IsInstanceValid(_intentionPreviewTargets[i]))
-                _intentionPreviewTargets[i].HideTargetPreview();
+            if (GodotObject.IsInstanceValid(_intentionPreviewHostileTargets[i]))
+                _intentionPreviewHostileTargets[i].HideTargetPreview();
         }
 
-        _intentionPreviewTargets = Array.Empty<Character>();
+        for (int i = 0; i < _intentionPreviewFriendlyTargets.Length; i++)
+        {
+            if (GodotObject.IsInstanceValid(_intentionPreviewFriendlyTargets[i]))
+                _intentionPreviewFriendlyTargets[i].HideTargetPreview();
+        }
+
+        _intentionPreviewHostileTargets = Array.Empty<Character>();
+        _intentionPreviewFriendlyTargets = Array.Empty<Character>();
         ClearIntentionDamageLabels();
     }
 

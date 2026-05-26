@@ -5,7 +5,7 @@ using Godot;
 public partial class FearWorm : EnemyCharacter
 {
     private const int PassiveAllyActionThreshold = 2;
-    private const int PassivePowerGain = 8;
+    private const int PassivePowerGain = 7;
     private int _passiveAllyActionCount;
     private Func<Character, Task> _allyActionEndedHandler;
 
@@ -78,7 +78,7 @@ public partial class FearWormRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
         MaxLife = 30;
-        Power = 13;
+        Power = 10;
         Survivability = 5;
         Speed = 8;
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];

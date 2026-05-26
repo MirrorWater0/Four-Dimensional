@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 8;
+    private const int DisasterStacks = 7;
     private const float MoveDuration = 0.22f;
 
     public const string PassiveNameText = "终末游行";
@@ -175,7 +175,7 @@ public partial class DeathSurvive : Skill
 public partial class DeathSpecial : Skill
 {
     private const int SelfPowerGain = 3;
-    private const int DisasterStacks = 7;
+    private const int DisasterStacks = 6;
 
     public DeathSpecial()
         : base(SkillTypes.Special)
@@ -184,7 +184,7 @@ public partial class DeathSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 7;
 
     protected override SkillPlan BuildPlan()
     {

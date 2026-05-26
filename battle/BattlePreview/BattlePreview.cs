@@ -699,7 +699,7 @@ public partial class BattlePreview : Control
     {
         var skills = (info.GainedSkills ?? new List<SkillID>())
             .Select(Skill.GetSkill)
-            .Where(x => x != null && x.SkillType != Skill.SkillTypes.none)
+            .Where(x => x != null && x.SkillType != Skill.SkillTypes.none && !x.IsStatusCard)
             .ToArray();
 
         return BuildOwnedSkillNameTooltipText(

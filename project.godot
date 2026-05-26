@@ -22,6 +22,7 @@ config/features=PackedStringArray("4.6", "C#", "Mobile")
 
 AudioManager="*res://Audio/AudioManager.tscn"
 MouseTrail="*uid://d0hwex3fc1sp4"
+MCPRuntimeProbe="*res://addons/godot_mcp/runtime/mcp_runtime_probe.gd"
 
 [debug]
 
@@ -42,6 +43,10 @@ project/assembly_name="tower"
 [editor]
 
 naming/scene_name_casing=1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [file_customization]
 

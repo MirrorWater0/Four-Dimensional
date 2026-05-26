@@ -15,7 +15,7 @@ public partial class SpaceStationShop : Control
     private const int RareSkillOfferBasePrice = 120;
     private const int SkillOfferPriceVariance = 10;
     private const int StatOfferBasePrice = 20;
-    private const int SpeedOfferPriceBonus = 10;
+    private const int SpeedOfferPriceBonus = 20;
     private const int MaxLifeOfferPriceBonus = 10;
     private const int StatOfferPriceVariance = 5;
     private const int EquipmentOfferBasePrice = 100;
@@ -689,7 +689,7 @@ public partial class SpaceStationShop : Control
                     i,
                     characterName,
                     PropertyType.MaxLife,
-                    4,
+                    3,
                     ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                         + MaxLifeOfferPriceBonus
                 );

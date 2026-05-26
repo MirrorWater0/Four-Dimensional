@@ -21,6 +21,7 @@ shader_parameter/triangle_flatten_max = 1.18
 shader_parameter/triangle_drift = 0.14
 shader_parameter/triangle_perspective = 0.18
 shader_parameter/edge_softness = 0.006
+shader_parameter/animation_speed = 0.45
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_gear1"]
 shader = ExtResource("3_gear")

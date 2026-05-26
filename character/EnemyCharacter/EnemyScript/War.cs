@@ -14,7 +14,7 @@ public partial class War : EnemyCharacter
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
         $"战斗开始时：在上一空位和下一空位各召唤{PassiveSummonsPerSide}个召唤物。\n"
-        + "回合结束时：随机在一个空位上召唤1个召唤物。";
+        + "回合结束时：优先在有存活玩家角色的排随机召唤1个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -52,14 +52,19 @@ public partial class War : EnemyCharacter
         if (emptySlots.Length == 0)
             return Task.CompletedTask;
 
-        var playerOccupiedRows = BattleNode
+        var livingPlayerRows = BattleNode
             .GetTeamCharacters(isPlayer: true, includeSummons: false)
-            .Where(x => x != null && GodotObject.IsInstanceValid(x) && x.PositionIndex > 0)
+            .Where(x =>
+                x != null
+                && GodotObject.IsInstanceValid(x)
+                && x.State != Character.CharacterState.Dying
+                && x.PositionIndex > 0
+            )
             .Select(x => (x.PositionIndex - 1) % 3)
             .ToHashSet();
 
         int[] prioritizedSlots = emptySlots
-            .Where(slot => playerOccupiedRows.Contains((slot - 1) % 3))
+            .Where(slot => livingPlayerRows.Contains((slot - 1) % 3))
             .ToArray();
 
         Random random = BattleNode.BattleIntentionRandom ?? new Random();
@@ -127,9 +132,9 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 278;
+        MaxLife = 268;
         Power = 10;
-        Survivability = 15;
+        Survivability = 14;
         Speed = 12;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
@@ -141,7 +146,7 @@ public partial class WarRegedit : EnemyRegedit
 public partial class WarAttack : Skill
 {
     private const int BaseDamage = 0;
-    private const int ThrallPowerGain = 3;
+    private const int ThrallPowerGain = 2;
 
     public WarAttack()
         : base(SkillTypes.Attack)
@@ -189,7 +194,6 @@ public partial class WarSurvive : Skill
 
 public partial class WarSpecial : Skill
 {
-    private const int ThrallPowerGain = 2;
 
     public WarSpecial()
         : base(SkillTypes.Special)
@@ -198,7 +202,7 @@ public partial class WarSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "死亡行军";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 7;
 
     protected override SkillPlan BuildPlan()
     {

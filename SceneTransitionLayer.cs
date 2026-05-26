@@ -13,6 +13,12 @@ public partial class SceneTransitionLayer : CanvasLayer
 
     private ColorRect Mask => _mask ??= GetNodeOrNull<ColorRect>("Mask");
 
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+            PreloadeScene.ReleaseCachedResources();
+    }
+
     public static SceneTransitionLayer Ensure(Node caller, bool deferAddToRoot = false)
     {
         var root = caller?.GetTree()?.Root;

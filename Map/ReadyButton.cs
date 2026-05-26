@@ -21,8 +21,17 @@ public partial class ReadyButton : Button
         ButtonDown += Click;
         MouseEntered += mouse_entered;
         MouseExited += mouse_right_entered;
-        _originalColor = (Color)((ShaderMaterial)Material).GetShaderParameter("color");
+        _originalColor = GetShaderParameterColor(Material as ShaderMaterial, "color");
         ChangeEffect.Visible = false;
+    }
+
+    private static Color GetShaderParameterColor(ShaderMaterial material, string parameterName)
+    {
+        if (material == null)
+            return Colors.White;
+
+        Variant value = material.GetShaderParameter(parameterName);
+        return value.VariantType == Variant.Type.Color ? value.AsColor() : Colors.White;
     }
 
     public async void Click()

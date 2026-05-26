@@ -4,6 +4,8 @@ using Godot;
 
 public partial class PreloadeScene : Node2D
 {
+    private static bool _exitCleanupPerformed;
+
     [Export]
     public string MainScenePath = "res://BeginGame/StartInterface.tscn";
 
@@ -82,6 +84,29 @@ public partial class PreloadeScene : Node2D
     public static Dictionary<string, Texture2D> PreloadedTextures =
         new Dictionary<string, Texture2D>();
 
+    private static readonly string[] SkillTextureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+
+    private static readonly SkillID[] SharedBasicSkillArtIds =
+    [
+        SkillID.BasicAttack,
+        SkillID.BasicDefense,
+        SkillID.BasicGuard,
+        SkillID.BasicSpecial,
+    ];
+
+    public static void ReleaseCachedResources()
+    {
+        if (_exitCleanupPerformed)
+            return;
+
+        _exitCleanupPerformed = true;
+
+        PreloadedTextures.Clear();
+        PreloadedScenes.Clear();
+
+        SkillCard.ClearSharedCaches();
+    }
+
     public static PackedScene GetPackedScene(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -159,6 +184,12 @@ public partial class PreloadeScene : Node2D
 
         if (transitionLayer != null)
             await transitionLayer.FadeFromBlackAsync(FadeOutDuration);
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationWMCloseRequest)
+            ReleaseCachedResources();
     }
 
     private void LoadMainSceneIntoHolder()
@@ -313,9 +344,11 @@ public partial class PreloadeScene : Node2D
                     results.AddRange(ScanScenePaths(dirPath.PathJoin(fileName)));
                 }
             }
-            else if (fileName.EndsWith(".tscn") || fileName.EndsWith(".scn"))
+            else
             {
-                results.Add(dirPath.PathJoin(fileName));
+                string resourcePath = GetListedResourcePath(dirPath, fileName, ".tscn", ".scn");
+                if (resourcePath != null)
+                    results.Add(resourcePath);
             }
 
             fileName = dir.GetNext();
@@ -342,9 +375,11 @@ public partial class PreloadeScene : Node2D
                     results.AddRange(ScanShaderPaths(dirPath.PathJoin(fileName)));
                 }
             }
-            else if (fileName.EndsWith(".gdshader") || fileName.EndsWith(".shader"))
+            else
             {
-                results.Add(dirPath.PathJoin(fileName));
+                string resourcePath = GetListedResourcePath(dirPath, fileName, ".gdshader", ".shader");
+                if (resourcePath != null)
+                    results.Add(resourcePath);
             }
 
             fileName = dir.GetNext();
@@ -369,15 +404,19 @@ public partial class PreloadeScene : Node2D
                 if (!fileName.StartsWith("."))
                     results.AddRange(ScanTexturePaths(dirPath.PathJoin(fileName)));
             }
-            else if (
-                fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
-                || fileName.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
-            )
+            else
             {
-                results.Add(dirPath.PathJoin(fileName));
+                string resourcePath = GetListedResourcePath(
+                    dirPath,
+                    fileName,
+                    ".png",
+                    ".jpg",
+                    ".jpeg",
+                    ".webp",
+                    ".svg"
+                );
+                if (resourcePath != null)
+                    results.Add(resourcePath);
             }
 
             fileName = dir.GetNext();
@@ -393,6 +432,9 @@ public partial class PreloadeScene : Node2D
 
         if (PreloadSkillArtTextures)
         {
+            AddExplicitSkillArtTexturePaths(paths);
+            AddExplicitSkillIconTexturePaths(paths);
+
             foreach (var path in ScanTexturePaths("res://asset/CardPicture"))
                 paths.Add(path);
             foreach (var path in ScanTexturePaths("res://asset/svg/SkillIcon"))
@@ -539,10 +581,10 @@ public partial class PreloadeScene : Node2D
             }
             else
             {
-                if (fileName.EndsWith(".tscn") || fileName.EndsWith(".scn"))
+                string resourcePath = GetListedResourcePath(dirPath, fileName, ".tscn", ".scn");
+                if (resourcePath != null)
                 {
-                    string fullPath = dirPath.PathJoin(fileName);
-                    LoadResource(fullPath);
+                    LoadResource(resourcePath);
                 }
             }
             fileName = dir.GetNext();
@@ -570,6 +612,28 @@ public partial class PreloadeScene : Node2D
         {
             GD.PrintErr($"Failed to load {path}: {e.Message}");
         }
+    }
+
+    private static string GetListedResourcePath(
+        string dirPath,
+        string fileName,
+        params string[] allowedExtensions
+    )
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            return null;
+
+        string resourceFileName = fileName.EndsWith(".remap", StringComparison.OrdinalIgnoreCase)
+            ? fileName[..^".remap".Length]
+            : fileName;
+
+        foreach (string extension in allowedExtensions)
+        {
+            if (resourceFileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                return dirPath.PathJoin(resourceFileName);
+        }
+
+        return null;
     }
 
     private void AddCharacterPortraitPaths(ISet<string> paths)
@@ -607,6 +671,41 @@ public partial class PreloadeScene : Node2D
 
         foreach (var path in enemyPortraits)
             paths.Add(path);
+    }
+
+    private void AddExplicitSkillArtTexturePaths(ISet<string> paths)
+    {
+        if (paths == null)
+            return;
+
+        foreach (PlayerCharacterKey characterKey in Enum.GetValues<PlayerCharacterKey>())
+        {
+            string folder = characterKey.ToString();
+            foreach (SkillID skillId in Skill.GetPlayerSkillPool(characterKey))
+                AddSkillArtTextureCandidates(paths, folder, skillId);
+
+            foreach (SkillID skillId in SharedBasicSkillArtIds)
+                AddSkillArtTextureCandidates(paths, folder, skillId);
+        }
+    }
+
+    private void AddSkillArtTextureCandidates(ISet<string> paths, string folder, SkillID skillId)
+    {
+        if (paths == null || string.IsNullOrWhiteSpace(folder))
+            return;
+
+        string skillFileName = skillId.ToString();
+        foreach (string extension in SkillTextureExtensions)
+            paths.Add($"res://asset/CardPicture/{folder}/{skillFileName}{extension}");
+    }
+
+    private void AddExplicitSkillIconTexturePaths(ISet<string> paths)
+    {
+        if (paths == null)
+            return;
+
+        foreach (SkillID skillId in Enum.GetValues<SkillID>())
+            paths.Add($"res://asset/svg/SkillIcon/{skillId}.svg");
     }
 
     private void LoadTexture(string path)

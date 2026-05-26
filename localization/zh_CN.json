@@ -478,6 +478,7 @@
   "ui.statistics.no_history_description": "暂无历史游戏记录。本局结束后会在这里留下路线、遗物和技能快照。",
   "ui.statistics.no_records": "暂无记录",
   "ui.statistics.run_description": "第 {run} 局 · {result} · 鼠标移到节点、遗物或技能上查看细节",
+  "ui.statistics.duration_chip": "时长 {value}",
   "ui.statistics.nodes_chip": "节点 {value}",
   "ui.statistics.enemies_chip": "敌人 {value}",
   "ui.statistics.elites_chip": "精英 {value}",
