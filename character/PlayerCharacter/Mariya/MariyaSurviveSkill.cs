@@ -112,6 +112,7 @@ public partial class StillWaterMirror : Skill
 
 public partial class QuietVeil : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int InvisibleStacks = 2;
     private const int MaxLifeGain = 8;
     private const int SurvivabilityGain = 3;
@@ -143,6 +144,7 @@ public partial class QuietVeil : Skill
 
 public partial class EnergyRelay : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public EnergyRelay()
         : base(SkillTypes.Survive)
     {
@@ -155,7 +157,7 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: 0),
+            BlockStep(baseBlock: 7),
             EnergyStep(delta: 1, target: TargetReference.Next),
             EnergyStep(delta: 1, target: TargetReference.Previous)
         );
@@ -164,6 +166,7 @@ public partial class EnergyRelay : Skill
 
 public partial class TouchOfGod : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Common;
     private const int BaseBlock = 0;
     private const int DivinityStacks = 1;
     public override int EnergyCost => 1;

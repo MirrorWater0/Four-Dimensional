@@ -1146,7 +1146,6 @@ public partial class Reward : CanvasLayer
             : canUnlock ? I18n.Tr("ui.common.available_to_unlock", "可点亮")
             : reason;
         string stateColor = unlocked ? "#ffd987" : canUnlock ? "#9ff5ff" : "#9aa3b5";
-        string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
         string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
             ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
             : node.EffectDescription;
@@ -1159,11 +1158,6 @@ public partial class Reward : CanvasLayer
                 ("cost", node.Cost)
             )
             + $"[color={stateColor}]{stateText}[/color]\n\n"
-            + I18n.Format(
-                "ui.common.description_bbcode",
-                "[color=#9fb5d6]说明[/color]\n{value}\n\n",
-                ("value", description)
-            )
             + I18n.Format(
                 "ui.common.effect_bbcode",
                 "[color=#ffd987]效果[/color]\n{value}",

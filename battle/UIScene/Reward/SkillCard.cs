@@ -7,6 +7,7 @@ public partial class SkillCard : SubViewportContainer
 {
     private const int DefaultDescriptionFontSize = 17;
     private const int MinDescriptionFontSize = 8;
+    private const string EnergyCostNumberColor = "#ffd36b";
     private static readonly Color CardBaseColor = new(0.028700002f, 0.04109f, 0.07f, 0.82f);
     private static readonly Color ArtFrameBaseColor = new(0.07350001f, 0.09389999f, 0.15f, 0.56f);
     private static readonly Color DescriptionBaseColor = new(
@@ -38,7 +39,8 @@ public partial class SkillCard : SubViewportContainer
     public Control EnergyBadge => field ??= GetNode<Control>("SubViewport/EnergyBadge");
     public Label TypeLabel => field ??= GetNode<Label>("SubViewport/TypeBadge/TypeLabel");
     public Label CharacterName => field ??= GetNode<Label>("SubViewport/CharacterName");
-    public Label EnergyCost => field ??= GetNode<Label>("SubViewport/EnergyBadge/EnergyCost");
+    public RichTextLabel EnergyCost =>
+        field ??= GetNode<RichTextLabel>("SubViewport/EnergyBadge/EnergyCost");
     public ColorRect ArtFill => field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtFill");
     public ColorRect ArtBandTop =>
         field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtBandTop");
@@ -52,6 +54,16 @@ public partial class SkillCard : SubViewportContainer
     public Polygon2D NamePlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/NamePlate");
     public Polygon2D CharacterPlate =>
         field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
+    public Node2D DiscardTrailTarget =>
+        field ??= GetNodeOrNull<Node2D>("DiscardCardTrailTarget");
+    public Line DiscardTrail => field ??= GetNodeOrNull<Line>("DiscardCardTrail");
+    public GpuParticles2D DiscardTrailParticles =>
+        field ??= GetNodeOrNull<GpuParticles2D>("DiscardCardTrailTarget/DiscardCardTrailParticles");
+    public Node2D DrawTrailTarget =>
+        field ??= GetNodeOrNull<Node2D>("DrawCardTrailTarget");
+    public Line DrawTrail => field ??= GetNodeOrNull<Line>("DrawCardTrail");
+    public GpuParticles2D DrawTrailParticles =>
+        field ??= GetNodeOrNull<GpuParticles2D>("DrawCardTrailTarget/DrawCardTrailParticles");
     public Skill CurrentSkill { get; set; }
     public string PreviewCharacterName { get; set; }
     public string PreviewCharacterKey { get; set; }
@@ -84,6 +96,7 @@ public partial class SkillCard : SubViewportContainer
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
+    private static readonly HashSet<string> MissingSkillPicturePaths = new(StringComparer.Ordinal);
     private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
     private static Shader _defaultCardShader;
     private static Shader _cardExhaustShader;
@@ -160,6 +173,8 @@ public partial class SkillCard : SubViewportContainer
             shader.SetShaderParameter("progress", 1f);
             shader.SetShaderParameter("center_vanish", 0f);
         }
+
+        ResetDiscardTrailEffects();
     }
 
     public void RestoreDisplayState()
@@ -180,6 +195,47 @@ public partial class SkillCard : SubViewportContainer
             shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
         }
+
+        ResetDiscardTrailEffects();
+    }
+
+    private void ResetDiscardTrailEffects()
+    {
+        if (DiscardTrail != null && GodotObject.IsInstanceValid(DiscardTrail))
+        {
+            DiscardTrail.Visible = false;
+            DiscardTrail.ClearPoints();
+            DiscardTrail.Modulate = Colors.White;
+            DiscardTrail.ManualPreviewMode = false;
+        }
+
+        if (DiscardTrailParticles != null && GodotObject.IsInstanceValid(DiscardTrailParticles))
+        {
+            DiscardTrailParticles.Emitting = false;
+            DiscardTrailParticles.Visible = false;
+            DiscardTrailParticles.Modulate = Colors.White;
+        }
+
+        if (DiscardTrailTarget != null && GodotObject.IsInstanceValid(DiscardTrailTarget))
+            DiscardTrailTarget.Visible = false;
+
+        if (DrawTrail != null && GodotObject.IsInstanceValid(DrawTrail))
+        {
+            DrawTrail.Visible = false;
+            DrawTrail.ClearPoints();
+            DrawTrail.Modulate = Colors.White;
+            DrawTrail.ManualPreviewMode = false;
+        }
+
+        if (DrawTrailParticles != null && GodotObject.IsInstanceValid(DrawTrailParticles))
+        {
+            DrawTrailParticles.Emitting = false;
+            DrawTrailParticles.Visible = false;
+            DrawTrailParticles.Modulate = Colors.White;
+        }
+
+        if (DrawTrailTarget != null && GodotObject.IsInstanceValid(DrawTrailTarget))
+            DrawTrailTarget.Visible = false;
     }
 
     public void StartAnimation(float delay = 0f)
@@ -223,7 +279,7 @@ public partial class SkillCard : SubViewportContainer
             CharacterName.Text = string.Empty;
             TypeLabel.Text = string.Empty;
             Description.Text = string.Empty;
-            EnergyCost.Text = string.Empty;
+            SetEnergyCostText(string.Empty);
             if (SkillPicture != null)
             {
                 SkillPicture.Texture = null;
@@ -248,13 +304,10 @@ public partial class SkillCard : SubViewportContainer
             : CurrentSkill.SkillType.GetDescription();
         TypeLabel.Text = skillTypeText;
         Description.Text = CurrentSkill.Description ?? string.Empty;
-        EnergyCost.Text = !CurrentSkill.CanBePlayed
-            ? I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出")
-            : I18n.Format(
-                "ui.reward.energy_cost",
-                "耗能:{cost}",
-                ("cost", CurrentSkill.CardEnergyCostText)
-            );
+        if (!CurrentSkill.CanBePlayed)
+            SetEnergyCostText(I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出"));
+        else
+            SetEnergyCostCostText(CurrentSkill.CardEnergyCostText);
         ApplyRarityStyles(CurrentSkill.Rarity);
         if (isStatusCard)
             ApplyStatusCardStyle();
@@ -277,6 +330,23 @@ public partial class SkillCard : SubViewportContainer
         }
 
         QueueAdjustTextSizes();
+    }
+
+    public void SetEnergyCostText(string text)
+    {
+        EnergyCost.Text = string.IsNullOrWhiteSpace(text) ? string.Empty : $"[center]{text}[/center]";
+    }
+
+    public void SetEnergyCostCostText(string costText)
+    {
+        string coloredCost = $"[color={EnergyCostNumberColor}]{costText}[/color]";
+        SetEnergyCostText(
+            I18n.Format(
+                "ui.reward.energy_cost",
+                "耗能:{cost}",
+                ("cost", coloredCost)
+            )
+        );
     }
 
     public void ShowSkillPreview()
@@ -387,6 +457,35 @@ public partial class SkillCard : SubViewportContainer
 
         _pressTween
             .TweenProperty(this, "modulate", 3 * new Color(1, 1, 1, 1f), 0.3f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    public void PressEffectPartial(float centerVanish = 0.72f, float glowMultiplier = 1.55f, float duration = 0.32f)
+    {
+        if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
+            return;
+
+        centerVanish = Mathf.Clamp(centerVanish, 0f, 1f);
+        glowMultiplier = Mathf.Max(1f, glowMultiplier);
+        duration = Math.Max(0.01f, duration);
+
+        _pressTween?.Kill();
+        _pressTween = CreateTween();
+        _pressTween.SetParallel(true);
+
+        _pressTween
+            .TweenMethod(
+                Callable.From<float>(value => shader.SetShaderParameter("center_vanish", value)),
+                GetShaderParameterFloat(shader, "center_vanish"),
+                centerVanish,
+                duration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+
+        _pressTween
+            .TweenProperty(this, "modulate", glowMultiplier * new Color(1, 1, 1, 1f), duration)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
     }
@@ -529,6 +628,7 @@ public partial class SkillCard : SubViewportContainer
         TypeIconCache.Clear();
         SkillIconCache.Clear();
         SkillPictureCache.Clear();
+        MissingSkillPicturePaths.Clear();
         _defaultSkillIcon = null;
         _cardExhaustNoiseTexture = null;
         _cardExhaustMaterialTemplate = null;
@@ -593,6 +693,19 @@ public partial class SkillCard : SubViewportContainer
         return GetSkillTypeIconTexture(skill?.SkillType ?? Skill.SkillTypes.none);
     }
 
+    public static void PrewarmSkillResources(
+        Skill skill,
+        string previewCharacterName = null,
+        string previewCharacterKey = null
+    )
+    {
+        if (skill == null)
+            return;
+
+        GetSkillPictureTexture(skill, previewCharacterName, previewCharacterKey);
+        GetSkillIconTexture(skill);
+    }
+
     private static Texture2D GetSkillPictureTexture(Skill skill, string previewCharacterName = null, string previewCharacterKey = null)
     {
         if (skill?.SkillId is not SkillID skillId)
@@ -600,6 +713,9 @@ public partial class SkillCard : SubViewportContainer
 
         foreach (string path in EnumerateSkillPicturePaths(skill, skillId, previewCharacterName, previewCharacterKey))
         {
+            if (MissingSkillPicturePaths.Contains(path))
+                continue;
+
             if (
                 SkillPictureCache.TryGetValue(path, out Texture2D cachedTexture)
                 && cachedTexture != null
@@ -607,11 +723,17 @@ public partial class SkillCard : SubViewportContainer
                 return cachedTexture;
 
             if (!ResourceLoader.Exists(path))
+            {
+                MissingSkillPicturePaths.Add(path);
                 continue;
+            }
 
             Texture2D texture = PreloadeScene.GetTexture(path);
             if (texture == null)
+            {
+                MissingSkillPicturePaths.Add(path);
                 continue;
+            }
 
             SkillPictureCache[path] = texture;
             return texture;

@@ -5,7 +5,7 @@ using Godot;
 public partial class Kasiya : PlayerCharacter
 {
     private const int PassiveAttackBaseHeal = -4;
-    private const int PassiveUpgradeSpecialSurvivabilityGain = 1;
+    private const int PassiveUpgradeSpecialPowerGain = 1;
 
     public const string PassiveNameText = "战意";
     public static string PassiveDescriptionText =>
@@ -23,7 +23,11 @@ public partial class Kasiya : PlayerCharacter
     {
         base.Initialize();
         PassiveName = PassiveNameText;
-        PassiveDescription = PassiveDescriptionText;
+        PassiveDescription = TalentTree.AppendPassiveUpgradeDescription(
+            CharacterKey,
+            PassiveDescriptionText,
+            HasPassiveTalentUpgrade()
+        );
 
         BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
     }
@@ -47,11 +51,7 @@ public partial class Kasiya : PlayerCharacter
         }
 
         if (skill.SkillType == Skill.SkillTypes.Special && HasPassiveTalentUpgrade())
-            await IncreaseProperties(
-                PropertyType.Survivability,
-                PassiveUpgradeSpecialSurvivabilityGain,
-                this
-            );
+            await IncreaseProperties(PropertyType.Power, PassiveUpgradeSpecialPowerGain, this);
     }
 }
 

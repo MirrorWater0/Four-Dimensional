@@ -14,6 +14,7 @@ public partial class ConsumeItem
         Damage,
         Buff,
         DrawCards,
+        Energy,
     }
 
     private readonly record struct ItemConfig(
@@ -28,19 +29,19 @@ public partial class ConsumeItem
     {
         [ItemID.Health] = new("治疗道具", ItemEffectType.Buff, 1, BuffName: Buff.BuffName.RebirthI),
         [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 60),
-        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 4, PropertyType.Power),
+        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 6, PropertyType.Power),
         [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
         [ItemID.Vitality] = new(
             "全息装甲",
             ItemEffectType.PropertyIncrease,
-            4,
+            6,
             PropertyType.Survivability
         ),
         [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 40),
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,
-            8,
+            6,
             BuffName: Buff.BuffName.Weaken
         ),
         [ItemID.SpaceOscillation] = new(
@@ -50,6 +51,7 @@ public partial class ConsumeItem
             BuffName: Buff.BuffName.Vulnerable
         ),
         [ItemID.StreamingTransmission] = new("流式传输", ItemEffectType.DrawCards, 3),
+        [ItemID.Battery] = new("电池", ItemEffectType.Energy, 3),
     };
 
     public static PackedScene IconSence = GD.Load<PackedScene>(
@@ -116,8 +118,24 @@ public partial class ConsumeItem
             return;
 
         await ApplyItemEffectAsync(target, item);
+        RefreshBattleUiAfterItemEffect(battle);
 
         RemoveFromInventory();
+        await RefreshBattleUiAfterItemEffectDeferred(battle);
+    }
+
+    private static void RefreshBattleUiAfterItemEffect(Battle battle)
+    {
+        battle?.CharacterControl?.RefreshCurrentTurnUi();
+    }
+
+    private static async Task RefreshBattleUiAfterItemEffectDeferred(Battle battle)
+    {
+        if (battle == null || !GodotObject.IsInstanceValid(battle) || !battle.IsInsideTree())
+            return;
+
+        await battle.ToSignal(battle.GetTree(), SceneTree.SignalName.ProcessFrame);
+        RefreshBattleUiAfterItemEffect(battle);
     }
 
     public void Discard()
@@ -168,6 +186,7 @@ public partial class ConsumeItem
             ItemEffectType.Buff =>
                 $"{targetPrefix}，给予{config.Value}层{Buff.GetBuffDisplayName(config.BuffName)}。",
             ItemEffectType.DrawCards => $"{targetPrefix}，抽{config.Value}张牌。",
+            ItemEffectType.Energy => $"{targetPrefix}，获得{config.Value}点能量。",
             _ => string.Empty,
         };
     }
@@ -204,6 +223,7 @@ public partial class ConsumeItem
                 "res://shader/Icon/ComsumeItems/SpaceOscillationItem.gdshader",
             ItemID.StreamingTransmission =>
                 "res://shader/Icon/ComsumeItems/StreamingTransmissionItem.gdshader",
+            ItemID.Battery => "res://shader/Icon/ComsumeItems/BatteryItem.gdshader",
             _ => null,
         };
     }
@@ -267,6 +287,9 @@ public partial class ConsumeItem
                 if (target is PlayerCharacter playerCharacter)
                     playerCharacter.TryDrawBattleCards(config.Value);
                 break;
+            case ItemEffectType.Energy:
+                target.UpdataEnergy(config.Value, target);
+                break;
         }
     }
 
@@ -299,4 +322,5 @@ public enum ItemID
     ElectromagneticInterference,
     SpaceOscillation,
     StreamingTransmission,
+    Battery,
 }

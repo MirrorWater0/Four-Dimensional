@@ -15,7 +15,7 @@ public partial class EnemyCharacter : Character
     private const float IntentCurveGroupSpreadX = 36f;
     private static readonly Color AttackIntentCurveColor = new(1f, 0.42f, 0.32f, 0.82f);
     private static readonly Color DebuffIntentCurveColor = new(0.52f, 0.94f, 1f, 0.88f);
-    public const int NextActionEnergyPreviewBonus = 2;
+    public const int NextActionEnergyPreviewBonus = 3;
     private static readonly Color IntentionHostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color IntentionFriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
@@ -131,6 +131,9 @@ public partial class EnemyCharacter : Character
     {
         if (Skills == null || Skills.Length == 0)
             return -1;
+
+        foreach (var skill in Skills)
+            skill?.ClearPreviewableRandomHostileTargets();
 
         int availableEnergy = Math.Max(Energy + energyPreviewBonus, 0);
         int avoidIndex = GetRepeatIntentionAvoidIndex(availableEnergy);

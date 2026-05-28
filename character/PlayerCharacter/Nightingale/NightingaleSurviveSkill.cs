@@ -60,8 +60,9 @@ public partial class FlashOfLight : Skill
 
 public partial class AfterimageWard : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 8;
-    private const int AfterimageStacks = 1;
+    private const int AfterimageStacks = 2;
 
     public AfterimageWard()
         : base(SkillTypes.Survive)
@@ -93,6 +94,7 @@ public partial class AfterimageWard : Skill
 
 public partial class StarWard : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 8;
     private const int ExtraPowerStacks = 2;
 
@@ -120,6 +122,7 @@ public partial class StarWard : Skill
 
 public partial class TwilightParadox : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 8;
     private const int VulnerableStacks = 15;
     private const int DamageImmuneStacks = 4;

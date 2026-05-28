@@ -110,6 +110,7 @@ public partial class ResonantWard : Skill
 
 public partial class DissonantField : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 8;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;

@@ -432,7 +432,8 @@ public partial class GameStatistics : CanvasLayer
                 ("value", FormatRunDuration(_currentRecord.SessionPlaySeconds))
             ),
             Colors.White,
-            new Color(0.15f, 0.25f, 0.34f, 0.92f)
+            new Color(0.15f, 0.25f, 0.34f, 0.92f),
+            148f
         );
         AddSummaryChip(I18n.Format("ui.statistics.nodes_chip", "节点 {value}", ("value", _currentRecord.NodesVisited)), Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.enemies_chip", "敌人 {value}", ("value", _currentRecord.EnemiesDefeated)), Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
@@ -443,15 +444,34 @@ public partial class GameStatistics : CanvasLayer
         AddSummaryChip(I18n.Format("ui.statistics.talents_chip", "天赋 {value}", ("value", CountRunTalents(_currentRecord))), Colors.White, new Color(0.26f, 0.18f, 0.36f, 0.92f));
     }
 
-    private void AddSummaryChip(string text, Color fontColor, Color bgColor)
+    private void AddSummaryChip(string text, Color fontColor, Color bgColor, float minWidth = 104f)
     {
         if (SummaryRow == null)
             return;
 
         var label = CreateLabel(text, 19, fontColor, HorizontalAlignment.Center);
-        label.CustomMinimumSize = new Vector2(104f, 34f);
+        label.CustomMinimumSize = new Vector2(Math.Max(minWidth, EstimateSummaryChipWidth(text)), 34f);
         label.VerticalAlignment = VerticalAlignment.Center;
         SummaryRow.AddChild(label);
+    }
+
+    private static float EstimateSummaryChipWidth(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 104f;
+
+        float width = 24f;
+        foreach (char c in text)
+        {
+            if (char.IsWhiteSpace(c))
+                width += 6f;
+            else if (c <= 0x7f)
+                width += 11f;
+            else
+                width += 19f;
+        }
+
+        return width;
     }
 
     private void AppendHistoryProgressToDescription()

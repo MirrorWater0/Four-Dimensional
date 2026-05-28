@@ -59,10 +59,10 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 148;
-        Power = 11;
+        MaxLife = 143;
+        Power = 12;
         Survivability = 10;
-        Speed = 34;
+        Speed = 38;
         SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive, SkillID.AngerEliteSpecial];
 
         PassiveName = global::Anger.PassiveNameText;
@@ -80,7 +80,7 @@ public partial class AngerEliteAttack : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "裂镰扑杀";
+    public override string SkillName { get; set; } = "裂镰";
 
     protected override SkillPlan BuildPlan()
     {

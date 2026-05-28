@@ -52,6 +52,7 @@ public partial class TempoSurge : Skill
 
 public partial class LongNight : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "长夜";
     public override int EnergyCost => 3;
     public override bool ExhaustsAfterUse => true;
@@ -74,6 +75,7 @@ public partial class LongNight : Skill
 
 public partial class RequiemBloom : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int PowerGain = 3;
     public override bool ExhaustsAfterUse => true;
 
@@ -104,6 +106,7 @@ public partial class RequiemBloom : Skill
 
 public partial class CurtainCallMoment : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int WeakenStacks = 2;
     private const int InvisibleStacks = 2;
     private const int ExtraTurnStacks = 1;
@@ -143,6 +146,7 @@ public partial class CurtainCallMoment : Skill
 
 public partial class SunMoonCycle : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int DrawCount = 2;
     private const int CardRefreshStacks = 2;
     public override bool ExhaustsAfterUse => true;
@@ -172,6 +176,7 @@ public partial class SunMoonCycle : Skill
 
 public partial class Swift : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int SwiftStacks = 1;
 
     public Swift()
@@ -198,6 +203,7 @@ public partial class Swift : Skill
 
 public partial class ShadowForm : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int ShadowStacks = 2;
 
     public ShadowForm()
@@ -230,6 +236,7 @@ public partial class ShadowForm : Skill
 
 public partial class BrightestMoment : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int SurvivabilityGainPerInvisible = 2;
     private int _lostInvisibleStacks;
     public override bool ExhaustsAfterUse => true;
@@ -307,6 +314,7 @@ public partial class BrightestMoment : Skill
 
 public partial class EternalDarkSkill : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int EternalDarkStacks = 2;
 
     public EternalDarkSkill()

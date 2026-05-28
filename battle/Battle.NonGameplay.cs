@@ -93,7 +93,7 @@ public partial class Battle
     private const string ActionPoinTooltipText =
         "[b]行动点与速度[/b]\n"
         + "条上数字是当前行动点，括号里是该阵营存活成员的总速度。\n\n"
-        + "角色行动结束后，所属阵营按总速度累积行动点。达到 100 时，该阵营获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点抽卡储备。";
+        + "角色行动结束后，所属阵营按总速度累积行动点。达到 100 时，该阵营获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点额外抽卡。";
 
     private bool _recordInitialized;
     private bool _actionPoinTooltipInitialized;

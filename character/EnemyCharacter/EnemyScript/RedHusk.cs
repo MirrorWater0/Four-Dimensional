@@ -108,7 +108,7 @@ public partial class RedHuskSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "护壳重生";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 8;
 
     protected override SkillPlan BuildPlan()
     {

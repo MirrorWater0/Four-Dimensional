@@ -4,6 +4,7 @@ public partial class KasiyaSpecialSkill : Node { }
 
 public partial class ReadyStance : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int EnergyGain = 5;
 
     public override string SkillName { get; set; } = "能量爆发";
@@ -23,6 +24,7 @@ public partial class ReadyStance : Skill
 
 public class HolySeal : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int StunStacks = 1;
 
     public HolySeal()
@@ -49,7 +51,9 @@ public class HolySeal : Skill
 
 public class AegisPledge : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BarricadeStacks = 1;
+    public override bool ExhaustsAfterUse => true;
 
     public AegisPledge()
         : base(SkillTypes.Special)
@@ -57,8 +61,8 @@ public class AegisPledge : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "壁垒誓约";
-    public override int EnergyCost => 2;
+    public override string SkillName { get; set; } = "壁垒";
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -67,7 +71,7 @@ public class AegisPledge : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Barricade,
                 stacks: BarricadeStacks,
-                target: TargetReference.Self
+                target: TargetReference.All
             )
         );
     }
@@ -75,6 +79,7 @@ public class AegisPledge : Skill
 
 public class HopeBeacon : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BeaconStacks = 1;
 
     public HopeBeacon()
@@ -102,6 +107,7 @@ public class HopeBeacon : Skill
 
 public class WarGodWill : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int PowerGain = 3;
 
     public WarGodWill()
@@ -122,8 +128,67 @@ public class WarGodWill : Skill
     }
 }
 
+public class TacticalPreparation : Skill
+{
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    private const int PowerLoss = -2;
+    private const int ExtraDrawStacks = 3;
+    private const int DrawCount = 2;
+
+    public TacticalPreparation()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "战术整备";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ModifyPropertyStep(PropertyType.Power, PowerLoss, TargetReference.All),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: ExtraDrawStacks,
+                target: TargetReference.All
+            ),
+            DrawCardsStep(DrawCount)
+        );
+    }
+}
+
+public class RadiantOverload : Skill
+{
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    private const int DazeCount = 1;
+    private const int EnergyGain = 2;
+
+    public RadiantOverload()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "辉光过载";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AddStatusCardsToFriendlyDrawPileStep(SkillID.DazeStatus, DazeCount),
+            EnergyStep(EnergyGain, TargetReference.All)
+        );
+    }
+}
+
 public class DemonForm : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int DemonStacks = 5;
 
     public DemonForm()

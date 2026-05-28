@@ -123,10 +123,7 @@ public partial class FerociouessAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargetReference.All
-            ),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
@@ -135,7 +132,7 @@ public partial class FerociouessAttack : Skill
 public partial class FerociouessSurvive : Skill
 {
     private const int BaseBlock = 0;
-    private const int DamageImmuneStacks = 1;
+    private const int DamageImmuneStacks = 2;
     private const int VulnerableStacks = 1;
 
     public FerociouessSurvive()

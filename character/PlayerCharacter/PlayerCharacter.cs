@@ -6,7 +6,7 @@ using Godot;
 
 public partial class PlayerCharacter : Character
 {
-    public const int MaxBattleHandSize = 7;
+    public const int MaxBattleHandSize = 8;
     private const int TurnStartDrawCount = 4;
 
     public Frame SelfFrame;
@@ -176,13 +176,13 @@ public partial class PlayerCharacter : Character
 
         DrawBattleCards(TurnStartDrawCount + Relic.GetTurnStartDrawBonus(BattleNode));
 
-        while (
-            HasBattleHandSpace()
-            && BattleNode.HasDrawablePlayerBattleSkill(this)
-            && SpecialBuff.TryConsumeCardRefresh(this)
-        )
+        int extraDrawCount = Math.Min(GetBattleHandEmptySlotCount(), SpecialBuff.GetCardRefreshStack(this));
+        if (extraDrawCount > 0)
         {
-            DrawBattleCards(1);
+            int beforeCount = GetBattleHandCardCount();
+            DrawBattleCards(extraDrawCount);
+            int drawnCount = Math.Max(0, GetBattleHandCardCount() - beforeCount);
+            SpecialBuff.ConsumeCardRefresh(this, drawnCount);
         }
 
         InvalidateSkillTooltipCache();
@@ -192,6 +192,18 @@ public partial class PlayerCharacter : Character
     {
         EnsureBattleHandSize();
         return Skills.Any(skill => skill == null);
+    }
+
+    private int GetBattleHandCardCount()
+    {
+        EnsureBattleHandSize();
+        return Skills.Count(skill => skill != null);
+    }
+
+    private int GetBattleHandEmptySlotCount()
+    {
+        EnsureBattleHandSize();
+        return Skills.Count(skill => skill == null);
     }
 
     public void RemoveBattleHandCardAt(int skillIndex)

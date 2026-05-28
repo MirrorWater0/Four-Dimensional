@@ -36,9 +36,9 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 135;
-        Power = 17;
-        Survivability = 13;
+        MaxLife = 143;
+        Power = 16;
+        Survivability = 16;
         Speed = 50;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
@@ -49,7 +49,7 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 4;
     private const int MaxTargets = 2;
 
     public ArroganceAttack()
@@ -72,7 +72,7 @@ public partial class ArroganceAttack : Skill
 
 public partial class ArroganceSurvive : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 0;
     private const int VulnerableStacks = 1;
 
     public ArroganceSurvive()
@@ -88,12 +88,11 @@ public partial class ArroganceSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, 4),
-            ModifyPropertyStep(PropertyType.Power, 2),
+            ModifyPropertyStep(PropertyType.Survivability, 3),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargetReference.Nine
+                target: HostileTargetReference.All
             )
         );
     }
@@ -117,7 +116,7 @@ public partial class ArroganceSpecial : Skill
         return new SkillPlan(
             this,
             HealStep(baseHeal: 0, target: TargetReference.Self),
-            BlockStep(baseBlock: 0),
+            ModifyPropertyStep(PropertyType.Power, 2),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

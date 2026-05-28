@@ -54,6 +54,14 @@ public partial class Menu : Control
         field ??= GetNodeOrNull<CheckBox>(
             "CenterPanel/Margin/VBox/SettingsPanel/EnemyAttackPreviewCheckBox"
         );
+    private CheckBox HideEnemySkillsCheckBox =>
+        field ??= GetNodeOrNull<CheckBox>(
+            "CenterPanel/Margin/VBox/SettingsPanel/HideEnemySkillsCheckBox"
+        );
+    private CheckBox KeepManualTargetCardVisibleCheckBox =>
+        field ??= GetNodeOrNull<CheckBox>(
+            "CenterPanel/Margin/VBox/SettingsPanel/KeepManualTargetCardVisibleCheckBox"
+        );
     private SettingsDropdown TextSizeOptionButton =>
         field ??= GetNodeOrNull<SettingsDropdown>(
             "CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeOptionButton"
@@ -137,6 +145,12 @@ public partial class Menu : Control
 
         if (EnemyAttackPreviewCheckBox != null)
             EnemyAttackPreviewCheckBox.Pressed += OnEnemyAttackPreviewPressed;
+
+        if (HideEnemySkillsCheckBox != null)
+            HideEnemySkillsCheckBox.Pressed += OnHideEnemySkillsPressed;
+
+        if (KeepManualTargetCardVisibleCheckBox != null)
+            KeepManualTargetCardVisibleCheckBox.Pressed += OnKeepManualTargetCardVisiblePressed;
 
         ConfigureTextSizeOptionButton();
         if (TextSizeOptionButton != null)
@@ -306,6 +320,26 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.RefreshEnemyAttackPreviewFromSettings();
     }
 
+    private void OnHideEnemySkillsPressed()
+    {
+        if (HideEnemySkillsCheckBox == null)
+            return;
+
+        UserSettings.SetHideEnemySkills(HideEnemySkillsCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshEnemySkillVisibilityFromSettings();
+    }
+
+    private void OnKeepManualTargetCardVisiblePressed()
+    {
+        if (KeepManualTargetCardVisibleCheckBox == null)
+            return;
+
+        UserSettings.SetKeepManualTargetCardVisibleWhenHidden(
+            KeepManualTargetCardVisibleCheckBox.ButtonPressed
+        );
+        FindActiveBattle(GetTree()?.Root)?.RefreshManualTargetCardVisibilityFromSettings();
+    }
+
     private void OnTextSizeSelected(long index)
     {
         if (TextSizeOptionButton == null)
@@ -418,6 +452,11 @@ public partial class Menu : Control
             TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
         if (EnemyAttackPreviewCheckBox != null)
             EnemyAttackPreviewCheckBox.ButtonPressed = UserSettings.ShowEnemyAttackPreview;
+        if (HideEnemySkillsCheckBox != null)
+            HideEnemySkillsCheckBox.ButtonPressed = UserSettings.HideEnemySkills;
+        if (KeepManualTargetCardVisibleCheckBox != null)
+            KeepManualTargetCardVisibleCheckBox.ButtonPressed =
+                UserSettings.KeepManualTargetCardVisibleWhenHidden;
         SelectResolutionOption(UserSettings.WindowWidth, UserSettings.WindowHeight);
         SelectTextSizeOption(UserSettings.TextSizeLevel);
         SelectBattleShakeOption(UserSettings.BattleShakeLevel);
@@ -633,6 +672,16 @@ public partial class Menu : Control
             EnemyAttackPreviewCheckBox.Text = I18n.Tr(
                 "ui.settings.enemy_attack_preview",
                 "显示敌方攻击范围与累计伤害"
+            );
+        if (HideEnemySkillsCheckBox != null)
+            HideEnemySkillsCheckBox.Text = I18n.Tr(
+                "ui.settings.hide_enemy_skills",
+                "隐藏敌人技能"
+            );
+        if (KeepManualTargetCardVisibleCheckBox != null)
+            KeepManualTargetCardVisibleCheckBox.Text = I18n.Tr(
+                "ui.settings.keep_manual_target_card_visible",
+                "隐藏选人界面时保留卡牌"
             );
         if (LanguageLabel != null)
             LanguageLabel.Text = I18n.Tr("ui.settings.language", "语言");

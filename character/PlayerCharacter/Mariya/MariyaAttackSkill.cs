@@ -71,17 +71,7 @@ public partial class SiphonSlash : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            HealStep(
-                baseHeal: _ =>
-                    (
-                        OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
-                            source: OwnerCharater,
-                            target: GetAttackTarget()
-                        ) ?? 0
-                    ) / 2,
-                target: TargetReference.LowestLife,
-                descriptionOverride: $"回复生命值最低的己方角色等同于此次造成伤害一半的生命。"
-            )
+            ModifyPropertyStep(PropertyType.MaxLife, 10, TargetReference.All)
         );
     }
 }
@@ -116,10 +106,7 @@ public partial class ShatterSlash : Skill
                 },
                 _ => Array.Empty<string>()
             ),
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargetReference.All
-            ),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             ConditionStep(
                 () => _recordedHitCount >= RequiredHitCount,
                 $"命中至少{RequiredHitCount}个敌人",
@@ -136,6 +123,7 @@ public partial class ShatterSlash : Skill
 
 public partial class ChargedBlade : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 6;
     private const int MaxTargets = 2;
     private const int SurvivabilityLoss = 3;
@@ -152,10 +140,7 @@ public partial class ChargedBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargets(MaxTargets)
-            ),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
             AttackStep(baseDamage: BaseDamage),
             ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
         );
@@ -164,6 +149,7 @@ public partial class ChargedBlade : Skill
 
 public partial class CrescentWind : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 4;
     private const int WeakenStacks = 2;
 
@@ -179,11 +165,7 @@ public partial class CrescentWind : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                multiplier: 1,
-                target: HostileTargetsEachRowFirst()
-            ),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetsEachRowFirst()),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -195,6 +177,7 @@ public partial class CrescentWind : Skill
 
 public partial class ArcTrack : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
 
     public ArcTrack()
@@ -211,10 +194,7 @@ public partial class ArcTrack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            DrawCardsStep(
-                _ => GetAllAllyWithOrder(dyingFilter: true).Length / 2,
-                "每有2名己方角色存活，抽1张牌"
-            )
+            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 1, TargetReference.All)
         );
     }
 }
@@ -243,11 +223,7 @@ public partial class Sacrifice : Skill
                 value: -DeMax,
                 target: TargetReference.All
             ),
-            AttackStep(
-                baseDamage: basisDamage,
-                multiplier: 2,
-                target: HostileTargetReference.All
-            )
+            AttackStep(baseDamage: basisDamage, multiplier: 2, target: HostileTargetReference.All)
         );
     }
 }

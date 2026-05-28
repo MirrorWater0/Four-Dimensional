@@ -6,7 +6,7 @@ using Godot;
 public partial class SacredOnslaught : Skill
 {
     private const int MaxTargets = 4;
-    private const int BlockPerTarget = 4;
+    private int _hitCount;
 
     public SacredOnslaught()
         : base(SkillTypes.Attack)
@@ -20,49 +20,47 @@ public partial class SacredOnslaught : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: 0,
-                multiplier: 1,
-                target: HostileTargets(MaxTargets),
-                times: 1
-            ),
             CustomStep(
-                async __ =>
+                _ =>
                 {
-                    int hitCount = Math.Min(
-                        MaxTargets,
-                        ChosetargetByOrder(byBehindRow: false).Length
-                    );
-                    OwnerCharater?.UpdataBlock(
-                        Math.Clamp(OwnerSurvivability + BlockPerTarget * hitCount, 0, 999),
-                        source: OwnerCharater
-                    );
-                    await Task.Delay(400);
+                    _hitCount = GetPotentialHitCount();
+                    return Task.CompletedTask;
                 },
-                __ =>
+                _ => Array.Empty<string>()
+            ),
+            AttackStep(baseDamage: 0, multiplier: 1, target: HostileTargets(MaxTargets), times: 1),
+            CustomStep(
+                _ =>
                 {
-                    int targetCount = IsInBattle
-                        ? Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length)
-                        : 0;
-                    int totalBlock = IsInBattle
-                        ? (OwnerSurvivability + BlockPerTarget * targetCount)
-                        : 0;
+                    if (_hitCount > 0)
+                        OwnerCharater?.UpdataEnergy(_hitCount, OwnerCharater);
 
+                    _hitCount = 0;
+                    return Task.CompletedTask;
+                },
+                _ =>
+                {
+                    int targetCount = GetPotentialHitCount();
                     string targetCountText = Total("目标数", targetCount);
-                    string totalBlockText = WithBattleTotal(
-                        $"{X(StatX.Survivability)}+目标数*{BlockPerTarget}",
-                        totalBlock,
-                        clampMax: 999
-                    );
 
                     return new[]
                     {
-                        $"当前命中{targetCountText}个。",
-                        $"获得：{totalBlockText}点格挡。",
-                    };
+                        "每击中1名敌人，获得1点能量。",
+                        IsInBattle
+                            ? $"当前命中{targetCountText}个，获得{targetCount}点能量。"
+                            : null,
+                    }.Where(line => !string.IsNullOrWhiteSpace(line));
                 }
             )
         );
+    }
+
+    private int GetPotentialHitCount()
+    {
+        if (!IsInBattle)
+            return 0;
+
+        return Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length);
     }
 }
 
@@ -118,6 +116,7 @@ public partial class EchoPuncture : Skill
 
 public partial class Extract : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
 
     public Extract()
@@ -127,6 +126,7 @@ public partial class Extract : Skill
     }
 
     public override string SkillName { get; set; } = "萃取";
+    public override int EnergyCost => 0;
 
     protected override SkillPlan BuildPlan()
     {
@@ -165,6 +165,7 @@ public partial class Extract : Skill
 
 public partial class BladeOfSlaughter : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
 
     public BladeOfSlaughter()
@@ -187,8 +188,9 @@ public partial class BladeOfSlaughter : Skill
 
 public partial class DisasterImpact : Skill
 {
-    private const int BaseDamage = 0;
-    private const int DisasterStacks = 10;
+    public override SkillRarity Rarity => SkillRarity.Rare;
+    private const int BaseDamage = 7;
+    private const int WeakenStacksPerExtraDraw = 2;
 
     public DisasterImpact()
         : base(SkillTypes.Attack)
@@ -203,12 +205,33 @@ public partial class DisasterImpact : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Disaster,
-                stacks: DisasterStacks,
-                target: HostileTargetReference.One
+            TextStep(GetExtraDrawFromTargetWeakenText()),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: _ => GetExtraDrawStacksFromAttackTarget(),
+                target: TargetReference.All
             )
         );
+    }
+
+    private static string GetExtraDrawFromTargetWeakenText()
+    {
+        string weakenText = Buff.BuffName.Weaken.GetDescription();
+        string extraDrawText = Buff.GetBuffDisplayName(Buff.BuffName.ExtraDraw);
+        return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，己方全阵获得1层{extraDrawText}。";
+    }
+
+    private int GetExtraDrawStacksFromAttackTarget() =>
+        GetAttackTargetWeakenStacks() / WeakenStacksPerExtraDraw;
+
+    private int GetAttackTargetWeakenStacks()
+    {
+        Character target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
+        return target
+                ?.AttackBuffs?.FirstOrDefault(buff =>
+                    buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
+                )
+                ?.Stack ?? 0;
     }
 }
 
@@ -244,6 +267,7 @@ public class EchonicResonance : Skill
 
 public class SonicBoom : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 0;
     private const int ExtraTimes = 2;
 
@@ -254,16 +278,13 @@ public class SonicBoom : Skill
     }
 
     public override string SkillName { get; set; } = "音爆";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: 0,
-                target: HostileTargetReference.All
-            ),
+            AttackStep(baseDamage: 0, target: HostileTargetReference.All),
             AttackStep(
                 baseDamage: BaseDamage,
                 target: HostileTargetReference.All,
@@ -291,10 +312,7 @@ public class PhaseEcho : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: damage,
-                target: HostileTargetReference.All
-            ),
+            AttackStep(baseDamage: damage, target: HostileTargetReference.All),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -302,6 +320,7 @@ public class PhaseEcho : Skill
 
 public class ReverbChain : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 0;
 
     public ReverbChain()

@@ -8,6 +8,9 @@ public static class UserSettings
     private const string CompactBattleCardDescriptionsKey = "CompactBattleCardDescriptions";
     private const string BattleTurnOrderPreviewKey = "BattleTurnOrderPreview";
     private const string EnemyAttackPreviewKey = "EnemyAttackPreview";
+    private const string HideEnemySkillsKey = "HideEnemySkills";
+    private const string KeepManualTargetCardVisibleWhenHiddenKey =
+        "KeepManualTargetCardVisibleWhenHidden";
     private const string TextSizeLevelKey = "TextSizeLevel";
     private const string BattleShakeLevelKey = "BattleShakeLevel";
     private const string LastSelectedDifficultyKey = "LastSelectedDifficulty";
@@ -32,6 +35,8 @@ public static class UserSettings
     public static bool UseCompactBattleCardDescriptions { get; private set; }
     public static bool ShowBattleTurnOrderPreview { get; private set; } = true;
     public static bool ShowEnemyAttackPreview { get; private set; }
+    public static bool HideEnemySkills { get; private set; } = true;
+    public static bool KeepManualTargetCardVisibleWhenHidden { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
     public static int BattleShakeLevel { get; private set; } = BattleShakeLevelStandard;
     public static int LastSelectedDifficulty { get; private set; }
@@ -65,6 +70,16 @@ public static class UserSettings
                 .AsBool();
             ShowEnemyAttackPreview = config
                 .GetValue(SectionName, EnemyAttackPreviewKey, ShowEnemyAttackPreview)
+                .AsBool();
+            HideEnemySkills = config
+                .GetValue(SectionName, HideEnemySkillsKey, HideEnemySkills)
+                .AsBool();
+            KeepManualTargetCardVisibleWhenHidden = config
+                .GetValue(
+                    SectionName,
+                    KeepManualTargetCardVisibleWhenHiddenKey,
+                    KeepManualTargetCardVisibleWhenHidden
+                )
                 .AsBool();
             TextSizeLevel = NormalizeTextSizeLevel(
                 config.GetValue(SectionName, TextSizeLevelKey, TextSizeLevel).AsInt32()
@@ -115,6 +130,20 @@ public static class UserSettings
     {
         EnsureLoaded();
         ShowEnemyAttackPreview = value;
+        Save();
+    }
+
+    public static void SetHideEnemySkills(bool value)
+    {
+        EnsureLoaded();
+        HideEnemySkills = value;
+        Save();
+    }
+
+    public static void SetKeepManualTargetCardVisibleWhenHidden(bool value)
+    {
+        EnsureLoaded();
+        KeepManualTargetCardVisibleWhenHidden = value;
         Save();
     }
 
@@ -278,6 +307,12 @@ public static class UserSettings
         );
         config.SetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview);
         config.SetValue(SectionName, EnemyAttackPreviewKey, ShowEnemyAttackPreview);
+        config.SetValue(SectionName, HideEnemySkillsKey, HideEnemySkills);
+        config.SetValue(
+            SectionName,
+            KeepManualTargetCardVisibleWhenHiddenKey,
+            KeepManualTargetCardVisibleWhenHidden
+        );
         config.SetValue(SectionName, TextSizeLevelKey, TextSizeLevel);
         config.SetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel);
         config.SetValue(SectionName, LastSelectedDifficultyKey, LastSelectedDifficulty);

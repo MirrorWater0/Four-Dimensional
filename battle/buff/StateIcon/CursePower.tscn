@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dqs8qgouc120t"]
 
 [ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
-[ext_resource type="Shader" uid="uid://cursepowerbuff" path="res://shader/Icon/BuffIcon/CursePower.gdshader" id="2_shd"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/CursePower.gdshader" id="2_shd"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_curse_power"]
 shader = ExtResource("2_shd")

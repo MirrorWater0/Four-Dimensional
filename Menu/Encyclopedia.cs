@@ -518,6 +518,9 @@ public partial class Encyclopedia : Control
                 string costText = !skill.CanBePlayed
                     ? I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出")
                     : skill.CardEnergyCostText;
+                string costDisplayText = !skill.CanBePlayed
+                    ? EscapeBbcode(costText)
+                    : $"[color=#ffd36b]{EscapeBbcode(costText)}[/color]";
                 string description = string.IsNullOrWhiteSpace(skill.Description)
                     ? I18n.Tr("ui.encyclopedia.no_description", "暂无描述。")
                     : skill.Description;
@@ -527,7 +530,7 @@ public partial class Encyclopedia : Control
                     + I18n.Format(
                         "ui.encyclopedia.detail.cost_line",
                         "费用：{cost}\n",
-                        ("cost", EscapeBbcode(costText))
+                        ("cost", costDisplayText)
                     )
                     + $"ID: {skillId}\n\n"
                     + description;
@@ -681,6 +684,10 @@ public partial class Encyclopedia : Control
 
     private static string BuildEnemySkillDetail(EnemyRegedit regedit)
     {
+        UserSettings.EnsureLoaded();
+        if (UserSettings.HideEnemySkills)
+            return string.Empty;
+
         var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
         if (ids.Length == 0)
             return string.Empty;

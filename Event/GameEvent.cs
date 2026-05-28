@@ -21,17 +21,26 @@ public partial class GameEvent
             ),
             Option(
                 "手动指定校准对象",
-                propertyChange: Stats((PropertyType.Power, -1), (PropertyType.Survivability, 3))
-            )
+                propertyChange: Stats((PropertyType.Speed, 2))
+            ),
+            Option("稳定场核并回充", transitionEnergyChange: 25)
         ),
         Event(
             "轨道黑匣",
             "一具漂浮在舱壁缺口旁的黑匣仍在循环广播事故录音。\n"
                 + "加密芯片尚未烧毁，只是供能极不稳定。\n"
                 + "你可以读取残存记录，也可以直接拆下还能用的模块。",
-            Option("解码事故航迹", electricityChange: 90, transitionEnergyChange: -1),
-            Option("拆下完整模块", electricityChange: 90),
-            Option("写入伪装日志后离开", electricityChange: 30)
+            Option(
+                "随机解码事故航迹",
+                propertyChange: Stats(
+                    (PropertyType.Speed, 2),
+                    (PropertyType.Power, 2),
+                    (PropertyType.MaxLife, -3)
+                ),
+                randomChange: true
+            ),
+            Option("拆下完整模块", electricityChangeMin: 70, electricityChangeMax: 100),
+            Option("接入残余电容回充", transitionEnergyChange: 25)
         ),
         Event(
             "观测阵列",
@@ -40,27 +49,37 @@ public partial class GameEvent
                 + "若直接接管阵列，则有机会把整段星图卖给空间站。",
             Option(
                 "为一名角色进行轨迹校准",
-                propertyChange: Stats((PropertyType.Speed, 3), (PropertyType.Power, 1))
+                propertyChange: Stats((PropertyType.Power, 1), (PropertyType.Survivability, 1))
             ),
             Option(
                 "让系统随机分配观测增益",
                 propertyChange: Stats(
                     (PropertyType.Survivability, 4),
-                    (PropertyType.MaxLife, 5),
                     (PropertyType.Speed, -1)
                 ),
                 randomChange: true
             ),
-            Option("打包星图数据出售", electricityChange: 90)
+            Option("打包星图数据出售", electricityChangeMin: 70, electricityChangeMax: 100)
         ),
         Event(
             "废弃军械舱",
             "密封门后是一间被炸开的军械舱，备用挂架上只剩一些可拆解零件。\n"
                 + "你没有足够时间全部带走，只能在高风险输出和稳态防护之间做选择。\n"
                 + "也可以放弃搜刮，把能拆下来的零件直接换成电力币。",
-            Option("回收高能模块", electricityChange: 90),
-            Option("回收防护模块", electricityChange: 90),
-            Option("拆解剩余零件", electricityChange: 90)
+            Option(
+                "为一名角色装配高能模块",
+                propertyChange: Stats((PropertyType.Power, 3), (PropertyType.Speed, -1))
+            ),
+            Option(
+                "随机接入军械协议",
+                propertyChange: Stats(
+                    (PropertyType.Power, 2),
+                    (PropertyType.Speed, 2),
+                    (PropertyType.Survivability, -1)
+                ),
+                randomChange: true
+            ),
+            Option("拆解备用电芯回充", transitionEnergyChange: 25)
         ),
         Event(
             "低温休眠仓",
@@ -69,14 +88,14 @@ public partial class GameEvent
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option(
                 "为一名角色执行修补程序",
-                propertyChange: Stats((PropertyType.MaxLife, 15), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.MaxLife, 9), (PropertyType.Speed, -1))
             ),
             Option(
                 "随机唤醒一具维修躯体协助强化",
-                propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.Power, 1)),
+                propertyChange: Stats((PropertyType.Survivability, 3)),
                 randomChange: true
             ),
-            Option("抽走休眠仓备用电池", transitionEnergyChange: 20, electricityChange: -20)
+            Option("抽走休眠仓备用电池", transitionEnergyChange: 25)
         ),
         Event(
             "引力透镜井",
@@ -85,27 +104,38 @@ public partial class GameEvent
                 + "若强行收束透镜，也许还能榨出一笔值钱的实验数据。",
             Option(
                 "让一名角色接受引力偏转",
-                propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.MaxLife, -3))
             ),
             Option(
                 "随机暴露于焦点中心",
                 propertyChange: Stats(
-                    (PropertyType.Power, 3),
-                    (PropertyType.Speed, 3),
-                    (PropertyType.MaxLife, -4)
+                    (PropertyType.Power, 2),
+                    (PropertyType.Speed, 2),
+                    (PropertyType.MaxLife, -3)
                 ),
                 randomChange: true
             ),
-            Option("收束透镜并导出实验数据", electricityChange: 90, transitionEnergyChange: -1)
+            Option("收束透镜并导出实验数据", electricityChangeMin: 70, electricityChangeMax: 100)
         ),
         Event(
             "静默圣所",
             "一间被切断外部通信的独立舱室安静得异常，中央只留下简易祭台和存放柜。\n"
                 + "柜体里的防护部件已经失效，墙面上则反复滚动着一段静默训练守则。\n"
                 + "你可以拆解柜体，也可以短暂停留，恢复航程节奏。",
-            Option("拆解存放柜", electricityChange: 90),
-            Option("展开折叠护壁并拆解", electricityChange: 90),
-            Option("遵循守则静坐片刻", transitionEnergyChange: 20)
+            Option(
+                "让一名角色遵循守则训练",
+                propertyChange: Stats((PropertyType.Survivability, 2))
+            ),
+            Option(
+                "随机读取静默训练记录",
+                propertyChange: Stats(
+                    (PropertyType.Speed, 2),
+                    (PropertyType.Survivability, 2),
+                    (PropertyType.Power, -1)
+                ),
+                randomChange: true
+            ),
+            Option("遵循守则静坐片刻", transitionEnergyChange: 25)
         ),
     ];
 
@@ -125,7 +155,9 @@ public partial class GameEvent
         bool randomChange = false,
         bool exit = true,
         int transitionEnergyChange = 0,
-        int electricityChange = 0
+        int electricityChange = 0,
+        int electricityChangeMin = 0,
+        int electricityChangeMax = 0
     )
     {
         return new EventOption
@@ -136,6 +168,8 @@ public partial class GameEvent
             Exit = exit,
             TransitionEnergyChange = transitionEnergyChange,
             ElectricityChange = electricityChange,
+            ElectricityChangeMin = electricityChangeMin,
+            ElectricityChangeMax = electricityChangeMax,
         };
     }
 
@@ -158,5 +192,26 @@ public class EventOption
     public bool Exit;
     public int TransitionEnergyChange;
     public int ElectricityChange;
+    public int ElectricityChangeMin;
+    public int ElectricityChangeMax;
     public string Text;
+
+    public bool HasElectricityChange =>
+        ElectricityChange != 0 || ElectricityChangeMin != 0 || ElectricityChangeMax != 0;
+
+    public bool HasElectricityRange => ElectricityChangeMin != 0 || ElectricityChangeMax != 0;
+
+    public int RollElectricityChange(Random rng)
+    {
+        if (!HasElectricityRange)
+            return ElectricityChange;
+
+        int min = Math.Min(ElectricityChangeMin, ElectricityChangeMax);
+        int max = Math.Max(ElectricityChangeMin, ElectricityChangeMax);
+        if (min == max)
+            return min;
+
+        rng ??= new Random();
+        return rng.Next(min, max + 1);
+    }
 }

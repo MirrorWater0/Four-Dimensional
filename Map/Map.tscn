@@ -12,6 +12,7 @@
 [ext_resource type="Shader" uid="uid://t6tiiloxvkvu" path="res://shader/UI/Gear.gdshader" id="14_7a0j3"]
 [ext_resource type="Script" uid="uid://ldty82sm2cbb" path="res://Map/DynamicCamera.cs" id="15_dcam"]
 [ext_resource type="PackedScene" uid="uid://bm2xlnsg38ttk" path="res://Map/ItemContainer.tscn" id="18_bl6si"]
+[ext_resource type="Shader" uid="uid://cinsfrhlgonxw" path="res://shader/Icon/MapPeekIcon.gdshader" id="19_mappeek"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -33,6 +34,10 @@ shadow_color = Color(0, 0, 0, 0.28)
 shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
 bg_color = Color(0.04, 0.075, 0.105, 0.78)
 border_width_left = 1
 border_width_top = 1
@@ -43,12 +48,12 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_pressed"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_pressed"]
 bg_color = Color(0.035, 0.065, 0.09, 1)
 border_width_left = 1
 border_width_top = 1
@@ -59,12 +64,12 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_hover"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_hover"]
 bg_color = Color(0.09, 0.16, 0.2, 0.95)
 border_width_left = 1
 border_width_top = 1
@@ -75,16 +80,12 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
 shader_parameter/rotation_speed = 3.0
 shader_parameter/scale = 1.90000002086168
-shader_parameter/color = Color(0.16799998, 0.6159999, 0.84, 1)
+shader_parameter/color = Color(0.33599997, 0.5544, 0.84, 1)
 shader_parameter/thickness = 0.01999999950874
 shader_parameter/dist2 = 0.5000000074506
 shader_parameter/dist1 = 0.70000001043084
@@ -165,6 +166,60 @@ shader_parameter/teeth = 8
 shader_parameter/tooth_length = 0.1
 shader_parameter/radius_percent = 0.35
 shader_parameter/hole_percent = 0.2
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button"]
+bg_color = Color(0.018, 0.052, 0.07, 0.78)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.46666667, 0.85490197, 1, 0.58)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.58, 0.78, 0.2)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button_pressed"]
+bg_color = Color(0.01, 0.03, 0.045, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.84, 0.36, 0.86)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(1, 0.84, 0.36, 0.22)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button_hover"]
+bg_color = Color(0.035, 0.095, 0.13, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7, 0.95, 1, 0.82)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.2, 0.78, 1, 0.28)
+shadow_size = 10
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_map_peek_icon"]
+resource_local_to_scene = true
+shader = ExtResource("19_mappeek")
+shader_parameter/ink_color = Color(0.03, 0.025, 0.02, 1)
+shader_parameter/paper_color = Color(0.86, 0.66, 0.46, 1)
+shader_parameter/accent_color = Color(1, 0.84, 0.36, 1)
+shader_parameter/glow_color = Color(0.95, 0.72, 0.34, 0.3)
+shader_parameter/line_width = 0.03
+shader_parameter/aa_scale = 1.25
+shader_parameter/active = 0.0
+shader_parameter/pulse_speed = 1.4
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_jq5q4"]
 shader = ExtResource("12_cccvd")
@@ -602,6 +657,38 @@ metadata/_edit_lock_ = true
 [node name="Label" type="Label" parent="PlayerResourceState/RelicContainer" unique_id=387198996]
 layout_mode = 2
 text = "遗物"
+
+[node name="MapPeekButton" type="Button" parent="PlayerResourceState" unique_id=902117998]
+self_modulate = Color(1, 1, 1, 0)
+custom_minimum_size = Vector2(54, 54)
+offset_left = 1509.0
+offset_top = 3.0
+offset_right = 1563.0
+offset_bottom = 57.0
+focus_mode = 0
+theme = ExtResource("10_svc60")
+theme_override_colors/font_color = Color(0.92, 0.98, 1, 0.96)
+theme_override_colors/font_pressed_color = Color(1, 0.9, 0.58, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_map_peek_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_map_peek_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_map_peek_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_map_peek_button_hover")
+
+[node name="Icon" type="ColorRect" parent="PlayerResourceState/MapPeekButton" unique_id=1877342486]
+material = SubResource("ShaderMaterial_map_peek_icon")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = 5.0
+offset_right = -5.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
 
 [node name="ItemsHContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
 offset_left = 1569.0

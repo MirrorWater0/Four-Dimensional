@@ -4,8 +4,8 @@ using Godot;
 
 public partial class Inexorability : EnemyCharacter
 {
-    private const int HurtPowerDown = 2;
-    private const int AllyDyingPowerGain = 3;
+    private const int HurtPowerDown = 1;
+    private const int AllyDyingPowerGain = 2;
 
     public const string PassiveNameText = "不可违逆";
     public static string PassiveDescriptionText =>
@@ -83,9 +83,9 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 64;
-        Power = 12;
-        Survivability = 5;
+        MaxLife = 59;
+        Power = 11;
+        Survivability = 14;
         Speed = 8;
         SkillIDs =
         [
@@ -116,7 +116,7 @@ public partial class InexorabilityAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, byBehindRow: true),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two),
             EnergyStep(SelfEnergyGain)
         );
     }
@@ -124,8 +124,8 @@ public partial class InexorabilityAttack : Skill
 
 public partial class InexorabilitySurvive : Skill
 {
-    private const int BaseBlock = 16;
-    private const int PowerGain = 6;
+    private const int BaseBlock = 0;
+    private const int PowerGain = 4;
     private const int SelfEnergyGain = 1;
 
     public InexorabilitySurvive()

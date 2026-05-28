@@ -152,6 +152,7 @@ public partial class BattleReady : Control
     private RichTextLabel _characterPreviewPassiveDescriptionLabel;
     private readonly Dictionary<string, Label> _characterPreviewStatLabels = [];
     private int _skillPreviewCharacterIndex = -1;
+    private bool _skillPreviewResourcePrewarmStarted;
 
     private readonly struct SkillDisplayEntry(SkillID skillId, int count)
     {
@@ -769,15 +770,15 @@ public partial class BattleReady : Control
         exitTween.SetParallel(true);
         exitTween.SetEase(Tween.EaseType.In);
         exitTween.SetTrans(Tween.TransitionType.Cubic);
-        exitTween.TweenProperty(root, "position", basePosition + new Vector2(-28f, 0f), 0.1f);
-        exitTween.TweenProperty(root, "modulate:a", 0.0f, 0.09f);
+        exitTween.TweenProperty(root, "position", basePosition + new Vector2(-20f, 0f), 0.06f);
+        exitTween.TweenProperty(root, "modulate:a", 0.0f, 0.055f);
         await ToSignal(exitTween, Tween.SignalName.Finished);
 
         if (!GodotObject.IsInstanceValid(root) || !IsInsideTree())
             return;
 
         RefreshTalentTree(characterIndex);
-        root.Position = basePosition + new Vector2(34f, 0f);
+        root.Position = basePosition + new Vector2(24f, 0f);
         root.Modulate = baseModulate with { A = 0.0f };
 
         _talentTreeSwitchTween = CreateTween();
@@ -785,8 +786,8 @@ public partial class BattleReady : Control
         enterTween.SetParallel(true);
         enterTween.SetEase(Tween.EaseType.Out);
         enterTween.SetTrans(Tween.TransitionType.Cubic);
-        enterTween.TweenProperty(root, "position", basePosition, 0.18f);
-        enterTween.TweenProperty(root, "modulate:a", baseModulate.A, 0.16f);
+        enterTween.TweenProperty(root, "position", basePosition, 0.11f);
+        enterTween.TweenProperty(root, "modulate:a", baseModulate.A, 0.1f);
         await ToSignal(enterTween, Tween.SignalName.Finished);
 
         if (_talentTreeSwitchTween == enterTween)
@@ -953,7 +954,6 @@ public partial class BattleReady : Control
             unlocked ? "#ffd987"
             : canUnlock ? "#9ff5ff"
             : "#9aa3b5";
-        string description = string.IsNullOrWhiteSpace(node.Description) ? "-" : node.Description;
         string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
             ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
             : node.EffectDescription;
@@ -966,11 +966,6 @@ public partial class BattleReady : Control
                 ("cost", node.Cost)
             )
             + $"[color={stateColor}]{stateText}[/color]\n\n"
-            + I18n.Format(
-                "ui.common.description_bbcode",
-                "[color=#9fb5d6]说明[/color]\n{value}\n\n",
-                ("value", description)
-            )
             + I18n.Format(
                 "ui.common.effect_bbcode",
                 "[color=#ffd987]效果[/color]\n{value}",
@@ -1058,6 +1053,7 @@ public partial class BattleReady : Control
         if (unlocked)
         {
             players[characterIndex] = info;
+            _skillPreviewCharacterIndex = -1;
             SaveSystem.SaveAll();
             RefreshCharacterPreview(characterIndex);
         }
@@ -1217,6 +1213,50 @@ public partial class BattleReady : Control
             button.Resized += RefreshCharacterSelectorLayout;
         CallDeferred(nameof(RefreshModeSelectorLayout));
         CallDeferred(nameof(RefreshCharacterSelectorLayout));
+        CallDeferred(nameof(StartSkillPreviewResourcePrewarm));
+    }
+
+    private async void StartSkillPreviewResourcePrewarm()
+    {
+        if (_skillPreviewResourcePrewarmStarted)
+            return;
+
+        _skillPreviewResourcePrewarmStarted = true;
+        await PrewarmSkillPreviewResourcesAsync();
+    }
+
+    private async Task PrewarmSkillPreviewResourcesAsync()
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (players == null)
+            return;
+
+        int startIndex = players.Length == 0 ? 0 : Math.Max(_selectedCharacterIndex + 1, 0) % players.Length;
+        for (int offset = 0; offset < players.Length; offset++)
+        {
+            int i = (startIndex + offset) % players.Length;
+            PlayerInfoStructure character = players[i];
+            if (character.GainedSkills == null)
+                continue;
+
+            string characterKey = ExtractCharacterKeyFromScenePath(character.CharacterScenePath);
+            foreach (SkillID skillId in character.GainedSkills.Distinct())
+            {
+                Skill skill = Skill.GetSkill(skillId);
+                if (skill == null || GetSkillCategoryIndex(skill) < 0)
+                    continue;
+
+                skill.SetPreviewStats(
+                    TalentTree.GetEffectivePower(character),
+                    TalentTree.GetEffectiveSurvivability(character),
+                    1
+                );
+                SkillCard.PrewarmSkillResources(skill, character.CharacterName, characterKey);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!IsInsideTree())
+                    return;
+            }
+        }
     }
 
     public async void StartAnimation()
@@ -2018,25 +2058,34 @@ public partial class BattleReady : Control
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
             return;
 
-        if (
-            characterIndex == _selectedCharacterIndex
-            && _skillPreviewCharacterIndex == characterIndex
-        )
+        bool sameCharacter = characterIndex == _selectedCharacterIndex;
+        if (sameCharacter && _currentMode == BattleReadyMode.Talent)
         {
             UpdateCharacterButtonState(true);
             RefreshTalentTree(characterIndex);
             return;
         }
 
-        bool animateTalentTreeSwitch = _currentMode == BattleReadyMode.Talent;
         _selectedCharacterIndex = characterIndex;
         UpdateCharacterButtonState(true);
-        await ClearSkillContainer();
-        PopulateSkillButtons(characterIndex);
-        if (animateTalentTreeSwitch)
+
+        if (_currentMode == BattleReadyMode.Talent)
+        {
             await RefreshTalentTreeAnimatedAsync(characterIndex);
-        else
-            RefreshTalentTree(characterIndex);
+            return;
+        }
+
+        if (_currentMode == BattleReadyMode.Tactics)
+        {
+            if (sameCharacter && _skillPreviewCharacterIndex == characterIndex)
+                return;
+
+            await ClearSkillContainer();
+            PopulateSkillButtons(characterIndex);
+            return;
+        }
+
+        RefreshTalentTree(characterIndex);
     }
 
     private void PopulateSkillButtons(int characterIndex)

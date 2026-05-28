@@ -172,6 +172,7 @@ public partial class Skill
         {
             _prepaidDisplayedEnergy = 0;
             _paidEnergyForCurrentEffect = 0;
+            _previewableRandomHostileTargets.Clear();
             ClearManualFriendlyTarget();
         }
     }
@@ -1062,6 +1063,7 @@ public partial class Skill
             SkillID.Purity => new Purity(),
             SkillID.CursePower => new CursePower(),
             SkillID.WeakeningField => new WeakeningField(),
+            SkillID.EternalCore => new EternalCore(),
             SkillID.EvilAttack => new EvilAttack(),
             SkillID.EvilSurvive => new EvilSurvive(),
             SkillID.EvilTermin => new EvilTermin(),
@@ -1076,6 +1078,8 @@ public partial class Skill
             SkillID.AegisPledge => new AegisPledge(),
             SkillID.HopeBeacon => new HopeBeacon(),
             SkillID.WarGodWill => new WarGodWill(),
+            SkillID.TacticalPreparation => new TacticalPreparation(),
+            SkillID.RadiantOverload => new RadiantOverload(),
             SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
             SkillID.DemonForm => new DemonForm(),
             SkillID.FearWormAttack => new FearWormAttack(),
@@ -1266,6 +1270,9 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Echo)]
     WeakeningField = 141,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    EternalCore = 155,
     #endregion
 
     #region Kasiya
@@ -1327,6 +1334,12 @@ public enum SkillID
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     WarGodWill = 109,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    TacticalPreparation = 149,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    RadiantOverload = 150,
 
     [PlayerSkill(PlayerCharacterKey.Kasiya)]
     VulnerabilityConversion = 78,

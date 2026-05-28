@@ -22,6 +22,7 @@ public partial class TuningStance : Skill
 
 public partial class RelayShift : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override int EnergyCost => 2;
 
     public RelayShift()
@@ -45,6 +46,7 @@ public partial class RelayShift : Skill
 
 public class VoidForm : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int VoidStacks = 2;
 
     public VoidForm()
@@ -92,6 +94,7 @@ public partial class Purity : Skill
 
 public partial class CursePower : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int CursePowerStacks = 1;
 
     public CursePower()
@@ -119,6 +122,7 @@ public partial class CursePower : Skill
 
 public partial class WeakeningField : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int WeakeningFieldStacks = 1;
 
     public WeakeningField()
@@ -144,8 +148,37 @@ public partial class WeakeningField : Skill
     }
 }
 
+public partial class EternalCore : Skill
+{
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    private const int EnergyStorageStacks = 3;
+
+    public EternalCore()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "永恒核心";
+    public override int EnergyCost => 1;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.EnergyStorage,
+                stacks: EnergyStorageStacks,
+                target: TargetReference.Self
+            )
+        );
+    }
+}
+
 public class EchoForm : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int EchoStacks = 1;
     public override bool ExhaustsAfterUse => true;
 

@@ -66,6 +66,7 @@ public partial class Buff
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
         [BuffName.ExtraDraw] = "res://battle/buff/StateIcon/CardRefresh.tscn",
         [BuffName.Source] = "res://battle/buff/StateIcon/Source.tscn",
+        [BuffName.EnergyStorage] = "res://battle/buff/StateIcon/Source.tscn",
     };
 
     private static string GetBuffNameKey(BuffName name)
@@ -98,19 +99,20 @@ public partial class Buff
             BuffName.Barricade => "回合开始时，保留你的格挡。",
             BuffName.Afterimage => "回合开始时，格挡不会消失，减少1层。",
             BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
-            BuffName.Disaster => "每过一轮，受到等同于层数的伤害，并消耗1层。",
+            BuffName.Disaster => "己方角色行动结束时，受到等同于层数的伤害，并消耗1层。",
             BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
             BuffName.Shadow => "攻击时，获得等同于层数的力量。",
             BuffName.Demon => "回合结束时，获得等同于层数的力量。",
             BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
             BuffName.Echo => "每回合前X张技能牌释放2次，X等同于层数。",
             BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
-            BuffName.ExtraDraw => "回合开始时，每层额外抽1张牌并消耗1层。",
+            BuffName.ExtraDraw => "回合开始时，每消耗1层抽1张牌，直到手牌上限。",
             BuffName.Source => "回合开始时，每层获得1点能量。",
+            BuffName.EnergyStorage => "回合结束时，每层少失去1点能量。",
             BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
             BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
             BuffName.CursePower => "每次攻击时，给予目标等同于层数的虚弱。",
-            BuffName.WeakeningField => "每给予一次虚弱，己方全阵获得3点格挡。",
+            BuffName.WeakeningField => "每给予1层虚弱，己方全阵获得3点格挡。",
             _ => string.Empty,
         };
 
@@ -410,6 +412,9 @@ public partial class Buff
 
         [Description("源泉")]
         Source,
+
+        [Description("能量储存")]
+        EnergyStorage,
     }
 
     public Character Owner;
@@ -459,6 +464,7 @@ public partial class Buff
             BuffName.Sanctuary => Nature.positive,
             BuffName.ExtraDraw => Nature.positive,
             BuffName.Source => Nature.positive,
+            BuffName.EnergyStorage => Nature.positive,
             BuffName.Beacon => Nature.positive,
             _ => Nature.positive,
         };
@@ -630,6 +636,8 @@ public partial class Buff
             return null;
 
         icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        icon.Position = Vector2.Zero;
         icon.CustomMinimumSize = Vector2.Zero;
         icon.Size = new Vector2(40f, 40f);
         if (icon.GetChildOrNull<Label>(0) is Label stackLabel)
@@ -1060,7 +1068,7 @@ public partial class AttackBuff : Buff
         if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
         {
             if (name == BuffName.Weaken)
-                SpecialBuff.TriggerWeakeningFieldBlock(source);
+                SpecialBuff.TriggerWeakeningFieldBlock(source, stack);
             return;
         }
 
@@ -1081,7 +1089,7 @@ public partial class AttackBuff : Buff
         target.AttackBuffs.Add(buff);
         FinalizeBuffAdd(buff, target, source);
         if (name == BuffName.Weaken)
-            SpecialBuff.TriggerWeakeningFieldBlock(source);
+            SpecialBuff.TriggerWeakeningFieldBlock(source, stack);
     }
 }
 
@@ -1258,10 +1266,11 @@ public partial class SpecialBuff : Buff
     public SpecialBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public static void TriggerWeakeningFieldBlock(Character owner)
+    public static void TriggerWeakeningFieldBlock(Character owner, int weakenStacks)
     {
         if (
             owner?.SpecialBuffs == null
+            || weakenStacks <= 0
             || owner.SpecialBuffs.All(x =>
                 x == null
                 || x.ThisBuffName != BuffName.WeakeningField
@@ -1277,9 +1286,10 @@ public partial class SpecialBuff : Buff
         if (allies == null || allies.Length == 0)
             return;
 
+        int block = WeakeningFieldBlock * weakenStacks;
         using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.WeakeningField));
         foreach (var ally in allies)
-            ally.UpdataBlock(WeakeningFieldBlock, source: owner);
+            ally.UpdataBlock(block, source: owner);
     }
 
     public static void TriggerBeaconBlockShare(
@@ -1363,6 +1373,42 @@ public partial class SpecialBuff : Buff
         return true;
     }
 
+    public static int GetCardRefreshStack(Character target)
+    {
+        return target?.SpecialBuffs?.FirstOrDefault(x =>
+            x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
+        )?.Stack ?? 0;
+    }
+
+    public static int ConsumeCardRefresh(Character target, int count)
+    {
+        if (count <= 0 || target?.SpecialBuffs == null)
+            return 0;
+
+        var refresh = target.SpecialBuffs.FirstOrDefault(x =>
+            x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
+        );
+        if (refresh == null)
+            return 0;
+
+        int consumed = Math.Min(count, refresh.Stack);
+        refresh.Stack -= consumed;
+        refresh.UpdateStackLabel();
+        refresh.TweenLabel();
+        refresh.TryRemoveIfEmpty(target.SpecialBuffs);
+        return consumed;
+    }
+
+    public static int GetEnergyStorageReduction(Character target)
+    {
+        if (target?.SpecialBuffs == null)
+            return 0;
+
+        return target.SpecialBuffs
+            .Where(x => x != null && x.ThisBuffName == BuffName.EnergyStorage && x.Stack > 0)
+            .Sum(x => x.Stack);
+    }
+
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (target?.SpecialBuffs == null)
@@ -1376,6 +1422,7 @@ public partial class SpecialBuff : Buff
             && name != BuffName.ExtraPower
             && name != BuffName.ExtraSurvivability
             && name != BuffName.ExtraDraw
+            && name != BuffName.EnergyStorage
             && name != BuffName.Beacon
             && name != BuffName.WeakeningField
         )

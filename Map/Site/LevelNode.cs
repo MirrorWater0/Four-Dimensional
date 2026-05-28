@@ -461,7 +461,8 @@ public partial class LevelNode : ColorRect
     {
         _hoverScaleTween?.Kill();
         _hoverScaleTween = CreateTween();
-        _hoverScaleTween.TweenProperty(this, "scale", targetScale, duration)
+        _hoverScaleTween
+            .TweenProperty(this, "scale", targetScale, duration)
             .SetTrans(Tween.TransitionType.Quad)
             .SetEase(Tween.EaseType.Out);
     }
@@ -583,11 +584,15 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> GetEliteEnemies()
     {
-        EnemyRegedit[] eliteCatalog = GameInfo.CurrentLevel > 0
-            ? [new FearEliteRegedit()]
-            : [new ArroganceRegedit(), new AngerEliteRegedit()];
+        EnemyRegedit[] eliteCatalog =
+            GameInfo.CurrentLevel > 0
+                ? [new FearEliteRegedit()]
+                : [new ArroganceRegedit(), new AngerEliteRegedit()];
         var rng = new Random(RandomNum);
-        List<EnemyRegedit> list = new() { eliteCatalog[rng.Next(eliteCatalog.Length)].GetRegedit() };
+        List<EnemyRegedit> list = new()
+        {
+            eliteCatalog[rng.Next(eliteCatalog.Length)].GetRegedit(),
+        };
         list[0].PositionIndex = 5;
         if (GameInfo.CurrentLevel > 0)
             ApplyEliteRegionTwoMultiplier(list[0]);
@@ -597,7 +602,7 @@ public partial class LevelNode : ColorRect
     public List<EnemyRegedit> GetBossEnemies()
     {
         EnemyRegedit boss = PickBossForThisNode();
-        boss.PositionIndex = 5;
+        boss.PositionIndex = boss is WarRegedit ? 8 : 5;
         if (GameInfo.CurrentLevel > 0)
             ApplyStatMultiplier(boss, RegionTwoBossStatMultiplier);
         List<EnemyRegedit> list = new() { boss };
@@ -740,8 +745,17 @@ public partial class LevelNode : ColorRect
         }
 
         string text = string.IsNullOrWhiteSpace(bossPreview)
-            ? I18n.Format("ui.map.node_record_summary", "[b]节点记录[/b]\n{summary}", ("summary", summary))
-            : I18n.Format("ui.map.node_record_with_boss", "{boss}\n\n[b]节点记录[/b]\n{summary}", ("boss", bossPreview), ("summary", summary));
+            ? I18n.Format(
+                "ui.map.node_record_summary",
+                "[b]节点记录[/b]\n{summary}",
+                ("summary", summary)
+            )
+            : I18n.Format(
+                "ui.map.node_record_with_boss",
+                "{boss}\n\n[b]节点记录[/b]\n{summary}",
+                ("boss", bossPreview),
+                ("summary", summary)
+            );
 
         return ColorizeHoverTipText(text);
     }

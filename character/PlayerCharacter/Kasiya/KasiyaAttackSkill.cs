@@ -116,6 +116,7 @@ public partial class Vower : Skill
 
 public partial class VulnerablePurge : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
 
     public VulnerablePurge()
@@ -153,6 +154,7 @@ public partial class VulnerablePurge : Skill
 
 public partial class VulnerabilityStrike : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
     private bool _targetHadVulnerable;
 
@@ -209,6 +211,7 @@ public partial class VulnerabilityStrike : Skill
 
 public class TerminateLight : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BaseDamage = 7;
 
     public TerminateLight()
@@ -232,6 +235,7 @@ public class TerminateLight : Skill
 
 public class VulnerabilityConversion : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public VulnerabilityConversion()
         : base(SkillTypes.Attack)
     {

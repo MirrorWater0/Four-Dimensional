@@ -12,19 +12,14 @@ public partial class Skill
         Rare,
     }
 
-    private static readonly Dictionary<SkillID, SkillRarity> SkillRarityCatalog =
-        BuildSkillRarityCatalog();
-
-    public SkillRarity Rarity => GetRarity(SkillId);
+    public virtual SkillRarity Rarity => SkillRarity.Common;
 
     public static SkillRarity GetRarity(SkillID? skillId)
     {
         if (!skillId.HasValue)
             return SkillRarity.Common;
 
-        return SkillRarityCatalog.TryGetValue(skillId.Value, out SkillRarity rarity)
-            ? rarity
-            : SkillRarity.Common;
+        return GetSkill(skillId.Value)?.Rarity ?? SkillRarity.Common;
     }
 
     public static Color GetRarityBorderColor(SkillRarity rarity)
@@ -71,84 +66,5 @@ public partial class Skill
             SkillRarity.Uncommon => [SkillRarity.Uncommon, SkillRarity.Common, SkillRarity.Rare],
             _ => [SkillRarity.Common, SkillRarity.Uncommon, SkillRarity.Rare],
         };
-    }
-
-    private static Dictionary<SkillID, SkillRarity> BuildSkillRarityCatalog()
-    {
-        Dictionary<SkillID, SkillRarity> catalog = new();
-
-        AddRarity(
-            catalog,
-            SkillRarity.Uncommon,
-            SkillID.Extract,
-            SkillID.BladeOfSlaughter,
-            SkillID.SonicBoom,
-            SkillID.DissonantField,
-            SkillID.ReverbChain,
-            SkillID.RelayShift,
-            SkillID.VulnerablePurge,
-            SkillID.VulnerabilityStrike,
-            SkillID.WeakpointBulwark,
-            SkillID.ReadyStance,
-            SkillID.HolySeal,
-            SkillID.VulnerabilityConversion,
-            SkillID.ChargedBlade,
-            SkillID.CrescentWind,
-            SkillID.QuietVeil,
-            SkillID.EnergyTransfer,
-            SkillID.EnergyRelay,
-            SkillID.GroupHealing,
-            SkillID.TouchOfGod,
-            SkillID.HolyOfHolies,
-            SkillID.StasisBlade,
-            SkillID.ContinuousPierce,
-            SkillID.RuinBlade,
-            SkillID.LongNight,
-            SkillID.Swift,
-            SkillID.SunMoonCycle,
-            SkillID.AfterimageWard,
-            SkillID.StarWard,
-            SkillID.WarGodWill,
-            SkillID.TwilightParadox,
-            SkillID.ConcordSlash,
-            SkillID.BarrierDuplication,
-            SkillID.EternalDark
-        );
-
-        AddRarity(
-            catalog,
-            SkillRarity.Rare,
-            SkillID.DisasterImpact,
-            SkillID.TerminateLight,
-            SkillID.VoidForm,
-            SkillID.EchoForm,
-            SkillID.CursePower,
-            SkillID.WeakeningField,
-            SkillID.AegisPledge,
-            SkillID.HopeBeacon,
-            SkillID.DemonForm,
-            SkillID.RearlineRevival,
-            SkillID.Ragnarok,
-            SkillID.SanctuaryForm,
-            SkillID.RequiemBloom,
-            SkillID.CurtainCallMoment,
-            SkillID.ShadowForm,
-            SkillID.BrightestMoment
-        );
-
-        return catalog;
-    }
-
-    private static void AddRarity(
-        Dictionary<SkillID, SkillRarity> catalog,
-        SkillRarity rarity,
-        params SkillID[] skillIds
-    )
-    {
-        if (catalog == null || skillIds == null)
-            return;
-
-        for (int i = 0; i < skillIds.Length; i++)
-            catalog[skillIds[i]] = rarity;
     }
 }

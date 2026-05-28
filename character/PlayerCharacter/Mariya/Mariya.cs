@@ -22,7 +22,11 @@ public partial class Mariya : PlayerCharacter
     {
         base.Initialize();
         PassiveName = PassiveNameText;
-        PassiveDescription = PassiveDescriptionText;
+        PassiveDescription = TalentTree.AppendPassiveUpgradeDescription(
+            CharacterKey,
+            PassiveDescriptionText,
+            HasPassiveTalentUpgrade()
+        );
     }
 
     public override void OnTurnEnd()

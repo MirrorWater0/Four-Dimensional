@@ -2,6 +2,7 @@ public partial class MariyaSpecialSkill { }
 
 public partial class EnergyTransfer : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int AllyEnergyGain = 2;
     public override int EnergyCost => 1;
 
@@ -24,6 +25,7 @@ public partial class EnergyTransfer : Skill
 
 public partial class RearlineRevival : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BaseRebirthHeal = 22;
 
     public RearlineRevival()
@@ -52,6 +54,7 @@ public partial class RearlineRevival : Skill
 
 public partial class GroupHealing : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseHeal = 5;
 
     public GroupHealing()
@@ -80,6 +83,7 @@ public partial class GroupHealing : Skill
 
 public partial class Ragnarok : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int PowerGain = 6;
     private const int DivinityStacks = 2;
     public override bool ExhaustsAfterUse => true;
@@ -109,6 +113,7 @@ public partial class Ragnarok : Skill
 
 public partial class HolyOfHolies : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int SourceStacks = 1;
 
     public HolyOfHolies()
@@ -136,6 +141,7 @@ public partial class HolyOfHolies : Skill
 
 public partial class SanctuaryForm : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Rare;
     private const int SanctuaryStacks = 1;
 
     public SanctuaryForm()

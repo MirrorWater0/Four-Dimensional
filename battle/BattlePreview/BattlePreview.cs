@@ -713,6 +713,12 @@ public partial class BattlePreview : Control
     private static string BuildEnemySkillText(EnemyRegedit regedit)
     {
         string name = LocalizationHelper.GetEnemyDisplayName(regedit);
+        string passiveName = LocalizationHelper.GetEnemyPassiveName(regedit);
+        string passiveDescription = LocalizationHelper.GetEnemyPassiveDescription(regedit);
+
+        UserSettings.EnsureLoaded();
+        if (UserSettings.HideEnemySkills)
+            return BuildSkillTooltipText(name, passiveName, passiveDescription, Array.Empty<Skill>());
 
         var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
         var skills = ids.Select(Skill.GetSkill).Where(x => x != null).ToArray();
@@ -724,8 +730,8 @@ public partial class BattlePreview : Control
 
         return BuildSkillTooltipText(
             name,
-            LocalizationHelper.GetEnemyPassiveName(regedit),
-            LocalizationHelper.GetEnemyPassiveDescription(regedit),
+            passiveName,
+            passiveDescription,
             skills
         );
     }
@@ -743,10 +749,11 @@ public partial class BattlePreview : Control
         AppendPassiveTooltip(sb, passiveName, passiveDesc);
 
         if (skills == null || skills.Length == 0)
-            return sb.ToString().TrimEnd();
+            return TrimTrailingTooltipSeparator(sb);
 
         const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
+        const string energyCostNumberColor = "#ffd36b";
         const int skillNameFontSize = 32;
 
         for (int i = 0; i < skills.Length; i++)
@@ -762,7 +769,7 @@ public partial class BattlePreview : Control
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
             sb.Append(
-                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", skill.CardEnergyCostText))}\n"
+                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", $"[color={energyCostNumberColor}]{skill.CardEnergyCostText}[/color]"))}\n"
             );
 
             if (!string.IsNullOrWhiteSpace(skill.Description))
@@ -776,6 +783,15 @@ public partial class BattlePreview : Control
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static string TrimTrailingTooltipSeparator(StringBuilder sb)
+    {
+        string text = sb.ToString().TrimEnd();
+        const string separator = "[hr]";
+        if (text.EndsWith(separator, StringComparison.Ordinal))
+            text = text[..^separator.Length].TrimEnd();
+        return text;
     }
 
     private static string BuildOwnedSkillNameTooltipText(

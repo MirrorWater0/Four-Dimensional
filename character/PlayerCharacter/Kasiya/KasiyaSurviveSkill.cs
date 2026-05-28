@@ -104,6 +104,7 @@ public partial class TauntingGuard : Skill
 
 public partial class WeakpointBulwark : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 8;
 
     public override string SkillName { get; set; } = "蓄势待发";
@@ -250,6 +251,7 @@ public partial class Purification : Skill
 
 public partial class BarrierDuplication : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "固守";
 
     public BarrierDuplication()

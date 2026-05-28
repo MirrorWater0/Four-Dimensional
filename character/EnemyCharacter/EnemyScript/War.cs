@@ -5,16 +5,13 @@ using Godot;
 
 public partial class War : EnemyCharacter
 {
-    private const int PassiveSummonsPerSide = 1;
-
     internal static readonly PackedScene ThrallScene = GD.Load<PackedScene>(
         "res://character/EnemyCharacter/WarThrall.tscn"
     );
 
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
-        $"战斗开始时：在上一空位和下一空位各召唤{PassiveSummonsPerSide}个召唤物。\n"
-        + "回合结束时：优先在有存活玩家角色的排随机召唤1个召唤物。";
+        "回合开始时：优先在有存活玩家角色的排随机召唤1个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -23,12 +20,11 @@ public partial class War : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        BattleNode.StartEffectList.Add(StartPassive);
     }
 
-    public override void OnTurnEnd()
+    public override void OnTurnStart()
     {
-        base.OnTurnEnd();
+        base.OnTurnStart();
         _ = SummonAtRandomEmptySlot();
     }
 
@@ -37,58 +33,9 @@ public partial class War : EnemyCharacter
         if (BattleNode == null || ThrallScene == null)
             return Task.CompletedTask;
 
-        var occupied = BattleNode
-            .GetTeamCharacters(IsPlayer, includeSummons: true)
-            .Where(x => x != null && GodotObject.IsInstanceValid(x))
-            .Select(x => x.PositionIndex)
-            .Where(index => index > 0)
-            .ToHashSet();
-
-        int[] emptySlots = Enumerable
-            .Range(1, Battle.MaxFormationSlots)
-            .Where(slot => !occupied.Contains(slot))
-            .ToArray();
-
-        if (emptySlots.Length == 0)
-            return Task.CompletedTask;
-
-        var livingPlayerRows = BattleNode
-            .GetTeamCharacters(isPlayer: true, includeSummons: false)
-            .Where(x =>
-                x != null
-                && GodotObject.IsInstanceValid(x)
-                && x.State != Character.CharacterState.Dying
-                && x.PositionIndex > 0
-            )
-            .Select(x => (x.PositionIndex - 1) % 3)
-            .ToHashSet();
-
-        int[] prioritizedSlots = emptySlots
-            .Where(slot => livingPlayerRows.Contains((slot - 1) % 3))
-            .ToArray();
-
-        Random random = BattleNode.BattleIntentionRandom ?? new Random();
-        int[] pickPool = prioritizedSlots.Length > 0 ? prioritizedSlots : emptySlots;
-        int chosenSlot = pickPool[random.Next(pickPool.Length)];
-        int slotSelector = chosenSlot - PositionIndex;
-
         using var _ = BeginEffectSource("被动");
         var thrall = ThrallScene.Instantiate<WarThrall>();
-        BattleNode.AddSummon(thrall, this, slotSelector);
-        return Task.CompletedTask;
-    }
-
-    private Task StartPassive()
-    {
-        if (BattleNode == null || ThrallScene == null)
-            return Task.CompletedTask;
-
-        using var _ = BeginEffectSource("被动");
-        var previous = ThrallScene.Instantiate<WarThrall>();
-        BattleNode.AddSummon(previous, this, -1);
-
-        var next = ThrallScene.Instantiate<WarThrall>();
-        BattleNode.AddSummon(next, this, 1);
+        BattleNode.AddSummon(thrall, this, SummonPositionMode.RandomHasEnemy);
         return Task.CompletedTask;
     }
 
@@ -134,7 +81,7 @@ public partial class WarRegedit : EnemyRegedit
 
         MaxLife = 268;
         Power = 10;
-        Survivability = 14;
+        Survivability = 10;
         Speed = 12;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
@@ -160,7 +107,11 @@ public partial class WarAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 2),
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: 2,
+                target: HostileTargetReference.Random
+            ),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
         );
     }
@@ -168,8 +119,8 @@ public partial class WarAttack : Skill
 
 public partial class WarSurvive : Skill
 {
-    private const int BaseBlock = 10;
-    private const int SelfSurvivabilityGain = 3;
+    private const int BaseBlock = 7;
+    private const int SelfSurvivabilityGain = 2;
     private const int ThrallBlock = 0;
 
     public WarSurvive()
@@ -194,7 +145,6 @@ public partial class WarSurvive : Skill
 
 public partial class WarSpecial : Skill
 {
-
     public WarSpecial()
         : base(SkillTypes.Special)
     {
@@ -209,8 +159,8 @@ public partial class WarSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: 0),
-            SummonStep(1, War.ThrallScene),
-            SummonStep(-1, War.ThrallScene),
+            SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
+            SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             ModifyPropertyStep(PropertyType.Power, 2)
         );
     }

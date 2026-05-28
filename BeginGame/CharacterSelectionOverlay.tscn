@@ -110,10 +110,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 36
-theme_override_constants/margin_top = 30
-theme_override_constants/margin_right = 36
-theme_override_constants/margin_bottom = 30
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
 
 [node name="Center" type="MarginContainer" parent="SafeArea" unique_id=1025587981]
 layout_mode = 2
@@ -131,15 +131,15 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 [node name="Margin" type="MarginContainer" parent="SafeArea/Center/Panel" unique_id=1253657225]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 46
-theme_override_constants/margin_top = 42
-theme_override_constants/margin_right = 46
-theme_override_constants/margin_bottom = 28
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin" unique_id=337259187]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="Eyebrow" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1249833280]
 layout_mode = 2
@@ -169,14 +169,14 @@ text = "生命 0    力量 0    生存 0    速度 0"
 autowrap_mode = 3
 
 [node name="TeamBar" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=238699404]
-custom_minimum_size = Vector2(0, 58)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="TeamLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar" unique_id=273650220]
-custom_minimum_size = Vector2(106, 54)
+custom_minimum_size = Vector2(108, 60)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.78)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
@@ -190,7 +190,7 @@ vertical_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1874506412]
 custom_minimum_size = Vector2(0, 1)
@@ -203,12 +203,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/h_separation = 26
-theme_override_constants/v_separation = 20
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 24
 alignment = 1
 
 [node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1473406607]
-custom_minimum_size = Vector2(0, 118)
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
@@ -221,11 +221,11 @@ autowrap_mode = 3
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 alignment = 2
 
 [node name="SeedBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=208974967]
-custom_minimum_size = Vector2(400, 30)
+custom_minimum_size = Vector2(384, 36)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -242,7 +242,7 @@ text = "SEED"
 vertical_alignment = 1
 
 [node name="SeedInput" type="LineEdit" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=1213545331]
-custom_minimum_size = Vector2(270, 30)
+custom_minimum_size = Vector2(264, 36)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.94, 0.97, 1, 0.95)
 theme_override_colors/font_placeholder_color = Color(0.76, 0.84, 0.92, 0.48)
@@ -256,11 +256,11 @@ placeholder_text = "empty = random, 0-999999999"
 max_length = 9
 
 [node name="DifficultyBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1907724302]
-custom_minimum_size = Vector2(336, 30)
+custom_minimum_size = Vector2(336, 36)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 
 [node name="DifficultyLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=350293572]
 layout_mode = 2
@@ -273,7 +273,7 @@ text = "DIFFICULTY"
 vertical_alignment = 1
 
 [node name="DifficultyMinusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=781786446]
-custom_minimum_size = Vector2(44, 36)
+custom_minimum_size = Vector2(48, 36)
 layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
@@ -287,7 +287,7 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
 text = "◀"
 
 [node name="DifficultyValueLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=754368392]
-custom_minimum_size = Vector2(98, 36)
+custom_minimum_size = Vector2(96, 36)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.96)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
@@ -299,7 +299,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="DifficultyPlusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=2138231347]
-custom_minimum_size = Vector2(44, 36)
+custom_minimum_size = Vector2(48, 36)
 layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
@@ -318,7 +318,7 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="CancelButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=867892672]
-custom_minimum_size = Vector2(200, 62)
+custom_minimum_size = Vector2(192, 60)
 layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
@@ -332,7 +332,7 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
 text = "返回"
 
 [node name="ConfirmButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1176823235]
-custom_minimum_size = Vector2(240, 62)
+custom_minimum_size = Vector2(240, 60)
 layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)

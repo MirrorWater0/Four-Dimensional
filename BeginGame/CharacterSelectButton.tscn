@@ -57,8 +57,8 @@ corner_radius_bottom_left = 6
 
 [node name="CharacterSelectButton" type="Button"]
 clip_contents = true
-custom_minimum_size = Vector2(178, 132)
-offset_right = 178.0
+custom_minimum_size = Vector2(180, 132)
+offset_right = 180.0
 offset_bottom = 132.0
 focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
@@ -75,19 +75,19 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 28
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
 
 [node name="Row" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="IconFrame" type="PanelContainer" parent="Content/Row"]
-custom_minimum_size = Vector2(52, 52)
+custom_minimum_size = Vector2(54, 54)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -96,10 +96,10 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_icon")
 [node name="IconMargin" type="MarginContainer" parent="Content/Row/IconFrame"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 5
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 5
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
 
 [node name="Icon" type="TextureRect" parent="Content/Row/IconFrame/IconMargin"]
 custom_minimum_size = Vector2(42, 42)
@@ -113,7 +113,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 6
 
 [node name="NameLabel" type="Label" parent="Content/Row/TextStack"]
 layout_mode = 2
@@ -141,9 +141,9 @@ anchors_preset = -1
 anchor_left = 0.48
 anchor_right = 1.0
 offset_left = 0.0
-offset_top = 8.0
-offset_right = -8.0
-offset_bottom = 32.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = 30.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0.04, 0.05, 0.06, 0.88)
 theme_override_constants/outline_size = 2

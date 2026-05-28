@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Fear : EnemyCharacter
 {
-    private const int StartFearStacks = 8;
+    private const int StartFearStacks = 6;
 
     public const string PassiveNameText = "恐惧具现";
     public static string PassiveDescriptionText =>
@@ -83,8 +83,8 @@ public partial class FearEliteAttack : Skill
 
 public partial class FearEliteSurvive : Skill
 {
-    private const int BaseBlock = 18;
-    private const int SurvivabilityGain = 6;
+    private const int BaseBlock = 10;
+    private const int SurvivabilityGain = 5;
 
     public FearEliteSurvive()
         : base(SkillTypes.Survive)
@@ -100,7 +100,7 @@ public partial class FearEliteSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            ModifyPropertyStep(PropertyType.Power, 6)
+            ModifyPropertyStep(PropertyType.Power, 5)
         );
     }
 }

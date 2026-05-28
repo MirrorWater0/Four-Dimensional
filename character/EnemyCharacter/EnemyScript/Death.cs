@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 7;
+    private const int DisasterStacks = 6;
     private const float MoveDuration = 0.22f;
 
     public const string PassiveNameText = "终末游行";
@@ -116,7 +116,7 @@ public partial class DeathRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
 
         MaxLife = 450;
-        Power = 12;
+        Power = 10;
         Survivability = 15;
         Speed = 16;
         SkillIDs = [SkillID.DeathAttack, SkillID.DeathSurvive, SkillID.DeathSpecial];
@@ -174,8 +174,8 @@ public partial class DeathSurvive : Skill
 
 public partial class DeathSpecial : Skill
 {
-    private const int SelfPowerGain = 3;
-    private const int DisasterStacks = 6;
+    private const int SelfPowerGain = 2;
+    private const int DisasterStacks = 5;
 
     public DeathSpecial()
         : base(SkillTypes.Special)
@@ -184,7 +184,7 @@ public partial class DeathSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnergyCost => 7;
+    public override int EnergyCost => 10;
 
     protected override SkillPlan BuildPlan()
     {

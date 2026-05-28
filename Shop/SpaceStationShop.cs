@@ -55,6 +55,7 @@ public partial class SpaceStationShop : Control
         ItemID.ElectromagneticInterference,
         ItemID.SpaceOscillation,
         ItemID.StreamingTransmission,
+        ItemID.Battery,
     ];
 
     [Export(PropertyHint.Range, "0.35,0.80,0.01")]

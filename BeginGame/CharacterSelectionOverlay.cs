@@ -21,6 +21,13 @@ public partial class CharacterSelectionOverlay : Control
     private const float PreviewSwitchImageOffset = 8f;
     private const float PreviewSwitchStartAlpha = 0.88f;
     private const string CharacterCardScenePath = "res://BeginGame/CharacterSelectButton.tscn";
+    // Character selection spacing scale: sm=6, md=12, lg=24, xl=36.
+    private const int SpaceSm = 6;
+    private const int SpaceMd = 12;
+    private const int SpaceLg = 24;
+    private const int SpaceXl = 36;
+    private const int RadiusCard = 8;
+    private const int RadiusControl = 12;
 
     private sealed class CharacterOption
     {
@@ -68,7 +75,12 @@ public partial class CharacterSelectionOverlay : Control
 
     private ColorRect Shade => field ??= GetNodeOrNull<ColorRect>("Shade");
     private TextureRect HeroImage => field ??= GetNodeOrNull<TextureRect>("HeroImage");
+    private MarginContainer SafeArea => field ??= GetNodeOrNull<MarginContainer>("SafeArea");
     private Control Panel => field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel");
+    private MarginContainer PanelMargin =>
+        field ??= GetNodeOrNull<MarginContainer>("SafeArea/Center/Panel/Margin");
+    private VBoxContainer ContentStack =>
+        field ??= GetNodeOrNull<VBoxContainer>("SafeArea/Center/Panel/Margin/VBox");
     private Label TitleLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Title");
     private Label EyebrowLabel =>
         field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Eyebrow");
@@ -76,6 +88,8 @@ public partial class CharacterSelectionOverlay : Control
     private Label StatusLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/StatusLabel");
     private Label TeamLabel =>
         field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamLabel");
+    private HBoxContainer TeamBar =>
+        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar");
     private HBoxContainer TeamSlotsContainer =>
         field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamSlots");
     private HFlowContainer CardGrid =>
@@ -84,6 +98,8 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/ConfirmButton");
     private Button CancelButton =>
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/CancelButton");
+    private HBoxContainer Footer =>
+        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/Footer");
     private Control DifficultyBox =>
         field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox");
     private Button DifficultyMinusButton =>
@@ -104,6 +120,8 @@ public partial class CharacterSelectionOverlay : Control
         );
     private Label SeedLabel =>
         field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedLabel");
+    private HBoxContainer SeedBox =>
+        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox");
     private Tip DifficultyTooltip => _difficultyTooltip ??= EnsureDifficultyTooltip();
     private LineEdit SeedInput =>
         field ??= GetNodeOrNull<LineEdit>("SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox/SeedInput");
@@ -113,6 +131,7 @@ public partial class CharacterSelectionOverlay : Control
         FocusMode = FocusModeEnum.All;
         ProcessMode = ProcessModeEnum.Always;
         LocalizeStaticTexts();
+        ApplyLayoutStyle();
 
         if (CancelButton != null)
         {
@@ -150,6 +169,74 @@ public partial class CharacterSelectionOverlay : Control
     {
         _previewTween?.Kill();
         HideDifficultyTooltip();
+    }
+
+    private void ApplyLayoutStyle()
+    {
+        ApplyMargin(SafeArea, SpaceLg, SpaceLg, SpaceLg, SpaceLg);
+        ApplyMargin(PanelMargin, SpaceXl, SpaceXl, SpaceXl, SpaceLg);
+        ApplySeparation(ContentStack, SpaceMd);
+
+        ApplyMinimumSize(TeamBar, 0f, SpaceLg + SpaceXl);
+        ApplySeparation(TeamBar, SpaceMd);
+        ApplyMinimumSize(TeamLabel, SpaceXl * 3, SpaceLg + SpaceXl);
+        ApplySeparation(TeamSlotsContainer, SpaceMd);
+
+        ApplyFlowSeparation(CardGrid, SpaceLg, SpaceLg);
+        ApplyMinimumSize(HintLabel, 0f, SpaceLg * 5);
+
+        ApplySeparation(Footer, SpaceMd);
+        ApplyMinimumSize(SeedBox, SpaceMd * 32, SpaceLg + SpaceMd);
+        ApplySeparation(SeedBox, SpaceMd);
+        ApplyMinimumSize(SeedInput, SpaceMd * 22, SpaceLg + SpaceMd);
+
+        ApplyMinimumSize(DifficultyBox, SpaceMd * 28, SpaceLg + SpaceMd);
+        ApplySeparation(DifficultyBox as BoxContainer, SpaceMd);
+        ApplyMinimumSize(DifficultyMinusButton, SpaceLg * 2, SpaceLg + SpaceMd);
+        ApplyMinimumSize(DifficultyValueLabel, SpaceMd * 8, SpaceLg + SpaceMd);
+        ApplyMinimumSize(DifficultyPlusButton, SpaceLg * 2, SpaceLg + SpaceMd);
+
+        ApplyMinimumSize(CancelButton, SpaceMd * 16, SpaceMd * 5);
+        ApplyMinimumSize(ConfirmButton, SpaceMd * 20, SpaceMd * 5);
+    }
+
+    private static void ApplyMargin(
+        MarginContainer container,
+        int left,
+        int top,
+        int right,
+        int bottom
+    )
+    {
+        if (container == null)
+            return;
+
+        container.AddThemeConstantOverride("margin_left", left);
+        container.AddThemeConstantOverride("margin_top", top);
+        container.AddThemeConstantOverride("margin_right", right);
+        container.AddThemeConstantOverride("margin_bottom", bottom);
+    }
+
+    private static void ApplySeparation(BoxContainer container, int separation)
+    {
+        container?.AddThemeConstantOverride("separation", separation);
+    }
+
+    private static void ApplyFlowSeparation(HFlowContainer container, int horizontal, int vertical)
+    {
+        if (container == null)
+            return;
+
+        container.AddThemeConstantOverride("h_separation", horizontal);
+        container.AddThemeConstantOverride("v_separation", vertical);
+    }
+
+    private static void ApplyMinimumSize(Control control, float width, float height)
+    {
+        if (control == null)
+            return;
+
+        control.CustomMinimumSize = new Vector2(width, height);
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -493,7 +580,7 @@ public partial class CharacterSelectionOverlay : Control
         var slot = new Button
         {
             Name = $"TeamSlot{index + 1}",
-            CustomMinimumSize = new Vector2(196f, 54f),
+            CustomMinimumSize = new Vector2(SpaceMd * 16, SpaceSm * 9),
             FocusMode = FocusModeEnum.None,
             MouseFilter = MouseFilterEnum.Stop,
             Disabled = !filled,
@@ -509,10 +596,10 @@ public partial class CharacterSelectionOverlay : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        margin.AddThemeConstantOverride("margin_left", 8);
-        margin.AddThemeConstantOverride("margin_top", 6);
-        margin.AddThemeConstantOverride("margin_right", 8);
-        margin.AddThemeConstantOverride("margin_bottom", 6);
+        margin.AddThemeConstantOverride("margin_left", SpaceMd);
+        margin.AddThemeConstantOverride("margin_top", SpaceSm);
+        margin.AddThemeConstantOverride("margin_right", SpaceMd);
+        margin.AddThemeConstantOverride("margin_bottom", SpaceSm);
         slot.AddChild(margin);
 
         var row = new HBoxContainer
@@ -521,12 +608,12 @@ public partial class CharacterSelectionOverlay : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        row.AddThemeConstantOverride("separation", 8);
+        row.AddThemeConstantOverride("separation", SpaceMd);
         margin.AddChild(row);
 
         var portrait = new TextureRect
         {
-            CustomMinimumSize = new Vector2(42f, 42f),
+            CustomMinimumSize = new Vector2(SpaceSm * 7, SpaceSm * 7),
             Texture = option?.Icon ?? option?.Portrait,
             ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
@@ -616,10 +703,10 @@ public partial class CharacterSelectionOverlay : Control
             BorderWidthTop = focused ? 3 : 1,
             BorderWidthRight = focused ? 3 : 1,
             BorderWidthBottom = focused ? 3 : 1,
-            CornerRadiusTopLeft = 10,
-            CornerRadiusTopRight = 10,
-            CornerRadiusBottomLeft = 10,
-            CornerRadiusBottomRight = 10,
+            CornerRadiusTopLeft = RadiusControl,
+            CornerRadiusTopRight = RadiusControl,
+            CornerRadiusBottomLeft = RadiusControl,
+            CornerRadiusBottomRight = RadiusControl,
             ContentMarginLeft = 0,
             ContentMarginTop = 0,
             ContentMarginRight = 0,
@@ -1343,10 +1430,10 @@ public partial class CharacterSelectionOverlay : Control
             BorderWidthTop = selected || focused || hovered ? 4 : 1,
             BorderWidthRight = selected || focused || hovered ? 4 : 1,
             BorderWidthBottom = selected || focused || hovered ? 4 : 1,
-            CornerRadiusTopLeft = 18,
-            CornerRadiusTopRight = 18,
-            CornerRadiusBottomLeft = 18,
-            CornerRadiusBottomRight = 18,
+            CornerRadiusTopLeft = RadiusCard,
+            CornerRadiusTopRight = RadiusCard,
+            CornerRadiusBottomLeft = RadiusCard,
+            CornerRadiusBottomRight = RadiusCard,
             ContentMarginLeft = 0,
             ContentMarginTop = 0,
             ContentMarginRight = 0,

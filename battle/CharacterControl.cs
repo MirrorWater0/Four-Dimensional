@@ -19,6 +19,12 @@ public partial class CharacterControl : Control
     private const float PileCardEnterStagger = 0.025f;
     private const float EndTurnCardVanishDuration = 0.32f;
     private const float CardPlayVanishDuration = 0.5f;
+    private const float CardPlayDiscardCompressDuration = 0.24f;
+    private const float CardPlayDiscardCenterVanishBeforeFly = 0.92f;
+    private const float CardPlayDiscardFlyDuration = 0.46f;
+    private const float CardPlayDiscardTrailFadeDuration = 0.22f;
+    private const float CardPlayDiscardSquareSize = 72f;
+    private const float CardPlayDiscardTargetScaleMultiplier = 0.08f;
     private const float CardPlayMoveDuration = 0.18f;
     private const float StatusInsertCardScale = 0.62f;
     private const float StatusInsertArrangeDuration = 0.22f;
@@ -26,12 +32,18 @@ public partial class CharacterControl : Control
     private const float StatusInsertFlyDuration = 0.34f;
     private const float StatusInsertImpactFadeDuration = 0.12f;
     private const float StatusInsertStagger = 0.055f;
+    private const int StatusInsertCardsCreatedPerFrame = 3;
     private const float CardHoverLiftY = -22f;
     private const float CardHoverScaleMultiplier = 1.03f;
     private const float CarryCardSpawnScaleMultiplier = 0.72f;
     private const float HandAreaPadding = 18f;
     private const float HandCardGap = 14f;
     private const float HandLayoutTweenDuration = 0.18f;
+    private const float HandDrawEntryTweenDuration = 0.34f;
+    private const float HandDrawTrailFadeDuration = 0.18f;
+    private const float HandDrawEntryStagger = 0.045f;
+    private const float HandDrawExistingShiftDelayRatio = 0.62f;
+    private const float HandDrawExistingShiftStagger = 0.025f;
     private const int CardPlayOverlayLayer = 80;
     private const int PlayedCardZIndex = 100;
     private const int TemporaryCarryCardZIndex = 300;
@@ -76,6 +88,8 @@ public partial class CharacterControl : Control
     private Control[] _cardSlots = new Control[HandCardCapacity];
     private Tween[] _cardSlotLayoutTweens = new Tween[HandCardCapacity];
     private Vector2?[] _cardSlotLayoutTargets = new Vector2?[HandCardCapacity];
+    private readonly HashSet<int> _drawEntrySlotIndexes = new();
+    private readonly Dictionary<int, int> _drawEntrySlotOrders = new();
     private readonly Queue<QueuedCardPlay> _queuedCardPlays = new();
     private readonly Queue<QueuedCardPlay> _queuedFollowUpCardPlays = new();
     private readonly HashSet<int> _queuedCardIndices = new();
@@ -117,6 +131,18 @@ public partial class CharacterControl : Control
         public SkillID StatusSkillId { get; }
         public int Count { get; }
         public Character Source { get; }
+    }
+
+    public readonly struct StatusCardExhaustAnimationEntry
+    {
+        public StatusCardExhaustAnimationEntry(PlayerCharacter player, SkillID statusSkillId)
+        {
+            Player = player;
+            StatusSkillId = statusSkillId;
+        }
+
+        public PlayerCharacter Player { get; }
+        public SkillID StatusSkillId { get; }
     }
 
     private sealed class QueuedCardPlay
@@ -337,6 +363,11 @@ public partial class CharacterControl : Control
         RefreshTurnUi();
     }
 
+    public void RefreshManualTargetCardVisibilityFromSettings()
+    {
+        ApplyManualTargetPickerTemporaryHiddenState();
+    }
+
     public Task PlayStatusCardInsertAnimationAsync(
         Character target,
         SkillID statusSkillId,
@@ -411,6 +442,7 @@ public partial class CharacterControl : Control
                 entry.StatusSkill,
                 entry.Target,
                 entry.Source,
+                1,
                 scale
             );
             if (card == null)
@@ -463,6 +495,9 @@ public partial class CharacterControl : Control
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
             arrangeTasks.Add(WaitForTweenFinishedAsync(arrangeTween));
+
+            if ((i + 1) % StatusInsertCardsCreatedPerFrame == 0 && i + 1 < expandedEntries.Count)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
 
         if (cards.Count == 0)
@@ -630,6 +665,7 @@ public partial class CharacterControl : Control
         Skill statusSkill,
         Character target,
         Character source,
+        int count,
         Vector2 scale
     )
     {
@@ -642,7 +678,7 @@ public partial class CharacterControl : Control
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.Disabled = true;
         card.SetSkill(statusSkill);
-        card.EnergyCost.Text = "状态";
+        card.SetEnergyCostText(count > 1 ? $"状态 x{count}" : "状态");
         card.CharacterName.Text = target?.CharacterName ?? source?.CharacterName ?? "状态牌";
         card.HoverHint.Visible = false;
         return card;
@@ -716,6 +752,14 @@ public partial class CharacterControl : Control
         return _cards[index];
     }
 
+    public bool CanAnimateHandCardsFor(PlayerCharacter player)
+    {
+        return player != null
+            && player == _activePlayer
+            && _uiBuilt
+            && IsInsideTree();
+    }
+
     public async Task PlayHandCardExhaustAnimationAsync(
         PlayerCharacter player,
         IReadOnlyCollection<int> indexes,
@@ -752,6 +796,97 @@ public partial class CharacterControl : Control
             return;
 
         await ToSignal(GetTree().CreateTimer(duration), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    public async Task PlayStatusCardExhaustPreviewAnimationAsync(
+        IReadOnlyList<StatusCardExhaustAnimationEntry> entries,
+        float duration = CardPlayVanishDuration
+    )
+    {
+        if (entries == null || entries.Count == 0 || !IsInsideTree())
+            return;
+
+        CanvasLayer overlay = EnsureCardPlayOverlay();
+        if (overlay == null)
+            return;
+
+        var cards = new List<SkillCard>(entries.Count);
+        Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
+        Vector2 scale = GetStatusExhaustPreviewScale(entries.Count, viewportSize);
+        Vector2 cardSize = BattleCardBaseSize * scale;
+        float gap = Math.Max(10f, cardSize.X * 0.12f);
+        int columns = Math.Min(entries.Count, Math.Max(1, Mathf.FloorToInt(viewportSize.X * 0.62f / (cardSize.X + gap))));
+        int rows = Mathf.CeilToInt(entries.Count / (float)columns);
+        float rowGap = Math.Max(10f, cardSize.Y * 0.08f);
+        Vector2 start = viewportSize * 0.5f
+            - new Vector2(
+                columns * cardSize.X + Math.Max(0, columns - 1) * gap,
+                rows * cardSize.Y + Math.Max(0, rows - 1) * rowGap
+            ) * 0.5f;
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            Skill statusSkill = Skill.GetSkill(entries[i].StatusSkillId);
+            if (statusSkill == null)
+                continue;
+
+            SkillCard card = CreateStatusInsertPreviewCard(statusSkill, entries[i].Player, entries[i].Player, 1, scale);
+            if (card == null)
+                continue;
+
+            overlay.AddChild(card);
+            card.RestoreDisplayState();
+            card.Name = "StatusExhaustCard";
+            card.ZIndex = TemporaryCarryCardZIndex + i;
+            card.Modulate = new Color(1f, 1f, 1f, 0f);
+            int row = i / columns;
+            int col = i % columns;
+            card.GlobalPosition = start + new Vector2(col * (cardSize.X + gap), row * (cardSize.Y + rowGap));
+            cards.Add(card);
+        }
+
+        if (cards.Count == 0)
+            return;
+
+        float stagger = Math.Min(0.035f, 0.16f / Math.Max(1, cards.Count - 1));
+        for (int i = 0; i < cards.Count; i++)
+        {
+            SkillCard card = cards[i];
+            float delay = stagger * i;
+            Tween appearTween = card.CreateTween();
+            appearTween.SetParallel(true);
+            appearTween.TweenProperty(card, "modulate:a", 1f, 0.08f).SetDelay(delay);
+            appearTween.TweenProperty(card, "scale", scale * 1.035f, 0.1f).SetDelay(delay);
+
+            Tween exhaustTween = card.CreateTween();
+            exhaustTween.TweenCallback(Callable.From(() => card.PlayExhaustEffect(duration))).SetDelay(delay + 0.08f);
+        }
+
+        await ToSignal(
+            GetTree().CreateTimer(duration + 0.12f + stagger * Math.Max(0, cards.Count - 1)),
+            SceneTreeTimer.SignalName.Timeout
+        );
+
+        foreach (SkillCard card in cards)
+        {
+            if (card != null && GodotObject.IsInstanceValid(card))
+                card.QueueFree();
+        }
+    }
+
+    private static Vector2 GetStatusExhaustPreviewScale(int count, Vector2 viewportSize)
+    {
+        float scaleFactor = 0.42f;
+        if (count > 4)
+            scaleFactor = 0.36f;
+        if (count > 8)
+            scaleFactor = 0.3f;
+
+        Vector2 scale = Vector2.One * scaleFactor;
+        Vector2 cardSize = BattleCardBaseSize * scale;
+        if (cardSize.Y > viewportSize.Y * 0.34f)
+            scale *= (viewportSize.Y * 0.34f) / cardSize.Y;
+        return scale;
     }
 
     public void RefreshCurrentTurnUi()
@@ -1350,6 +1485,12 @@ public partial class CharacterControl : Control
             x += cardSize.X + cardGap;
         }
 
+        bool hasPendingDrawEntry =
+            !instant && _layoutInitialized && _drawEntrySlotIndexes.Count > 0;
+        float existingDrawShiftDelay = hasPendingDrawEntry
+            ? GetLatestDrawEntryDelay() + HandDrawEntryTweenDuration * HandDrawExistingShiftDelayRatio
+            : 0f;
+
         for (int i = 0; i < _cardSlots.Length; i++)
         {
             Control slot = _cardSlots[i];
@@ -1361,13 +1502,29 @@ public partial class CharacterControl : Control
             Vector2 targetPosition = targetPositions.TryGetValue(i, out Vector2 visiblePosition)
                 ? visiblePosition
                 : hiddenPosition;
-            MoveCardSlotTo(i, targetPosition, instant || !_layoutInitialized);
+            bool drawEntry = _drawEntrySlotIndexes.Contains(i);
+            MoveCardSlotTo(
+                i,
+                targetPosition,
+                instant || !_layoutInitialized,
+                drawEntry,
+                !drawEntry
+                    ? existingDrawShiftDelay
+                        + GetExistingHandCardDrawShiftStagger(i, visibleSlotIndexes)
+                    : 0f
+            );
         }
 
         _layoutInitialized = true;
     }
 
-    private void MoveCardSlotTo(int index, Vector2 targetPosition, bool instant)
+    private void MoveCardSlotTo(
+        int index,
+        Vector2 targetPosition,
+        bool instant,
+        bool drawEntry = false,
+        float layoutDelay = 0f
+    )
     {
         if (index < 0 || index >= _cardSlots.Length)
             return;
@@ -1381,6 +1538,8 @@ public partial class CharacterControl : Control
             _cardSlotLayoutTweens[index]?.Kill();
             _cardSlotLayoutTweens[index] = null;
             _cardSlotLayoutTargets[index] = targetPosition;
+            _drawEntrySlotIndexes.Remove(index);
+            _drawEntrySlotOrders.Remove(index);
             slot.Position = targetPosition;
             return;
         }
@@ -1396,20 +1555,72 @@ public partial class CharacterControl : Control
 
         _cardSlotLayoutTweens[index]?.Kill();
 
+        float duration = drawEntry ? HandDrawEntryTweenDuration : HandLayoutTweenDuration;
+        float delay = drawEntry ? GetDrawEntryDelay(index) : 0f;
+        delay = Math.Max(delay, layoutDelay);
+
         Tween tween = slot.CreateTween();
         _cardSlotLayoutTweens[index] = tween;
         _cardSlotLayoutTargets[index] = targetPosition;
+        if (delay > 0f)
+            tween.TweenInterval(delay);
+        if (drawEntry)
+        {
+            tween.TweenCallback(
+                Callable.From(() => StartDrawEntryTrail(index, targetPosition - slot.Position))
+            );
+        }
         tween
-            .TweenProperty(slot, "position", targetPosition, HandLayoutTweenDuration)
-            .SetTrans(Tween.TransitionType.Sine)
-            .SetEase(Tween.EaseType.InOut);
+            .TweenProperty(slot, "position", targetPosition, duration)
+            .SetTrans(drawEntry ? Tween.TransitionType.Cubic : Tween.TransitionType.Sine)
+            .SetEase(drawEntry ? Tween.EaseType.Out : Tween.EaseType.InOut);
         tween.TweenCallback(
             Callable.From(() =>
             {
                 if (_cardSlotLayoutTweens[index] == tween)
                     _cardSlotLayoutTweens[index] = null;
+                if (drawEntry && index >= 0 && index < _cards.Length)
+                    _ = FadeAndHideCardDrawEntryTrailAsync(_cards[index]);
+                _drawEntrySlotIndexes.Remove(index);
+                _drawEntrySlotOrders.Remove(index);
             })
         );
+    }
+
+    private float GetDrawEntryDelay(int index)
+    {
+        return _drawEntrySlotOrders.TryGetValue(index, out int order)
+            ? Math.Max(0, order) * HandDrawEntryStagger
+            : 0f;
+    }
+
+    private float GetLatestDrawEntryDelay()
+    {
+        if (_drawEntrySlotOrders.Count == 0)
+            return 0f;
+
+        return Math.Max(0, _drawEntrySlotOrders.Values.Max()) * HandDrawEntryStagger;
+    }
+
+    private float GetExistingHandCardDrawShiftStagger(int index, int[] visibleSlotIndexes)
+    {
+        if (visibleSlotIndexes == null || visibleSlotIndexes.Length <= 1)
+            return 0f;
+
+        int rightToLeftOrder = 0;
+        for (int i = visibleSlotIndexes.Length - 1; i >= 0; i--)
+        {
+            int slotIndex = visibleSlotIndexes[i];
+            if (_drawEntrySlotIndexes.Contains(slotIndex))
+                continue;
+
+            if (slotIndex == index)
+                return rightToLeftOrder * HandDrawExistingShiftStagger;
+
+            rightToLeftOrder++;
+        }
+
+        return 0f;
     }
 
     private int[] GetVisibleHandSlotIndexes()
@@ -1428,7 +1639,7 @@ public partial class CharacterControl : Control
         return indexes.ToArray();
     }
 
-    private void PrepareNewHandCardSlotForRightEntry(int index)
+    private void PrepareNewHandCardSlotForDrawEntry(int index)
     {
         if (
             index < 0
@@ -1445,31 +1656,123 @@ public partial class CharacterControl : Control
             return;
 
         Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
-        float rightMostX = -1f;
-        float rowY = slot.Position.Y;
-        bool foundVisibleSlot = false;
+        slot.Position = GetDrawPileCardStartPosition(cardSize, slot.Position.Y);
+        _cardSlotLayoutTargets[index] = null;
+        _drawEntrySlotIndexes.Add(index);
+        _drawEntrySlotOrders[index] = _drawEntrySlotOrders.Count;
+    }
 
-        for (int i = 0; i < _cardSlots.Length; i++)
+    private Vector2 GetDrawPileCardStartPosition(Vector2 cardSize, float fallbackY)
+    {
+        if (
+            _drawPileButton != null
+            && GodotObject.IsInstanceValid(_drawPileButton)
+            && _drawPileButton.IsInsideTree()
+            && _cardRow != null
+            && GodotObject.IsInstanceValid(_cardRow)
+        )
         {
-            if (i == index || _cards[i] == null || !_cards[i].Visible)
-                continue;
-
-            Control otherSlot = _cardSlots[i];
-            if (otherSlot == null || !GodotObject.IsInstanceValid(otherSlot))
-                continue;
-
-            if (!foundVisibleSlot)
-            {
-                rowY = otherSlot.Position.Y;
-                foundVisibleSlot = true;
-            }
-            rightMostX = Mathf.Max(rightMostX, otherSlot.Position.X);
+            Rect2 drawPileRect = _drawPileButton.GetGlobalRect();
+            Vector2 drawPileCenter = drawPileRect.Position + drawPileRect.Size * 0.5f;
+            Vector2 cardRowOrigin = _cardRow.GetGlobalRect().Position;
+            return drawPileCenter - cardRowOrigin - cardSize * 0.5f;
         }
 
-        float startX = rightMostX >= 0f
-            ? rightMostX + cardSize.X + HandCardGap
-            : Math.Max(0f, (_cardRow.Size.X - cardSize.X) * 0.5f);
-        slot.Position = new Vector2(startX, rowY);
+        return new Vector2(-cardSize.X * 0.85f, fallbackY);
+    }
+
+    private void StartDrawEntryTrail(int index, Vector2 velocity)
+    {
+        if (index < 0 || index >= _cards.Length)
+            return;
+
+        SkillCard card = _cards[index];
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Node2D target = card.DrawTrailTarget;
+        Line trail = card.DrawTrail;
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || trail == null
+            || !GodotObject.IsInstanceValid(trail)
+        )
+        {
+            return;
+        }
+
+        target.Visible = true;
+        target.Position = BattleCardBaseSize * 0.5f;
+        trail.Target = target;
+        trail.ManualPreviewMode = false;
+        trail.Visible = true;
+        trail.GlobalPosition = Vector2.Zero;
+        trail.Modulate = Colors.White;
+        trail.ClearPoints();
+
+        GpuParticles2D particles = card.DrawTrailParticles;
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Visible = true;
+        particles.Modulate = Colors.White;
+        particles.Emitting = false;
+        particles.Restart();
+        UpdateTrailParticlesRotation(particles, velocity);
+        particles.Emitting = true;
+    }
+
+    private async Task FadeAndHideCardDrawEntryTrailAsync(SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Line trail = card.DrawTrail;
+        GpuParticles2D particles = card.DrawTrailParticles;
+        if (particles != null && GodotObject.IsInstanceValid(particles))
+            particles.Emitting = false;
+
+        if (trail == null || !GodotObject.IsInstanceValid(trail))
+        {
+            HideCardTrailParticles(particles);
+            return;
+        }
+
+        trail.ManualPreviewMode = true;
+        float startWidth = trail.Width;
+        Tween tween = trail.CreateTween();
+        tween.TweenMethod(
+            Callable.From<float>(fade =>
+            {
+                if (trail == null || !GodotObject.IsInstanceValid(trail))
+                    return;
+
+                trail.Modulate = new Color(1f, 1f, 1f, 1f - fade);
+                trail.Width = Mathf.Lerp(startWidth, 0.5f, fade);
+            }),
+            0f,
+            1f,
+            HandDrawTrailFadeDuration
+        );
+        tween.TweenCallback(
+            Callable.From(() =>
+            {
+                if (trail != null && GodotObject.IsInstanceValid(trail))
+                {
+                    trail.Visible = false;
+                    trail.ClearPoints();
+                    trail.Modulate = Colors.White;
+                    trail.Width = startWidth;
+                    if (trail.Target != null && GodotObject.IsInstanceValid(trail.Target))
+                        trail.Target.Visible = false;
+                }
+
+                HideCardTrailParticles(particles);
+            })
+        );
+
+        await ToSignal(tween, Tween.SignalName.Finished);
     }
 
     private void RefreshTurnUi()
@@ -1561,7 +1864,7 @@ public partial class CharacterControl : Control
 
             card.Visible = true;
             if (shouldAnimate)
-                PrepareNewHandCardSlotForRightEntry(i);
+                PrepareNewHandCardSlotForDrawEntry(i);
             if (shouldResetDisplayState)
             {
                 if (shouldAnimate)
@@ -1978,12 +2281,298 @@ public partial class CharacterControl : Control
         card.Button.Disabled = true;
         if (play?.Skill?.ExhaustsAfterUse == true)
             card.PlayExhaustEffect(CardPlayVanishDuration);
+        else if (play?.IsHandCard == true)
+        {
+            await PlayCardDiscardFlyAsync(card);
+            return;
+        }
         else
             card.PressEffect();
         await ToSignal(
             GetTree().CreateTimer(CardPlayVanishDuration),
             SceneTreeTimer.SignalName.Timeout
         );
+    }
+
+    private async Task PlayCardDiscardFlyAsync(SkillCard card)
+    {
+        if (
+            card == null
+            || !GodotObject.IsInstanceValid(card)
+            || _discardPileButton == null
+            || !GodotObject.IsInstanceValid(_discardPileButton)
+            || !_discardPileButton.IsInsideTree()
+        )
+        {
+            card?.PressEffect();
+            await ToSignal(
+                GetTree().CreateTimer(CardPlayVanishDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+            return;
+        }
+
+        Rect2 startRect = card.GetGlobalRect();
+        Rect2 discardRect = _discardPileButton.GetGlobalRect();
+        Vector2 startCenter = startRect.Position + startRect.Size * 0.5f;
+        Vector2 endCenter = discardRect.Position + discardRect.Size * 0.5f;
+        if (startCenter.DistanceSquaredTo(endCenter) < 16f)
+        {
+            card.PressEffect();
+            await ToSignal(
+                GetTree().CreateTimer(CardPlayVanishDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+            return;
+        }
+
+        Vector2 squareScale = GetCardDiscardSquareScale();
+        card.PivotOffset = BattleCardBaseSize * 0.5f;
+        card.PressEffectPartial(
+            centerVanish: CardPlayDiscardCenterVanishBeforeFly,
+            glowMultiplier: 1.35f,
+            duration: CardPlayDiscardCompressDuration
+        );
+
+        Tween compressTween = card.CreateTween();
+        compressTween.SetParallel(true);
+        compressTween
+            .TweenProperty(card, "scale", squareScale, CardPlayDiscardCompressDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        compressTween
+            .TweenMethod(
+                Callable.From<float>(_ =>
+                {
+                    if (card == null || !GodotObject.IsInstanceValid(card))
+                        return;
+
+                    SetCardPivotCenterAt(card, startCenter);
+                }),
+                0f,
+                1f,
+                CardPlayDiscardCompressDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        compressTween.SetParallel(false);
+        await ToSignal(compressTween, Tween.SignalName.Finished);
+
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Vector2 flyStartCenter = startCenter;
+        PrepareCardDiscardTrail(card, out Line trail, out GpuParticles2D particles);
+        Vector2 targetScale = squareScale * CardPlayDiscardTargetScaleMultiplier;
+        Vector2 control = GetRandomCardDiscardControlPoint(flyStartCenter, endCenter);
+        Vector2 initialVelocity = GetQuadraticBezierVelocity(flyStartCenter, control, endCenter, 0.01f);
+        card.Rotation = GetRotationWithTopFacingVelocity(initialVelocity);
+        UpdateTrailParticlesRotation(particles, initialVelocity);
+
+        Tween tween = card.CreateTween();
+        tween.SetParallel(true);
+        tween
+            .TweenMethod(
+                Callable.From<float>(t =>
+                {
+                    if (card == null || !GodotObject.IsInstanceValid(card))
+                        return;
+
+                    Vector2 center = QuadraticBezier(flyStartCenter, control, endCenter, t);
+                    Vector2 velocity = GetQuadraticBezierVelocity(
+                        flyStartCenter,
+                        control,
+                        endCenter,
+                        t
+                    );
+                    SetCardPivotCenterAt(card, center);
+                    card.Rotation = GetRotationWithTopFacingVelocity(velocity);
+                    UpdateTrailParticlesRotation(particles, velocity);
+                }),
+                0f,
+                1f,
+                CardPlayDiscardFlyDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        tween
+            .TweenProperty(card, "scale", targetScale, CardPlayDiscardFlyDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        tween.SetParallel(false);
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+        await FadeAndHideCardDiscardTrailAsync(trail, particles);
+    }
+
+    private static void SetCardPivotCenterAt(SkillCard card, Vector2 center)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        card.GlobalPosition = center - card.PivotOffset;
+    }
+
+    private static Vector2 GetCardDiscardSquareScale()
+    {
+        return new Vector2(
+            CardPlayDiscardSquareSize / BattleCardBaseSize.X,
+            CardPlayDiscardSquareSize / BattleCardBaseSize.Y
+        );
+    }
+
+    private static void PrepareCardDiscardTrail(
+        SkillCard card,
+        out Line trail,
+        out GpuParticles2D particles
+    )
+    {
+        trail = null;
+        particles = null;
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Node2D target = card.DiscardTrailTarget;
+        trail = card.DiscardTrail;
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || trail == null
+            || !GodotObject.IsInstanceValid(trail)
+        )
+        {
+            return;
+        }
+
+        target.Visible = true;
+        target.Position = card.PivotOffset;
+        trail.Target = target;
+        trail.ManualPreviewMode = false;
+        trail.Visible = true;
+        trail.GlobalPosition = Vector2.Zero;
+        trail.Modulate = Colors.White;
+        trail.ClearPoints();
+
+        particles = card.DiscardTrailParticles;
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Visible = true;
+        particles.Modulate = Colors.White;
+        particles.Emitting = false;
+        particles.Restart();
+        particles.Emitting = true;
+    }
+
+    private static void UpdateTrailParticlesRotation(GpuParticles2D particles, Vector2 velocity)
+    {
+        if (
+            particles == null
+            || !GodotObject.IsInstanceValid(particles)
+            || velocity.LengthSquared() < 0.001f
+        )
+        {
+            return;
+        }
+
+        particles.GlobalRotation = velocity.Angle() + Mathf.Pi;
+    }
+
+    private async Task FadeAndHideCardDiscardTrailAsync(Line trail, GpuParticles2D particles)
+    {
+        if (particles != null && GodotObject.IsInstanceValid(particles))
+            particles.Emitting = false;
+
+        if (trail == null || !GodotObject.IsInstanceValid(trail))
+        {
+            HideCardTrailParticles(particles);
+            return;
+        }
+
+        trail.ManualPreviewMode = true;
+        float startWidth = trail.Width;
+        Tween tween = trail.CreateTween();
+        tween.TweenMethod(
+            Callable.From<float>(fade =>
+            {
+                if (trail == null || !GodotObject.IsInstanceValid(trail))
+                    return;
+
+                trail.Modulate = new Color(1f, 1f, 1f, 1f - fade);
+                trail.Width = Mathf.Lerp(startWidth, 0.5f, fade);
+            }),
+            0f,
+            1f,
+            CardPlayDiscardTrailFadeDuration
+        );
+        tween.TweenCallback(
+            Callable.From(() =>
+            {
+                if (trail != null && GodotObject.IsInstanceValid(trail))
+                {
+                    trail.Visible = false;
+                    trail.ClearPoints();
+                    trail.Modulate = Colors.White;
+                    trail.Width = startWidth;
+                    if (trail.Target != null && GodotObject.IsInstanceValid(trail.Target))
+                        trail.Target.Visible = false;
+                }
+
+                HideCardTrailParticles(particles);
+            })
+        );
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+    }
+
+    private static void HideCardTrailParticles(GpuParticles2D particles)
+    {
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Emitting = false;
+        particles.Visible = false;
+        particles.Modulate = Colors.White;
+    }
+
+    private static Vector2 GetRandomCardDiscardControlPoint(Vector2 start, Vector2 end)
+    {
+        Vector2 mid = (start + end) * 0.5f;
+        float distance = start.DistanceTo(end);
+        float lift =
+            Math.Min(330f, Math.Max(120f, distance * 0.28f))
+            + (float)GD.RandRange(-28f, 52f);
+        float side = end.X >= start.X ? 1f : -1f;
+        float sideOffset =
+            side * Math.Min(190f, distance * 0.16f)
+            + (float)GD.RandRange(-90f, 90f);
+        return mid + new Vector2(sideOffset, -lift);
+    }
+
+    private static Vector2 QuadraticBezier(Vector2 start, Vector2 control, Vector2 end, float t)
+    {
+        Vector2 a = start.Lerp(control, t);
+        Vector2 b = control.Lerp(end, t);
+        return a.Lerp(b, t);
+    }
+
+    private static Vector2 GetQuadraticBezierVelocity(
+        Vector2 start,
+        Vector2 control,
+        Vector2 end,
+        float t
+    )
+    {
+        t = Mathf.Clamp(t, 0f, 1f);
+        return 2f * ((1f - t) * (control - start) + t * (end - control));
+    }
+
+    private static float GetRotationWithTopFacingVelocity(Vector2 velocity)
+    {
+        if (velocity.LengthSquared() < 0.001f)
+            return 0f;
+
+        return velocity.Angle() + Mathf.Pi * 0.5f;
     }
 
     private SkillCard CreateHandPlayCard(Character actor, Skill skill, SkillCard sourceCard)
@@ -2043,7 +2632,7 @@ public partial class CharacterControl : Control
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.Disabled = true;
         card.SetSkill(skill);
-        card.EnergyCost.Text = "耗能:0";
+        card.SetEnergyCostCostText("0");
         card.CharacterName.Text = $"{actor.CharacterName} | 连携";
         return card;
     }
@@ -2076,7 +2665,7 @@ public partial class CharacterControl : Control
         card.Visible = true;
         card.ResetState();
         card.SetSkill(play.Skill);
-        card.EnergyCost.Text = "耗能:0";
+        card.SetEnergyCostCostText("0");
         card.CharacterName.Text = $"{play.Actor.CharacterName} | 连携";
         card.Button.Disabled = true;
         card.HoverHint.Visible = false;
@@ -2547,7 +3136,9 @@ public partial class CharacterControl : Control
             && GodotObject.IsInstanceValid(_manualTargetPickerPlayedCard)
         )
         {
-            _manualTargetPickerPlayedCard.Visible = !hidden;
+            UserSettings.EnsureLoaded();
+            _manualTargetPickerPlayedCard.Visible =
+                !hidden || UserSettings.KeepManualTargetCardVisibleWhenHidden;
         }
     }
 

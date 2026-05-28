@@ -33,6 +33,19 @@ public partial class Battle : Node2D
         public readonly List<SkillID> Exhausted = new();
     }
 
+    private readonly struct HandStatusExhaustInfo
+    {
+        public HandStatusExhaustInfo(List<int> indexes, List<SkillID> skillIds)
+        {
+            Indexes = indexes;
+            SkillIds = skillIds;
+        }
+
+        public List<int> Indexes { get; }
+        public List<SkillID> SkillIds { get; }
+        public bool HasAny => Indexes?.Count > 0;
+    }
+
     [Signal]
     public delegate void NextEventHandler(Character character);
 
@@ -502,7 +515,7 @@ public partial class Battle : Node2D
             return;
 
         SkillID skillId = skill.SkillId.Value;
-        if (skill.ExhaustsAfterUse || (atTurnEnd && skill.ExhaustsAtTurnEndInHand))
+        if ((!atTurnEnd && skill.ExhaustsAfterUse) || (atTurnEnd && skill.ExhaustsAtTurnEndInHand))
             piles.Exhausted.Add(skillId);
         else
             piles.DiscardPile.Add(skillId);
@@ -513,6 +526,7 @@ public partial class Battle : Node2D
     public async Task ExhaustAllPlayerBattleStatusCardsAsync(Character source = null)
     {
         var handStatusIndexes = new Dictionary<PlayerCharacter, List<int>>();
+        var previewEntries = new List<CharacterControl.StatusCardExhaustAnimationEntry>();
 
         foreach (PlayerCharacter player in PlayersList.ToArray())
         {
@@ -524,14 +538,30 @@ public partial class Battle : Node2D
                 continue;
 
             bool changed = false;
-            changed |= MoveStatusCardsToExhausted(piles.DrawPile, piles.Exhausted);
-            changed |= MoveStatusCardsToExhausted(piles.DiscardPile, piles.Exhausted);
+            changed |= MoveStatusCardsToExhausted(piles.DrawPile, piles.Exhausted, player, previewEntries);
+            changed |= MoveStatusCardsToExhausted(piles.DiscardPile, piles.Exhausted, player, previewEntries);
 
-            List<int> indexes = CollectHandStatusCardIndexes(player, piles);
-            if (indexes.Count > 0)
+            HandStatusExhaustInfo handInfo = CollectHandStatusCardIndexes(player, piles);
+            if (handInfo.HasAny)
             {
                 changed = true;
-                handStatusIndexes[player] = indexes;
+                if (
+                    CharacterControl != null
+                    && GodotObject.IsInstanceValid(CharacterControl)
+                    && CharacterControl.CanAnimateHandCardsFor(player)
+                )
+                {
+                    handStatusIndexes[player] = handInfo.Indexes;
+                }
+                else
+                {
+                    foreach (SkillID skillId in handInfo.SkillIds)
+                    {
+                        previewEntries.Add(
+                            new CharacterControl.StatusCardExhaustAnimationEntry(player, skillId)
+                        );
+                    }
+                }
             }
 
             if (changed)
@@ -539,16 +569,21 @@ public partial class Battle : Node2D
         }
 
         if (
-            handStatusIndexes.Count > 0
+            (handStatusIndexes.Count > 0 || previewEntries.Count > 0)
             && CharacterControl != null
             && GodotObject.IsInstanceValid(CharacterControl)
         )
         {
-            await Task.WhenAll(
+            var animationTasks = new List<Task>();
+            animationTasks.AddRange(
                 handStatusIndexes.Select(entry =>
                     CharacterControl.PlayHandCardExhaustAnimationAsync(entry.Key, entry.Value)
                 )
             );
+            if (previewEntries.Count > 0)
+                animationTasks.Add(CharacterControl.PlayStatusCardExhaustPreviewAnimationAsync(previewEntries));
+
+            await Task.WhenAll(animationTasks);
         }
 
         foreach (var entry in handStatusIndexes)
@@ -564,14 +599,15 @@ public partial class Battle : Node2D
         CharacterControl?.RefreshCurrentTurnUi();
     }
 
-    private static List<int> CollectHandStatusCardIndexes(
+    private static HandStatusExhaustInfo CollectHandStatusCardIndexes(
         PlayerCharacter player,
         PlayerBattleCardPiles piles
     )
     {
         var indexes = new List<int>();
+        var skillIds = new List<SkillID>();
         if (player?.Skills == null || piles == null)
-            return indexes;
+            return new HandStatusExhaustInfo(indexes, skillIds);
 
         for (int i = 0; i < player.Skills.Length; i++)
         {
@@ -585,12 +621,18 @@ public partial class Battle : Node2D
 
             piles.Exhausted.Add(skillId);
             indexes.Add(i);
+            skillIds.Add(skillId);
         }
 
-        return indexes;
+        return new HandStatusExhaustInfo(indexes, skillIds);
     }
 
-    private static bool MoveStatusCardsToExhausted(List<SkillID> source, List<SkillID> exhausted)
+    private static bool MoveStatusCardsToExhausted(
+        List<SkillID> source,
+        List<SkillID> exhausted,
+        PlayerCharacter player = null,
+        List<CharacterControl.StatusCardExhaustAnimationEntry> previewEntries = null
+    )
     {
         if (source == null || exhausted == null || source.Count == 0)
             return false;
@@ -604,6 +646,8 @@ public partial class Battle : Node2D
 
             source.RemoveAt(i);
             exhausted.Add(skillId);
+            if (player != null)
+                previewEntries?.Add(new CharacterControl.StatusCardExhaustAnimationEntry(player, skillId));
             movedAny = true;
         }
 
@@ -1073,6 +1117,9 @@ public partial class Battle : Node2D
 
     public void RefreshEnemyAttackPreviewFromSettings() => RefreshEnemyAttackPreview();
 
+    public void RefreshManualTargetCardVisibilityFromSettings() =>
+        CharacterControl?.RefreshManualTargetCardVisibilityFromSettings();
+
     public void RefreshEnemyIntentionPreviews()
     {
         RefreshEnemyIntentionDamageSummaries();
@@ -1104,6 +1151,15 @@ public partial class Battle : Node2D
         {
             if (character != null && GodotObject.IsInstanceValid(character))
                 character.RefreshSkillTooltipTextFromSettings();
+        }
+    }
+
+    public void RefreshEnemySkillVisibilityFromSettings()
+    {
+        foreach (var enemy in GetTeamCharacters(isPlayer: false, includeSummons: true))
+        {
+            if (enemy != null && GodotObject.IsInstanceValid(enemy))
+                enemy.RefreshSkillTooltipTextFromSettings();
         }
     }
 
@@ -2003,7 +2059,11 @@ public partial class Battle : Node2D
         character.ZIndex = row;
     }
 
-    public T AddSummon<T>(T summon, Character summoner, int slotSelector = 0)
+    public T AddSummon<T>(
+        T summon,
+        Character summoner,
+        SummonPositionMode positionMode = SummonPositionMode.Random
+    )
         where T : SummonCharacter
     {
         if (summon == null || summoner == null || !GodotObject.IsInstanceValid(summoner))
@@ -2011,7 +2071,7 @@ public partial class Battle : Node2D
 
         int slot = GetAvailableFormationSlot(
             summoner.IsPlayer,
-            slotSelector,
+            positionMode,
             summoner.PositionIndex
         );
         if (slot < 0)
@@ -2089,7 +2149,7 @@ public partial class Battle : Node2D
 
     public int GetAvailableFormationSlot(
         bool isPlayer,
-        int slotSelector = 0,
+        SummonPositionMode positionMode = SummonPositionMode.Random,
         int anchorPositionIndex = 0
     )
     {
@@ -2106,16 +2166,44 @@ public partial class Battle : Node2D
         if (emptySlots.Length == 0)
             return -1;
 
-        if (slotSelector == 0)
-            return emptySlots[0];
+        Random random = BattleIntentionRandom ?? _carrySkillRandom ?? new Random();
+        if (positionMode == SummonPositionMode.Random)
+            return emptySlots[random.Next(emptySlots.Length)];
 
-        if (slotSelector == MaxFormationSlots)
-            return emptySlots[^1];
+        if (positionMode == SummonPositionMode.RandomHasEnemy)
+            return PickRandomSlotInHostileRow(isPlayer, emptySlots, random);
 
         if (anchorPositionIndex <= 0)
             return -1;
 
+        int slotSelector = positionMode switch
+        {
+            SummonPositionMode.Next => 1,
+            SummonPositionMode.Previous => -1,
+            _ => 0,
+        };
+
         return SelectRelativeEmptySlot(slotSelector, anchorPositionIndex, occupied);
+    }
+
+    private int PickRandomSlotInHostileRow(bool isPlayer, int[] emptySlots, Random random)
+    {
+        var hostileRows = GetTeamCharacters(!isPlayer, includeSummons: false)
+            .Where(x =>
+                x != null
+                && GodotObject.IsInstanceValid(x)
+                && x.State != Character.CharacterState.Dying
+                && x.PositionIndex > 0
+            )
+            .Select(x => (x.PositionIndex - 1) % 3)
+            .ToHashSet();
+
+        int[] prioritizedSlots = emptySlots
+            .Where(slot => hostileRows.Contains((slot - 1) % 3))
+            .ToArray();
+
+        int[] pickPool = prioritizedSlots.Length > 0 ? prioritizedSlots : emptySlots;
+        return pickPool[random.Next(pickPool.Length)];
     }
 
     private static int SelectRelativeEmptySlot(
@@ -2209,9 +2297,14 @@ public partial class Battle : Node2D
             )
             .ToArray();
 
+        TriggerSanctuaryTurnEndBuffs(actingCharacter, targets);
+
         for (int i = 0; i < targets.Length; i++)
         {
             Character target = targets[i];
+            if (target == null || target.IsPlayer != actingCharacter.IsPlayer)
+                continue;
+
             EndActionBuff disaster = target.EndActionBuffs?.FirstOrDefault(x =>
                 x != null && x.ThisBuffName == Buff.BuffName.Disaster && x.Stack > 0
             );
@@ -2226,7 +2319,6 @@ public partial class Battle : Node2D
                 return;
         }
 
-        TriggerSanctuaryTurnEndBuffs(actingCharacter, targets);
         await TriggerVoidTurnEndBuffs(actingCharacter, targets);
     }
 
@@ -3045,6 +3137,7 @@ public partial class Battle : Node2D
             ItemID.ElectromagneticInterference,
             ItemID.SpaceOscillation,
             ItemID.StreamingTransmission,
+            ItemID.Battery,
         ];
         reward.AddItemRewardEntry(PickRandom(itemPool, rng));
     }

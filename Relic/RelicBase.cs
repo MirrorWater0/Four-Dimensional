@@ -9,6 +9,7 @@ public partial class Relic
     private const int BlessingDamage = 20;
     private const int MatrixShieldBlock = 15;
     private const int BackpackExtraDrawStacks = 1;
+    private const int BackpackTargetCount = 3;
     private const int EnergyTankEnergy = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
@@ -455,7 +456,7 @@ public partial class Relic
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
             RelicID.MatrixShield => $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。",
-            RelicID.Backpack => $"战斗开始时前2位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
+            RelicID.Backpack => $"战斗开始时前{BackpackTargetCount}位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
             RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
             RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
@@ -632,7 +633,7 @@ public partial class Relic
         if (battle?.PlayersList == null || stacks <= 0)
             return;
 
-        int targetCount = Math.Min(2, battle.PlayersList.Count);
+        int targetCount = Math.Min(BackpackTargetCount, battle.PlayersList.Count);
         for (int i = 0; i < targetCount; i++)
         {
             var player = battle.PlayersList[i];

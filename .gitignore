@@ -4,3 +4,23 @@
 .aider*
 godot-docs-4.6/
 /tmp/
+
+# C# / .NET
+bin/
+obj/
+*.sln.DotSettings*
+
+# IDE
+.vs/
+.vscode/settings.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary / backup files
+*.tmp
+*~RF*.TMP
+*.bak
+*.orig

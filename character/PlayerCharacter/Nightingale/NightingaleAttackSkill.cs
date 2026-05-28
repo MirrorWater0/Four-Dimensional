@@ -101,6 +101,7 @@ public partial class BreakStrike : Skill
 
 public partial class StasisBlade : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
     private const int SpeedDown = 4;
 
@@ -124,6 +125,7 @@ public partial class StasisBlade : Skill
 
 public partial class ContinuousPierce : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
     private const int SelfDamage = 7;
 
@@ -155,6 +157,7 @@ public partial class ContinuousPierce : Skill
 
 public partial class RuinBlade : Skill
 {
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 4;
 
     public RuinBlade()

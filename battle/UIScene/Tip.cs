@@ -63,12 +63,12 @@ public partial class Tip : Control
     private readonly struct BuffIconPlacement
     {
         public readonly Buff.BuffName BuffName;
-        public readonly int LineIndex;
+        public readonly int CharacterIndex;
 
-        public BuffIconPlacement(Buff.BuffName buffName, int lineIndex)
+        public BuffIconPlacement(Buff.BuffName buffName, int characterIndex)
         {
             BuffName = buffName;
-            LineIndex = lineIndex;
+            CharacterIndex = characterIndex;
         }
     }
 
@@ -369,17 +369,9 @@ public partial class Tip : Control
             return string.Empty;
 
         var cleaned = new StringBuilder(text.Length);
-        int lineIndex = 0;
+        int visibleCharacterIndex = 0;
         for (int i = 0; i < text.Length;)
         {
-            if (text[i] == '\n')
-            {
-                cleaned.Append(text[i]);
-                i++;
-                lineIndex++;
-                continue;
-            }
-
             if (text.IndexOf(BuffIconTagPrefix, i, StringComparison.Ordinal) == i)
             {
                 int nameStart = i + BuffIconTagPrefix.Length;
@@ -388,18 +380,44 @@ public partial class Tip : Control
                 {
                     string nameText = text.Substring(nameStart, tagEnd - nameStart);
                     if (Enum.TryParse(nameText, out Buff.BuffName buffName))
-                        _buffIconPlacements.Add(new BuffIconPlacement(buffName, lineIndex));
+                        _buffIconPlacements.Add(
+                            new BuffIconPlacement(buffName, visibleCharacterIndex)
+                        );
 
                     i = tagEnd + BuffIconTagSuffix.Length;
                     continue;
                 }
             }
 
+            if (TryReadBbcodeTag(text, i, out int tagLength))
+            {
+                cleaned.Append(text, i, tagLength);
+                i += tagLength;
+                continue;
+            }
+
             cleaned.Append(text[i]);
+            visibleCharacterIndex++;
             i++;
         }
 
         return cleaned.ToString();
+    }
+
+    private static bool TryReadBbcodeTag(string text, int startIndex, out int tagLength)
+    {
+        tagLength = 0;
+        if (string.IsNullOrEmpty(text) || startIndex < 0 || startIndex >= text.Length)
+            return false;
+        if (text[startIndex] != '[')
+            return false;
+
+        int tagEnd = text.IndexOf(']', startIndex + 1);
+        if (tagEnd <= startIndex)
+            return false;
+
+        tagLength = tagEnd - startIndex + 1;
+        return true;
     }
 
     private void RebuildBuffTooltipIcons()
@@ -411,6 +429,7 @@ public partial class Tip : Control
             if (icon == null)
                 continue;
 
+            icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
             icon.Visible = false;
             icon.ZIndex = 1;
             icon.Size = new Vector2(BuffTooltipIconSourceSize, BuffTooltipIconSourceSize);
@@ -425,10 +444,16 @@ public partial class Tip : Control
         for (int i = 0; i < _buffTooltipIcons.Count; i++)
         {
             var icon = _buffTooltipIcons[i];
-            if (icon != null && GodotObject.IsInstanceValid(icon))
+            if (IsUsableBuffTooltipIcon(icon))
             {
-                icon.Visible = false;
-                icon.QueueFree();
+                try
+                {
+                    icon.Visible = false;
+                    icon.QueueFree();
+                }
+                catch (ObjectDisposedException)
+                {
+                }
             }
         }
 
@@ -440,18 +465,47 @@ public partial class Tip : Control
         if (_buffTooltipIcons.Count == 0 || Description == null)
             return;
 
-        float lineHeight = UserSettings.ScaleTextFontSize(NormalFontSize) + 4f;
         float x = Description.Position.X + 1f;
         int count = Math.Min(_buffTooltipIcons.Count, _buffIconPlacements.Count);
+        int totalCharacterCount = Math.Max(Description.GetTotalCharacterCount(), 1);
+        int totalLineCount = Math.Max(Description.GetLineCount(), 1);
         for (int i = 0; i < count; i++)
         {
             var icon = _buffTooltipIcons[i];
-            if (icon == null || !GodotObject.IsInstanceValid(icon))
+            if (!IsUsableBuffTooltipIcon(icon))
                 continue;
 
-            float y = Description.Position.Y + _buffIconPlacements[i].LineIndex * lineHeight + 6f;
-            icon.Position = new Vector2(x, y);
-            icon.Visible = true;
+            try
+            {
+                int characterIndex = Math.Clamp(
+                    _buffIconPlacements[i].CharacterIndex,
+                    0,
+                    totalCharacterCount - 1
+                );
+                int lineIndex = Math.Clamp(Description.GetCharacterLine(characterIndex), 0, totalLineCount - 1);
+                float lineHeight = Math.Max(Description.GetLineHeight(lineIndex), BuffTooltipIconSize);
+                float y =
+                    Description.Position.Y
+                    + Description.GetLineOffset(lineIndex)
+                    + (lineHeight - BuffTooltipIconSize) * 0.5f;
+                icon.Position = new Vector2(x, y);
+                icon.Visible = true;
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+    }
+
+    private static bool IsUsableBuffTooltipIcon(ColorRect icon)
+    {
+        try
+        {
+            return icon != null && GodotObject.IsInstanceValid(icon);
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
         }
     }
 

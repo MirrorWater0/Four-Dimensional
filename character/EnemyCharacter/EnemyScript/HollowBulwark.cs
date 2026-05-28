@@ -40,7 +40,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
 
         MaxLife = 6;
         Power = 3;
-        Survivability = 20;
+        Survivability = 18;
         Speed = 6;
         SkillIDs =
         [
@@ -111,7 +111,7 @@ public partial class HollowBulwarkSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(16),
-            ModifyPropertyStep(PropertyType.Survivability, 5),
+            ModifyPropertyStep(PropertyType.Survivability, 4),
             CustomStep(
                 _ =>
                 {

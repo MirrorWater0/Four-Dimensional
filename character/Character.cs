@@ -454,11 +454,16 @@ public partial class Character : Node2D
             return sb.ToString().TrimEnd();
         }
 
+        UserSettings.EnsureLoaded();
+        if (UserSettings.HideEnemySkills)
+            return TrimTrailingTooltipSeparator(sb);
+
         if (Skills == null || Skills.Length == 0)
-            return sb.ToString().TrimEnd();
+            return TrimTrailingTooltipSeparator(sb);
 
         const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
+        const string energyCostNumberColor = "#ffd36b";
         int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
 
         var validSkills = Skills.Where(x => x != null).ToArray();
@@ -475,7 +480,7 @@ public partial class Character : Node2D
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
             );
             sb.Append(
-                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", skill.CardEnergyCostText))}\n"
+                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", $"[color={energyCostNumberColor}]{skill.CardEnergyCostText}[/color]"))}\n"
             );
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
@@ -489,6 +494,15 @@ public partial class Character : Node2D
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static string TrimTrailingTooltipSeparator(StringBuilder sb)
+    {
+        string text = sb.ToString().TrimEnd();
+        const string separator = "[hr]";
+        if (text.EndsWith(separator, StringComparison.Ordinal))
+            text = text[..^separator.Length].TrimEnd();
+        return text;
     }
 
     private static void AppendPlayerBattleCardPiles(StringBuilder sb, PlayerCharacter player)
@@ -1311,6 +1325,8 @@ public partial class Character : Node2D
         Energy += num;
         EnergeIconLabel.Text = Energy.ToString();
         InvalidateSkillTooltipCache();
+        if (IsPlayer)
+            BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
         var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         Effect.Position = new Vector2(0, -50);
         AddChild(Effect);
@@ -1512,7 +1528,12 @@ public partial class Character : Node2D
     public virtual void OnTurnEnd()
     {
         if (IsPlayer && Energy > 0)
-            UpdataEnergy(-Energy, this);
+        {
+            int energyLossReduction = SpecialBuff.GetEnergyStorageReduction(this);
+            int energyLoss = Math.Max(0, Energy - energyLossReduction);
+            if (energyLoss > 0)
+                UpdataEnergy(-energyLoss, this);
+        }
     }
 
     private void StopTween(ref Tween tween)

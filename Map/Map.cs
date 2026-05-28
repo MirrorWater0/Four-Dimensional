@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Godot;
 
@@ -84,10 +85,19 @@ public partial class Map : Control
     private DebugConsole DebugConsoleNode => field ??= GetNodeOrNull<DebugConsole>("DebugConsole");
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
+    public bool IsMapPeekModeActive => _mapPeekModeActive;
     private bool _regionLabelInitialized;
     private bool _lastRegionTwoUnlocked;
     private ulong _blockingOverlayFrame = ulong.MaxValue;
     private bool _blockingOverlayResult;
+    private bool _mapPeekModeActive;
+    private readonly List<VisibilitySnapshot> _mapPeekHiddenNodes = new();
+
+    private sealed class VisibilitySnapshot
+    {
+        public Node Node;
+        public bool Visible;
+    }
 
     public override void _Process(double delta)
     {
@@ -301,6 +311,100 @@ public partial class Map : Control
 
     }
 
+    public override void _ExitTree()
+    {
+        ExitMapPeekMode();
+    }
+
+    public void ToggleMapPeekMode()
+    {
+        if (_mapPeekModeActive)
+            ExitMapPeekMode();
+        else
+            EnterMapPeekMode();
+    }
+
+    public void EnterMapPeekMode()
+    {
+        if (_mapPeekModeActive)
+            return;
+
+        _mapPeekModeActive = true;
+        _mapPeekHiddenNodes.Clear();
+
+        HideForMapPeek(SiteUiLayer);
+        HideForMapPeek(FrontUiLayer);
+        HideForMapPeek(MenuLayer);
+        HideRootCanvasLayersForMapPeek();
+
+        _isDrag = false;
+        _isDragActive = false;
+        _isWheelPanning = false;
+        _dragVelocity = Vector2.Zero;
+        _velocity = Vector2.Zero;
+        _blockingOverlayFrame = ulong.MaxValue;
+    }
+
+    public void ExitMapPeekMode()
+    {
+        if (!_mapPeekModeActive)
+            return;
+
+        for (int i = _mapPeekHiddenNodes.Count - 1; i >= 0; i--)
+        {
+            var snapshot = _mapPeekHiddenNodes[i];
+            if (
+                snapshot?.Node == null
+                || !GodotObject.IsInstanceValid(snapshot.Node)
+                || snapshot.Node.IsQueuedForDeletion()
+            )
+            {
+                continue;
+            }
+
+            snapshot.Node.Set("visible", snapshot.Visible);
+        }
+
+        _mapPeekHiddenNodes.Clear();
+        _mapPeekModeActive = false;
+        _blockingOverlayFrame = ulong.MaxValue;
+    }
+
+    private void HideRootCanvasLayersForMapPeek()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is CanvasLayer layer && !ShouldPreserveRootLayerForMapPeek(layer))
+                HideForMapPeek(layer);
+        }
+    }
+
+    private static bool ShouldPreserveRootLayerForMapPeek(CanvasLayer layer)
+    {
+        return layer != null
+            && (
+                string.Equals(layer.Name, "MouseTrail", StringComparison.Ordinal)
+                || string.Equals(layer.Name, "TipLayer", StringComparison.Ordinal)
+            );
+    }
+
+    private void HideForMapPeek(Node node)
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node) || node.IsQueuedForDeletion())
+            return;
+
+        bool visible = node.Get("visible").AsBool();
+        if (!visible)
+            return;
+
+        _mapPeekHiddenNodes.Add(new VisibilitySnapshot { Node = node, Visible = visible });
+        node.Set("visible", false);
+    }
+
     private void ConnectNodeTypeLegend(Control legend)
     {
         if (legend == null)
@@ -444,7 +548,7 @@ public partial class Map : Control
 
     public bool IsMapInteractionBlocked()
     {
-        return HasBlockingOverlay();
+        return _mapPeekModeActive || HasBlockingOverlay();
     }
 
     private bool HasVisibleBattleOverlay()

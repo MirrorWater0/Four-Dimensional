@@ -24,6 +24,13 @@ public partial class PlayerResourceState : CanvasLayer
     private StyleBoxFlat _coreEnergyBackgroundStyle;
     private StyleBoxFlat _coreEnergyFillStyle;
     private int _lastTransitionEnergy = -1;
+    private readonly List<ResourceVisibilitySnapshot> _mapPeekHiddenResources = new();
+
+    private sealed class ResourceVisibilitySnapshot
+    {
+        public CanvasItem Item;
+        public bool Visible;
+    }
 
     public int ElectricityCoin
     {
@@ -102,6 +109,17 @@ public partial class PlayerResourceState : CanvasLayer
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = GetNodeOrNull<Button>("MenuButton");
+    private Button MapPeekButton => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = GetNodeOrNull<Button>("MapPeekButton");
+    private ColorRect MapPeekIcon => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = MapPeekButton?.GetNodeOrNull<ColorRect>("Icon");
+    private Map MapNode => field is not null && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = GetNodeOrNull<Map>("/root/Map");
     private Label TimerValueLabel => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
@@ -137,11 +155,33 @@ public partial class PlayerResourceState : CanvasLayer
         RefreshStatusPanel();
         if (MenuButton != null)
             MenuButton.Pressed += OnMenuButtonPressed;
+        if (MapPeekButton != null)
+        {
+            MapPeekButton.Pressed += OnMapPeekButtonPressed;
+            RefreshMapPeekButton();
+        }
         if (SessionTimer != null)
         {
             SessionTimer.Timeout += OnSessionTimerTimeout;
             SessionTimer.Start();
         }
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (
+            MapNode?.IsMapPeekModeActive != true
+            || @event is not InputEventKey keyEvent
+            || !keyEvent.Pressed
+            || keyEvent.Echo
+            || keyEvent.Keycode != Key.Escape
+        )
+        {
+            return;
+        }
+
+        GetViewport().SetInputAsHandled();
+        CloseMapPeekMode();
     }
 
     public void InitRelic()
@@ -233,6 +273,102 @@ public partial class PlayerResourceState : CanvasLayer
     private void OnMenuButtonPressed()
     {
         MenuOverlay?.Toggle();
+    }
+
+    private void OnMapPeekButtonPressed()
+    {
+        var map = MapNode;
+        if (map == null || !GodotObject.IsInstanceValid(map))
+            return;
+
+        if (map.IsMapPeekModeActive)
+            CloseMapPeekMode();
+        else
+            OpenMapPeekMode();
+    }
+
+    private void OpenMapPeekMode()
+    {
+        MapNode?.EnterMapPeekMode();
+        SetResourceChromeVisibleForMapPeek(false);
+        RefreshMapPeekButton();
+    }
+
+    private void CloseMapPeekMode()
+    {
+        MapNode?.ExitMapPeekMode();
+        SetResourceChromeVisibleForMapPeek(true);
+        RefreshMapPeekButton();
+    }
+
+    private void RefreshMapPeekButton()
+    {
+        if (MapPeekButton == null)
+            return;
+
+        bool active = MapNode?.IsMapPeekModeActive == true;
+        MapPeekButton.Text = string.Empty;
+        MapPeekButton.TooltipText = active
+            ? I18n.Tr("ui.map.peek_close_tip", "返回当前界面")
+            : I18n.Tr("ui.map.peek_open_tip", "查看地图");
+
+        if (MapPeekIcon?.Material is ShaderMaterial material)
+            material.SetShaderParameter("active", active ? 1.0f : 0.0f);
+    }
+
+    private void SetResourceChromeVisibleForMapPeek(bool visible)
+    {
+        if (visible)
+        {
+            RestoreMapPeekResourceVisibility();
+            return;
+        }
+
+        HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("StatusPanel"));
+        HideResourceForMapPeek(TransitionEnergyControl);
+        HideResourceForMapPeek(ElectricityCoinIcon);
+        HideResourceForMapPeek(RelicContainer);
+        HideResourceForMapPeek(ItemContainer);
+        HideResourceForMapPeek(MenuButton);
+    }
+
+    private void HideResourceForMapPeek(CanvasItem item)
+    {
+        if (
+            item == null
+            || !GodotObject.IsInstanceValid(item)
+            || item.IsQueuedForDeletion()
+            || item == MapPeekButton
+            || !item.Visible
+        )
+        {
+            return;
+        }
+
+        _mapPeekHiddenResources.Add(
+            new ResourceVisibilitySnapshot { Item = item, Visible = item.Visible }
+        );
+        item.Visible = false;
+    }
+
+    private void RestoreMapPeekResourceVisibility()
+    {
+        for (int i = _mapPeekHiddenResources.Count - 1; i >= 0; i--)
+        {
+            var snapshot = _mapPeekHiddenResources[i];
+            if (
+                snapshot?.Item == null
+                || !GodotObject.IsInstanceValid(snapshot.Item)
+                || snapshot.Item.IsQueuedForDeletion()
+            )
+            {
+                continue;
+            }
+
+            snapshot.Item.Visible = snapshot.Visible;
+        }
+
+        _mapPeekHiddenResources.Clear();
     }
 
     private void EnsureMenuOverlay()

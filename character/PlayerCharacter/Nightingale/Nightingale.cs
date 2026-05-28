@@ -22,7 +22,11 @@ public partial class Nightingale : PlayerCharacter
     {
         base.Initialize();
         PassiveName = PassiveNameText;
-        PassiveDescription = PassiveDescriptionText;
+        PassiveDescription = TalentTree.AppendPassiveUpgradeDescription(
+            CharacterKey,
+            PassiveDescriptionText,
+            HasPassiveTalentUpgrade()
+        );
         BattleNode.EmitList.Add(Pursuit);
     }
 

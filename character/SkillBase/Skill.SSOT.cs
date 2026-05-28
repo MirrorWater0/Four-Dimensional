@@ -10,7 +10,7 @@ using Godot;
 // - AttackStep: 统一敌方攻击步骤，可覆盖单体、前N名、随机、全体与条件目标。
 // - DoubleStrikeStep: 二段攻击（Attack2）。
 // - ApplyBuffHostile: 对敌方施加Buff（buffName/stacks/maxTargets；maxTargets=9表示全阵）。
-// - SummonStep: 召唤召唤物（slotSelector/packedScene；0最前空位，9最后空位，负数从自身前第N位起向前找空位，正数从自身后第N位起向后找空位）。
+// - SummonStep: 召唤召唤物（positionMode/packedScene；支持后一格、前一格、随机、在有敌人的横排随机）。
 // - ApplyBuffSummonsStep: 对自身召唤物施加Buff（buffName/stacks/count；正数前N个，负数后N个，0全部）。
 // - ModifySummonPropertyStep: 调整自身召唤物属性（type/value/count；正数前N个，负数后N个，0全部；value正增负减）。
 // - BlockSummonsStep: 给予自身召唤物格挡（baseBlock/count/multiplier；count规则同ApplyBuffSummonsStep）。
@@ -33,6 +33,14 @@ using Godot;
 // - BranchStep: 条件分支（condition/onPassSteps/onFailSteps/conditionDescription）。
 // - TextStep: 仅描述文本（不执行效果）。
 // - CustomStep: 自定义执行/描述兜底步骤。
+public enum SummonPositionMode
+{
+    Next,
+    Previous,
+    Random,
+    RandomHasEnemy,
+}
+
 public partial class Skill
 {
     private const string BuiltinAttackTargetKey = "__attack_target";
@@ -113,6 +121,7 @@ public partial class Skill
     private bool _stopRemainingPlanExecution;
     private readonly Dictionary<string, Character> _storedTargets = new();
     private readonly Dictionary<string, Character[]> _storedTargetArrays = new();
+    private readonly Dictionary<string, Character[]> _previewableRandomHostileTargets = new();
     private Character _manualFriendlyTarget;
 
     public enum AbsoluteFriendlySelector
@@ -215,6 +224,7 @@ public partial class Skill
         Nine,
         All,
         Random,
+        RandomPreview,
         AttackKey,
         EachRowFirst,
         EachRowLast,
@@ -228,6 +238,7 @@ public partial class Skill
         {
             Ordered,
             Random,
+            PreviewableRandom,
             Stored,
             EachRowFirst,
             EachRowLast,
@@ -239,13 +250,21 @@ public partial class Skill
         public int MaxTargets { get; }
         public bool ByBehindRow { get; }
         public string StoredKey { get; }
+        public string RandomKey { get; }
 
-        private HostileTargetSelection(_Kind kind, int maxTargets, bool byBehindRow, string storedKey)
+        private HostileTargetSelection(
+            _Kind kind,
+            int maxTargets,
+            bool byBehindRow,
+            string storedKey,
+            string randomKey
+        )
         {
             Kind = kind;
             MaxTargets = maxTargets;
             ByBehindRow = byBehindRow;
             StoredKey = storedKey;
+            RandomKey = randomKey;
         }
 
         public static HostileTargetSelection Ordered(
@@ -256,6 +275,7 @@ public partial class Skill
                 HostileTargetSelection._Kind.Ordered,
                 maxTargets,
                 byBehindRow,
+                null,
                 null
             );
 
@@ -264,23 +284,66 @@ public partial class Skill
                 HostileTargetSelection._Kind.Random,
                 maxTargets,
                 byBehindRow,
+                null,
                 null
             );
 
+        public static HostileTargetSelection PreviewableRandom(
+            int maxTargets = 1,
+            bool byBehindRow = false
+        ) =>
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.PreviewableRandom,
+                maxTargets,
+                byBehindRow,
+                null,
+                Guid.NewGuid().ToString("N")
+            );
+
         public static HostileTargetSelection Stored(string storedKey) =>
-            new HostileTargetSelection(HostileTargetSelection._Kind.Stored, 0, false, storedKey);
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.Stored,
+                0,
+                false,
+                storedKey,
+                null
+            );
 
         public static HostileTargetSelection EachRowFirst() =>
-            new HostileTargetSelection(HostileTargetSelection._Kind.EachRowFirst, 0, false, null);
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.EachRowFirst,
+                0,
+                false,
+                null,
+                null
+            );
 
         public static HostileTargetSelection EachRowLast() =>
-            new HostileTargetSelection(HostileTargetSelection._Kind.EachRowLast, 0, false, null);
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.EachRowLast,
+                0,
+                false,
+                null,
+                null
+            );
 
         public static HostileTargetSelection EachColFirst() =>
-            new HostileTargetSelection(HostileTargetSelection._Kind.EachColFirst, 0, false, null);
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.EachColFirst,
+                0,
+                false,
+                null,
+                null
+            );
 
         public static HostileTargetSelection EachColLast() =>
-            new HostileTargetSelection(HostileTargetSelection._Kind.EachColLast, 0, false, null);
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.EachColLast,
+                0,
+                false,
+                null,
+                null
+            );
 
         public static implicit operator HostileTargetSelection(HostileTargetReference target)
         {
@@ -296,7 +359,8 @@ public partial class Skill
                 HostileTargetReference.Eight => Ordered(8),
                 HostileTargetReference.Nine => Ordered(9),
                 HostileTargetReference.All => Ordered(0),
-                HostileTargetReference.Random => Random(1),
+                HostileTargetReference.Random => PreviewableRandom(1),
+                HostileTargetReference.RandomPreview => PreviewableRandom(1),
                 HostileTargetReference.AttackKey => Stored(BuiltinAttackTargetKey),
                 HostileTargetReference.EachRowFirst => EachRowFirst(),
                 HostileTargetReference.EachRowLast => EachRowLast(),
@@ -343,6 +407,11 @@ public partial class Skill
     {
         var plan = GetPlan();
         return plan?.GetPreviewHostileDebuffTargets() ?? Array.Empty<Character>();
+    }
+
+    internal void ClearPreviewableRandomHostileTargets()
+    {
+        _previewableRandomHostileTargets.Clear();
     }
 
     public bool RequiresManualFriendlyTarget()
@@ -403,7 +472,8 @@ public partial class Skill
             HostileTargetReference.Eight => HostileTargets(8, byBehindRow),
             HostileTargetReference.Nine => HostileTargets(9, byBehindRow),
             HostileTargetReference.All => HostileTargets(0, byBehindRow),
-            HostileTargetReference.Random => HostileRandomTargets(1, byBehindRow),
+            HostileTargetReference.Random => HostilePreviewableRandomTargets(1, byBehindRow),
+            HostileTargetReference.RandomPreview => HostilePreviewableRandomTargets(1, byBehindRow),
             HostileTargetReference.AttackKey => HostileTargetSelection.Stored(BuiltinAttackTargetKey),
             HostileTargetReference.EachRowFirst => HostileTargetsEachRowFirst(),
             HostileTargetReference.EachRowLast => HostileTargetsEachRowLast(),
@@ -421,6 +491,11 @@ public partial class Skill
         int maxTargets = 1,
         bool byBehindRow = false
     ) => HostileTargetSelection.Random(maxTargets, byBehindRow);
+
+    protected static HostileTargetSelection HostilePreviewableRandomTargets(
+        int maxTargets = 1,
+        bool byBehindRow = false
+    ) => HostileTargetSelection.PreviewableRandom(maxTargets, byBehindRow);
 
     protected static HostileTargetSelection HostileTargetsEachRowFirst() =>
         HostileTargetSelection.EachRowFirst();
@@ -568,6 +643,7 @@ public partial class Skill
         Character[] ordered =
             value.Kind == HostileTargetSelection._Kind.Ordered
             || value.Kind == HostileTargetSelection._Kind.Random
+            || value.Kind == HostileTargetSelection._Kind.PreviewableRandom
                 ? ChosetargetByOrder(byBehindRow: value.ByBehindRow)
                 : GetAllHostileWithOrder(this, dyingFilter: true);
 
@@ -576,6 +652,9 @@ public partial class Skill
 
         Character[] matched =
             targetCondition == null ? ordered : ordered.Where(targetCondition).ToArray();
+
+        if (value.Kind == HostileTargetSelection._Kind.PreviewableRandom)
+            return GetOrPickPreviewableRandomHostileTargets(value, matched);
 
         return SelectHostileTargets(
             matched,
@@ -689,6 +768,7 @@ public partial class Skill
         Character[] ordered =
             value.Kind == HostileTargetSelection._Kind.Ordered
             || value.Kind == HostileTargetSelection._Kind.Random
+            || value.Kind == HostileTargetSelection._Kind.PreviewableRandom
                 ? skill.ChosetargetByOrder(byBehindRow: value.ByBehindRow)
                 : GetAllHostileWithOrder(skill, dyingFilter: true);
 
@@ -698,7 +778,57 @@ public partial class Skill
         Character[] matched =
             targetCondition == null ? ordered : ordered.Where(targetCondition).ToArray();
 
+        if (value.Kind == HostileTargetSelection._Kind.PreviewableRandom)
+            return skill.GetOrPickPreviewableRandomHostileTargets(value, matched);
+
         return SelectHostileTargets(matched, target, previewRandomAsAll: true);
+    }
+
+    private Character[] GetOrPickPreviewableRandomHostileTargets(
+        HostileTargetSelection target,
+        Character[] candidates
+    )
+    {
+        candidates = candidates?.Where(x => x != null).ToArray() ?? Array.Empty<Character>();
+        if (candidates.Length == 0)
+            return Array.Empty<Character>();
+
+        string key = string.IsNullOrWhiteSpace(target.RandomKey)
+            ? $"{target.Kind}:{target.MaxTargets}:{target.ByBehindRow}"
+            : target.RandomKey;
+
+        if (
+            _previewableRandomHostileTargets.TryGetValue(key, out Character[] cached)
+            && IsCachedPreviewableRandomTargetValid(cached, candidates)
+        )
+        {
+            return cached;
+        }
+
+        Character[] picked = SelectRandomHostileTargets(
+            candidates,
+            target.MaxTargets,
+            OwnerCharater?.BattleNode?.BattleIntentionRandom
+        );
+        _previewableRandomHostileTargets[key] = picked;
+        return picked;
+    }
+
+    private static bool IsCachedPreviewableRandomTargetValid(
+        Character[] cached,
+        Character[] candidates
+    )
+    {
+        if (cached == null || cached.Length == 0)
+            return false;
+
+        var candidateSet = candidates.ToHashSet();
+        return cached.All(target =>
+            target != null
+            && GodotObject.IsInstanceValid(target)
+            && target.State == Character.CharacterState.Normal
+            && candidateSet.Contains(target)
+        );
     }
 
     private static Character[] SelectHostileTargets(
@@ -722,6 +852,8 @@ public partial class Skill
             HostileTargetSelection._Kind.Random => previewRandomAsAll
                 ? ordered.Where(x => x != null).ToArray()
                 : SelectRandomHostileTargets(ordered, value.MaxTargets, random),
+            HostileTargetSelection._Kind.PreviewableRandom =>
+                SelectRandomHostileTargets(ordered, value.MaxTargets, random),
             HostileTargetSelection._Kind.EachRowFirst => SelectGroupedHostileTargets(
                 ordered,
                 groupKeySelector: x => x.PositionIndex > 0 ? (x.PositionIndex - 1) % 3 : 0,
@@ -1390,15 +1522,10 @@ public partial class Skill
     ) => new ApplyBuffHostileSkillStep(buffName, 0, target, stacks);
 
     // Summon and summon-support steps
-    /// <param name="slotSelector">
-    /// 召唤位置选择器。
-    /// 0 表示最前空位，9 表示最后空位。
-    /// 负数表示从自身前第 N 位起继续向前寻找空位，正数表示从自身后第 N 位起继续向后寻找空位。
-    /// 例如 -1 表示优先上一个位置，1 表示优先下一个位置。
-    /// </param>
+    /// <param name="positionMode">召唤位置规则。</param>
     /// <param name="summonScene">用于实例化召唤物的 PackedScene，实例必须继承 SummonCharacter。</param>
-    protected SkillStep SummonStep(int slotSelector, PackedScene summonScene) =>
-        new SummonSkillStep(slotSelector, summonScene);
+    protected SkillStep SummonStep(SummonPositionMode positionMode, PackedScene summonScene) =>
+        new SummonSkillStep(positionMode, summonScene);
 
     protected SkillStep ApplyBuffSummonsStep(Buff.BuffName buffName, int stacks, int count = 0) =>
         new ApplyBuffSummonsSkillStep(buffName, stacks, count);
@@ -1601,6 +1728,20 @@ public partial class Skill
         count,
         target,
         targetText ?? HostileTargetText(target)
+    );
+
+    protected SkillStep AddStatusCardsToFriendlyDrawPileStep(
+        SkillID statusSkillId,
+        int count,
+        TargetReference target = TargetReference.All,
+        string targetText = null,
+        bool includeSummonsWhenAll = false
+    ) => new AddStatusCardsToFriendlyDrawPileSkillStep(
+        statusSkillId,
+        count,
+        TargetValue(target),
+        targetText ?? FriendlyTargetTextForDescription(TargetValue(target)),
+        includeSummonsWhenAll
     );
 
     // Friendly property / defense / utility steps
@@ -2360,6 +2501,7 @@ public partial class Skill
             case Buff.BuffName.ExtraPower:
             case Buff.BuffName.ExtraSurvivability:
             case Buff.BuffName.ExtraDraw:
+            case Buff.BuffName.EnergyStorage:
             case Buff.BuffName.Beacon:
             case Buff.BuffName.WeakeningField:
                 SpecialBuff.BuffAdd(buffName, target, stacks, source);
@@ -2625,6 +2767,29 @@ public partial class Skill
                         ("count", target.MaxTargets)
                     ),
             },
+            HostileTargetSelection._Kind.PreviewableRandom => target.MaxTargets switch
+            {
+                1 => target.ByBehindRow
+                    ? I18n.Tr("skill.step.target.previewable_random_hostile_back", "随机1名后排目标")
+                    : I18n.Tr("skill.step.target.previewable_random_hostile", "随机1名目标"),
+                <= 0 => target.ByBehindRow
+                    ? I18n.Tr(
+                        "skill.step.target.previewable_random_all_back_hostile",
+                        "随机后排目标"
+                    )
+                    : I18n.Tr("skill.step.target.previewable_random_all_hostile", "随机目标"),
+                _ => target.ByBehindRow
+                    ? I18n.Format(
+                        "skill.step.target.previewable_random_max_back_hostile",
+                        "随机{count}名后排目标",
+                        ("count", target.MaxTargets)
+                    )
+                    : I18n.Format(
+                        "skill.step.target.previewable_random_max_hostile",
+                        "随机{count}名目标",
+                        ("count", target.MaxTargets)
+                    ),
+            },
             HostileTargetSelection._Kind.EachRowFirst => I18n.Tr(
                 "skill.step.target.each_row_first",
                 "各横排第一名角色"
@@ -2821,24 +2986,28 @@ public partial class Skill
         );
     }
 
-    private static string SummonSlotSelectorText(int slotSelector)
+    private static string SummonPositionModeText(SummonPositionMode positionMode)
     {
-        if (slotSelector == 0)
-            return I18n.Tr("skill.step.target.front_empty_slot", "最前空位");
-        if (slotSelector == 9)
-            return I18n.Tr("skill.step.target.back_empty_slot", "最后空位");
-        if (slotSelector > 0)
-            return I18n.Format(
-                "skill.step.target.find_empty_slot_after",
-                "从自身后第{count}位起向后寻找空位",
-                ("count", slotSelector)
-            );
-
-        return I18n.Format(
-            "skill.step.target.find_empty_slot_before",
-            "从自身前第{count}位起向前寻找空位",
-            ("count", -slotSelector)
-        );
+        return positionMode switch
+        {
+            SummonPositionMode.Next => I18n.Tr(
+                "skill.step.target.next_empty_slot",
+                "自身后一格起向后寻找空位"
+            ),
+            SummonPositionMode.Previous => I18n.Tr(
+                "skill.step.target.previous_empty_slot",
+                "自身前一格起向前寻找空位"
+            ),
+            SummonPositionMode.Random => I18n.Tr(
+                "skill.step.target.random_empty_slot",
+                "随机空位"
+            ),
+            SummonPositionMode.RandomHasEnemy => I18n.Tr(
+                "skill.step.target.random_enemy_row_empty_slot",
+                "有敌人的横排随机空位"
+            ),
+            _ => I18n.Tr("skill.step.target.random_empty_slot", "随机空位"),
+        };
     }
 
     private sealed class ApplyBuffHostileSkillStep : SkillStep
@@ -2948,18 +3117,14 @@ public partial class Skill
 
     private sealed class SummonSkillStep : SkillStep
     {
-        private readonly int _slotSelector;
+        private readonly SummonPositionMode _positionMode;
         private readonly PackedScene _summonScene;
 
-        /// <param name="slotSelector">
-        /// 召唤位置选择器。
-        /// 0 表示最前空位，9 表示最后空位。
-        /// 负数表示从自身前第 N 位起继续向前寻找空位，正数表示从自身后第 N 位起继续向后寻找空位。
-        /// </param>
+        /// <param name="positionMode">召唤位置规则。</param>
         /// <param name="summonScene">用于生成召唤物实例的 PackedScene，要求实例类型为 SummonCharacter。</param>
-        public SummonSkillStep(int slotSelector, PackedScene summonScene)
+        public SummonSkillStep(SummonPositionMode positionMode, PackedScene summonScene)
         {
-            _slotSelector = slotSelector;
+            _positionMode = positionMode;
             _summonScene = summonScene;
         }
 
@@ -2975,7 +3140,7 @@ public partial class Skill
                 return Task.CompletedTask;
             }
 
-            skill.OwnerCharater.BattleNode.AddSummon(summon, skill.OwnerCharater, _slotSelector);
+            skill.OwnerCharater.BattleNode.AddSummon(summon, skill.OwnerCharater, _positionMode);
             return Task.CompletedTask;
         }
 
@@ -2984,7 +3149,7 @@ public partial class Skill
             yield return I18n.Format(
                 "skill.step.summon",
                 "在{slot}召唤1个召唤物。",
-                ("slot", SummonSlotSelectorText(_slotSelector))
+                ("slot", SummonPositionModeText(_positionMode))
             );
         }
     }
@@ -4187,6 +4352,105 @@ public partial class Skill
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
         {
             return PreviewHostileTargets(skill, _hostileTarget);
+        }
+    }
+
+    private sealed class AddStatusCardsToFriendlyDrawPileSkillStep : SkillStep
+    {
+        private readonly SkillID _statusSkillId;
+        private readonly int _count;
+        private readonly TargetSelection _target;
+        private readonly string _targetText;
+        private readonly bool _includeSummonsWhenAll;
+
+        public AddStatusCardsToFriendlyDrawPileSkillStep(
+            SkillID statusSkillId,
+            int count,
+            TargetSelection target,
+            string targetText,
+            bool includeSummonsWhenAll
+        )
+        {
+            _statusSkillId = statusSkillId;
+            _count = count;
+            _target = target;
+            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
+            _includeSummonsWhenAll = includeSummonsWhenAll;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            if (skill == null || _count <= 0)
+                return;
+
+            Character[] targets = skill.ResolveFriendlyTargets(
+                _target,
+                dyingFilter: true,
+                includeSummonsWhenAll: _includeSummonsWhenAll
+            );
+            if (targets.Length == 0)
+                return;
+
+            var affectedTargets = targets
+                .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
+                .Where(x => x.Player != null && x.Player.BattleNode != null)
+                .GroupBy(x => x.Target)
+                .Select(group => group.First())
+                .ToArray();
+
+            foreach (var animationGroup in affectedTargets
+                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
+                .GroupBy(entry => entry.Player.BattleNode.CharacterControl))
+            {
+                await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
+                    animationGroup.Select(
+                            entry =>
+                                new CharacterControl.StatusCardInsertAnimationEntry(
+                                    entry.Target,
+                                    _statusSkillId,
+                                    _count,
+                                    skill.OwnerCharater
+                                )
+                        )
+                        .ToArray()
+                );
+            }
+
+            foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
+            {
+                PlayerCharacter player = playerGroup.Key;
+                player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                    player,
+                    _statusSkillId,
+                    _count * playerGroup.Count(),
+                    skill.OwnerCharater
+                );
+            }
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (_count <= 0)
+                yield break;
+
+            string statusName =
+                Skill.GetSkill(_statusSkillId)?.SkillName ?? _statusSkillId.ToString();
+            yield return I18n.Format(
+                "skill.step.add_status_to_draw_pile",
+                "向{target}抽牌堆塞入{count}张{status}。",
+                ("target", _targetText),
+                ("count", _count),
+                ("status", statusName)
+            );
+        }
+
+        public override IEnumerable<Character> PreviewTargets(Skill skill)
+        {
+            return skill.ResolveFriendlyTargets(
+                _target,
+                dyingFilter: true,
+                includeSummonsWhenAll: _includeSummonsWhenAll
+            );
         }
     }
 

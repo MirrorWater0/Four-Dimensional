@@ -1,25 +1,19 @@
 [gd_scene format=3 uid="uid://tstwg1ja8lsd"]
 
-[ext_resource type="Shader" uid="uid://bgu23nildkh5y" path="res://shader/Effect/CardExhaust.gdshader" id="1_imej8"]
+[ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_imej8"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_imej8"]
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_p4fnn"]
-noise = SubResource("FastNoiseLite_imej8")
+[ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="3_line"]
+[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_i77dj"]
 resource_local_to_scene = true
 shader = ExtResource("1_imej8")
-shader_parameter/exhaust_progress = 0.0
-shader_parameter/edge_width = 0.08
-shader_parameter/noise_scale = 1.25
-shader_parameter/ember_amount = 0.55
+shader_parameter/progress = 0.0
+shader_parameter/center_vanish = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/line_speed = 8.0
 shader_parameter/aberration_amount = 0.006
-shader_parameter/noise_tex = SubResource("NoiseTexture2D_p4fnn")
-shader_parameter/noise_offset = Vector2(0, 0)
-shader_parameter/ember_color = Color(0.5, 0.6, 1, 1)
-shader_parameter/ash_color = Color(0.1, 0.08, 0.11, 1)
+shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -69,6 +63,93 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_discard_sparks"]
+blend_mode = 1
+
+[sub_resource type="Curve" id="Curve_discard_particle_alpha"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.09, 1), 0.0, 0.0, 0, 0, Vector2(0.68, 0.58), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_discard_particle_alpha"]
+curve = SubResource("Curve_discard_particle_alpha")
+
+[sub_resource type="Gradient" id="Gradient_draw_particle"]
+offsets = PackedFloat32Array(0, 0.45, 0.82, 1)
+colors = PackedColorArray(0.9, 1, 1, 0.88, 0.42, 0.9, 1, 0.74, 0.22, 0.58, 1, 0.36, 0.08, 0.2, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_draw_particle"]
+gradient = SubResource("Gradient_draw_particle")
+
+[sub_resource type="Curve" id="Curve_discard_particle_scale"]
+_data = [Vector2(0, 0.68), 0.0, 0.0, 0, 0, Vector2(0.3, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.18), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_discard_particle_scale"]
+curve = SubResource("Curve_discard_particle_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_draw_sparks"]
+lifetime_randomness = 0.38
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 48.0
+initial_velocity_min = 24.0
+initial_velocity_max = 76.0
+angular_velocity_min = -180.0
+angular_velocity_max = 180.0
+gravity = Vector3(0, 40, 0)
+damping_min = 12.0
+damping_max = 26.0
+scale_min = 0.06
+scale_max = 0.16
+scale_curve = SubResource("CurveTexture_discard_particle_scale")
+color_ramp = SubResource("GradientTexture_draw_particle")
+alpha_curve = SubResource("CurveTexture_discard_particle_alpha")
+hue_variation_min = -0.02
+hue_variation_max = 0.03
+
+[sub_resource type="Curve" id="Curve_draw_trail_width"]
+_data = [Vector2(0, 0.04), 0.0, 0.0, 0, 0, Vector2(0.72, 0.82), 0.0, 0.0, 0, 0, Vector2(1, 0.22), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="Gradient_draw_trail"]
+offsets = PackedFloat32Array(0, 0.48, 1)
+colors = PackedColorArray(0.68, 0.94, 1, 0.04, 0.46, 0.86, 1, 0.5, 0.9, 1, 1, 0.88)
+
+[sub_resource type="Gradient" id="Gradient_discard_particle"]
+offsets = PackedFloat32Array(0, 0.42, 0.78, 1)
+colors = PackedColorArray(1, 0.98, 0.74, 0.95, 1, 0.62, 0.18, 0.88, 1, 0.27, 0.08, 0.45, 1, 0.12, 0.02, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_discard_particle"]
+gradient = SubResource("Gradient_discard_particle")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_discard_sparks"]
+lifetime_randomness = 0.42
+particle_flag_disable_z = true
+direction = Vector3(-1, 0, 0)
+spread = 58.0
+initial_velocity_min = 38.0
+initial_velocity_max = 112.0
+angular_velocity_min = -260.0
+angular_velocity_max = 260.0
+gravity = Vector3(0, 120, 0)
+damping_min = 12.0
+damping_max = 28.0
+scale_min = 0.08
+scale_max = 0.22
+scale_curve = SubResource("CurveTexture_discard_particle_scale")
+color_ramp = SubResource("GradientTexture_discard_particle")
+alpha_curve = SubResource("CurveTexture_discard_particle_alpha")
+hue_variation_min = -0.03
+hue_variation_max = 0.04
+
+[sub_resource type="Curve" id="Curve_discard_trail_width"]
+_data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8084291, 0.7125851), 0.30350965, 0.30350965, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="Gradient_discard_trail"]
+offsets = PackedFloat32Array(0, 0.556338, 1)
+colors = PackedColorArray(1, 0.96, 0.82, 0.08, 0.72366214, 0.8955898, 0.9607042, 0.7835211, 0.6464867, 0.8776014, 1, 0.98)
 
 [node name="SkillCard" type="SubViewportContainer" unique_id=1597769257]
 texture_filter = 4
@@ -215,17 +296,18 @@ offset_right = 236.0
 offset_bottom = 114.0
 mouse_filter = 2
 
-[node name="EnergyCost" type="Label" parent="SubViewport/EnergyBadge" unique_id=1575399771]
+[node name="EnergyCost" type="RichTextLabel" parent="SubViewport/EnergyBadge" unique_id=1575399771]
 layout_mode = 0
 offset_left = 2.1666641
 offset_top = -1.666673
 offset_right = 74.166664
 offset_bottom = 22.333326
-theme_override_colors/font_color = Color(1, 1, 1, 0.95)
-theme_override_font_sizes/font_size = 18
+theme_override_colors/default_color = Color(1, 1, 1, 0.95)
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
 text = "Energy"
-horizontal_alignment = 1
-vertical_alignment = 1
+scroll_active = false
+autowrap_mode = 0
 
 [node name="TopAccent" type="ColorRect" parent="SubViewport" unique_id=128579300]
 offset_left = 20.0
@@ -312,3 +394,64 @@ custom_minimum_size = Vector2(240, 370)
 offset_top = 1.0
 offset_right = 240.0
 offset_bottom = 371.0
+
+[node name="DrawCardTrailTarget" type="Node2D" parent="." unique_id=1140895484]
+visible = false
+position = Vector2(120, 185)
+
+[node name="DrawCardTrailParticles" type="GPUParticles2D" parent="DrawCardTrailTarget" unique_id=32392403]
+visible = false
+z_index = 98
+material = SubResource("CanvasItemMaterial_discard_sparks")
+emitting = false
+amount = 38
+texture = ExtResource("4_particle")
+lifetime = 0.42
+visibility_rect = Rect2(-130, -130, 260, 260)
+trail_enabled = true
+trail_lifetime = 0.16
+process_material = SubResource("ParticleProcessMaterial_draw_sparks")
+
+[node name="DrawCardTrail" type="Line2D" parent="." unique_id=1649780219 node_paths=PackedStringArray("Target")]
+visible = false
+top_level = true
+z_index = 97
+width_curve = SubResource("Curve_draw_trail_width")
+gradient = SubResource("Gradient_draw_trail")
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+script = ExtResource("3_line")
+Target = NodePath("../DrawCardTrailTarget")
+TrailLength = 26
+
+[node name="DiscardCardTrailTarget" type="Node2D" parent="." unique_id=99718139]
+visible = false
+position = Vector2(120, 185)
+
+[node name="DiscardCardTrailParticles" type="GPUParticles2D" parent="DiscardCardTrailTarget" unique_id=384205184]
+visible = false
+z_index = 100
+material = SubResource("CanvasItemMaterial_discard_sparks")
+emitting = false
+amount = 56
+texture = ExtResource("4_particle")
+lifetime = 0.52
+visibility_rect = Rect2(-160, -160, 320, 320)
+trail_enabled = true
+trail_lifetime = 0.2
+process_material = SubResource("ParticleProcessMaterial_discard_sparks")
+
+[node name="DiscardCardTrail" type="Line2D" parent="." unique_id=941272164 node_paths=PackedStringArray("Target")]
+visible = false
+top_level = true
+z_index = 99
+width = 20.0
+width_curve = SubResource("Curve_discard_trail_width")
+gradient = SubResource("Gradient_discard_trail")
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+script = ExtResource("3_line")
+Target = NodePath("../DiscardCardTrailTarget")
+TrailLength = 34

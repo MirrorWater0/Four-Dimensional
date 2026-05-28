@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://d4eternaldark"]
 
 [ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
-[ext_resource type="Shader" uid="uid://bt8n7eternaldk" path="res://shader/Icon/BuffIcon/EternalDark.gdshader" id="2_shd"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/EternalDark.gdshader" id="2_shd"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_eternal_dark"]
 shader = ExtResource("2_shd")
