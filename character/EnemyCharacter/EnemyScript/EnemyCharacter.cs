@@ -20,7 +20,7 @@ public partial class EnemyCharacter : Character
     private static readonly Color IntentionFriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
     private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
-    private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 36f);
+    private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 58f);
     private static readonly Color IntentionDamageColor = new(1f, 0.84f, 0.63f, 1f);
     private static readonly Color IntentionDamageOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
@@ -36,7 +36,7 @@ public partial class EnemyCharacter : Character
     private Character[] _intentionPreviewHostileTargets = Array.Empty<Character>();
     private Character[] _intentionPreviewFriendlyTargets = Array.Empty<Character>();
     private int _intentionPreviewHoverDepth;
-    private readonly List<Label> _intentionDamageLabels = new();
+    private readonly List<VBoxContainer> _intentionDamagePanels = new();
     private readonly Dictionary<string, Line2D> _intentPreviewLines = new();
     private Label _intentionDamageSummaryLabel;
 
@@ -90,7 +90,8 @@ public partial class EnemyCharacter : Character
         bool byBehindRow = false,
         bool returnDummyWhenEmpty = true,
         bool normalOnly = true,
-        bool dyingFilter = false
+        bool dyingFilter = false,
+        bool applyTaunt = false
     )
     {
         return Skill.ChooseHostileTargetsByOrder(
@@ -98,7 +99,8 @@ public partial class EnemyCharacter : Character
             byBehindRow,
             returnDummyWhenEmpty,
             normalOnly,
-            dyingFilter
+            dyingFilter,
+            applyTaunt
         );
     }
 
@@ -277,6 +279,8 @@ public partial class EnemyCharacter : Character
             return;
         }
 
+        InvalidateSkillTooltipCache();
+
         var skill = GetCurrentIntentionSkill();
         if (skill == null)
         {
@@ -373,7 +377,7 @@ public partial class EnemyCharacter : Character
         BattleNode?.LogHoverPerfWork(this, "enemy-intention-highlight", stepStartUsec);
 
         stepStartUsec = Time.GetTicksUsec();
-        var entries = skill.GetPreviewHostileDamageEntries();
+        var entries = skill.GetPreviewEffectEntries();
         BattleNode?.LogHoverPerfWork(this, "enemy-intention-damage-preview", stepStartUsec);
 
         stepStartUsec = Time.GetTicksUsec();
@@ -447,6 +451,12 @@ public partial class EnemyCharacter : Character
         var skill = GetCurrentIntentionSkill();
         return skill?.GetPreviewHostileDamageEntries(includeTargetVulnerable)
             ?? Array.Empty<Skill.PreviewDamageEntry>();
+    }
+
+    public Skill.PreviewEffectEntry[] GetCurrentIntentionPreviewEffectEntries()
+    {
+        var skill = GetCurrentIntentionSkill();
+        return skill?.GetPreviewEffectEntries() ?? Array.Empty<Skill.PreviewEffectEntry>();
     }
 
     public Character[] GetCurrentIntentionPreviewDebuffTargets()
@@ -655,7 +665,7 @@ public partial class EnemyCharacter : Character
         return startToControl.Lerp(controlToEnd, t);
     }
 
-    private void ShowIntentionDamageLabels(IReadOnlyList<Skill.PreviewDamageEntry> entries)
+    private void ShowIntentionDamageLabels(IReadOnlyList<Skill.PreviewEffectEntry> entries)
     {
         ClearIntentionDamageLabels();
         if (entries == null || entries.Count == 0)
@@ -665,103 +675,108 @@ public partial class EnemyCharacter : Character
         if (layer == null)
             return;
 
-        for (int i = 0; i < entries.Count; i++)
-        {
-            Skill.PreviewDamageEntry entry = entries[i];
-            if (entry.Target == null || !GodotObject.IsInstanceValid(entry.Target))
-                continue;
+        var groupedEntries = entries
+            .Where(entry =>
+                entry.Target != null
+                && GodotObject.IsInstanceValid(entry.Target)
+                && entry.Target.State == CharacterState.Normal
+            )
+            .GroupBy(entry => entry.Target)
+            .ToArray();
 
-            var label = GetOrCreateIntentionDamageLabel(layer, i);
+        for (int i = 0; i < groupedEntries.Length; i++)
+        {
+            var group = groupedEntries[i];
+            var panel = GetOrCreateIntentionDamagePanel(layer, i);
             ulong showStartUsec = Time.GetTicksUsec();
-            ShowDamageLabel(label, entry, GetTargetScreenPosition(entry.Target));
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                group.ToArray(),
+                GetTargetScreenPosition(group.Key),
+                IntentionDamageLabelOffset
+            );
             BattleNode?.LogHoverPerfWork(this, "enemy-intention-single-label", showStartUsec);
         }
     }
 
     private void ClearIntentionDamageLabels()
     {
-        for (int i = 0; i < _intentionDamageLabels.Count; i++)
+        for (int i = 0; i < _intentionDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_intentionDamageLabels[i]))
-                _intentionDamageLabels[i].Visible = false;
+            if (GodotObject.IsInstanceValid(_intentionDamagePanels[i]))
+                _intentionDamagePanels[i].Visible = false;
         }
     }
 
     private void FreeIntentionDamageLabels()
     {
-        for (int i = 0; i < _intentionDamageLabels.Count; i++)
+        for (int i = 0; i < _intentionDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_intentionDamageLabels[i]))
-                _intentionDamageLabels[i].QueueFree();
+            if (GodotObject.IsInstanceValid(_intentionDamagePanels[i]))
+                _intentionDamagePanels[i].QueueFree();
         }
-        _intentionDamageLabels.Clear();
+        _intentionDamagePanels.Clear();
     }
 
-    private Label GetOrCreateIntentionDamageLabel(CanvasLayer layer, int index)
+    private VBoxContainer GetOrCreateIntentionDamagePanel(CanvasLayer layer, int index)
     {
-        while (_intentionDamageLabels.Count <= index)
+        while (_intentionDamagePanels.Count <= index)
         {
-            var label = CreateIntentionDamageLabel();
-            layer.AddChild(label);
-            _intentionDamageLabels.Add(label);
+            var panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _intentionDamagePanels.Add(panel);
         }
 
-        var pooledLabel = _intentionDamageLabels[index];
-        if (!GodotObject.IsInstanceValid(pooledLabel))
+        var pooledPanel = _intentionDamagePanels[index];
+        if (!GodotObject.IsInstanceValid(pooledPanel))
         {
-            pooledLabel = CreateIntentionDamageLabel();
-            layer.AddChild(pooledLabel);
-            _intentionDamageLabels[index] = pooledLabel;
+            pooledPanel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(pooledPanel);
+            _intentionDamagePanels[index] = pooledPanel;
         }
-        else if (pooledLabel.GetParent() == null)
+        else if (pooledPanel.GetParent() == null)
         {
-            layer.AddChild(pooledLabel);
+            layer.AddChild(pooledPanel);
         }
 
-        return pooledLabel;
-    }
-
-    private static Label CreateIntentionDamageLabel()
-    {
-        var label = new Label
-        {
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-        };
-        label.AddThemeFontSizeOverride("font_size", 28);
-        label.AddThemeConstantOverride("outline_size", 5);
-        label.AddThemeColorOverride("font_color", IntentionDamageColor);
-        label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
-        return label;
+        return pooledPanel;
     }
 
     private Label GetOrCreateIntentionDamageSummaryLabel()
     {
         if (GodotObject.IsInstanceValid(_intentionDamageSummaryLabel))
+        {
+            ConfigureIntentionDamageSummaryLabel(_intentionDamageSummaryLabel);
             return _intentionDamageSummaryLabel;
+        }
 
         _intentionDamageSummaryLabel = new Label
         {
             Name = "DamageSummary",
             Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-            ZIndex = 2,
         };
-        _intentionDamageSummaryLabel.AddThemeFontSizeOverride("font_size", 22);
-        _intentionDamageSummaryLabel.AddThemeConstantOverride("outline_size", 4);
-        _intentionDamageSummaryLabel.AddThemeColorOverride("font_color", IntentionDamageColor);
-        _intentionDamageSummaryLabel.AddThemeColorOverride(
+        ConfigureIntentionDamageSummaryLabel(_intentionDamageSummaryLabel);
+        IntentionContorl.AddChild(_intentionDamageSummaryLabel);
+        return _intentionDamageSummaryLabel;
+    }
+
+    private static void ConfigureIntentionDamageSummaryLabel(Label label)
+    {
+        if (label == null)
+            return;
+
+        label.MouseFilter = Control.MouseFilterEnum.Ignore;
+        label.HorizontalAlignment = HorizontalAlignment.Left;
+        label.VerticalAlignment = VerticalAlignment.Center;
+        label.ClipText = false;
+        label.ZIndex = 2;
+        label.AddThemeFontSizeOverride("font_size", 22);
+        label.AddThemeConstantOverride("outline_size", 4);
+        label.AddThemeColorOverride("font_color", IntentionDamageColor);
+        label.AddThemeColorOverride(
             "font_outline_color",
             IntentionDamageOutlineColor
         );
-        IntentionContorl.AddChild(_intentionDamageSummaryLabel);
-        return _intentionDamageSummaryLabel;
     }
 
     private string BuildIntentionDamageSummaryText(Skill skill)
@@ -798,14 +813,37 @@ public partial class EnemyCharacter : Character
             return string.Empty;
 
         string text = string.Join("/", damageTexts);
-        if (uniqueTargets.Length <= 1)
-            return text;
-
-        return $"{text}（{BuildIntentionDamageTargetSuffix(uniqueTargets.Length)}）";
+        string targetSummary = BuildIntentionDamageTargetSummary(skill, uniqueTargets.Length);
+        return string.IsNullOrWhiteSpace(targetSummary)
+            ? text
+            : $"{text}\n{targetSummary}";
     }
 
-    private string BuildIntentionDamageTargetSuffix(int targetCount)
+    private string BuildIntentionDamageTargetSummary(Skill skill, int targetCount)
     {
+        if (skill == null)
+            return string.Empty;
+
+        string[] effectSummaries = skill
+            .GetPreviewEffectEntries(includeTargetVulnerable: false)
+            .Where(entry =>
+                entry.Kind == Skill.PreviewEffectKind.Damage
+                && entry.Target != null
+                && GodotObject.IsInstanceValid(entry.Target)
+                && entry.Target.State == CharacterState.Normal
+                && entry.Value > 0
+                && !string.IsNullOrWhiteSpace(entry.TargetSummary)
+            )
+            .Select(entry => entry.TargetSummary.Trim())
+            .Distinct()
+            .ToArray();
+
+        if (effectSummaries.Length > 0)
+            return string.Join("/", effectSummaries);
+
+        if (targetCount <= 1)
+            return string.Empty;
+
         int allHostileCount =
             BattleNode
                 ?.GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
@@ -821,21 +859,27 @@ public partial class EnemyCharacter : Character
     {
         int hitCount = Math.Max(entry.HitCount, 1);
         int damage = Math.Max(entry.Damage, 0);
+        string powerMultiplierText = FormatPowerMultiplierText(entry.PowerMultiplier);
         if (hitCount <= 1)
-            return damage.ToString();
+            return $"{damage}{powerMultiplierText}";
 
         if (damage % hitCount == 0)
-            return $"{damage / hitCount}x{hitCount}";
+            return $"{damage / hitCount}x{hitCount}{powerMultiplierText}";
 
-        return $"{damage}({hitCount}段)";
+        return $"{damage}({hitCount}段){powerMultiplierText}";
+    }
+
+    private static string FormatPowerMultiplierText(int powerMultiplier)
+    {
+        return powerMultiplier >= 2 ? $"（{powerMultiplier}倍）" : string.Empty;
     }
 
     private void ShowDamageLabel(Label label, Skill.PreviewDamageEntry entry, Vector2 targetScreenPosition)
     {
         label.Text =
             entry.HitCount > 1
-                ? $"{entry.Damage}({entry.HitCount}次)"
-                : entry.Damage.ToString();
+                ? $"{entry.Damage}({entry.HitCount}次){FormatPowerMultiplierText(entry.PowerMultiplier)}"
+                : $"{entry.Damage}{FormatPowerMultiplierText(entry.PowerMultiplier)}";
         label.AddThemeColorOverride("font_color", IntentionDamageColor);
         label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
         label.Modulate = Colors.White;

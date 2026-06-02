@@ -5,7 +5,7 @@ using Godot;
 public partial class FearWorm : EnemyCharacter
 {
     private const int PassiveAllyActionThreshold = 2;
-    private const int PassivePowerGain = 7;
+    private const int PassivePowerGain = 4;
     private int _passiveAllyActionCount;
     private Func<Character, Task> _allyActionEndedHandler;
 
@@ -65,7 +65,6 @@ public partial class FearWorm : EnemyCharacter
         using var _ = BeginEffectSource("被动");
         await IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
-
 }
 
 public partial class FearWormRegedit : EnemyRegedit
@@ -77,9 +76,9 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 30;
-        Power = 10;
-        Survivability = 5;
+        MaxLife = 27;
+        Power = 7;
+        Survivability = 12;
         Speed = 8;
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
 
@@ -110,7 +109,7 @@ public partial class FearWormAttack : Skill
             EnergyStep(EnergyGain),
             AttackStep(
                 baseDamage: BaseDamage,
-                target: HostileTargets(MaxTargets),
+                target: HostileTargetReference.Three,
                 times: 1,
                 clampMax: 999
             ),
@@ -125,7 +124,7 @@ public partial class FearWormAttack : Skill
 
 public partial class FearWormSurvive : Skill
 {
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 0;
 
     public FearWormSurvive()
         : base(SkillTypes.Survive)
@@ -140,7 +139,8 @@ public partial class FearWormSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            CarryStep(target: TargetReference.Next, skillIndex: 1)
+            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.Previous),
+            ModifyPropertyStep(PropertyType.Power, 3, TargetReference.Self)
         );
     }
 }
@@ -148,7 +148,6 @@ public partial class FearWormSurvive : Skill
 public partial class FearWormTermin : Skill
 {
     private const int BaseDamage = 6;
-    private const int Power = 3;
     private const int StunStacks = 2;
 
     public FearWormTermin()

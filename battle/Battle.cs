@@ -177,13 +177,18 @@ public partial class Battle : Node2D
     private int _playerActionCount = 0;
     private int _enemyActionCount = 0;
     private readonly Dictionary<ulong, int> _characterActionCounts = new();
+    public int PlayerTotalTurnCount => _playerActionCount;
+    public int EnemyTotalTurnCount => _enemyActionCount;
     private readonly Dictionary<ulong, int> _pendingExtraActions = new();
     private readonly HashSet<ulong> _activeExtraActionCharacters = new();
-    private readonly List<Label> _enemyAttackPreviewLabels = new();
+    private readonly List<VBoxContainer> _enemyAttackPreviewPanels = new();
     private Character[] _enemyAttackPreviewTargets = Array.Empty<Character>();
     private Character _nextActionPreviewCharacter;
+    private Character _nextTurnOrderGroundPreviewCharacter;
+    private Character _secondTurnOrderGroundPreviewCharacter;
+    private static readonly Color NextTurnOrderGroundPreviewColor = new(0.16f, 0.62f, 1f, 0.9f);
+    private static readonly Color SecondTurnOrderGroundPreviewColor = new(1f, 1f, 1f, 0.82f);
     private bool? _battleStartPlayerActsFirst;
-    private static readonly bool ShowNextActionGroundPreview = false;
     private bool _actionPoinUiRefreshScheduled;
     private bool _pendingPlayerActionPoinUiRefresh;
     private bool _pendingEnemyActionPoinUiRefresh;
@@ -230,7 +235,7 @@ public partial class Battle : Node2D
         field ??= GetNodeOrNull<ProgressBar>("ActionPoinBox/EnemyActionPoin");
     public LevelNode CurrentLevelNode;
     public Character dummy => field ??= GetNode<Character>("Dummy");
-    private const float FormationGapY = 140f;
+    private const float FormationGapY = 120f;
     private const float FormationGapX = 280f;
     private const float FormationSkew = 10f;
     private const float FormationRowOffset = 100f;
@@ -262,6 +267,7 @@ public partial class Battle : Node2D
     public override void _ExitTree()
     {
         _retreating = true;
+        ClearTurnOrderGroundPreviewCharacter();
         HideEnemyAttackPreview();
         FreeEnemyAttackPreviewLabels();
         TryCancelLifetime();
@@ -669,6 +675,38 @@ public partial class Battle : Node2D
     public SkillID[] GetExhaustedBattleCardPile(PlayerCharacter player) =>
         GetOrCreatePlayerBattleCardPiles(player)?.Exhausted.ToArray() ?? Array.Empty<SkillID>();
 
+    public bool TryShowCharacterBattleCardPiles(Character character)
+    {
+        PlayerCharacter player = ResolveCardPileOwner(character);
+        if (
+            player == null
+            || !GodotObject.IsInstanceValid(player)
+            || CharacterControl == null
+            || !GodotObject.IsInstanceValid(CharacterControl)
+        )
+        {
+            return false;
+        }
+
+        return CharacterControl.ShowPlayerBattleCardPiles(player);
+    }
+
+    private static PlayerCharacter ResolveCardPileOwner(Character character)
+    {
+        if (character is PlayerCharacter player)
+            return player;
+
+        if (character is SummonCharacter summon)
+        {
+            if (summon.Summoner is PlayerCharacter summoner)
+                return summoner;
+            if (summon.LastSummoner is PlayerCharacter lastSummoner)
+                return lastSummoner;
+        }
+
+        return null;
+    }
+
     public bool HasDrawablePlayerBattleSkill(
         PlayerCharacter player,
         Skill.SkillTypes skillType = Skill.SkillTypes.none
@@ -978,23 +1016,26 @@ public partial class Battle : Node2D
         }
 
         _nextActionPreviewCharacter = character;
-        if (ShowNextActionGroundPreview)
-            character.ShowNextActionPreview();
         RefreshTurnOrderPreview();
     }
 
     public void ClearNextActionPreviewCharacter(Character character = null)
     {
-        if (_nextActionPreviewCharacter == null)
-            return;
-        if (character != null && _nextActionPreviewCharacter != character)
-            return;
+        bool cleared = false;
+        if (_nextActionPreviewCharacter != null && (character == null || _nextActionPreviewCharacter == character))
+        {
+            _nextActionPreviewCharacter = null;
+            cleared = true;
+        }
 
-        Character previewCharacter = _nextActionPreviewCharacter;
-        _nextActionPreviewCharacter = null;
-        if (ShowNextActionGroundPreview && GodotObject.IsInstanceValid(previewCharacter))
-            previewCharacter.HideNextActionPreview();
-        RefreshTurnOrderPreview();
+        Character oldNextGroundPreview = _nextTurnOrderGroundPreviewCharacter;
+        Character oldSecondGroundPreview = _secondTurnOrderGroundPreviewCharacter;
+        ClearTurnOrderGroundPreviewCharacter(character);
+        cleared |= oldNextGroundPreview != _nextTurnOrderGroundPreviewCharacter;
+        cleared |= oldSecondGroundPreview != _secondTurnOrderGroundPreviewCharacter;
+
+        if (cleared)
+            RefreshTurnOrderPreview();
     }
 
     public IEnumerable<Character> GetTeamCharacters(bool isPlayer, bool includeSummons = true)
@@ -1036,6 +1077,7 @@ public partial class Battle : Node2D
         }
 
         var orderByCharacter = new Dictionary<ulong, int>();
+        var turnOrderEvents = new List<Character>();
         int nextOrder = 0;
         var playerQueue = GetTurnOrderQueue(isPlayer: true);
         var enemyQueue = GetTurnOrderQueue(isPlayer: false);
@@ -1044,7 +1086,12 @@ public partial class Battle : Node2D
         int previewEnemyActionPoin = EnemyActionPoin;
         Character pendingExtraActionCharacter = null;
 
-        AddTurnOrderEvent(CurrentActionCharacter, orderByCharacter, ref nextOrder);
+        AddTurnOrderEvent(
+            CurrentActionCharacter,
+            orderByCharacter,
+            ref nextOrder,
+            turnOrderEvents
+        );
 
         ApplyPreviewActionPoinGain(
             CurrentActionCharacter,
@@ -1054,7 +1101,12 @@ public partial class Battle : Node2D
         );
         while (TryConsumePreviewExtraAction(CurrentActionCharacter, previewExtraActions))
         {
-            AddTurnOrderEvent(CurrentActionCharacter, orderByCharacter, ref nextOrder);
+            AddTurnOrderEvent(
+                CurrentActionCharacter,
+                orderByCharacter,
+                ref nextOrder,
+                turnOrderEvents
+            );
             ApplyPreviewActionPoinGain(
                 CurrentActionCharacter,
                 ref previewPlayerActionPoin,
@@ -1085,7 +1137,12 @@ public partial class Battle : Node2D
             if (simulatedCharacter == null)
                 break;
 
-            AddTurnOrderEvent(simulatedCharacter, orderByCharacter, ref nextOrder);
+            AddTurnOrderEvent(
+                simulatedCharacter,
+                orderByCharacter,
+                ref nextOrder,
+                turnOrderEvents
+            );
             ApplyPreviewActionPoinGain(
                 simulatedCharacter,
                 ref previewPlayerActionPoin,
@@ -1110,6 +1167,11 @@ public partial class Battle : Node2D
                 character.HideTurnOrderPreview();
         }
 
+        Character[] groundPreviewCharacters = GetTurnOrderGroundPreviewCharacters(turnOrderEvents);
+        SetTurnOrderGroundPreviewCharacters(
+            groundPreviewCharacters.ElementAtOrDefault(0),
+            groundPreviewCharacters.ElementAtOrDefault(1)
+        );
         RefreshEnemyAttackPreview();
     }
 
@@ -1482,7 +1544,8 @@ public partial class Battle : Node2D
     private static bool AddTurnOrderEvent(
         Character character,
         Dictionary<ulong, int> orderByCharacter,
-        ref int nextOrder
+        ref int nextOrder,
+        List<Character> turnOrderEvents = null
     )
     {
         if (
@@ -1493,6 +1556,7 @@ public partial class Battle : Node2D
         )
             return false;
 
+        turnOrderEvents?.Add(character);
         ulong id = character.GetInstanceId();
         if (orderByCharacter.ContainsKey(id))
         {
@@ -1505,8 +1569,141 @@ public partial class Battle : Node2D
         return true;
     }
 
+    private Character[] GetTurnOrderGroundPreviewCharacters(IReadOnlyList<Character> turnOrderEvents)
+    {
+        if (turnOrderEvents == null || turnOrderEvents.Count == 0)
+            return Array.Empty<Character>();
+
+        int startIndex = 0;
+        if (
+            CurrentActionCharacter != null
+            && GodotObject.IsInstanceValid(CurrentActionCharacter)
+            && turnOrderEvents[0] == CurrentActionCharacter
+        )
+        {
+            startIndex = 1;
+        }
+
+        var result = new List<Character>(2);
+        var addedIds = new HashSet<ulong>();
+        for (int i = startIndex; i < turnOrderEvents.Count; i++)
+        {
+            Character character = turnOrderEvents[i];
+            if (
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.ParticipatesInTurnRotation
+                && IsCharacterAlive(character)
+                && addedIds.Add(character.GetInstanceId())
+            )
+            {
+                result.Add(character);
+                if (result.Count >= 2)
+                    break;
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private void SetTurnOrderGroundPreviewCharacters(Character nextCharacter, Character secondCharacter)
+    {
+        nextCharacter = NormalizeTurnOrderGroundPreviewCharacter(nextCharacter);
+        secondCharacter = NormalizeTurnOrderGroundPreviewCharacter(secondCharacter);
+        if (nextCharacter != null && secondCharacter == nextCharacter)
+            secondCharacter = null;
+
+        if (
+            _nextTurnOrderGroundPreviewCharacter == nextCharacter
+            && _secondTurnOrderGroundPreviewCharacter == secondCharacter
+        )
+        {
+            _secondTurnOrderGroundPreviewCharacter?.ShowNextActionPreview(
+                SecondTurnOrderGroundPreviewColor
+            );
+            _nextTurnOrderGroundPreviewCharacter?.ShowNextActionPreview(NextTurnOrderGroundPreviewColor);
+            return;
+        }
+
+        Character oldNextCharacter = _nextTurnOrderGroundPreviewCharacter;
+        Character oldSecondCharacter = _secondTurnOrderGroundPreviewCharacter;
+        _nextTurnOrderGroundPreviewCharacter = nextCharacter;
+        _secondTurnOrderGroundPreviewCharacter = secondCharacter;
+
+        HideTurnOrderGroundPreviewIfUnused(oldNextCharacter, nextCharacter, secondCharacter);
+        HideTurnOrderGroundPreviewIfUnused(oldSecondCharacter, nextCharacter, secondCharacter);
+
+        _secondTurnOrderGroundPreviewCharacter?.ShowNextActionPreview(
+            SecondTurnOrderGroundPreviewColor
+        );
+        _nextTurnOrderGroundPreviewCharacter?.ShowNextActionPreview(NextTurnOrderGroundPreviewColor);
+    }
+
+    private void ClearTurnOrderGroundPreviewCharacter(Character character = null)
+    {
+        if (_nextTurnOrderGroundPreviewCharacter == null && _secondTurnOrderGroundPreviewCharacter == null)
+            return;
+
+        Character nextCharacter = _nextTurnOrderGroundPreviewCharacter;
+        Character secondCharacter = _secondTurnOrderGroundPreviewCharacter;
+
+        bool clearNext = character == null || nextCharacter == character;
+        bool clearSecond = character == null || secondCharacter == character;
+        if (!clearNext && !clearSecond)
+            return;
+
+        if (clearNext)
+            _nextTurnOrderGroundPreviewCharacter = null;
+        if (clearSecond)
+            _secondTurnOrderGroundPreviewCharacter = null;
+
+        if (clearNext && GodotObject.IsInstanceValid(nextCharacter))
+            nextCharacter.HideNextActionPreview();
+        if (
+            clearSecond
+            && secondCharacter != nextCharacter
+            && GodotObject.IsInstanceValid(secondCharacter)
+        )
+        {
+            secondCharacter.HideNextActionPreview();
+        }
+    }
+
+    private Character NormalizeTurnOrderGroundPreviewCharacter(Character character)
+    {
+        if (
+            character == null
+            || !GodotObject.IsInstanceValid(character)
+            || !character.ParticipatesInTurnRotation
+            || !IsCharacterAlive(character)
+        )
+        {
+            return null;
+        }
+
+        return character;
+    }
+
+    private void HideTurnOrderGroundPreviewIfUnused(
+        Character character,
+        Character nextCharacter,
+        Character secondCharacter
+    )
+    {
+        if (
+            character != null
+            && character != nextCharacter
+            && character != secondCharacter
+            && GodotObject.IsInstanceValid(character)
+        )
+        {
+            character.HideNextActionPreview();
+        }
+    }
+
     private void HideAllTurnOrderPreviews()
     {
+        ClearTurnOrderGroundPreviewCharacter();
         foreach (
             var character in GetTeamCharacters(isPlayer: true)
                 .Concat(GetTeamCharacters(isPlayer: false))
@@ -1534,7 +1731,7 @@ public partial class Battle : Node2D
             return;
 
         var previewTargets = new HashSet<Character>();
-        var damageByTarget = new Dictionary<Character, (int Damage, int HitCount)>();
+        var effectsByTarget = new Dictionary<Character, List<Skill.PreviewEffectEntry>>();
         EnemyCharacter enemy = GetNextEnemyAttackPreviewCharacter();
         if (enemy == null)
             return;
@@ -1558,7 +1755,7 @@ public partial class Battle : Node2D
                 previewTargets.Add(target);
             }
 
-            foreach (var entry in enemy.GetCurrentIntentionPreviewDamageEntries())
+            foreach (var entry in enemy.GetCurrentIntentionPreviewEffectEntries())
             {
                 if (
                     entry.Target == null
@@ -1569,19 +1766,10 @@ public partial class Battle : Node2D
                     continue;
                 }
 
-                int damage = Math.Max(entry.Damage, 0);
-                int hitCount = Math.Max(entry.HitCount, 1);
-                if (damageByTarget.TryGetValue(entry.Target, out var aggregate))
-                {
-                    damageByTarget[entry.Target] = (
-                        aggregate.Damage + damage,
-                        aggregate.HitCount + hitCount
-                    );
-                }
-                else
-                {
-                    damageByTarget[entry.Target] = (damage, hitCount);
-                }
+                previewTargets.Add(entry.Target);
+                if (!effectsByTarget.TryGetValue(entry.Target, out var effects))
+                    effectsByTarget[entry.Target] = effects = new List<Skill.PreviewEffectEntry>();
+                effects.Add(entry);
             }
         }
 
@@ -1589,7 +1777,7 @@ public partial class Battle : Node2D
         for (int i = 0; i < _enemyAttackPreviewTargets.Length; i++)
             _enemyAttackPreviewTargets[i].ShowTargetPreview(new Color(1f, 0.32f, 0.32f, 1f));
 
-        if (damageByTarget.Count == 0)
+        if (effectsByTarget.Count == 0)
         {
             ClearEnemyAttackPreviewLabels();
             return;
@@ -1600,21 +1788,21 @@ public partial class Battle : Node2D
             return;
 
         int labelIndex = 0;
-        foreach (var kv in damageByTarget)
+        foreach (var kv in effectsByTarget)
         {
-            var label = GetOrCreateEnemyAttackPreviewLabel(layer, labelIndex++);
-            ShowEnemyAttackPreviewLabel(
-                label,
-                kv.Value.Damage,
-                kv.Value.HitCount,
-                GetTargetScreenPosition(kv.Key)
+            var panel = GetOrCreateEnemyAttackPreviewPanel(layer, labelIndex++);
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                kv.Value,
+                GetTargetScreenPosition(kv.Key),
+                EnemyAttackPreviewLabelOffset
             );
         }
 
-        for (int i = labelIndex; i < _enemyAttackPreviewLabels.Count; i++)
+        for (int i = labelIndex; i < _enemyAttackPreviewPanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_enemyAttackPreviewLabels[i]))
-                _enemyAttackPreviewLabels[i].Visible = false;
+            if (GodotObject.IsInstanceValid(_enemyAttackPreviewPanels[i]))
+                _enemyAttackPreviewPanels[i].Visible = false;
         }
     }
 
@@ -1646,86 +1834,46 @@ public partial class Battle : Node2D
 
     private void ClearEnemyAttackPreviewLabels()
     {
-        for (int i = 0; i < _enemyAttackPreviewLabels.Count; i++)
+        for (int i = 0; i < _enemyAttackPreviewPanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_enemyAttackPreviewLabels[i]))
-                _enemyAttackPreviewLabels[i].Visible = false;
+            if (GodotObject.IsInstanceValid(_enemyAttackPreviewPanels[i]))
+                _enemyAttackPreviewPanels[i].Visible = false;
         }
     }
 
     private void FreeEnemyAttackPreviewLabels()
     {
-        for (int i = 0; i < _enemyAttackPreviewLabels.Count; i++)
+        for (int i = 0; i < _enemyAttackPreviewPanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_enemyAttackPreviewLabels[i]))
-                _enemyAttackPreviewLabels[i].QueueFree();
+            if (GodotObject.IsInstanceValid(_enemyAttackPreviewPanels[i]))
+                _enemyAttackPreviewPanels[i].QueueFree();
         }
 
-        _enemyAttackPreviewLabels.Clear();
+        _enemyAttackPreviewPanels.Clear();
     }
 
-    private Label GetOrCreateEnemyAttackPreviewLabel(CanvasLayer layer, int index)
+    private VBoxContainer GetOrCreateEnemyAttackPreviewPanel(CanvasLayer layer, int index)
     {
-        while (_enemyAttackPreviewLabels.Count <= index)
+        while (_enemyAttackPreviewPanels.Count <= index)
         {
-            var label = CreateEnemyAttackPreviewLabel();
-            layer.AddChild(label);
-            _enemyAttackPreviewLabels.Add(label);
+            var panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _enemyAttackPreviewPanels.Add(panel);
         }
 
-        var pooledLabel = _enemyAttackPreviewLabels[index];
-        if (!GodotObject.IsInstanceValid(pooledLabel))
+        var pooledPanel = _enemyAttackPreviewPanels[index];
+        if (!GodotObject.IsInstanceValid(pooledPanel))
         {
-            pooledLabel = CreateEnemyAttackPreviewLabel();
-            layer.AddChild(pooledLabel);
-            _enemyAttackPreviewLabels[index] = pooledLabel;
+            pooledPanel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(pooledPanel);
+            _enemyAttackPreviewPanels[index] = pooledPanel;
         }
-        else if (pooledLabel.GetParent() == null)
+        else if (pooledPanel.GetParent() == null)
         {
-            layer.AddChild(pooledLabel);
+            layer.AddChild(pooledPanel);
         }
 
-        return pooledLabel;
-    }
-
-    private static Label CreateEnemyAttackPreviewLabel()
-    {
-        var label = new Label
-        {
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-        };
-        label.AddThemeFontSizeOverride("font_size", 28);
-        label.AddThemeConstantOverride("outline_size", 5);
-        label.AddThemeColorOverride("font_color", EnemyAttackPreviewColor);
-        label.AddThemeColorOverride("font_outline_color", EnemyAttackPreviewOutlineColor);
-        return label;
-    }
-
-    private static void ShowEnemyAttackPreviewLabel(
-        Label label,
-        int damage,
-        int hitCount,
-        Vector2 targetScreenPosition
-    )
-    {
-        label.Text = hitCount > 1 ? $"{damage}({hitCount}次)" : damage.ToString();
-        label.AddThemeColorOverride("font_color", EnemyAttackPreviewColor);
-        label.AddThemeColorOverride("font_outline_color", EnemyAttackPreviewOutlineColor);
-        label.Modulate = Colors.White;
-        label.Scale = Vector2.One;
-        label.Visible = true;
-
-        Vector2 size = label.GetCombinedMinimumSize();
-        if (size == Vector2.Zero)
-            size = new Vector2(120f, 44f);
-        label.Size = size;
-
-        Vector2 anchor = targetScreenPosition + EnemyAttackPreviewLabelOffset;
-        label.Position = anchor - size / 2f;
+        return pooledPanel;
     }
 
     private CanvasLayer EnsureTipLayer()
@@ -1953,7 +2101,7 @@ public partial class Battle : Node2D
 
         if (GodotObject.IsInstanceValid(totalLabel))
         {
-            totalLabel.Text = $"({SumAliveSpeed(characters)})";
+            totalLabel.Text = $"速 {SumAliveSpeed(characters)}";
         }
 
         if (GodotObject.IsInstanceValid(bar))
@@ -2298,6 +2446,7 @@ public partial class Battle : Node2D
             .ToArray();
 
         TriggerSanctuaryTurnEndBuffs(actingCharacter, targets);
+        TriggerEternalDarkTurnEndBuffs(actingCharacter, targets);
 
         for (int i = 0; i < targets.Length; i++)
         {
@@ -2320,6 +2469,35 @@ public partial class Battle : Node2D
         }
 
         await TriggerVoidTurnEndBuffs(actingCharacter, targets);
+    }
+
+    private void TriggerEternalDarkTurnEndBuffs(Character actingCharacter, Character[] targets)
+    {
+        if (actingCharacter == null || targets == null || targets.Length == 0)
+            return;
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (
+                target == null
+                || target == actingCharacter
+                || target.IsPlayer != actingCharacter.IsPlayer
+                || target.State == Character.CharacterState.Dying
+            )
+                continue;
+
+            StartActionBuff eternalDarkBuff = target.StartActionBuffs?.FirstOrDefault(x =>
+                x != null && x.ThisBuffName == Buff.BuffName.EternalDark && x.Stack > 0
+            );
+            if (eternalDarkBuff == null)
+                continue;
+
+            using var _ = target.BeginEffectSource(
+                Buff.GetBuffDisplayName(Buff.BuffName.EternalDark)
+            );
+            StartActionBuff.BuffAdd(Buff.BuffName.Invisible, target, 1, target);
+        }
     }
 
     private void TriggerSanctuaryTurnEndBuffs(Character actingCharacter, Character[] targets)
@@ -2660,6 +2838,9 @@ public partial class Battle : Node2D
             ConfigureRewards(reward);
             if (CurrentLevelNode != null)
             {
+                CurrentLevelNode.PlayerDamageSummaryLines = BuildPlayerDamageSummaryLines();
+                CurrentLevelNode.PlayerTotalTurnCount = PlayerTotalTurnCount;
+                CurrentLevelNode.EnemyTotalTurnCount = EnemyTotalTurnCount;
                 reward.SetCompleteNodeOnClose(CurrentLevelNode);
             }
         }

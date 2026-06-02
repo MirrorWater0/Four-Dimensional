@@ -5,8 +5,8 @@ using Godot;
 
 public partial class SacredOnslaught : Skill
 {
+    private const int BaseDamage = 7;
     private const int MaxTargets = 4;
-    private int _hitCount;
 
     public SacredOnslaught()
         : base(SkillTypes.Attack)
@@ -20,53 +20,56 @@ public partial class SacredOnslaught : Skill
     {
         return new SkillPlan(
             this,
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 1),
             CustomStep(
                 _ =>
                 {
-                    _hitCount = GetPotentialHitCount();
-                    return Task.CompletedTask;
-                },
-                _ => Array.Empty<string>()
-            ),
-            AttackStep(baseDamage: 0, multiplier: 1, target: HostileTargets(MaxTargets), times: 1),
-            CustomStep(
-                _ =>
-                {
-                    if (_hitCount > 0)
-                        OwnerCharater?.UpdataEnergy(_hitCount, OwnerCharater);
-
-                    _hitCount = 0;
+                    ApplyVulnerableByTargetWeaken();
                     return Task.CompletedTask;
                 },
                 _ =>
                 {
-                    int targetCount = GetPotentialHitCount();
-                    string targetCountText = Total("目标数", targetCount);
-
                     return new[]
                     {
-                        "每击中1名敌人，获得1点能量。",
-                        IsInBattle
-                            ? $"当前命中{targetCountText}个，获得{targetCount}点能量。"
-                            : null,
+                        $"给予攻击目标等同于目标{Buff.BuffName.Weaken.GetDescription()}层数的{Buff.BuffName.Vulnerable.GetDescription()}。",
                     }.Where(line => !string.IsNullOrWhiteSpace(line));
                 }
             )
         );
     }
 
-    private int GetPotentialHitCount()
+    private void ApplyVulnerableByTargetWeaken()
     {
-        if (!IsInBattle)
-            return 0;
+        foreach (var target in GetAttackTargets())
+        {
+            if (
+                target == null
+                || !GodotObject.IsInstanceValid(target)
+                || target.State == Character.CharacterState.Dying
+            )
+            {
+                continue;
+            }
 
-        return Math.Min(MaxTargets, ChosetargetByOrder(byBehindRow: false).Length);
+            int weakenStacks = GetWeakenStacks(target);
+            if (weakenStacks <= 0)
+                continue;
+
+            HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, weakenStacks, OwnerCharater);
+        }
     }
+
+    private static int GetWeakenStacks(Character target) =>
+        target
+            ?.AttackBuffs?.Where(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
+            )
+            .Sum(buff => buff.Stack) ?? 0;
 }
 
 public partial class ResonantSlash : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 7;
     private const int UpgradeDamageBonus = 2;
 
     public ResonantSlash()
@@ -81,8 +84,8 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 2),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.One)
+            AttackStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 1),
+            ApplyBuffHostile(Buff.BuffName.Weaken, 3, HostileTargetReference.One)
         );
     }
 }
@@ -117,7 +120,7 @@ public partial class EchoPuncture : Skill
 public partial class Extract : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 4;
 
     public Extract()
         : base(SkillTypes.Attack)
@@ -126,40 +129,15 @@ public partial class Extract : Skill
     }
 
     public override string SkillName { get; set; } = "萃取";
-    public override int EnergyCost => 0;
+    public override int EnergyCost => 1;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            EnergyStep(_ => GetTotalHostileWeakenStacks()),
-            TextStep(
-                I18n.Format(
-                    "skill.extract.text.total_weaken_energy",
-                    "获得等同于敌方全阵{buff}层数总和的能量。",
-                    ("buff", Buff.BuffName.Weaken.GetDescription())
-                )
-            )
+            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2, TargetReference.ManualFriendly)
         );
-    }
-
-    private static int GetWeakenStacks(Character target) =>
-        target
-            ?.AttackBuffs?.FirstOrDefault(buff =>
-                buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
-            )
-            ?.Stack ?? 0;
-
-    private int GetTotalHostileWeakenStacks()
-    {
-        return OwnerCharater
-                ?.BattleNode?.GetOrderedTeamCharacters(
-                    !OwnerCharater.IsPlayer,
-                    includeSummons: true,
-                    dyingFilter: true
-                )
-                ?.Sum(GetWeakenStacks) ?? 0;
     }
 }
 
@@ -198,18 +176,20 @@ public partial class DisasterImpact : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "灾厄冲击";
+    public override string SkillName { get; set; } = "灵魂汲取";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
+            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.AttackKey),
             TextStep(GetExtraDrawFromTargetWeakenText()),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: _ => GetExtraDrawStacksFromAttackTarget(),
-                target: TargetReference.All
+                target: TargetReference.All,
+                hideDescription: true
             )
         );
     }
@@ -226,7 +206,7 @@ public partial class DisasterImpact : Skill
 
     private int GetAttackTargetWeakenStacks()
     {
-        Character target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
+        Character target = ChosetargetByOrder(byBehindRow: false, applyTaunt: true).FirstOrDefault();
         return target
                 ?.AttackBuffs?.FirstOrDefault(buff =>
                     buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
@@ -237,7 +217,6 @@ public partial class DisasterImpact : Skill
 
 public class EchonicResonance : Skill
 {
-    private const int PaidEnergyPerCast = 1;
     private const int PowerGainPerCast = 1;
 
     public EchonicResonance()
@@ -253,8 +232,7 @@ public class EchonicResonance : Skill
     {
         return new SkillPlan(
             this,
-            EnergyTimesWhileStep(
-                paidEnergyPerLoop: PaidEnergyPerCast,
+            WhileStep(
                 loopSteps:
                 [
                     AttackStep(baseDamage: 0, multiplier: 1),
@@ -284,11 +262,9 @@ public class SonicBoom : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0, target: HostileTargetReference.All),
-            AttackStep(
-                baseDamage: BaseDamage,
-                target: HostileTargetReference.All,
-                times: ExtraTimes
+            WhileStep(
+                times: () => 3,
+                loopSteps: [AttackStep(BaseDamage, target: HostileTargetReference.All)]
             )
         );
     }
@@ -296,7 +272,7 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 10;
+    int damage = 12;
     int PowerGain = -2;
 
     public PhaseEcho()
@@ -342,7 +318,7 @@ public class ReverbChain : Skill
                     "释放x次(x为本场战斗中其他己方角色的行动次数)。"
                 )
             ),
-            EnergyTimesWhileStep(
+            WhileStep(
                 times: GetLoopTimes,
                 loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: 1)]
             )

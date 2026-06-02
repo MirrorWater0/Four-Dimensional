@@ -6,11 +6,12 @@ using Godot;
 
 public partial class Relic
 {
-    private const int BlessingDamage = 20;
-    private const int MatrixShieldBlock = 15;
+    private const int BlessingDamage = 17;
+    private const int MatrixShieldBlock = 10;
     private const int BackpackExtraDrawStacks = 1;
     private const int BackpackTargetCount = 3;
     private const int EnergyTankEnergy = 1;
+    private const int EnergyStorageTankStacks = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
     private const int MechanicalEnergyConverterEnergy = 1;
@@ -25,6 +26,7 @@ public partial class Relic
     private const int PulseControllerWeakenStacks = 3;
     private const int KnightHelmetMinimumCost = 2;
     private const int KnightHelmetBlock = 6;
+    private const int HexagonMaxLife = 8;
 
     public RelicID ID;
     public string RelicName;
@@ -42,7 +44,6 @@ public partial class Relic
 
     public static RelicID[] GetUnownedOfferPool()
     {
-        var ownedRelics = GameInfo.Relics;
         List<RelicID> result = new();
         RelicID[] pool =
         {
@@ -57,6 +58,7 @@ public partial class Relic
             RelicID.MatrixShield,
             RelicID.Backpack,
             RelicID.EnergyTank,
+            RelicID.EnergyStorageTank,
             RelicID.FusionCore,
             RelicID.MechanicalEnergyConverter,
             RelicID.Refractometer,
@@ -67,7 +69,7 @@ public partial class Relic
         for (int i = 0; i < pool.Length; i++)
         {
             var relicId = pool[i];
-            if (ownedRelics == null || !ownedRelics.ContainsKey(relicId))
+            if (!GameInfo.HasRelic(relicId))
                 result.Add(relicId);
         }
 
@@ -89,6 +91,7 @@ public partial class Relic
             RelicID.MatrixShield => new Relic(RelicID.MatrixShield),
             RelicID.Backpack => new Relic(RelicID.Backpack),
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
+            RelicID.EnergyStorageTank => new Relic(RelicID.EnergyStorageTank),
             RelicID.FusionCore => new Relic(RelicID.FusionCore),
             RelicID.MechanicalEnergyConverter => new Relic(RelicID.MechanicalEnergyConverter),
             RelicID.Refractometer => new Relic(RelicID.Refractometer),
@@ -148,6 +151,7 @@ public partial class Relic
             RelicID.MatrixShield => "res://asset/svg/RelicIcon/MatrixShield.svg",
             RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
+            RelicID.EnergyStorageTank => "res://asset/svg/RelicIcon/EnergyStorageTank.svg",
             RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
             RelicID.MechanicalEnergyConverter => "res://asset/svg/RelicIcon/MechanicalEnergyConverter.svg",
             RelicID.Refractometer => "res://asset/svg/RelicIcon/Refractometer.svg",
@@ -220,7 +224,7 @@ public partial class Relic
         relic.IconAdd(playerResourceState);
         playerResourceState.RelicList ??= new List<Relic>();
         playerResourceState.RelicList.Add(relic);
-        GameInfo.Relics[relicID] = num;
+        GameInfo.SetRelicCount(relicID, num);
         ApplyAcquireEffect(relicID);
     }
 
@@ -229,7 +233,7 @@ public partial class Relic
         if (baseAmount <= 0)
             return 0;
 
-        if (GameInfo.Relics == null || !GameInfo.Relics.ContainsKey(RelicID.CompressionCore))
+        if (!GameInfo.HasRelic(RelicID.CompressionCore))
             return baseAmount;
 
         return Mathf.CeilToInt(baseAmount * 1.2f);
@@ -316,8 +320,7 @@ public partial class Relic
         skill.OwnerCharater.UpdataBlock(KnightHelmetBlock, source: skill.OwnerCharater);
     }
 
-    private static bool HasRelic(RelicID relicId) =>
-        GameInfo.Relics != null && GameInfo.Relics.ContainsKey(relicId);
+    private static bool HasRelic(RelicID relicId) => GameInfo.HasRelic(relicId);
 
     public void IconAdd(PlayerResourceState playerResourceState)
     {
@@ -371,6 +374,9 @@ public partial class Relic
             case RelicID.EnergyTank:
                 ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
                 break;
+            case RelicID.EnergyStorageTank:
+                ApplyEnergyStorageToPlayers(battle, EnergyStorageTankStacks);
+                break;
             case RelicID.FusionCore:
             case RelicID.MechanicalEnergyConverter:
                 break;
@@ -395,7 +401,7 @@ public partial class Relic
                 break;
         }
 
-        GameInfo.Relics[ID] = Num;
+        GameInfo.SetRelicCount(ID, Num);
         UpdateIconLabel();
         UpdateRelicTipText();
     }
@@ -429,7 +435,8 @@ public partial class Relic
             RelicID.CompressionCore => "压缩核心",
             RelicID.MatrixShield => "矩阵护盾",
             RelicID.Backpack => "背包",
-            RelicID.EnergyTank => "能量储罐",
+            RelicID.EnergyTank => "自动电池",
+            RelicID.EnergyStorageTank => "能量储罐",
             RelicID.FusionCore => "聚变核心",
             RelicID.MechanicalEnergyConverter => "机械能转换器",
             RelicID.Refractometer => "折射仪",
@@ -451,13 +458,14 @@ public partial class Relic
             RelicID.Triangle => "战斗开始时第一位和第二位角色获得2点生存。",
             RelicID.Square => "战斗开始时第一位和第二位角色获得2点力量。",
             RelicID.Pentagon => "战斗开始时第一位和第二位角色获得2点速度。",
-            RelicID.Hexagon => "战斗开始时第一位和第二位角色获得8点血量上限,并回复0点。",
+            RelicID.Hexagon => $"战斗开始时全阵获得{HexagonMaxLife}点生命上限。",
             RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
             RelicID.MatrixShield => $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。",
             RelicID.Backpack => $"战斗开始时前{BackpackTargetCount}位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
             RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
+            RelicID.EnergyStorageTank => $"战斗开始时全阵获得{EnergyStorageTankStacks}层{Buff.BuffName.EnergyStorage.GetDescription()}。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
             RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
@@ -490,15 +498,13 @@ public partial class Relic
 
     private static async Task ApplyHexagonEffect(Battle battle)
     {
-        int targetCount = Math.Min(2, battle.PlayersList.Count);
-        for (int i = 0; i < targetCount; i++)
+        for (int i = 0; i < battle.PlayersList.Count; i++)
         {
             var player = battle.PlayersList[i];
             if (player == null || player.State == Character.CharacterState.Dying)
                 continue;
 
-            await player.IncreaseProperties(PropertyType.MaxLife, 8);
-            player.Recover(2);
+            await player.IncreaseProperties(PropertyType.MaxLife, HexagonMaxLife);
         }
     }
 
@@ -553,6 +559,21 @@ public partial class Relic
                 continue;
 
             player.UpdataEnergy(energy, player);
+        }
+    }
+
+    private static void ApplyEnergyStorageToPlayers(Battle battle, int stacks)
+    {
+        if (battle?.PlayersList == null || stacks <= 0)
+            return;
+
+        for (int i = 0; i < battle.PlayersList.Count; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (player == null || player.State == Character.CharacterState.Dying)
+                continue;
+
+            SpecialBuff.BuffAdd(Buff.BuffName.EnergyStorage, player, stacks, player);
         }
     }
 
@@ -700,13 +721,13 @@ public partial class Relic
         icon.MouseEntered += () =>
         {
             tip.FollowMouse = true;
-            tip.Description.Text = BuildTooltip();
-            tip.Visible = true;
+            tip.MinContentWidth = 260f;
+            tip.SetText(BuildTooltip());
         };
         icon.MouseExited += () =>
         {
             if (tip != null)
-                tip.Visible = false;
+                tip.HideTooltip();
         };
     }
 
@@ -717,7 +738,8 @@ public partial class Relic
         var tip = GetOrCreateRelicTip(IconNode);
         if (tip == null || !tip.Visible)
             return;
-        tip.Description.Text = BuildTooltip();
+        tip.MinContentWidth = 260f;
+        tip.SetText(BuildTooltip());
     }
 
     private static Tip GetOrCreateRelicTip(Node context)
@@ -748,6 +770,7 @@ public partial class Relic
         tip.Name = "RelicTip";
         tip.FollowMouse = true;
         tip.AnchorOffset = new Vector2(20f, 20f);
+        tip.MinContentWidth = 260f;
         layer.AddChild(tip);
         return tip;
     }
@@ -838,4 +861,5 @@ public enum RelicID
     PulseController,
     curse,
     MechanicalEnergyConverter,
+    EnergyStorageTank,
 }

@@ -79,10 +79,10 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 268;
-        Power = 10;
-        Survivability = 10;
-        Speed = 12;
+        MaxLife = 226;
+        Power = 9;
+        Survivability = 7;
+        Speed = 10;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
         PassiveName = global::War.PassiveNameText;

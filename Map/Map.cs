@@ -309,11 +309,20 @@ public partial class Map : Control
             }
         };
 
+        CallDeferred(nameof(ShowPendingBossRelicChoiceIfNeeded));
     }
 
     public override void _ExitTree()
     {
         ExitMapPeekMode();
+    }
+
+    private void ShowPendingBossRelicChoiceIfNeeded()
+    {
+        if (WarmupMode || !BossRelicChoice.ShouldShowPendingChoice())
+            return;
+
+        BossRelicChoice.Show(this);
     }
 
     public void ToggleMapPeekMode()
@@ -335,7 +344,9 @@ public partial class Map : Control
         HideForMapPeek(SiteUiLayer);
         HideForMapPeek(FrontUiLayer);
         HideForMapPeek(MenuLayer);
+        HideForMapPeek(GetNodeOrNull<CanvasItem>("UI/ReadyButton"));
         HideRootCanvasLayersForMapPeek();
+        HideBattleRewardsForMapPeek();
 
         _isDrag = false;
         _isDragActive = false;
@@ -381,6 +392,27 @@ public partial class Map : Control
             if (child is CanvasLayer layer && !ShouldPreserveRootLayerForMapPeek(layer))
                 HideForMapPeek(layer);
         }
+    }
+
+    private void HideBattleRewardsForMapPeek()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return;
+
+        HideBattleRewardsForMapPeek(root);
+    }
+
+    private void HideBattleRewardsForMapPeek(Node node)
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node) || node.IsQueuedForDeletion())
+            return;
+
+        if (node is Reward)
+            HideForMapPeek(node);
+
+        foreach (Node child in node.GetChildren())
+            HideBattleRewardsForMapPeek(child);
     }
 
     private static bool ShouldPreserveRootLayerForMapPeek(CanvasLayer layer)

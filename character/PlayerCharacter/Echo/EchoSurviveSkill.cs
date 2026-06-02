@@ -7,7 +7,7 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 4;
 
     public SoundBarrier()
         : base(SkillTypes.Survive)
@@ -55,7 +55,7 @@ public partial class SonicDeflection : Skill
 
 public partial class DeflectionShield : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
     private const int DamageImmuneStacks = 1;
 
     public DeflectionShield()
@@ -84,7 +84,8 @@ public partial class DeflectionShield : Skill
 public partial class ResonantWard : Skill
 {
     private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
+    public override int EnergyCost => 2;
 
     public ResonantWard()
         : base(SkillTypes.Survive)
@@ -98,12 +99,12 @@ public partial class ResonantWard : Skill
     {
         return new SkillPlan(
             this,
+            BlockStep(baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
                 target: TargetReference.All
-            ),
-            BlockStep(baseBlock: BaseBlock)
+            )
         );
     }
 }
@@ -111,7 +112,7 @@ public partial class ResonantWard : Skill
 public partial class DissonantField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
     private const int WeakenStacks = 2;
     private const int MaxTargets = 2;
 

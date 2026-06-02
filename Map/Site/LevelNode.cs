@@ -41,6 +41,9 @@ public partial class LevelNode : ColorRect
     public LevelState State { get; set; }
     public LevelType Type { get; set; } = LevelType.Normal;
     public List<EnemyRegedit> EnemiesRegeditList;
+    public List<string> PlayerDamageSummaryLines = new();
+    public int PlayerTotalTurnCount;
+    public int EnemyTotalTurnCount;
     public Button Button => field ??= GetNode("Button") as Button;
 
     // public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
@@ -584,19 +587,54 @@ public partial class LevelNode : ColorRect
 
     public List<EnemyRegedit> GetEliteEnemies()
     {
-        EnemyRegedit[] eliteCatalog =
-            GameInfo.CurrentLevel > 0
-                ? [new FearEliteRegedit()]
-                : [new ArroganceRegedit(), new AngerEliteRegedit()];
+        EnemyRegedit[] eliteCatalog = BuildEliteCatalogForCurrentRegion();
+        EnemyRegedit[] candidates = FilterConsecutiveEliteCandidate(eliteCatalog);
         var rng = new Random(RandomNum);
         List<EnemyRegedit> list = new()
         {
-            eliteCatalog[rng.Next(eliteCatalog.Length)].GetRegedit(),
+            candidates[rng.Next(candidates.Length)].GetRegedit(),
         };
         list[0].PositionIndex = 5;
         if (GameInfo.CurrentLevel > 0)
             ApplyEliteRegionTwoMultiplier(list[0]);
         return list;
+    }
+
+    private static EnemyRegedit[] BuildEliteCatalogForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0
+            ? [new FearEliteRegedit(), new EnvyEliteRegedit()]
+            : [new ArroganceRegedit(), new AngerEliteRegedit()];
+    }
+
+    private static EnemyRegedit[] FilterConsecutiveEliteCandidate(EnemyRegedit[] eliteCatalog)
+    {
+        if (eliteCatalog == null || eliteCatalog.Length <= 1)
+            return eliteCatalog;
+
+        string lastEliteIdentity = GetLastCompletedEliteIdentity();
+        if (string.IsNullOrWhiteSpace(lastEliteIdentity))
+            return eliteCatalog;
+
+        EnemyRegedit[] filtered = eliteCatalog
+            .Where(elite => GetEnemyIdentity(elite) != lastEliteIdentity)
+            .ToArray();
+        return filtered.Length > 0 ? filtered : eliteCatalog;
+    }
+
+    private static string GetLastCompletedEliteIdentity()
+    {
+        LevelNodeCompletionRecord record = GameInfo
+            .CompletedLevelNodeRecords?.Values.Where(record =>
+                record != null && record.NodeType == LevelType.Elite
+            )
+            .OrderByDescending(record => record.CompletionOrder)
+            .FirstOrDefault();
+
+        string eliteName = record?.EnemyNames?.FirstOrDefault(name =>
+            !string.IsNullOrWhiteSpace(name)
+        );
+        return GetEnemyIdentity(eliteName);
     }
 
     public List<EnemyRegedit> GetBossEnemies()
@@ -611,13 +649,16 @@ public partial class LevelNode : ColorRect
 
     private EnemyRegedit PickBossForThisNode()
     {
-        EnemyRegedit boss = GameInfo.CurrentLevel > 0 ? new DeathRegedit() : new WarRegedit();
+        EnemyRegedit[] bossCatalog =
+            GameInfo.CurrentLevel > 0 ? [new DeathRegedit()] : [new WarRegedit(), new HavocRegedit()];
+        var rng = new Random(RandomNum);
+        EnemyRegedit boss = bossCatalog[rng.Next(bossCatalog.Length)];
         return boss.GetRegedit();
     }
 
     private static EnemyRegedit[] BuildBossCatalog()
     {
-        return [new WarRegedit(), new DeathRegedit()];
+        return [new WarRegedit(), new HavocRegedit(), new DeathRegedit()];
     }
 
     private static HashSet<string> GetDefeatedBossNames()
@@ -628,14 +669,16 @@ public partial class LevelNode : ColorRect
                 )
                 .SelectMany(record => record.EnemyNames ?? new List<string>())
                 .Where(name => !string.IsNullOrWhiteSpace(name))
-                .Select(NormalizeBossIdentity)
+                .Select(GetEnemyIdentity)
                 .ToHashSet(StringComparer.Ordinal) ?? new HashSet<string>(StringComparer.Ordinal);
     }
 
-    private static string GetBossIdentity(EnemyRegedit boss) =>
-        NormalizeBossIdentity(boss?.CharacterName);
+    private static string GetBossIdentity(EnemyRegedit boss) => GetEnemyIdentity(boss);
 
-    private static string NormalizeBossIdentity(string name) =>
+    private static string GetEnemyIdentity(EnemyRegedit enemy) =>
+        GetEnemyIdentity(enemy?.CharacterName);
+
+    private static string GetEnemyIdentity(string name) =>
         string.IsNullOrWhiteSpace(name) ? string.Empty : name.Trim();
 
     private static void ApplyStatMultiplier(EnemyRegedit enemy, float multiplier)
@@ -696,7 +739,6 @@ public partial class LevelNode : ColorRect
     {
         return
         [
-            new ArmonRegedit(),
             new RedHuskRegedit(),
             new VoidAcolyteRegedit(),
             new VoidRotorRegedit(),
@@ -878,7 +920,7 @@ public partial class LevelNode : ColorRect
             return false;
 
         var map = root.GetNodeOrNull<Map>("Map") ?? root.GetNodeOrNull<Map>("/root/Map");
-        if (map?.IsMapInteractionBlocked() == true)
+        if (map?.IsMapInteractionBlocked() == true && !map.IsMapPeekModeActive)
             return true;
 
         var siteUiLayer =

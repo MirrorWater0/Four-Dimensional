@@ -52,4 +52,5 @@ public enum EnemiesEnum
     MarrowReaver,
     FearElite,
     Death,
+    Havoc,
 }

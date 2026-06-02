@@ -59,5 +59,5 @@ void fragment() {
         final_color.rgb = mix(final_color.rgb, accent_color.rgb, 0.4);
     }
 
-    COLOR = final_color;
+    COLOR *= final_color;
 }

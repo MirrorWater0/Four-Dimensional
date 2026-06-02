@@ -13,10 +13,7 @@ public partial class BasicAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier));
     }
 }
 
@@ -31,16 +28,14 @@ public partial class BasicDefense : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = I18n.Tr("skill.basic_defense.name", "基础防御");
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.basic_defense.name", "基础防御");
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(
-                baseBlock: BaseBlock,
-                multiplier: SurvivabilityMultiplier
-            )
+            BlockStep(baseBlock: BaseBlock, multiplier: SurvivabilityMultiplier)
         );
     }
 }
@@ -57,6 +52,7 @@ public partial class BasicGuard : Skill
     }
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_guard.name", "护卫");
+
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -72,7 +68,7 @@ public partial class BasicGuard : Skill
 
 public partial class BasicSpecial : Skill
 {
-    private const int PowerGain = 2;
+    private const int PowerGain = 1;
 
     public BasicSpecial()
         : base(SkillTypes.Special)
@@ -80,7 +76,8 @@ public partial class BasicSpecial : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = I18n.Tr("skill.basic_special.name", "基础特殊");
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.basic_special.name", "基础特殊");
     public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()

@@ -9,7 +9,7 @@ public partial class KasiyaSurviveSkill { }
 public partial class ShockWave : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 3;
 
     public override string SkillName { get; set; } = "冲击波";
 
@@ -35,8 +35,8 @@ public partial class ShockWave : Skill
 
 public partial class ReNewedSpirit : Skill
 {
-    private const int PowerGain = 5;
-    private const int SurvivabilityGain = 5;
+    private const int PowerGain = 4;
+    private const int SurvivabilityGain = 4;
     public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "重振精神";
@@ -61,6 +61,8 @@ public partial class ReNewedSpirit : Skill
 public partial class AbsouluteDefense : Skill
 {
     public override string SkillName { get; set; } = "绝对防御";
+    public override int EnergyCost => XEnergyCost;
+
     int basisBlock = 0;
 
     public AbsouluteDefense()
@@ -71,14 +73,23 @@ public partial class AbsouluteDefense : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(baseBlock: basisBlock, multiplier: 3));
+        return new SkillPlan(
+            this,
+            WhileStep(
+                loopSteps:
+                [
+                    BlockStep(baseBlock: 0, multiplier: 2),
+                    ApplyBuffFriendly(Buff.BuffName.Taunt, 1),
+                ]
+            )
+        );
     }
 }
 
 public partial class TauntingGuard : Skill
 {
     private const int TauntStacks = 3;
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 3;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
@@ -105,7 +116,7 @@ public partial class TauntingGuard : Skill
 public partial class WeakpointBulwark : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
 
     public override string SkillName { get; set; } = "蓄势待发";
 
@@ -223,7 +234,7 @@ public partial class WeakpointBulwark : Skill
 
 public partial class Purification : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
 
     public override string SkillName { get; set; } = "净化";
 
@@ -287,7 +298,7 @@ public partial class BarrierDuplication : Skill
                 },
                 _ => new[] { "格挡翻倍。" }
             ),
-            BlockStep(baseBlock: 4)
+            BlockStep(baseBlock: 3)
         );
     }
 }

@@ -84,35 +84,35 @@ public partial class Buff
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
-            BuffName.Fear => "使用攻击技能时，受到等同于层数的伤害。",
-            BuffName.Taunt => "敌方只能锁定该目标；受到伤害时消耗1层。",
-            BuffName.Thorn => "受到攻击时，对攻击者造成等同于层数的伤害。",
+            BuffName.Fear => "使用攻击技能时，每层受到1点伤害。",
+            BuffName.Taunt => "敌方攻击只能锁定该目标；受到伤害时消耗1层。",
+            BuffName.Thorn => "受到攻击时，每层对攻击者造成1点伤害。",
             BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
             BuffName.Pursuit => "回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             BuffName.Invisible => "其他角色存活时,无法被选为攻击目标；回合开始时消耗1层。",
             BuffName.Swift => "回合开始时，每层抽1张牌。",
-            BuffName.ExtraPower => "获得力量时，额外获得等同于层数的力量。",
-            BuffName.ExtraSurvivability => "获得生存时，额外获得等同于层数的生存。",
+            BuffName.ExtraPower => "获得力量时，每层额外获得1点力量。",
+            BuffName.ExtraSurvivability => "获得生存时，每层额外获得1点生存。",
             BuffName.ExtraTurn => "回合结束时消耗1层，触发1个完整额外回合。",
-            BuffName.AutoArmor => "受到攻击后，获得等同于层数的格挡。",
+            BuffName.AutoArmor => "受到攻击后，每层获得1点格挡。",
             BuffName.Barricade => "回合开始时，保留你的格挡。",
             BuffName.Afterimage => "回合开始时，格挡不会消失，减少1层。",
             BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
-            BuffName.Disaster => "己方角色行动结束时，受到等同于层数的伤害，并消耗1层。",
+            BuffName.Disaster => "己方角色行动结束时，每层受到1点伤害，并消耗1层。",
             BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
-            BuffName.Shadow => "攻击时，获得等同于层数的力量。",
-            BuffName.Demon => "回合结束时，获得等同于层数的力量。",
-            BuffName.Void => "其他己方角色回合结束时，获得等同于层数的力量。",
-            BuffName.Echo => "每回合前X张技能牌释放2次，X等同于层数。",
-            BuffName.Sanctuary => "己方角色回合结束时，回复0点生命，次数等同于层数。",
+            BuffName.Shadow => "攻击时，每层获得1点力量。",
+            BuffName.Demon => "回合结束时，每层获得1点力量。",
+            BuffName.Void => "其他己方角色回合结束时，每层获得1点力量。",
+            BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
+            BuffName.Sanctuary => "己方角色回合结束时，每层回复0点生命1次。",
             BuffName.ExtraDraw => "回合开始时，每消耗1层抽1张牌，直到手牌上限。",
             BuffName.Source => "回合开始时，每层获得1点能量。",
             BuffName.EnergyStorage => "回合结束时，每层少失去1点能量。",
-            BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
+            BuffName.EternalDark => "己方其他角色行动后，获得1层隐身。",
             BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
-            BuffName.CursePower => "每次攻击时，给予目标等同于层数的虚弱。",
-            BuffName.WeakeningField => "每给予1层虚弱，己方全阵获得3点格挡。",
+            BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
+            BuffName.WeakeningField => "每给予1层虚弱，己方全阵获得{block}点格挡。",
             _ => string.Empty,
         };
 
@@ -120,7 +120,15 @@ public partial class Buff
             return string.Empty;
 
         string key = $"buff.{I18n.ToSnakeCase(name.ToString())}.effect";
-        return I18n.Tr(key, fallback);
+        return name switch
+        {
+            BuffName.WeakeningField => I18n.Format(
+                key,
+                fallback,
+                ("block", SpecialBuff.WeakeningFieldBlock)
+            ),
+            _ => I18n.Tr(key, fallback),
+        };
     }
 
     private static string GetLegacyBuffName(BuffName name)
@@ -663,6 +671,8 @@ public partial class Buff
         existingBuff.TweenLabel();
         existingBuff.Hint(existingBuff.ThisBuffName, BuffHintLabel.Which.gain);
         existingBuff.BuffAddAnimation();
+        if (stack > 0)
+            target?.MarkBuffSeen(name);
         target?.InvalidateBuffTooltipCache();
         RecordBuffGain(target, name, stack, source);
         RefreshTurnOrderPreviewIfNeeded(target, name);
@@ -679,6 +689,8 @@ public partial class Buff
         buff.UpdateStackLabel();
         target.StateIconContainer.AddChild(buff.BuffIcon);
         buff.BuffAddAnimation();
+        if (buff.Stack > 0)
+            target.MarkBuffSeen(buff.ThisBuffName);
         target.InvalidateBuffTooltipCache();
         RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
         RefreshTurnOrderPreviewIfNeeded(target, buff.ThisBuffName);
@@ -871,7 +883,7 @@ public partial class StartActionBuff : Buff
                 UpdateStackLabel();
                 break;
             case BuffName.EternalDark:
-                StartActionBuff.BuffAdd(BuffName.Invisible, Owner, Stack, Owner);
+                // Passive effect: handled by Battle.TriggerGlobalTurnEndBuffs.
                 break;
             case BuffName.Swift:
                 if (Owner is PlayerCharacter player)
@@ -1261,7 +1273,7 @@ public partial class EndActionBuff : Buff
 public partial class SpecialBuff : Buff
 {
     private static bool _sharingBeaconBlock;
-    private const int WeakeningFieldBlock = 3;
+    internal const int WeakeningFieldBlock = 4;
 
     public SpecialBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }

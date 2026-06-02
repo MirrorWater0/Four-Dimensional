@@ -65,5 +65,5 @@ void fragment() {
     color += wave_color.rgb * interference * 0.30;
 
     float alpha = body * 0.95 + waves * 0.72 + bolt + interference + glow;
-    COLOR = vec4(color, clamp(alpha, 0.0, 1.0));
+    COLOR *= vec4(color, clamp(alpha, 0.0, 1.0));
 }

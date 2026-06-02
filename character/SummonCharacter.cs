@@ -135,17 +135,7 @@ public partial class SummonCharacter : Character
     )
     {
         var sb = new StringBuilder(128);
-        sb.Append("仅在战斗中被召唤。濒死时若未触发复生则移出战斗。");
-        sb.Append("\n不参与正常轮转和全阵速度；召唤者行动后依次出手。");
-
-        var validSkills = skills?.Where(x => x != null).ToArray() ?? Array.Empty<Skill>();
-        for (int i = 0; i < validSkills.Length; i++)
-        {
-            Skill skill = validSkills[i];
-            skill.UpdateDescription();
-            string desc = string.IsNullOrWhiteSpace(skill.Description) ? "-" : skill.Description;
-            sb.Append($"\n技能：{skill.SkillName}。{desc}");
-        }
+        sb.Append("不参与正常轮转和全阵速度；召唤者行动后依次出手。");
 
         return sb.ToString();
     }

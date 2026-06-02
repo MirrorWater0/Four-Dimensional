@@ -2,11 +2,11 @@ using Godot;
 
 public partial class VoidRotor : EnemyCharacter
 {
-    private const int PassiveWeakenStacks = 1;
+    private const int PassivePowerGain = 2;
 
     public const string PassiveNameText = "虚空蚀咒";
     public static string PassiveDescriptionText =>
-        $"回合开始时：给予敌方全阵{PassiveWeakenStacks}层{Buff.BuffName.Weaken.GetDescription()}。";
+        $"回合结束时：己方全阵获得{PassivePowerGain}点力量。";
 
     public override string CharacterName { get; set; } = "VoidRotor";
 
@@ -17,23 +17,24 @@ public partial class VoidRotor : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void OnTurnStart()
+    public override void OnTurnEnd()
     {
-        base.OnTurnStart();
         TriggerPassive(null);
+        base.OnTurnEnd();
     }
 
     public override void Passive(Skill skill)
     {
-        using var _ = BeginEffectSource("被动");
-        Character[] targets = ChooseHostileTargetsByOrder(returnDummyWhenEmpty: false);
-        for (int i = 0; i < targets.Length; i++)
+        if (BattleNode == null)
+            return;
+
+        using var effectSource = BeginEffectSource("被动");
+        foreach (Character target in BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true))
         {
-            Character target = targets[i];
-            if (target == null)
+            if (target == null || target.State != CharacterState.Normal)
                 continue;
 
-            AttackBuff.BuffAdd(Buff.BuffName.Weaken, target, PassiveWeakenStacks, this);
+            _ = target.IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
         }
     }
 }
@@ -47,9 +48,9 @@ public partial class VoidRotorRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidRotor.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidRotor.tscn");
 
-        MaxLife = 70;
-        Power = 9;
-        Survivability = 20;
+        MaxLife = 63;
+        Power = 6;
+        Survivability = 19;
         Speed = 9;
         SkillIDs = [SkillID.VoidRotorAttack, SkillID.VoidRotorSurvive, SkillID.VoidRotorSpecial];
 
@@ -75,7 +76,8 @@ public partial class VoidRotorAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: 3)
+            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: 3),
+            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -106,7 +108,6 @@ public partial class VoidRotorSpecial : Skill
 {
     private const int BaseDamage = 0;
     private const int DazeCardsPerTarget = 2;
-    private const int RandomTargetCount = 2;
 
     public VoidRotorSpecial()
         : base(SkillTypes.Special)

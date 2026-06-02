@@ -36,9 +36,9 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 143;
-        Power = 16;
-        Survivability = 16;
+        MaxLife = 125;
+        Power = 15;
+        Survivability = 15;
         Speed = 50;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
 
@@ -50,7 +50,6 @@ public partial class ArroganceRegedit : EnemyRegedit
 public partial class ArroganceAttack : Skill
 {
     private const int BaseDamage = 4;
-    private const int MaxTargets = 2;
 
     public ArroganceAttack()
         : base(SkillTypes.Attack)
@@ -64,7 +63,7 @@ public partial class ArroganceAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
             LowerTargetPropertyStep(PropertyType.Survivability, 5, HostileTargetReference.AttackKey)
         );
     }

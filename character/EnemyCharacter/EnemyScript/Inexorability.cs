@@ -83,9 +83,9 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 59;
-        Power = 11;
-        Survivability = 14;
+        MaxLife = 57;
+        Power = 10;
+        Survivability = 13;
         Speed = 8;
         SkillIDs =
         [
@@ -168,7 +168,7 @@ public partial class InexorabilitySpecial : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 multiplier: PowerMultiplier,
-                target: HostileTargetsEachRowLast()
+                target: HostileTargetReference.EachRowLast
             )
         );
     }

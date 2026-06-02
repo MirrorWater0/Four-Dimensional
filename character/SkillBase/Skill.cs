@@ -157,6 +157,7 @@ public partial class Skill
                         break;
                     }
 
+                    await PlayEchoCardAnimationAsync();
                     RecordSkillUse();
                     await plan.Execute();
                     if (await ResolveBattleOverAfterEffectAsync())
@@ -209,6 +210,15 @@ public partial class Skill
         return Math.Max(queuedCount, 0);
     }
 
+    private async Task PlayEchoCardAnimationAsync()
+    {
+        CharacterControl characterControl = OwnerCharater?.BattleNode?.CharacterControl;
+        if (characterControl == null || !GodotObject.IsInstanceValid(characterControl))
+            return;
+
+        await characterControl.PlayEchoCardAsync(OwnerCharater, this);
+    }
+
     /// <summary>
     /// For non-battle usage (e.g. previews), set preview stats so UpdateDescription can work without a Character instance.
     /// </summary>
@@ -248,19 +258,18 @@ public partial class Skill
         return Math.Clamp(block, 0, clampMax);
     }
 
-    internal int GetXEnergyLoopCount(int paidEnergyPerLoop)
+    internal int GetPaidEnergyLoopCount()
     {
-        int safeCost = Math.Max(1, paidEnergyPerLoop);
         if (IsEnergyCostWaived)
-            return Math.Max(0, (OwnerCharater?.Energy ?? 0) / safeCost);
+            return Math.Max(0, OwnerCharater?.Energy ?? 0);
 
         if (_paidEnergyForCurrentEffect > 0)
-            return Math.Max(0, _paidEnergyForCurrentEffect / safeCost);
+            return Math.Max(0, _paidEnergyForCurrentEffect);
 
         if (OwnerCharater == null)
             return 0;
 
-        return Math.Max(0, OwnerCharater.Energy / safeCost);
+        return Math.Max(0, OwnerCharater.Energy);
     }
 
     internal IDisposable BeginEnergyCostWaiver()
@@ -422,7 +431,8 @@ public partial class Skill
     public static Character[] FilterHostileTargetSequence(
         IEnumerable<Character> orderedTargets,
         bool returnDummyWhenEmpty = false,
-        Character dummyTarget = null
+        Character dummyTarget = null,
+        bool applyTaunt = false
     )
     {
         Character[] ordered =
@@ -432,8 +442,10 @@ public partial class Skill
         // If everyone is invisible, fall back to the original ordered sequence and
         // continue target selection normally to avoid clearing the target list.
         Character[] selectableTargets = visibleTargets.Length > 0 ? visibleTargets : ordered;
-        Character[] tauntTargets = selectableTargets.Where(HasTauntBuff).ToArray();
-        Character[] targets = tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
+        Character[] tauntTargets = applyTaunt
+            ? selectableTargets.Where(HasTauntBuff).ToArray()
+            : Array.Empty<Character>();
+        Character[] targets = applyTaunt && tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
 
         if (targets.Length > 0 || !returnDummyWhenEmpty)
             return targets;
@@ -446,7 +458,8 @@ public partial class Skill
         bool byBehindRow = false,
         bool returnDummyWhenEmpty = true,
         bool normalOnly = true,
-        bool dyingFilter = false
+        bool dyingFilter = false,
+        bool applyTaunt = false
     )
     {
         if (owner?.BattleNode == null)
@@ -475,7 +488,12 @@ public partial class Skill
                 .ThenBy(target => GetBattleRow(target.PositionIndex))
                 .ThenBy(target => GetBattleCol(target.PositionIndex));
 
-        return FilterHostileTargetSequence(ordered, returnDummyWhenEmpty, owner.BattleNode?.dummy);
+        return FilterHostileTargetSequence(
+            ordered,
+            returnDummyWhenEmpty,
+            owner.BattleNode?.dummy,
+            applyTaunt
+        );
     }
 
     private Character[] GetHostileTargetsInTeamOrder(
@@ -494,14 +512,18 @@ public partial class Skill
         return FilterHostileTargetSequence(
             orderedTargets,
             returnDummyWhenEmpty,
-            OwnerCharater.BattleNode?.dummy
+            OwnerCharater.BattleNode?.dummy,
+            applyTaunt: false
         );
     }
 
-    public Character[] ChosetargetByOrder(bool byBehindRow = false)
-    {
-        return ChooseHostileTargetsByOrder(OwnerCharater, byBehindRow, returnDummyWhenEmpty: true);
-    }
+    public Character[] ChosetargetByOrder(bool byBehindRow = false, bool applyTaunt = false) =>
+        ChooseHostileTargetsByOrder(
+            OwnerCharater,
+            byBehindRow,
+            returnDummyWhenEmpty: true,
+            applyTaunt: applyTaunt
+        );
 
     private static bool IsDummyTarget(Skill skill, Character target)
     {
@@ -806,7 +828,7 @@ public partial class Skill
 
     private Character ResolvePrimaryTarget(bool byBehindRow)
     {
-        Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow);
+        Character[] targets = ChosetargetByOrder(byBehindRow: byBehindRow, applyTaunt: true);
         if (targets.Length == 0 || IsDummyTarget(this, targets[0]))
             return null;
         return targets[0];
@@ -896,7 +918,7 @@ public partial class Skill
 
     public async Task AOE(int damage, int Num, int times, bool byBehindRow = false)
     {
-        var targets = ChosetargetByOrder(byBehindRow: byBehindRow);
+        var targets = ChosetargetByOrder(byBehindRow: byBehindRow, applyTaunt: true);
         if (targets.Length == 0)
             return;
 
@@ -1103,6 +1125,7 @@ public partial class Skill
             SkillID.StasisBlade => new StasisBlade(),
             SkillID.ContinuousPierce => new ContinuousPierce(),
             SkillID.RuinBlade => new RuinBlade(),
+            SkillID.NightfallFlurry => new NightfallFlurry(),
             SkillID.VeilStep => new VeilStep(),
             SkillID.NightingaleEnergy => new NightingaleEnergy(),
             SkillID.TempoSurge => new TempoSurge(),
@@ -1183,6 +1206,12 @@ public partial class Skill
             SkillID.FearEliteAttack => new FearEliteAttack(),
             SkillID.FearEliteSurvive => new FearEliteSurvive(),
             SkillID.FearEliteSpecial => new FearEliteSpecial(),
+            SkillID.EnvyEliteAttack => new EnvyEliteAttack(),
+            SkillID.EnvyEliteSurvive => new EnvyEliteSurvive(),
+            SkillID.EnvyEliteSpecial => new EnvyEliteSpecial(),
+            SkillID.HavocAttack => new HavocAttack(),
+            SkillID.HavocSurvive => new HavocSurvive(),
+            SkillID.HavocSpecial => new HavocSpecial(),
             SkillID.BasicAttack => new BasicAttack(),
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicGuard => new BasicGuard(),
@@ -1430,6 +1459,9 @@ public enum SkillID
     RuinBlade = 105,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    NightfallFlurry = 156,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
     VeilStep = 32,
 
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
@@ -1594,6 +1626,18 @@ public enum SkillID
     FearEliteAttack = 151,
     FearEliteSurvive = 152,
     FearEliteSpecial = 153,
+    #endregion
+
+    #region EnvyElite
+    EnvyEliteAttack = 157,
+    EnvyEliteSurvive = 158,
+    EnvyEliteSpecial = 159,
+    #endregion
+
+    #region Havoc
+    HavocAttack = 160,
+    HavocSurvive = 161,
+    HavocSpecial = 162,
     #endregion
 
     #region Echo

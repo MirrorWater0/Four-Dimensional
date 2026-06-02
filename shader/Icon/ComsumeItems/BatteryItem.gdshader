@@ -78,5 +78,5 @@ void fragment() {
     alpha += glow * glow_color.a;
     alpha = clamp(alpha, 0.0, 1.0);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

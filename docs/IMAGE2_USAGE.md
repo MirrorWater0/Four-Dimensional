@@ -107,11 +107,27 @@ Do not copy their identities, silhouettes, exact weapons, or armor.
 Create a new enemy standing portrait.
 Pale anime sketch with clean thin line art.
 Simple watercolor shading with slightly cleaner color blocks.
+Very low surface texture density. Use broad clean color masses and large readable shapes.
+Use flat anime color blocking with only soft simple shadow bands.
+Avoid dense cracks, scale-like panels, vein-like lines, muscle-fiber strokes, sinew texture, tiny shard patterns, noisy armor seams, faceted polygon brushwork, and over-fragmented surface details.
+Complexity should come from the outer silhouette and a few major forms, not from many small internal texture lines or painterly surface strokes.
 Perfectly flat solid #00ff00 chroma-key background for local background removal.
 The background must be one uniform green color with no shadow, gradient, texture, floor plane, or lighting variation.
 Do not use #00ff00 or green rim light anywhere in the enemy itself.
 Raw game enemy portrait only, not a finished card template.
 No text, no watermark, no logo, no UI frame, no card border.
+```
+
+Boss 立绘可以比普通小怪复杂，但不要靠表面碎纹堆复杂度。Boss 提示词建议追加：
+
+```text
+Boss complexity through silhouette, posture, and 3 to 5 major armor/body masses.
+Keep surfaces smooth, matte, and graphic.
+Use large shell-like plates, smooth cloth-like shadows, or simple shadow blocks instead of cracked armor texture.
+Use at most 1 or 2 intentional seam lines on each major form.
+No dense fracture texture, no many tiny plates, no scale-like surface pattern, no vein webbing, no muscle striations, no sinew lines, no noisy polygon shards, no painterly scratch strokes.
+Avoid prompt words that cause texture overload, such as fractured, shattered, cracked, torn, exposed muscle, sinew, scales, crystal facets, or broken armor, unless the user explicitly wants that look.
+At small game size, the boss should read as clean large shapes first and details second.
 ```
 
 普通小怪默认要低复杂度，不要画成 Boss 或精英怪。提示词里优先追加：
@@ -236,6 +252,7 @@ No text, no watermark, no logo.
 Pale anime sketch with clean thin line art.
 Simple watercolor shading with slightly cleaner color blocks.
 Keep a light sketch feeling, but avoid messy stray lines, broken scratch lines, noisy crosshatching, and over-fragmented hair lines.
+Keep surface texture sparse: broad clean color blocks, low crack density, low seam density, no muscle-fiber strokes, no faceted polygon brushwork, and no tiny repeated patterns.
 Use flat bright white background, controlled negative space, and moderate visible color.
 Do not default to simple half-body composition.
 Do not over-polish: no glossy rendering, no commercial poster finish, no dense gradients, no hyper-detailed effects.
@@ -677,6 +694,8 @@ No interlocked fingers, no overlapping finger confusion.
 
 ```text
 No random fragments, no broken glass debris, no sparks, no noisy scratch lines.
+No dense cracks, no scale-like panels, no tiny shard texture, no vein webbing, no muscle striations, no sinew texture, no repeated surface pattern.
+Prefer smooth readable planes, flat color blocking, and a few large accent lines.
 Use only subtle light arcs or a faint aura.
 Keep the picture clean and readable at small card size.
 ```
@@ -709,6 +728,7 @@ Keep the picture clean and readable at small card size.
 - 不要把 `C:\tmp\key.txt` 加到项目或提交。
 - 生成图先保存为新文件，例如 `SomeSkill_v2.png`，确认后再覆盖正式文件。
 - 覆盖 Godot 正在使用的图片时可能失败，先关闭占用或保存成新文件。
+- 如果 `/images/edits` 或 `/images/generations` 在长时间等待后返回 `504 Gateway Time-out`，不要默认认为请求没有生成。代理后台可能已经完成并计费，只是本地没有收到 `b64_json` 或 `url`，因此没有落盘。遇到这种情况先检查代理面板的请求记录；如果面板显示成功或已扣费，优先尝试用请求记录取回结果或让用户在面板确认，不要立刻重复发起同规格请求。
 
 ## 当前卡图分组
 

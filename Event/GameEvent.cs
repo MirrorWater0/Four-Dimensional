@@ -16,14 +16,14 @@ public partial class GameEvent
                 + "你可以让系统随机校准一名队员，也可以手动指定目标。",
             Option(
                 "启动随机校准",
-                propertyChange: Stats((PropertyType.Power, 4), (PropertyType.Survivability, -1)),
+                propertyChange: Stats((PropertyType.Power, 5), (PropertyType.Survivability, -1)),
                 randomChange: true
             ),
             Option(
                 "手动指定校准对象",
                 propertyChange: Stats((PropertyType.Speed, 2))
             ),
-            Option("稳定场核并回充", transitionEnergyChange: 25)
+            Option("稳定场核并回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
         Event(
             "轨道黑匣",
@@ -34,13 +34,13 @@ public partial class GameEvent
                 "随机解码事故航迹",
                 propertyChange: Stats(
                     (PropertyType.Speed, 2),
-                    (PropertyType.Power, 2),
+                    (PropertyType.Power, 1),
                     (PropertyType.MaxLife, -3)
                 ),
                 randomChange: true
             ),
             Option("拆下完整模块", electricityChangeMin: 70, electricityChangeMax: 100),
-            Option("接入残余电容回充", transitionEnergyChange: 25)
+            Option("接入残余电容回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
         Event(
             "观测阵列",
@@ -49,14 +49,11 @@ public partial class GameEvent
                 + "若直接接管阵列，则有机会把整段星图卖给空间站。",
             Option(
                 "为一名角色进行轨迹校准",
-                propertyChange: Stats((PropertyType.Power, 1), (PropertyType.Survivability, 1))
+                propertyChange: Stats((PropertyType.Power, 1), (PropertyType.Survivability, 2))
             ),
             Option(
                 "让系统随机分配观测增益",
-                propertyChange: Stats(
-                    (PropertyType.Survivability, 4),
-                    (PropertyType.Speed, -1)
-                ),
+                propertyChange: Stats((PropertyType.Survivability, 5), (PropertyType.Speed, -1)),
                 randomChange: true
             ),
             Option("打包星图数据出售", electricityChangeMin: 70, electricityChangeMax: 100)
@@ -68,18 +65,18 @@ public partial class GameEvent
                 + "也可以放弃搜刮，把能拆下来的零件直接换成电力币。",
             Option(
                 "为一名角色装配高能模块",
-                propertyChange: Stats((PropertyType.Power, 3), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.Power, 4), (PropertyType.Speed, -1))
             ),
             Option(
                 "随机接入军械协议",
                 propertyChange: Stats(
-                    (PropertyType.Power, 2),
-                    (PropertyType.Speed, 2),
+                    (PropertyType.Power, 3),
+                    (PropertyType.Speed, 1),
                     (PropertyType.Survivability, -1)
                 ),
                 randomChange: true
             ),
-            Option("拆解备用电芯回充", transitionEnergyChange: 25)
+            Option("拆解备用电芯回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
         Event(
             "低温休眠仓",
@@ -88,14 +85,18 @@ public partial class GameEvent
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option(
                 "为一名角色执行修补程序",
-                propertyChange: Stats((PropertyType.MaxLife, 9), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.MaxLife, 12), (PropertyType.Speed, -1))
             ),
             Option(
                 "随机唤醒一具维修躯体协助强化",
-                propertyChange: Stats((PropertyType.Survivability, 3)),
+                propertyChange: Stats((PropertyType.Survivability, 4)),
                 randomChange: true
             ),
-            Option("抽走休眠仓备用电池", transitionEnergyChange: 25)
+            Option(
+                "抽走休眠仓备用电池",
+                transitionEnergyChangeMin: 15,
+                transitionEnergyChangeMax: 25
+            )
         ),
         Event(
             "引力透镜井",
@@ -104,13 +105,13 @@ public partial class GameEvent
                 + "若强行收束透镜，也许还能榨出一笔值钱的实验数据。",
             Option(
                 "让一名角色接受引力偏转",
-                propertyChange: Stats((PropertyType.Survivability, 3), (PropertyType.MaxLife, -3))
+                propertyChange: Stats((PropertyType.Survivability, 4), (PropertyType.MaxLife, -3))
             ),
             Option(
                 "随机暴露于焦点中心",
                 propertyChange: Stats(
-                    (PropertyType.Power, 2),
-                    (PropertyType.Speed, 2),
+                    (PropertyType.Power, 3),
+                    (PropertyType.Speed, 1),
                     (PropertyType.MaxLife, -3)
                 ),
                 randomChange: true
@@ -124,18 +125,18 @@ public partial class GameEvent
                 + "你可以拆解柜体，也可以短暂停留，恢复航程节奏。",
             Option(
                 "让一名角色遵循守则训练",
-                propertyChange: Stats((PropertyType.Survivability, 2))
+                propertyChange: Stats((PropertyType.Survivability, 3))
             ),
             Option(
                 "随机读取静默训练记录",
                 propertyChange: Stats(
-                    (PropertyType.Speed, 2),
-                    (PropertyType.Survivability, 2),
+                    (PropertyType.Speed, 1),
+                    (PropertyType.Survivability, 3),
                     (PropertyType.Power, -1)
                 ),
                 randomChange: true
             ),
-            Option("遵循守则静坐片刻", transitionEnergyChange: 25)
+            Option("遵循守则静坐片刻", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
     ];
 
@@ -155,9 +156,13 @@ public partial class GameEvent
         bool randomChange = false,
         bool exit = true,
         int transitionEnergyChange = 0,
+        int transitionEnergyChangeMin = 0,
+        int transitionEnergyChangeMax = 0,
         int electricityChange = 0,
         int electricityChangeMin = 0,
-        int electricityChangeMax = 0
+        int electricityChangeMax = 0,
+        int propertyChangeElectricityCostMin = EventOption.AutoPropertyChangeElectricityCost,
+        int propertyChangeElectricityCostMax = EventOption.AutoPropertyChangeElectricityCost
     )
     {
         return new EventOption
@@ -167,13 +172,19 @@ public partial class GameEvent
             RandomChange = randomChange,
             Exit = exit,
             TransitionEnergyChange = transitionEnergyChange,
+            TransitionEnergyChangeMin = transitionEnergyChangeMin,
+            TransitionEnergyChangeMax = transitionEnergyChangeMax,
             ElectricityChange = electricityChange,
             ElectricityChangeMin = electricityChangeMin,
             ElectricityChangeMax = electricityChangeMax,
+            PropertyChangeElectricityCostMin = propertyChangeElectricityCostMin,
+            PropertyChangeElectricityCostMax = propertyChangeElectricityCostMax,
         };
     }
 
-    private static Dictionary<PropertyType, int> Stats(params (PropertyType type, int value)[] pairs)
+    private static Dictionary<PropertyType, int> Stats(
+        params (PropertyType type, int value)[] pairs
+    )
     {
         if (pairs == null || pairs.Length == 0)
             return null;
@@ -187,14 +198,78 @@ public partial class GameEvent
 
 public class EventOption
 {
+    public const int AutoPropertyChangeElectricityCost = -1;
+    private const int DefaultPropertyChangeElectricityCostMin = 10;
+    private const int DefaultPropertyChangeElectricityCostMax = 30;
+
     public Dictionary<PropertyType, int> PropertyChange;
     public bool RandomChange = false;
     public bool Exit;
     public int TransitionEnergyChange;
+    public int TransitionEnergyChangeMin;
+    public int TransitionEnergyChangeMax;
     public int ElectricityChange;
     public int ElectricityChangeMin;
     public int ElectricityChangeMax;
+    public int PropertyChangeElectricityCostMin = AutoPropertyChangeElectricityCost;
+    public int PropertyChangeElectricityCostMax = AutoPropertyChangeElectricityCost;
     public string Text;
+
+    public bool HasTransitionEnergyChange =>
+        TransitionEnergyChange != 0
+        || TransitionEnergyChangeMin != 0
+        || TransitionEnergyChangeMax != 0;
+
+    public bool HasTransitionEnergyRange =>
+        TransitionEnergyChangeMin != 0 || TransitionEnergyChangeMax != 0;
+
+    public int RollTransitionEnergyChange(Random rng)
+    {
+        if (!HasTransitionEnergyRange)
+            return TransitionEnergyChange;
+
+        int min = Math.Min(TransitionEnergyChangeMin, TransitionEnergyChangeMax);
+        int max = Math.Max(TransitionEnergyChangeMin, TransitionEnergyChangeMax);
+        if (min == max)
+            return min;
+
+        rng ??= new Random();
+        return rng.Next(min, max + 1);
+    }
+
+    public bool HasPropertyChangeElectricityCost =>
+        HasExplicitPropertyChangeElectricityCost
+        || (PropertyChange != null && PropertyChange.Count > 0);
+
+    public int RollPropertyChangeElectricityCost(Random rng)
+    {
+        if (!HasPropertyChangeElectricityCost)
+            return 0;
+
+        if (!HasExplicitPropertyChangeElectricityCost)
+            return RollDefaultPropertyChangeElectricityCost(rng);
+
+        int min = Math.Min(PropertyChangeElectricityCostMin, PropertyChangeElectricityCostMax);
+        int max = Math.Max(PropertyChangeElectricityCostMin, PropertyChangeElectricityCostMax);
+        if (min == max)
+            return min;
+
+        rng ??= new Random();
+        return rng.Next(min, max + 1);
+    }
+
+    private bool HasExplicitPropertyChangeElectricityCost =>
+        PropertyChangeElectricityCostMin != AutoPropertyChangeElectricityCost
+        || PropertyChangeElectricityCostMax != AutoPropertyChangeElectricityCost;
+
+    private static int RollDefaultPropertyChangeElectricityCost(Random rng)
+    {
+        rng ??= new Random();
+        return rng.Next(
+            DefaultPropertyChangeElectricityCostMin,
+            DefaultPropertyChangeElectricityCostMax + 1
+        );
+    }
 
     public bool HasElectricityChange =>
         ElectricityChange != 0 || ElectricityChangeMin != 0 || ElectricityChangeMax != 0;

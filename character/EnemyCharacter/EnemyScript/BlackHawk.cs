@@ -61,9 +61,9 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 60;
-        Power = 7;
-        Survivability = 10;
+        MaxLife = 44;
+        Power = 6;
+        Survivability = 9;
         Speed = 11;
         SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
 
@@ -122,7 +122,6 @@ public partial class BlackHawkSurvive : Skill
 public partial class BlackHawkSpecial : Skill
 {
     private const int VulnerableStacks = 6;
-    private const int MaxTargets = 2;
     int rtimes = 3;
 
     public BlackHawkSpecial()
@@ -139,14 +138,14 @@ public partial class BlackHawkSpecial : Skill
         return new SkillPlan(
             this,
             ApplyBuffHostile(Buff.BuffName.Vulnerable, VulnerableStacks),
-            EnergyTimesWhileStep(
+            WhileStep(
                 times: () => rtimes,
                 loopSteps:
                 [
                     AttackStep(
                         baseDamage: 0,
                         multiplier: 1,
-                        target: HostileTargets(MaxTargets)
+                        target: HostileTargetReference.Two
                     ),
                 ]
             )

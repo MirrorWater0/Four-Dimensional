@@ -55,9 +55,9 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 85;
-        Power = 38;
-        Survivability = 20;
+        MaxLife = 70;
+        Power = 33;
+        Survivability = 14;
         Speed = 9;
         SkillIDs =
         [
@@ -106,7 +106,7 @@ public partial class GraveWraithSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1 , HostileTargetReference.Two)
         );
     }
 }
@@ -120,7 +120,7 @@ public partial class GraveWraithSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "冥骸觉醒";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 7;
 
     protected override SkillPlan BuildPlan()
     {

@@ -48,8 +48,8 @@ public partial class SwapSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            SwapPositionFriendlyStep(relativeIndexA: -1, relativeIndexB: 1)
+            AttackStep(baseDamage: BaseDamage, multiplier: 2),
+            HurtFriendly(6, TargetReference.All)
         );
     }
 }
@@ -101,7 +101,10 @@ public partial class ShatterSlash : Skill
                 _ =>
                 {
                     // Record enemy hits before follow-up ally damage changes the battlefield state.
-                    _recordedHitCount = ChosetargetByOrder(byBehindRow: false).Length;
+                    _recordedHitCount = ChosetargetByOrder(
+                        byBehindRow: false,
+                        applyTaunt: true
+                    ).Length;
                     return Task.CompletedTask;
                 },
                 _ => Array.Empty<string>()
@@ -125,7 +128,6 @@ public partial class ChargedBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 6;
-    private const int MaxTargets = 2;
     private const int SurvivabilityLoss = 3;
 
     public ChargedBlade()
@@ -140,7 +142,7 @@ public partial class ChargedBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargets(MaxTargets)),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
             AttackStep(baseDamage: BaseDamage),
             ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
         );
@@ -165,7 +167,11 @@ public partial class CrescentWind : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetsEachRowFirst()),
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: 1,
+                target: HostileTargetReference.EachRowFirst
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -178,7 +184,7 @@ public partial class CrescentWind : Skill
 public partial class ArcTrack : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 4;
 
     public ArcTrack()
         : base(SkillTypes.Attack)
@@ -201,7 +207,7 @@ public partial class ArcTrack : Skill
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 18;
+    int basisDamage = 20;
     int allyHurt = 10;
     int DeMax = 10;
     public override string SkillName { get; set; } = "献祭";

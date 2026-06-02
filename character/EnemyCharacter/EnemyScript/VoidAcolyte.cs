@@ -3,7 +3,7 @@ using Godot;
 
 public partial class VoidAcolyte : EnemyCharacter
 {
-    private const int StartRebirthStacks = 6;
+    private const int StartRebirthStacks = 5;
 
     public const string PassiveNameText = "虚壳复苏";
     public static string PassiveDescriptionText =>
@@ -36,7 +36,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidAcolyte.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
 
-        MaxLife = 23;
+        MaxLife = 20;
         Power = 11;
         Survivability = 0;
         Speed = 7;
@@ -73,7 +73,7 @@ public partial class VoidAcolyteAttack : Skill
 public partial class VoidAcolyteSurvive : Skill
 {
     private const int BaseBlock = 10;
-    private const int PowerGain = 5;
+    private const int PowerGain = 2;
 
     public VoidAcolyteSurvive()
         : base(SkillTypes.Survive)
@@ -88,7 +88,8 @@ public partial class VoidAcolyteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ModifyPropertyStep(PropertyType.Power, PowerGain, TargetReference.Next)
         );
     }
 }

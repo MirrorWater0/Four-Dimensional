@@ -4,7 +4,7 @@ public partial class EchoSpecialSkill : Node { }
 
 public partial class TuningStance : Skill
 {
-    public override int EnergyCost => 2;
+    public override int EnergyCost => 1;
 
     public TuningStance()
         : base(SkillTypes.Special)
@@ -64,6 +64,7 @@ public class VoidForm : Skill
     {
         return new SkillPlan(
             this,
+            ModifyPropertyStep(PropertyType.Power, -2),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Void,
                 stacks: VoidStacks,
@@ -94,7 +95,7 @@ public partial class Purity : Skill
 
 public partial class CursePower : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Rare;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int CursePowerStacks = 1;
 
     public CursePower()

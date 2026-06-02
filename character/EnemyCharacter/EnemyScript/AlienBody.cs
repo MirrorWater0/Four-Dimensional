@@ -1,23 +1,22 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class AlienBody : EnemyCharacter
 {
-    private const int PassiveTriggerTurn = 2;
-    private const int PassiveSurvivabilityDown = 1;
-
-    private int _turnStartCount;
+    private const int PassiveMaxTargets = 2;
+    private const int PassiveDazeCount = 1;
 
     public const string PassiveNameText = "寄生馈赠";
     public static string PassiveDescriptionText =>
-        $"第{PassiveTriggerTurn}次回合开始时：永久减少目标{PassiveSurvivabilityDown}点生存。";
+        $"回合开始时：向至多{PassiveMaxTargets}个目标抽牌堆塞入{PassiveDazeCount}张"
+        + $"{I18n.Tr("skill.daze_status.name", "晕眩")}。";
 
     public override string CharacterName { get; set; } = "AlienBody";
 
     public override void Initialize()
     {
         base.Initialize();
-        _turnStartCount = 0;
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
     }
@@ -25,10 +24,7 @@ public partial class AlienBody : EnemyCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-
-        _turnStartCount++;
-        if (_turnStartCount == PassiveTriggerTurn)
-            TriggerPassive(null);
+        TriggerPassive(null);
     }
 
     public override async void Passive(Skill skill)
@@ -38,46 +34,69 @@ public partial class AlienBody : EnemyCharacter
             return;
 
         Character[] targets = ChooseHostileTargetsByOrder(
-            returnDummyWhenEmpty: false,
-            normalOnly: false,
-            dyingFilter: true
-        );
-        Character target = targets.Length > 0 ? targets[0] : null;
-        if (target == null)
+                returnDummyWhenEmpty: false,
+                normalOnly: false,
+                dyingFilter: true
+            )
+            .Take(PassiveMaxTargets)
+            .ToArray();
+        if (targets.Length == 0)
             return;
 
-        await target.DescendingProperties(
-            PropertyType.Survivability,
-            PassiveSurvivabilityDown,
-            this
-        );
-
-        ApplyPermanentPropertyLoss(target, PropertyType.Survivability, PassiveSurvivabilityDown);
-    }
-
-    private static void ApplyPermanentPropertyLoss(Character target, PropertyType type, int loss)
-    {
-        if (loss <= 0 || target is not PlayerCharacter player)
+        var affectedTargets = targets
+            .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
+            .Where(x => x.Player != null && x.Player.BattleNode != null)
+            .GroupBy(x => x.Target)
+            .Select(group => group.First())
+            .ToArray();
+        if (affectedTargets.Length == 0)
             return;
 
-        if (GameInfo.PlayerCharacters == null || GameInfo.PlayerCharacters.Length == 0)
-            return;
-
-        int index = player.CharacterIndex;
-        if (index < 0 || index >= GameInfo.PlayerCharacters.Length)
-            return;
-
-        PlayerInfoStructure info = GameInfo.PlayerCharacters[index];
-        switch (type)
+        foreach (
+            var animationGroup in affectedTargets
+                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
+                .GroupBy(entry => entry.Player.BattleNode.CharacterControl)
+        )
         {
-            case PropertyType.Survivability:
-                info.Survivability -= loss;
-                break;
-            default:
-                return;
+            await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
+                animationGroup
+                    .Select(entry => new CharacterControl.StatusCardInsertAnimationEntry(
+                        entry.Target,
+                        SkillID.DazeStatus,
+                        PassiveDazeCount,
+                        this
+                    ))
+                    .ToArray()
+            );
         }
 
-        GameInfo.PlayerCharacters[index] = info;
+        foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
+        {
+            PlayerCharacter player = playerGroup.Key;
+            player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                player,
+                SkillID.DazeStatus,
+                PassiveDazeCount * playerGroup.Count(),
+                this
+            );
+        }
+    }
+
+    private static PlayerCharacter ResolveCardPileOwner(Character target)
+    {
+        if (target is PlayerCharacter player)
+            return player;
+
+        if (target is SummonCharacter summon)
+        {
+            if (summon.Summoner is PlayerCharacter summoner)
+                return summoner;
+
+            if (summon.LastSummoner is PlayerCharacter lastSummoner)
+                return lastSummoner;
+        }
+
+        return null;
     }
 }
 
@@ -90,9 +109,9 @@ public partial class AlienBodyRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AlienBody.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
-        MaxLife = 26;
-        Power = 5;
-        Survivability = 5;
+        MaxLife = 27;
+        Power = 16;
+        Survivability = 14;
         Speed = 5;
         SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
 
@@ -103,8 +122,8 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
 public partial class AlienBodyAttack : Skill
 {
-    private const int BaseDamage = 10;
-    private const int PowerDown = 4;
+    private const int BaseDamage = 0;
+    private const int PowerDown = 2;
 
     public AlienBodyAttack()
         : base(SkillTypes.Attack)
@@ -119,14 +138,14 @@ public partial class AlienBodyAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Power, PowerDown)
+            LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class AlienBodySurvive : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 0;
     private const int SurvivabilityDown = 4;
 
     public AlienBodySurvive()
@@ -142,15 +161,19 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, HostileTargetReference.One)
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                SurvivabilityDown,
+                HostileTargetReference.One
+            )
         );
     }
 }
 
 public partial class AlienBodySpecial : Skill
 {
-    private const int PowerDown = 4;
-    private const int SurvivabilityDown = 4;
+    private const int PowerDown = 2;
+    private const int SurvivabilityDown = 2;
 
     public AlienBodySpecial()
         : base(SkillTypes.Special)
@@ -165,9 +188,13 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
-            CarryStep(target: TargetReference.Previous, skillIndex: 2),
+            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 1, HostileTargetReference.All),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivabilityDown, HostileTargetReference.One)
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                SurvivabilityDown,
+                HostileTargetReference.One
+            )
         );
     }
 }

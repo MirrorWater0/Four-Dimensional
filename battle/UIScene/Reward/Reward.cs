@@ -72,12 +72,14 @@ public partial class Reward : CanvasLayer
     private Tween _introTween;
     private Tween _outroTween;
     private Tween _maskTween;
+    private Tween _talentTreeTween;
     private Vector2 _panelBasePosition;
     private bool _panelBaseCached;
     private bool _battleTalentPointRewardGranted;
     private int _nextSkillRewardGroupIndex;
     private bool _skillRewardOffersGenerated;
     private bool _isTalentTreeOpen;
+    private bool _isTalentTreeClosing;
     private int _activeTalentCharacterIndex = -1;
     private const float RewardReflowDuration = 0.18f;
     public bool AllowRareSkillRewards { get; set; } = true;
@@ -890,7 +892,7 @@ public partial class Reward : CanvasLayer
 
         int addNum = Relic.GetAcquireAmount(relicId);
         existing.Num += addNum;
-        GameInfo.Relics[relicId] = existing.Num;
+        GameInfo.SetRelicCount(relicId, existing.Num);
         existing.UpdateIconLabel();
     }
 
@@ -955,14 +957,53 @@ public partial class Reward : CanvasLayer
 
     private void CloseTalentRewardTree()
     {
-        _isTalentTreeOpen = false;
-        _activeTalentCharacterIndex = -1;
+        _ = CloseTalentRewardTreeAsync();
+    }
+
+    private async Task CloseTalentRewardTreeAsync()
+    {
+        if (!_isTalentTreeOpen || _isTalentTreeClosing)
+            return;
+
+        _isTalentTreeClosing = true;
+        if (TalentCloseButton != null)
+            TalentCloseButton.Disabled = true;
+
+        _talentTreeTween?.Kill();
+        _talentTreeTween = null;
+
         HideTalentTooltip();
-        InventoryGridNode?.SetInputBlocked(false);
         ShowSkillMask(false);
+
+        if (TalentOverlay != null && TalentOverlay.Visible)
+        {
+            _talentTreeTween = CreateTween();
+            _talentTreeTween.SetParallel(true);
+            _talentTreeTween.TweenProperty(TalentOverlay, "modulate:a", 0.0f, 0.16f)
+                .SetEase(Tween.EaseType.In)
+                .SetTrans(Tween.TransitionType.Sine);
+            if (TalentPanel != null)
+            {
+                _talentTreeTween
+                    .TweenProperty(TalentPanel, "scale", new Vector2(0.97f, 0.97f), 0.16f)
+                    .SetEase(Tween.EaseType.In)
+                    .SetTrans(Tween.TransitionType.Sine);
+            }
+
+            await ToSignal(_talentTreeTween, Tween.SignalName.Finished);
+        }
+
+        _isTalentTreeOpen = false;
+        _isTalentTreeClosing = false;
+        _activeTalentCharacterIndex = -1;
+        InventoryGridNode?.SetInputBlocked(false);
 
         if (TalentOverlay != null)
             TalentOverlay.Visible = false;
+        if (TalentPanel != null)
+            TalentPanel.Scale = Vector2.One;
+        if (TalentCloseButton != null)
+            TalentCloseButton.Disabled = false;
 
         ClearTalentRewardTree();
         TryCloseIfDone();
@@ -1249,16 +1290,28 @@ public partial class Reward : CanvasLayer
         {
             players[characterIndex] = info;
             GameInfo.PlayerCharacters = players;
-            SaveSystem.SaveAll();
         }
 
         GD.Print(message);
         RefreshTalentRewardTree(characterIndex);
         if (unlocked)
+        {
             await PlayTalentUnlockEffectAsync(FindTalentRewardNodeControl(talentId));
+        }
 
         if (players[characterIndex].TalentPoints <= 0)
-            CloseTalentRewardTree();
+            await CloseTalentRewardTreeAsync();
+
+        if (unlocked)
+            await SaveAfterTalentUnlockFeedbackAsync();
+    }
+
+    private async Task SaveAfterTalentUnlockFeedbackAsync()
+    {
+        if (GetTree() != null)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        SaveSystem.SaveAll();
     }
 
     private Control FindTalentRewardNodeControl(string talentId)
@@ -1546,8 +1599,13 @@ public partial class Reward : CanvasLayer
 
     private void SkipRewards()
     {
+        _ = SkipRewardsAsync();
+    }
+
+    private async Task SkipRewardsAsync()
+    {
         if (_isTalentTreeOpen)
-            CloseTalentRewardTree();
+            await CloseTalentRewardTreeAsync();
         ResetSkillRewardPanel();
         ClearRewardItems(clearStatic: true);
         CloseReward();

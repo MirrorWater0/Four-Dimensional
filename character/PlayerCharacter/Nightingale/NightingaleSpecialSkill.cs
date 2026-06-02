@@ -30,7 +30,7 @@ public partial class NightingaleEnergy : Skill
 
 public partial class TempoSurge : Skill
 {
-    public override bool ExhaustsAfterUse => base.ExhaustsAfterUse;
+    public override bool ExhaustsAfterUse => true;
 
     public TempoSurge()
         : base(SkillTypes.Special)
@@ -40,7 +40,6 @@ public partial class TempoSurge : Skill
 
     public override string SkillName { get; set; } = "疾奏";
     public override int EnergyCost => 1;
-
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -76,7 +75,7 @@ public partial class LongNight : Skill
 public partial class RequiemBloom : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int PowerGain = 3;
+    private const int PowerGain = 2;
     public override bool ExhaustsAfterUse => true;
 
     private const int ExtraTurnStacks = 1;
@@ -107,7 +106,7 @@ public partial class RequiemBloom : Skill
 public partial class CurtainCallMoment : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int WeakenStacks = 2;
+    private const int WeakenStacks = 1;
     private const int InvisibleStacks = 2;
     private const int ExtraTurnStacks = 1;
     public override bool ExhaustsAfterUse => true;
@@ -149,7 +148,6 @@ public partial class SunMoonCycle : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int DrawCount = 2;
     private const int CardRefreshStacks = 2;
-    public override bool ExhaustsAfterUse => true;
 
     public SunMoonCycle()
         : base(SkillTypes.Special)
@@ -204,7 +202,7 @@ public partial class Swift : Skill
 public partial class ShadowForm : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int ShadowStacks = 2;
+    private const int ShadowStacks = 1;
 
     public ShadowForm()
         : base(SkillTypes.Special)
@@ -221,11 +219,6 @@ public partial class ShadowForm : Skill
         return new SkillPlan(
             this,
             ApplyBuffFriendly(
-                buffName: Buff.BuffName.Invisible,
-                stacks: 5,
-                target: TargetReference.Self
-            ),
-            ApplyBuffFriendly(
                 buffName: Buff.BuffName.Shadow,
                 stacks: ShadowStacks,
                 target: TargetReference.Self
@@ -236,7 +229,7 @@ public partial class ShadowForm : Skill
 
 public partial class BrightestMoment : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Rare;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int SurvivabilityGainPerInvisible = 2;
     private int _lostInvisibleStacks;
     public override bool ExhaustsAfterUse => true;
@@ -315,7 +308,7 @@ public partial class BrightestMoment : Skill
 public partial class EternalDarkSkill : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EternalDarkStacks = 2;
+    private const int EternalDarkStacks = 1;
 
     public EternalDarkSkill()
         : base(SkillTypes.Special)

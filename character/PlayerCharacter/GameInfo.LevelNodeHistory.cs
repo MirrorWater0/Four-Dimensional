@@ -14,6 +14,9 @@ public sealed class LevelNodeCompletionRecord
     public int RandomNum;
     public List<string> EnemyNames = new();
     public int EnemyDefeatCount;
+    public int PlayerTotalTurnCount;
+    public int EnemyTotalTurnCount;
+    public List<string> PlayerDamageSummaryLines = new();
     public int ElectricityCoinChange;
     public int ElectricityCoinGained;
     public int TransitionEnergyChange;
@@ -148,17 +151,20 @@ public static partial class GameInfo
                 NodeType = node?.Type ?? NodeType,
                 RandomNum = node?.RandomNum ?? RandomNum,
                 EnemyNames = CaptureEnemyNames(node),
+                PlayerTotalTurnCount = node?.PlayerTotalTurnCount ?? 0,
+                EnemyTotalTurnCount = node?.EnemyTotalTurnCount ?? 0,
+                PlayerDamageSummaryLines = CopyStringList(node?.PlayerDamageSummaryLines),
                 ElectricityCoinChange = GameInfo.ElectricityCoin - ElectricityCoin,
                 TransitionEnergyChange = GameInfo.TransitionEnergy - TransitionEnergy,
                 SkillChanges = BuildSkillChanges(PlayerGainedSkills, GameInfo.PlayerCharacters),
                 GainedItems = BuildPositiveItemChanges(Items, GameInfo.Items),
                 ConsumedItems = BuildNegativeItemChanges(Items, GameInfo.Items),
-                RelicChanges = BuildRelicChanges(Relics, GameInfo.Relics),
+                RelicChanges = BuildRelicChanges(Relics, GameInfo.ToRelicDictionary()),
                 PermanentPropertyChanges = BuildPropertyChanges(
                     PlayerProperties,
                     GameInfo.PlayerCharacters
                 ),
-                RelicGainedCount = CountRelicsGained(Relics, GameInfo.Relics),
+                RelicGainedCount = CountRelicsGained(Relics, GameInfo.ToRelicDictionary()),
                 NextBattleItemDropChance = GameInfo.BattleItemDropChance,
             };
 
@@ -220,7 +226,6 @@ public static partial class GameInfo
         var sb = new StringBuilder(4096);
         AppendRunNodeSection(sb, record);
         AppendRunRelicSection(sb, record);
-        AppendRunEquipmentSection(sb, record);
         AppendRunSkillSection(sb, record);
         AppendRunCharacterSnapshotSection(sb, record);
         return sb.ToString();
@@ -244,7 +249,6 @@ public static partial class GameInfo
         sb.Append($"\n累计击败精英：{records.Sum(record => record.EliteDefeated)}");
         sb.Append($"\n累计击败Boss：{records.Sum(record => record.BossDefeated)}");
         sb.Append($"\n累计获得电力币：{records.Sum(record => record.ElectricityCoinGained)}");
-        sb.Append($"\n累计获得装备：{records.Sum(record => record.EquipmentGained)}");
         sb.Append($"\n累计获得遗物：{records.Sum(record => record.RelicGained)}");
         AppendHistoryNodeTotals(sb, records);
         AppendHistorySkillTotals(sb, records);
@@ -345,6 +349,9 @@ public static partial class GameInfo
             RandomNum = source.RandomNum,
             EnemyNames = CopyStringList(source.EnemyNames),
             EnemyDefeatCount = source.EnemyDefeatCount,
+            PlayerTotalTurnCount = source.PlayerTotalTurnCount,
+            EnemyTotalTurnCount = source.EnemyTotalTurnCount,
+            PlayerDamageSummaryLines = CopyStringList(source.PlayerDamageSummaryLines),
             ElectricityCoinChange = source.ElectricityCoinChange,
             ElectricityCoinGained = source.ElectricityCoinGained,
             TransitionEnergyChange = source.TransitionEnergyChange,
@@ -391,25 +398,23 @@ public static partial class GameInfo
         return result;
     }
 
-    private static List<RunHistoryRelicRecord> BuildRunRelicRecords(
-        Dictionary<RelicID, int> relics
-    )
+    private static List<RunHistoryRelicRecord> BuildRunRelicRecords(List<RelicStack> relics)
     {
         var result = new List<RunHistoryRelicRecord>();
         if (relics == null || relics.Count == 0)
             return result;
 
-        foreach (var pair in relics.OrderBy(pair => pair.Key.ToString(), StringComparer.Ordinal))
+        foreach (RelicStack stack in relics)
         {
-            var relic = Relic.Create(pair.Key);
+            var relic = Relic.Create(stack.ID);
             result.Add(
                 new RunHistoryRelicRecord
                 {
-                    RelicID = pair.Key,
+                    RelicID = stack.ID,
                     RelicName = relic == null || string.IsNullOrWhiteSpace(relic.RelicName)
-                        ? pair.Key.ToString()
+                        ? stack.ID.ToString()
                         : relic.RelicName,
-                    Count = pair.Value,
+                    Count = stack.Count,
                 }
             );
         }
@@ -494,9 +499,7 @@ public static partial class GameInfo
         sb.Append(
             $"\n击败：敌人 {record.EnemiesDefeated} / 精英 {record.EliteDefeated} / Boss {record.BossDefeated}"
         );
-        sb.Append(
-            $"\n获得：电力币 {record.ElectricityCoinGained} / 装备 {record.EquipmentGained} / 遗物 {record.RelicGained}"
-        );
+        sb.Append($"\n获得：电力币 {record.ElectricityCoinGained} / 遗物 {record.RelicGained}");
 
         sb.Append($"\n节点统计：{BuildNodeTypeSummary(nodes)}");
     }
@@ -506,13 +509,6 @@ public static partial class GameInfo
         var relics = record.RelicRecords ?? new List<RunHistoryRelicRecord>();
         sb.Append("\n\n[b]遗物[/b]");
         sb.Append($"\n总数：{CountRunRelics(relics)}");
-    }
-
-    private static void AppendRunEquipmentSection(StringBuilder sb, RunHistoryRecord record)
-    {
-        var equipments = record.EquipmentRecords ?? new List<RunHistoryEquipmentRecord>();
-        sb.Append("\n\n[b]装备[/b]");
-        sb.Append($"\n总数：{equipments.Sum(equipment => equipment.Count > 0 ? equipment.Count : 1)}");
     }
 
     private static void AppendRunSkillSection(StringBuilder sb, RunHistoryRecord record)
@@ -610,6 +606,9 @@ public static partial class GameInfo
             return string.Empty;
 
         var parts = new List<string>();
+        if (node.PlayerTotalTurnCount > 0 || node.EnemyTotalTurnCount > 0)
+            parts.Add($"回合 我方 {node.PlayerTotalTurnCount} / 敌方 {node.EnemyTotalTurnCount}");
+
         if (node.ElectricityCoinChange != 0)
             parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
         if (node.TransitionEnergyChange != 0)
@@ -618,7 +617,6 @@ public static partial class GameInfo
         AddNodeRecordPart(parts, "技能", node.SkillChanges);
         AddNodeRecordPart(parts, "物品", node.GainedItems);
         AddNodeRecordPart(parts, "消耗", node.ConsumedItems);
-        AddNodeRecordPart(parts, "装备", node.EquipmentChanges);
         AddNodeRecordPart(parts, "遗物", node.RelicChanges);
 
         if (node.PermanentPropertyChanges != null && node.PermanentPropertyChanges.Count > 0)
@@ -796,9 +794,6 @@ public static partial class GameInfo
                 return string.Empty;
         }
 
-        if (!string.IsNullOrWhiteSpace(record.Summary))
-            return record.Summary;
-
         record.Summary = BuildLevelNodeSummary(record);
         CompletedLevelNodeRecords[key] = record;
         return record.Summary;
@@ -818,20 +813,24 @@ public static partial class GameInfo
         if (record.EnemyNames != null && record.EnemyNames.Count > 0)
             sb.Append($"\n敌人：{string.Join("，", record.EnemyNames)}");
 
+        if (record.PlayerTotalTurnCount > 0 || record.EnemyTotalTurnCount > 0)
+            sb.Append(
+                $"\n总回合数：我方 {record.PlayerTotalTurnCount} / 敌方 {record.EnemyTotalTurnCount}"
+            );
+
+        AppendJoinedLines(sb, "角色伤害(含格挡)", record.PlayerDamageSummaryLines);
+
         if (record.ElectricityCoinChange != 0)
             sb.Append($"\n电力币：{FormatSigned(record.ElectricityCoinChange)}");
 
         if (record.TransitionEnergyChange != 0)
             sb.Append($"\n核心能源：{FormatSigned(record.TransitionEnergyChange)}");
 
-        sb.Append(
-            $"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%；普通装备 {record.NextBattleEquipmentDropChance}%"
-        );
+        sb.Append($"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%");
 
         AppendJoinedLines(sb, "技能", record.SkillChanges);
         AppendJoinedLines(sb, "获得物品", record.GainedItems);
         AppendJoinedLines(sb, "消耗物品", record.ConsumedItems);
-        AppendJoinedLines(sb, "装备变化", record.EquipmentChanges);
         AppendJoinedLines(sb, "遗物变化", record.RelicChanges);
 
         if (record.PermanentPropertyChanges != null && record.PermanentPropertyChanges.Count > 0)
@@ -851,7 +850,6 @@ public static partial class GameInfo
             && (record.SkillChanges == null || record.SkillChanges.Count == 0)
             && (record.GainedItems == null || record.GainedItems.Count == 0)
             && (record.ConsumedItems == null || record.ConsumedItems.Count == 0)
-            && (record.EquipmentChanges == null || record.EquipmentChanges.Count == 0)
             && (record.RelicChanges == null || record.RelicChanges.Count == 0)
             && (record.PermanentPropertyChanges == null || record.PermanentPropertyChanges.Count == 0)
             && (record.Notes == null || record.Notes.Count == 0)
@@ -954,9 +952,11 @@ public static partial class GameInfo
             .ToList();
     }
 
-    private static Dictionary<RelicID, int> CloneRelicMap(Dictionary<RelicID, int> source)
+    private static Dictionary<RelicID, int> CloneRelicMap(List<RelicStack> source)
     {
-        return source == null ? new Dictionary<RelicID, int>() : new Dictionary<RelicID, int>(source);
+        return source == null
+            ? new Dictionary<RelicID, int>()
+            : source.ToDictionary(stack => stack.ID, stack => stack.Count);
     }
 
     private static List<ItemID> CloneItemList(List<ItemID> source)

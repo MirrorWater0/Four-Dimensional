@@ -7,17 +7,18 @@ using Godot;
 
 public partial class Encyclopedia : Control
 {
-    private const float SkillCardSwitchExitStagger = 0.012f;
-    private const float SkillCardSwitchExitDuration = 0.3f;
-    private const float SkillCardSwitchMaxExitTotalDuration = 0.4f;
-    private const float SkillCardSwitchEnterStagger = 0.035f;
-    private const float SkillCardSwitchEnterDuration = 0.4f;
+    private const float SkillCardSwitchExitStagger = 0.01f;
+    private const float SkillCardSwitchExitDuration = 0.22f;
+    private const float SkillCardSwitchMaxExitTotalDuration = 0.32f;
+    private const float SkillCardSwitchEnterStagger = 0.024f;
+    private const float SkillCardSwitchEnterDuration = 0.32f;
     private const float SkillCardSwitchMaxTotalDuration = 0.5f;
     private const float InterfaceEnterDuration = 0.34f;
     private const float InterfaceExitDuration = 0.22f;
     private const float InterfaceEnterStagger = 0.035f;
     private const float InterfaceExitStagger = 0.018f;
-    private const int SkillCardsBuildPerFrame = 4;
+    private const int SkillCardsBuildPerFrame = 3;
+    private const int SkillCardsAnimatedOnSwitch = 12;
     private static readonly Vector2 EncyclopediaSkillCardDisplaySize = new(250f, 375f);
     private static readonly Vector2 EncyclopediaSkillCardHoverPadding = new(16f, 18f);
 
@@ -107,6 +108,7 @@ public partial class Encyclopedia : Control
     private readonly Dictionary<Skill.SkillRarity, Button> _skillRarityFilterButtons = new();
     private readonly Dictionary<SkillCostFilter, Button> _skillCostFilterButtons = new();
     private readonly Dictionary<EncyclopediaEntry, PanelContainer> _skillCardFrames = new();
+    private readonly Dictionary<SkillID, Skill> _previewSkillCache = new();
     private readonly Random _skillAnimationRandom = new();
 
     private ColorRect _backdrop;
@@ -862,10 +864,19 @@ public partial class Encyclopedia : Control
                 return;
 
             var card = AddSkillCard(entries[i]);
-            card?.CallDeferred(
-                nameof(SkillCard.StartAnimation),
-                GetSkillCardEnterDelay(i, entries.Count)
-            );
+            if (card != null)
+            {
+                if (ShouldAnimateSkillCardAtIndex(i))
+                {
+                    card.CallDeferred(
+                        nameof(SkillCard.StartAnimationWithDuration),
+                        GetSkillCardEnterDelay(i, GetSkillCardAnimatedCount(entries.Count)),
+                        SkillCardSwitchEnterDuration
+                    );
+                }
+                else
+                    card.CallDeferred(nameof(SkillCard.RestoreDisplayState));
+            }
 
             if ((i + 1) % SkillCardsBuildPerFrame == 0 && i + 1 < entries.Count)
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -902,7 +913,7 @@ public partial class Encyclopedia : Control
             (int)EncyclopediaSkillCardHoverPadding.Y
         );
 
-        Skill skill = entry.SkillId.HasValue ? CreatePreviewSkill(entry.SkillId.Value) : null;
+        Skill skill = entry.SkillId.HasValue ? GetPreviewSkill(entry.SkillId.Value) : null;
         var card = SkillCardScene.Instantiate<SkillCard>();
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = true;
@@ -980,15 +991,16 @@ public partial class Encyclopedia : Control
             return;
         }
 
-        ShuffleSkillAnimationOrder(holdersToAnimate);
+        int animatedCount = GetSkillCardAnimatedCount(holdersToAnimate.Count);
         for (int i = 0; i < holdersToAnimate.Count; i++)
         {
             var holder = holdersToAnimate[i];
-            float delay = GetSkillCardExitDelay(i, holdersToAnimate.Count);
+            bool animateCard = ShouldAnimateSkillCardAtIndex(i);
+            float delay = animateCard ? GetSkillCardExitDelay(i, animatedCount) : 0f;
             var tween = holder.CreateTween();
             tween.TweenProperty(holder, "modulate:a", 0.0f, 0.10f).SetDelay(delay);
 
-            if (TryGetSkillCardFromHolder(holder, out var card))
+            if (animateCard && TryGetSkillCardFromHolder(holder, out var card))
             {
                 var cardTween = card.CreateTween();
                 cardTween.TweenCallback(Callable.From(() => card.Vanish())).SetDelay(delay);
@@ -997,7 +1009,7 @@ public partial class Encyclopedia : Control
 
         float waitTime =
             SkillCardSwitchExitDuration
-            + GetSkillCardExitDelay(holdersToAnimate.Count - 1, holdersToAnimate.Count);
+            + GetSkillCardExitDelay(animatedCount - 1, animatedCount);
         await ToSignal(GetTree().CreateTimer(waitTime), SceneTreeTimer.SignalName.Timeout);
 
         if (refreshVersion != _resultRefreshVersion || !IsInsideTree())
@@ -1069,6 +1081,16 @@ public partial class Encyclopedia : Control
         );
         float stagger = Mathf.Min(SkillCardSwitchExitStagger, maxDelay / (count - 1));
         return stagger * index;
+    }
+
+    private static bool ShouldAnimateSkillCardAtIndex(int index)
+    {
+        return index >= 0 && index < SkillCardsAnimatedOnSwitch;
+    }
+
+    private static int GetSkillCardAnimatedCount(int count)
+    {
+        return Math.Min(Math.Max(count, 0), SkillCardsAnimatedOnSwitch);
     }
 
     private bool MatchesSkillFilters(EncyclopediaEntry entry)
@@ -1219,6 +1241,17 @@ public partial class Encyclopedia : Control
             SkillCostSortValue = skillCostSortValue,
             IsStatusCard = isStatusCard,
         };
+    }
+
+    private Skill GetPreviewSkill(SkillID skillId)
+    {
+        if (_previewSkillCache.TryGetValue(skillId, out Skill cachedSkill) && cachedSkill != null)
+            return cachedSkill;
+
+        Skill skill = CreatePreviewSkill(skillId);
+        if (skill != null)
+            _previewSkillCache[skillId] = skill;
+        return skill;
     }
 
     private static Skill CreatePreviewSkill(SkillID skillId)

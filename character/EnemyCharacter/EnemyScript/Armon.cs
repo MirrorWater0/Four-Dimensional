@@ -60,9 +60,9 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 74;
-        Power = 20;
-        Survivability = 14;
+        MaxLife = 66;
+        Power = 19;
+        Survivability = 9;
         Speed = 7;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
@@ -137,8 +137,7 @@ public partial class ArmonSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: 0),
-            EnergyTimesWhileStep(
-                paidEnergyPerLoop: 2,
+            WhileStep(
                 loopSteps: new[]
                 {
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy, TargetReference.All),

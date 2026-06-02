@@ -102,6 +102,21 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outcome_card"]
+bg_color = Color(0.045, 0.075, 0.115, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.68, 0.88, 0.62)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0.01, 0.025, 0.055, 0.56)
+shadow_size = 24
+shadow_offset = Vector2(0, 8)
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_outcome_banner"]
 shader = ExtResource("5_outcome_shader")
 shader_parameter/fill_color = Color(0.08, 0.14, 0.21, 0.92)
@@ -380,64 +395,85 @@ color = Color(0.72, 0.64, 0.4, 0.9)
 
 [node name="OutcomeOverlay" type="Control" parent="Frame" unique_id=1820456001]
 visible = false
-layout_mode = 0
-offset_left = 40.0
-offset_top = 520.0
-offset_right = 1600.0
-offset_bottom = 860.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 0
 
-[node name="Banner" type="ColorRect" parent="Frame/OutcomeOverlay" unique_id=1815927300]
-material = SubResource("ShaderMaterial_outcome_banner")
+[node name="Banner" type="Panel" parent="Frame/OutcomeOverlay" unique_id=1815927300]
 layout_mode = 0
-offset_top = 52.0
-offset_right = 1560.0
-offset_bottom = 188.0
+offset_left = 440.0
+offset_top = 336.0
+offset_right = 1200.0
+offset_bottom = 564.0
 mouse_filter = 2
-color = Color(0.08, 0.14, 0.21, 0.92)
+theme_override_styles/panel = SubResource("StyleBoxFlat_outcome_card")
 
 [node name="BorderTop" type="ColorRect" parent="Frame/OutcomeOverlay/Banner" unique_id=663910241]
 layout_mode = 0
-offset_left = 150.0
-offset_top = 14.0
-offset_right = 1410.0
-offset_bottom = 16.0
+offset_left = 34.0
+offset_top = 48.0
+offset_right = 726.0
+offset_bottom = 50.0
 mouse_filter = 2
-color = Color(0.74, 0.82, 0.95, 0.3)
+color = Color(0.74, 0.82, 0.95, 0.22)
 
 [node name="BorderBottom" type="ColorRect" parent="Frame/OutcomeOverlay/Banner" unique_id=995204387]
 layout_mode = 0
-offset_left = 150.0
-offset_top = 120.0
-offset_right = 1410.0
-offset_bottom = 122.0
+offset_left = 34.0
+offset_top = 180.0
+offset_right = 726.0
+offset_bottom = 182.0
 mouse_filter = 2
-color = Color(0.74, 0.82, 0.95, 0.24)
+color = Color(0.74, 0.82, 0.95, 0.18)
+
+[node name="ResultTitle" type="Label" parent="Frame/OutcomeOverlay/Banner"]
+layout_mode = 0
+offset_left = 46.0
+offset_top = 18.0
+offset_right = 300.0
+offset_bottom = 42.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.82, 0.76, 0.52, 0.92)
+theme_override_font_sizes/font_size = 17
+text = "执行结果"
+
+[node name="Accent" type="ColorRect" parent="Frame/OutcomeOverlay/Banner"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 20.0
+offset_right = 32.0
+offset_bottom = 168.0
+mouse_filter = 2
+color = Color(0.75, 0.66, 0.38, 0.74)
 
 [node name="OutcomeText" type="RichTextLabel" parent="Frame/OutcomeOverlay/Banner" unique_id=633810421]
 layout_mode = 0
-offset_left = 164.0
-offset_top = 22.0
-offset_right = 1396.0
-offset_bottom = 98.0
+offset_left = 46.0
+offset_top = 58.0
+offset_right = 714.0
+offset_bottom = 172.0
 mouse_filter = 2
 theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.96)
 theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.05, 0.75)
-theme_override_constants/line_separation = 4
+theme_override_constants/line_separation = 2
 theme_override_constants/outline_size = 1
-theme_override_font_sizes/normal_font_size = 24
+theme_override_font_sizes/normal_font_size = 22
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
 [node name="DismissHint" type="Label" parent="Frame/OutcomeOverlay/Banner" unique_id=152290307]
 layout_mode = 0
-offset_left = 164.0
-offset_top = 94.0
-offset_right = 1396.0
-offset_bottom = 120.0
+offset_left = 46.0
+offset_top = 190.0
+offset_right = 714.0
+offset_bottom = 216.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.72)
+theme_override_colors/font_color = Color(0.72, 0.8, 0.92, 0.64)
 theme_override_font_sizes/font_size = 16
 text = "点击任意处继续"
 horizontal_alignment = 1

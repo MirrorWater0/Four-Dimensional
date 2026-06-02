@@ -6,8 +6,6 @@ using Godot;
 
 public partial class BattleReady : Control
 {
-    private static readonly bool AllowManualPlayerFormationAdjustment = false;
-
     private enum BattleReadyMode
     {
         Tactics,
@@ -24,7 +22,6 @@ public partial class BattleReady : Control
     private static readonly Shader TalentUnlockSparkLightShader = GD.Load<Shader>(
         "res://shader/Effect/SparkLight.gdshader"
     );
-    public Control Grid => field ??= GetNodeOrNull<Control>("FormationModeRoot/GridContainer");
     private Control FormationModeRoot => field ??= ResolveNode<Control>("FormationModeRoot");
     private Control CharacterPreviewRoot => _characterPreviewRoot ??= CreateCharacterPreviewRoot();
     private Control TacticsModeRoot => field ??= ResolveNode<Control>("TacticsModeRoot");
@@ -289,6 +286,7 @@ public partial class BattleReady : Control
         AddPreviewStat(statGrid, I18n.Tr("property.power", "力量"), "Power", new Color(1f, 0.78f, 0.38f));
         AddPreviewStat(statGrid, I18n.Tr("property.survivability", "生存"), "Survivability", new Color(0.54f, 1f, 0.99f));
         AddPreviewStat(statGrid, I18n.Tr("property.speed", "速度"), "Speed", new Color(0.64f, 0.9f, 1f));
+        AddPreviewStat(statGrid, I18n.Tr("ui.common.total_speed", "总速度"), "TotalSpeed", new Color(0.86f, 0.74f, 1f));
 
         var separator = new ColorRect
         {
@@ -347,6 +345,10 @@ public partial class BattleReady : Control
             "SurvivabilityValue"
         );
         _characterPreviewStatLabels["Speed"] = FindCharacterPreviewNode<Label>(root, "SpeedValue");
+        _characterPreviewStatLabels["TotalSpeed"] = FindCharacterPreviewNode<Label>(
+            root,
+            "TotalSpeedValue"
+        );
     }
 
     private void EnsureCharacterPreviewSpineNodes(Control visualRoot)
@@ -476,11 +478,6 @@ public partial class BattleReady : Control
 
     private void InitializeCharacterPreview()
     {
-        if (Grid != null)
-        {
-            Grid.Visible = false;
-            Grid.MouseFilter = MouseFilterEnum.Ignore;
-        }
         CharacterPreviewRoot.Visible = true;
         RefreshCharacterPreview(_selectedCharacterIndex);
     }
@@ -503,6 +500,7 @@ public partial class BattleReady : Control
         SetPreviewStat("Power", TalentTree.GetEffectivePower(info));
         SetPreviewStat("Survivability", TalentTree.GetEffectiveSurvivability(info));
         SetPreviewStat("Speed", TalentTree.GetEffectiveSpeed(info));
+        SetPreviewStat("TotalSpeed", CalculatePlayerTotalSpeed());
 
         string passiveName = string.IsNullOrWhiteSpace(info.PassiveName)
             ? I18n.Tr("ui.common.passive", "被动")
@@ -618,6 +616,21 @@ public partial class BattleReady : Control
     {
         if (_characterPreviewStatLabels.TryGetValue(key, out var label))
             label.Text = value.ToString();
+    }
+
+    private static int CalculatePlayerTotalSpeed()
+    {
+        if (GameInfo.PlayerCharacters == null)
+            return 0;
+
+        int sum = 0;
+        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
+        {
+            var info = GameInfo.PlayerCharacters[i];
+            sum += TalentTree.GetEffectiveSpeed(info);
+        }
+
+        return sum;
     }
 
     private static string GetSkillDisplayName(Skill skill, int count)
@@ -1054,14 +1067,24 @@ public partial class BattleReady : Control
         {
             players[characterIndex] = info;
             _skillPreviewCharacterIndex = -1;
-            SaveSystem.SaveAll();
             RefreshCharacterPreview(characterIndex);
         }
 
         GD.Print(message);
         RefreshTalentTree(characterIndex);
         if (unlocked)
+        {
             await PlayTalentUnlockEffectAsync(FindTalentNodeControl(talentId));
+            await SaveAfterTalentUnlockFeedbackAsync();
+        }
+    }
+
+    private async Task SaveAfterTalentUnlockFeedbackAsync()
+    {
+        if (GetTree() != null)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        SaveSystem.SaveAll();
     }
 
     private Control FindTalentNodeControl(string talentId)
@@ -1176,8 +1199,6 @@ public partial class BattleReady : Control
         };
     }
 
-    private PortaitFrame _dragTarget;
-    private Vector2 _dragMouseOffset;
     private int _selectedCharacterIndex;
     private bool _isTransitioning;
     private bool _isModeTransitioning;
@@ -1424,8 +1445,6 @@ public partial class BattleReady : Control
 
         _isModeTransitioning = true;
         HideTransientTooltips();
-        _dragTarget = null;
-        _dragMouseOffset = Vector2.Zero;
 
         try
         {
@@ -1809,34 +1828,8 @@ public partial class BattleReady : Control
         return tip;
     }
 
-    public override void _Process(double delta)
-    {
-        if (_currentMode != BattleReadyMode.Formation || !FormationModeRoot.Visible)
-            return;
-        if (Grid == null)
-            return;
-        if (!Grid.Visible)
-            return;
-
-        if (_dragTarget != null)
-            _dragTarget.GlobalPosition = GetViewport().GetMousePosition() - _dragMouseOffset;
-
-        var mousePos = GetViewport().GetMousePosition();
-        for (int i = 0; i < Grid.GetChildCount(); i++)
-        {
-            var tex = Grid.GetChild<ColorRect>(i);
-            bool isOver = tex.GetGlobalRect().HasPoint(mousePos);
-            Color accentColor = new Color(0.69f, 0.75f, 0.80f);
-            Color targetColor = isOver
-                ? accentColor + 5 * new Color(0.2f, 0.2f, 0.2f)
-                : accentColor;
-            ((ShaderMaterial)tex.Material).SetShaderParameter("line_color", targetColor);
-        }
-    }
-
     public void Initialize()
     {
-        InitializePostion();
         InitializeCharacterPreview();
         InitializeCharacterButtons();
         _ = SelectCharacter(_selectedCharacterIndex);
@@ -1855,142 +1848,6 @@ public partial class BattleReady : Control
             [6] = 8,
             [3] = 9,
         };
-
-    public void InitializePostion()
-    {
-        if (Grid == null)
-            return;
-
-        Color accentColor = new Color(0.69f, 0.75f, 0.80f);
-        for (int i = 0; i < Grid.GetChildCount(); i++)
-        {
-            if (Grid.GetChild(i) is not ColorRect tex)
-                continue;
-
-            if (tex.Material is not ShaderMaterial gridMaterial)
-                continue;
-
-            gridMaterial.ResourceLocalToScene = true;
-            var uniqueMaterial = gridMaterial.Duplicate() as ShaderMaterial;
-            if (uniqueMaterial == null)
-                continue;
-
-            tex.Material = uniqueMaterial;
-            uniqueMaterial.SetShaderParameter("line_color", accentColor);
-        }
-
-        var players = GameInfo.PlayerCharacters;
-        if (players == null || players.Length == 0)
-            return;
-
-        if (PortaitScene == null)
-        {
-            GD.PushError("BattleReady: Portrait frame scene is missing.");
-            return;
-        }
-
-        for (int i = 0; i < players.Length; i++)
-        {
-            var portrait = PortaitScene.Instantiate<PortaitFrame>();
-            if (portrait == null)
-            {
-                GD.PushError("BattleReady: Failed to instantiate portrait frame.");
-                continue;
-            }
-
-            if (portrait.PortaitRect == null || portrait.PortaitButton == null)
-            {
-                GD.PushError("BattleReady: Portrait frame is missing required child nodes.");
-                portrait.QueueFree();
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(players[i].PortaitPath))
-                portrait.PortaitRect.Texture = PreloadeScene.GetTexture(players[i].PortaitPath);
-
-            portrait.PortaitIndex = i;
-            int positionindex = players[i].PositionIndex;
-
-            if (!remap.TryGetValue(positionindex, out int mappedSlot))
-            {
-                GD.PrintErr($"Invalid PositionIndex: {positionindex}. Valid values are 1-9.");
-                portrait.QueueFree();
-                continue;
-            }
-
-            int slotIndex = mappedSlot - 1;
-            if (slotIndex < 0 || slotIndex >= Grid.GetChildCount())
-            {
-                GD.PrintErr($"BattleReady: Grid slot index {slotIndex} is out of range.");
-                portrait.QueueFree();
-                continue;
-            }
-
-            var slot = Grid.GetChild(slotIndex);
-            if (slot == null)
-            {
-                GD.PrintErr($"BattleReady: Grid slot {slotIndex} is missing.");
-                portrait.QueueFree();
-                continue;
-            }
-
-            slot.AddChild(portrait);
-
-            portrait.PortaitButton.ButtonDown += () =>
-            {
-                if (!AllowManualPlayerFormationAdjustment)
-                    return;
-                _dragTarget = portrait;
-                _dragMouseOffset = GetViewport().GetMousePosition() - portrait.GlobalPosition;
-                portrait.ZIndex = 1;
-            };
-            portrait.PortaitButton.ButtonUp += () =>
-            {
-                if (!AllowManualPlayerFormationAdjustment)
-                    return;
-                _dragTarget = null;
-                _dragMouseOffset = Vector2.Zero;
-                portrait.ZIndex = 0;
-                var olderParent = portrait.GetParent();
-                var newParent = Grid.GetChildren()
-                    .OfType<ColorRect>()
-                    .FirstOrDefault(x =>
-                        x.GetGlobalRect().HasPoint(GetViewport().GetMousePosition())
-                    );
-
-                if (newParent != null)
-                {
-                    if (newParent.GetChildCount() > 0 && olderParent != newParent)
-                    {
-                        var overPortait = newParent.GetChild<PortaitFrame>(0);
-                        overPortait.Reparent(olderParent);
-                        TweenSetAnimation(overPortait, 0.2f);
-                    }
-                    portrait.Reparent(newParent);
-                    TweenSetAnimation(portrait, 0.2f);
-                    _dragTarget = null;
-                    _dragMouseOffset = Vector2.Zero;
-                }
-                else
-                {
-                    TweenSetAnimation(portrait, 0.1f);
-                }
-
-                void TweenSetAnimation(PortaitFrame p, float time)
-                {
-                    CreateTween().TweenProperty(p, "position", Vector2.Zero, time);
-                    CreateTween()
-                        .Chain()
-                        .TweenCallback(
-                            Callable.From(() =>
-                            {
-                                p.Animation.Play("explode");
-                            })
-                        );
-                }
-            };
-        }
-    }
 
     private void InitializeCharacterButtons()
     {
@@ -2212,46 +2069,6 @@ public partial class BattleReady : Control
 
     public void ComfirmTactics()
     {
-        if (!AllowManualPlayerFormationAdjustment)
-        {
-            var previewDisabled = GetTree()
-                .Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
-            if (previewDisabled != null)
-                previewDisabled.SetPortraitPostion();
-            return;
-        }
-
-        var map = new System.Collections.Generic.Dictionary<int, int>()
-        {
-            [1] = 7,
-            [2] = 4,
-            [3] = 1,
-            [4] = 8,
-            [5] = 5,
-            [6] = 2,
-            [7] = 9,
-            [8] = 6,
-            [9] = 3,
-        };
-
-        for (int i = 0; i < Grid.GetChildCount(); i++)
-        {
-            var texture = Grid.GetChild<ColorRect>(i);
-            if (texture.GetChildCount() <= 0)
-                continue;
-
-            int gridIndex = i + 1;
-            if (!map.ContainsKey(gridIndex))
-                continue;
-
-            var portrait = texture.GetChild<PortaitFrame>(0);
-            if (portrait != null)
-                GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = map[gridIndex];
-            else
-                GD.PrintErr($"Portrait or Charater is null at grid index {gridIndex}");
-        }
-
-        SaveSystem.SaveAll();
         var preview = GetTree().Root.GetNodeOrNull<BattlePreview>("Map/SiteUI/BattlePreview");
         if (preview != null)
             preview.SetPortraitPostion();

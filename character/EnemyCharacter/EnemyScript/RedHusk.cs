@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 5;
+    private const int StartAutoArmorStacks = 3;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -35,9 +35,9 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 66;
-        Power = 17;
-        Survivability = 15;
+        MaxLife = 50;
+        Power = 20;
+        Survivability = 10;
         Speed = 7;
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
@@ -49,7 +49,6 @@ public partial class RedHuskRegedit : EnemyRegedit
 public partial class RedHuskAttack : Skill
 {
     private const int BaseDamage = 0;
-    private const int VulnerableStacks = 2;
 
     public RedHuskAttack()
         : base(SkillTypes.Attack)
@@ -63,12 +62,7 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: VulnerableStacks,
-                target: HostileTargetReference.AttackKey
-            )
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two)
         );
     }
 }
@@ -76,7 +70,6 @@ public partial class RedHuskAttack : Skill
 public partial class RedHuskSurvive : Skill
 {
     private const int BaseBlock = 0;
-    private const int SurvivabilityDown = 3;
 
     public RedHuskSurvive()
         : base(SkillTypes.Survive)
@@ -91,7 +84,7 @@ public partial class RedHuskSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ModifyPropertyStep(PropertyType.Power, 5)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1, HostileTargetReference.Two)
         );
     }
 }
@@ -108,7 +101,7 @@ public partial class RedHuskSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "护壳重生";
-    public override int EnergyCost => 8;
+    public override int EnergyCost => 7;
 
     protected override SkillPlan BuildPlan()
     {

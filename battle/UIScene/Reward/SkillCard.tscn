@@ -158,6 +158,7 @@ offset_right = 240.0
 offset_bottom = 370.0
 scale = Vector2(1.2, 1.2)
 script = ExtResource("1_td24b")
+metadata/_edit_lock_ = true
 
 [node name="SubViewport" type="SubViewport" parent="." unique_id=15917497]
 transparent_bg = true

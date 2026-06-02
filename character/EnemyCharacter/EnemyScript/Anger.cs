@@ -59,9 +59,9 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 143;
-        Power = 12;
-        Survivability = 10;
+        MaxLife = 125;
+        Power = 11;
+        Survivability = 8;
         Speed = 38;
         SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive, SkillID.AngerEliteSpecial];
 
@@ -90,7 +90,7 @@ public partial class AngerEliteAttack : Skill
 
 public partial class AngerEliteSurvive : Skill
 {
-    private const int BaseBlock = 14;
+    private const int BaseBlock = 10;
     private const int SelfSurvivabilityGain = 4;
 
     public AngerEliteSurvive()

@@ -294,33 +294,52 @@ fill_to = Vector2(0, 0.00458716)
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d0b6a"]
-bg_color = Color(0.48178947, 0.48178947, 0.48178947, 0.69803923)
-border_width_left = 2
+bg_color = Color(0.025, 0.045, 0.06, 0.78)
+border_width_left = 1
 border_width_top = 1
-border_width_right = 2
+border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.96474224, 0.96474224, 0.9647421, 1)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
+border_color = Color(0.56, 0.76, 0.9, 0.62)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+shadow_color = Color(0, 0.42, 0.76, 0.18)
+shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4km6a"]
-bg_color = Color(18.892157, 18.892157, 18.892157, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.8, 0.8, 0.8, 0)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
+bg_color = Color(0.36, 0.86, 1, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.84, 0.98, 1, 0.72)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
 
 [sub_resource type="Theme" id="Theme_boaws"]
 ProgressBar/colors/font_color = Color(1, 1, 1, 1)
 ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enemy_action_poin_fill"]
+bg_color = Color(1, 0.65, 0.42, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.87, 0.7, 0.72)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
+
+[sub_resource type="Theme" id="Theme_enemy_action_poin"]
+ProgressBar/colors/font_color = Color(1, 1, 1, 1)
+ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_enemy_action_poin_fill")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2bopn"]
 shader = ExtResource("11_ttuon")
@@ -600,15 +619,15 @@ texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
 [node name="ActionPoinBox" type="HBoxContainer" parent="." unique_id=209606245]
-offset_left = 563.0
-offset_top = 28.0
-offset_right = 1423.0
-offset_bottom = 39.0
-theme_override_constants/separation = 60
+offset_left = 576.0
+offset_top = 24.0
+offset_right = 1344.0
+offset_bottom = 38.0
+theme_override_constants/separation = 88
 
 [node name="PlayerActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1651593436]
 material = SubResource("ShaderMaterial_bim3i")
-custom_minimum_size = Vector2(400, 11)
+custom_minimum_size = Vector2(340, 14)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
@@ -616,48 +635,62 @@ show_percentage = false
 [node name="Label" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=803391610]
 layout_direction = 3
 layout_mode = 0
-offset_left = 408.0
-offset_top = -12.0
-offset_right = 459.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 25
+offset_left = 241.0
+offset_top = -8.0
+offset_right = 291.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(1, 0.86, 0.86, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.08, 0.92)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
 text = "100"
 script = ExtResource("11_d0b6a")
 
 [node name="TotalLabel" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=861137895]
 layout_direction = 3
 layout_mode = 0
-offset_left = 453.0
-offset_top = -11.0
-offset_right = 517.0
-offset_bottom = 22.0
-theme_override_font_sizes/font_size = 22
-text = "(0)"
+offset_left = 293.0
+offset_top = -5.0
+offset_right = 353.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(0.9741052, 0.7722918, 0.63670856, 0.92156863)
+theme_override_colors/font_outline_color = Color(0.01, 0.025, 0.04, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 15
+text = "速 0"
 
 [node name="EnemyActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1896319079]
-custom_minimum_size = Vector2(400, 11)
+custom_minimum_size = Vector2(340, 14)
 layout_mode = 2
-theme = SubResource("Theme_boaws")
+theme = SubResource("Theme_enemy_action_poin")
 show_percentage = false
 
 [node name="Label" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1185441765]
 layout_mode = 0
-offset_left = 415.0
-offset_top = -12.0
-offset_right = 459.0
-offset_bottom = 23.0
-theme_override_font_sizes/font_size = 25
+offset_left = 274.0
+offset_top = -8.0
+offset_right = 324.0
+offset_bottom = 20.0
+theme_override_colors/font_color = Color(0.86, 0.97199994, 1, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.035, 0.015, 0.92)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
 text = "100"
+horizontal_alignment = 2
 script = ExtResource("11_d0b6a")
 
 [node name="TotalLabel" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1032080647]
 layout_mode = 0
-offset_left = 462.0
-offset_top = -11.0
-offset_right = 526.0
-offset_bottom = 22.0
-theme_override_font_sizes/font_size = 22
-text = "(0)"
+offset_left = 212.0
+offset_top = -5.0
+offset_right = 272.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(0.54, 0.76, 0.86, 0.92)
+theme_override_colors/font_outline_color = Color(0.06, 0.025, 0.01, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 15
+text = "速 0"
+horizontal_alignment = 2
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
 visible = false

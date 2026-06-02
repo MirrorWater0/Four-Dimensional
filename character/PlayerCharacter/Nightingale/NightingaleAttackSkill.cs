@@ -7,7 +7,7 @@ public partial class NightingaleAttackSkill { }
 
 public partial class ShadowAmbush : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 5;
     int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
@@ -53,13 +53,19 @@ public partial class ShadowExecution : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
             ConditionStep(
-                () => GetAttackTarget()?.State == Character.CharacterState.Dying,
-                "击杀目标",
+                AnyAttackTargetDying,
+                "击杀任一目标",
                 AttackStep(baseDamage: DoubleStrikeBaseDamage, times: 1)
             )
         );
+    }
+
+    private bool AnyAttackTargetDying()
+    {
+        return GetAttackTargets()
+            .Any(target => target != null && target.State == Character.CharacterState.Dying);
     }
 }
 
@@ -82,7 +88,7 @@ public partial class BreakStrike : Skill
             CustomStep(
                 _ =>
                 {
-                    var targets = ChosetargetByOrder(byBehindRow: false);
+                    var targets = ChosetargetByOrder(byBehindRow: false, applyTaunt: true);
                     var target = targets[0];
                     if (target == null || target == OwnerCharater?.BattleNode?.dummy)
                         return Task.CompletedTask;
@@ -127,7 +133,6 @@ public partial class ContinuousPierce : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
-    private const int SelfDamage = 7;
 
     private bool IsAtFullLife =>
         OwnerCharater != null && OwnerCharater.Life >= OwnerCharater.BattleMaxLife;
@@ -148,8 +153,8 @@ public partial class ContinuousPierce : Skill
             ConditionStep(
                 () => IsAtFullLife,
                 "满血",
-                AttackStep(baseDamage: 0, multiplier: 1, prefix: "额外造成", times: 2),
-                HurtFriendly(SelfDamage, TargetReference.Self)
+                ApplyBuffHostile(Buff.BuffName.Vulnerable, 2),
+                ApplyBuffHostile(Buff.BuffName.Weaken, 2)
             )
         );
     }
@@ -174,6 +179,35 @@ public partial class RuinBlade : Skill
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 1),
             CarryStep(target: TargetReference.ManualFriendly, skillIndex: 1)
+        );
+    }
+}
+
+public partial class NightfallFlurry : Skill
+{
+    private const int BaseDamage = 0;
+    private const int PowerMultiplier = 1;
+
+    public NightfallFlurry()
+        : base(SkillTypes.Attack)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } = "夜幕连袭";
+    public override int EnergyCost => 2;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: PowerMultiplier,
+                target: HostileTargetReference.Two
+            ),
+            CarryStep(target: TargetReference.Next, skillIndex: 3)
         );
     }
 }

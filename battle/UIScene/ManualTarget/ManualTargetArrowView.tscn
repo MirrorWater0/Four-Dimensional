@@ -1,0 +1,43 @@
+[gd_scene format=3 uid="uid://c0ce4kpxcod6c"]
+
+[ext_resource type="Script" uid="uid://cgfutyl1jlnwv" path="res://battle/UIScene/ManualTarget/ManualTargetArrowView.cs" id="1_arrow_view"]
+[ext_resource type="Shader" uid="uid://pi5qpy3b1a4y" path="res://shader/UI/ManualTargetArrowTip.gdshader" id="2_tip_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tail_tip"]
+shader = ExtResource("2_tip_shader")
+shader_parameter/fill_color = Color(0.76, 0.95, 1, 0.96)
+shader_parameter/outline_color = Color(0.01, 0.04, 0.06, 0.78)
+shader_parameter/outline_width = 0.11
+shader_parameter/edge_softness = 0.01
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_head_tip"]
+shader = ExtResource("2_tip_shader")
+shader_parameter/fill_color = Color(0.76, 0.95, 1, 0.96)
+shader_parameter/outline_color = Color(0.01, 0.04, 0.06, 0.78)
+shader_parameter/outline_width = 0.11
+shader_parameter/edge_softness = 0.01
+
+[node name="ManualTargetArrowView" type="Control" unique_id=945477777]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_arrow_view")
+metadata/_edit_lock_ = true
+
+[node name="TailTip" type="ColorRect" parent="." unique_id=1704385549]
+material = SubResource("ShaderMaterial_tail_tip")
+layout_mode = 0
+offset_right = 34.0
+offset_bottom = 28.0
+mouse_filter = 2
+
+[node name="HeadTip" type="ColorRect" parent="." unique_id=1091909396]
+material = SubResource("ShaderMaterial_head_tip")
+layout_mode = 0
+offset_right = 34.0
+offset_bottom = 28.0
+mouse_filter = 2

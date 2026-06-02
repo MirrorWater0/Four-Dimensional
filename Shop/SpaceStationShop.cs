@@ -17,7 +17,7 @@ public partial class SpaceStationShop : Control
     private const int StatOfferBasePrice = 20;
     private const int SpeedOfferPriceBonus = 20;
     private const int MaxLifeOfferPriceBonus = 10;
-    private const int StatOfferPriceVariance = 5;
+    private const int StatOfferPriceVariance = 8;
     private const int EquipmentOfferBasePrice = 100;
     private const int EquipmentOfferPriceVariance = 20;
     private const int PotionOfferBasePrice = 25;
@@ -40,9 +40,14 @@ public partial class SpaceStationShop : Control
     private const float StatPanelHoverDuration = 0.14f;
     private const float CatalogOfferHoverDuration = 0.12f;
     private const float CatalogOfferHoverScale = 1.12f;
+    private const float PriceFeedbackShakeOffset = 7f;
+    private const float PriceFeedbackShakeStep = 0.045f;
     private static readonly Vector2 CompactCatalogTileSize = new(118f, 138f);
     private static readonly Vector2 CompactCatalogIconFrameSize = new(82f, 82f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(250f, 400f);
+    private static readonly Color PriceFeedbackColor = new(1f, 0.16f, 0.12f, 1f);
+    private static readonly Color CatalogPriceAvailableColor = new(1f, 0.88f, 0.4f, 0.98f);
+    private static readonly Color CatalogPriceUnavailableColor = new(0.92f, 0.76f, 0.58f, 0.9f);
     private static readonly ItemID[] PotionCatalog =
     [
         ItemID.Health,
@@ -241,6 +246,9 @@ public partial class SpaceStationShop : Control
     private readonly Dictionary<Control, Vector2> _assemblyBasePositions = new();
     private readonly Dictionary<Control, Tween> _statPanelHoverTweens = new();
     private readonly Dictionary<Control, Tween> _catalogOfferHoverTweens = new();
+    private readonly Dictionary<Label, Tween> _priceFeedbackTweens = new();
+    private readonly Dictionary<Label, Vector2> _priceFeedbackBasePositions = new();
+    private readonly Dictionary<Label, Color> _priceFeedbackBaseColors = new();
     private Vector2 _panelBasePosition;
     private bool _catalogOffersBuilt;
     private bool _skillOffersBuilt;
@@ -397,6 +405,7 @@ public partial class SpaceStationShop : Control
             tween?.Kill();
         _statPanelHoverTweens.Clear();
         KillCatalogOfferHoverTweens();
+        KillPriceFeedbackTweens();
         HideRelicTip();
     }
 
@@ -1247,6 +1256,56 @@ public partial class SpaceStationShop : Control
         _catalogOfferHoverTweens.Remove(view);
     }
 
+    private void KillPriceFeedbackTweens()
+    {
+        foreach (var label in _priceFeedbackTweens.Keys.ToList())
+            KillPriceFeedbackTween(label);
+
+        _priceFeedbackTweens.Clear();
+        _priceFeedbackBasePositions.Clear();
+        _priceFeedbackBaseColors.Clear();
+    }
+
+    private void RestorePriceFeedbackLabel(Label label)
+    {
+        if (label == null || !GodotObject.IsInstanceValid(label))
+            return;
+
+        if (_priceFeedbackBasePositions.TryGetValue(label, out var basePosition))
+            label.Position = basePosition;
+        if (_priceFeedbackBaseColors.TryGetValue(label, out var baseColor))
+            label.AddThemeColorOverride("font_color", baseColor);
+    }
+
+    private void KillPriceFeedbackTween(Label label)
+    {
+        if (label == null)
+            return;
+        if (!_priceFeedbackTweens.TryGetValue(label, out var tween))
+            return;
+
+        tween?.Kill();
+        _priceFeedbackTweens.Remove(label);
+        RestorePriceFeedbackLabel(label);
+        _priceFeedbackBasePositions.Remove(label);
+        _priceFeedbackBaseColors.Remove(label);
+    }
+
+    private void ClearFinishedPriceFeedback(Label label, Tween tween)
+    {
+        if (
+            label == null
+            || !_priceFeedbackTweens.TryGetValue(label, out var activeTween)
+            || activeTween != tween
+        )
+            return;
+
+        RestorePriceFeedbackLabel(label);
+        _priceFeedbackTweens.Remove(label);
+        _priceFeedbackBasePositions.Remove(label);
+        _priceFeedbackBaseColors.Remove(label);
+    }
+
     private static Control CreateSkillOfferCardHolder(
         SkillCard card,
         Vector2 cardSize,
@@ -1332,7 +1391,7 @@ public partial class SpaceStationShop : Control
             RefreshShopState();
             return;
         }
-        if (!TrySpendCurrency(offer.Price))
+        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
             return;
         if (!ApplyPropertyToPlayer(offer.PlayerIndex, offer.PropertyType, offer.PropertyValue))
             return;
@@ -1348,9 +1407,14 @@ public partial class SpaceStationShop : Control
     {
         if (offer == null || offer.Sold)
             return;
+        if (GetCurrentCurrency() < offer.Price)
+        {
+            TrySpendCurrency(offer.Price, offer.PriceLabel);
+            return;
+        }
         if (!CanPurchaseCatalogOffer(offer))
             return;
-        if (!TrySpendCurrency(offer.Price))
+        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
             return;
         if (!ApplyCatalogOffer(offer))
             return;
@@ -1447,12 +1511,8 @@ public partial class SpaceStationShop : Control
     {
         if (ResourceState == null)
         {
-            GameInfo.Relics ??= new Dictionary<RelicID, int>();
             int addedAmount = GetRelicAddAmount(relicId);
-            if (!GameInfo.Relics.TryGetValue(relicId, out int amount))
-                GameInfo.Relics[relicId] = addedAmount;
-            else
-                GameInfo.Relics[relicId] = amount + addedAmount;
+            GameInfo.AddRelicCount(relicId, addedAmount);
             return;
         }
 
@@ -1465,7 +1525,7 @@ public partial class SpaceStationShop : Control
 
         int addNum = GetRelicAddAmount(relicId);
         existing.Num += addNum;
-        GameInfo.Relics[relicId] = existing.Num;
+        GameInfo.SetRelicCount(relicId, existing.Num);
         existing.UpdateIconLabel();
     }
 
@@ -1507,18 +1567,66 @@ public partial class SpaceStationShop : Control
         return true;
     }
 
-    private bool TrySpendCurrency(int price)
+    private bool TrySpendCurrency(int price, Label priceLabel = null)
     {
         int currency = GetCurrentCurrency();
         if (currency < price)
         {
             SetStatus($"电力币不足，需要 {price}。");
-            RefreshShopState();
+            if (priceLabel != null)
+                PlayPriceInsufficientFeedback(priceLabel);
+            else
+                RefreshShopState();
             return false;
         }
 
         SetCurrentCurrency(currency - price);
         return true;
+    }
+
+    private void PlayPriceInsufficientFeedback(Label label)
+    {
+        if (label == null || !GodotObject.IsInstanceValid(label))
+            return;
+
+        KillPriceFeedbackTween(label);
+
+        Vector2 basePosition = label.Position;
+        Color restoreColor = label.GetThemeColor("font_color");
+        _priceFeedbackBasePositions[label] = basePosition;
+        _priceFeedbackBaseColors[label] = restoreColor;
+        label.AddThemeColorOverride("font_color", PriceFeedbackColor);
+
+        var tween = CreateTween();
+        _priceFeedbackTweens[label] = tween;
+        tween.SetTrans(Tween.TransitionType.Sine);
+        tween.SetEase(Tween.EaseType.InOut);
+        tween.TweenProperty(
+            label,
+            "position:x",
+            basePosition.X - PriceFeedbackShakeOffset,
+            PriceFeedbackShakeStep
+        );
+        tween.TweenProperty(
+            label,
+            "position:x",
+            basePosition.X + PriceFeedbackShakeOffset,
+            PriceFeedbackShakeStep * 1.15f
+        );
+        tween.TweenProperty(
+            label,
+            "position:x",
+            basePosition.X - PriceFeedbackShakeOffset * 0.65f,
+            PriceFeedbackShakeStep
+        );
+        tween.TweenProperty(
+            label,
+            "position:x",
+            basePosition.X + PriceFeedbackShakeOffset * 0.35f,
+            PriceFeedbackShakeStep
+        );
+        tween.TweenProperty(label, "position:x", basePosition.X, PriceFeedbackShakeStep);
+        tween.Finished += () => ClearFinishedPriceFeedback(label, tween);
     }
 
     private int GetCurrentCurrency()
@@ -1618,32 +1726,30 @@ public partial class SpaceStationShop : Control
             return;
         }
 
-        bool canBuy =
-            GetCurrentCurrency() >= offer.Price
-            && (offer.Kind != OfferKind.Item || CanStoreItem());
+        bool hasCurrency = GetCurrentCurrency() >= offer.Price;
         if (offer.Kind == OfferKind.Relic)
         {
-            offer.View.Modulate = canBuy ? Colors.White : new Color(0.9f, 0.9f, 0.96f, 0.7f);
-            SetCatalogOfferPriceLabel(offer, canBuy);
+            offer.View.Modulate = hasCurrency ? Colors.White : new Color(0.9f, 0.9f, 0.96f, 0.7f);
+            SetCatalogOfferPriceLabel(offer, hasCurrency);
             return;
         }
 
         if (offer.Kind == OfferKind.Item)
         {
             offer.View.MouseFilter = MouseFilterEnum.Stop;
-            offer.View.Modulate = canBuy ? Colors.White : new Color(0.86f, 0.89f, 0.94f, 0.72f);
+            offer.View.Modulate = hasCurrency ? Colors.White : new Color(0.86f, 0.89f, 0.94f, 0.72f);
 
-            SetCatalogOfferPriceLabel(offer, canBuy);
+            SetCatalogOfferPriceLabel(offer, hasCurrency);
             return;
         }
 
         if (offer.Card == null || !GodotObject.IsInstanceValid(offer.Card))
             return;
 
-        offer.Card.SetInteractable(canBuy);
+        offer.Card.SetInteractable(hasCurrency);
         string stateLine =
             offer.Sold ? "已售罄"
-            : canBuy ? "点击购买"
+            : hasCurrency ? "点击购买"
             : "余额不足";
         offer.Card.label.Text =
             $"{offer.Title}\n{offer.Detail}\n价格 {offer.Price} 电力币\n{stateLine}";
@@ -1661,16 +1767,15 @@ public partial class SpaceStationShop : Control
         offer.View.Modulate = offer.View.Modulate with { A = 0.0f };
     }
 
-    private static void SetCatalogOfferPriceLabel(CatalogOffer offer, bool canBuy)
+    private static void SetCatalogOfferPriceLabel(CatalogOffer offer, bool hasCurrency)
     {
         if (offer?.PriceLabel == null || !GodotObject.IsInstanceValid(offer.PriceLabel))
             return;
 
-        offer.PriceLabel.Text = canBuy ? $"{offer.Price} 电力币" : $"需 {offer.Price} 电力币";
+        offer.PriceLabel.Text = hasCurrency ? $"{offer.Price} 电力币" : $"需 {offer.Price} 电力币";
         offer.PriceLabel.AddThemeColorOverride(
             "font_color",
-            canBuy ? new Color(1f, 0.88f, 0.4f, 0.98f)
-                : new Color(0.92f, 0.76f, 0.58f, 0.9f)
+            hasCurrency ? CatalogPriceAvailableColor : CatalogPriceUnavailableColor
         );
     }
 

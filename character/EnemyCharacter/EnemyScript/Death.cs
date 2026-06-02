@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 6;
+    private const int DisasterStacks = 5;
     private const float MoveDuration = 0.22f;
 
     public const string PassiveNameText = "终末游行";
@@ -115,9 +115,9 @@ public partial class DeathRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Death.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
 
-        MaxLife = 450;
-        Power = 10;
-        Survivability = 15;
+        MaxLife = 405;
+        Power = 9;
+        Survivability = 14;
         Speed = 16;
         SkillIDs = [SkillID.DeathAttack, SkillID.DeathSurvive, SkillID.DeathSpecial];
 
@@ -129,7 +129,6 @@ public partial class DeathRegedit : EnemyRegedit
 public partial class DeathAttack : Skill
 {
     private const int BaseDamage = 0;
-    private const int TargetCount = 2;
     private const int HitCount = 2;
 
     public DeathAttack()
@@ -144,7 +143,8 @@ public partial class DeathAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargets(TargetCount), times: HitCount)
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two, times: HitCount),
+            ApplyBuffHostile(Buff.BuffName.Weaken, 1)
         );
     }
 }
@@ -152,7 +152,7 @@ public partial class DeathAttack : Skill
 public partial class DeathSurvive : Skill
 {
     private const int BaseBlock = 15;
-    private const int Heal = 0;
+    private const int Heal = 8;
 
     public DeathSurvive()
         : base(SkillTypes.Survive)
@@ -174,8 +174,8 @@ public partial class DeathSurvive : Skill
 
 public partial class DeathSpecial : Skill
 {
-    private const int SelfPowerGain = 2;
-    private const int DisasterStacks = 5;
+    private const int SelfPowerGain = 3;
+    private const int DisasterStacks = 4;
 
     public DeathSpecial()
         : base(SkillTypes.Special)
@@ -184,14 +184,14 @@ public partial class DeathSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnergyCost => 10;
+    public override int EnergyCost => 9;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks),
+            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
             AddStatusCardsToDrawPileStep(SkillID.PlagueStatus, 2, HostileTargetReference.All)
         );
     }

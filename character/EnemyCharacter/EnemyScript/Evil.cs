@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
-    private const int StartEnergyGain = 1;
+    private const int StartEnergyGain = 2;
     private const int StartRebirthStacks = 1;
     private const int TriggerCount = 3;
 
@@ -71,9 +71,9 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 28;
-        Power = 5;
-        Survivability = 5;
+        MaxLife = 21;
+        Power = 4;
+        Survivability = 4;
         Speed = 5;
         SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
 
@@ -84,7 +84,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 6;
+    private const int HitDamage = 5;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -102,7 +102,7 @@ public partial class EvilAttack : Skill
 
 public partial class EvilSurvive : Skill
 {
-    private const int PowerGain = 2;
+    private const int PowerGain = 1;
     private const int BaseBlock = 8;
     private const int DescendingNum = 4;
 
@@ -126,8 +126,6 @@ public partial class EvilSurvive : Skill
 
 public partial class EvilTermin : Skill
 {
-    private const int PaidEnergyPerHit = 1;
-
     public EvilTermin()
         : base(Skill.SkillTypes.Special)
     {
@@ -141,10 +139,7 @@ public partial class EvilTermin : Skill
     {
         return new SkillPlan(
             this,
-            EnergyTimesWhileStep(
-                paidEnergyPerLoop: PaidEnergyPerHit,
-                loopSteps: [AttackStep(baseDamage: 0, multiplier: 1, clampMax: 9999)]
-            )
+            WhileStep(loopSteps: [AttackStep(baseDamage: 0, multiplier: 1, clampMax: 9999)])
         );
     }
 }

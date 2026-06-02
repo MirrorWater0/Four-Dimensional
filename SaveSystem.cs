@@ -8,10 +8,16 @@ using Godot;
 public static class SaveSystem
 {
     private const string SavePath = "user://autosave.cfg";
+    private static readonly FieldInfo[] SavableGameInfoFields = typeof(GameInfo)
+        .GetFields(BindingFlags.Public | BindingFlags.Static)
+        .Where(field => !field.IsLiteral && !field.IsInitOnly)
+        .ToArray();
+    private static readonly Dictionary<Type, FieldInfo[]> SerializableFieldCache = new();
 
     // --- 自动保存 ---
     public static void SaveAll()
     {
+        GameInfo.NormalizeRelics();
         var config = new ConfigFile();
         FieldInfo[] fields = GetSavableGameInfoFields();
 
@@ -44,6 +50,12 @@ public static class SaveSystem
 
             Variant savedVariant = config.GetValue("Data", field.Name);
 
+            if (field.Name == nameof(GameInfo.Relics))
+            {
+                field.SetValue(null, DeserializeRelics(savedVariant));
+                continue;
+            }
+
             // 1. 处理数组或 List
             if (
                 field.FieldType.IsArray
@@ -66,15 +78,23 @@ public static class SaveSystem
             }
         }
         GameInfo.NormalizePlayerCharacters();
+        GameInfo.NormalizeRelics();
         GD.Print("存档已自动加载。");
     }
 
     private static FieldInfo[] GetSavableGameInfoFields()
     {
-        return typeof(GameInfo)
-            .GetFields(BindingFlags.Public | BindingFlags.Static)
-            .Where(field => !field.IsLiteral && !field.IsInitOnly)
-            .ToArray();
+        return SavableGameInfoFields;
+    }
+
+    private static FieldInfo[] GetSerializableInstanceFields(Type type)
+    {
+        if (SerializableFieldCache.TryGetValue(type, out FieldInfo[] fields))
+            return fields;
+
+        fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+        SerializableFieldCache[type] = fields;
+        return fields;
     }
 
     // --- 辅助方法：处理复杂结构转换为 Godot 类型 ---
@@ -162,7 +182,7 @@ public static class SaveSystem
         {
             var dict = new Godot.Collections.Dictionary();
             // 获取所有公开字段
-            FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            FieldInfo[] fields = GetSerializableInstanceFields(t);
             foreach (var k in fields)
             {
                 dict[k.Name] = MapObjectToVariant(k.GetValue(item));
@@ -211,6 +231,27 @@ public static class SaveSystem
             resultDict[cSharpKey] = cSharpVal;
         }
         return resultDict;
+    }
+
+    private static List<RelicStack> DeserializeRelics(Variant data)
+    {
+        var result = new List<RelicStack>();
+        if (data.VariantType == Variant.Type.Dictionary)
+        {
+            var gDict = data.AsGodotDictionary();
+            foreach (var key in gDict.Keys)
+            {
+                var relicID = (RelicID)AssignVariant(key, typeof(RelicID));
+                int count = (int)AssignVariant(gDict[key], typeof(int));
+                result.Add(new RelicStack(relicID, count));
+            }
+            return result;
+        }
+
+        if (data.VariantType != Variant.Type.Array)
+            return result;
+
+        return (List<RelicStack>)DeserializeCollection(data, typeof(List<RelicStack>));
     }
 
     private static object MapVariantToObject(Variant v, Type targetType)

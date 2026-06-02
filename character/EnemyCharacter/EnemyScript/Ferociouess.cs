@@ -90,9 +90,9 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 26;
-        Power = 12;
-        Survivability = 5;
+        MaxLife = 20;
+        Power = 11;
+        Survivability = 4;
         Speed = 7;
         SkillIDs =
         [
@@ -108,7 +108,7 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 2;
+    private const int BaseDamage = 4;
     private const int SelfPowerGain = 2;
 
     public FerociouessAttack()

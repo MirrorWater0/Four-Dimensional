@@ -64,9 +64,9 @@ public partial class MarrowReaverRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/MarrowReaver.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
 
-        MaxLife = 77;
-        Power = 14;
-        Survivability = 17;
+        MaxLife = 69;
+        Power = 13;
+        Survivability = 16;
         Speed = 12;
         SkillIDs =
         [

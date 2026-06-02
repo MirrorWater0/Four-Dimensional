@@ -79,9 +79,9 @@ public partial class TurbineRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
-        MaxLife = 65;
-        Power = 10;
-        Survivability = 10;
+        MaxLife = 58;
+        Power = 9;
+        Survivability = 9;
         Speed = 7;
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
 

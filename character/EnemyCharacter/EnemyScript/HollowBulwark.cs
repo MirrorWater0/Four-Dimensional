@@ -4,7 +4,7 @@ using Godot;
 public partial class HollowBulwark : EnemyCharacter
 {
     private const int StartBarricadeStacks = 1;
-    private const int StartBlock = 70;
+    private const int StartBlock = 60;
 
     public const string PassiveNameText = "空壳壁障";
     public static string PassiveDescriptionText =>
@@ -38,9 +38,9 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
-        MaxLife = 6;
-        Power = 3;
-        Survivability = 18;
+        MaxLife = 5;
+        Power = 0;
+        Survivability = 15;
         Speed = 6;
         SkillIDs =
         [
@@ -110,8 +110,8 @@ public partial class HollowBulwarkSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(16),
-            ModifyPropertyStep(PropertyType.Survivability, 4),
+            AttackStep(20),
+            ModifyPropertyStep(PropertyType.Survivability, 3),
             CustomStep(
                 _ =>
                 {

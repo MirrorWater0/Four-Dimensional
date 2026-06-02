@@ -6,8 +6,7 @@ public partial class KasiyaAttackSkill { }
 
 public partial class Determination : Skill
 {
-    private const int DamageImmuneStacks = 1;
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 7;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -22,11 +21,7 @@ public partial class Determination : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.DamageImmune,
-                stacks: DamageImmuneStacks,
-                target: TargetReference.Self
-            )
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -48,7 +43,11 @@ public partial class Smite : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(PropertyType.Survivability, SurvivalDown, HostileTargetReference.One),
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                SurvivalDown,
+                HostileTargetReference.One
+            ),
             AttackStep(baseDamage: BaseDamage)
         );
     }
@@ -56,7 +55,7 @@ public partial class Smite : Skill
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 4;
 
     public Charge()
         : base(Skill.SkillTypes.Attack)
@@ -155,8 +154,7 @@ public partial class VulnerablePurge : Skill
 public partial class VulnerabilityStrike : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
-    private bool _targetHadVulnerable;
+    private const int BaseDamage = 5;
 
     public VulnerabilityStrike()
         : base(SkillTypes.Attack)
@@ -166,39 +164,17 @@ public partial class VulnerabilityStrike : Skill
 
     public override string SkillName { get; set; } = "易伤追击";
 
-    private bool ConsumeVulnerableSnapshotOrCheckCurrentTarget()
-    {
-        if (_targetHadVulnerable)
-        {
-            _targetHadVulnerable = false;
-            return true;
-        }
-
-        return TargetHasVulnerable(GetAttackTarget());
-    }
-
-    private static bool TargetHasVulnerable(Character target) =>
-        target?.HurtBuffs?.Any(buff =>
-            buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
-        ) == true;
+    private static bool TargetHasEverHadVulnerable(Character target) =>
+        target?.HasSeenBuff(Buff.BuffName.Vulnerable) == true;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            CustomStep(
-                _ =>
-                {
-                    var target = ChosetargetByOrder(byBehindRow: false).FirstOrDefault();
-                    _targetHadVulnerable = TargetHasVulnerable(target);
-                    return System.Threading.Tasks.Task.CompletedTask;
-                },
-                _ => Array.Empty<string>()
-            ),
             AttackStep(baseDamage: BaseDamage),
             ConditionStep(
-                ConsumeVulnerableSnapshotOrCheckCurrentTarget,
-                $"使用技能前若目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
+                () => TargetHasEverHadVulnerable(GetAttackTarget()),
+                $"若目标拥有过{Buff.BuffName.Vulnerable.GetDescription()}",
                 AttackStep(
                     target: HostileTargetReference.AttackKey,
                     baseDamage: BaseDamage,
@@ -212,7 +188,7 @@ public partial class VulnerabilityStrike : Skill
 public class TerminateLight : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 0;
 
     public TerminateLight()
         : base(SkillTypes.Attack)
@@ -227,8 +203,8 @@ public class TerminateLight : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 3),
-            HurtFriendly(10)
+            AttackStep(baseDamage: BaseDamage, multiplier: 4),
+            HurtFriendly(6)
         );
     }
 }
@@ -236,6 +212,7 @@ public class TerminateLight : Skill
 public class VulnerabilityConversion : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
+
     public VulnerabilityConversion()
         : base(SkillTypes.Attack)
     {

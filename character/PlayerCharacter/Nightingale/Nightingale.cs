@@ -37,7 +37,7 @@ public partial class Nightingale : PlayerCharacter
             using var _ = BeginEffectSource("追击");
             await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
             var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = this };
-            Character target = skill.ChosetargetByOrder().FirstOrDefault();
+            Character target = skill.ChosetargetByOrder(applyTaunt: true).FirstOrDefault();
             ApplyPassiveUpgradeBeforePursuit(target);
             await skill.Attack(BattlePower, target: target);
         }
@@ -53,7 +53,12 @@ public partial class Nightingale : PlayerCharacter
                 buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
             ) == true;
         if (targetHasVulnerable)
-            HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PassiveUpgradeVulnerableStacks, this);
+            HurtBuff.BuffAdd(
+                Buff.BuffName.Vulnerable,
+                target,
+                PassiveUpgradeVulnerableStacks,
+                this
+            );
     }
 }
 
@@ -67,9 +72,9 @@ public partial class PlayerCharacterRegistry
             global::Nightingale.PassiveNameText
         ),
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 25,
-        Power = 6,
-        Survivability = 5,
+        LifeMax = 22,
+        Power = 4,
+        Survivability = 4,
         Speed = 8,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",

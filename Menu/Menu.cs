@@ -5,6 +5,10 @@ public partial class Menu : Control
 {
     private const float OpenDuration = 0.22f;
     private const float CloseDuration = 0.18f;
+    private const float MainPanelOffsetLeft = -222f;
+    private const float MainPanelOffsetRight = 214f;
+    private const float SettingsPanelOffsetLeft = -470f;
+    private const float SettingsPanelOffsetRight = 470f;
     private static readonly Vector2 ClosedPanelScale = new(0.92f, 0.92f);
     private static readonly Vector2I[] ResolutionOptions =
     {
@@ -41,76 +45,55 @@ public partial class Menu : Control
     private Control SettingsPanel =>
         field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/SettingsPanel");
     private Label SettingsTitle =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/SettingsTitle");
+        field ??= GetSettingsPanelNode<Label>("SettingsTitle");
     private CheckBox DescriptionModeCheckBox =>
-        field ??= GetNodeOrNull<CheckBox>(
-            "CenterPanel/Margin/VBox/SettingsPanel/DescriptionModeCheckBox"
-        );
+        field ??= GetSettingsPanelNode<CheckBox>("DescriptionModeCheckBox");
     private CheckBox TurnOrderPreviewCheckBox =>
-        field ??= GetNodeOrNull<CheckBox>(
-            "CenterPanel/Margin/VBox/SettingsPanel/TurnOrderPreviewCheckBox"
-        );
+        field ??= GetSettingsPanelNode<CheckBox>("TurnOrderPreviewCheckBox");
     private CheckBox EnemyAttackPreviewCheckBox =>
-        field ??= GetNodeOrNull<CheckBox>(
-            "CenterPanel/Margin/VBox/SettingsPanel/EnemyAttackPreviewCheckBox"
-        );
+        field ??= GetSettingsPanelNode<CheckBox>("EnemyAttackPreviewCheckBox");
     private CheckBox HideEnemySkillsCheckBox =>
-        field ??= GetNodeOrNull<CheckBox>(
-            "CenterPanel/Margin/VBox/SettingsPanel/HideEnemySkillsCheckBox"
-        );
+        field ??= GetSettingsPanelNode<CheckBox>("HideEnemySkillsCheckBox");
     private CheckBox KeepManualTargetCardVisibleCheckBox =>
-        field ??= GetNodeOrNull<CheckBox>(
-            "CenterPanel/Margin/VBox/SettingsPanel/KeepManualTargetCardVisibleCheckBox"
-        );
+        field ??= GetSettingsPanelNode<CheckBox>("KeepManualTargetCardVisibleCheckBox");
+    private CheckBox ArrowManualTargetSelectionCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("ArrowManualTargetSelectionCheckBox");
     private SettingsDropdown TextSizeOptionButton =>
-        field ??= GetNodeOrNull<SettingsDropdown>(
-            "CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeOptionButton"
-        );
+        field ??= GetSettingsPanelNode<SettingsDropdown>("TextSizeOptionButton");
     private SettingsDropdown BattleShakeOptionButton =>
-        field ??= GetNodeOrNull<SettingsDropdown>(
-            "CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow/BattleShakeOptionButton"
-        );
+        field ??= GetSettingsPanelNode<SettingsDropdown>("BattleShakeOptionButton");
     private Label LanguageLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/LanguageRow/LanguageLabel");
+        field ??= GetSettingsPanelNode<Label>("LanguageLabel");
     private SettingsDropdown LanguageOptionButton =>
-        field ??= GetNodeOrNull<SettingsDropdown>(
-            "CenterPanel/Margin/VBox/SettingsPanel/LanguageRow/LanguageOptionButton"
-        );
+        field ??= GetSettingsPanelNode<SettingsDropdown>("LanguageOptionButton");
     private Label ResolutionLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow/ResolutionLabel");
+        field ??= GetSettingsPanelNode<Label>("ResolutionLabel");
     private SettingsDropdown ResolutionOptionButton =>
-        field ??= GetNodeOrNull<SettingsDropdown>(
-            "CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow/ResolutionOptionButton"
-        );
+        field ??= GetSettingsPanelNode<SettingsDropdown>("ResolutionOptionButton");
     private Label TextSizeLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow/TextSizeLabel");
+        field ??= GetSettingsPanelNode<Label>("TextSizeLabel");
     private Label BattleShakeLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow/BattleShakeLabel");
+        field ??= GetSettingsPanelNode<Label>("BattleShakeLabel");
     private Label MasterVolumeLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeLabel");
+        field ??= GetSettingsPanelNode<Label>("MasterVolumeLabel");
     private Label SfxVolumeLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeLabel");
+        field ??= GetSettingsPanelNode<Label>("SfxVolumeLabel");
     private HSlider MasterVolumeSlider =>
-        field ??= GetNodeOrNull<HSlider>(
-            "CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeSlider"
-        );
+        field ??= GetSettingsPanelNode<HSlider>("MasterVolumeSlider");
     private Label MasterVolumeValueLabel =>
-        field ??= GetNodeOrNull<Label>(
-            "CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow/MasterVolumeValueLabel"
-        );
+        field ??= GetSettingsPanelNode<Label>("MasterVolumeValueLabel");
     private HSlider SfxVolumeSlider =>
-        field ??= GetNodeOrNull<HSlider>(
-            "CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeSlider"
-        );
+        field ??= GetSettingsPanelNode<HSlider>("SfxVolumeSlider");
     private Label SfxVolumeValueLabel =>
-        field ??= GetNodeOrNull<Label>(
-            "CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow/SfxVolumeValueLabel"
-        );
+        field ??= GetSettingsPanelNode<Label>("SfxVolumeValueLabel");
     private Button SettingsBackButton =>
-        field ??= GetNodeOrNull<Button>(
-            "CenterPanel/Margin/VBox/SettingsPanel/SettingsBackButton"
-        );
+        field ??= GetSettingsPanelNode<Button>("SettingsBackButton");
     private Tween _transitionTween;
+
+    private T GetSettingsPanelNode<T>(string nodeName) where T : Node
+    {
+        return SettingsPanel?.FindChild(nodeName, recursive: true, owned: false) as T;
+    }
 
     public override void _Ready()
     {
@@ -151,6 +134,9 @@ public partial class Menu : Control
 
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.Pressed += OnKeepManualTargetCardVisiblePressed;
+
+        if (ArrowManualTargetSelectionCheckBox != null)
+            ArrowManualTargetSelectionCheckBox.Pressed += OnArrowManualTargetSelectionPressed;
 
         ConfigureTextSizeOptionButton();
         if (TextSizeOptionButton != null)
@@ -340,6 +326,16 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.RefreshManualTargetCardVisibilityFromSettings();
     }
 
+    private void OnArrowManualTargetSelectionPressed()
+    {
+        if (ArrowManualTargetSelectionCheckBox == null)
+            return;
+
+        UserSettings.SetUseArrowManualTargetSelection(
+            ArrowManualTargetSelectionCheckBox.ButtonPressed
+        );
+    }
+
     private void OnTextSizeSelected(long index)
     {
         if (TextSizeOptionButton == null)
@@ -423,6 +419,7 @@ public partial class Menu : Control
     private void ShowSettingsPanel()
     {
         RefreshSettingsPanel();
+        SetCenterPanelWide(true);
         if (MainButtons != null)
             MainButtons.Visible = false;
         if (SettingsPanel != null)
@@ -432,10 +429,21 @@ public partial class Menu : Control
     private void ShowMainPanel()
     {
         CloseAllDropdowns();
+        SetCenterPanelWide(false);
         if (SettingsPanel != null)
             SettingsPanel.Visible = false;
         if (MainButtons != null)
             MainButtons.Visible = true;
+    }
+
+    private void SetCenterPanelWide(bool wide)
+    {
+        if (CenterPanel == null)
+            return;
+
+        CenterPanel.OffsetLeft = wide ? SettingsPanelOffsetLeft : MainPanelOffsetLeft;
+        CenterPanel.OffsetRight = wide ? SettingsPanelOffsetRight : MainPanelOffsetRight;
+        CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
     }
 
     private void RefreshSettingsPanel()
@@ -457,6 +465,9 @@ public partial class Menu : Control
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.ButtonPressed =
                 UserSettings.KeepManualTargetCardVisibleWhenHidden;
+        if (ArrowManualTargetSelectionCheckBox != null)
+            ArrowManualTargetSelectionCheckBox.ButtonPressed =
+                UserSettings.UseArrowManualTargetSelection;
         SelectResolutionOption(UserSettings.WindowWidth, UserSettings.WindowHeight);
         SelectTextSizeOption(UserSettings.TextSizeLevel);
         SelectBattleShakeOption(UserSettings.BattleShakeLevel);
@@ -682,6 +693,11 @@ public partial class Menu : Control
             KeepManualTargetCardVisibleCheckBox.Text = I18n.Tr(
                 "ui.settings.keep_manual_target_card_visible",
                 "隐藏选人界面时保留卡牌"
+            );
+        if (ArrowManualTargetSelectionCheckBox != null)
+            ArrowManualTargetSelectionCheckBox.Text = I18n.Tr(
+                "ui.settings.arrow_manual_target_selection",
+                "手动目标使用箭头选择"
             );
         if (LanguageLabel != null)
             LanguageLabel.Text = I18n.Tr("ui.settings.language", "语言");

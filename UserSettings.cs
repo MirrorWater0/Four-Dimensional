@@ -11,6 +11,7 @@ public static class UserSettings
     private const string HideEnemySkillsKey = "HideEnemySkills";
     private const string KeepManualTargetCardVisibleWhenHiddenKey =
         "KeepManualTargetCardVisibleWhenHidden";
+    private const string UseArrowManualTargetSelectionKey = "UseArrowManualTargetSelection";
     private const string TextSizeLevelKey = "TextSizeLevel";
     private const string BattleShakeLevelKey = "BattleShakeLevel";
     private const string LastSelectedDifficultyKey = "LastSelectedDifficulty";
@@ -37,6 +38,7 @@ public static class UserSettings
     public static bool ShowEnemyAttackPreview { get; private set; }
     public static bool HideEnemySkills { get; private set; } = true;
     public static bool KeepManualTargetCardVisibleWhenHidden { get; private set; } = true;
+    public static bool UseArrowManualTargetSelection { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
     public static int BattleShakeLevel { get; private set; } = BattleShakeLevelStandard;
     public static int LastSelectedDifficulty { get; private set; }
@@ -79,6 +81,13 @@ public static class UserSettings
                     SectionName,
                     KeepManualTargetCardVisibleWhenHiddenKey,
                     KeepManualTargetCardVisibleWhenHidden
+                )
+                .AsBool();
+            UseArrowManualTargetSelection = config
+                .GetValue(
+                    SectionName,
+                    UseArrowManualTargetSelectionKey,
+                    UseArrowManualTargetSelection
                 )
                 .AsBool();
             TextSizeLevel = NormalizeTextSizeLevel(
@@ -144,6 +153,13 @@ public static class UserSettings
     {
         EnsureLoaded();
         KeepManualTargetCardVisibleWhenHidden = value;
+        Save();
+    }
+
+    public static void SetUseArrowManualTargetSelection(bool value)
+    {
+        EnsureLoaded();
+        UseArrowManualTargetSelection = value;
         Save();
     }
 
@@ -312,6 +328,11 @@ public static class UserSettings
             SectionName,
             KeepManualTargetCardVisibleWhenHiddenKey,
             KeepManualTargetCardVisibleWhenHidden
+        );
+        config.SetValue(
+            SectionName,
+            UseArrowManualTargetSelectionKey,
+            UseArrowManualTargetSelection
         );
         config.SetValue(SectionName, TextSizeLevelKey, TextSizeLevel);
         config.SetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel);

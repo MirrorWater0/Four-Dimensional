@@ -12,10 +12,20 @@ public partial class CharacterControl : Control
     private static readonly PackedScene CharacterTargetCardScene = GD.Load<PackedScene>(
         "res://battle/UIScene/ManualTarget/CharacterTargetCard.tscn"
     );
+    private static readonly PackedScene ManualTargetArrowScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/ManualTarget/ManualTargetArrowView.tscn"
+    );
+    private static readonly PackedScene BattlePileOverlayScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/BattlePileOverlay.tscn"
+    );
     private static readonly Vector2 BattleCardBaseSize = new(240f, 370f);
     private static readonly Vector2 BattleCardScale = new(0.936f, 0.936f);
     private static readonly Vector2 PileCardScale = new(0.74f, 0.74f);
     private static readonly Vector2 PileCardDisplaySize = BattleCardBaseSize * PileCardScale;
+    private static readonly Vector2 PileCardHolderPadding = new(14f, 18f);
+    private static readonly Vector2 PileCardHolderSize = PileCardDisplaySize + PileCardHolderPadding * 2f;
+    private const float PileOverlayContentWidth = 1000f;
+    private const int PileOverlaySectionSeparation = 48;
     private const float PileCardEnterStagger = 0.025f;
     private const float EndTurnCardVanishDuration = 0.32f;
     private const float CardPlayVanishDuration = 0.5f;
@@ -38,12 +48,14 @@ public partial class CharacterControl : Control
     private const float CarryCardSpawnScaleMultiplier = 0.72f;
     private const float HandAreaPadding = 18f;
     private const float HandCardGap = 14f;
-    private const float HandLayoutTweenDuration = 0.18f;
-    private const float HandDrawEntryTweenDuration = 0.34f;
+    private const float HandLayoutTweenDuration = 0.14f;
+    private const float HandDrawEntryTweenDuration = 0.30f;
     private const float HandDrawTrailFadeDuration = 0.18f;
-    private const float HandDrawEntryStagger = 0.045f;
-    private const float HandDrawExistingShiftDelayRatio = 0.62f;
-    private const float HandDrawExistingShiftStagger = 0.025f;
+    private const float HandDrawEntryStagger = 0.055f;
+    private const float HandDrawExistingShiftDelayRatio = 0.08f;
+    private const float HandDrawExistingShiftStagger = 0.018f;
+    private const float HandDrawRevealLeadTime = 0.035f;
+    private const float HandDrawRevealDuration = 0.18f;
     private const int CardPlayOverlayLayer = 80;
     private const int PlayedCardZIndex = 100;
     private const int TemporaryCarryCardZIndex = 300;
@@ -51,8 +63,12 @@ public partial class CharacterControl : Control
     private const int HandCardCapacity = PlayerCharacter.MaxBattleHandSize;
     private static readonly Vector2 PlayedCardScale = new(1.104f, 1.104f);
     private static readonly Color QueuedCardModulate = new(1f, 1f, 1f, 0.82f);
+    private static readonly Color ManualTargetCandidateColor = new(0.42f, 0.82f, 1f, 0.72f);
+    private static readonly Color ManualTargetHoveredColor = new(1f, 0.95f, 0.62f, 1f);
+    private static readonly Vector2 ManualTargetDamagePreviewLabelOffset = new(-50f, -130f);
 
     public Battle BattleNode => field ??= GetParent<Battle>();
+    public bool IsManualTargetArrowSelectionActive => _manualTargetArrowSelectionActive;
     public Frame CharaterFrame1 => field ??= GetNodeOrNull<Frame>("frame1");
     public Frame CharaterFrame2 => field ??= GetNodeOrNull<Frame>("frame2");
     public Frame CharaterFrame3 => field ??= GetNodeOrNull<Frame>("frame3");
@@ -70,6 +86,17 @@ public partial class CharacterControl : Control
     private HBoxContainer _manualTargetPickerRow;
     private Button _manualTargetPickerHideButton;
     private SkillCard _manualTargetPickerPlayedCard;
+    private Control _manualTargetArrowRoot;
+    private ColorRect _manualTargetArrowMask;
+    private ManualTargetArrowView _manualTargetArrowLayer;
+    private Label _manualTargetArrowHintLabel;
+    private Character[] _manualTargetArrowTargets = Array.Empty<Character>();
+    private Character _manualTargetArrowOwner;
+    private Character _manualTargetArrowHoveredTarget;
+    private Skill _manualTargetArrowSkill;
+    private int _manualTargetArrowCardIndex = -1;
+    private bool _manualTargetArrowSelectionActive;
+    private readonly List<VBoxContainer> _manualTargetArrowDamagePanels = new();
     private Button _endTurnButton;
     private Button _drawPileButton;
     private Button _discardPileButton;
@@ -83,6 +110,8 @@ public partial class CharacterControl : Control
     private Tween _exhaustedPileShaderTween;
     private CanvasLayer _pileOverlayLayer;
     private Control _pileOverlayRoot;
+    private MarginContainer _pileOverlayMargin;
+    private VBoxContainer _pileOverlaySections;
     private GridContainer _pileOverlayGrid;
     private SkillCard[] _cards = new SkillCard[HandCardCapacity];
     private Control[] _cardSlots = new Control[HandCardCapacity];
@@ -158,6 +187,7 @@ public partial class CharacterControl : Control
         public bool IsTemporaryCard { get; init; }
         public bool QueueFreeCardAfterVanish { get; init; }
         public bool FreeEnergyCost { get; init; }
+        public bool ForceManualTargetCardPicker { get; init; }
         public TaskCompletionSource<bool> Completion { get; init; }
     }
 
@@ -169,6 +199,24 @@ public partial class CharacterControl : Control
         public Vector2 CardSize { get; init; }
         public int TargetIndex { get; set; }
         public int TargetCount { get; set; }
+    }
+
+    private readonly struct BattlePileOverlaySection
+    {
+        public BattlePileOverlaySection(
+            BattlePileKind kind,
+            string title,
+            SkillID[] pile
+        )
+        {
+            Kind = kind;
+            Title = title;
+            Pile = pile ?? Array.Empty<SkillID>();
+        }
+
+        public BattlePileKind Kind { get; }
+        public string Title { get; }
+        public SkillID[] Pile { get; }
     }
 
     public override void _Ready()
@@ -217,6 +265,19 @@ public partial class CharacterControl : Control
         }
 
         if (
+            _manualTargetArrowSelectionActive
+            && @event is InputEventKey arrowCloseKey
+            && arrowCloseKey.Pressed
+            && !arrowCloseKey.Echo
+            && arrowCloseKey.Keycode == Key.Escape
+        )
+        {
+            HideManualTargetPicker();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (
             _manualTargetInfoOpen
             && @event is InputEventKey infoCloseKey
             && infoCloseKey.Pressed
@@ -259,7 +320,11 @@ public partial class CharacterControl : Control
             && mouseButton.ButtonIndex == MouseButton.Right
         )
         {
-            if (_manualTargetInfoOpen)
+            if (_manualTargetArrowSelectionActive)
+            {
+                HideManualTargetPicker();
+            }
+            else if (_manualTargetInfoOpen)
             {
                 HideManualTargetPicker();
             }
@@ -1461,7 +1526,7 @@ public partial class CharacterControl : Control
             return;
 
         Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes();
+        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
         int handCount = visibleSlotIndexes.Length;
         float rowWidth = Math.Max(_cardRow.Size.X, 0f);
         float rowHeight = Math.Max(_cardRow.Size.Y, cardSize.Y);
@@ -1499,6 +1564,14 @@ public partial class CharacterControl : Control
 
             slot.Size = cardSize;
             slot.CustomMinimumSize = cardSize;
+            if (i == _liftedCardIndex)
+            {
+                _cardSlotLayoutTweens[i]?.Kill();
+                _cardSlotLayoutTweens[i] = null;
+                _cardSlotLayoutTargets[i] = null;
+                continue;
+            }
+
             Vector2 targetPosition = targetPositions.TryGetValue(i, out Vector2 visiblePosition)
                 ? visiblePosition
                 : hiddenPosition;
@@ -1580,7 +1653,10 @@ public partial class CharacterControl : Control
                 if (_cardSlotLayoutTweens[index] == tween)
                     _cardSlotLayoutTweens[index] = null;
                 if (drawEntry && index >= 0 && index < _cards.Length)
+                {
+                    _cards[index]?.PlayDrawSettleEffect();
                     _ = FadeAndHideCardDrawEntryTrailAsync(_cards[index]);
+                }
                 _drawEntrySlotIndexes.Remove(index);
                 _drawEntrySlotOrders.Remove(index);
             })
@@ -1623,7 +1699,7 @@ public partial class CharacterControl : Control
         return 0f;
     }
 
-    private int[] GetVisibleHandSlotIndexes()
+    private int[] GetVisibleHandSlotIndexes(bool excludeLiftedCard = false)
     {
         if (_activePlayer?.Skills == null)
             return Array.Empty<int>();
@@ -1632,6 +1708,8 @@ public partial class CharacterControl : Control
         var indexes = new List<int>(max);
         for (int i = 0; i < max; i++)
         {
+            if (excludeLiftedCard && i == _liftedCardIndex)
+                continue;
             if (_activePlayer.Skills[i] != null)
                 indexes.Add(i);
         }
@@ -1887,13 +1965,16 @@ public partial class CharacterControl : Control
 
             if (shouldAnimate)
             {
-                card.StartAnimation(0.05f * i);
+                float revealDelay = Math.Max(0f, GetDrawEntryDelay(i) - HandDrawRevealLeadTime);
+                card.StartAnimationWithDuration(revealDelay, HandDrawRevealDuration);
             }
 
             _displayedSkills[i] = skill;
             _displayedSkillIds[i] = skill.SkillId;
             _cardDisplayInitialized[i] = true;
 
+            bool isArrowSelectedCard =
+                _manualTargetArrowSelectionActive && i == _manualTargetArrowCardIndex;
             bool canInteract =
                 !_isResolvingCard
                 && !_endTurnQueued
@@ -1901,12 +1982,16 @@ public partial class CharacterControl : Control
                 && !IsManualTargetSelectionPending()
                 && !isCommitted;
             bool canUse = canInteract && skill.CanUseCurrentEnergy();
-            card.Button.Disabled = !canInteract;
+            card.Button.Disabled = !canInteract || isArrowSelectedCard;
             card.Modulate =
                 isCommitted ? QueuedCardModulate
+                : _manualTargetArrowSelectionActive ? SkillButton.EnabledModulate
+                : isArrowSelectedCard ? SkillButton.EnabledModulate
                 : !skill.CanBePlayed ? SkillButton.EnabledModulate
                 : canUse ? SkillButton.EnabledModulate
                 : SkillButton.DisabledModulate;
+            if (isArrowSelectedCard)
+                ApplyManualTargetArrowCardVisual(card);
         }
 
         if (_endTurnButton != null)
@@ -1927,6 +2012,13 @@ public partial class CharacterControl : Control
 
         if (updateLayout)
             LayoutActionCards();
+        if (
+            _manualTargetArrowSelectionActive
+            && IsCardIndexValid(_manualTargetArrowCardIndex)
+        )
+        {
+            ApplyManualTargetArrowCardVisual(_cards[_manualTargetArrowCardIndex]);
+        }
     }
 
     private static bool WasSkillAlreadyDisplayed(Skill[] previousDisplayedSkills, Skill skill)
@@ -1936,10 +2028,10 @@ public partial class CharacterControl : Control
             && previousDisplayedSkills.Any(previousSkill => ReferenceEquals(previousSkill, skill));
     }
 
-    private Task HandleCardPressedAsync(int index, bool allowSuppressedPress = false)
+    private async Task HandleCardPressedAsync(int index, bool allowSuppressedPress = false)
     {
         if (_suppressCardButtonPressUntilLeftRelease && !allowSuppressedPress)
-            return Task.CompletedTask;
+            return;
 
         if (
             _isResolvingCard
@@ -1952,33 +2044,70 @@ public partial class CharacterControl : Control
             || index >= _activePlayer.Skills.Length
         )
         {
-            return Task.CompletedTask;
+            return;
         }
 
         Skill skill = _activePlayer.Skills[index];
         if (skill == null || !skill.CanUseCurrentEnergy())
-            return Task.CompletedTask;
+            return;
 
         if (_liftedCardIndex != -1 && _liftedCardIndex != index)
-            return Task.CompletedTask;
+            return;
 
         if (_liftedCardIndex == index)
         {
             if (!IsMouseOutsideHandArea())
             {
                 ClearLiftedCard(instant: false);
-                return Task.CompletedTask;
+                return;
             }
 
             QueueCardPlay(index, skill);
-            return Task.CompletedTask;
+            return;
         }
 
         if (_liftedCardIndex != -1)
             ClearLiftedCard(instant: false);
 
+        if (ShouldUseManualTargetArrowSelection(skill))
+        {
+            await SelectManualTargetFromHandAndQueueAsync(index, skill);
+            return;
+        }
+
         LiftCard(index);
-        return Task.CompletedTask;
+    }
+
+    private async Task SelectManualTargetFromHandAndQueueAsync(int index, Skill skill)
+    {
+        if (skill == null || !IsCardIndexValid(index) || IsCardCommitted(index))
+            return;
+
+        if (!HasManualFriendlyTargetCandidates(skill))
+        {
+            QueueCardPlay(index, skill);
+            return;
+        }
+
+        skill.ClearManualFriendlyTarget();
+        SkillCard sourceCard = _cards[index];
+        Character target = await ShowManualTargetArrowPickerAsync(skill, sourceCard, index);
+        if (target == null || !GodotObject.IsInstanceValid(target))
+        {
+            skill.ClearManualFriendlyTarget();
+            RefreshTurnUi();
+            return;
+        }
+
+        skill.SetManualFriendlyTarget(target);
+        if (!skill.HasManualFriendlyTarget())
+        {
+            skill.ClearManualFriendlyTarget();
+            RefreshTurnUi();
+            return;
+        }
+
+        QueueCardPlay(index, skill, keepManualFriendlyTarget: true);
     }
 
     private void ClearCardButtonPressSuppression()
@@ -1986,7 +2115,7 @@ public partial class CharacterControl : Control
         _suppressCardButtonPressUntilLeftRelease = false;
     }
 
-    private void QueueCardPlay(int index, Skill skill)
+    private void QueueCardPlay(int index, Skill skill, bool keepManualFriendlyTarget = false)
     {
         if (
             skill == null
@@ -2000,7 +2129,8 @@ public partial class CharacterControl : Control
             return;
         }
 
-        skill.ClearManualFriendlyTarget();
+        if (!keepManualFriendlyTarget)
+            skill.ClearManualFriendlyTarget();
 
         bool hadStun = HasActiveStun(_activePlayer);
         if (!hadStun && !skill.TrySpendDisplayedEnergy())
@@ -2099,6 +2229,7 @@ public partial class CharacterControl : Control
             Card = card,
             IsTemporaryCard = true,
             FreeEnergyCost = true,
+            ForceManualTargetCardPicker = true,
             Completion = completion,
         };
 
@@ -2111,6 +2242,36 @@ public partial class CharacterControl : Control
         BattleNode?.DiscardBattleSkill(actor, skill);
         _ = ProcessCardQueueAsync();
         return shouldWaitForCompletion ? completion.Task : Task.CompletedTask;
+    }
+
+    public async Task PlayEchoCardAsync(Character actor, Skill skill)
+    {
+        if (
+            actor == null
+            || !GodotObject.IsInstanceValid(actor)
+            || actor.State == Character.CharacterState.Dying
+            || skill == null
+        )
+        {
+            return;
+        }
+
+        SkillCard card = CreateTemporaryPlayCard(actor, skill, "回响", "EchoCard");
+        if (card == null)
+            return;
+
+        var play = new QueuedCardPlay
+        {
+            Actor = actor,
+            Skill = skill,
+            Card = card,
+            IsTemporaryCard = true,
+            QueueFreeCardAfterVanish = true,
+        };
+
+        await ShowTemporaryCardAtCenterAsync(play, "回响");
+        await PlayCardVanishAfterExecutionAsync(play);
+        QueueFreeTemporaryCard(card);
     }
 
     private async Task ProcessCardQueueAsync()
@@ -2292,6 +2453,78 @@ public partial class CharacterControl : Control
             GetTree().CreateTimer(CardPlayVanishDuration),
             SceneTreeTimer.SignalName.Timeout
         );
+    }
+
+    private async Task PlayEndTurnHandDiscardAnimationsAsync(PlayerCharacter player)
+    {
+        if (player == null || !GodotObject.IsInstanceValid(player))
+            return;
+
+        var flyTasks = new List<Task>();
+        bool playedFallbackVanish = false;
+
+        for (int i = 0; i < _cards.Length; i++)
+        {
+            SkillCard sourceCard = _cards[i];
+            if (sourceCard == null || !GodotObject.IsInstanceValid(sourceCard) || !sourceCard.Visible)
+                continue;
+
+            sourceCard.Button.Disabled = true;
+            sourceCard.HoverHint.Visible = false;
+
+            Skill skill = sourceCard.CurrentSkill;
+            if (skill == null && player.Skills != null && i < player.Skills.Length)
+                skill = player.Skills[i];
+
+            if (skill?.ExhaustsAtTurnEndInHand == true)
+            {
+                sourceCard.PlayExhaustEffect(EndTurnCardVanishDuration);
+                playedFallbackVanish = true;
+                continue;
+            }
+
+            SkillCard discardCard = CreateHandPlayCard(player, skill, sourceCard);
+            if (discardCard == null)
+            {
+                sourceCard.Vanish();
+                playedFallbackVanish = true;
+                continue;
+            }
+
+            sourceCard.Visible = false;
+            sourceCard.Button.Disabled = true;
+            sourceCard.HoverHint.Visible = false;
+            ResetCardMotion(i, instant: true);
+
+            discardCard.ZIndex = PlayedCardZIndex + flyTasks.Count + 1;
+            flyTasks.Add(PlayEndTurnDiscardCardAsync(discardCard));
+        }
+
+        if (flyTasks.Count > 0)
+        {
+            await Task.WhenAll(flyTasks);
+            return;
+        }
+
+        if (playedFallbackVanish)
+        {
+            await ToSignal(
+                GetTree().CreateTimer(EndTurnCardVanishDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+        }
+    }
+
+    private async Task PlayEndTurnDiscardCardAsync(SkillCard card)
+    {
+        try
+        {
+            await PlayCardDiscardFlyAsync(card);
+        }
+        finally
+        {
+            QueueFreeTemporaryCard(card);
+        }
     }
 
     private async Task PlayCardDiscardFlyAsync(SkillCard card)
@@ -2615,6 +2848,16 @@ public partial class CharacterControl : Control
 
     private SkillCard CreateTemporaryCarryCard(Character actor, Skill skill)
     {
+        return CreateTemporaryPlayCard(actor, skill, "连携", "CarryCard");
+    }
+
+    private SkillCard CreateTemporaryPlayCard(
+        Character actor,
+        Skill skill,
+        string tag,
+        string nodeName
+    )
+    {
         CanvasLayer overlay = EnsureCardPlayOverlay();
         if (overlay == null)
             return null;
@@ -2623,7 +2866,7 @@ public partial class CharacterControl : Control
         skill.UpdateDescription();
 
         SkillCard card = SkillCardScene.Instantiate<SkillCard>();
-        card.Name = "CarryCard";
+        card.Name = nodeName;
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = false;
         card.ConfigureDisplayScale(PlayedCardScale);
@@ -2633,7 +2876,7 @@ public partial class CharacterControl : Control
         card.Button.Disabled = true;
         card.SetSkill(skill);
         card.SetEnergyCostCostText("0");
-        card.CharacterName.Text = $"{actor.CharacterName} | 连携";
+        card.CharacterName.Text = $"{actor.CharacterName} | {tag}";
         return card;
     }
 
@@ -2658,6 +2901,11 @@ public partial class CharacterControl : Control
 
     private async Task ShowTemporaryCarryCardAtCenterAsync(QueuedCardPlay play)
     {
+        await ShowTemporaryCardAtCenterAsync(play, "连携");
+    }
+
+    private async Task ShowTemporaryCardAtCenterAsync(QueuedCardPlay play, string tag)
+    {
         SkillCard card = play?.Card;
         if (card == null || !GodotObject.IsInstanceValid(card))
             return;
@@ -2666,7 +2914,7 @@ public partial class CharacterControl : Control
         card.ResetState();
         card.SetSkill(play.Skill);
         card.SetEnergyCostCostText("0");
-        card.CharacterName.Text = $"{play.Actor.CharacterName} | 连携";
+        card.CharacterName.Text = $"{play.Actor.CharacterName} | {tag}";
         card.Button.Disabled = true;
         card.HoverHint.Visible = false;
         card.ZIndex = TemporaryCarryCardZIndex;
@@ -2731,6 +2979,7 @@ public partial class CharacterControl : Control
         card.HoverHint.Visible = true;
         card.ZIndex = PlayedCardZIndex;
         SetProcess(true);
+        LayoutActionCards(instant: false);
         UpdateLiftedCardPosition();
     }
 
@@ -2748,9 +2997,32 @@ public partial class CharacterControl : Control
                 ? _activePlayer.Skills[index]
                 : null;
         skill?.ClearManualFriendlyTarget();
+        SyncLiftedSlotPositionToCard(index);
         _liftedCardIndex = -1;
         SetProcess(false);
         ResetCardMotion(index, instant);
+        LayoutActionCards(instant);
+    }
+
+    private void SyncLiftedSlotPositionToCard(int index)
+    {
+        if (!IsCardIndexValid(index) || _cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
+            return;
+
+        Control slot = _cardSlots[index];
+        SkillCard card = _cards[index];
+        if (
+            slot == null
+            || !GodotObject.IsInstanceValid(slot)
+            || card == null
+            || !GodotObject.IsInstanceValid(card)
+        )
+        {
+            return;
+        }
+
+        slot.GlobalPosition = card.GlobalPosition;
+        card.Position = Vector2.Zero;
     }
 
     private async Task<bool> SelectManualFriendlyTargetIfNeededAsync(QueuedCardPlay play)
@@ -2758,10 +3030,16 @@ public partial class CharacterControl : Control
         if (play?.Skill?.RequiresManualFriendlyTarget() != true)
             return true;
 
+        if (play.Skill.HasManualFriendlyTarget())
+            return true;
+
         if (!HasManualFriendlyTargetCandidates(play.Skill))
             return true;
 
-        Character target = await ShowManualTargetPickerAsync(play.Skill, play.Card);
+        Character target = !play.ForceManualTargetCardPicker
+            && ShouldUseManualTargetArrowSelection(play.Skill)
+            ? await ShowManualTargetArrowPickerAsync(play.Skill, play.Card)
+            : await ShowManualTargetPickerAsync(play.Skill, play.Card);
         if (target == null || !GodotObject.IsInstanceValid(target))
             return false;
 
@@ -2771,8 +3049,13 @@ public partial class CharacterControl : Control
 
     private bool HasManualFriendlyTargetCandidates(Skill skill)
     {
+        return GetManualFriendlyTargetCandidates(skill).Length > 0;
+    }
+
+    private Character[] GetManualFriendlyTargetCandidates(Skill skill)
+    {
         if (skill?.OwnerCharater == null || BattleNode == null)
-            return false;
+            return Array.Empty<Character>();
 
         bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
         bool allowDying = skill.ManualFriendlyTargetAllowsDying();
@@ -2780,12 +3063,22 @@ public partial class CharacterControl : Control
 
         return BattleNode
             .GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true)
-            .Any(character =>
+            .Where(character =>
                 character != null
                 && GodotObject.IsInstanceValid(character)
                 && (allowDying || character.State != Character.CharacterState.Dying)
                 && (!excludeSelf || character != owner)
-            );
+            )
+            .OrderBy(character => character.PositionIndex)
+            .ToArray();
+    }
+
+    private static bool ShouldUseManualTargetArrowSelection(Skill skill)
+    {
+        UserSettings.EnsureLoaded();
+        return UserSettings.UseArrowManualTargetSelection
+            && skill?.RequiresManualFriendlyTarget() == true
+            && skill?.ManualFriendlyTargetAllowsDying() == false;
     }
 
     private void EnsureManualTargetPickerUi()
@@ -2954,6 +3247,132 @@ public partial class CharacterControl : Control
         }
     }
 
+    private void EnsureManualTargetArrowUi()
+    {
+        if (_manualTargetArrowRoot != null && GodotObject.IsInstanceValid(_manualTargetArrowRoot))
+            return;
+
+        CanvasLayer overlay = EnsureCardPlayOverlay();
+        if (overlay == null)
+            return;
+
+        _manualTargetArrowRoot = new Control
+        {
+            Name = "ManualTargetArrowPicker",
+            Visible = false,
+            ZIndex = ManualTargetPickerZIndex + 1,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        _manualTargetArrowRoot.SetAnchorsPreset(LayoutPreset.FullRect);
+        overlay.AddChild(_manualTargetArrowRoot);
+
+        _manualTargetArrowMask = new ColorRect
+        {
+            Name = "InputMask",
+            Color = new Color(0f, 0f, 0f, 0.10f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 0,
+        };
+        _manualTargetArrowMask.SetAnchorsPreset(LayoutPreset.FullRect);
+        _manualTargetArrowMask.GuiInput += OnManualTargetArrowMaskGuiInput;
+        _manualTargetArrowRoot.AddChild(_manualTargetArrowMask);
+
+        _manualTargetArrowLayer =
+            ManualTargetArrowScene?.Instantiate<ManualTargetArrowView>()
+            ?? new ManualTargetArrowView();
+        _manualTargetArrowLayer.Name = "Arrow";
+        _manualTargetArrowLayer.MouseFilter = MouseFilterEnum.Ignore;
+        _manualTargetArrowLayer.ZIndex = 1;
+        _manualTargetArrowLayer.SetAnchorsPreset(LayoutPreset.FullRect);
+        _manualTargetArrowRoot.AddChild(_manualTargetArrowLayer);
+
+        _manualTargetArrowHintLabel = new Label
+        {
+            Name = "Hint",
+            Text = "选择目标",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 2,
+        };
+        _manualTargetArrowHintLabel.AddThemeColorOverride(
+            "font_color",
+            new Color(0.86f, 0.97f, 1f, 0.96f)
+        );
+        _manualTargetArrowHintLabel.AddThemeColorOverride(
+            "font_shadow_color",
+            new Color(0f, 0f, 0f, 0.72f)
+        );
+        _manualTargetArrowHintLabel.AddThemeConstantOverride("shadow_offset_x", 2);
+        _manualTargetArrowHintLabel.AddThemeConstantOverride("shadow_offset_y", 2);
+        _manualTargetArrowHintLabel.AddThemeFontSizeOverride("font_size", 26);
+        _manualTargetArrowHintLabel.AnchorLeft = 0.5f;
+        _manualTargetArrowHintLabel.AnchorRight = 0.5f;
+        _manualTargetArrowHintLabel.AnchorTop = 0f;
+        _manualTargetArrowHintLabel.AnchorBottom = 0f;
+        _manualTargetArrowHintLabel.OffsetLeft = -140f;
+        _manualTargetArrowHintLabel.OffsetRight = 140f;
+        _manualTargetArrowHintLabel.OffsetTop = 92f;
+        _manualTargetArrowHintLabel.OffsetBottom = 132f;
+        _manualTargetArrowRoot.AddChild(_manualTargetArrowHintLabel);
+    }
+
+    private async Task<Character> ShowManualTargetArrowPickerAsync(
+        Skill skill,
+        SkillCard playedCard = null,
+        int sourceCardIndex = -1
+    )
+    {
+        if (skill?.OwnerCharater == null || BattleNode == null)
+            return null;
+
+        EnsureManualTargetArrowUi();
+        if (_manualTargetArrowRoot == null || _manualTargetArrowLayer == null)
+            return null;
+
+        Character owner = skill.OwnerCharater;
+        Character[] targets = GetManualFriendlyTargetCandidates(skill);
+        if (targets.Length == 0)
+            return null;
+
+        var completion = new TaskCompletionSource<Character>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        _manualTargetCompletion = completion;
+        _manualTargetArrowTargets = targets;
+        _manualTargetArrowOwner = owner;
+        _manualTargetArrowHoveredTarget = null;
+        _manualTargetArrowSkill = skill;
+        _manualTargetArrowCardIndex = sourceCardIndex;
+        _manualTargetArrowSelectionActive = true;
+        _manualTargetPickerPlayedCard = playedCard;
+        _manualTargetArrowRoot.Visible = true;
+        if (_manualTargetArrowMask != null)
+            _manualTargetArrowMask.MouseFilter = MouseFilterEnum.Ignore;
+        _statusLabel.Text = "选择一名己方角色";
+        RefreshTurnUi();
+        if (sourceCardIndex >= 0 && IsCardIndexValid(sourceCardIndex))
+            ApplyManualTargetArrowCardVisual(_cards[sourceCardIndex]);
+        RefreshManualTargetArrowPreviews(null);
+
+        try
+        {
+            while (!completion.Task.IsCompleted && IsManualTargetArrowContextValid(skill, owner))
+            {
+                UpdateManualTargetArrowVisual(owner, playedCard);
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+
+            return completion.Task.IsCompleted ? await completion.Task : null;
+        }
+        finally
+        {
+            if (_manualTargetCompletion == completion)
+                _manualTargetCompletion = null;
+            HideManualTargetPicker();
+        }
+    }
+
     private async Task<Character> ShowManualTargetPickerAsync(
         Skill skill,
         SkillCard playedCard = null
@@ -2977,19 +3396,8 @@ public partial class CharacterControl : Control
         _manualTargetCompletion = completion;
         RefreshTurnUi();
 
-        bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
-        bool allowDying = skill.ManualFriendlyTargetAllowsDying();
         Character owner = skill.OwnerCharater;
-        Character[] targets = BattleNode
-            .GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true)
-            .Where(character =>
-                character != null
-                && GodotObject.IsInstanceValid(character)
-                && (allowDying || character.State != Character.CharacterState.Dying)
-                && (!excludeSelf || character != owner)
-            )
-            .OrderBy(character => character.PositionIndex)
-            .ToArray();
+        Character[] targets = GetManualFriendlyTargetCandidates(skill);
 
         AddManualTargetCards(
             targets,
@@ -3157,6 +3565,219 @@ public partial class CharacterControl : Control
             && BattleNode.ShouldAbortSkillResolution() != true;
     }
 
+    private bool IsManualTargetArrowContextValid(Skill skill, Character owner)
+    {
+        return IsInsideTree()
+            && _manualTargetArrowRoot != null
+            && GodotObject.IsInstanceValid(_manualTargetArrowRoot)
+            && _manualTargetArrowRoot.Visible
+            && _manualTargetArrowSelectionActive
+            && skill != null
+            && owner != null
+            && GodotObject.IsInstanceValid(owner)
+            && owner.State != Character.CharacterState.Dying
+            && BattleNode != null
+            && GodotObject.IsInstanceValid(BattleNode)
+            && BattleNode.ShouldAbortSkillResolution() != true;
+    }
+
+    private void UpdateManualTargetArrowVisual()
+    {
+        UpdateManualTargetArrowVisual(_manualTargetArrowOwner, _manualTargetPickerPlayedCard);
+    }
+
+    private void UpdateManualTargetArrowVisual(Character owner, SkillCard playedCard)
+    {
+        if (
+            !_manualTargetArrowSelectionActive
+            || _manualTargetArrowLayer == null
+            || !GodotObject.IsInstanceValid(_manualTargetArrowLayer)
+        )
+        {
+            return;
+        }
+
+        Vector2 mousePosition = GetViewport().GetMousePosition();
+        _manualTargetArrowLayer.SetEndpoints(
+            GetManualTargetArrowStartPosition(owner, playedCard),
+            mousePosition
+        );
+    }
+
+    public void NotifyManualTargetHover(Character target, bool hovered)
+    {
+        if (!_manualTargetArrowSelectionActive || !IsManualTargetArrowCandidate(target))
+            return;
+
+        Character nextHoveredTarget = hovered ? target : null;
+        if (!hovered && _manualTargetArrowHoveredTarget != target)
+            return;
+
+        if (_manualTargetArrowHoveredTarget == nextHoveredTarget)
+            return;
+
+        _manualTargetArrowHoveredTarget = nextHoveredTarget;
+        RefreshManualTargetArrowPreviews(_manualTargetArrowHoveredTarget);
+        RefreshManualTargetArrowEffectPreview(_manualTargetArrowHoveredTarget);
+    }
+
+    public bool TrySelectManualTargetFromCharacter(Character target)
+    {
+        if (!_manualTargetArrowSelectionActive || !IsManualTargetArrowCandidate(target))
+            return false;
+
+        _manualTargetArrowHoveredTarget = target;
+        RefreshManualTargetArrowPreviews(target);
+        RefreshManualTargetArrowEffectPreview(target);
+        _manualTargetCompletion?.TrySetResult(target);
+        return true;
+    }
+
+    private bool IsManualTargetArrowCandidate(Character target)
+    {
+        return target != null
+            && GodotObject.IsInstanceValid(target)
+            && (_manualTargetArrowTargets ?? Array.Empty<Character>()).Contains(target);
+    }
+
+    private static void ApplyManualTargetArrowCardVisual(SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        card.StopBattleMotion();
+        card.HoverHint.Visible = true;
+        card.ZIndex = 12;
+        card.Modulate = SkillButton.EnabledModulate;
+        card.TweenBattleMotion(
+            new Vector2(0f, CardHoverLiftY),
+            BattleCardScale * CardHoverScaleMultiplier,
+            0.08f
+        );
+    }
+
+    private static Vector2 GetManualTargetArrowStartPosition(Character owner, SkillCard playedCard)
+    {
+        if (playedCard != null && GodotObject.IsInstanceValid(playedCard))
+            return playedCard.GetGlobalRect().GetCenter();
+
+        if (owner != null && GodotObject.IsInstanceValid(owner))
+            return owner.GetGlobalTransformWithCanvas().Origin;
+
+        return Vector2.Zero;
+    }
+
+    private void RefreshManualTargetArrowPreviews(Character hoveredTarget)
+    {
+        foreach (Character target in _manualTargetArrowTargets ?? Array.Empty<Character>())
+        {
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            target.ShowTargetPreview(
+                target == hoveredTarget ? ManualTargetHoveredColor : ManualTargetCandidateColor,
+                animate: false
+            );
+        }
+    }
+
+    private void HideManualTargetArrowPreviews()
+    {
+        foreach (Character target in _manualTargetArrowTargets ?? Array.Empty<Character>())
+        {
+            if (target != null && GodotObject.IsInstanceValid(target))
+                target.HideTargetPreview();
+        }
+    }
+
+    private void RefreshManualTargetArrowEffectPreview(Character hoveredTarget)
+    {
+        HideManualTargetArrowEffectPreview();
+        if (
+            !_manualTargetArrowSelectionActive
+            || _manualTargetArrowSkill == null
+            || hoveredTarget == null
+            || !GodotObject.IsInstanceValid(hoveredTarget)
+        )
+        {
+            _manualTargetArrowSkill?.ClearManualFriendlyTarget();
+            return;
+        }
+
+        _manualTargetArrowSkill.SetManualFriendlyTarget(hoveredTarget);
+        if (!_manualTargetArrowSkill.HasManualFriendlyTarget())
+            return;
+
+        var entries = _manualTargetArrowSkill.GetPreviewEffectEntries();
+        if (entries == null || entries.Length == 0)
+            return;
+
+        CanvasLayer layer = EnsureCardPlayOverlay();
+        if (layer == null)
+            return;
+
+        int panelIndex = 0;
+        foreach (
+            var group in entries
+                .Where(entry => entry.Target != null && GodotObject.IsInstanceValid(entry.Target))
+                .GroupBy(entry => entry.Target)
+        )
+        {
+            VBoxContainer panel = GetOrCreateManualTargetArrowDamagePanel(layer, panelIndex++);
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                group.ToArray(),
+                GetTargetScreenPosition(group.Key),
+                ManualTargetDamagePreviewLabelOffset
+            );
+        }
+
+        for (int i = panelIndex; i < _manualTargetArrowDamagePanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_manualTargetArrowDamagePanels[i]))
+                _manualTargetArrowDamagePanels[i].Visible = false;
+        }
+    }
+
+    private void HideManualTargetArrowEffectPreview()
+    {
+        for (int i = 0; i < _manualTargetArrowDamagePanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_manualTargetArrowDamagePanels[i]))
+                _manualTargetArrowDamagePanels[i].Visible = false;
+        }
+    }
+
+    private VBoxContainer GetOrCreateManualTargetArrowDamagePanel(CanvasLayer layer, int index)
+    {
+        while (_manualTargetArrowDamagePanels.Count <= index)
+        {
+            VBoxContainer panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _manualTargetArrowDamagePanels.Add(panel);
+        }
+
+        VBoxContainer pooledPanel = _manualTargetArrowDamagePanels[index];
+        if (GodotObject.IsInstanceValid(pooledPanel))
+            return pooledPanel;
+
+        pooledPanel = PreviewEffectDisplay.CreatePanel();
+        layer.AddChild(pooledPanel);
+        _manualTargetArrowDamagePanels[index] = pooledPanel;
+        return pooledPanel;
+    }
+
+    private static Vector2 GetTargetScreenPosition(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return Vector2.Zero;
+
+        Node2D anchor = target.Sprite != null && GodotObject.IsInstanceValid(target.Sprite)
+            ? target.Sprite
+            : target;
+        return anchor.GetGlobalTransformWithCanvas().Origin;
+    }
+
     private bool IsManualTargetInfoContextValid()
     {
         return IsInsideTree()
@@ -3181,6 +3802,40 @@ public partial class CharacterControl : Control
             && mouseButton.Pressed
             && mouseButton.ButtonIndex == MouseButton.Left
         )
+        {
+            HideManualTargetPicker();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void OnManualTargetArrowMaskGuiInput(InputEvent @event)
+    {
+        if (!_manualTargetArrowSelectionActive)
+            return;
+
+        if (@event is InputEventMouseMotion)
+        {
+            UpdateManualTargetArrowVisual();
+            return;
+        }
+
+        if (@event is not InputEventMouseButton mouseButton || !mouseButton.Pressed)
+            return;
+
+        if (mouseButton.ButtonIndex == MouseButton.Left)
+        {
+            UpdateManualTargetArrowVisual();
+            if (
+                _manualTargetArrowHoveredTarget != null
+                && GodotObject.IsInstanceValid(_manualTargetArrowHoveredTarget)
+            )
+            {
+                _manualTargetCompletion?.TrySetResult(_manualTargetArrowHoveredTarget);
+            }
+
+            GetViewport().SetInputAsHandled();
+        }
+        else if (mouseButton.ButtonIndex == MouseButton.Right)
         {
             HideManualTargetPicker();
             GetViewport().SetInputAsHandled();
@@ -3230,9 +3885,36 @@ public partial class CharacterControl : Control
         bool wasInfoOpen = _manualTargetInfoOpen;
         bool wasTargetSelectionPending = IsManualTargetSelectionPending();
         _manualTargetInfoOpen = false;
+        bool wasArrowSelectionActive = _manualTargetArrowSelectionActive;
+        int arrowCardIndex = _manualTargetArrowCardIndex;
+        _manualTargetArrowSelectionActive = false;
         _manualTargetCompletion?.TrySetResult(null);
         _manualTargetCompletion = null;
         _manualTargetPickerTemporarilyHidden = false;
+        HideManualTargetArrowPreviews();
+        HideManualTargetArrowEffectPreview();
+        if (wasArrowSelectionActive)
+            _manualTargetArrowSkill?.ClearManualFriendlyTarget();
+        _manualTargetArrowTargets = Array.Empty<Character>();
+        _manualTargetArrowOwner = null;
+        _manualTargetArrowHoveredTarget = null;
+        _manualTargetArrowSkill = null;
+        _manualTargetArrowCardIndex = -1;
+        if (
+            _manualTargetArrowRoot != null
+            && GodotObject.IsInstanceValid(_manualTargetArrowRoot)
+        )
+        {
+            _manualTargetArrowRoot.Visible = false;
+        }
+        if (
+            _manualTargetArrowLayer != null
+            && GodotObject.IsInstanceValid(_manualTargetArrowLayer)
+        )
+        {
+            _manualTargetArrowLayer.SetEndpoints(Vector2.Zero, Vector2.Zero);
+            _manualTargetArrowLayer.QueueRedraw();
+        }
         if (
             _manualTargetPickerPlayedCard != null
             && GodotObject.IsInstanceValid(_manualTargetPickerPlayedCard)
@@ -3241,13 +3923,15 @@ public partial class CharacterControl : Control
             _manualTargetPickerPlayedCard.Visible = true;
         }
         _manualTargetPickerPlayedCard = null;
+        if (wasArrowSelectionActive)
+            ResetManualTargetArrowCardVisual(arrowCardIndex);
 
         if (
             _manualTargetPickerRoot == null
             || !GodotObject.IsInstanceValid(_manualTargetPickerRoot)
         )
         {
-            if (wasInfoOpen || wasTargetSelectionPending)
+            if (wasInfoOpen || wasTargetSelectionPending || wasArrowSelectionActive)
                 RefreshTurnUi();
             return;
         }
@@ -3255,8 +3939,20 @@ public partial class CharacterControl : Control
         _manualTargetPickerRoot.Visible = false;
         ApplyManualTargetPickerTemporaryHiddenState();
         ClearManualTargetCards();
-        if (wasInfoOpen || wasTargetSelectionPending)
+        if (wasInfoOpen || wasTargetSelectionPending || wasArrowSelectionActive)
             RefreshTurnUi();
+    }
+
+    private void ResetManualTargetArrowCardVisual(int index)
+    {
+        if (!IsCardIndexValid(index) || IsCardCommitted(index))
+            return;
+
+        SkillCard card = _cards[index];
+        if (card == null || !GodotObject.IsInstanceValid(card) || !card.Visible)
+            return;
+
+        ResetCardMotion(index, instant: false);
     }
 
     private void ClearManualTargetCards()
@@ -3312,6 +4008,12 @@ public partial class CharacterControl : Control
         SkillCard card = _cards[index];
         if (card == null || !card.Visible)
             return false;
+
+        if (_manualTargetArrowSelectionActive && index == _manualTargetArrowCardIndex)
+        {
+            ApplyManualTargetArrowCardVisual(card);
+            return false;
+        }
 
         if (hovered)
         {
@@ -3594,15 +4296,78 @@ public partial class CharacterControl : Control
             BattlePileKind.Exhausted => BattleNode.GetExhaustedBattleCardPile(_activePlayer),
             _ => Array.Empty<SkillID>(),
         };
-        ShowPileOverlay(_activePlayer, pile);
+        ShowPileOverlay(
+            _activePlayer,
+            new[]
+            {
+                new BattlePileOverlaySection(
+                    kind,
+                    GetPileTitle(kind),
+                    pile
+                ),
+            }
+        );
     }
 
-    private void ShowPileOverlay(PlayerCharacter player, SkillID[] pile)
+    public bool ShowPlayerBattleCardPiles(PlayerCharacter player)
+    {
+        if (
+            player == null
+            || !GodotObject.IsInstanceValid(player)
+            || player.State == Character.CharacterState.Dying
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || _manualTargetInfoOpen
+            || IsManualTargetSelectionPending()
+        )
+        {
+            return false;
+        }
+
+        if (_liftedCardIndex != -1)
+            ClearLiftedCard(instant: false);
+
+        ShowPileOverlay(
+            player,
+            new[]
+            {
+                new BattlePileOverlaySection(
+                    BattlePileKind.Draw,
+                    GetPileTitle(BattlePileKind.Draw),
+                    BattleNode.GetDrawBattleCardPile(player)
+                ),
+                new BattlePileOverlaySection(
+                    BattlePileKind.Discard,
+                    GetPileTitle(BattlePileKind.Discard),
+                    BattleNode.GetDiscardBattleCardPile(player)
+                ),
+                new BattlePileOverlaySection(
+                    BattlePileKind.Exhausted,
+                    GetPileTitle(BattlePileKind.Exhausted),
+                    BattleNode.GetExhaustedBattleCardPile(player)
+                ),
+            }
+        );
+        return true;
+    }
+
+    private static string GetPileTitle(BattlePileKind kind)
+    {
+        return kind switch
+        {
+            BattlePileKind.Draw => "抽牌堆",
+            BattlePileKind.Discard => "弃牌堆",
+            BattlePileKind.Exhausted => "消耗牌堆",
+            _ => "牌堆",
+        };
+    }
+
+    private void ShowPileOverlay(PlayerCharacter player, IReadOnlyList<BattlePileOverlaySection> sections)
     {
         EnsurePileOverlayUi();
         ClearPileOverlayCards();
 
-        if (_pileOverlayRoot == null || _pileOverlayGrid == null)
+        if (_pileOverlayRoot == null || _pileOverlaySections == null)
             return;
 
         _pileOverlayRoot.Visible = true;
@@ -3610,28 +4375,152 @@ public partial class CharacterControl : Control
         _pileOverlayRoot.MoveToFront();
 
         var cardsToAnimate = new List<SkillCard>();
-        foreach (SkillID skillId in pile ?? Array.Empty<SkillID>())
+        foreach (BattlePileOverlaySection section in sections ?? Array.Empty<BattlePileOverlaySection>())
         {
-            var card = CreatePilePreviewCard(player, skillId);
-            if (card == null)
-                continue;
-
-            var holder = CreatePileCardHolder(card);
-            _pileOverlayGrid.AddChild(holder);
-            card.ResetState();
-            card.HoverHint.Visible = false;
-            cardsToAnimate.Add(card);
+            AddPileOverlaySection(_pileOverlaySections, player, section, cardsToAnimate);
         }
 
-        _pileOverlayGrid.QueueSort();
+        _pileOverlaySections.QueueSort();
         for (int i = 0; i < cardsToAnimate.Count; i++)
             cardsToAnimate[i]
                 .CallDeferred(nameof(SkillCard.StartAnimation), PileCardEnterStagger * i);
     }
 
+    private void AddPileOverlaySection(
+        VBoxContainer stack,
+        PlayerCharacter player,
+        BattlePileOverlaySection section,
+        List<SkillCard> cardsToAnimate
+    )
+    {
+        if (stack == null)
+            return;
+
+        var sectionRoot =
+            GetPileOverlaySectionRoot(section.Kind) ?? CreatePileOverlaySectionRoot(section.Kind);
+        if (sectionRoot.GetParent() == null)
+            stack.AddChild(sectionRoot);
+        sectionRoot.Visible = true;
+
+        var title = sectionRoot.GetNodeOrNull<Label>("Title");
+        if (title == null)
+        {
+            title = new Label
+            {
+                Name = "Title",
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            sectionRoot.AddChild(title);
+        }
+        ConfigurePileOverlayLabel(title);
+        title.Text = $"{section.Title}  {section.Pile.Length}";
+
+        var emptyLabel = sectionRoot.GetNodeOrNull<Label>("Empty");
+        if (emptyLabel == null)
+        {
+            emptyLabel = new Label
+            {
+                Name = "Empty",
+                Text = "空",
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            sectionRoot.AddChild(emptyLabel);
+        }
+        ConfigurePileOverlayLabel(emptyLabel);
+
+        var grid = sectionRoot.GetNodeOrNull<GridContainer>("Grid");
+        if (grid == null)
+        {
+            grid = new GridContainer
+            {
+                Name = "Grid",
+                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+                SizeFlagsVertical = SizeFlags.ShrinkBegin,
+                MouseFilter = MouseFilterEnum.Ignore,
+            };
+            sectionRoot.AddChild(grid);
+        }
+        grid.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
+
+        ClearGridChildren(grid);
+
+        if (section.Pile.Length == 0)
+        {
+            emptyLabel.Visible = true;
+            grid.Visible = false;
+            return;
+        }
+
+        emptyLabel.Visible = false;
+        grid.Visible = true;
+        _pileOverlayGrid = grid;
+
+        foreach (SkillID skillId in section.Pile)
+        {
+            var card = CreatePilePreviewCard(player, skillId);
+            if (card == null)
+                continue;
+
+            card.ResetState();
+            card.HoverHint.Visible = false;
+
+            var holder = CreatePileCardHolder(card);
+            grid.AddChild(holder);
+            cardsToAnimate?.Add(card);
+        }
+
+        grid.QueueSort();
+    }
+
+    private VBoxContainer GetPileOverlaySectionRoot(BattlePileKind kind)
+    {
+        if (_pileOverlaySections == null || !GodotObject.IsInstanceValid(_pileOverlaySections))
+            return null;
+
+        return _pileOverlaySections.GetNodeOrNull<VBoxContainer>(GetPileOverlaySectionName(kind));
+    }
+
+    private static void ConfigurePileOverlayLabel(Label label)
+    {
+        if (label == null)
+            return;
+
+        label.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
+        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.MouseFilter = MouseFilterEnum.Ignore;
+    }
+
+    private VBoxContainer CreatePileOverlaySectionRoot(BattlePileKind kind)
+    {
+        return new VBoxContainer
+        {
+            Name = GetPileOverlaySectionName(kind),
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin,
+        };
+    }
+
+    private static string GetPileOverlaySectionName(BattlePileKind kind)
+    {
+        return kind switch
+        {
+            BattlePileKind.Draw => "DrawSection",
+            BattlePileKind.Discard => "DiscardSection",
+            BattlePileKind.Exhausted => "ExhaustedSection",
+            _ => "PileSection",
+        };
+    }
+
     private void EnsurePileOverlayUi()
     {
-        if (_pileOverlayRoot != null && GodotObject.IsInstanceValid(_pileOverlayRoot))
+        if (
+            _pileOverlayRoot != null
+            && GodotObject.IsInstanceValid(_pileOverlayRoot)
+            && _pileOverlaySections != null
+            && GodotObject.IsInstanceValid(_pileOverlaySections)
+        )
             return;
 
         Node parent = BattleNode ?? GetParent();
@@ -3650,14 +4539,21 @@ public partial class CharacterControl : Control
         }
 
         _pileOverlayRoot = _pileOverlayLayer.GetNodeOrNull<Control>("PileOverlayRoot");
+        if (
+            _pileOverlayRoot != null
+            && GodotObject.IsInstanceValid(_pileOverlayRoot)
+            && _pileOverlayRoot.GetNodeOrNull<VBoxContainer>("Scroll/Margin/PileSections") == null
+        )
+        {
+            _pileOverlayRoot.Name = "OldPileOverlayRoot";
+            _pileOverlayRoot.QueueFree();
+            _pileOverlayRoot = null;
+        }
+
         if (_pileOverlayRoot == null)
         {
-            _pileOverlayRoot = new Control
-            {
-                Name = "PileOverlayRoot",
-                Visible = false,
-                MouseFilter = MouseFilterEnum.Stop,
-            };
+            _pileOverlayRoot =
+                BattlePileOverlayScene?.Instantiate<Control>() ?? CreateFallbackPileOverlayRoot();
             _pileOverlayLayer.AddChild(_pileOverlayRoot);
         }
         ConfigurePileOverlayRoot(_pileOverlayRoot);
@@ -3677,48 +4573,25 @@ public partial class CharacterControl : Control
 
         var scroll = _pileOverlayRoot.GetNodeOrNull<ScrollContainer>("Scroll");
         if (scroll == null)
+            scroll = CreateFallbackPileOverlayScroll(_pileOverlayRoot);
+
+        _pileOverlayMargin = scroll.GetNodeOrNull<MarginContainer>("Margin");
+        if (_pileOverlayMargin == null)
+            _pileOverlayMargin = CreateFallbackPileOverlayMargin(scroll);
+
+        _pileOverlaySections = _pileOverlayMargin.GetNodeOrNull<VBoxContainer>("PileSections");
+        if (_pileOverlaySections == null)
         {
-            scroll = new ScrollContainer
+            _pileOverlaySections = new VBoxContainer
             {
-                Name = "Scroll",
-                MouseFilter = MouseFilterEnum.Pass,
-                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-                VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
-            };
-            scroll.SetAnchorsPreset(LayoutPreset.FullRect);
-            scroll.OffsetLeft = 112f;
-            scroll.OffsetTop = 80f;
-            scroll.OffsetRight = -112f;
-            scroll.OffsetBottom = -80f;
-            _pileOverlayRoot.AddChild(scroll);
-
-            var margin = new MarginContainer
-            {
-                Name = "Margin",
+                Name = "PileSections",
                 MouseFilter = MouseFilterEnum.Ignore,
-            };
-            margin.AddThemeConstantOverride("margin_left", 12);
-            margin.AddThemeConstantOverride("margin_top", 12);
-            margin.AddThemeConstantOverride("margin_right", 12);
-            margin.AddThemeConstantOverride("margin_bottom", 12);
-            scroll.AddChild(margin);
-
-            _pileOverlayGrid = new GridContainer
-            {
-                Name = "Grid",
-                Columns = 6,
                 SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
                 SizeFlagsVertical = SizeFlags.ShrinkBegin,
-                MouseFilter = MouseFilterEnum.Ignore,
             };
-            _pileOverlayGrid.AddThemeConstantOverride("h_separation", 18);
-            _pileOverlayGrid.AddThemeConstantOverride("v_separation", 22);
-            margin.AddChild(_pileOverlayGrid);
+            _pileOverlayMargin.AddChild(_pileOverlaySections);
         }
-        else
-        {
-            _pileOverlayGrid = scroll.GetNodeOrNull<GridContainer>("Margin/Grid");
-        }
+        _pileOverlaySections.AddThemeConstantOverride("separation", PileOverlaySectionSeparation);
     }
 
     private void ConfigurePileOverlayRoot(Control root)
@@ -3729,6 +4602,51 @@ public partial class CharacterControl : Control
         root.SetAnchorsPreset(LayoutPreset.FullRect);
         root.MouseFilter = MouseFilterEnum.Stop;
         root.GuiInput += OnPileOverlayBackgroundGuiInput;
+    }
+
+    private static Control CreateFallbackPileOverlayRoot()
+    {
+        return new Control
+        {
+            Name = "PileOverlayRoot",
+            Visible = false,
+            MouseFilter = MouseFilterEnum.Stop,
+        };
+    }
+
+    private static ScrollContainer CreateFallbackPileOverlayScroll(Control root)
+    {
+        var scroll = new ScrollContainer
+        {
+            Name = "Scroll",
+            MouseFilter = MouseFilterEnum.Pass,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+        };
+        scroll.SetAnchorsPreset(LayoutPreset.FullRect);
+        scroll.OffsetLeft = 160f;
+        scroll.OffsetTop = 86f;
+        scroll.OffsetRight = -160f;
+        scroll.OffsetBottom = -92f;
+        root.AddChild(scroll);
+        return scroll;
+    }
+
+    private static MarginContainer CreateFallbackPileOverlayMargin(ScrollContainer scroll)
+    {
+        var margin = new MarginContainer
+        {
+            Name = "Margin",
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkBegin,
+        };
+        margin.AddThemeConstantOverride("margin_left", 12);
+        margin.AddThemeConstantOverride("margin_top", 12);
+        margin.AddThemeConstantOverride("margin_right", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 12);
+        scroll.AddChild(margin);
+        return margin;
     }
 
     private void ConfigurePileOverlayMask(ColorRect mask)
@@ -3759,13 +4677,17 @@ public partial class CharacterControl : Control
     {
         var holder = new Control
         {
-            CustomMinimumSize = PileCardDisplaySize,
+            CustomMinimumSize = PileCardHolderSize,
+            Size = PileCardHolderSize,
             SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
             MouseFilter = MouseFilterEnum.Ignore,
+            ClipContents = false,
         };
 
-        card.Position = -0.5f * (Vector2.One - PileCardScale) * BattleCardBaseSize;
+        card.Position =
+            PileCardHolderPadding - 0.5f * (Vector2.One - PileCardScale) * BattleCardBaseSize;
+        card.PivotOffset = BattleCardBaseSize * 0.5f;
         holder.AddChild(card);
         return holder;
     }
@@ -3796,13 +4718,58 @@ public partial class CharacterControl : Control
 
     private void ClearPileOverlayCards()
     {
-        if (_pileOverlayGrid == null || !GodotObject.IsInstanceValid(_pileOverlayGrid))
+        if (_pileOverlaySections != null && GodotObject.IsInstanceValid(_pileOverlaySections))
+        {
+            foreach (Node child in _pileOverlaySections.GetChildren())
+            {
+                if (child is not Control section)
+                    continue;
+
+                section.Visible = false;
+                if (section.GetNodeOrNull<Label>("Empty") is Label emptyLabel)
+                    emptyLabel.Visible = false;
+                if (section.GetNodeOrNull<GridContainer>("Grid") is GridContainer grid)
+                {
+                    grid.Visible = false;
+                    ClearGridChildren(grid);
+                }
+            }
+            _pileOverlayGrid = null;
+            return;
+        }
+
+        if (_pileOverlayMargin == null || !GodotObject.IsInstanceValid(_pileOverlayMargin))
+        {
+            if (_pileOverlayGrid == null || !GodotObject.IsInstanceValid(_pileOverlayGrid))
+                return;
+
+            for (int i = _pileOverlayGrid.GetChildCount() - 1; i >= 0; i--)
+            {
+                Node child = _pileOverlayGrid.GetChild(i);
+                _pileOverlayGrid.RemoveChild(child);
+                child.QueueFree();
+            }
+            return;
+        }
+
+        for (int i = _pileOverlayMargin.GetChildCount() - 1; i >= 0; i--)
+        {
+            Node child = _pileOverlayMargin.GetChild(i);
+            _pileOverlayMargin.RemoveChild(child);
+            child.QueueFree();
+        }
+        _pileOverlayGrid = null;
+    }
+
+    private static void ClearGridChildren(GridContainer grid)
+    {
+        if (grid == null || !GodotObject.IsInstanceValid(grid))
             return;
 
-        for (int i = _pileOverlayGrid.GetChildCount() - 1; i >= 0; i--)
+        for (int i = grid.GetChildCount() - 1; i >= 0; i--)
         {
-            Node child = _pileOverlayGrid.GetChild(i);
-            _pileOverlayGrid.RemoveChild(child);
+            Node child = grid.GetChild(i);
+            grid.RemoveChild(child);
             child.QueueFree();
         }
     }
@@ -3910,22 +4877,7 @@ public partial class CharacterControl : Control
         _suppressNextRefreshLayout = true;
         RefreshTurnUi();
 
-        foreach (SkillCard card in _cards)
-        {
-            if (card == null || !card.Visible)
-                continue;
-
-            card.Button.Disabled = true;
-            if (card.CurrentSkill?.ExhaustsAtTurnEndInHand == true)
-                card.PlayExhaustEffect(EndTurnCardVanishDuration);
-            else
-                card.Vanish();
-        }
-
-        await ToSignal(
-            GetTree().CreateTimer(EndTurnCardVanishDuration),
-            SceneTreeTimer.SignalName.Timeout
-        );
+        await PlayEndTurnHandDiscardAnimationsAsync(endingPlayer);
 
         if (
             !GodotObject.IsInstanceValid(this)

@@ -90,12 +90,8 @@ public partial class Skill
 
     protected static string X(StatX stat)
     {
-        string label = GetStatLabel(stat);
-        if (string.IsNullOrWhiteSpace(label))
-            return UnfixedPlaceholder;
-
         string color = GetStatColor(stat);
-        return $"[color={color}]{UnfixedPlaceholder}({label})[/color]";
+        return $"[color={color}]{UnfixedPlaceholder}[/color]";
     }
 
     protected static string FormatBasePlusX(int baseValue, StatX stat, int xMultiplier = 1)
@@ -368,6 +364,8 @@ public partial class Skill
                 )
             );
 
+        AddStatXTooltipEntries(entries, description, plainDescription);
+
         foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
         {
             string displayName = Buff.GetBuffDisplayName(buffName);
@@ -397,6 +395,66 @@ public partial class Skill
                 .Select(entry => entry.Text)
                 .Where(entry => !string.IsNullOrWhiteSpace(entry))
         );
+    }
+
+    private static void AddStatXTooltipEntries(
+        List<(int Index, string Text)> entries,
+        string description,
+        string plainDescription
+    )
+    {
+        if (string.IsNullOrWhiteSpace(plainDescription))
+            return;
+
+        int xIndex = FindUnfixedPlaceholderIndex(plainDescription);
+        if (xIndex < 0)
+            return;
+
+        string effectText = BuildStatXTooltipEffectText(description);
+        if (string.IsNullOrWhiteSpace(effectText))
+            return;
+
+        entries.Add((xIndex, BuildKeywordTooltipEntry(UnfixedPlaceholder, effectText)));
+    }
+
+    private static string BuildStatXTooltipEffectText(string description)
+    {
+        var lines = new List<string>();
+        AddStatXTooltipLine(lines, description, StatX.Power, PropertyType.Power);
+        AddStatXTooltipLine(lines, description, StatX.Survivability, PropertyType.Survivability);
+        AddStatXTooltipLine(
+            lines,
+            description,
+            StatX.Energy,
+            I18n.Tr("keyword.energy", "能量")
+        );
+
+        return string.Join("\n", lines);
+    }
+
+    private static void AddStatXTooltipLine(
+        List<string> lines,
+        string description,
+        StatX stat,
+        PropertyType propertyType
+    ) => AddStatXTooltipLine(lines, description, stat, GetPropertyLabel(propertyType));
+
+    private static void AddStatXTooltipLine(
+        List<string> lines,
+        string description,
+        StatX stat,
+        string label
+    )
+    {
+        if (string.IsNullOrWhiteSpace(description) || !description.Contains(X(stat), StringComparison.Ordinal))
+            return;
+
+        lines.Add(I18n.Format(
+            "keyword.x.stat_line",
+            "{x}为{stat}。",
+            ("x", X(stat)),
+            ("stat", label)
+        ));
     }
 
     private static int FindValidRebirthKeywordIndex(
@@ -526,6 +584,29 @@ public partial class Skill
                 return -1;
 
             if (!ContainsLatinOrDigit(token) || HasWordBoundaryAround(text, index, token.Length))
+                return index;
+
+            searchStart = index + 1;
+        }
+
+        return -1;
+    }
+
+    private static int FindUnfixedPlaceholderIndex(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return -1;
+
+        int searchStart = 0;
+        while (searchStart < text.Length)
+        {
+            int index = text.IndexOf(UnfixedPlaceholder, searchStart, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+                return -1;
+
+            int endIndex = index + UnfixedPlaceholder.Length;
+            bool rightOk = endIndex >= text.Length || !IsWordChar(text[endIndex]);
+            if (rightOk)
                 return index;
 
             searchStart = index + 1;

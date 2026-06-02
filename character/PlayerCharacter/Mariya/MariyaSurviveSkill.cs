@@ -7,8 +7,8 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 5;
-    private const int PowerGain = 4;
+    private const int BaseBlock = 4;
+    private const int PowerGain = 3;
 
     public FinalGuard()
         : base(SkillTypes.Survive)
@@ -67,7 +67,7 @@ public partial class RebirthPrayer : Skill
 
 public partial class CrystalGuard : Skill
 {
-    private const int BaseBlock = 5;
+    private const int BaseBlock = 4;
 
     public CrystalGuard()
         : base(SkillTypes.Survive)
@@ -85,7 +85,7 @@ public partial class CrystalGuard : Skill
 
 public partial class StillWaterMirror : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 7;
     private const int SurvivabilityGain = 4;
 
     public StillWaterMirror()
@@ -101,11 +101,8 @@ public partial class StillWaterMirror : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(
-                type: PropertyType.Survivability,
-                value: SurvivabilityGain,
-                target: TargetReference.ManualFriendly
-            )
+            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2),
+            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2, TargetReference.Next)
         );
     }
 }
@@ -145,6 +142,7 @@ public partial class QuietVeil : Skill
 public partial class EnergyRelay : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
+
     public EnergyRelay()
         : base(SkillTypes.Survive)
     {
@@ -157,7 +155,7 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: 7),
+            BlockStep(baseBlock: 6),
             EnergyStep(delta: 1, target: TargetReference.Next),
             EnergyStep(delta: 1, target: TargetReference.Previous)
         );

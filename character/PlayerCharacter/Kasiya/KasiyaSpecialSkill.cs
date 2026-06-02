@@ -172,7 +172,7 @@ public class RadiantOverload : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "辉光过载";
+    public override string SkillName { get; set; } = "辉光";
     public override int EnergyCost => 1;
     public override bool ExhaustsAfterUse => true;
 

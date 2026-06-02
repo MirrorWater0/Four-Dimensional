@@ -36,6 +36,9 @@ public partial class ReadyButton : Button
 
     public async void Click()
     {
+        if (ThisMap?.IsMapPeekModeActive == true)
+            ThisMap.PlayerResourceState?.CloseMapPeekMode();
+
         if (!HasActiveBattleReady() && Layer != null)
             ThisBattleReady = Layer.GetChildren().OfType<BattleReady>().FirstOrDefault();
 

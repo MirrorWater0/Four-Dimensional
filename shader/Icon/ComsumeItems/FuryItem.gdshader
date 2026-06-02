@@ -43,5 +43,5 @@ void fragment() {
     float alpha = ring * 0.54 + core * 0.82 + bolt * 1.0 + flares * 0.46;
     alpha = clamp(alpha, 0.0, 1.0);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

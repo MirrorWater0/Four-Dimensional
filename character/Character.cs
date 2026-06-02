@@ -139,7 +139,15 @@ public partial class Character : Node2D
     public virtual bool CountsTowardTeamSpeed => true;
     public virtual bool TriggersSkillUseEvents => true;
     public virtual bool ClearsBlockOnActionStart => true;
+    private readonly HashSet<Buff.BuffName> _seenBuffs = new();
     public List<SummonCharacter> Summons { get; } = new();
+
+    public void MarkBuffSeen(Buff.BuffName buffName)
+    {
+        _seenBuffs.Add(buffName);
+    }
+
+    public bool HasSeenBuff(Buff.BuffName buffName) => _seenBuffs.Contains(buffName);
 
     public IDisposable BeginEffectSource(string actionName = null) =>
         BattleNode?.PushEffectSource(this, actionName);
@@ -165,6 +173,10 @@ public partial class Character : Node2D
     private Tween _trailPreviewTween;
     private Tween _turnOrderPreviewTween;
     private bool _nextActionPreviewVisible;
+    private Color _nextActionPreviewColor = new(1f, 1f, 1f, 0.82f);
+    private Gradient _defaultTrailLineGradient;
+    private Color _defaultTrailLineModulate;
+    private bool _defaultTrailLineStyleCached;
     private bool _turnOrderPreviewSceneRectCached;
     private Vector2 _turnOrderPreviewScenePosition;
     private Vector2 _turnOrderPreviewSceneSize;
@@ -286,6 +298,7 @@ public partial class Character : Node2D
 
         Hoverframe.MouseEntered += OnHoverEntered;
         Hoverframe.MouseExited += OnHoverExited;
+        Hoverframe.GuiInput += OnHoverframeGuiInput;
 
         if (Sprite.Material != null)
         {
@@ -302,15 +315,52 @@ public partial class Character : Node2D
         effect.Animation.Play("transition");
     }
 
+    private void OnHoverframeGuiInput(InputEvent @event)
+    {
+        if (
+            @event is InputEventMouseButton leftMouseButton
+            && leftMouseButton.Pressed
+            && leftMouseButton.ButtonIndex == MouseButton.Left
+            && BattleNode?.CharacterControl?.TrySelectManualTargetFromCharacter(this) == true
+        )
+        {
+            HideHoverTooltips();
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (
+            @event is not InputEventMouseButton mouseButton
+            || !mouseButton.Pressed
+            || mouseButton.ButtonIndex != MouseButton.Right
+            || State == CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        if (BattleNode?.TryShowCharacterBattleCardPiles(this) == true)
+        {
+            HideHoverTooltips();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
     private void OnHoverEntered()
     {
         ulong hoverStartUsec = Time.GetTicksUsec();
         _isHoverframeHovered = true;
         _skillTooltipHoverVersion++;
+        CharacterControl characterControl = BattleNode?.CharacterControl;
+        bool isManualTargetSelection = characterControl?.IsManualTargetArrowSelectionActive == true;
+        characterControl?.NotifyManualTargetHover(this, hovered: true);
         BattleNode?.MarkHoverPerfEvent(this, "character-hover-enter");
 
         ulong stepStartUsec = Time.GetTicksUsec();
-        Hover();
+        if (isManualTargetSelection)
+            RefreshHoverframeVisual();
+        else
+            Hover();
         BattleNode?.LogHoverPerfWork(this, "character-hover-visual", stepStartUsec);
         if (State == CharacterState.Dying)
             return;
@@ -325,6 +375,7 @@ public partial class Character : Node2D
     {
         _isHoverframeHovered = false;
         _skillTooltipHoverVersion++;
+        BattleNode?.CharacterControl?.NotifyManualTargetHover(this, hovered: false);
         RefreshHoverframeVisual();
         HideHoverTooltips();
     }
@@ -471,6 +522,8 @@ public partial class Character : Node2D
         {
             var skill = validSkills[i];
 
+            if (skill.OwnerCharater != this)
+                skill.OwnerCharater = this;
             skill.UpdateDescription();
 
             if (i > 0)
@@ -898,15 +951,22 @@ public partial class Character : Node2D
         _nextActionPreviewVisible = false;
         _nextActionPreviewTween?.Kill();
         _trailPreviewTween?.Kill();
+        RestoreDefaultTrailLineStyle();
         RestoreDefaultTrailGeometry();
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
     }
 
     public void ShowNextActionPreview()
     {
+        ShowNextActionPreview(new Color(1f, 1f, 1f, 0.82f));
+    }
+
+    public void ShowNextActionPreview(Color color)
+    {
         if (trail == null || State == CharacterState.Dying)
             return;
 
+        _nextActionPreviewColor = color;
         _nextActionPreviewVisible = true;
         RefreshTrailPreviewState();
     }
@@ -1649,11 +1709,16 @@ public partial class Character : Node2D
         );
     }
 
-    public void ShowTargetPreview(Color color)
+    public void ShowTargetPreview(Color color, bool animate = true)
     {
+        if (_isTargetPreviewVisible && _targetPreviewColor == color)
+            return;
+
+        bool shouldAnimate = !_isTargetPreviewVisible;
         _isTargetPreviewVisible = true;
         _targetPreviewColor = color;
-        Hover();
+        if (animate && shouldAnimate)
+            Hover();
         RefreshHoverframeVisual();
     }
 
@@ -1678,6 +1743,12 @@ public partial class Character : Node2D
 
     private void RefreshHoverframeVisual()
     {
+        if (_isTargetPreviewVisible)
+        {
+            Hoverframe.SelfModulate = _targetPreviewColor;
+            return;
+        }
+
         if (_isHoverframeHovered)
         {
             Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
@@ -1687,12 +1758,6 @@ public partial class Character : Node2D
         if (_isFramePreviewVisible)
         {
             Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
-            return;
-        }
-
-        if (_isTargetPreviewVisible)
-        {
-            Hoverframe.SelfModulate = _targetPreviewColor;
             return;
         }
 
@@ -1726,19 +1791,26 @@ public partial class Character : Node2D
             if (TrailLineScript != null)
                 TrailLineScript.ManualPreviewMode = false;
             TrailAnimation.Play("trail");
-            TweenTrailToColor(new Color(0.2f, 1f, 0.25f, 0.78f), 0.18f);
+            ApplyNextActionPreviewTrailStyle();
+            TweenTrailToColor(new Color(1f, 1f, 1f, _nextActionPreviewColor.A), 0.18f);
             return;
         }
 
         RestoreDefaultTrailGeometry();
         TweenTrailToColor(
-            new Color(trail.Modulate.R, trail.Modulate.G, trail.Modulate.B, 0f),
+            new Color(1f, 1f, 1f, 0f),
             0.14f,
-            stopWhenFinished: true
+            stopWhenFinished: true,
+            restoreLineStyleWhenFinished: true
         );
     }
 
-    private void TweenTrailToColor(Color color, float duration, bool stopWhenFinished = false)
+    private void TweenTrailToColor(
+        Color color,
+        float duration,
+        bool stopWhenFinished = false,
+        bool restoreLineStyleWhenFinished = false
+    )
     {
         if (trail == null)
             return;
@@ -1758,7 +1830,50 @@ public partial class Character : Node2D
             {
                 TrailAnimation.Stop();
             }
+
+            if (restoreLineStyleWhenFinished)
+                RestoreDefaultTrailLineStyle();
         };
+    }
+
+    private void ApplyNextActionPreviewTrailStyle()
+    {
+        if (TrailLine == null)
+            return;
+
+        CacheDefaultTrailLineStyle();
+        RestoreDefaultTrailLineStyle();
+        TrailLine.Gradient = CreateSolidTrailGradient(_nextActionPreviewColor);
+        TrailLine.Modulate = Colors.White;
+    }
+
+    private void CacheDefaultTrailLineStyle()
+    {
+        if (_defaultTrailLineStyleCached || TrailLine == null)
+            return;
+
+        _defaultTrailLineGradient = TrailLine.Gradient;
+        _defaultTrailLineModulate = TrailLine.Modulate;
+        _defaultTrailLineStyleCached = true;
+    }
+
+    private void RestoreDefaultTrailLineStyle()
+    {
+        if (!_defaultTrailLineStyleCached || TrailLine == null)
+            return;
+
+        TrailLine.Gradient = _defaultTrailLineGradient;
+        TrailLine.Modulate = _defaultTrailLineModulate;
+    }
+
+    private static Gradient CreateSolidTrailGradient(Color color)
+    {
+        Color opaqueColor = new(color.R, color.G, color.B, 1f);
+        Color tailColor = new(color.R, color.G, color.B, 0.72f);
+        var gradient = new Gradient();
+        gradient.SetOffsets(new float[] { 0f, 1f });
+        gradient.SetColors(new Color[] { tailColor, opaqueColor });
+        return gradient;
     }
 
     private void ConfigureTrailCurveToTarget(Vector2 targetGlobalPosition)

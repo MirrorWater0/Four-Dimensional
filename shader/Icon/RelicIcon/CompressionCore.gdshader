@@ -68,5 +68,5 @@ void fragment() {
     rgb = mix(rgb, accent_color.rgb, max(nodes, links));
 
     float alpha = max(glow * 0.8, max(structure, max(nodes, links)));
-    COLOR = vec4(rgb, alpha);
+    COLOR *= vec4(rgb, alpha);
 }

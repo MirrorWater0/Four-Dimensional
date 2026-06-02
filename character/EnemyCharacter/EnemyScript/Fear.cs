@@ -47,9 +47,9 @@ public partial class FearEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
 
-        MaxLife = 236;
-        Power = 13;
-        Survivability = 12;
+        MaxLife = 203;
+        Power = 12;
+        Survivability = 11;
         Speed = 28;
         SkillIDs = [SkillID.FearEliteAttack, SkillID.FearEliteSurvive, SkillID.FearEliteSpecial];
 
@@ -108,7 +108,7 @@ public partial class FearEliteSurvive : Skill
 public partial class FearEliteSpecial : Skill
 {
     private const int BaseDamage = 0;
-    private const int FearStacks = 4;
+    private const int FearStacks = 3;
 
     public FearEliteSpecial()
         : base(SkillTypes.Special)
@@ -117,7 +117,7 @@ public partial class FearEliteSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "梦魇扩散";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => 6;
 
     protected override SkillPlan BuildPlan()
     {

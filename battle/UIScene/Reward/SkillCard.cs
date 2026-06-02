@@ -54,13 +54,11 @@ public partial class SkillCard : SubViewportContainer
     public Polygon2D NamePlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/NamePlate");
     public Polygon2D CharacterPlate =>
         field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
-    public Node2D DiscardTrailTarget =>
-        field ??= GetNodeOrNull<Node2D>("DiscardCardTrailTarget");
+    public Node2D DiscardTrailTarget => field ??= GetNodeOrNull<Node2D>("DiscardCardTrailTarget");
     public Line DiscardTrail => field ??= GetNodeOrNull<Line>("DiscardCardTrail");
     public GpuParticles2D DiscardTrailParticles =>
         field ??= GetNodeOrNull<GpuParticles2D>("DiscardCardTrailTarget/DiscardCardTrailParticles");
-    public Node2D DrawTrailTarget =>
-        field ??= GetNodeOrNull<Node2D>("DrawCardTrailTarget");
+    public Node2D DrawTrailTarget => field ??= GetNodeOrNull<Node2D>("DrawCardTrailTarget");
     public Line DrawTrail => field ??= GetNodeOrNull<Line>("DrawCardTrail");
     public GpuParticles2D DrawTrailParticles =>
         field ??= GetNodeOrNull<GpuParticles2D>("DrawCardTrailTarget/DrawCardTrailParticles");
@@ -75,6 +73,7 @@ public partial class SkillCard : SubViewportContainer
     private Tween _pressTween;
     private Tween _hoverTween;
     private Tween _motionTween;
+    private Tween _drawSettleTween;
     private int _baseDescriptionFontSize;
     private int _textAdjustVersion;
     private Vector2 _baseScale = Vector2.One;
@@ -87,12 +86,10 @@ public partial class SkillCard : SubViewportContainer
     private ShaderMaterial _defaultCardMaterial;
     private Character[] _previewHostileTargets = Array.Empty<Character>();
     private Character[] _previewFriendlyTargets = Array.Empty<Character>();
-    private readonly List<Label> _previewDamageLabels = new();
+    private readonly List<VBoxContainer> _previewDamagePanels = new();
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
-    private static readonly Color DamagePreviewColor = new(1f, 0.84f, 0.63f, 1f);
-    private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
@@ -160,6 +157,7 @@ public partial class SkillCard : SubViewportContainer
         _pressTween?.Kill();
         _hoverTween?.Kill();
         _motionTween?.Kill();
+        _drawSettleTween?.Kill();
 
         HoverHint.Visible = false;
         ApplyConfiguredDisplayScale();
@@ -183,6 +181,7 @@ public partial class SkillCard : SubViewportContainer
         _pressTween?.Kill();
         _hoverTween?.Kill();
         _motionTween?.Kill();
+        _drawSettleTween?.Kill();
 
         HoverHint.Visible = false;
         ApplyConfiguredDisplayScale();
@@ -240,6 +239,11 @@ public partial class SkillCard : SubViewportContainer
 
     public void StartAnimation(float delay = 0f)
     {
+        StartAnimationWithDuration(delay, 0.4f);
+    }
+
+    public void StartAnimationWithDuration(float delay, float duration)
+    {
         if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
 
@@ -256,9 +260,30 @@ public partial class SkillCard : SubViewportContainer
                 Callable.From<float>(value => shader.SetShaderParameter("progress", value)),
                 1f,
                 0f,
-                0.4f
+                duration
             )
             .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    public void PlayDrawSettleEffect(float delay = 0f)
+    {
+        if (!IsInsideTree())
+            return;
+
+        _drawSettleTween?.Kill();
+        Scale = _baseScale * 1.045f;
+        _drawSettleTween = CreateTween();
+        if (delay > 0f)
+            _drawSettleTween.TweenInterval(delay);
+
+        _drawSettleTween
+            .TweenProperty(this, "scale", _baseScale * 0.992f, 0.07f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        _drawSettleTween
+            .TweenProperty(this, "scale", _baseScale, 0.09f)
+            .SetTrans(Tween.TransitionType.Back)
             .SetEase(Tween.EaseType.Out);
     }
 
@@ -295,9 +320,7 @@ public partial class SkillCard : SubViewportContainer
         CurrentSkill.UpdateDescription();
         NameLabel.Text = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
         CharacterName.Text =
-            PreviewCharacterName
-            ?? CurrentSkill.OwnerCharater?.CharacterName
-            ?? string.Empty;
+            PreviewCharacterName ?? CurrentSkill.OwnerCharater?.CharacterName ?? string.Empty;
         bool isStatusCard = IsStatusCard(CurrentSkill);
         string skillTypeText = isStatusCard
             ? I18n.Tr("ui.encyclopedia.skill_type.status", "状态")
@@ -312,7 +335,11 @@ public partial class SkillCard : SubViewportContainer
         if (isStatusCard)
             ApplyStatusCardStyle();
 
-        Texture2D skillPicture = GetSkillPictureTexture(CurrentSkill, PreviewCharacterName, PreviewCharacterKey);
+        Texture2D skillPicture = GetSkillPictureTexture(
+            CurrentSkill,
+            PreviewCharacterName,
+            PreviewCharacterKey
+        );
         bool hasSkillPicture = skillPicture != null;
         if (SkillPicture != null)
         {
@@ -334,18 +361,16 @@ public partial class SkillCard : SubViewportContainer
 
     public void SetEnergyCostText(string text)
     {
-        EnergyCost.Text = string.IsNullOrWhiteSpace(text) ? string.Empty : $"[center]{text}[/center]";
+        EnergyCost.Text = string.IsNullOrWhiteSpace(text)
+            ? string.Empty
+            : $"[center]{text}[/center]";
     }
 
     public void SetEnergyCostCostText(string costText)
     {
         string coloredCost = $"[color={EnergyCostNumberColor}]{costText}[/color]";
         SetEnergyCostText(
-            I18n.Format(
-                "ui.reward.energy_cost",
-                "耗能:{cost}",
-                ("cost", coloredCost)
-            )
+            I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", coloredCost))
         );
     }
 
@@ -461,7 +486,11 @@ public partial class SkillCard : SubViewportContainer
             .SetEase(Tween.EaseType.Out);
     }
 
-    public void PressEffectPartial(float centerVanish = 0.72f, float glowMultiplier = 1.55f, float duration = 0.32f)
+    public void PressEffectPartial(
+        float centerVanish = 0.72f,
+        float glowMultiplier = 1.55f,
+        float duration = 0.32f
+    )
     {
         if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
@@ -706,12 +735,23 @@ public partial class SkillCard : SubViewportContainer
         GetSkillIconTexture(skill);
     }
 
-    private static Texture2D GetSkillPictureTexture(Skill skill, string previewCharacterName = null, string previewCharacterKey = null)
+    private static Texture2D GetSkillPictureTexture(
+        Skill skill,
+        string previewCharacterName = null,
+        string previewCharacterKey = null
+    )
     {
         if (skill?.SkillId is not SkillID skillId)
             return null;
 
-        foreach (string path in EnumerateSkillPicturePaths(skill, skillId, previewCharacterName, previewCharacterKey))
+        foreach (
+            string path in EnumerateSkillPicturePaths(
+                skill,
+                skillId,
+                previewCharacterName,
+                previewCharacterKey
+            )
+        )
         {
             if (MissingSkillPicturePaths.Contains(path))
                 continue;
@@ -752,7 +792,14 @@ public partial class SkillCard : SubViewportContainer
         string skillFileName = skillId.ToString();
         var searchedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string folder in GetSkillPictureFolders(skill, skillId, previewCharacterName, previewCharacterKey))
+        foreach (
+            string folder in GetSkillPictureFolders(
+                skill,
+                skillId,
+                previewCharacterName,
+                previewCharacterKey
+            )
+        )
         {
             if (string.IsNullOrWhiteSpace(folder) || !searchedFolders.Add(folder))
                 continue;
@@ -779,7 +826,10 @@ public partial class SkillCard : SubViewportContainer
         if (!string.IsNullOrWhiteSpace(previewCharacterKey))
             yield return previewCharacterKey;
 
-        if (skill?.OwnerCharater is PlayerCharacter player && !string.IsNullOrWhiteSpace(player.CharacterKey))
+        if (
+            skill?.OwnerCharater is PlayerCharacter player
+            && !string.IsNullOrWhiteSpace(player.CharacterKey)
+        )
             yield return player.CharacterKey;
 
         if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
@@ -891,7 +941,7 @@ public partial class SkillCard : SubViewportContainer
         if (CurrentSkill == null)
             return;
 
-        var entries = CurrentSkill.GetPreviewHostileDamageEntries();
+        var entries = CurrentSkill.GetPreviewEffectEntries();
         if (entries == null || entries.Length == 0)
             return;
 
@@ -899,100 +949,70 @@ public partial class SkillCard : SubViewportContainer
         if (layer == null)
             return;
 
-        for (int i = 0; i < entries.Length; i++)
+        int panelIndex = 0;
+        foreach (
+            var group in entries
+                .Where(entry => entry.Target != null && GodotObject.IsInstanceValid(entry.Target))
+                .GroupBy(entry => entry.Target)
+        )
         {
-            var entry = entries[i];
-            if (entry.Target == null || !GodotObject.IsInstanceValid(entry.Target))
-                continue;
+            var panel = GetOrCreateDamagePanel(layer, panelIndex++);
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                group.ToArray(),
+                GetTargetScreenPosition(group.Key),
+                DamagePreviewLabelOffset
+            );
+        }
 
-            var label = GetOrCreateDamageLabel(layer, i);
-            ShowDamageLabel(label, entry, GetTargetScreenPosition(entry.Target));
+        for (int i = panelIndex; i < _previewDamagePanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].Visible = false;
         }
     }
 
     private void HideDamagePreview()
     {
-        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        for (int i = 0; i < _previewDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
-                _previewDamageLabels[i].Visible = false;
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].Visible = false;
         }
     }
 
     private void FreeDamagePreviewLabels()
     {
-        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        for (int i = 0; i < _previewDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
-                _previewDamageLabels[i].QueueFree();
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].QueueFree();
         }
-        _previewDamageLabels.Clear();
+        _previewDamagePanels.Clear();
     }
 
-    private Label GetOrCreateDamageLabel(CanvasLayer layer, int index)
+    private VBoxContainer GetOrCreateDamagePanel(CanvasLayer layer, int index)
     {
-        while (_previewDamageLabels.Count <= index)
+        while (_previewDamagePanels.Count <= index)
         {
-            var label = CreateDamageLabel();
-            layer.AddChild(label);
-            _previewDamageLabels.Add(label);
+            var panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _previewDamagePanels.Add(panel);
         }
 
-        var pooledLabel = _previewDamageLabels[index];
-        if (!GodotObject.IsInstanceValid(pooledLabel))
+        var pooledPanel = _previewDamagePanels[index];
+        if (!GodotObject.IsInstanceValid(pooledPanel))
         {
-            pooledLabel = CreateDamageLabel();
-            layer.AddChild(pooledLabel);
-            _previewDamageLabels[index] = pooledLabel;
+            pooledPanel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(pooledPanel);
+            _previewDamagePanels[index] = pooledPanel;
         }
-        else if (pooledLabel.GetParent() == null)
+        else if (pooledPanel.GetParent() == null)
         {
-            layer.AddChild(pooledLabel);
+            layer.AddChild(pooledPanel);
         }
 
-        return pooledLabel;
-    }
-
-    private static Label CreateDamageLabel()
-    {
-        var label = new Label
-        {
-            Visible = false,
-            MouseFilter = MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-        };
-        label.AddThemeFontSizeOverride("font_size", 28);
-        label.AddThemeConstantOverride("outline_size", 5);
-        label.AddThemeColorOverride("font_color", DamagePreviewColor);
-        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
-        return label;
-    }
-
-    private static void ShowDamageLabel(
-        Label label,
-        Skill.PreviewDamageEntry entry,
-        Vector2 targetScreenPosition
-    )
-    {
-        label.Text =
-            entry.HitCount > 1
-                ? $"{entry.Damage}({entry.HitCount}次)"
-                : entry.Damage.ToString();
-        label.AddThemeColorOverride("font_color", DamagePreviewColor);
-        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
-        label.Modulate = Colors.White;
-        label.Scale = Vector2.One;
-        label.Visible = true;
-
-        Vector2 size = label.GetCombinedMinimumSize();
-        if (size == Vector2.Zero)
-            size = new Vector2(120f, 44f);
-        label.Size = size;
-
-        Vector2 anchor = targetScreenPosition + DamagePreviewLabelOffset;
-        label.Position = anchor - size / 2f;
+        return pooledPanel;
     }
 
     private CanvasLayer EnsureTipLayer()
@@ -1071,11 +1091,7 @@ public partial class SkillCard : SubViewportContainer
             return;
 
         int preferredFontSize = UserSettings.ScaleTextFontSize(_baseDescriptionFontSize);
-        for (
-            int fontSize = preferredFontSize;
-            fontSize >= MinDescriptionFontSize;
-            fontSize--
-        )
+        for (int fontSize = preferredFontSize; fontSize >= MinDescriptionFontSize; fontSize--)
         {
             Description.AddThemeFontSizeOverride("normal_font_size", fontSize);
             if (Description.GetContentHeight() <= availableHeight)

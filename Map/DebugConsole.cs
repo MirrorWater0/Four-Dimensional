@@ -1736,16 +1736,16 @@ public partial class DebugConsole : CanvasLayer
         if (args.Length >= 3 && !TryParsePositiveInt(args[2], out count))
             return;
 
-        GameInfo.Relics ??= new Dictionary<RelicID, int>();
+        GameInfo.Relics ??= new List<RelicStack>();
 
         if (relicId == RelicID.Blessing)
         {
-            int existing = GameInfo.Relics.GetValueOrDefault(relicId, 0);
-            GameInfo.Relics[relicId] = Math.Max(0, existing + count);
+            int existing = GameInfo.GetRelicCount(relicId, 0);
+            GameInfo.SetRelicCount(relicId, Math.Max(0, existing + count));
         }
-        else if (!GameInfo.Relics.ContainsKey(relicId))
+        else if (!GameInfo.HasRelic(relicId))
         {
-            GameInfo.Relics[relicId] = Relic.GetAcquireAmount(relicId);
+            GameInfo.SetRelicCount(relicId, Relic.GetAcquireAmount(relicId));
         }
 
         RefreshOpenUi();

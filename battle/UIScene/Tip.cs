@@ -14,6 +14,11 @@ public partial class Tip : Control
     private const string BuffIconTagSuffix = "]";
     private const float BuffTooltipIconSize = 24f;
     private const float BuffTooltipIconSourceSize = 40f;
+    private const float DefaultMinAutoContentWidth = 72f;
+    private const float DefaultMaxAutoContentWidth = 420f;
+    private const float CjkCharacterWidthRatio = 1.0f;
+    private const float AsciiCharacterWidthRatio = 0.58f;
+    private const float WhitespaceCharacterWidthRatio = 0.34f;
 
     [Export]
     public bool FollowMouse = true;
@@ -32,7 +37,16 @@ public partial class Tip : Control
     public float AnchorHeightRatio = 0f;
 
     [Export]
-    public float MinContentWidth = 340f;
+    public float MinContentWidth = 0f;
+
+    [Export]
+    public bool FitMinWidthToText = true;
+
+    [Export]
+    public float MinAutoContentWidth = DefaultMinAutoContentWidth;
+
+    [Export]
+    public float MaxAutoContentWidth = DefaultMaxAutoContentWidth;
 
     [Export]
     public Vector2 ContentPadding = BackgroundPadding;
@@ -307,7 +321,9 @@ public partial class Tip : Control
             return;
 
         ApplyDescriptionTheme();
-        Description.CustomMinimumSize = new Vector2(MinContentWidth, 0);
+        float preferredContentWidth = GetPreferredContentWidth();
+        Description.CustomMinimumSize = new Vector2(preferredContentWidth, 0);
+        Description.Size = new Vector2(preferredContentWidth, 0);
 
         float contentWidth = Math.Max(
             Description.CustomMinimumSize.X,
@@ -339,7 +355,7 @@ public partial class Tip : Control
             return;
 
         Description.AutowrapMode = WrapMode;
-        Description.CustomMinimumSize = new Vector2(MinContentWidth, 0);
+        Description.CustomMinimumSize = new Vector2(GetPreferredContentWidth(), 0);
         Description.AddThemeFontSizeOverride(
             "normal_font_size",
             UserSettings.ScaleTextFontSize(NormalFontSize)
@@ -347,6 +363,68 @@ public partial class Tip : Control
         Description.AddThemeConstantOverride("outline_size", OutlineSize);
         Description.AddThemeColorOverride("default_color", DefaultColor);
         Description.AddThemeColorOverride("font_outline_color", OutlineColor);
+    }
+
+    private float GetPreferredContentWidth()
+    {
+        float explicitMinWidth = Math.Max(0f, MinContentWidth);
+        if (!FitMinWidthToText)
+            return explicitMinWidth;
+
+        float textWidth = EstimateTextContentWidth(_lastText);
+        float autoMinWidth = Math.Max(0f, MinAutoContentWidth);
+        float autoMaxWidth = Math.Max(autoMinWidth, MaxAutoContentWidth);
+        float fittedWidth = Mathf.Clamp(textWidth, autoMinWidth, autoMaxWidth);
+        return Math.Max(explicitMinWidth, fittedWidth);
+    }
+
+    private float EstimateTextContentWidth(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return Math.Max(0f, MinAutoContentWidth);
+
+        int fontSize = UserSettings.ScaleTextFontSize(NormalFontSize);
+        float maxLineWidth = 0f;
+        float currentLineWidth = 0f;
+        bool readingTag = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char character = text[i];
+            if (character == '[')
+            {
+                readingTag = true;
+                continue;
+            }
+            if (readingTag)
+            {
+                if (character == ']')
+                    readingTag = false;
+                continue;
+            }
+
+            if (character == '\r')
+                continue;
+            if (character == '\n')
+            {
+                maxLineWidth = Math.Max(maxLineWidth, currentLineWidth);
+                currentLineWidth = 0f;
+                continue;
+            }
+
+            currentLineWidth += GetEstimatedCharacterWidth(character, fontSize);
+        }
+
+        maxLineWidth = Math.Max(maxLineWidth, currentLineWidth);
+        return maxLineWidth + 2f;
+    }
+
+    private static float GetEstimatedCharacterWidth(char character, int fontSize)
+    {
+        if (char.IsWhiteSpace(character))
+            return fontSize * WhitespaceCharacterWidthRatio;
+        if (character <= 0x007f)
+            return fontSize * AsciiCharacterWidthRatio;
+        return fontSize * CjkCharacterWidthRatio;
     }
 
     private void UpdateTooltipPosition()

@@ -52,5 +52,5 @@ void fragment() {
     alpha += holo * frame * 0.16;
     alpha = clamp(alpha, 0.0, 1.0);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

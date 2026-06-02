@@ -19,12 +19,13 @@ public static partial class GameInfo
     public static long SessionPlaySeconds;
     public static long RunStartedAtUtcTicks;
     public static bool RunFinished;
+    public static bool PendingBossRelicChoice;
     public static List<RunHistoryRecord> RunHistoryRecords = new();
     public static bool HasSeenBattleTutorial;
     public static int IntentionRandomNum { get; private set; }
     public static int PositionRandomNum { get; private set; }
     public static Dictionary<Vector2I, LevelNode.LevelState> FirstLevelState = new();
-    public static Dictionary<RelicID, int> Relics = new();
+    public static List<RelicStack> Relics = new();
     public static int ItemsMaxCount = 3;
     public static List<ItemID> Items = new();
     public static int BattleItemDropChance = BaseBattleItemDropChance;
@@ -38,6 +39,7 @@ public static partial class GameInfo
         SessionPlaySeconds = 0;
         RunStartedAtUtcTicks = DateTime.UtcNow.Ticks;
         RunFinished = false;
+        PendingBossRelicChoice = false;
         RunHistoryRecords ??= new List<RunHistoryRecord>();
         FirstLevelState.Clear();
         ResetLevelNodeCompletionRecords();
@@ -45,8 +47,71 @@ public static partial class GameInfo
         Items.Clear();
         GameInfo.Items.Add(ItemID.Explosion);
         Relics.Clear();
-        Relics[RelicID.Blessing] = 3;
+        SetRelicCount(RelicID.Blessing, 3);
 
+    }
+
+    public static bool HasRelic(RelicID relicID)
+    {
+        NormalizeRelics();
+        return Relics.Any(stack => stack.ID == relicID);
+    }
+
+    public static int GetRelicCount(RelicID relicID, int defaultValue = 0)
+    {
+        NormalizeRelics();
+        RelicStack stack = Relics.FirstOrDefault(stack => stack.ID == relicID);
+        return stack.ID == relicID ? stack.Count : defaultValue;
+    }
+
+    public static void SetRelicCount(RelicID relicID, int count)
+    {
+        Relics ??= new List<RelicStack>();
+        for (int i = 0; i < Relics.Count; i++)
+        {
+            if (Relics[i].ID != relicID)
+                continue;
+
+            Relics[i] = new RelicStack(relicID, count);
+            return;
+        }
+
+        Relics.Add(new RelicStack(relicID, count));
+    }
+
+    public static int AddRelicCount(RelicID relicID, int amount)
+    {
+        int count = GetRelicCount(relicID, 0) + amount;
+        SetRelicCount(relicID, count);
+        return count;
+    }
+
+    public static void NormalizeRelics()
+    {
+        Relics ??= new List<RelicStack>();
+
+        var seen = new HashSet<RelicID>();
+        var normalized = new List<RelicStack>();
+        foreach (RelicStack stack in Relics)
+        {
+            if (!seen.Add(stack.ID))
+            {
+                int existingIndex = normalized.FindIndex(existing => existing.ID == stack.ID);
+                if (existingIndex >= 0)
+                    normalized[existingIndex] = stack;
+                continue;
+            }
+
+            normalized.Add(stack);
+        }
+
+        Relics = normalized;
+    }
+
+    public static Dictionary<RelicID, int> ToRelicDictionary()
+    {
+        NormalizeRelics();
+        return Relics.ToDictionary(stack => stack.ID, stack => stack.Count);
     }
 
     public static void RefreshRandomNum(ref int num)
@@ -54,6 +119,20 @@ public static partial class GameInfo
         num = new Random(num).Next();
     }
 
+}
+
+public struct RelicStack
+{
+    public RelicStack() { }
+
+    public RelicStack(RelicID id, int count)
+    {
+        ID = id;
+        Count = count;
+    }
+
+    public RelicID ID;
+    public int Count;
 }
 
 public struct PlayerInfoStructure

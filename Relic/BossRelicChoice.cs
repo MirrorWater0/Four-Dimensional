@@ -17,6 +17,18 @@ public partial class BossRelicChoice : CanvasLayer
     private HBoxContainer _cardRow;
     private bool _picked;
 
+    public static bool ShouldShowPendingChoice()
+    {
+        if (GameInfo.RunFinished || GameInfo.CurrentLevel != 1)
+            return false;
+
+        if (GameInfo.PendingBossRelicChoice)
+            return true;
+
+        // Migration for saves made after entering region 2 before this flag existed.
+        return HasCompletedRegionOneBoss() && !HasOwnedBossRelic();
+    }
+
     public static BossRelicChoice Show(Node caller)
     {
         var root = caller?.GetTree()?.Root;
@@ -36,7 +48,7 @@ public partial class BossRelicChoice : CanvasLayer
             return existing;
         }
 
-        var choice = new BossRelicChoice { Name = NodeName, Layer = 6, Visible = false };
+        var choice = new BossRelicChoice { Name = NodeName, Layer = 1, Visible = false };
         siteUi.AddChild(choice);
         choice.Open();
         return choice;
@@ -51,7 +63,11 @@ public partial class BossRelicChoice : CanvasLayer
     {
         BuildUi();
         if (!PopulateRelics())
+        {
+            GameInfo.PendingBossRelicChoice = false;
+            SaveSystem.SaveAll();
             return;
+        }
 
         Visible = true;
         PlayIntro();
@@ -134,11 +150,10 @@ public partial class BossRelicChoice : CanvasLayer
         foreach (Node child in _cardRow.GetChildren())
             child.QueueFree();
 
-        var owned = GameInfo.Relics;
         var rng = CreateBossRelicOfferRandom();
         var relics = Relic
             .GetBossRelicOfferPool()
-            .Where(id => owned == null || !owned.ContainsKey(id))
+            .Where(id => !GameInfo.HasRelic(id))
             .OrderBy(_ => rng.Next())
             .Take(BossRelicOfferCount)
             .ToArray();
@@ -158,6 +173,21 @@ public partial class BossRelicChoice : CanvasLayer
     {
         int seed = GameInfo.Seed ^ (GameInfo.CurrentLevel * 7919) ^ BossRelicOfferSeedSalt;
         return new Random(seed);
+    }
+
+    private static bool HasOwnedBossRelic()
+    {
+        if (GameInfo.Relics == null || GameInfo.Relics.Count == 0)
+            return false;
+
+        return Relic.GetBossRelicOfferPool().Any(GameInfo.HasRelic);
+    }
+
+    private static bool HasCompletedRegionOneBoss()
+    {
+        return GameInfo.CompletedLevelNodeRecords?.Values.Any(record =>
+            record != null && record.MapLevel == 0 && record.NodeType == LevelNode.LevelType.Boss
+        ) == true;
     }
 
     private Control CreateRelicCard(RelicID relicId)
@@ -271,9 +301,10 @@ public partial class BossRelicChoice : CanvasLayer
         if (resourceState != null)
         {
             Relic.RelicAdd(resourceState, relicId);
-            SaveSystem.SaveAll();
         }
 
+        GameInfo.PendingBossRelicChoice = false;
+        SaveSystem.SaveAll();
         PlayOutro();
     }
 

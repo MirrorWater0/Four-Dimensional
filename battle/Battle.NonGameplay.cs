@@ -5,6 +5,8 @@ using Godot;
 
 public partial class Battle
 {
+    public event Action<Character, PropertyType, int, Character> PropertyIncreased;
+
     private sealed class EffectSourceContext
     {
         public EffectSourceContext(int contextId, Character sourceCharacter, string actionName)
@@ -108,6 +110,7 @@ public partial class Battle
     private int _nextEffectSourceContextId;
     private readonly List<EffectSourceContext> _effectSourceStack = new();
     private readonly List<DamageRecordEntry> _damageRecords = new();
+    private readonly Dictionary<Character, int> _playerDamageTotals = new();
 
     public bool HasEffectSourceContext => _effectSourceStack.Count > 0;
 
@@ -119,6 +122,7 @@ public partial class Battle
         _recordIndex = 0;
         _nextEffectSourceContextId = 0;
         _damageRecords.Clear();
+        _playerDamageTotals.Clear();
         if (BattleRecord != null)
         {
             BattleRecord.Text = string.Empty;
@@ -405,6 +409,7 @@ public partial class Battle
                 blockedDamage
             )
         );
+        RecordPlayerDamageTotal(resolvedSource, target, actualDamage + blockedDamage);
 
         string sourceText = FormatRecordSource(source);
         string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
@@ -417,6 +422,53 @@ public partial class Battle
             line += $"(格挡吸收 [color={RecordNeutralColor}]{blockedDamage}[/color])";
 
         AppendRecordLine(line, indent: true);
+    }
+
+    private void RecordPlayerDamageTotal(Character source, Character target, int totalDamage)
+    {
+        if (
+            totalDamage <= 0
+            || source is not PlayerCharacter player
+            || target == null
+            || target.IsPlayer
+        )
+        {
+            return;
+        }
+
+        _playerDamageTotals[player] = _playerDamageTotals.TryGetValue(player, out int current)
+            ? current + totalDamage
+            : totalDamage;
+    }
+
+    public List<string> BuildPlayerDamageSummaryLines()
+    {
+        var lines = new List<string>();
+        var players = PlayersList?
+            .Where(player => player != null && GodotObject.IsInstanceValid(player))
+            .ToArray();
+
+        if (players != null && players.Length > 0)
+        {
+            foreach (var player in players)
+            {
+                string name = GetRecordBaseCharacterName(player);
+                int damage = _playerDamageTotals.TryGetValue(player, out int total) ? total : 0;
+                lines.Add($"{name} {damage}");
+            }
+
+            return lines;
+        }
+
+        foreach (var entry in _playerDamageTotals.OrderBy(entry => GetRecordBaseCharacterName(entry.Key)))
+        {
+            if (entry.Key == null)
+                continue;
+
+            lines.Add($"{GetRecordBaseCharacterName(entry.Key)} {entry.Value}");
+        }
+
+        return lines;
     }
 
     public int GetLastRecordedDamageFromCurrentEffectSource(
@@ -504,6 +556,9 @@ public partial class Battle
             $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{amount}[/color] 点{Skill.GetColoredPropertyLabel(type)}",
             indent: true
         );
+
+        if (delta > 0)
+            PropertyIncreased?.Invoke(target, type, delta, source);
     }
 
     public void RecordBuffGain(

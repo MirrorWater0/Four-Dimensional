@@ -288,47 +288,69 @@ theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 36
 text = "设置"
 
-[node name="DescriptionModeCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=1676570052]
+[node name="SettingsColumns" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 34
+
+[node name="LeftColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="RightColumn" type="VBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="DescriptionModeCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=1676570052]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "战斗卡面显示总数值"
 
-[node name="TurnOrderPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=865591210]
+[node name="TurnOrderPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=865591210]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示战斗出手顺序"
 
-[node name="EnemyAttackPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=146422513]
+[node name="EnemyAttackPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=146422513]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示敌方攻击范围与累计伤害"
 
-[node name="HideEnemySkillsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="HideEnemySkillsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "隐藏敌人技能"
 
-[node name="KeepManualTargetCardVisibleCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="KeepManualTargetCardVisibleCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "隐藏选人界面时保留卡牌"
 
-[node name="LanguageRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="ArrowManualTargetSelectionCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "手动目标使用箭头选择"
+
+[node name="LanguageRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="LanguageLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/LanguageRow"]
+[node name="LanguageLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/LanguageRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -337,7 +359,7 @@ theme_override_font_sizes/font_size = 22
 text = "语言"
 vertical_alignment = 1
 
-[node name="LanguageOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/LanguageRow"]
+[node name="LanguageOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/LanguageRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -354,12 +376,12 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 script = ExtResource("3_settings_dropdown")
 
-[node name="ResolutionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="ResolutionRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="ResolutionLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow"]
+[node name="ResolutionLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/ResolutionRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -368,7 +390,7 @@ theme_override_font_sizes/font_size = 22
 text = "分辨率"
 vertical_alignment = 1
 
-[node name="ResolutionOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/ResolutionRow"]
+[node name="ResolutionOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/ResolutionRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -385,12 +407,12 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 script = ExtResource("3_settings_dropdown")
 
-[node name="TextSizeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="TextSizeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="TextSizeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow"]
+[node name="TextSizeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/TextSizeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -399,7 +421,7 @@ theme_override_font_sizes/font_size = 22
 text = "文本大小"
 vertical_alignment = 1
 
-[node name="TextSizeOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/TextSizeRow"]
+[node name="TextSizeOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/TextSizeRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -416,12 +438,12 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 script = ExtResource("3_settings_dropdown")
 
-[node name="BattleShakeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="BattleShakeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="BattleShakeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow"]
+[node name="BattleShakeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/BattleShakeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -430,7 +452,7 @@ theme_override_font_sizes/font_size = 22
 text = "战斗震动"
 vertical_alignment = 1
 
-[node name="BattleShakeOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/BattleShakeRow"]
+[node name="BattleShakeOptionButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/BattleShakeRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -447,12 +469,12 @@ theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 script = ExtResource("3_settings_dropdown")
 
-[node name="MasterVolumeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="MasterVolumeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="MasterVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow"]
+[node name="MasterVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/MasterVolumeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -461,7 +483,7 @@ theme_override_font_sizes/font_size = 22
 text = "主音量"
 vertical_alignment = 1
 
-[node name="MasterVolumeSlider" type="HSlider" parent="CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow"]
+[node name="MasterVolumeSlider" type="HSlider" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/MasterVolumeRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -471,7 +493,7 @@ step = 1.0
 value = 100.0
 rounded = true
 
-[node name="MasterVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/MasterVolumeRow"]
+[node name="MasterVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/MasterVolumeRow"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -481,12 +503,12 @@ text = "100%"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="SfxVolumeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel"]
+[node name="SfxVolumeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="SfxVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow"]
+[node name="SfxVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/SfxVolumeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
@@ -495,7 +517,7 @@ theme_override_font_sizes/font_size = 22
 text = "音效音量"
 vertical_alignment = 1
 
-[node name="SfxVolumeSlider" type="HSlider" parent="CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow"]
+[node name="SfxVolumeSlider" type="HSlider" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/SfxVolumeRow"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -505,7 +527,7 @@ step = 1.0
 value = 100.0
 rounded = true
 
-[node name="SfxVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SfxVolumeRow"]
+[node name="SfxVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/SfxVolumeRow"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)

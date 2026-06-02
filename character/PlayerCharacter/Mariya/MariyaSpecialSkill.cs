@@ -3,7 +3,7 @@ public partial class MariyaSpecialSkill { }
 public partial class EnergyTransfer : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int AllyEnergyGain = 2;
+    private const int AllyEnergyGain = 3;
     public override int EnergyCost => 1;
 
     public EnergyTransfer()
@@ -36,6 +36,7 @@ public partial class RearlineRevival : Skill
 
     public override string SkillName { get; set; } = "死者苏生";
     public override int EnergyCost => 3;
+    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -84,7 +85,7 @@ public partial class GroupHealing : Skill
 public partial class Ragnarok : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int PowerGain = 6;
+    private const int PowerGain = 4;
     private const int DivinityStacks = 2;
     public override bool ExhaustsAfterUse => true;
 

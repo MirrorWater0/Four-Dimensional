@@ -66,5 +66,5 @@ void fragment() {
     color += ring_color.rgb * distortion * 0.35;
 
     float alpha = rings * 0.82 + core * 0.78 + fractures * 0.94 + distortion + glow;
-    COLOR = vec4(color, clamp(alpha, 0.0, 1.0));
+    COLOR *= vec4(color, clamp(alpha, 0.0, 1.0));
 }

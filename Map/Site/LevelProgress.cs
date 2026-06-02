@@ -625,6 +625,8 @@ public partial class LevelProgress : Control
         GameInfo.CurrentLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
         GameInfo.TransitionEnergy = GameInfo.TransitionEnergyMax;
         bool showBossRelicChoice = GameInfo.CurrentLevel == 1;
+        if (showBossRelicChoice)
+            GameInfo.PendingBossRelicChoice = true;
         GameInfo.FirstLevelState.Clear();
         _manualLock = false;
         _manualLockSawBlockingUi = false;

@@ -43,5 +43,5 @@ void fragment() {
     float alpha = wings * 0.95 + core * 0.86 + streams * 0.44;
     alpha = clamp(alpha, 0.0, 1.0);
 
-    COLOR = vec4(color, alpha);
+    COLOR *= vec4(color, alpha);
 }

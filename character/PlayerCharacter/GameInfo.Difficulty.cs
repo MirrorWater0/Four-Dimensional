@@ -152,7 +152,7 @@ public static partial class GameInfo
 
     private static void AddRandomStarterRelics(Random rng, int count)
     {
-        Relics ??= new Dictionary<RelicID, int>();
+        Relics ??= new List<RelicStack>();
 
         for (int i = 0; i < count; i++)
         {
@@ -162,10 +162,7 @@ public static partial class GameInfo
 
             RelicID relicId = PickRandom(pool, rng);
             int amount = Relic.GetAcquireAmount(relicId);
-            if (!Relics.TryGetValue(relicId, out int currentAmount))
-                Relics[relicId] = amount;
-            else
-                Relics[relicId] = currentAmount + amount;
+            AddRelicCount(relicId, amount);
         }
     }
 

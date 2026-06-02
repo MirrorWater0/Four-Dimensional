@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Mariya : PlayerCharacter
 {
-    private const int PassiveHealBase = 8;
+    private const int PassiveHealBase = 6;
     private const int PassiveUpgradeHealBonus = 8;
 
     public const string PassiveNameText = "治愈";
@@ -66,9 +66,9 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.mariya.name", "玛瑞娅"),
         PassiveName = I18n.Tr("character.mariya.passive.name", global::Mariya.PassiveNameText),
         PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 23,
-        Power = 4,
-        Survivability = 4,
+        LifeMax = 19,
+        Power = 3,
+        Survivability = 3,
         Speed = 7,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",

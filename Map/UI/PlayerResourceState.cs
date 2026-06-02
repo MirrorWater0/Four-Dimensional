@@ -25,6 +25,8 @@ public partial class PlayerResourceState : CanvasLayer
     private StyleBoxFlat _coreEnergyFillStyle;
     private int _lastTransitionEnergy = -1;
     private readonly List<ResourceVisibilitySnapshot> _mapPeekHiddenResources = new();
+    private Tip _mapPeekTip;
+    private bool _mapPeekButtonHovered;
 
     private sealed class ResourceVisibilitySnapshot
     {
@@ -158,6 +160,9 @@ public partial class PlayerResourceState : CanvasLayer
         if (MapPeekButton != null)
         {
             MapPeekButton.Pressed += OnMapPeekButtonPressed;
+            MapPeekButton.MouseEntered += ShowMapPeekTip;
+            MapPeekButton.MouseExited += HideMapPeekTip;
+            MapPeekButton.TreeExiting += HideMapPeekTip;
             RefreshMapPeekButton();
         }
         if (SessionTimer != null)
@@ -165,6 +170,12 @@ public partial class PlayerResourceState : CanvasLayer
             SessionTimer.Timeout += OnSessionTimerTimeout;
             SessionTimer.Start();
         }
+    }
+
+    public override void _ExitTree()
+    {
+        HideMapPeekTip();
+        base._ExitTree();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -186,10 +197,11 @@ public partial class PlayerResourceState : CanvasLayer
 
     public void InitRelic()
     {
-        foreach (var relic in GameInfo.Relics)
+        GameInfo.NormalizeRelics();
+        foreach (RelicStack stack in GameInfo.Relics)
         {
-            Relic relicInst = Relic.Create(relic.Key);
-            relicInst.Num = relic.Value;
+            Relic relicInst = Relic.Create(stack.ID);
+            relicInst.Num = stack.Count;
             relicInst.IconAdd(this);
             RelicList.Add(relicInst);
         }
@@ -294,7 +306,7 @@ public partial class PlayerResourceState : CanvasLayer
         RefreshMapPeekButton();
     }
 
-    private void CloseMapPeekMode()
+    public void CloseMapPeekMode()
     {
         MapNode?.ExitMapPeekMode();
         SetResourceChromeVisibleForMapPeek(true);
@@ -308,12 +320,78 @@ public partial class PlayerResourceState : CanvasLayer
 
         bool active = MapNode?.IsMapPeekModeActive == true;
         MapPeekButton.Text = string.Empty;
-        MapPeekButton.TooltipText = active
-            ? I18n.Tr("ui.map.peek_close_tip", "返回当前界面")
-            : I18n.Tr("ui.map.peek_open_tip", "查看地图");
+        MapPeekButton.TooltipText = string.Empty;
 
         if (MapPeekIcon?.Material is ShaderMaterial material)
             material.SetShaderParameter("active", active ? 1.0f : 0.0f);
+
+        if (_mapPeekButtonHovered)
+            ShowMapPeekTip();
+    }
+
+    private string GetMapPeekTipText()
+    {
+        bool active = MapNode?.IsMapPeekModeActive == true;
+        return active
+            ? I18n.Tr("ui.map.peek_close_tip", "返回当前界面")
+            : I18n.Tr("ui.map.peek_open_tip", "查看地图");
+    }
+
+    private void ShowMapPeekTip()
+    {
+        _mapPeekButtonHovered = true;
+        if (MapPeekButton == null || !MapPeekButton.Visible)
+            return;
+
+        var tip = EnsureMapPeekTip();
+        if (tip == null)
+            return;
+
+        tip.FollowMouse = true;
+        tip.SetText(GetMapPeekTipText());
+    }
+
+    private void HideMapPeekTip()
+    {
+        _mapPeekButtonHovered = false;
+        if (_mapPeekTip != null && GodotObject.IsInstanceValid(_mapPeekTip))
+            _mapPeekTip.HideTooltip();
+    }
+
+    private Tip EnsureMapPeekTip()
+    {
+        if (_mapPeekTip != null && GodotObject.IsInstanceValid(_mapPeekTip))
+            return _mapPeekTip;
+
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
+        if (layer == null)
+        {
+            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
+            root.AddChild(layer);
+        }
+
+        var existing = layer.GetNodeOrNull<Tip>("MapPeekTip");
+        if (existing != null)
+        {
+            _mapPeekTip = existing;
+            return _mapPeekTip;
+        }
+
+        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
+        var tip = tipScene?.Instantiate<Tip>();
+        if (tip == null)
+            return null;
+
+        tip.Name = "MapPeekTip";
+        tip.FollowMouse = true;
+        tip.AnchorOffset = new Vector2(20f, 20f);
+        layer.AddChild(tip);
+        _mapPeekTip = tip;
+        return _mapPeekTip;
     }
 
     private void SetResourceChromeVisibleForMapPeek(bool visible)

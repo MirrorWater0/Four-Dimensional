@@ -1149,7 +1149,7 @@ public partial class GameStatistics : CanvasLayer
             )
         );
 
-        string summary = record.Summary;
+        string summary = RemoveEquipmentLines(record.Summary);
         if (string.IsNullOrWhiteSpace(summary))
             summary = BuildFallbackNodeSummary(record);
 
@@ -1170,10 +1170,20 @@ public partial class GameStatistics : CanvasLayer
             parts.Add(I18n.Format("ui.statistics.node_core_energy", "核心能源：{value}", ("value", FormatSigned(record.TransitionEnergyChange))));
         AppendJoined(parts, I18n.Tr("ui.statistics.skills", "技能"), record.SkillChanges);
         AppendJoined(parts, I18n.Tr("ui.statistics.items", "道具"), record.GainedItems);
-        AppendJoined(parts, I18n.Tr("ui.statistics.equipment", "装备"), record.EquipmentChanges);
         AppendJoined(parts, I18n.Tr("ui.statistics.relics", "遗物"), record.RelicChanges);
         AppendJoined(parts, I18n.Tr("ui.statistics.notes", "备注"), record.Notes);
         return parts.Count == 0 ? I18n.Tr("ui.statistics.no_extra_record", "无额外记录") : string.Join("\n", parts);
+    }
+
+    private static string RemoveEquipmentLines(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return string.Empty;
+
+        return string.Join(
+            "\n",
+            text.Split('\n').Where(line => !line.Contains("装备", StringComparison.Ordinal))
+        );
     }
 
     private string BuildRelicTooltip(RunHistoryRelicRecord record)

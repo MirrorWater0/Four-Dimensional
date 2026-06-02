@@ -6,6 +6,7 @@ public partial class GlowLabel : Label
     private string _text = "";
     Vector2 OriginalScale;
     private ulong _instanceId;
+    private Color _baseFontColor = Colors.White;
 
     public override void _EnterTree()
     {
@@ -15,6 +16,7 @@ public partial class GlowLabel : Label
     public override void _Ready()
     {
         OriginalScale = Scale;
+        _baseFontColor = GetThemeColor("font_color");
         this.PivotOffset = Size / 2;
     }
 
@@ -48,7 +50,7 @@ public partial class GlowLabel : Label
         {
             return;
         }
-        AddThemeColorOverride("font_color", new Color(0.6f, 0.9f, 1f, 1));
+        AddThemeColorOverride("font_color", _baseFontColor.Lightened(0.18f));
         // 1. Create a ghost label using Duplicate to preserve all inspector properties
         // Duplicate flags: 0 = default (includes script, signals, groups, etc.)
         Label ghost = Duplicate() as Label;
@@ -67,11 +69,16 @@ public partial class GlowLabel : Label
         // Ghost scales up quickly
         t1.TweenProperty(ghost, "scale", new Vector2(2.5f, 2.5f), 0.5f);
         // Ghost fades out
-        t1.TweenProperty(ghost, "theme_override_colors/font_color", new Color(1, 1, 1, 0), 0.5f);
+        t1.TweenProperty(
+            ghost,
+            "theme_override_colors/font_color",
+            new Color(_baseFontColor.R, _baseFontColor.G, _baseFontColor.B, 0),
+            0.5f
+        );
         // Add a slight scale bounce to the original Label
         t2.SetParallel(true);
         t2.TweenProperty(this, "scale", new Vector2(Math.Sign(OriginalScale.X) * 1.2f, 1.2f), 0.4f);
-        t2.TweenProperty(this, "theme_override_colors/font_color", new Color(1, 1, 1, 1), 0.2f);
+        t2.TweenProperty(this, "theme_override_colors/font_color", _baseFontColor, 0.2f);
         t2.Chain().TweenProperty(this, "scale", OriginalScale, 0.2f);
 
         // 3. Delete ghost after animation ends

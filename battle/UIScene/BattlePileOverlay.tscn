@@ -1,0 +1,168 @@
+[gd_scene format=3 uid="uid://dsc653nnxgi8y"]
+
+[node name="PileOverlayRoot" type="Control" unique_id=744976890]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Mask" type="ColorRect" parent="." unique_id=664807773]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.68)
+
+[node name="Scroll" type="ScrollContainer" parent="." unique_id=1524131821]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 160.0
+offset_top = 86.0
+offset_right = -160.0
+offset_bottom = -92.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="Margin" type="MarginContainer" parent="Scroll" unique_id=315212803]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="PileSections" type="VBoxContainer" parent="Scroll/Margin" unique_id=2003571696]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 48
+
+[node name="DrawSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=722994115]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Margin/PileSections/DrawSection" unique_id=971907194]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 28
+text = "抽牌堆  0"
+horizontal_alignment = 1
+
+[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/DrawSection" unique_id=1995552593]
+visible = false
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "空"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/DrawSection" unique_id=848867329]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 26
+columns = 6
+
+[node name="DiscardSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=2110271464]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=1684043370]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.86, 0.81, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 28
+text = "弃牌堆  0"
+horizontal_alignment = 1
+
+[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=805755445]
+visible = false
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "空"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=843187529]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 26
+columns = 6
+
+[node name="ExhaustedSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=260655227]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=2105738838]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.72, 0.42, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 28
+text = "消耗牌堆  0"
+horizontal_alignment = 1
+
+[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=1027934713]
+visible = false
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "空"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=1167296610]
+custom_minimum_size = Vector2(1000, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 26
+columns = 6

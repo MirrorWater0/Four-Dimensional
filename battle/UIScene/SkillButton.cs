@@ -26,12 +26,10 @@ public partial class SkillButton : Button
     bool animating = false;
     private Character[] _previewHostileTargets = Array.Empty<Character>();
     private Character[] _previewFriendlyTargets = Array.Empty<Character>();
-    private readonly List<Label> _previewDamageLabels = new();
+    private readonly List<VBoxContainer> _previewDamagePanels = new();
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
-    private static readonly Color DamagePreviewColor = new(1f, 0.84f, 0.63f, 1f);
-    private static readonly Color DamagePreviewOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
     public Tip globalTooltip => field ??= EnsureGlobalTooltip();
 
@@ -222,7 +220,7 @@ public partial class SkillButton : Button
         if (SelfSkill == null)
             return;
 
-        var entries = SelfSkill.GetPreviewHostileDamageEntries();
+        var entries = SelfSkill.GetPreviewEffectEntries();
         if (entries == null || entries.Length == 0)
             return;
 
@@ -230,14 +228,28 @@ public partial class SkillButton : Button
         if (layer == null)
             return;
 
-        for (int i = 0; i < entries.Length; i++)
+        int panelIndex = 0;
+        foreach (
+            var group in entries
+                .Where(entry =>
+                    entry.Target != null && GodotObject.IsInstanceValid(entry.Target)
+                )
+                .GroupBy(entry => entry.Target)
+        )
         {
-            var entry = entries[i];
-            if (entry.Target == null || !GodotObject.IsInstanceValid(entry.Target))
-                continue;
+            var panel = GetOrCreateDamagePanel(layer, panelIndex++);
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                group.ToArray(),
+                GetTargetScreenPosition(group.Key),
+                DamagePreviewLabelOffset
+            );
+        }
 
-            var label = GetOrCreateDamageLabel(layer, i);
-            ShowDamageLabel(label, entry, GetTargetScreenPosition(entry.Target));
+        for (int i = panelIndex; i < _previewDamagePanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].Visible = false;
         }
     }
 
@@ -277,83 +289,45 @@ public partial class SkillButton : Button
 
     private void HideDamagePreview()
     {
-        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        for (int i = 0; i < _previewDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
-                _previewDamageLabels[i].Visible = false;
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].Visible = false;
         }
     }
 
     private void FreeDamagePreviewLabels()
     {
-        for (int i = 0; i < _previewDamageLabels.Count; i++)
+        for (int i = 0; i < _previewDamagePanels.Count; i++)
         {
-            if (GodotObject.IsInstanceValid(_previewDamageLabels[i]))
-                _previewDamageLabels[i].QueueFree();
+            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
+                _previewDamagePanels[i].QueueFree();
         }
-        _previewDamageLabels.Clear();
+        _previewDamagePanels.Clear();
     }
 
-    private Label GetOrCreateDamageLabel(CanvasLayer layer, int index)
+    private VBoxContainer GetOrCreateDamagePanel(CanvasLayer layer, int index)
     {
-        while (_previewDamageLabels.Count <= index)
+        while (_previewDamagePanels.Count <= index)
         {
-            var label = CreateDamageLabel();
-            layer.AddChild(label);
-            _previewDamageLabels.Add(label);
+            var panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _previewDamagePanels.Add(panel);
         }
 
-        var pooledLabel = _previewDamageLabels[index];
-        if (!GodotObject.IsInstanceValid(pooledLabel))
+        var pooledPanel = _previewDamagePanels[index];
+        if (!GodotObject.IsInstanceValid(pooledPanel))
         {
-            pooledLabel = CreateDamageLabel();
-            layer.AddChild(pooledLabel);
-            _previewDamageLabels[index] = pooledLabel;
+            pooledPanel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(pooledPanel);
+            _previewDamagePanels[index] = pooledPanel;
         }
-        else if (pooledLabel.GetParent() == null)
+        else if (pooledPanel.GetParent() == null)
         {
-            layer.AddChild(pooledLabel);
+            layer.AddChild(pooledPanel);
         }
 
-        return pooledLabel;
-    }
-
-    private static Label CreateDamageLabel()
-    {
-        var label = new Label
-        {
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-        };
-        label.AddThemeFontSizeOverride("font_size", 28);
-        label.AddThemeConstantOverride("outline_size", 5);
-        label.AddThemeColorOverride("font_color", DamagePreviewColor);
-        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
-        return label;
-    }
-
-    private void ShowDamageLabel(Label label, Skill.PreviewDamageEntry entry, Vector2 targetScreenPosition)
-    {
-        label.Text =
-            entry.HitCount > 1
-                ? $"{entry.Damage}({entry.HitCount}次)"
-                : entry.Damage.ToString();
-        label.AddThemeColorOverride("font_color", DamagePreviewColor);
-        label.AddThemeColorOverride("font_outline_color", DamagePreviewOutlineColor);
-        label.Modulate = Colors.White;
-        label.Scale = Vector2.One;
-        label.Visible = true;
-
-        Vector2 size = label.GetCombinedMinimumSize();
-        if (size == Vector2.Zero)
-            size = new Vector2(120f, 44f);
-        label.Size = size;
-
-        Vector2 anchor = targetScreenPosition + DamagePreviewLabelOffset;
-        label.Position = anchor - size / 2f;
+        return pooledPanel;
     }
 
     private CanvasLayer EnsureTipLayer()

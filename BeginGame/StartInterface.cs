@@ -63,6 +63,7 @@ public partial class StartInterface : CanvasLayer
         field ??= GetNodeOrNull<Label>("Layout/Footer/FooterText");
     private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
     private bool _isCharacterSelectionTransitioning;
+    private bool _isContinuingGame;
     private CharacterSelectionOverlay CharacterSelection =>
         GetNodeOrNull<CharacterSelectionOverlay>("CharacterSelectionOverlay");
 
@@ -168,23 +169,58 @@ public partial class StartInterface : CanvasLayer
 
     public void continueGame()
     {
+        _ = ContinueGameAsync();
+    }
+
+    private async Task ContinueGameAsync()
+    {
+        if (_isContinuingGame)
+            return;
+
+        _isContinuingGame = true;
+        if (ContinueGameButton != null)
+            ContinueGameButton.Disabled = true;
+
+        SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
         try
         {
+            if (transitionLayer != null)
+                await transitionLayer.FadeToBlackAsync(CharacterSelectionTransitionDuration);
+
             SaveSystem.LoadAll();
         }
         catch (Exception e)
         {
             GD.PushError($"ContinueGame load failed: {e}");
+            if (transitionLayer != null)
+                await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+            _isContinuingGame = false;
+            RefreshContinueButtonState();
             return;
         }
 
         if (GameInfo.RunFinished)
         {
+            if (transitionLayer != null)
+                await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+            _isContinuingGame = false;
             RefreshContinueButtonState();
             return;
         }
 
-        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
+        var err = GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+        if (err != Error.Ok)
+        {
+            GD.PushError($"ContinueGame scene switch failed: {err}");
+            if (transitionLayer != null)
+                await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
+            _isContinuingGame = false;
+            RefreshContinueButtonState();
+            return;
+        }
+
+        if (transitionLayer != null)
+            await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
     }
 
     public void falseTest()
