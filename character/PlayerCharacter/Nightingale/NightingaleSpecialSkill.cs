@@ -23,6 +23,7 @@ public partial class NightingaleEnergy : Skill
         return new SkillPlan(
             this,
             EnergyStep(EnergyGain),
+            EnergyStep(1, TargetReference.Previous),
             ModifyPropertyStep(PropertyType.Power, 1)
         );
     }
@@ -31,6 +32,7 @@ public partial class NightingaleEnergy : Skill
 public partial class TempoSurge : Skill
 {
     public override bool ExhaustsAfterUse => true;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     public TempoSurge()
         : base(SkillTypes.Special)
@@ -40,6 +42,7 @@ public partial class TempoSurge : Skill
 
     public override string SkillName { get; set; } = "疾奏";
     public override int EnergyCost => 1;
+
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(

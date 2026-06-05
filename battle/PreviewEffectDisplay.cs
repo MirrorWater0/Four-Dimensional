@@ -20,6 +20,7 @@ public static class PreviewEffectDisplay
     private const string DamagePreviewIconPath = "res://asset/svg/SkillIcon/attack.svg";
     private const string HealPreviewIconPath = "res://asset/svg/SkillIcon/HealPreview.svg";
     private const string BlockPreviewIconPath = "res://asset/svg/SkillIcon/survive.svg";
+    private const string MaxLifePreviewIconPath = "res://asset/svg/SkillIcon/MaxLife.svg";
     private const float DamagePreviewIconRotation = Mathf.Pi / 4f;
     private static readonly Color OutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
     private static readonly Color DamageColor = new(1f, 0.84f, 0.63f, 1f);
@@ -230,7 +231,7 @@ public static class PreviewEffectDisplay
 
     private static Control CreateStatIcon(Character character, PropertyType type)
     {
-        ColorRect icon = CreatePreviewStatIcon(type) ?? CreateFallbackStatIcon(type);
+        Control icon = CreatePreviewStatIcon(type) ?? CreateFallbackStatIcon(type);
         icon.MouseFilter = Control.MouseFilterEnum.Ignore;
         icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         ApplyPreviewIconLayout(icon, StatIconSourceSize, StatIconVisualScale);
@@ -260,8 +261,11 @@ public static class PreviewEffectDisplay
         return CreateActionIconHolder(icon);
     }
 
-    private static ColorRect CreatePreviewStatIcon(PropertyType type)
+    private static Control CreatePreviewStatIcon(PropertyType type)
     {
+        if (type == PropertyType.MaxLife)
+            return CreateSvgStatIcon(MaxLifePreviewIconPath);
+
         string shaderPath = type switch
         {
             PropertyType.Power => SwordShaderPath,
@@ -335,6 +339,25 @@ public static class PreviewEffectDisplay
             StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
             PivotOffset = new Vector2(ActionIconSourceSize, ActionIconSourceSize) * 0.5f,
             Rotation = rotation,
+        };
+    }
+
+    private static Control CreateSvgStatIcon(string iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(iconPath))
+            return null;
+
+        var texture = GD.Load<Texture2D>(iconPath);
+        if (texture == null)
+            return null;
+
+        return new TextureRect
+        {
+            CustomMinimumSize = new Vector2(StatIconSourceSize, StatIconSourceSize),
+            Size = new Vector2(StatIconSourceSize, StatIconSourceSize),
+            Texture = texture,
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
         };
     }
 

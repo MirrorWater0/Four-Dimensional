@@ -111,9 +111,12 @@ public partial class ConsumeItem
         return true;
     }
 
-    public async Task UseEffect(Battle battle)
+    public async Task UseEffect(Battle battle, Control sourceControl = null)
     {
-        target = await AimTarget.AimTargetTask(battle);
+        target =
+            battle?.CharacterControl != null && GodotObject.IsInstanceValid(battle.CharacterControl)
+                ? await battle.CharacterControl.PickItemTargetAsync(sourceControl)
+                : await AimTarget.AimTargetTask(battle);
         if (target == null)
             return;
 

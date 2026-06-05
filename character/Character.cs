@@ -1378,23 +1378,34 @@ public partial class Character : Node2D
 
     public virtual void UpdataEnergy(int num, Character source = null)
     {
-        if (num > 0)
+        int oldEnergy = Math.Max(0, Energy);
+        int newEnergy = Math.Max(0, oldEnergy + num);
+        int actualDelta = newEnergy - oldEnergy;
+
+        if (actualDelta > 0)
         {
             BattleNode?.BattleAnimationPlayer?.Play("blue");
         }
-        Energy += num;
+        Energy = newEnergy;
         EnergeIconLabel.Text = Energy.ToString();
         InvalidateSkillTooltipCache();
         if (IsPlayer)
             BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
+        if (actualDelta == 0)
+            return;
+
         var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
         Effect.Position = new Vector2(0, -50);
         AddChild(Effect);
         Effect.Animation.Play("energe");
-        BuffHintLabel.Spawn(this, $"[color=#87CEEB]Energy[/color] {num:+0;-0;0}", GlobalPosition);
+        BuffHintLabel.Spawn(
+            this,
+            $"[color=#87CEEB]Energy[/color] {actualDelta:+0;-0;0}",
+            GlobalPosition
+        );
 
         if (source != null || BattleNode?.HasEffectSourceContext == true)
-            BattleNode?.RecordEnergyChange(this, num, source);
+            BattleNode?.RecordEnergyChange(this, actualDelta, source);
     }
 
     public void UpdataBlock(int num, bool record = true, Character source = null)
@@ -1425,16 +1436,8 @@ public partial class Character : Node2D
         if (value == 0)
             return;
 
-        if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(this))
-        {
-            BuffHintLabel.Spawn(
-                this,
-                $"{Buff.BuffName.DebuffImmunity.GetDescription()} [color=yellow]抵消[/color]",
-                GlobalPosition + new Vector2(0, 150),
-                randomOffset: true
-            );
+        if (value > 0 && SpecialBuff.TryConsumeDebuffImmunity(this, source))
             return;
-        }
 
         ColorRect icon = null;
         switch (type)
@@ -2023,7 +2026,7 @@ public partial class Character : Node2D
     public void Hover()
     {
         Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
-        Hoverframe.Size = new Vector2(0.9f, 0.9f);
+        Hoverframe.Scale = new Vector2(0.9f, 0.9f);
         Tween tween = CreateTween();
         tween
             .TweenProperty(Hoverframe, "scale", new Vector2(1.1f, 1.1f), 0.1f)

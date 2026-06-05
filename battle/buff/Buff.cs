@@ -85,7 +85,7 @@ public partial class Buff
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
             BuffName.Fear => "使用攻击技能时，每层受到1点伤害。",
-            BuffName.Taunt => "敌方攻击只能锁定该目标；受到伤害时消耗1层。",
+            BuffName.Taunt => "敌方攻击只能锁定该目标；受到攻击伤害时消耗1层。",
             BuffName.Thorn => "受到攻击时，每层对攻击者造成1点伤害。",
             BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
             BuffName.Pursuit => "回合结束时，造成一次伤害。",
@@ -805,8 +805,11 @@ public partial class HurtBuff : Buff
                 }
                 break;
             case BuffName.Taunt:
-                Stack--;
-                UpdateStackLabel();
+                if (damageKind == Character.DamageKind.Attack)
+                {
+                    Stack--;
+                    UpdateStackLabel();
+                }
                 break;
             case BuffName.Thorn:
                 if (
@@ -836,7 +839,7 @@ public partial class HurtBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
         if (TryStackExisting(target?.HurtBuffs, name, stack, target, source))
@@ -911,7 +914,7 @@ public partial class StartActionBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
         if (TryStackExisting(target?.StartActionBuffs, name, stack, target, source))
@@ -1074,7 +1077,7 @@ public partial class AttackBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
         if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
@@ -1178,7 +1181,7 @@ public partial class SkillBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
         if (target?.SkillBuffs == null)
@@ -1242,7 +1245,7 @@ public partial class EndActionBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
-        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target))
+        if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
         if (target?.EndActionBuffs == null)
@@ -1347,7 +1350,11 @@ public partial class SpecialBuff : Buff
         }
     }
 
-    public static bool TryConsumeDebuffImmunity(Character target)
+    public static bool TryConsumeDebuffImmunity(
+        Character target,
+        Character source = null,
+        BuffName? blockedBuffName = null
+    )
     {
         if (target?.SpecialBuffs == null)
             return false;
@@ -1363,6 +1370,16 @@ public partial class SpecialBuff : Buff
 
         immunity.TweenLabel();
         immunity.TryRemoveIfEmpty(target.SpecialBuffs);
+        string blockedText = blockedBuffName.HasValue
+            ? $"{GetBuffDisplayName(blockedBuffName.Value)}"
+            : "负面状态";
+        BuffHintLabel.Spawn(
+            target,
+            $"{GetBuffDisplayName(BuffName.DebuffImmunity)} [color=yellow]抵消[/color] {blockedText}",
+            target.GlobalPosition + new Vector2(0, 150),
+            randomOffset: true
+        );
+        target.BattleNode?.RecordDebuffImmunityConsume(target, blockedBuffName, source);
 
         return true;
     }

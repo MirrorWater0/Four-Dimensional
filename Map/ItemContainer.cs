@@ -147,6 +147,7 @@ public partial class ItemContainer : Panel
         if (item == null)
             return;
 
+        HideItemTip();
         _isUsing = true;
         var battle = FindBattle();
         if (battle == null)
@@ -156,7 +157,7 @@ public partial class ItemContainer : Panel
             return;
         }
 
-        await item.UseEffect(battle);
+        await item.UseEffect(battle, this);
         _isUsing = false;
 
         if (_selected == this)

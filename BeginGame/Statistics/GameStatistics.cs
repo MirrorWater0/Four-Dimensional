@@ -15,6 +15,8 @@ public partial class GameStatistics : CanvasLayer
     private const int NodeRegionRowSeparation = 14;
     private const float NodeHoverScale = 1.25f;
     private const float HistoryPageSwitchOffset = 64f;
+    private static readonly Vector2 SkillCardPreviewScale = new(1.08f, 1.08f);
+    private static readonly Vector2 SkillCardBaseDisplaySize = new(240f, 370f);
 
     private static readonly PackedScene StatisticsScene = GD.Load<PackedScene>(
         "res://BeginGame/Statistics/GameStatistics.tscn"
@@ -24,6 +26,9 @@ public partial class GameStatistics : CanvasLayer
     );
     private static readonly PackedScene SkillButtonScene = GD.Load<PackedScene>(
         "res://battle/UIScene/SkillButton.tscn"
+    );
+    private static readonly PackedScene SkillCardScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/Reward/SkillCard.tscn"
     );
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
@@ -119,6 +124,9 @@ public partial class GameStatistics : CanvasLayer
     private bool _isSwitchingHistoryPage;
     private int _characterSelectorLayoutRequestId;
     private Tip _tooltip;
+    private Control _skillCardPreviewRoot;
+    private ColorRect _skillCardPreviewDim;
+    private SkillCard _skillCardPreview;
     private readonly List<Button> _characterButtons = new();
 
     public static GameStatistics Show(Node caller)
@@ -163,7 +171,20 @@ public partial class GameStatistics : CanvasLayer
     public override void _ExitTree()
     {
         _tooltip?.HideTooltip();
+        HideSkillCardPreview();
         base._ExitTree();
+    }
+
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (_skillCardPreviewRoot == null || !_skillCardPreviewRoot.Visible)
+            return;
+
+        if (@event is InputEventKey { Pressed: true, Keycode: Key.Escape })
+        {
+            HideSkillCardPreview();
+            GetViewport()?.SetInputAsHandled();
+        }
     }
 
     public void Open()
@@ -866,6 +887,7 @@ public partial class GameStatistics : CanvasLayer
 
     private void RefreshCharacterSkills()
     {
+        HideSkillCardPreview();
         ClearChildren(SkillColumns);
         if (SkillColumns == null)
             return;
@@ -984,7 +1006,7 @@ public partial class GameStatistics : CanvasLayer
         {
             foreach (var entry in BuildSkillDisplayEntries(skillNames, skillIds))
             {
-                flow.AddChild(CreateSkillPill(skillType, entry.Name, entry.SkillId));
+                flow.AddChild(CreateSkillPill(character, skillType, entry.Name, entry.SkillId));
             }
         }
 
@@ -1041,7 +1063,12 @@ public partial class GameStatistics : CanvasLayer
     private static string FormatCountedName(string name, int count) =>
         count > 1 ? $"{name} x{count}" : name;
 
-    private Control CreateSkillPill(Skill.SkillTypes type, string skillName, SkillID? skillId)
+    private Control CreateSkillPill(
+        RunHistoryCharacterSkillRecord character,
+        Skill.SkillTypes type,
+        string skillName,
+        SkillID? skillId
+    )
     {
         var row = new HBoxContainer
         {
@@ -1056,9 +1083,11 @@ public partial class GameStatistics : CanvasLayer
         );
         label.CustomMinimumSize = new Vector2(142f, 34f);
         label.VerticalAlignment = VerticalAlignment.Center;
+        label.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(label);
 
         string tooltip = BuildSkillTooltip(type, skillName, skillId);
+        row.GuiInput += @event => OnSkillPillGuiInput(@event, character, skillName, skillId);
         row.MouseEntered += () =>
         {
             TweenHover(row, 1.04f);
@@ -1071,6 +1100,142 @@ public partial class GameStatistics : CanvasLayer
         };
 
         return row;
+    }
+
+    private void OnSkillPillGuiInput(
+        InputEvent @event,
+        RunHistoryCharacterSkillRecord character,
+        string displayName,
+        SkillID? skillId
+    )
+    {
+        if (
+            @event is not InputEventMouseButton mouseButton
+            || !mouseButton.Pressed
+            || mouseButton.ButtonIndex != MouseButton.Right
+            || !skillId.HasValue
+        )
+        {
+            return;
+        }
+
+        GetViewport()?.SetInputAsHandled();
+        ShowSkillCardPreview(skillId.Value, displayName, character);
+    }
+
+    private void ShowSkillCardPreview(
+        SkillID skillId,
+        string displayName,
+        RunHistoryCharacterSkillRecord character
+    )
+    {
+        var skill = Skill.GetSkill(skillId);
+        if (skill == null)
+            return;
+
+        HideTooltip();
+        EnsureSkillCardPreviewRoot();
+        if (_skillCardPreviewRoot == null || SkillCardScene == null)
+            return;
+
+        if (_skillCardPreview != null && GodotObject.IsInstanceValid(_skillCardPreview))
+        {
+            _skillCardPreview.QueueFree();
+            _skillCardPreview = null;
+        }
+
+        skill.SetPreviewStats(
+            Math.Max(0, character?.Power ?? 0),
+            Math.Max(0, character?.Survivability ?? 0),
+            1
+        );
+
+        _skillCardPreview = SkillCardScene.Instantiate<SkillCard>();
+        _skillCardPreview.Name = $"StatisticsSkillCard_{skillId}";
+        _skillCardPreview.ConfigureDisplayScale(SkillCardPreviewScale);
+        _skillCardPreview.AutoPressEffect = false;
+        _skillCardPreview.UseDefaultHoverEffect = false;
+        _skillCardPreview.MouseFilter = Control.MouseFilterEnum.Stop;
+        _skillCardPreview.PreviewCharacterName = character?.CharacterName ?? string.Empty;
+        _skillCardPreview.DisplayNameOverride = displayName;
+        _skillCardPreviewRoot.AddChild(_skillCardPreview);
+        _skillCardPreview.SetSkill(skill);
+        _skillCardPreview.RestoreDisplayState();
+        _skillCardPreview.GuiInput += @event =>
+        {
+            if (@event is InputEventMouseButton { Pressed: true })
+                GetViewport()?.SetInputAsHandled();
+        };
+
+        _skillCardPreviewRoot.Visible = true;
+        RefreshSkillCardPreviewRootBounds();
+        _skillCardPreview.Position = GetCenteredSkillCardPreviewPosition();
+        _skillCardPreviewRoot.MoveToFront();
+        _skillCardPreviewDim.Modulate = new Color(0f, 0f, 0f, 0f);
+        _skillCardPreview.Modulate = new Color(1f, 1f, 1f, 0f);
+        var tween = CreateTween();
+        tween.SetParallel(true);
+        tween.SetEase(Tween.EaseType.Out);
+        tween.SetTrans(Tween.TransitionType.Cubic);
+        tween.TweenProperty(_skillCardPreviewDim, "modulate:a", 0.62f, 0.12f);
+        tween.TweenProperty(_skillCardPreview, "modulate:a", 1f, 0.12f);
+    }
+
+    private void EnsureSkillCardPreviewRoot()
+    {
+        if (_skillCardPreviewRoot != null && GodotObject.IsInstanceValid(_skillCardPreviewRoot))
+            return;
+
+        _skillCardPreviewRoot = new Control
+        {
+            Name = "SkillCardPreviewRoot",
+            TopLevel = true,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+            ZIndex = 500,
+        };
+        AddChild(_skillCardPreviewRoot);
+
+        _skillCardPreviewDim = new ColorRect
+        {
+            Name = "Dim",
+            Color = new Color(0f, 0f, 0f, 1f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        _skillCardPreviewDim.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        _skillCardPreviewRoot.AddChild(_skillCardPreviewDim);
+        _skillCardPreviewRoot.GuiInput += @event =>
+        {
+            if (@event is InputEventMouseButton { Pressed: true })
+                HideSkillCardPreview();
+        };
+    }
+
+    private void RefreshSkillCardPreviewRootBounds()
+    {
+        Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
+        _skillCardPreviewRoot.Position = Vector2.Zero;
+        _skillCardPreviewRoot.Size = viewportSize;
+        if (_skillCardPreviewDim != null && GodotObject.IsInstanceValid(_skillCardPreviewDim))
+            _skillCardPreviewDim.Size = viewportSize;
+    }
+
+    private Vector2 GetCenteredSkillCardPreviewPosition()
+    {
+        Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
+        Vector2 cardSize = SkillCardBaseDisplaySize * SkillCardPreviewScale;
+        return (viewportSize - cardSize) * 0.5f;
+    }
+
+    private void HideSkillCardPreview()
+    {
+        if (_skillCardPreview != null && GodotObject.IsInstanceValid(_skillCardPreview))
+        {
+            _skillCardPreview.QueueFree();
+            _skillCardPreview = null;
+        }
+
+        if (_skillCardPreviewRoot != null && GodotObject.IsInstanceValid(_skillCardPreviewRoot))
+            _skillCardPreviewRoot.Visible = false;
     }
 
     private List<RunHistoryCharacterSkillRecord> GetCharacterRecords()
@@ -1551,6 +1716,7 @@ public partial class GameStatistics : CanvasLayer
     private void Close()
     {
         HideTooltip();
+        HideSkillCardPreview();
         _transitionTween?.Kill();
         _characterSelectorTween?.Kill();
         _historyPageTween?.Kill();

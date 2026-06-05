@@ -1818,12 +1818,9 @@ public partial class Reward : CanvasLayer
 
     private static int GetElectricityCoinReward(LevelNode node)
     {
-        if (node.Type == LevelNode.LevelType.Elite)
-            return 0;
-
         int baseReward = node.Type switch
         {
-            LevelNode.LevelType.Boss => 150,
+            LevelNode.LevelType.Boss => 120,
             _ => 30,
         };
         int offset = new Random(node.RandomNum).Next(-10, 11);

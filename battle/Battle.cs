@@ -248,6 +248,7 @@ public partial class Battle : Node2D
     private const int BattleStartEffectIntervalMs = 100;
     private const int ActionPoinTriggerThreshold = 100;
     private const int PlayerDyingCoreEnergyCost = 10;
+    private const int PlayerBossDyingCoreEnergyCost = 15;
     private const int ManualRetreatCoreEnergyCost = 5;
     private const int EarlyBattleBonusSkillRewardBattles = 3;
     private const int EarlyBattleExtraSkillRewardGroups = 1;
@@ -509,7 +510,12 @@ public partial class Battle : Node2D
         return added;
     }
 
-    public void DiscardBattleSkill(Character actor, Skill skill, bool atTurnEnd = false)
+    public void DiscardBattleSkill(
+        Character actor,
+        Skill skill,
+        bool atTurnEnd = false,
+        bool forceDiscard = false
+    )
     {
         if (actor is not PlayerCharacter player || skill == null || !skill.SkillId.HasValue)
         {
@@ -521,7 +527,10 @@ public partial class Battle : Node2D
             return;
 
         SkillID skillId = skill.SkillId.Value;
-        if ((!atTurnEnd && skill.ExhaustsAfterUse) || (atTurnEnd && skill.ExhaustsAtTurnEndInHand))
+        if (
+            !forceDiscard
+            && ((!atTurnEnd && skill.ExhaustsAfterUse) || (atTurnEnd && skill.ExhaustsAtTurnEndInHand))
+        )
             piles.Exhausted.Add(skillId);
         else
             piles.DiscardPile.Add(skillId);
@@ -2823,8 +2832,11 @@ public partial class Battle : Node2D
             }
         }
 
-        MapNode?.BlackMaskAnimation(0.8f);
-        await Task.Delay(PostActionDelayMs);
+        SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
+        if (transitionLayer != null)
+            await transitionLayer.FadeToBlackAsync(0.8f);
+        else
+            await Task.Delay(PostActionDelayMs);
 
         if (!IsBattleInstanceValid())
         {
@@ -2838,9 +2850,7 @@ public partial class Battle : Node2D
             ConfigureRewards(reward);
             if (CurrentLevelNode != null)
             {
-                CurrentLevelNode.PlayerDamageSummaryLines = BuildPlayerDamageSummaryLines();
-                CurrentLevelNode.PlayerTotalTurnCount = PlayerTotalTurnCount;
-                CurrentLevelNode.EnemyTotalTurnCount = EnemyTotalTurnCount;
+                SyncCurrentLevelNodeBattleStatistics();
                 reward.SetCompleteNodeOnClose(CurrentLevelNode);
             }
         }
@@ -2850,9 +2860,17 @@ public partial class Battle : Node2D
         ClearSummons(queueFree: true);
         UnlockMapNodes();
 
+        SceneTree tree = GetTree();
+        Node battleRoot = GetParent();
         if (IsBattleInstanceValid())
+            battleRoot?.QueueFree();
+
+        if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
         {
-            GetParent()?.QueueFree();
+            if (tree != null)
+                await transitionLayer.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+
+            await transitionLayer.FadeFromBlackAsync(0.24f);
         }
     }
 
@@ -2895,6 +2913,7 @@ public partial class Battle : Node2D
 
     private async Task ShowGameOverAsync()
     {
+        SyncCurrentLevelNodeBattleStatistics();
         GameInfo.RecordCurrentRunHistory(victory: false);
         SaveSystem.SaveAll();
 
@@ -2917,6 +2936,17 @@ public partial class Battle : Node2D
 
         if (IsBattleInstanceValid())
             GetParent()?.QueueFree();
+    }
+
+    private void SyncCurrentLevelNodeBattleStatistics()
+    {
+        if (CurrentLevelNode == null)
+            return;
+
+        CurrentLevelNode.PlayerDamageSummaryLines = BuildPlayerDamageSummaryLines();
+        CurrentLevelNode.PlayerTotalTurnCount = PlayerTotalTurnCount;
+        CurrentLevelNode.EnemyTotalTurnCount = EnemyTotalTurnCount;
+        GameInfo.UpdateActiveLevelNodeBattleStatistics(CurrentLevelNode);
     }
 
     private void UnlockMapNodes()
@@ -3085,6 +3115,11 @@ public partial class Battle : Node2D
                 GetUpcomingPlayerActionNumber(expectedCharacter)
             );
             expectedCharacter.StartAction();
+            Relic.ApplyPlayerActionStartedRelicEffects(
+                this,
+                expectedCharacter,
+                GetUpcomingPlayerActionNumber(expectedCharacter)
+            );
 
             while (CanWaitForActionNext(expectedCharacter) && !receivedNext)
             {
@@ -3149,9 +3184,22 @@ public partial class Battle : Node2D
         if (target is not PlayerCharacter || target.IsSummon)
             return;
 
-        ConsumeCoreEnergy(PlayerDyingCoreEnergyCost);
+        ConsumeCoreEnergy(GetPlayerDyingCoreEnergyCost());
         if (IsCoreEnergyDepleted())
             _ = HandleDefeatAsync();
+    }
+
+    private int GetPlayerDyingCoreEnergyCost()
+    {
+        if (
+            CurrentLevelNode?.Type == LevelNode.LevelType.Boss
+            && GameInfo.IsBossDyingCoreEnergyPenaltyActive()
+        )
+        {
+            return PlayerBossDyingCoreEnergyCost;
+        }
+
+        return PlayerDyingCoreEnergyCost;
     }
 
     private int ConsumeCoreEnergy(int amount)

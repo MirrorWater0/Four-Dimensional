@@ -56,9 +56,15 @@ public partial class ManualTargetArrowView : Control
         MouseFilter = MouseFilterEnum.Ignore;
         ConfigureTipNode(HeadTip, ref _headTipMaterial);
         ConfigureTipNode(TailTip, ref _tailTipMaterial);
+        SetTipsVisible(false);
     }
 
-    public void SetEndpoints(Vector2 startPosition, Vector2 endPosition)
+    public void SetEndpoints(
+        Vector2 startPosition,
+        Vector2 endPosition,
+        Vector2? startTangent = null,
+        Vector2? endTangent = null
+    )
     {
         StartPosition = startPosition;
         EndPosition = endPosition;

@@ -68,6 +68,7 @@ public partial class SkillCard : SubViewportContainer
     public string DisplayNameOverride { get; set; }
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
+    public bool HoverUiEnabled { get; set; } = true;
 
     private Tween _progressTween;
     private Tween _pressTween;
@@ -117,6 +118,9 @@ public partial class SkillCard : SubViewportContainer
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
         Button.MouseEntered += () =>
         {
+            if (!HoverUiEnabled)
+                return;
+
             HoverHint.Visible = true;
             ShowKeywordTooltip();
             if (!UseDefaultHoverEffect)
@@ -128,8 +132,7 @@ public partial class SkillCard : SubViewportContainer
         };
         Button.MouseExited += () =>
         {
-            HoverHint.Visible = false;
-            _keywordTooltip?.HideTooltip();
+            HideHoverUi();
             if (!UseDefaultHoverEffect)
                 return;
 
@@ -384,6 +387,19 @@ public partial class SkillCard : SubViewportContainer
     {
         HideDamagePreview();
         HideTargetPreview();
+    }
+
+    public void SetHoverUiEnabled(bool enabled)
+    {
+        HoverUiEnabled = enabled;
+        if (!enabled)
+            HideHoverUi();
+    }
+
+    public void HideHoverUi()
+    {
+        HoverHint.Visible = false;
+        _keywordTooltip?.HideTooltip();
     }
 
     private void ShowKeywordTooltip()

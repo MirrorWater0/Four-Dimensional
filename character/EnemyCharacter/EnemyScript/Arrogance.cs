@@ -87,7 +87,7 @@ public partial class ArroganceSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, 3),
+            ModifyPropertyStep(PropertyType.Survivability, 2),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -108,7 +108,7 @@ public partial class ArroganceSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "虚无追击";
-    public override int EnergyCost => 6;
+    public override int EnergyCost => 10;
 
     protected override SkillPlan BuildPlan()
     {

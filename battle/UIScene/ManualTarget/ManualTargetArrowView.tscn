@@ -30,6 +30,7 @@ metadata/_edit_lock_ = true
 
 [node name="TailTip" type="ColorRect" parent="." unique_id=1704385549]
 material = SubResource("ShaderMaterial_tail_tip")
+visible = false
 layout_mode = 0
 offset_right = 34.0
 offset_bottom = 28.0
@@ -37,6 +38,7 @@ mouse_filter = 2
 
 [node name="HeadTip" type="ColorRect" parent="." unique_id=1091909396]
 material = SubResource("ShaderMaterial_head_tip")
+visible = false
 layout_mode = 0
 offset_right = 34.0
 offset_bottom = 28.0

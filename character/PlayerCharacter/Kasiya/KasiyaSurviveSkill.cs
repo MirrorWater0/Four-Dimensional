@@ -62,6 +62,7 @@ public partial class AbsouluteDefense : Skill
 {
     public override string SkillName { get; set; } = "绝对防御";
     public override int EnergyCost => XEnergyCost;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     int basisBlock = 0;
 
@@ -78,7 +79,7 @@ public partial class AbsouluteDefense : Skill
             WhileStep(
                 loopSteps:
                 [
-                    BlockStep(baseBlock: 0, multiplier: 2),
+                    BlockStep(baseBlock: 7, multiplier: 1),
                     ApplyBuffFriendly(Buff.BuffName.Taunt, 1),
                 ]
             )
@@ -88,8 +89,8 @@ public partial class AbsouluteDefense : Skill
 
 public partial class TauntingGuard : Skill
 {
-    private const int TauntStacks = 3;
-    private const int BaseBlock = 3;
+    private const int TauntStacks = 2;
+    private const int BaseBlock = 0;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 

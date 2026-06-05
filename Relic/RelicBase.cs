@@ -14,9 +14,11 @@ public partial class Relic
     private const int EnergyStorageTankStacks = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
+    private const int SpiralAcceleratorActionInterval = 3;
+    private const int SpiralAcceleratorDrawCount = 1;
     private const int MechanicalEnergyConverterEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
-    private const int PhilosophersStoneEnemyPower = 4;
+    private const int PhilosophersStoneEnemyPower = 3;
     private const int EternalGlassDrawBonus = 1;
     private const int KingsSwordPartyPower = 4;
     private const int RefractometerDamageImmuneStacks = 1;
@@ -26,6 +28,7 @@ public partial class Relic
     private const int PulseControllerWeakenStacks = 3;
     private const int KnightHelmetMinimumCost = 2;
     private const int KnightHelmetBlock = 6;
+    private const int IonizedVoiceExtraDrawStacks = 1;
     private const int HexagonMaxLife = 8;
 
     public RelicID ID;
@@ -60,10 +63,12 @@ public partial class Relic
             RelicID.EnergyTank,
             RelicID.EnergyStorageTank,
             RelicID.FusionCore,
+            RelicID.SpiralAccelerator,
             RelicID.MechanicalEnergyConverter,
             RelicID.Refractometer,
             RelicID.Purifier,
             RelicID.KnightHelmet,
+            RelicID.IonizedVoice,
         };
 
         for (int i = 0; i < pool.Length; i++)
@@ -93,10 +98,12 @@ public partial class Relic
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
             RelicID.EnergyStorageTank => new Relic(RelicID.EnergyStorageTank),
             RelicID.FusionCore => new Relic(RelicID.FusionCore),
+            RelicID.SpiralAccelerator => new Relic(RelicID.SpiralAccelerator),
             RelicID.MechanicalEnergyConverter => new Relic(RelicID.MechanicalEnergyConverter),
             RelicID.Refractometer => new Relic(RelicID.Refractometer),
             RelicID.Purifier => new Relic(RelicID.Purifier),
             RelicID.KnightHelmet => new Relic(RelicID.KnightHelmet),
+            RelicID.IonizedVoice => new Relic(RelicID.IonizedVoice),
             RelicID.PhilosophersStone => new Relic(RelicID.PhilosophersStone),
             RelicID.EternalGlass => new Relic(RelicID.EternalGlass),
             RelicID.KingsSword => new Relic(RelicID.KingsSword),
@@ -121,6 +128,7 @@ public partial class Relic
         {
             RelicID.Blessing => 3,
             RelicID.FusionCore => 0,
+            RelicID.SpiralAccelerator => 0,
             _ => -1,
         };
     }
@@ -153,10 +161,12 @@ public partial class Relic
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
             RelicID.EnergyStorageTank => "res://asset/svg/RelicIcon/EnergyStorageTank.svg",
             RelicID.FusionCore => "res://asset/svg/RelicIcon/FusionCore.svg",
+            RelicID.SpiralAccelerator => "res://asset/svg/RelicIcon/SpiralAccelerator.svg",
             RelicID.MechanicalEnergyConverter => "res://asset/svg/RelicIcon/MechanicalEnergyConverter.svg",
             RelicID.Refractometer => "res://asset/svg/RelicIcon/Refractometer.svg",
             RelicID.Purifier => "res://asset/svg/RelicIcon/Purifier.svg",
             RelicID.KnightHelmet => "res://asset/svg/RelicIcon/KnightHelmet.svg",
+            RelicID.IonizedVoice => "res://asset/svg/RelicIcon/IonizedVoice.svg",
             RelicID.PhilosophersStone => "res://asset/svg/RelicIcon/PhilosophersStone.svg",
             RelicID.EternalGlass => "res://asset/svg/RelicIcon/EternalGlass.svg",
             RelicID.KingsSword => "res://asset/svg/RelicIcon/KingsSword.svg",
@@ -273,6 +283,37 @@ public partial class Relic
         }
     }
 
+    public static void ApplyPlayerActionStartedRelicEffects(
+        Battle battle,
+        Character actingCharacter,
+        int playerActionNumber
+    )
+    {
+        if (
+            battle?.MapNode?.PlayerResourceState?.RelicList == null
+            || actingCharacter == null
+            || !actingCharacter.IsPlayer
+            || playerActionNumber <= 0
+        )
+        {
+            return;
+        }
+
+        foreach (var relic in battle.MapNode.PlayerResourceState.RelicList)
+        {
+            if (relic == null || relic.ID != RelicID.SpiralAccelerator)
+                continue;
+
+            relic.Num = Math.Max(0, relic.Num) + 1;
+            if (relic.Num >= SpiralAcceleratorActionInterval)
+            {
+                ApplySpiralAcceleratorActionStart(actingCharacter);
+                relic.Num = 0;
+            }
+            relic.UpdateIconLabel();
+        }
+    }
+
     public static void ApplyCarryRelicEffects(Character carriedCharacter)
     {
         if (
@@ -309,15 +350,36 @@ public partial class Relic
             skill?.OwnerCharater == null
             || !skill.OwnerCharater.IsPlayer
             || skill.OwnerCharater.State == Character.CharacterState.Dying
-            || skill.CardEnergyCost < KnightHelmetMinimumCost
-            || !HasRelic(RelicID.KnightHelmet)
         )
         {
             return;
         }
 
+        ApplyKnightHelmetSkillUsed(skill);
+        ApplyIonizedVoiceSkillUsed(skill);
+    }
+
+    private static void ApplyKnightHelmetSkillUsed(Skill skill)
+    {
+        if (skill.CardEnergyCost < KnightHelmetMinimumCost || !HasRelic(RelicID.KnightHelmet))
+            return;
+
         using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.KnightHelmet));
         skill.OwnerCharater.UpdataBlock(KnightHelmetBlock, source: skill.OwnerCharater);
+    }
+
+    private static void ApplyIonizedVoiceSkillUsed(Skill skill)
+    {
+        if (skill.SkillType != Skill.SkillTypes.Special || !HasRelic(RelicID.IonizedVoice))
+            return;
+
+        using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.IonizedVoice));
+        SpecialBuff.BuffAdd(
+            Buff.BuffName.ExtraDraw,
+            skill.OwnerCharater,
+            IonizedVoiceExtraDrawStacks,
+            skill.OwnerCharater
+        );
     }
 
     private static bool HasRelic(RelicID relicId) => GameInfo.HasRelic(relicId);
@@ -378,6 +440,7 @@ public partial class Relic
                 ApplyEnergyStorageToPlayers(battle, EnergyStorageTankStacks);
                 break;
             case RelicID.FusionCore:
+            case RelicID.SpiralAccelerator:
             case RelicID.MechanicalEnergyConverter:
                 break;
             case RelicID.Refractometer:
@@ -387,6 +450,7 @@ public partial class Relic
                 ApplyDebuffImmunityToPlayers(battle, PurifierDebuffImmunityStacks);
                 break;
             case RelicID.KnightHelmet:
+            case RelicID.IonizedVoice:
                 break;
             case RelicID.PhilosophersStone:
                 await ApplyPowerToEnemies(battle, PhilosophersStoneEnemyPower);
@@ -438,10 +502,12 @@ public partial class Relic
             RelicID.EnergyTank => "自动电池",
             RelicID.EnergyStorageTank => "能量储罐",
             RelicID.FusionCore => "聚变核心",
+            RelicID.SpiralAccelerator => "螺旋加速器",
             RelicID.MechanicalEnergyConverter => "机械能转换器",
             RelicID.Refractometer => "折射仪",
             RelicID.Purifier => "净化器",
             RelicID.KnightHelmet => "骑士头盔",
+            RelicID.IonizedVoice => "电离之声",
             RelicID.PhilosophersStone => "贤者之石",
             RelicID.EternalGlass => "亘古琉璃",
             RelicID.KingsSword => "王者之剑",
@@ -467,10 +533,12 @@ public partial class Relic
             RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
             RelicID.EnergyStorageTank => $"战斗开始时全阵获得{EnergyStorageTankStacks}层{Buff.BuffName.EnergyStorage.GetDescription()}。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
+            RelicID.SpiralAccelerator => $"每有{SpiralAcceleratorActionInterval}个己方角色回合开始，当前角色抽{SpiralAcceleratorDrawCount}张牌。",
             RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
             RelicID.KnightHelmet => $"每当角色打出{KnightHelmetMinimumCost}费及以上的卡牌时，获得{KnightHelmetBlock}点格挡。",
+            RelicID.IonizedVoice => $"使用特殊技能时，获得{IonizedVoiceExtraDrawStacks}层{Buff.GetBuffDisplayName(Buff.BuffName.ExtraDraw)}。",
             RelicID.PhilosophersStone => $"回合开始时获得的能量+{PhilosophersStoneEnergyBonus}。战斗开始时所有敌人获得{PhilosophersStoneEnemyPower}点力量。",
             RelicID.EternalGlass => $"回合开始时抽牌数+{EternalGlassDrawBonus}。",
             RelicID.KingsSword => $"拾起时全体角色增加{KingsSwordPartyPower}点力量。",
@@ -704,6 +772,15 @@ public partial class Relic
         actingCharacter.UpdataEnergy(FusionCoreEnergy, actingCharacter);
     }
 
+    private static void ApplySpiralAcceleratorActionStart(Character actingCharacter)
+    {
+        if (actingCharacter is not PlayerCharacter player)
+            return;
+
+        using var _ = player.BeginEffectSource(GetRelicName(RelicID.SpiralAccelerator));
+        player.TryDrawBattleCards(SpiralAcceleratorDrawCount);
+    }
+
     private string GetIconCountText()
     {
         return FormatCountLabel(Num);
@@ -862,4 +939,6 @@ public enum RelicID
     curse,
     MechanicalEnergyConverter,
     EnergyStorageTank,
+    SpiralAccelerator,
+    IonizedVoice,
 }

@@ -110,6 +110,7 @@ public partial class PlagueStatus : Skill
     public override int EnergyCost => 1;
     public override bool CanBePlayed => true;
     public override bool ExhaustsAfterUse => true;
+    public override bool TriggersAtTurnEndInHand => true;
 
     public override async Task OnTurnEndInHand(PlayerCharacter player)
     {

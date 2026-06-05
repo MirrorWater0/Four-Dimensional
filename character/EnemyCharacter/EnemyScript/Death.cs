@@ -184,7 +184,7 @@ public partial class DeathSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnergyCost => 9;
+    public override int EnergyCost => 10;
 
     protected override SkillPlan BuildPlan()
     {

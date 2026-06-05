@@ -119,6 +119,9 @@ public static partial class GameInfo
         public LevelNode.LevelType NodeType;
         public int RandomNum;
         public List<string> EnemyNames = new();
+        public int PlayerTotalTurnCount;
+        public int EnemyTotalTurnCount;
+        public List<string> PlayerDamageSummaryLines = new();
         public int ElectricityCoin;
         public int TransitionEnergy;
         public Dictionary<RelicID, int> Relics = new();
@@ -134,6 +137,9 @@ public static partial class GameInfo
                 NodeType = node?.Type ?? LevelNode.LevelType.Normal,
                 RandomNum = node?.RandomNum ?? 0,
                 EnemyNames = CaptureEnemyNames(node),
+                PlayerTotalTurnCount = node?.PlayerTotalTurnCount ?? 0,
+                EnemyTotalTurnCount = node?.EnemyTotalTurnCount ?? 0,
+                PlayerDamageSummaryLines = CopyStringList(node?.PlayerDamageSummaryLines),
                 ElectricityCoin = GameInfo.ElectricityCoin,
                 TransitionEnergy = GameInfo.TransitionEnergy,
                 Relics = CloneRelicMap(GameInfo.Relics),
@@ -151,9 +157,11 @@ public static partial class GameInfo
                 NodeType = node?.Type ?? NodeType,
                 RandomNum = node?.RandomNum ?? RandomNum,
                 EnemyNames = CaptureEnemyNames(node),
-                PlayerTotalTurnCount = node?.PlayerTotalTurnCount ?? 0,
-                EnemyTotalTurnCount = node?.EnemyTotalTurnCount ?? 0,
-                PlayerDamageSummaryLines = CopyStringList(node?.PlayerDamageSummaryLines),
+                PlayerTotalTurnCount = node?.PlayerTotalTurnCount ?? PlayerTotalTurnCount,
+                EnemyTotalTurnCount = node?.EnemyTotalTurnCount ?? EnemyTotalTurnCount,
+                PlayerDamageSummaryLines = node != null
+                    ? CopyStringList(node.PlayerDamageSummaryLines)
+                    : CopyStringList(PlayerDamageSummaryLines),
                 ElectricityCoinChange = GameInfo.ElectricityCoin - ElectricityCoin,
                 TransitionEnergyChange = GameInfo.TransitionEnergy - TransitionEnergy,
                 SkillChanges = BuildSkillChanges(PlayerGainedSkills, GameInfo.PlayerCharacters),
@@ -736,6 +744,19 @@ public static partial class GameInfo
             return;
 
         _activeLevelNodeSnapshot = ActiveLevelNodeSnapshot.Capture(node);
+    }
+
+    public static void UpdateActiveLevelNodeBattleStatistics(LevelNode node)
+    {
+        if (node == null)
+            return;
+
+        if (_activeLevelNodeSnapshot == null || _activeLevelNodeSnapshot.Coordinate != node.SelfCoordinate)
+            _activeLevelNodeSnapshot = ActiveLevelNodeSnapshot.Capture(node);
+
+        _activeLevelNodeSnapshot.PlayerTotalTurnCount = node.PlayerTotalTurnCount;
+        _activeLevelNodeSnapshot.EnemyTotalTurnCount = node.EnemyTotalTurnCount;
+        _activeLevelNodeSnapshot.PlayerDamageSummaryLines = CopyStringList(node.PlayerDamageSummaryLines);
     }
 
     public static void CompleteLevelNodeTracking(LevelNode node)

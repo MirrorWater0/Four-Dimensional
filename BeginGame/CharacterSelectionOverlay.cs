@@ -8,8 +8,8 @@ using Godot;
 public partial class CharacterSelectionOverlay : Control
 {
     private const int DefaultRequiredSelectionCount = 4;
-    private const int MinDifficulty = 0;
-    private const int MaxDifficulty = 5;
+    private const int MinDifficulty = GameInfo.MinDifficulty;
+    private const int MaxDifficulty = GameInfo.MaxDifficulty;
     private const int MaxSeedDigits = 9;
     private const int MaxSeedValue = 999_999_999;
     private const float EnterAnimationDuration = 0.24f;

@@ -5,6 +5,9 @@ using Godot;
 
 public partial class Tip : Control
 {
+    public const string TipLayerName = "TipLayer";
+    public const int TipLayerOrder = 200;
+
     private static readonly Vector2 BackgroundPadding = new Vector2(28f, 24f);
     private static readonly Color DefaultTextColor = new Color(0.9f, 0.95f, 1f, 0.9f);
     private static readonly Color DefaultOutlineColor = new Color(0.01f, 0.02f, 0.05f, 0.64f);
@@ -91,6 +94,8 @@ public partial class Tip : Control
 
     public override void _Ready()
     {
+        EnsureTipLayerOrder();
+
         if (Description != null)
         {
             ApplyDescriptionTheme();
@@ -256,6 +261,7 @@ public partial class Tip : Control
 
     public void ShowPreloaded(bool followMouse = true, Vector2? manualAnchorPosition = null)
     {
+        EnsureTipLayerOrder();
         FollowMouse = followMouse;
         _manualAnchorPosition = manualAnchorPosition ?? Vector2.Zero;
         if (_layoutDirty)
@@ -275,6 +281,7 @@ public partial class Tip : Control
         if (Description == null)
             return;
 
+        EnsureTipLayerOrder();
         FollowMouse = followMouse;
         _manualAnchorPosition = manualAnchorPosition;
         string normalizedText = text ?? string.Empty;
@@ -591,5 +598,11 @@ public partial class Tip : Control
     {
         _layoutDirty = true;
         _positionDirty = true;
+    }
+
+    private void EnsureTipLayerOrder()
+    {
+        if (GetParent() is CanvasLayer layer && layer.Layer < TipLayerOrder)
+            layer.Layer = TipLayerOrder;
     }
 }

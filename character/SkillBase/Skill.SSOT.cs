@@ -26,7 +26,7 @@ using Godot;
 // - BlockStep: 相对位友方获得格挡（0自己、-1前一位、+1后一位...；可选对自己不生效）。
 // - CarryStep: 连携指定友方目标释放指定技能（target 支持相对位 / 绝对位 / 已存储目标；index:0攻击/1生存/2特殊）。
 // - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
-// - AddStatusCardsToDrawPileStep: 向已储存目标所属玩家的抽牌堆塞入状态牌（支持召唤物归属解析）。
+// - AddStatusCardsToDrawPileStep: 向目标所属玩家的抽牌堆塞入状态牌（支持敌方/友方重载与召唤物归属解析）。
 // - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
 // - EnergyTimesWhileStep: while循环（传times时按次数循环；未传times时按本技能已支付能量循环）。
 // - ConditionStep: 条件执行（condition/steps/conditionDescription）。
@@ -774,7 +774,7 @@ public partial class Skill
                     byBehindRow: value.ByBehindRow,
                     applyTaunt: applyTaunt
                 )
-                : GetAllHostileWithOrder(this, dyingFilter: true);
+                : GetAllHostileWithOrder(this, dyingFilter: true, applyTaunt: applyTaunt);
 
         if (ordered.Length == 0)
             return Array.Empty<Character>();
@@ -907,7 +907,7 @@ public partial class Skill
                     byBehindRow: value.ByBehindRow,
                     applyTaunt: applyTaunt
                 )
-                : GetAllHostileWithOrder(skill, dyingFilter: true);
+                : GetAllHostileWithOrder(skill, dyingFilter: true, applyTaunt: applyTaunt);
 
         if (ordered.Length == 0)
             return Array.Empty<Character>();
@@ -2098,6 +2098,9 @@ public partial class Skill
         TargetReference target = TargetReference.Self
     ) => new EnergySkillStep(delta, TargetValue(target));
 
+    protected SkillStep DoubleEnergyStep(TargetReference target = TargetReference.Self) =>
+        new DoubleEnergySkillStep(TargetValue(target));
+
     protected SkillStep DrawCardsStep(int count) => new DrawCardsSkillStep(count);
 
     protected SkillStep DrawCardsStep(Func<Skill, int> count, string description = null) =>
@@ -2115,13 +2118,13 @@ public partial class Skill
         targetText ?? HostileTargetText(target)
     );
 
-    protected SkillStep AddStatusCardsToFriendlyDrawPileStep(
+    protected SkillStep AddStatusCardsToDrawPileStep(
         SkillID statusSkillId,
         int count,
         TargetReference target = TargetReference.All,
         string targetText = null,
         bool includeSummonsWhenAll = false
-    ) => new AddStatusCardsToFriendlyDrawPileSkillStep(
+    ) => new AddStatusCardsToDrawPileSkillStep(
         statusSkillId,
         count,
         TargetValue(target),
@@ -3067,12 +3070,20 @@ public partial class Skill
         };
     }
 
-    private static Character[] GetAllHostileWithOrder(Skill skill, bool dyingFilter)
+    private static Character[] GetAllHostileWithOrder(
+        Skill skill,
+        bool dyingFilter,
+        bool applyTaunt = false
+    )
     {
         if (skill?.OwnerCharater?.BattleNode == null)
             return Array.Empty<Character>();
 
-        return skill.GetHostileTargetsInTeamOrder(dyingFilter, returnDummyWhenEmpty: false);
+        return skill.GetHostileTargetsInTeamOrder(
+            dyingFilter,
+            returnDummyWhenEmpty: false,
+            applyTaunt: applyTaunt
+        );
     }
 
     private static async Task ApplyPropertyDelta(
@@ -4110,15 +4121,7 @@ public partial class Skill
 
             string targetText = FriendlyTargetTextForDescription(_target);
             int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealFunc);
-            string healText = FriendlyHealAmountText(
-                skill,
-                _target,
-                baseHeal,
-                _clampMax,
-                _preferNonFull,
-                _rebirth,
-                _includeSummonsWhenAll
-            );
+            string healText = Math.Clamp(baseHeal, 0, _clampMax).ToString();
 
             if (_rebirth)
             {
@@ -4490,8 +4493,7 @@ public partial class Skill
         {
             string targetText = SummonSelectionText(_count);
             int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealFunc);
-            Character previewTarget = SelectOwnedSummons(skill, _count, dyingFilter: true).FirstOrDefault();
-            int heal = ResolveFriendlyHealAmount(baseHeal, previewTarget, _clampMax);
+            int heal = Math.Clamp(baseHeal, 0, _clampMax);
             yield return I18n.Format(
                 "skill.step.heal.target",
                 "使{target}回复{heal}点生命。",
@@ -4984,6 +4986,59 @@ public partial class Skill
         }
     }
 
+    private sealed class DoubleEnergySkillStep : SkillStep
+    {
+        private readonly TargetSelection _target;
+
+        public DoubleEnergySkillStep(TargetSelection target)
+        {
+            _target = target;
+        }
+
+        public override Task Execute(Skill skill)
+        {
+            Character[] targets = skill.ResolveFriendlyTargets(_target, dyingFilter: true);
+            if (targets.Length == 0)
+                return Task.CompletedTask;
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                if (ShouldAbortStepExecution(skill))
+                    return Task.CompletedTask;
+
+                Character target = targets[i];
+                int energyGain = Math.Max(0, target?.Energy ?? 0);
+                if (energyGain <= 0)
+                    continue;
+
+                target.UpdataEnergy(energyGain, skill?.OwnerCharater);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            string targetText = FriendlyTargetTextForDescription(_target);
+            if (IsSelfFriendlyTarget(_target))
+            {
+                yield return I18n.Tr("skill.step.energy.double_self", "使自身能量翻倍。");
+                yield break;
+            }
+
+            yield return I18n.Format(
+                "skill.step.energy.double_target",
+                "使{target}能量翻倍。",
+                ("target", targetText)
+            );
+        }
+
+        public override IEnumerable<Character> PreviewTargets(Skill skill)
+        {
+            return skill.ResolveFriendlyTargets(_target, dyingFilter: true);
+        }
+    }
+
     private sealed class DrawCardsSkillStep : SkillStep
     {
         private readonly int _count;
@@ -5039,8 +5094,11 @@ public partial class Skill
     {
         private readonly SkillID _statusSkillId;
         private readonly int _count;
+        private readonly bool _targetsHostile;
         private readonly HostileTargetSelection _hostileTarget;
+        private readonly TargetSelection _friendlyTarget;
         private readonly string _targetText;
+        private readonly bool _includeSummonsWhenAll;
 
         public AddStatusCardsToDrawPileSkillStep(
             SkillID statusSkillId,
@@ -5051,8 +5109,25 @@ public partial class Skill
         {
             _statusSkillId = statusSkillId;
             _count = count;
+            _targetsHostile = true;
             _hostileTarget = hostileTarget;
             _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
+        }
+
+        public AddStatusCardsToDrawPileSkillStep(
+            SkillID statusSkillId,
+            int count,
+            TargetSelection friendlyTarget,
+            string targetText,
+            bool includeSummonsWhenAll
+        )
+        {
+            _statusSkillId = statusSkillId;
+            _count = count;
+            _targetsHostile = false;
+            _friendlyTarget = friendlyTarget;
+            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
+            _includeSummonsWhenAll = includeSummonsWhenAll;
         }
 
         public override async Task Execute(Skill skill)
@@ -5106,16 +5181,79 @@ public partial class Skill
             if (skill?.OwnerCharater?.BattleNode == null)
                 return Array.Empty<Character>();
 
-            if (_hostileTarget.Kind == HostileTargetSelection._Kind.All)
+            if (!_targetsHostile)
             {
-                return skill.OwnerCharater.BattleNode.GetOrderedTeamCharacters(
-                    !skill.OwnerCharater.IsPlayer,
-                    includeSummons: true,
-                    dyingFilter: true
+                return skill.ResolveFriendlyTargets(
+                    _friendlyTarget,
+                    dyingFilter: true,
+                    includeSummonsWhenAll: _includeSummonsWhenAll
                 );
             }
 
-            return skill.ResolveHostileTargets(_hostileTarget);
+            if (_hostileTarget.Kind == HostileTargetSelection._Kind.Stored)
+                return skill.ResolveHostileTargets(_hostileTarget);
+
+            Character[] ordered = GetStatusInsertHostileTargetsIgnoringInvisible(
+                skill,
+                _hostileTarget
+            );
+            if (ordered.Length == 0)
+                return Array.Empty<Character>();
+
+            if (_hostileTarget.Kind == HostileTargetSelection._Kind.PreviewableRandom)
+                return skill.GetOrPickPreviewableRandomHostileTargets(_hostileTarget, ordered);
+
+            return SelectHostileTargets(
+                ordered,
+                _hostileTarget,
+                skill.OwnerCharater?.BattleNode?.BattleIntentionRandom
+            );
+        }
+
+        private static Character[] GetStatusInsertHostileTargetsIgnoringInvisible(
+            Skill skill,
+            HostileTargetSelection target
+        )
+        {
+            Character owner = skill?.OwnerCharater;
+            if (owner?.BattleNode == null)
+                return Array.Empty<Character>();
+
+            IEnumerable<Character> source = owner
+                .BattleNode.GetOrderedTeamCharacters(
+                    !owner.IsPlayer,
+                    includeSummons: true,
+                    dyingFilter: true
+                )
+                .Where(targetCharacter => targetCharacter != null);
+
+            if (
+                target.Kind != HostileTargetSelection._Kind.Ordered
+                && target.Kind != HostileTargetSelection._Kind.Random
+                && target.Kind != HostileTargetSelection._Kind.PreviewableRandom
+            )
+            {
+                return source.ToArray();
+            }
+
+            int attackerRow = GetBattleRow(owner.PositionIndex);
+            IEnumerable<Character> ordered = target.ByBehindRow
+                ? source
+                    .OrderBy(targetCharacter =>
+                        Math.Abs(GetBattleRow(targetCharacter.PositionIndex) - attackerRow)
+                    )
+                    .ThenBy(targetCharacter => GetBattleRow(targetCharacter.PositionIndex))
+                    .ThenByDescending(targetCharacter =>
+                        GetBattleCol(targetCharacter.PositionIndex)
+                    )
+                : source
+                    .OrderBy(targetCharacter =>
+                        Math.Abs(GetBattleRow(targetCharacter.PositionIndex) - attackerRow)
+                    )
+                    .ThenBy(targetCharacter => GetBattleRow(targetCharacter.PositionIndex))
+                    .ThenBy(targetCharacter => GetBattleCol(targetCharacter.PositionIndex));
+
+            return ordered.ToArray();
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -5136,103 +5274,39 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
         {
-            return PreviewHostileTargets(skill, _hostileTarget);
-        }
-    }
+            if (!_targetsHostile)
+                return Array.Empty<Character>();
 
-    private sealed class AddStatusCardsToFriendlyDrawPileSkillStep : SkillStep
-    {
-        private readonly SkillID _statusSkillId;
-        private readonly int _count;
-        private readonly TargetSelection _target;
-        private readonly string _targetText;
-        private readonly bool _includeSummonsWhenAll;
+            if (skill?.OwnerCharater?.BattleNode == null)
+                return Array.Empty<Character>();
 
-        public AddStatusCardsToFriendlyDrawPileSkillStep(
-            SkillID statusSkillId,
-            int count,
-            TargetSelection target,
-            string targetText,
-            bool includeSummonsWhenAll
-        )
-        {
-            _statusSkillId = statusSkillId;
-            _count = count;
-            _target = target;
-            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
-            _includeSummonsWhenAll = includeSummonsWhenAll;
-        }
+            if (_hostileTarget.Kind == HostileTargetSelection._Kind.Stored)
+                return PreviewHostileTargets(skill, _hostileTarget);
 
-        public override async Task Execute(Skill skill)
-        {
-            if (skill == null || _count <= 0)
-                return;
-
-            Character[] targets = skill.ResolveFriendlyTargets(
-                _target,
-                dyingFilter: true,
-                includeSummonsWhenAll: _includeSummonsWhenAll
+            Character[] ordered = GetStatusInsertHostileTargetsIgnoringInvisible(
+                skill,
+                _hostileTarget
             );
-            if (targets.Length == 0)
-                return;
+            if (ordered.Length == 0)
+                return Array.Empty<Character>();
 
-            var affectedTargets = targets
-                .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
-                .Where(x => x.Player != null && x.Player.BattleNode != null)
-                .GroupBy(x => x.Target)
-                .Select(group => group.First())
-                .ToArray();
+            if (_hostileTarget.Kind == HostileTargetSelection._Kind.PreviewableRandom)
+                return skill.GetOrPickPreviewableRandomHostileTargets(_hostileTarget, ordered);
 
-            foreach (var animationGroup in affectedTargets
-                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
-                .GroupBy(entry => entry.Player.BattleNode.CharacterControl))
-            {
-                await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
-                    animationGroup.Select(
-                            entry =>
-                                new CharacterControl.StatusCardInsertAnimationEntry(
-                                    entry.Target,
-                                    _statusSkillId,
-                                    _count,
-                                    skill.OwnerCharater
-                                )
-                        )
-                        .ToArray()
-                );
-            }
-
-            foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
-            {
-                PlayerCharacter player = playerGroup.Key;
-                player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
-                    player,
-                    _statusSkillId,
-                    _count * playerGroup.Count(),
-                    skill.OwnerCharater
-                );
-            }
-        }
-
-        public override IEnumerable<string> Describe(Skill skill)
-        {
-            if (_count <= 0)
-                yield break;
-
-            string statusName =
-                Skill.GetSkill(_statusSkillId)?.SkillName ?? _statusSkillId.ToString();
-            yield return I18n.Format(
-                "skill.step.add_status_to_draw_pile",
-                "向{target}抽牌堆塞入{count}张{status}。",
-                ("target", _targetText),
-                ("count", _count),
-                ("status", statusName)
+            return SelectHostileTargets(
+                ordered,
+                _hostileTarget,
+                previewRandomAsAll: true
             );
         }
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
+            if (_targetsHostile)
+                return Array.Empty<Character>();
+
             return skill.ResolveFriendlyTargets(
-                _target,
+                _friendlyTarget,
                 dyingFilter: true,
                 includeSummonsWhenAll: _includeSummonsWhenAll
             );

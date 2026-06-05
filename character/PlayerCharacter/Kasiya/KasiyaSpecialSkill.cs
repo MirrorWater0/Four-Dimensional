@@ -5,10 +5,9 @@ public partial class KasiyaSpecialSkill : Node { }
 public partial class ReadyStance : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EnergyGain = 5;
 
     public override string SkillName { get; set; } = "能量爆发";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 1;
 
     public ReadyStance()
         : base(SkillTypes.Special)
@@ -18,7 +17,7 @@ public partial class ReadyStance : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, EnergyStep(EnergyGain));
+        return new SkillPlan(this, DoubleEnergyStep(TargetReference.All));
     }
 }
 
@@ -131,9 +130,7 @@ public class WarGodWill : Skill
 public class TacticalPreparation : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int PowerLoss = -2;
     private const int ExtraDrawStacks = 3;
-    private const int DrawCount = 2;
 
     public TacticalPreparation()
         : base(SkillTypes.Special)
@@ -149,13 +146,12 @@ public class TacticalPreparation : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, PowerLoss, TargetReference.All),
+            AddStatusCardsToDrawPileStep(SkillID.VoidStatus, 1, TargetReference.All),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: ExtraDrawStacks,
                 target: TargetReference.All
-            ),
-            DrawCardsStep(DrawCount)
+            )
         );
     }
 }
@@ -180,7 +176,7 @@ public class RadiantOverload : Skill
     {
         return new SkillPlan(
             this,
-            AddStatusCardsToFriendlyDrawPileStep(SkillID.DazeStatus, DazeCount),
+            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, DazeCount),
             EnergyStep(EnergyGain, TargetReference.All)
         );
     }

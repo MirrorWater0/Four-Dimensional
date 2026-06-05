@@ -24,6 +24,7 @@ func _ready():
 	else:
 		push_error("无法获取 Skeleton 实例，请确认 Inspector 中已设置 Skeleton Data")
 	
-	normal_material.set_shader_parameter("progress", 1.0)
-	create_tween().tween_property(normal_material, "shader_parameter/progress", 0.0, 1)
+	if not has_meta("skip_spawn_shader"):
+		normal_material.set_shader_parameter("progress", 1.0)
+		create_tween().tween_property(normal_material, "shader_parameter/progress", 0.0, 1)
 	pass # Replace with function body.

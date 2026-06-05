@@ -335,17 +335,6 @@ Label/font_sizes/font_size = 25
 shader = ExtResource("15_eq06d")
 shader_parameter/color = Color(0.6, 1, 1, 1)
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_5ewuv"]
-shader = ExtResource("16_faub5")
-shader_parameter/color_start = Color(0.6, 0.9, 1, 1)
-shader_parameter/color_end = Color(0.6, 0.9, 1, 1)
-shader_parameter/size = 0.76900003326762
-shader_parameter/thickness = 0.1130000053675
-shader_parameter/curvature = 0.61500002595262
-shader_parameter/rotation_speed = 0.0
-shader_parameter/pulse_speed = 0.0
-shader_parameter/edge_softness = 0.5
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oexsw"]
 shader = ExtResource("21_gvqk1")
 shader_parameter/wing_color = Color(1, 1, 1, 1)
@@ -357,6 +346,17 @@ shader_parameter/edge_smoothness = 0.02400000114
 shader_parameter/blade_count = 5
 shader_parameter/wing_span = 1.3280000598201198
 shader_parameter/spine_thickness = 0.11900000495398
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5ewuv"]
+shader = ExtResource("16_faub5")
+shader_parameter/color_start = Color(0.6, 0.9, 1, 1)
+shader_parameter/color_end = Color(0.6, 0.9, 1, 1)
+shader_parameter/size = 0.76900003326762
+shader_parameter/thickness = 0.1130000053675
+shader_parameter/curvature = 0.61500002595262
+shader_parameter/rotation_speed = 0.0
+shader_parameter/pulse_speed = 0.0
+shader_parameter/edge_softness = 0.5
 
 [sub_resource type="Curve2D" id="Curve2D_gvqk1"]
 bake_interval = 20.7
@@ -772,12 +772,13 @@ text = "10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="EnergeIcon" type="ColorRect" parent="State" unique_id=80950031]
-material = SubResource("ShaderMaterial_5ewuv")
+[node name="SpeedIcon" type="ColorRect" parent="State" unique_id=1205133209]
+material = SubResource("ShaderMaterial_oexsw")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
+metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/EnergeIcon" unique_id=1936578214]
+[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1048405910]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -797,13 +798,12 @@ text = "10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="SpeedIcon" type="ColorRect" parent="State" unique_id=1205133209]
-material = SubResource("ShaderMaterial_oexsw")
+[node name="EnergeIcon" type="ColorRect" parent="State" unique_id=80950031]
+material = SubResource("ShaderMaterial_5ewuv")
 custom_minimum_size = Vector2(40, 40)
 layout_mode = 2
-metadata/_edit_use_anchors_ = true
 
-[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1048405910]
+[node name="Label" type="Label" parent="State/EnergeIcon" unique_id=1936578214]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

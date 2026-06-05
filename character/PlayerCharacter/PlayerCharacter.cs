@@ -69,7 +69,6 @@ public partial class PlayerCharacter : Character
             return;
 
         EnsureBattleHandSize();
-        CompactBattleHand();
         for (int i = 0; i < Skills.Length && count > 0; i++)
         {
             if (Skills[i] != null)
@@ -213,7 +212,31 @@ public partial class PlayerCharacter : Character
             return;
 
         Skills[skillIndex] = null;
+        CompactBattleHand();
         InvalidateSkillTooltipCache();
+    }
+
+    public bool TryRestoreBattleHandCardAt(int skillIndex, Skill skill)
+    {
+        EnsureBattleHandSize();
+        if (skill == null || skillIndex < 0 || skillIndex >= Skills.Length)
+            return false;
+
+        if (Skills[skillIndex] != null)
+        {
+            int emptyIndex = Array.FindIndex(Skills, skillIndex, x => x == null);
+            if (emptyIndex < 0)
+                return false;
+
+            for (int i = emptyIndex; i > skillIndex; i--)
+                Skills[i] = Skills[i - 1];
+        }
+
+        skill.OwnerCharater = this;
+        skill.UpdateDescription();
+        Skills[skillIndex] = skill;
+        InvalidateSkillTooltipCache();
+        return true;
     }
 
     public void DiscardBattleHand()
@@ -242,24 +265,79 @@ public partial class PlayerCharacter : Character
         if (Skills == null || BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
-        bool discardedAny = false;
+        var discardIndexes = new HashSet<int>();
         for (int i = 0; i < Skills.Length; i++)
         {
             Skill skill = Skills[i];
             if (skill == null)
                 continue;
 
-            await skill.OnTurnEndInHand(this);
+            if (skill.TriggersAtTurnEndInHand)
+            {
+                CharacterControl characterControl = BattleNode.CharacterControl;
+                if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
+                {
+                    await characterControl.PlayTurnEndStatusTriggerAnimationAsync(
+                        this,
+                        i,
+                        skill,
+                        () => skill.OnTurnEndInHand(this)
+                    );
+                }
+                else
+                    await skill.OnTurnEndInHand(this);
+
+                if (Skills[i] == skill)
+                {
+                    BattleNode.DiscardBattleSkill(
+                        this,
+                        skill,
+                        atTurnEnd: true,
+                        forceDiscard: true
+                    );
+                    Skills[i] = null;
+                    InvalidateSkillTooltipCache();
+                }
+                continue;
+            }
+            else
+                await skill.OnTurnEndInHand(this);
 
             if (Skills[i] != skill)
                 continue;
 
-            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
-            Skills[i] = null;
-            discardedAny = true;
+            discardIndexes.Add(i);
         }
 
-        if (discardedAny)
+        if (discardIndexes.Count == 0)
+            return;
+
+        CharacterControl endTurnCharacterControl = BattleNode.CharacterControl;
+        if (
+            endTurnCharacterControl != null
+            && GodotObject.IsInstanceValid(endTurnCharacterControl)
+        )
+        {
+            await endTurnCharacterControl.PlayEndTurnHandDiscardAnimationsAsync(
+                this,
+                discardIndexes
+            );
+        }
+
+        foreach (int index in discardIndexes)
+        {
+            if (index < 0 || index >= Skills.Length)
+                continue;
+
+            Skill skill = Skills[index];
+            if (skill == null)
+                continue;
+
+            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
+            Skills[index] = null;
+        }
+
+        if (discardIndexes.Count > 0)
             InvalidateSkillTooltipCache();
     }
 
@@ -294,6 +372,23 @@ public partial class PlayerCharacter : Character
         if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
             mapNode.PlayerResourceState?.SetItemsEnabled(false);
         base.OnActionEnd();
+    }
+
+    public override async void EndAction()
+    {
+        var battleNode = BattleNode;
+        if (battleNode == null || !GodotObject.IsInstanceValid(battleNode))
+            return;
+
+        await DiscardBattleHandAtTurnEndAsync();
+        OnActionEnd();
+
+        await base.ResolveTurnEndPhaseAsync();
+
+        await battleNode.EndEmitS(this);
+        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
+        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
+        TrailAnimation.Stop();
     }
 
     protected override async Task ResolveTurnEndPhaseAsync()

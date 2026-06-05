@@ -16,7 +16,8 @@ public static partial class GameInfo
     public static int Difficulty;
 
     public const int MinDifficulty = 0;
-    public const int MaxDifficulty = 5;
+    public const int MaxDifficulty = 6;
+    public const int BossDyingCoreEnergyPenaltyDifficulty = 6;
 
     private const int StarterRelicCount = 1;
     private const int StarterElectricityCoinBonus = 100;
@@ -63,6 +64,9 @@ public static partial class GameInfo
         if (string.IsNullOrWhiteSpace(activeBonusText))
             activeBonusText = "无开局增益";
 
+        if (IsBossDyingCoreEnergyPenaltyActive(difficulty))
+            activeBonusText += " / Boss战濒死损失15核心能源";
+
         return $"难度 {difficulty}：{activeBonusText}";
     }
 
@@ -82,12 +86,22 @@ public static partial class GameInfo
             lines.AddRange(activeBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
         }
 
+        if (IsBossDyingCoreEnergyPenaltyActive(difficulty))
+        {
+            lines.Add(string.Empty);
+            lines.Add("额外规则：");
+            lines.Add("- Boss战中角色濒死时损失15点核心能源。");
+        }
+
         if (difficulty < MaxDifficulty)
         {
             List<GameDifficultyBonus> nextBonuses = GetActiveDifficultyBonuses(difficulty + 1).ToList();
             List<GameDifficultyBonus> lostBonuses = activeBonuses
                 .Where(bonus => !nextBonuses.Contains(bonus))
                 .ToList();
+            bool gainsBossDyingPenalty =
+                !IsBossDyingCoreEnergyPenaltyActive(difficulty)
+                && IsBossDyingCoreEnergyPenaltyActive(difficulty + 1);
 
             if (lostBonuses.Count > 0)
             {
@@ -97,10 +111,23 @@ public static partial class GameInfo
                 );
                 lines.AddRange(lostBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
             }
+
+            if (gainsBossDyingPenalty)
+            {
+                lines.Add(string.Empty);
+                lines.Add($"提高到难度 {difficulty + 1} 后会新增：");
+                lines.Add("- Boss战中角色濒死时损失15点核心能源。");
+            }
         }
 
         return string.Join("\n", lines);
     }
+
+    public static bool IsBossDyingCoreEnergyPenaltyActive() =>
+        IsBossDyingCoreEnergyPenaltyActive(Difficulty);
+
+    public static bool IsBossDyingCoreEnergyPenaltyActive(int difficulty) =>
+        difficulty >= BossDyingCoreEnergyPenaltyDifficulty;
 
     private static IEnumerable<GameDifficultyBonus> GetActiveDifficultyBonuses(int difficulty)
     {

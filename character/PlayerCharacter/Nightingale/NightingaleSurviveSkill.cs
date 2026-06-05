@@ -62,7 +62,7 @@ public partial class AfterimageWard : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 7;
-    private const int AfterimageStacks = 2;
+    private const int AfterimageStacks = 1;
 
     public AfterimageWard()
         : base(SkillTypes.Survive)
@@ -77,16 +77,11 @@ public partial class AfterimageWard : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Afterimage,
                 stacks: AfterimageStacks,
-                target: TargetReference.Self
-            ),
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Afterimage,
-                stacks: AfterimageStacks,
-                target: TargetReference.ManualFriendly
+                target: TargetReference.All
             )
         );
     }
@@ -125,9 +120,10 @@ public partial class TwilightParadox : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 7;
-    private const int VulnerableStacks = 15;
+    private const int VulnerableStacks = 10;
     private const int selfStacks = 4;
     public override int EnergyCost => 2;
+    public override bool ExhaustsAfterUse => true;
 
     public TwilightParadox()
         : base(SkillTypes.Survive)

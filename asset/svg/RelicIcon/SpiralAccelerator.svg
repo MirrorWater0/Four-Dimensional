@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="coil" x1="27" y1="26" x2="101" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8ffff"/>
+      <stop offset="0.42" stop-color="#7fe7ff"/>
+      <stop offset="1" stop-color="#5968ff"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="35" y1="95" x2="96" y2="34" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd97f"/>
+      <stop offset="0.54" stop-color="#7fffe6"/>
+      <stop offset="1" stop-color="#ff6fd8"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="64" cy="64" r="43" stroke="url(#coil)" stroke-width="7"/>
+    <path d="M91 38c-7-8-18-13-31-11-17 2-30 16-30 32 0 23 23 37 44 28 13-6 21-19 18-32-3-15-18-24-33-19-11 4-17 15-14 26 3 10 14 16 24 11 7-3 11-11 8-18" stroke="url(#spark)" stroke-width="6"/>
+    <path d="M64 21v12M64 95v12M21 64h12M95 64h12" stroke="#7fe7ff" stroke-width="6"/>
+    <path d="M39 29l8 10M89 29l-8 10M39 99l8-10M89 99l-8-10" stroke="#d9fbff" stroke-width="5" opacity="0.75"/>
+    <path d="M55 48h18l-11 17h15L55 93l7-23H48z" stroke="#ffd97f" stroke-width="5"/>
+    <path d="M49 19h30M49 109h30" stroke="#ffd97f" stroke-width="5" opacity="0.85"/>
+  </g>
+</svg>

@@ -26,7 +26,7 @@ public partial class EnergyTransfer : Skill
 public partial class RearlineRevival : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseRebirthHeal = 22;
+    private const int BaseRebirthHeal = 4;
 
     public RearlineRevival()
         : base(SkillTypes.Special)

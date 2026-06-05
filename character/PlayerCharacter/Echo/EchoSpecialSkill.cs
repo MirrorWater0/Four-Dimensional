@@ -76,7 +76,7 @@ public class VoidForm : Skill
 
 public partial class Purity : Skill
 {
-    private const int EnergyGain = 2;
+    private const int EnergyGain = 3;
 
     public Purity()
         : base(SkillTypes.Special)

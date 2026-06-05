@@ -3,6 +3,8 @@ using Godot;
 
 public partial class MouseTrail : CanvasLayer
 {
+    private const int CursorLayerOrder = 1000;
+
     [Export]
     private Vector2 _cursorHotspot = Vector2.Zero;
 
@@ -52,6 +54,8 @@ public partial class MouseTrail : CanvasLayer
 
     public override void _Ready()
     {
+        Layer = Math.Max(Layer, CursorLayerOrder);
+
         _targetNode = GetNodeOrNull<Node2D>("Node2D");
         _trailLine = GetNodeOrNull<Line2D>("Line2D");
         _cursor = GetNodeOrNull<Control>("Cursor");

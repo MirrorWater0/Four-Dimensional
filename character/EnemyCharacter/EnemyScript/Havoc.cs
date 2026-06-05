@@ -47,14 +47,12 @@ public partial class Havoc : EnemyCharacter
         {
             await characterControl.PlayStatusCardInsertAnimationAsync(
                 targets
-                    .Select(target =>
-                        new CharacterControl.StatusCardInsertAnimationEntry(
-                            target,
-                            SkillID.PlagueStatus,
-                            PassivePlagueCount,
-                            this
-                        )
-                    )
+                    .Select(target => new CharacterControl.StatusCardInsertAnimationEntry(
+                        target,
+                        SkillID.PlagueStatus,
+                        PassivePlagueCount,
+                        this
+                    ))
                     .ToArray()
             );
         }
@@ -83,7 +81,7 @@ public partial class HavocRegedit : EnemyRegedit
         MaxLife = 245;
         Power = 13;
         Survivability = 12;
-        Speed = 13;
+        Speed = 23;
         SkillIDs = [SkillID.HavocAttack, SkillID.HavocSurvive, SkillID.HavocSpecial];
 
         PassiveName = global::Havoc.PassiveNameText;
@@ -124,14 +122,15 @@ public partial class HavocSurvive : Skill
         UpdateDescription();
     }
 
-    public override string SkillName { get; set; } = "白壳闭合";
+    public override string SkillName { get; set; } = "天灾之证";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
+            ModifyPropertyStep(PropertyType.Power, 1)
         );
     }
 }

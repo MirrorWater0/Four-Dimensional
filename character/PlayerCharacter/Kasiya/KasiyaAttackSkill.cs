@@ -108,7 +108,7 @@ public partial class Vower : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            CarryStep(target: TargetReference.Previous, skillIndex: 2)
+            CarryStep(target: TargetReference.ManualFriendly, skillIndex: 2)
         );
     }
 }

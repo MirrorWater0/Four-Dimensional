@@ -77,6 +77,7 @@ public partial class Skill
     public virtual int EnergyCost => GetDefaultEnergyCost();
     public virtual bool ExhaustsAfterUse => false;
     public virtual bool ExhaustsAtTurnEndInHand => false;
+    public virtual bool TriggersAtTurnEndInHand => false;
     public virtual bool CanBePlayed => SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
     public bool IsStatusCard => SkillType == SkillTypes.Status;
     public bool Enable;
@@ -498,7 +499,8 @@ public partial class Skill
 
     private Character[] GetHostileTargetsInTeamOrder(
         bool dyingFilter,
-        bool returnDummyWhenEmpty = false
+        bool returnDummyWhenEmpty = false,
+        bool applyTaunt = false
     )
     {
         if (OwnerCharater?.BattleNode == null)
@@ -513,7 +515,7 @@ public partial class Skill
             orderedTargets,
             returnDummyWhenEmpty,
             OwnerCharater.BattleNode?.dummy,
-            applyTaunt: false
+            applyTaunt
         );
     }
 

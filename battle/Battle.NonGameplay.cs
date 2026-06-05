@@ -579,6 +579,26 @@ public partial class Battle
         );
     }
 
+    public void RecordDebuffImmunityConsume(
+        Character target,
+        Buff.BuffName? blockedBuffName = null,
+        Character source = null
+    )
+    {
+        if (target == null)
+            return;
+
+        string sourceText = FormatRecordSource(source);
+        string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
+        string blockedText = blockedBuffName.HasValue
+            ? blockedBuffName.Value.GetDescription()
+            : "负面状态";
+        AppendRecordLine(
+            $"{sourceText} -> {targetText}  被{Buff.BuffName.DebuffImmunity.GetDescription()} [color={RecordNeutralColor}]抵消[/color] {blockedText}",
+            indent: true
+        );
+    }
+
     public void RecordStatusCardInsert(
         Character target,
         SkillID skillId,
