@@ -18,6 +18,7 @@ obj/
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Temporary / backup files
 *.tmp
