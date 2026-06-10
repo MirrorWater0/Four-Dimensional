@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class BattlePreview : Control
@@ -27,11 +28,8 @@ public partial class BattlePreview : Control
     private Control EnemyFrame => field ??= GetNode<Control>("EnemyFrame");
     private Control VsLabel => field ??= GetNode<Control>("VSLabel");
     private Control PlayerSpeedPanel => field ??= GetNode<Control>("PlayerSpeedPanel");
-    private Control EnemySpeedPanel => field ??= GetNode<Control>("EnemySpeedPanel");
     private RichTextLabel PlayerSpeedLabel =>
         field ??= GetNode<RichTextLabel>("PlayerSpeedPanel/PlayerSpeedLabel");
-    private RichTextLabel EnemySpeedLabel =>
-        field ??= GetNode<RichTextLabel>("EnemySpeedPanel/EnemySpeedLabel");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("ExitButton");
     Map MapNode => field ??= GetNode<Map>("/root/Map");
@@ -93,6 +91,8 @@ public partial class BattlePreview : Control
         }
 
         EnsureTipLayer();
+        if (PlayerSpeedPanel != null)
+            PlayerSpeedPanel.Visible = false;
         exitButton.PressedActions.Add(Close);
         Modulate = Modulate with { A = 0.0f };
         SetControlAlpha(BackgroundPanel, 0.0f);
@@ -255,8 +255,6 @@ public partial class BattlePreview : Control
             new AssemblyItem(EnemyFrame, new Vector2(90f, 20f), 0.08f),
             new AssemblyItem(FormationContainer, new Vector2(0f, 32f), 0.12f),
             new AssemblyItem(VsLabel, new Vector2(0f, 24f), 0.16f),
-            new AssemblyItem(PlayerSpeedPanel, new Vector2(-70f, 18f), 0.2f),
-            new AssemblyItem(EnemySpeedPanel, new Vector2(70f, 18f), 0.2f),
             new AssemblyItem(StartBattleButton, new Vector2(0f, 40f), 0.24f),
         ];
     }
@@ -444,7 +442,11 @@ public partial class BattlePreview : Control
             var enemyPath = WhichNode.EnemiesRegeditList[i].PortaitPath;
             portrait.PortaitRect.Texture = PreloadeScene.GetTexture(enemyPath);
             portrait.PortaitIndex = i;
-            var positionindex = WhichNode.EnemiesRegeditList[i].PositionIndex;
+            var positionindex = Battle.ResolveEnemyFormationPositionIndex(
+                WhichNode?.Type,
+                WhichNode?.EnemiesRegeditList?.Count ?? 0,
+                WhichNode.EnemiesRegeditList[i].PositionIndex
+            );
 
             var tips = BuildEnemyPortraitTips(i);
             if (tips != null)
@@ -458,7 +460,6 @@ public partial class BattlePreview : Control
             EnemyFormation.GetChild(remapEnemy[positionindex] - 1).AddChild(portrait);
         }
 
-        UpdateSpeedSummary();
     }
 
     private void WirePlayerPortraitDrag(PortaitFrame portrait)
@@ -571,65 +572,6 @@ public partial class BattlePreview : Control
         SaveSystem.SaveAll();
     }
 
-    private void UpdateSpeedSummary()
-    {
-        int playerTotal = CalculatePlayerTotalSpeed();
-        int enemyTotal = CalculateEnemyTotalSpeed();
-
-        SetSpeedLabel(
-            PlayerSpeedLabel,
-            I18n.Tr("ui.battle_preview.player_speed_total", "我方总速度"),
-            playerTotal
-        );
-        SetSpeedLabel(
-            EnemySpeedLabel,
-            I18n.Tr("ui.battle_preview.enemy_speed_total", "敌方总速度"),
-            enemyTotal
-        );
-    }
-
-    private static void SetSpeedLabel(RichTextLabel label, string title, int total)
-    {
-        if (label == null)
-            return;
-
-        string text = $"{title} {total}";
-        text = GlobalFunction.ColorizeNumbers(text);
-        label.Text = text;
-    }
-
-    private static int CalculatePlayerTotalSpeed()
-    {
-        if (GameInfo.PlayerCharacters == null)
-            return 0;
-
-        int sum = 0;
-        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
-        {
-            var info = GameInfo.PlayerCharacters[i];
-            sum += TalentTree.GetEffectiveSpeed(info);
-        }
-
-        return sum;
-    }
-
-    private int CalculateEnemyTotalSpeed()
-    {
-        if (WhichNode?.EnemiesRegeditList == null)
-            return 0;
-
-        int sum = 0;
-        for (int i = 0; i < WhichNode.EnemiesRegeditList.Count; i++)
-        {
-            var regedit = WhichNode.EnemiesRegeditList[i];
-            if (regedit == null)
-                continue;
-            sum += regedit.Speed;
-        }
-
-        return sum;
-    }
-
     private (string skillText, string propertyText, string equipmentText)? BuildPlayerPortraitTips(
         int characterIndex
     )
@@ -659,7 +601,7 @@ public partial class BattlePreview : Control
             return null;
 
         string skillText = BuildEnemySkillText(regedit);
-        string propertyText = BuildEnemyPropertyText(regedit);
+        string propertyText = BuildEnemyPropertyText(regedit, WhichNode?.Type);
         return (skillText, propertyText, string.Empty);
     }
 
@@ -670,7 +612,6 @@ public partial class BattlePreview : Control
         sb.Append($"{I18n.Tr("ui.common.life", "生命")}：{info.LifeMax}\n");
         sb.Append($"{I18n.Tr("property.power", "力量")}：{info.Power}\n");
         sb.Append($"{I18n.Tr("property.survivability", "生存")}：{info.Survivability}\n");
-        sb.Append($"{I18n.Tr("property.speed", "速度")}：{info.Speed}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
@@ -678,16 +619,19 @@ public partial class BattlePreview : Control
         return text;
     }
 
-    private static string BuildEnemyPropertyText(EnemyRegedit regedit)
+    private static string BuildEnemyPropertyText(
+        EnemyRegedit regedit,
+        LevelNode.LevelType? levelType
+    )
     {
         var sb = new StringBuilder(128);
         string name = LocalizationHelper.GetEnemyDisplayName(regedit);
+        int maxLife = EnemyCharacter.GetEffectiveMaxLife(regedit, levelType);
 
         sb.Append($"[b]{name}[/b]\n");
-        sb.Append($"{I18n.Tr("ui.common.life", "生命")} {regedit.MaxLife}\n");
+        sb.Append($"{I18n.Tr("ui.common.life", "生命")} {maxLife}\n");
         sb.Append($"{I18n.Tr("property.power", "力量")} {regedit.Power}\n");
         sb.Append($"{I18n.Tr("property.survivability", "生存")} {regedit.Survivability}\n");
-        sb.Append($"{I18n.Tr("property.speed", "速度")} {regedit.Speed}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);
@@ -710,7 +654,7 @@ public partial class BattlePreview : Control
         );
     }
 
-    private static string BuildEnemySkillText(EnemyRegedit regedit)
+    private string BuildEnemySkillText(EnemyRegedit regedit)
     {
         string name = LocalizationHelper.GetEnemyDisplayName(regedit);
         string passiveName = LocalizationHelper.GetEnemyPassiveName(regedit);
@@ -722,9 +666,20 @@ public partial class BattlePreview : Control
 
         var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
         var skills = ids.Select(Skill.GetSkill).Where(x => x != null).ToArray();
+        bool useEnemySkillDamageScaling =
+            WhichNode?.Type != LevelNode.LevelType.Elite
+            && WhichNode?.Type != LevelNode.LevelType.Boss;
         foreach (var skill in skills)
         {
-            skill.SetPreviewStats(regedit.Power, regedit.Survivability, 1, isPlayer: false);
+            skill.SetPreviewStats(
+                regedit.Power,
+                regedit.Survivability,
+                1,
+                isPlayer: false,
+                useEnemySkillDamageScaling: useEnemySkillDamageScaling,
+                basePowerContribution: regedit.BasePowerContribution,
+                baseSurvivabilityContribution: regedit.BaseSurvivabilityContribution
+            );
             skill.UpdateDescription();
         }
 
@@ -753,7 +708,6 @@ public partial class BattlePreview : Control
 
         const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
-        const string energyCostNumberColor = "#ffd36b";
         const int skillNameFontSize = 32;
 
         for (int i = 0; i < skills.Length; i++)
@@ -767,9 +721,6 @@ public partial class BattlePreview : Control
 
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
-            );
-            sb.Append(
-                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", $"[color={energyCostNumberColor}]{skill.CardEnergyCostText}[/color]"))}\n"
             );
 
             if (!string.IsNullOrWhiteSpace(skill.Description))
@@ -1005,33 +956,47 @@ public partial class BattlePreview : Control
         }
     }
 
-    public void StartBattle()
+    public async void StartBattle()
     {
+        StartBattleButton.Disabled = true;
         Tween tween = CreateTween();
         tween.TweenProperty(tex, "scale", new Vector2(1f, 1f), 0.4f);
-        MapNode.BlackMaskAnimation(0.4f);
+        SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
         GlobalFunction.TweenShader(tex, "cut_x", 1f, 0.3f);
         GlobalFunction.TweenShader(tex, "cut_y", 1f, 0.3f);
-        tween
-            .Chain()
-            .TweenCallback(
-                Callable.From(() =>
-                {
-                    var layer = new CanvasLayer();
-                    layer.Layer = 4;
-                    GetTree().Root.AddChild(layer);
-                    exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
+        if (transitionLayer != null)
+            await transitionLayer.FadeToBlackAsync(0.4f);
+        if (tween != null && GodotObject.IsInstanceValid(tween) && tween.IsRunning())
+            await ToSignal(tween, Tween.SignalName.Finished);
+        if (!GodotObject.IsInstanceValid(this))
+        {
+            if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
+                await transitionLayer.FadeFromBlackAsync(0.24f);
+            return;
+        }
 
-                    var battle =
-                        PreloadeScene.GetPackedScene("res://battle/Battle.tscn")
-                            ?.Instantiate() as Battle;
-                    if (battle == null)
-                        return;
-                    battle.BattleIntentionRandom = new Random(RandomNum);
-                    battle.CurrentLevelNode = WhichNode;
-                    layer.AddChild(battle);
-                    Close();
-                })
-            );
+        var layer = new CanvasLayer();
+        layer.Layer = 4;
+        GetTree().Root.AddChild(layer);
+        if (exitButton.PressedActions.Count > 0)
+            exitButton.PressedActions.RemoveAt(exitButton.PressedActions.Count - 1);
+
+        var battle =
+            PreloadeScene.GetPackedScene("res://battle/Battle.tscn")
+                ?.Instantiate() as Battle;
+        if (battle == null)
+        {
+            layer.QueueFree();
+            StartBattleButton.Disabled = false;
+            if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
+                await transitionLayer.FadeFromBlackAsync(0.24f);
+            return;
+        }
+        battle.BattleIntentionRandom = new Random(RandomNum);
+        battle.CurrentLevelNode = WhichNode;
+        layer.AddChild(battle);
+        Close();
+        if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
+            await transitionLayer.FadeFromBlackAsync(0.24f);
     }
 }

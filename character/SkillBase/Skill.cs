@@ -24,11 +24,15 @@ public enum PropertyType
 public partial class Skill
 {
     public const int XEnergyCost = -1;
+    private const float EnemySkillDamageMultiplier = 1f;
 
     private int _previewPower;
     private int _previewSurvivability;
+    private int _previewBasePowerContribution;
+    private int _previewBaseSurvivabilityContribution;
     private int _previewEnergy = 1;
     private bool _previewIsPlayer = true;
+    private bool _previewUsesEnemySkillDamageScaling = true;
 
     public static PackedScene AttackScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/AttackEffect.tscn"
@@ -175,6 +179,7 @@ public partial class Skill
             _prepaidDisplayedEnergy = 0;
             _paidEnergyForCurrentEffect = 0;
             _previewableRandomHostileTargets.Clear();
+            ClearLockedExecutionTargets();
             ClearManualFriendlyTarget();
         }
     }
@@ -223,18 +228,34 @@ public partial class Skill
     /// <summary>
     /// For non-battle usage (e.g. previews), set preview stats so UpdateDescription can work without a Character instance.
     /// </summary>
-    public void SetPreviewStats(int power, int survivability, int energy = 1, bool isPlayer = true)
+    public void SetPreviewStats(
+        int power,
+        int survivability,
+        int energy = 1,
+        bool isPlayer = true,
+        bool? useEnemySkillDamageScaling = null,
+        int basePowerContribution = 0,
+        int baseSurvivabilityContribution = 0
+    )
     {
         _previewPower = power;
         _previewSurvivability = survivability;
+        _previewBasePowerContribution = basePowerContribution;
+        _previewBaseSurvivabilityContribution = baseSurvivabilityContribution;
         _previewEnergy = energy;
         _previewIsPlayer = isPlayer;
+        _previewUsesEnemySkillDamageScaling = useEnemySkillDamageScaling ?? !isPlayer;
     }
 
-    protected int OwnerPower => OwnerCharater != null ? OwnerCharater.BattlePower : _previewPower;
+    protected int OwnerPower =>
+        OwnerCharater != null
+            ? OwnerCharater.GetEffectivePowerForSkillScaling()
+            : _previewPower + _previewBasePowerContribution;
     protected int OwnerSurvivability =>
-        OwnerCharater != null ? OwnerCharater.BattleSurvivability : _previewSurvivability;
-    protected int OwnerEnergy => OwnerCharater?.Energy ?? _previewEnergy;
+        OwnerCharater != null
+            ? OwnerCharater.GetEffectiveSurvivabilityForSkillScaling()
+            : _previewSurvivability + _previewBaseSurvivabilityContribution;
+    protected int OwnerEnergy => OwnerCharater?.CurrentEnergy ?? _previewEnergy;
     protected bool IsInBattle => OwnerCharater?.BattleNode != null;
     public int RequiredEnergyCost => EnergyCost;
     public int CardEnergyCost => UsesXEnergyCost ? 1 : RequiredEnergyCost;
@@ -246,7 +267,30 @@ public partial class Skill
     protected int DamageFromPower(int baseDamage = 0, int multiplier = 1, int clampMax = 9999)
     {
         int damage = baseDamage + OwnerPower * multiplier;
-        return Math.Clamp(damage, 0, clampMax);
+        return ApplyOwnerSkillDamageScaling(Math.Clamp(damage, 0, clampMax));
+    }
+
+    private bool UsesEnemySkillDamageScaling()
+    {
+        if (OwnerCharater != null)
+        {
+            if (OwnerCharater.IsPlayer)
+                return false;
+
+            var levelType = OwnerCharater.BattleNode?.CurrentLevelNode?.Type;
+            return levelType != LevelNode.LevelType.Elite && levelType != LevelNode.LevelType.Boss;
+        }
+
+        return !_previewIsPlayer && _previewUsesEnemySkillDamageScaling;
+    }
+
+    private int ApplyOwnerSkillDamageScaling(int damage)
+    {
+        damage = Math.Max(0, damage);
+        if (damage <= 0 || !UsesEnemySkillDamageScaling())
+            return damage;
+
+        return Math.Max(1, (int)MathF.Ceiling(damage * EnemySkillDamageMultiplier));
     }
 
     protected int BlockFromSurvivability(
@@ -262,7 +306,7 @@ public partial class Skill
     internal int GetPaidEnergyLoopCount()
     {
         if (IsEnergyCostWaived)
-            return Math.Max(0, OwnerCharater?.Energy ?? 0);
+            return Math.Max(0, OwnerCharater?.CurrentEnergy ?? 0);
 
         if (_paidEnergyForCurrentEffect > 0)
             return Math.Max(0, _paidEnergyForCurrentEffect);
@@ -270,7 +314,7 @@ public partial class Skill
         if (OwnerCharater == null)
             return 0;
 
-        return Math.Max(0, OwnerCharater.Energy);
+        return Math.Max(0, OwnerCharater.CurrentEnergy);
     }
 
     internal IDisposable BeginEnergyCostWaiver()
@@ -305,7 +349,7 @@ public partial class Skill
         if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
             return false;
 
-        return CanUseEnergy(OwnerCharater.Energy);
+        return CanUseEnergy(OwnerCharater.CurrentEnergy);
     }
 
     public bool CanUseEnergy(int availableEnergy)
@@ -328,8 +372,9 @@ public partial class Skill
         if (CardEnergyCost <= 0)
             return true;
 
-        int paymentCost = UsesXEnergyCost ? OwnerCharater?.Energy ?? 0 : CardEnergyCost;
-        if (OwnerCharater == null || OwnerCharater.Energy < CardEnergyCost)
+        int availableEnergy = OwnerCharater?.CurrentEnergy ?? 0;
+        int paymentCost = UsesXEnergyCost ? availableEnergy : CardEnergyCost;
+        if (OwnerCharater == null || availableEnergy < CardEnergyCost)
             return false;
 
         if (paymentCost <= 0)
@@ -368,7 +413,7 @@ public partial class Skill
                 return true;
             }
 
-            int paymentCost = OwnerCharater.Energy;
+            int paymentCost = OwnerCharater.CurrentEnergy;
             if (paymentCost <= 0)
                 return false;
 
@@ -387,7 +432,7 @@ public partial class Skill
             return true;
         }
 
-        if (OwnerCharater.Energy < cost)
+        if (OwnerCharater.CurrentEnergy < cost)
             return false;
 
         OwnerCharater.UpdataEnergy(-cost, OwnerCharater);
@@ -412,12 +457,6 @@ public partial class Skill
             _ => 0,
         };
     }
-
-    private static int GetBattleRow(int positionIndex) =>
-        positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
-
-    private static int GetBattleCol(int positionIndex) =>
-        positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
 
     private static bool HasInvisibleBuff(Character target) =>
         target?.StartActionBuffs?.Any(buff =>
@@ -466,8 +505,6 @@ public partial class Skill
         if (owner?.BattleNode == null)
             return Array.Empty<Character>();
 
-        int attackerRow = GetBattleRow(owner.PositionIndex);
-
         IEnumerable<Character> source = owner
             .BattleNode.GetOrderedTeamCharacters(
                 !owner.IsPlayer,
@@ -480,14 +517,8 @@ public partial class Skill
             source = source.Where(target => target.State == Character.CharacterState.Normal);
 
         IEnumerable<Character> ordered = byBehindRow
-            ? source
-                .OrderBy(target => Math.Abs(GetBattleRow(target.PositionIndex) - attackerRow))
-                .ThenBy(target => GetBattleRow(target.PositionIndex))
-                .ThenByDescending(target => GetBattleCol(target.PositionIndex))
-            : source
-                .OrderBy(target => Math.Abs(GetBattleRow(target.PositionIndex) - attackerRow))
-                .ThenBy(target => GetBattleRow(target.PositionIndex))
-                .ThenBy(target => GetBattleCol(target.PositionIndex));
+            ? source.OrderByDescending(target => target.PositionIndex)
+            : source.OrderBy(target => target.PositionIndex);
 
         return FilterHostileTargetSequence(
             ordered,
@@ -721,15 +752,9 @@ public partial class Skill
 
     private static Vector2 ComputeBattlePosition(int positionIndex, bool isPlayer)
     {
-        float bGapY = 140f;
-        float bGapX = 280f;
-        float bSkew = 10f;
-        int row = positionIndex > 0 ? (positionIndex - 1) % 3 : 0;
-        int col = positionIndex > 0 ? (positionIndex - 1) / 3 : 0;
+        int slot = positionIndex > 0 ? positionIndex - 1 : 0;
         int side = isPlayer ? -1 : 1;
-        float xPos = col * bGapX * side - (row * bSkew - 100 * (row - 1));
-        float yPos = row * bGapY;
-        return new Vector2(xPos, yPos);
+        return new Vector2(slot * Battle.FormationGapX * side, 0f);
     }
 
     private static void UpdateZIndexByPosition(Character character)
@@ -737,8 +762,7 @@ public partial class Skill
         if (character == null)
             return;
 
-        int row = character.PositionIndex > 0 ? (character.PositionIndex - 1) % 3 : 0;
-        character.ZIndex = row;
+        character.ZIndex = Math.Max(character.PositionIndex, 0);
     }
 
     private static bool TryGetProgressMaterial(Node sprite, out ShaderMaterial material)
@@ -1218,6 +1242,10 @@ public partial class Skill
             SkillID.BasicDefense => new BasicDefense(),
             SkillID.BasicGuard => new BasicGuard(),
             SkillID.BasicSpecial => new BasicSpecial(),
+            SkillID.KasiyaBasicSpecial => new KasiyaBasicSpecial(),
+            SkillID.EchoBasicSpecial => new EchoBasicSpecial(),
+            SkillID.MariyaBasicSpecial => new MariyaBasicSpecial(),
+            SkillID.NightingaleBasicSpecial => new NightingaleBasicSpecial(),
             _ => null,
         };
 
@@ -1652,6 +1680,18 @@ public enum SkillID
     BasicDefense = 72,
     BasicSpecial = 73,
     BasicGuard = 112,
+
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    KasiyaBasicSpecial = 163,
+
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    EchoBasicSpecial = 164,
+
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    MariyaBasicSpecial = 165,
+
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    NightingaleBasicSpecial = 166,
     #endregion
 
     #endregion

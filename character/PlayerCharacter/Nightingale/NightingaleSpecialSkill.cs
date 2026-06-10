@@ -47,7 +47,7 @@ public partial class TempoSurge : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Survivability, 3, TargetReference.All)
+            ModifyPropertyStep(PropertyType.Survivability, 2, TargetReference.All)
         );
     }
 }
@@ -79,9 +79,6 @@ public partial class RequiemBloom : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int PowerGain = 2;
-    public override bool ExhaustsAfterUse => true;
-
-    private const int ExtraTurnStacks = 1;
 
     public RequiemBloom()
         : base(SkillTypes.Special)
@@ -90,28 +87,23 @@ public partial class RequiemBloom : Skill
     }
 
     public override string SkillName { get; set; } = "安魂花";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 0;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, PowerGain),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.ExtraTurn,
-                stacks: ExtraTurnStacks,
-                target: TargetReference.Self
-            )
+            DiscardCardsStep(2)
         );
     }
 }
 
 public partial class CurtainCallMoment : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int WeakenStacks = 1;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    private const int WeakenStacks = 2;
     private const int InvisibleStacks = 2;
-    private const int ExtraTurnStacks = 1;
     public override bool ExhaustsAfterUse => true;
 
     public CurtainCallMoment()
@@ -136,11 +128,6 @@ public partial class CurtainCallMoment : Skill
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
-            ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.ExtraTurn,
-                stacks: ExtraTurnStacks,
-                target: TargetReference.Next
             )
         );
     }
@@ -150,7 +137,7 @@ public partial class SunMoonCycle : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int DrawCount = 2;
-    private const int CardRefreshStacks = 2;
+    private const int CardRefreshStacks = 1;
 
     public SunMoonCycle()
         : base(SkillTypes.Special)
@@ -196,7 +183,7 @@ public partial class Swift : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Swift,
                 stacks: SwiftStacks,
-                target: TargetReference.All
+                target: TargetReference.ManualFriendly
             )
         );
     }
@@ -214,7 +201,7 @@ public partial class ShadowForm : Skill
     }
 
     public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -311,7 +298,7 @@ public partial class BrightestMoment : Skill
 public partial class EternalDarkSkill : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EternalDarkStacks = 1;
+    private const int EternalDarkStacks = 2;
 
     public EternalDarkSkill()
         : base(SkillTypes.Special)
@@ -327,11 +314,6 @@ public partial class EternalDarkSkill : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Invisible,
-                stacks: 1,
-                target: TargetReference.Self
-            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.EternalDark,
                 stacks: EternalDarkStacks,

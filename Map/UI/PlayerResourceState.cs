@@ -6,27 +6,18 @@ public partial class PlayerResourceState : CanvasLayer
 {
     private static readonly PackedScene MenuScene = GD.Load<PackedScene>("res://Menu/Menu.tscn");
     private const long MaxDisplayHours = 99;
-    private const float CoreEnergyShakeOffset = 7f;
-    private const float CoreEnergyShakeDuration = 0.07f;
-    private const float CoreEnergyFlashDuration = 0.3f;
-    private static readonly Color CoreEnergyGainColor = new(0.52f, 1f, 0.64f, 1f);
-    private static readonly Color CoreEnergyLossColor = new(1f, 0.46f, 0.46f, 1f);
-    private static readonly Color CoreEnergyBaseColor = Colors.White;
-    private static readonly Color CoreEnergyBaseBorderColor = new(
-        0.46666667f,
-        0.85490197f,
-        1f,
-        0.72f
-    );
-    private static readonly Color CoreEnergyBaseFillColor = new(0.5310346f, 0.76356995f, 0.8728643f, 0.9f);
 
-    private Tween _coreEnergyTween;
-    private StyleBoxFlat _coreEnergyBackgroundStyle;
-    private StyleBoxFlat _coreEnergyFillStyle;
-    private int _lastTransitionEnergy = -1;
+    private readonly List<PartyLifeSlot> _partyLifeSlots = new();
     private readonly List<ResourceVisibilitySnapshot> _mapPeekHiddenResources = new();
     private Tip _mapPeekTip;
     private bool _mapPeekButtonHovered;
+
+    private sealed class PartyLifeSlot
+    {
+        public HBoxContainer Root;
+        public Label NameLabel;
+        public Label ValueLabel;
+    }
 
     private sealed class ResourceVisibilitySnapshot
     {
@@ -54,12 +45,11 @@ public partial class PlayerResourceState : CanvasLayer
 
     public int TransitionEnergy
     {
-        get => GameInfo.TransitionEnergy;
+        get => GameInfo.GetPartyLife();
         set
         {
-            value = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
-            GameInfo.TransitionEnergy = value;
-            RefreshTransitionEnergyUI(value);
+            GameInfo.SetPartyLifeTotal(value);
+            RefreshPartyLifeResource();
         }
     }
 
@@ -69,28 +59,23 @@ public partial class PlayerResourceState : CanvasLayer
         set => TransitionEnergy = value;
     }
 
-    public int TransistionEnergyMax => GameInfo.TransitionEnergyMax;
-    public int CoreEnergyMax => GameInfo.TransitionEnergyMax;
+    public int TransistionEnergyMax => GameInfo.GetPartyMaxLife();
+    public int CoreEnergyMax => GameInfo.GetPartyMaxLife();
 
     public Control TransitionEnergyControl => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = GetNodeOrNull<Control>("TransitionEnergyControl");
 
-    private ProgressBar CoreEnergyBar => field is not null
-        && GodotObject.IsInstanceValid(field)
-        ? field
-        : field = TransitionEnergyControl?.GetNodeOrNull<ProgressBar>("CoreEnergyBar");
-
-    private Label CoreEnergyValueLabel => field is not null
-        && GodotObject.IsInstanceValid(field)
-        ? field
-        : field = TransitionEnergyControl?.GetNodeOrNull<Label>("CoreEnergyValue");
-
     private Label CoreEnergyNameLabel => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = TransitionEnergyControl?.GetNodeOrNull<Label>("Label");
+
+    private Label DifficultyLabel => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = TransitionEnergyControl?.GetNodeOrNull<Label>("Difficulty");
 
     public ColorRect ElectricityCoinIcon => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -151,7 +136,7 @@ public partial class PlayerResourceState : CanvasLayer
         EnsureMenuOverlay();
         ElectricityCoin = GameInfo.ElectricityCoin;
         InitTransitionEnergyMax();
-        TransitionEnergy = GameInfo.TransitionEnergy;
+        RefreshPartyLifeResource();
         InitRelic();
         InitItems();
         RefreshStatusPanel();
@@ -234,52 +219,112 @@ public partial class PlayerResourceState : CanvasLayer
         }
     }
 
-    public void InitTransitionEnergyMax()
+    public void InitTransitionEnergyMax(bool resetPreviousValue = true)
     {
-        var bar = CoreEnergyBar;
-        if (bar == null || !GodotObject.IsInstanceValid(bar) || !bar.IsInsideTree())
+        if (TransitionEnergyControl == null || !GodotObject.IsInstanceValid(TransitionEnergyControl))
             return;
 
-        bar.MinValue = 0;
-        bar.MaxValue = Math.Max(1, GameInfo.TransitionEnergyMax);
-        bar.ShowPercentage = false;
-        bar.SelfModulate = CoreEnergyBaseColor;
-        _coreEnergyBackgroundStyle = DuplicateBarStyle(bar, "background");
-        _coreEnergyFillStyle = DuplicateBarStyle(bar, "fill");
-        ResetCoreEnergyBarVisuals();
         if (CoreEnergyNameLabel != null)
-            CoreEnergyNameLabel.Text = I18n.Tr("ui.common.core_energy", "核心能源");
-        _lastTransitionEnergy = -1;
+            CoreEnergyNameLabel.Text = I18n.Tr("ui.common.party_life", "队伍生命");
+        EnsurePartyLifeSlots();
     }
 
     private void RefreshTransitionEnergyUI(int value)
     {
-        var bar = CoreEnergyBar;
-        if (bar == null || !GodotObject.IsInstanceValid(bar) || !bar.IsInsideTree())
+        if (TransitionEnergyControl == null || !GodotObject.IsInstanceValid(TransitionEnergyControl))
             return;
 
-        int previousValue = _lastTransitionEnergy;
-        bar.MaxValue = Math.Max(1, GameInfo.TransitionEnergyMax);
-        bar.Value = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
-        if (CoreEnergyValueLabel != null)
-            CoreEnergyValueLabel.Text = $"{value}/{GameInfo.TransitionEnergyMax}";
+        GameInfo.NormalizePlayerCharacters();
+        EnsurePartyLifeSlots();
 
-        if (previousValue >= 0 && previousValue != value)
-            AnimateCoreEnergyChange(previousValue, value);
+        int totalLife = GameInfo.GetPartyLife();
+        int totalMaxLife = Math.Max(1, GameInfo.GetPartyMaxLife());
+        GameInfo.TransitionEnergy = totalLife;
+        GameInfo.TransitionEnergyMax = totalMaxLife;
 
-        _lastTransitionEnergy = value;
+        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+        for (int i = 0; i < _partyLifeSlots.Count; i++)
+        {
+            var slot = _partyLifeSlots[i];
+            if (slot?.Root == null || !GodotObject.IsInstanceValid(slot.Root))
+                continue;
+
+            bool hasPlayer = i < players.Length;
+            slot.Root.Visible = hasPlayer;
+            if (!hasPlayer)
+                continue;
+
+            var info = players[i];
+            int lifeMax = Math.Max(1, info.LifeMax);
+            int life = Math.Clamp(info.Life, 0, lifeMax);
+            slot.NameLabel.Text = BuildPartyLifeSlotName(info, i);
+            slot.ValueLabel.Text = $"{life}/{lifeMax}";
+        }
     }
 
     public void RefreshDebugView()
     {
         ElectricityCoinIcon.GetChild<Label>(0).Text = GameInfo.ElectricityCoin.ToString();
         InitTransitionEnergyMax();
-        TransitionEnergy = GameInfo.TransitionEnergy;
+        RefreshPartyLifeResource();
         ClearRelicIcons();
         InitRelic();
         ClearItemIcons();
         InitItems();
         RefreshStatusPanel();
+    }
+
+    public void RefreshPartyLifeResource()
+    {
+        InitTransitionEnergyMax(resetPreviousValue: false);
+        RefreshTransitionEnergyUI(GameInfo.GetPartyLife());
+    }
+
+    private void EnsurePartyLifeSlots()
+    {
+        var control = TransitionEnergyControl;
+        if (control == null || !GodotObject.IsInstanceValid(control))
+            return;
+
+        GameInfo.NormalizePlayerCharacters();
+        int requiredCount = GameInfo.PlayerCharacters?.Length ?? 0;
+        if (_partyLifeSlots.Count == 0)
+            BindPartyLifeSlots();
+
+        for (int i = 0; i < _partyLifeSlots.Count; i++)
+        {
+            var slot = _partyLifeSlots[i];
+            if (slot?.Root == null || !GodotObject.IsInstanceValid(slot.Root))
+                continue;
+            slot.Root.Visible = i < requiredCount;
+        }
+    }
+
+    private void BindPartyLifeSlots()
+    {
+        for (int i = 1; i <= GameInfo.DefaultPlayerPartySize; i++)
+        {
+            var root = TransitionEnergyControl.GetNodeOrNull<HBoxContainer>($"PartyLifeSlot{i}");
+            if (root == null)
+                continue;
+
+            _partyLifeSlots.Add(
+                new PartyLifeSlot
+                {
+                    Root = root,
+                    NameLabel = root.GetNodeOrNull<Label>("Name"),
+                    ValueLabel = root.GetNodeOrNull<Label>("Value"),
+                }
+            );
+        }
+    }
+
+    private static string BuildPartyLifeSlotName(PlayerInfoStructure info, int index)
+    {
+        if (!string.IsNullOrWhiteSpace(info.CharacterName))
+            return info.CharacterName;
+
+        return $"P{index + 1}";
     }
 
     private void OnMenuButtonPressed()
@@ -528,92 +573,4 @@ public partial class PlayerResourceState : CanvasLayer
         TimerValueLabel.Modulate = new Color(0.92f, 0.96f, 1f, 1f);
     }
 
-    private void AnimateCoreEnergyChange(int previousValue, int value)
-    {
-        var bar = CoreEnergyBar;
-        if (bar == null || !GodotObject.IsInstanceValid(bar))
-            return;
-
-        bool gained = value > previousValue;
-        Color flashColor = gained ? CoreEnergyGainColor : CoreEnergyLossColor;
-
-        _coreEnergyTween?.Kill();
-        bar.SelfModulate = flashColor;
-        Vector2 basePosition = TransitionEnergyControl?.Position ?? bar.Position;
-        Node targetPositionNode = TransitionEnergyControl ?? bar;
-
-        var tween = CreateTween();
-        _coreEnergyTween = tween;
-        tween.SetEase(Tween.EaseType.Out);
-        tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.SetParallel(true);
-        tween.TweenProperty(bar, "self_modulate", CoreEnergyBaseColor, CoreEnergyFlashDuration);
-        TweenStyleColor(tween, _coreEnergyBackgroundStyle, "border_color", CoreEnergyBaseBorderColor, flashColor);
-        TweenStyleColor(tween, _coreEnergyFillStyle, "bg_color", CoreEnergyBaseFillColor, flashColor);
-
-        tween.SetParallel(false);
-        tween.TweenProperty(
-            targetPositionNode,
-            "position",
-            basePosition + new Vector2(-CoreEnergyShakeOffset, 0f),
-            CoreEnergyShakeDuration
-        );
-        tween.TweenProperty(
-            targetPositionNode,
-            "position",
-            basePosition + new Vector2(CoreEnergyShakeOffset, 0f),
-            CoreEnergyShakeDuration
-        );
-        tween.TweenProperty(
-            targetPositionNode,
-            "position",
-            basePosition + new Vector2(-CoreEnergyShakeOffset * 0.55f, 0f),
-            CoreEnergyShakeDuration
-        );
-        tween.TweenProperty(targetPositionNode, "position", basePosition, CoreEnergyShakeDuration);
-        tween.Finished += () =>
-        {
-            if (bar != null && GodotObject.IsInstanceValid(bar))
-                bar.SelfModulate = CoreEnergyBaseColor;
-            if (targetPositionNode != null && GodotObject.IsInstanceValid(targetPositionNode))
-                targetPositionNode.Set("position", basePosition);
-            ResetCoreEnergyBarVisuals();
-        };
-    }
-
-    private static StyleBoxFlat DuplicateBarStyle(ProgressBar bar, string styleName)
-    {
-        if (bar?.GetThemeStylebox(styleName) is not StyleBoxFlat style)
-            return null;
-
-        var duplicate = style.Duplicate() as StyleBoxFlat;
-        if (duplicate == null)
-            return null;
-
-        bar.AddThemeStyleboxOverride(styleName, duplicate);
-        return duplicate;
-    }
-
-    private static void TweenStyleColor(
-        Tween tween,
-        StyleBoxFlat style,
-        string property,
-        Color baseColor,
-        Color flashColor
-    )
-    {
-        if (tween == null || style == null)
-            return;
-
-        style.Set(property, flashColor);
-        tween.Parallel().TweenProperty(style, property, baseColor, CoreEnergyFlashDuration);
-    }
-
-    private void ResetCoreEnergyBarVisuals()
-    {
-        if (_coreEnergyBackgroundStyle != null)
-            _coreEnergyBackgroundStyle.BorderColor = CoreEnergyBaseBorderColor;
-        if (_coreEnergyFillStyle != null)
-            _coreEnergyFillStyle.BgColor = CoreEnergyBaseFillColor;
-    }
 }

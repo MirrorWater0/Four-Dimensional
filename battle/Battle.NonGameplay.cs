@@ -1,10 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Battle
 {
+    private static readonly PackedScene ManualTargetArrowScene = GD.Load<PackedScene>(
+        "res://battle/UIScene/ManualTarget/ManualTargetArrowView.tscn"
+    );
+
     public event Action<Character, PropertyType, int, Character> PropertyIncreased;
 
     private sealed class EffectSourceContext
@@ -43,6 +48,14 @@ public partial class Battle
         public Character TargetCharacter { get; }
         public int ActualDamage { get; }
         public int BlockedDamage { get; }
+    }
+
+    private sealed class SingleTargetDamageIntentionArrow
+    {
+        public IIntentionPreviewSource Source;
+        public Character Target;
+        public ManualTargetArrowView View;
+        public Vector2 StartPosition;
     }
 
     private sealed class EffectSourceScope : IDisposable
@@ -92,14 +105,17 @@ public partial class Battle
     private const string RecordDamageColor = "#ff7b7b";
     private const string RecordHealColor = "#6bff8f";
     private const string RecordNeutralColor = "#d9e2f2";
-    private const string ActionPoinTooltipText =
-        "[b]行动点与速度[/b]\n"
-        + "条上数字是当前行动点，括号里是该阵营存活成员的总速度。\n\n"
-        + "角色行动结束后，所属阵营按总速度累积行动点。达到 100 时，该阵营获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点额外抽卡。";
-
+    private const int IncomingDamagePreviewLayerOrder = 40;
+    private const string IncomingDamagePreviewLayerName = "IncomingDamagePreviewLayer";
+    private const int SingleTargetDamageIntentionArrowLayerOrder = 4;
+    private const string SingleTargetDamageIntentionArrowLayerName =
+        "SingleTargetDamageIntentionArrowLayer";
+    private static readonly Vector2 IncomingDamagePreviewOffset = new(0f, -240f);
+    private static readonly Vector2 IntentionArrowTargetOffset = new(0f, -170f);
+    private static readonly Vector2 IntentionArrowSourceGap = new(-26f, 0f);
+    private static readonly Color IntentionArrowColor = new(1f, 0.26f, 0.22f, 0.84f);
+    private static readonly Color IntentionArrowShadowColor = new(0.06f, 0.0f, 0.0f, 0.68f);
     private bool _recordInitialized;
-    private bool _actionPoinTooltipInitialized;
-    private Tip _actionPoinTooltip;
     private bool _recordVisible;
     private float _recordVisibleLeft;
     private float _recordVisibleRight;
@@ -111,6 +127,10 @@ public partial class Battle
     private readonly List<EffectSourceContext> _effectSourceStack = new();
     private readonly List<DamageRecordEntry> _damageRecords = new();
     private readonly Dictionary<Character, int> _playerDamageTotals = new();
+    private readonly List<VBoxContainer> _incomingDamagePreviewPanels = new();
+    private readonly List<SingleTargetDamageIntentionArrow> _singleTargetDamageIntentionArrows =
+        new();
+    private bool _suppressIncomingDamagePreview;
 
     public bool HasEffectSourceContext => _effectSourceStack.Count > 0;
 
@@ -129,11 +149,506 @@ public partial class Battle
         }
 
         InitRecordButton();
-        InitActionPoinTooltip();
+    }
+
+    public void RefreshIncomingDamagePreviewFromSettings() => RefreshIncomingDamagePreview();
+
+    public void RefreshSingleTargetDamageIntentionArrowsFromSettings() =>
+        RefreshSingleTargetDamageIntentionArrows();
+
+    public void SetIncomingDamagePreviewSuppressed(bool suppressed)
+    {
+        if (_suppressIncomingDamagePreview == suppressed)
+            return;
+
+        _suppressIncomingDamagePreview = suppressed;
+        if (_suppressIncomingDamagePreview)
+            HideIncomingDamagePreview();
+        else
+            RefreshIncomingDamagePreview();
+    }
+
+    private void RefreshIncomingDamagePreview()
+    {
+        UserSettings.EnsureLoaded();
+        if (_suppressIncomingDamagePreview || !UserSettings.ShowIncomingDamagePreview || !IsBattleAlive())
+        {
+            HideIncomingDamagePreview();
+            return;
+        }
+
+        var incomingDamageEntries = BuildIncomingDamagePreviewEntries();
+        if (incomingDamageEntries.Length == 0)
+        {
+            HideIncomingDamagePreview();
+            return;
+        }
+
+        var layer = EnsureIncomingDamagePreviewLayer();
+        if (layer == null)
+            return;
+
+        int panelIndex = 0;
+        foreach (Skill.PreviewEffectEntry entry in incomingDamageEntries)
+        {
+            var panel = GetOrCreateIncomingDamagePreviewPanel(layer, panelIndex++);
+            PreviewEffectDisplay.ShowPanel(
+                panel,
+                new[] { entry },
+                GetTargetScreenPosition(entry.Target),
+                IncomingDamagePreviewOffset
+            );
+        }
+
+        for (int i = panelIndex; i < _incomingDamagePreviewPanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+                _incomingDamagePreviewPanels[i].Visible = false;
+        }
+    }
+
+    private void RefreshSingleTargetDamageIntentionArrows()
+    {
+        UserSettings.EnsureLoaded();
+        if (
+            !UserSettings.ShowSingleTargetDamageIntentionArrows
+            || !IsBattleAlive()
+            || EnemiesList == null
+        )
+        {
+            HideSingleTargetDamageIntentionArrows();
+            return;
+        }
+
+        var pairs = BuildSingleTargetDamageIntentionArrowPairs();
+        if (pairs.Length == 0)
+        {
+            HideSingleTargetDamageIntentionArrows();
+            return;
+        }
+
+        var layer = EnsureSingleTargetDamageIntentionArrowLayer();
+        if (layer == null)
+            return;
+
+        int arrowIndex = 0;
+        foreach (var pair in pairs)
+        {
+            var arrow = GetOrCreateSingleTargetDamageIntentionArrow(layer, arrowIndex++);
+            arrow.Source = pair.source;
+            arrow.Target = pair.target;
+            arrow.StartPosition = GetIntentionArrowSourceScreenPosition(pair.source);
+            arrow.View.Visible = true;
+            UpdateSingleTargetDamageIntentionArrowEndpoint(arrow);
+        }
+
+        for (int i = arrowIndex; i < _singleTargetDamageIntentionArrows.Count; i++)
+        {
+            var arrow = _singleTargetDamageIntentionArrows[i];
+            if (arrow?.View != null && GodotObject.IsInstanceValid(arrow.View))
+                arrow.View.Visible = false;
+            if (arrow != null)
+            {
+                arrow.Source = null;
+                arrow.Target = null;
+                arrow.StartPosition = Vector2.Zero;
+            }
+        }
+    }
+
+    private (IIntentionPreviewSource source, Character target)[]
+        BuildSingleTargetDamageIntentionArrowPairs()
+    {
+        return GetEnemyIntentionPreviewSources()
+            .Where(source =>
+                source?.SourceCharacter != null
+                && GodotObject.IsInstanceValid(source.SourceCharacter)
+                && source.SourceCharacter.State == Character.CharacterState.Normal
+                && source.IntentionControl?.Visible == true
+                && !source.HasActiveStun()
+            )
+            .Select(source => (source, target: GetSingleTargetDamageIntentionTarget(source)))
+            .Where(pair => pair.target != null)
+            .ToArray();
+    }
+
+    private static Character GetSingleTargetDamageIntentionTarget(IIntentionPreviewSource source)
+    {
+        Character sourceCharacter = source?.SourceCharacter;
+        Skill skill = source?.CurrentIntentionSkill;
+        if (skill == null)
+            return null;
+
+        skill.OwnerCharater = sourceCharacter;
+        Character[] targets = skill
+            .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
+            .Where(entry =>
+                entry.Target != null
+                && GodotObject.IsInstanceValid(entry.Target)
+                && entry.Target.IsPlayer
+                && entry.Target.State == Character.CharacterState.Normal
+                && entry.Damage > 0
+            )
+            .Select(entry => entry.Target)
+            .Distinct()
+            .ToArray();
+
+        return targets.Length == 1 ? targets[0] : null;
+    }
+
+    private void UpdateSingleTargetDamageIntentionArrowEndpoints()
+    {
+        for (int i = 0; i < _singleTargetDamageIntentionArrows.Count; i++)
+            UpdateSingleTargetDamageIntentionArrowEndpoint(_singleTargetDamageIntentionArrows[i]);
+    }
+
+    private static void UpdateSingleTargetDamageIntentionArrowEndpoint(
+        SingleTargetDamageIntentionArrow arrow
+    )
+    {
+        if (
+            arrow?.View == null
+            || !GodotObject.IsInstanceValid(arrow.View)
+            || !arrow.View.Visible
+        )
+        {
+            return;
+        }
+
+        if (
+            arrow.Source?.SourceCharacter == null
+            || arrow.Target == null
+            || !GodotObject.IsInstanceValid(arrow.Source.SourceCharacter)
+            || !GodotObject.IsInstanceValid(arrow.Target)
+            || arrow.Source.SourceCharacter.State != Character.CharacterState.Normal
+            || arrow.Target.State != Character.CharacterState.Normal
+            || arrow.Source.IntentionControl?.Visible != true
+            || arrow.Source.HasActiveStun()
+        )
+        {
+            arrow.View.Visible = false;
+            return;
+        }
+
+        arrow.View.SetEndpoints(
+            arrow.StartPosition,
+            GetTargetScreenPosition(arrow.Target) + IntentionArrowTargetOffset
+        );
+    }
+
+    private static Vector2 GetIntentionArrowSourceScreenPosition(IIntentionPreviewSource source)
+    {
+        Character sourceCharacter = source?.SourceCharacter;
+        Control intention = source?.IntentionControl;
+        if (intention == null || !GodotObject.IsInstanceValid(intention))
+            return GetTargetScreenPosition(sourceCharacter);
+
+        return intention.GetGlobalTransformWithCanvas().Origin
+            + new Vector2(0f, intention.Size.Y * 0.5f)
+            + IntentionArrowSourceGap;
+    }
+
+    private SingleTargetDamageIntentionArrow GetOrCreateSingleTargetDamageIntentionArrow(
+        CanvasLayer layer,
+        int index
+    )
+    {
+        while (_singleTargetDamageIntentionArrows.Count <= index)
+        {
+            var arrow = new SingleTargetDamageIntentionArrow
+            {
+                View = CreateSingleTargetDamageIntentionArrowView(),
+            };
+            layer.AddChild(arrow.View);
+            _singleTargetDamageIntentionArrows.Add(arrow);
+        }
+
+        var pooledArrow = _singleTargetDamageIntentionArrows[index];
+        if (pooledArrow == null)
+        {
+            pooledArrow = new SingleTargetDamageIntentionArrow();
+            _singleTargetDamageIntentionArrows[index] = pooledArrow;
+        }
+
+        if (!GodotObject.IsInstanceValid(pooledArrow.View))
+            pooledArrow.View = CreateSingleTargetDamageIntentionArrowView();
+
+        if (pooledArrow.View.GetParent() == null)
+        {
+            layer.AddChild(pooledArrow.View);
+        }
+        else if (pooledArrow.View.GetParent() != layer)
+        {
+            pooledArrow.View.GetParent().RemoveChild(pooledArrow.View);
+            layer.AddChild(pooledArrow.View);
+        }
+
+        return pooledArrow;
+    }
+
+    private static ManualTargetArrowView CreateSingleTargetDamageIntentionArrowView()
+    {
+        var arrow = ManualTargetArrowScene?.Instantiate<ManualTargetArrowView>()
+            ?? new ManualTargetArrowView();
+        arrow.Name = "SingleTargetDamageIntentionArrow";
+        arrow.MouseFilter = Control.MouseFilterEnum.Ignore;
+        arrow.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        arrow.ArrowColor = IntentionArrowColor;
+        arrow.ShadowColor = IntentionArrowShadowColor;
+        arrow.ArrowWidth = 5f;
+        arrow.ShadowWidth = 10f;
+        arrow.CurveLift = 145f;
+        arrow.HeadSize = new Vector2(30f, 24f);
+        arrow.TailSize = new Vector2(18f, 12f);
+        arrow.TailShaftInset = 4f;
+        arrow.Visible = false;
+        return arrow;
+    }
+
+    private void HideSingleTargetDamageIntentionArrows()
+    {
+        for (int i = 0; i < _singleTargetDamageIntentionArrows.Count; i++)
+        {
+            var arrow = _singleTargetDamageIntentionArrows[i];
+            if (arrow?.View != null && GodotObject.IsInstanceValid(arrow.View))
+                arrow.View.Visible = false;
+            if (arrow != null)
+            {
+                arrow.Source = null;
+                arrow.Target = null;
+                arrow.StartPosition = Vector2.Zero;
+            }
+        }
+    }
+
+    private void FreeSingleTargetDamageIntentionArrows()
+    {
+        for (int i = 0; i < _singleTargetDamageIntentionArrows.Count; i++)
+        {
+            var arrow = _singleTargetDamageIntentionArrows[i];
+            if (arrow?.View != null && GodotObject.IsInstanceValid(arrow.View))
+                arrow.View.QueueFree();
+        }
+        _singleTargetDamageIntentionArrows.Clear();
+
+        GetTree()
+            ?.Root
+            ?.GetNodeOrNull<CanvasLayer>(SingleTargetDamageIntentionArrowLayerName)
+            ?.QueueFree();
+    }
+
+    private Skill.PreviewEffectEntry[] BuildIncomingDamagePreviewEntries()
+    {
+        var totals = new Dictionary<Character, int>();
+        foreach (var source in GetIncomingDamagePreviewSources())
+        {
+            Character sourceCharacter = source?.SourceCharacter;
+            if (source == null || sourceCharacter == null || source.HasActiveStun())
+                continue;
+
+            Skill skill = source.CurrentIntentionSkill;
+            if (skill == null)
+                continue;
+
+            skill.OwnerCharater = sourceCharacter;
+            foreach (Skill.PreviewEffectEntry entry in skill.GetPreviewEffectEntries())
+            {
+                if (
+                    entry.Kind != Skill.PreviewEffectKind.Damage
+                    || entry.Target == null
+                    || !GodotObject.IsInstanceValid(entry.Target)
+                    || !entry.Target.IsPlayer
+                    || entry.Target.State != Character.CharacterState.Normal
+                    || entry.Value <= 0
+                )
+                {
+                    continue;
+                }
+
+                totals[entry.Target] = totals.TryGetValue(entry.Target, out int current)
+                    ? current + entry.Value
+                    : entry.Value;
+            }
+        }
+
+        return totals
+            .Where(pair => pair.Value > 0)
+            .OrderBy(pair => pair.Key.PositionIndex)
+            .Select(pair =>
+                Skill.PreviewEffectEntry.Damage(pair.Key, pair.Value, 1, 1, source: null)
+            )
+            .ToArray();
+    }
+
+    private IEnumerable<IIntentionPreviewSource> GetIncomingDamagePreviewSources()
+    {
+        if (_activeEnemyPhaseOrder.Count > 0)
+        {
+            int startIndex = Math.Max(_activeEnemyPhaseIndex + 1, 0);
+            if (
+                CurrentActionCharacter is IIntentionPreviewSource currentSource
+                && IsCharacterAlive(currentSource.SourceCharacter)
+            )
+            {
+                yield return currentSource;
+                if (currentSource.SourceCharacter is EnemyCharacter currentEnemy)
+                {
+                    foreach (var summon in GetLivingEnemySummonIntentionSources(currentEnemy))
+                        yield return summon;
+                }
+            }
+
+            for (int i = startIndex; i < _activeEnemyPhaseOrder.Count; i++)
+            {
+                EnemyCharacter enemy = _activeEnemyPhaseOrder[i];
+                if (enemy != null && GodotObject.IsInstanceValid(enemy) && IsCharacterAlive(enemy))
+                {
+                    yield return enemy;
+                    foreach (var summon in GetLivingEnemySummonIntentionSources(enemy))
+                        yield return summon;
+                }
+            }
+            yield break;
+        }
+
+        foreach (EnemyCharacter enemy in GetEnemyPhaseActionOrder())
+        {
+            if (enemy != null && GodotObject.IsInstanceValid(enemy) && IsCharacterAlive(enemy))
+            {
+                yield return enemy;
+                foreach (var summon in GetLivingEnemySummonIntentionSources(enemy))
+                    yield return summon;
+            }
+        }
+    }
+
+    private static IEnumerable<IIntentionPreviewSource> GetLivingEnemySummonIntentionSources(
+        Character summoner
+    )
+    {
+        if (summoner?.Summons == null)
+            yield break;
+
+        foreach (var summon in summoner.Summons)
+        {
+            if (
+                summon != null
+                && GodotObject.IsInstanceValid(summon)
+                && !summon.IsPlayer
+                && IsCharacterAlive(summon)
+            )
+            {
+                yield return summon;
+            }
+        }
+    }
+
+    private void HideIncomingDamagePreview()
+    {
+        for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+                _incomingDamagePreviewPanels[i].Visible = false;
+        }
+    }
+
+    private void FreeIncomingDamagePreviewLabels()
+    {
+        for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
+        {
+            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+                _incomingDamagePreviewPanels[i].QueueFree();
+        }
+        _incomingDamagePreviewPanels.Clear();
+    }
+
+    private VBoxContainer GetOrCreateIncomingDamagePreviewPanel(CanvasLayer layer, int index)
+    {
+        while (_incomingDamagePreviewPanels.Count <= index)
+        {
+            var panel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(panel);
+            _incomingDamagePreviewPanels.Add(panel);
+        }
+
+        var pooledPanel = _incomingDamagePreviewPanels[index];
+        if (!GodotObject.IsInstanceValid(pooledPanel))
+        {
+            pooledPanel = PreviewEffectDisplay.CreatePanel();
+            layer.AddChild(pooledPanel);
+            _incomingDamagePreviewPanels[index] = pooledPanel;
+        }
+        else if (pooledPanel.GetParent() == null)
+        {
+            layer.AddChild(pooledPanel);
+        }
+        else if (pooledPanel.GetParent() != layer)
+        {
+            pooledPanel.GetParent().RemoveChild(pooledPanel);
+            layer.AddChild(pooledPanel);
+        }
+
+        return pooledPanel;
+    }
+
+    private CanvasLayer EnsureIncomingDamagePreviewLayer()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var existingLayer = root.GetNodeOrNull<CanvasLayer>(IncomingDamagePreviewLayerName);
+        if (existingLayer != null)
+        {
+            existingLayer.Layer = IncomingDamagePreviewLayerOrder;
+            return existingLayer;
+        }
+
+        existingLayer = new CanvasLayer
+        {
+            Layer = IncomingDamagePreviewLayerOrder,
+            Name = IncomingDamagePreviewLayerName,
+        };
+        root.AddChild(existingLayer);
+        return existingLayer;
+    }
+
+    private CanvasLayer EnsureSingleTargetDamageIntentionArrowLayer()
+    {
+        var root = GetTree()?.Root;
+        if (root == null)
+            return null;
+
+        var existingLayer = root.GetNodeOrNull<CanvasLayer>(
+            SingleTargetDamageIntentionArrowLayerName
+        );
+        if (existingLayer != null)
+        {
+            existingLayer.Layer = SingleTargetDamageIntentionArrowLayerOrder;
+            return existingLayer;
+        }
+
+        existingLayer = new CanvasLayer
+        {
+            Layer = SingleTargetDamageIntentionArrowLayerOrder,
+            Name = SingleTargetDamageIntentionArrowLayerName,
+        };
+        root.AddChild(existingLayer);
+        return existingLayer;
+    }
+
+    private static Vector2 GetTargetScreenPosition(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return Vector2.Zero;
+
+        return target.GetGlobalTransformWithCanvas().Origin;
     }
 
     public override void _Process(double delta)
     {
+        UpdateSingleTargetDamageIntentionArrowEndpoints();
+
         if (!HoverPerfLogEnabled || WarmupMode)
             return;
 
@@ -195,75 +710,6 @@ public partial class Battle
     {
         string line = $"[HoverPerf] {text}";
         GD.Print(line);
-    }
-
-    private void InitActionPoinTooltip()
-    {
-        if (_actionPoinTooltipInitialized)
-            return;
-
-        var actionPoinBox = ActionPoinBox;
-        if (actionPoinBox == null)
-            return;
-
-        _actionPoinTooltipInitialized = true;
-        actionPoinBox.MouseFilter = Control.MouseFilterEnum.Stop;
-        actionPoinBox.MouseEntered += ShowActionPoinTooltip;
-        actionPoinBox.MouseExited += HideActionPoinTooltip;
-        actionPoinBox.TreeExiting += HideActionPoinTooltip;
-
-        foreach (Node child in actionPoinBox.GetChildren())
-        {
-            if (child is Control control)
-                control.MouseFilter = Control.MouseFilterEnum.Pass;
-        }
-    }
-
-    private void ShowActionPoinTooltip()
-    {
-        var tip = EnsureActionPoinTooltip();
-        if (tip == null)
-            return;
-
-        tip.FollowMouse = true;
-        tip.AnchorOffset = new Vector2(20f, 22f);
-        tip.MinContentWidth = 430f;
-        tip.SetText(ActionPoinTooltipText);
-    }
-
-    private void HideActionPoinTooltip()
-    {
-        _actionPoinTooltip?.HideTooltip();
-    }
-
-    private Tip EnsureActionPoinTooltip()
-    {
-        if (_actionPoinTooltip != null && GodotObject.IsInstanceValid(_actionPoinTooltip))
-            return _actionPoinTooltip;
-
-        var root = GetTree()?.Root;
-        if (root == null)
-            return null;
-
-        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
-        if (layer == null)
-        {
-            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
-            root.AddChild(layer);
-        }
-
-        _actionPoinTooltip = layer.GetNodeOrNull<Tip>("ActionPoinTip");
-        if (_actionPoinTooltip != null)
-            return _actionPoinTooltip;
-
-        var tipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
-        if (tipScene == null)
-            return null;
-
-        _actionPoinTooltip = tipScene.Instantiate<Tip>();
-        _actionPoinTooltip.Name = "ActionPoinTip";
-        layer.AddChild(_actionPoinTooltip);
-        return _actionPoinTooltip;
     }
 
     private static string GetCharacterLogName(Character character)
@@ -409,7 +855,7 @@ public partial class Battle
                 blockedDamage
             )
         );
-        RecordPlayerDamageTotal(resolvedSource, target, actualDamage + blockedDamage);
+        RecordPlayerDamageTotal(target, actualDamage);
 
         string sourceText = FormatRecordSource(source);
         string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
@@ -424,14 +870,9 @@ public partial class Battle
         AppendRecordLine(line, indent: true);
     }
 
-    private void RecordPlayerDamageTotal(Character source, Character target, int totalDamage)
+    private void RecordPlayerDamageTotal(Character target, int totalDamage)
     {
-        if (
-            totalDamage <= 0
-            || source is not PlayerCharacter player
-            || target == null
-            || target.IsPlayer
-        )
+        if (totalDamage <= 0 || target is not PlayerCharacter player)
         {
             return;
         }
@@ -534,6 +975,19 @@ public partial class Battle
         string action = delta > 0 ? "获得" : "失去";
         AppendRecordLine(
             $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] 点能量",
+            indent: true
+        );
+    }
+
+    public void RecordPlayerEnergyChange(int delta, Character source = null)
+    {
+        if (delta == 0)
+            return;
+
+        string sourceText = FormatRecordSource(source);
+        string action = delta > 0 ? "获得" : "失去";
+        AppendRecordLine(
+            $"{sourceText} -> [color={RecordTargetColor}]玩家能量[/color]  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] 点能量",
             indent: true
         );
     }
@@ -654,6 +1108,7 @@ public partial class Battle
     private void OnSkillUsed(Skill skill)
     {
         Relic.ApplySkillUsedRelicEffects(skill);
+        _ = TriggerVoidOnSurviveSkillUsedAsync(skill);
 
         var record = BattleRecord;
         if (skill == null || record == null)
@@ -670,6 +1125,51 @@ public partial class Battle
         record.AppendText(
             $"[color={RecordIndexColor}]{++_recordIndex:00}[/color]  [color={RecordSourceColor}]{characterName}[/color]  释放  [color={RecordSkillColor}]{skillName}[/color]\n"
         );
+    }
+
+    private async Task TriggerVoidOnSurviveSkillUsedAsync(Skill skill)
+    {
+        Character owner = skill?.OwnerCharater;
+        if (
+            skill == null
+            || skill.SkillType != Skill.SkillTypes.Survive
+            || owner == null
+            || !GodotObject.IsInstanceValid(owner)
+            || owner.State == Character.CharacterState.Dying
+            || owner.BattleNode != this
+            || HasBattleEnded()
+            || !IsBattleAlive()
+        )
+        {
+            return;
+        }
+
+        Character[] targets = GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+            .Where(target =>
+                target != null
+                && target != owner
+                && GodotObject.IsInstanceValid(target)
+                && target.State != Character.CharacterState.Dying
+                && target.EndActionBuffs?.Any(buff =>
+                    buff != null
+                    && buff.ThisBuffName == Buff.BuffName.Void
+                    && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
+            await target.IncreaseProperties(PropertyType.Power, 1, target);
+
+            if (HasBattleEnded() || !IsBattleAlive())
+                return;
+        }
     }
 
     private void InitRecordButton()

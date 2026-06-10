@@ -11,7 +11,6 @@ public partial class BattlePreview
         sb.Append(
             $"{I18n.Tr("property.survivability", "生存")}：{TalentTree.GetEffectiveSurvivability(info)}\n"
         );
-        sb.Append($"{I18n.Tr("property.speed", "速度")}：{TalentTree.GetEffectiveSpeed(info)}\n");
 
         string text = sb.ToString().TrimEnd();
         text = GlobalFunction.ColorizeNumbers(text);

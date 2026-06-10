@@ -7,9 +7,8 @@ using Godot;
 public partial class Relic
 {
     private const int BlessingDamage = 17;
-    private const int MatrixShieldBlock = 10;
-    private const int BackpackExtraDrawStacks = 1;
-    private const int BackpackTargetCount = 3;
+    private const int MatrixShieldBlock = 6;
+    private const int BackpackFirstTurnDrawBonus = 2;
     private const int EnergyTankEnergy = 1;
     private const int EnergyStorageTankStacks = 1;
     private const int FusionCoreActionInterval = 3;
@@ -18,7 +17,7 @@ public partial class Relic
     private const int SpiralAcceleratorDrawCount = 1;
     private const int MechanicalEnergyConverterEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
-    private const int PhilosophersStoneEnemyPower = 3;
+    private const int PhilosophersStoneEnemyPower = 1;
     private const int EternalGlassDrawBonus = 1;
     private const int KingsSwordPartyPower = 4;
     private const int RefractometerDamageImmuneStacks = 1;
@@ -29,7 +28,7 @@ public partial class Relic
     private const int KnightHelmetMinimumCost = 2;
     private const int KnightHelmetBlock = 6;
     private const int IonizedVoiceExtraDrawStacks = 1;
-    private const int HexagonMaxLife = 8;
+    private const int HexagonBattleEndHeal = 4;
 
     public RelicID ID;
     public string RelicName;
@@ -270,6 +269,12 @@ public partial class Relic
             if (relic == null)
                 continue;
 
+            if (relic.ID == RelicID.MatrixShield && playerActionNumber == 1)
+            {
+                ApplyBlockToPlayers(battle, MatrixShieldBlock);
+                continue;
+            }
+
             if (relic.ID == RelicID.FusionCore)
             {
                 relic.Num = Math.Max(0, relic.Num) + 1;
@@ -341,7 +346,10 @@ public partial class Relic
 
     public static int GetTurnStartDrawBonus(Battle battle)
     {
-        return HasRelic(RelicID.EternalGlass) ? EternalGlassDrawBonus : 0;
+        int bonus = HasRelic(RelicID.EternalGlass) ? EternalGlassDrawBonus : 0;
+        if (HasRelic(RelicID.Backpack) && battle?.PlayerTotalTurnCount == 0)
+            bonus += BackpackFirstTurnDrawBonus;
+        return bonus;
     }
 
     public static void ApplySkillUsedRelicEffects(Skill skill)
@@ -357,6 +365,18 @@ public partial class Relic
 
         ApplyKnightHelmetSkillUsed(skill);
         ApplyIonizedVoiceSkillUsed(skill);
+    }
+
+    public static void ApplyBattleEndRelicEffects(Battle battle)
+    {
+        if (battle?.MapNode?.PlayerResourceState?.RelicList == null)
+            return;
+
+        foreach (var relic in battle.MapNode.PlayerResourceState.RelicList)
+        {
+            if (relic?.ID == RelicID.Hexagon)
+                ApplyHexagonBattleEndHeal(battle);
+        }
     }
 
     private static void ApplyKnightHelmetSkillUsed(Skill skill)
@@ -414,10 +434,9 @@ public partial class Relic
                 await ApplyEffectToFrontPlayers(battle, PropertyType.Power, 2);
                 break;
             case RelicID.Pentagon:
-                await ApplyEffectToFrontPlayers(battle, PropertyType.Speed, 2);
+                ApplyEnergyToFrontPlayers(battle, 1);
                 break;
             case RelicID.Hexagon:
-                await ApplyHexagonEffect(battle);
                 break;
             case RelicID.Heptagon:
                 ApplyDebuffToEnemies(battle, Buff.BuffName.Vulnerable, 1);
@@ -427,11 +446,7 @@ public partial class Relic
                 break;
             case RelicID.CompressionCore:
                 break;
-            case RelicID.MatrixShield:
-                ApplyBlockToPlayers(battle, MatrixShieldBlock);
-                break;
             case RelicID.Backpack:
-                ApplyExtraDrawToFrontPlayers(battle, BackpackExtraDrawStacks);
                 break;
             case RelicID.EnergyTank:
                 ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
@@ -523,17 +538,17 @@ public partial class Relic
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
             RelicID.Triangle => "战斗开始时第一位和第二位角色获得2点生存。",
             RelicID.Square => "战斗开始时第一位和第二位角色获得2点力量。",
-            RelicID.Pentagon => "战斗开始时第一位和第二位角色获得2点速度。",
-            RelicID.Hexagon => $"战斗开始时全阵获得{HexagonMaxLife}点生命上限。",
+            RelicID.Pentagon => "战斗开始时第一位和第二位角色获得1点能量。",
+            RelicID.Hexagon => $"战斗结束时，为血量最低的角色回复{HexagonBattleEndHeal}点生命。",
             RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
-            RelicID.MatrixShield => $"战斗开始时全阵获得{MatrixShieldBlock}点格挡。",
-            RelicID.Backpack => $"战斗开始时前{BackpackTargetCount}位角色获得{BackpackExtraDrawStacks}层额外抽卡。",
+            RelicID.MatrixShield => $"第一次己方阵营回合开始时全阵获得{MatrixShieldBlock}点格挡。",
+            RelicID.Backpack => $"第一次己方阵营回合开始时，额外抽{BackpackFirstTurnDrawBonus}张牌。",
             RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
             RelicID.EnergyStorageTank => $"战斗开始时全阵获得{EnergyStorageTankStacks}层{Buff.BuffName.EnergyStorage.GetDescription()}。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
-            RelicID.SpiralAccelerator => $"每有{SpiralAcceleratorActionInterval}个己方角色回合开始，当前角色抽{SpiralAcceleratorDrawCount}张牌。",
+            RelicID.SpiralAccelerator => $"每有{SpiralAcceleratorActionInterval}个己方角色回合开始，当前角色抽{SpiralAcceleratorDrawCount}张自身牌。",
             RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
@@ -564,16 +579,19 @@ public partial class Relic
         }
     }
 
-    private static async Task ApplyHexagonEffect(Battle battle)
+    private static void ApplyHexagonBattleEndHeal(Battle battle)
     {
-        for (int i = 0; i < battle.PlayersList.Count; i++)
-        {
-            var player = battle.PlayersList[i];
-            if (player == null || player.State == Character.CharacterState.Dying)
-                continue;
+        var target = battle
+            ?.PlayersList
+            ?.Where(player => player != null && !player.IsSummon)
+            .OrderBy(player => player.Life)
+            .ThenBy(player => player.PositionIndex)
+            .FirstOrDefault();
+        if (target == null)
+            return;
 
-            await player.IncreaseProperties(PropertyType.MaxLife, HexagonMaxLife);
-        }
+        using var _ = target.BeginEffectSource(GetRelicName(RelicID.Hexagon));
+        target.Recover(HexagonBattleEndHeal, rebirth: true, source: target);
     }
 
     private static void ApplyDebuffToEnemies(Battle battle, Buff.BuffName buffName, int stacks)
@@ -715,22 +733,6 @@ public partial class Relic
         SkillBuff.BuffAdd(Buff.BuffName.Stun, target, PulseControllerStunStacks, target);
         HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PulseControllerVulnerableStacks, target);
         AttackBuff.BuffAdd(Buff.BuffName.Weaken, target, PulseControllerWeakenStacks, target);
-    }
-
-    private static void ApplyExtraDrawToFrontPlayers(Battle battle, int stacks)
-    {
-        if (battle?.PlayersList == null || stacks <= 0)
-            return;
-
-        int targetCount = Math.Min(BackpackTargetCount, battle.PlayersList.Count);
-        for (int i = 0; i < targetCount; i++)
-        {
-            var player = battle.PlayersList[i];
-            if (player == null || player.State == Character.CharacterState.Dying)
-                continue;
-
-            SpecialBuff.BuffAdd(Buff.BuffName.ExtraDraw, player, stacks, player);
-        }
     }
 
     private static async Task ApplyPowerToEnemies(Battle battle, int power)

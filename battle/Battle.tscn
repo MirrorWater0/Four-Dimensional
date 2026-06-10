@@ -3,8 +3,6 @@
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
-[ext_resource type="Shader" uid="uid://bf5tkhn7i13me" path="res://shader/UI1.gdshader" id="7_r8nfv"]
-[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="7_wuq8c"]
 [ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
@@ -228,6 +226,7 @@ shader_parameter/shadow_color = Color(0.015, 0.035, 0.065, 0.56)
 shader_parameter/hover_amount = 0.0
 shader_parameter/disabled_amount = 1.0
 shader_parameter/pressed_amount = 0.0
+shader_parameter/receive_amount = 0.0
 shader_parameter/stack_tilt = -0.1
 shader_parameter/fan_amount = 0.12
 shader_parameter/card_radius = 0.045
@@ -244,6 +243,7 @@ shader_parameter/shadow_color = Color(0.07, 0.04, 0.015, 0.56)
 shader_parameter/hover_amount = 0.0
 shader_parameter/disabled_amount = 1.0
 shader_parameter/pressed_amount = 0.0
+shader_parameter/receive_amount = 0.0
 shader_parameter/stack_tilt = 0.1
 shader_parameter/fan_amount = 0.12
 shader_parameter/card_radius = 0.045
@@ -260,16 +260,11 @@ shader_parameter/shadow_color = Color(0.075, 0.018, 0.024, 0.58)
 shader_parameter/hover_amount = 0.0
 shader_parameter/disabled_amount = 1.0
 shader_parameter/pressed_amount = 0.0
+shader_parameter/receive_amount = 0.0
 shader_parameter/stack_tilt = 0.0
 shader_parameter/fan_amount = 0.16
 shader_parameter/card_radius = 0.045
 shader_parameter/edge_width = 0.018
-
-[sub_resource type="Theme" id="Theme_d0b6a"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_jhxqk"]
-resource_local_to_scene = true
-shader = ExtResource("7_r8nfv")
 
 [sub_resource type="Gradient" id="Gradient_4km6a"]
 offsets = PackedFloat32Array(0.91972476, 1)
@@ -308,7 +303,7 @@ shadow_color = Color(0, 0.42, 0.76, 0.18)
 shadow_size = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4km6a"]
-bg_color = Color(0.36, 0.86, 1, 0.95)
+bg_color = Color(0.6373334, 0.36, 1, 0.9490196)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -323,23 +318,6 @@ corner_radius_bottom_left = 7
 ProgressBar/colors/font_color = Color(1, 1, 1, 1)
 ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_enemy_action_poin_fill"]
-bg_color = Color(1, 0.65, 0.42, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.87, 0.7, 0.72)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-
-[sub_resource type="Theme" id="Theme_enemy_action_poin"]
-ProgressBar/colors/font_color = Color(1, 1, 1, 1)
-ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_enemy_action_poin_fill")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2bopn"]
 shader = ExtResource("11_ttuon")
@@ -401,94 +379,98 @@ metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="." unique_id=489797672]
 y_sort_enabled = true
-position = Vector2(1168, 331)
+position = Vector2(1108, 400)
 
 [node name="Left" type="Node2D" parent="." unique_id=399900633]
 y_sort_enabled = true
-position = Vector2(808, 331)
+position = Vector2(681, 398)
 
 [node name="BattlePlayer" type="AnimationPlayer" parent="." unique_id=1504309812]
 libraries/ = SubResource("AnimationLibrary_od72c")
 autoplay = &"start"
 
-[node name="CharacterControl" type="HBoxContainer" parent="." unique_id=1407403704]
+[node name="CharacterControlLayer" type="CanvasLayer" parent="." unique_id=1561799286]
+layer = 14
+
+[node name="CharacterControl" type="HBoxContainer" parent="CharacterControlLayer" unique_id=1407403704]
 modulate = Color(0.92, 0.92, 0.92, 1)
 z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
-offset_left = 2.0
-offset_top = 704.0
-offset_right = 1959.778
-offset_bottom = 1039.0
-scale = Vector2(0.9, 0.9)
+offset_left = 4.0
+offset_top = 725.0
+offset_right = 1915.0
+offset_bottom = 1060.0
 mouse_filter = 2
 theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
+BattleCardScaleFactor = 0.9
+HandCardYOffset = 27.0
 
-[node name="ActionAreaRoot" type="VBoxContainer" parent="CharacterControl" unique_id=636477589]
+[node name="ActionAreaRoot" type="VBoxContainer" parent="CharacterControlLayer/CharacterControl" unique_id=636477589]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 30
+theme_override_constants/separation = 200
 
-[node name="StatusLabel" type="Label" parent="CharacterControl/ActionAreaRoot" unique_id=1045304350]
+[node name="StatusLabel" type="Label" parent="CharacterControlLayer/CharacterControl/ActionAreaRoot" unique_id=1045304350]
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "等待行动"
-horizontal_alignment = 1
 
-[node name="BattleActionButtons" type="Control" parent="." unique_id=1518664475]
+[node name="BattleActionButtons" type="Control" parent="CharacterControlLayer" unique_id=1518664475]
 z_index = 3
 layout_mode = 3
 anchors_preset = 0
 offset_left = 1490.0
-offset_top = 704.0
-offset_right = 1840.0
-offset_bottom = 790.0
+offset_top = 656.0
+offset_right = 1490.0
+offset_bottom = 656.0
 mouse_filter = 2
 
-[node name="EndTurnButton" type="Button" parent="BattleActionButtons" unique_id=1518664472]
+[node name="EndTurnButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1518664472]
 custom_minimum_size = Vector2(164, 72)
 layout_mode = 0
-offset_left = 259.0
-offset_top = 59.0
-offset_right = 423.0
-offset_bottom = 131.0
+offset_left = 186.0
+offset_top = -23.0
+offset_right = 350.0
+offset_bottom = 49.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 22
 disabled = true
 text = "结束回合"
 
-[node name="DrawPileButton" type="Button" parent="BattleActionButtons" unique_id=1198832786]
-custom_minimum_size = Vector2(70, 70)
+[node name="DrawPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1198832786]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
-offset_left = -1486.0
-offset_top = 302.0
-offset_right = -1416.0
-offset_bottom = 372.0
+offset_left = -1490.0
+offset_top = -6.0
+offset_right = -1420.0
+offset_bottom = 64.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "抽牌堆"
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/DrawPileButton" unique_id=388596969]
+[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/DrawPileButton" unique_id=388596969]
 material = SubResource("ShaderMaterial_draw_pile_icon")
-custom_minimum_size = Vector2(70, 70)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
 offset_right = 46.0
 offset_bottom = 46.0
 mouse_filter = 2
 
-[node name="DiscardPileButton" type="Button" parent="BattleActionButtons" unique_id=906387459]
-custom_minimum_size = Vector2(70, 70)
+[node name="DiscardPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=906387459]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
-offset_left = 359.0
-offset_top = 304.0
-offset_right = 429.0
-offset_bottom = 374.0
+offset_left = 358.0
+offset_top = -6.0
+offset_right = 428.0
+offset_bottom = 64.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "弃牌堆"
@@ -496,21 +478,21 @@ mouse_filter = 1
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/DiscardPileButton" unique_id=1352855306]
+[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/DiscardPileButton" unique_id=1352855306]
 material = SubResource("ShaderMaterial_discard_pile_icon")
-custom_minimum_size = Vector2(70, 70)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
 offset_right = 46.0
 offset_bottom = 46.0
 mouse_filter = 1
 
-[node name="ExhaustedPileButton" type="Button" parent="BattleActionButtons" unique_id=1059610785]
-custom_minimum_size = Vector2(70, 70)
+[node name="ExhaustedPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1059610785]
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
-offset_left = -1487.0
-offset_top = 108.0
-offset_right = -1417.0
-offset_bottom = 178.0
+offset_left = 360.0
+offset_top = -109.0
+offset_right = 430.0
+offset_bottom = -39.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "消耗牌堆"
@@ -518,59 +500,19 @@ mouse_filter = 1
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="BattleActionButtons/ExhaustedPileButton" unique_id=1621808690]
+[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/ExhaustedPileButton" unique_id=1621808690]
 material = SubResource("ShaderMaterial_exhausted_pile_icon")
-custom_minimum_size = Vector2(70, 70)
+custom_minimum_size = Vector2(80, 80)
 layout_mode = 0
 offset_right = 46.0
 offset_bottom = 46.0
 mouse_filter = 1
-
-[node name="ManualTargetInfoButton" type="Button" parent="BattleActionButtons" unique_id=514264369]
-custom_minimum_size = Vector2(46, 46)
-layout_mode = 0
-offset_left = 383.0
-offset_top = -3.0
-offset_right = 429.0
-offset_bottom = 43.0
-tooltip_text = "查看己方角色信息"
-focus_mode = 0
-mouse_default_cursor_shape = 2
-disabled = true
-text = "i"
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1909719896]
 z_index = 20
 position = Vector2(960, 540)
 position_smoothing_enabled = true
 metadata/_edit_lock_ = true
-
-[node name="Retreat" type="Button" parent="." unique_id=1228269267]
-offset_left = 1797.0
-offset_top = 69.0
-offset_right = 1857.0
-offset_bottom = 129.0
-theme = SubResource("Theme_d0b6a")
-disabled = true
-text = "
-"
-
-[node name="ColorRect" type="ColorRect" parent="Retreat" unique_id=1694008529]
-material = SubResource("ShaderMaterial_jhxqk")
-layout_mode = 0
-offset_right = 60.0
-offset_bottom = 60.0
-mouse_filter = 1
-
-[node name="Label" type="Label" parent="Retreat" unique_id=160334765]
-layout_mode = 0
-offset_left = 4.0
-offset_top = 11.0
-offset_right = 54.0
-offset_bottom = 46.0
-theme = ExtResource("7_wuq8c")
-theme_override_font_sizes/font_size = 25
-text = "撤退"
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1029581787]
 layer = 8
@@ -618,16 +560,19 @@ offset_bottom = 1080.0
 texture = SubResource("GradientTexture2D_4km6a")
 metadata/_edit_lock_ = true
 
+[node name="CardPlayOverlay" type="CanvasLayer" parent="." unique_id=445357189]
+layer = 9
+
 [node name="ActionPoinBox" type="HBoxContainer" parent="." unique_id=209606245]
-offset_left = 576.0
+offset_left = 790.0
 offset_top = 24.0
-offset_right = 1344.0
+offset_right = 1130.0
 offset_bottom = 38.0
-theme_override_constants/separation = 88
+theme_override_constants/separation = 0
 
 [node name="PlayerActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1651593436]
 material = SubResource("ShaderMaterial_bim3i")
-custom_minimum_size = Vector2(340, 14)
+custom_minimum_size = Vector2(400, 18)
 layout_mode = 2
 theme = SubResource("Theme_boaws")
 show_percentage = false
@@ -636,9 +581,9 @@ show_percentage = false
 layout_direction = 3
 layout_mode = 0
 offset_left = 241.0
-offset_top = -8.0
+offset_top = -6.0
 offset_right = 291.0
-offset_bottom = 20.0
+offset_bottom = 22.0
 theme_override_colors/font_color = Color(1, 0.86, 0.86, 1)
 theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.08, 0.92)
 theme_override_constants/outline_size = 4
@@ -650,47 +595,23 @@ script = ExtResource("11_d0b6a")
 layout_direction = 3
 layout_mode = 0
 offset_left = 293.0
-offset_top = -5.0
+offset_top = -3.0
 offset_right = 353.0
-offset_bottom = 18.0
+offset_bottom = 20.0
 theme_override_colors/font_color = Color(0.9741052, 0.7722918, 0.63670856, 0.92156863)
 theme_override_colors/font_outline_color = Color(0.01, 0.025, 0.04, 0.9)
 theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 15
 text = "速 0"
 
-[node name="EnemyActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1896319079]
-custom_minimum_size = Vector2(340, 14)
+[node name="PlayerEnergyLabel" type="Label" parent="ActionPoinBox"]
+custom_minimum_size = Vector2(96, 24)
 layout_mode = 2
-theme = SubResource("Theme_enemy_action_poin")
-show_percentage = false
-
-[node name="Label" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1185441765]
-layout_mode = 0
-offset_left = 274.0
-offset_top = -8.0
-offset_right = 324.0
-offset_bottom = 20.0
-theme_override_colors/font_color = Color(0.86, 0.97199994, 1, 1)
-theme_override_colors/font_outline_color = Color(0.08, 0.035, 0.015, 0.92)
+theme_override_colors/font_color = Color(0.55, 0.84, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.08, 0.92)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 20
-text = "100"
-horizontal_alignment = 2
-script = ExtResource("11_d0b6a")
-
-[node name="TotalLabel" type="Label" parent="ActionPoinBox/EnemyActionPoin" unique_id=1032080647]
-layout_mode = 0
-offset_left = 212.0
-offset_top = -5.0
-offset_right = 272.0
-offset_bottom = 18.0
-theme_override_colors/font_color = Color(0.54, 0.76, 0.86, 0.92)
-theme_override_colors/font_outline_color = Color(0.06, 0.025, 0.01, 0.9)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 15
-text = "速 0"
-horizontal_alignment = 2
+text = "能量 0"
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
 visible = false
@@ -720,9 +641,10 @@ process_material = SubResource("ParticleProcessMaterial_4km6a")
 position = Vector2(4784, 512)
 BattleMaxLife = 100000
 Sprite = NodePath(".")
+metadata/_edit_lock_ = true
 
 [node name="BattlePileOverlayLayer" type="CanvasLayer" parent="." unique_id=1139398316]
-layer = 100
+layer = 30
 
 [node name="PileOverlayRoot" type="Control" parent="BattlePileOverlayLayer" unique_id=45099534]
 visible = false
@@ -773,7 +695,7 @@ theme_override_constants/v_separation = 22
 columns = 6
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=209018588]
-layer = 6
+layer = 20
 
 [node name="BattleRecord" type="RichTextLabel" parent="UI" unique_id=1836555925]
 z_index = 5

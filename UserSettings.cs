@@ -7,8 +7,12 @@ public static class UserSettings
     private const string SectionName = "Preferences";
     private const string CompactBattleCardDescriptionsKey = "CompactBattleCardDescriptions";
     private const string BattleTurnOrderPreviewKey = "BattleTurnOrderPreview";
-    private const string EnemyAttackPreviewKey = "EnemyAttackPreview";
+    private const string IncomingDamagePreviewKey = "IncomingDamagePreview";
+    private const string ShowIntentionTargetNamesKey = "ShowIntentionTargetNames";
+    private const string ShowSingleTargetDamageIntentionArrowsKey =
+        "ShowSingleTargetDamageIntentionArrows";
     private const string HideEnemySkillsKey = "HideEnemySkills";
+    private const string GroupBattlePilesByCharacterKey = "GroupBattlePilesByCharacter";
     private const string KeepManualTargetCardVisibleWhenHiddenKey =
         "KeepManualTargetCardVisibleWhenHidden";
     private const string UseArrowManualTargetSelectionKey = "UseArrowManualTargetSelection";
@@ -35,8 +39,11 @@ public static class UserSettings
 
     public static bool UseCompactBattleCardDescriptions { get; private set; }
     public static bool ShowBattleTurnOrderPreview { get; private set; } = true;
-    public static bool ShowEnemyAttackPreview { get; private set; }
+    public static bool ShowIncomingDamagePreview { get; private set; }
+    public static bool ShowIntentionTargetNames { get; private set; }
+    public static bool ShowSingleTargetDamageIntentionArrows { get; private set; } = true;
     public static bool HideEnemySkills { get; private set; } = true;
+    public static bool GroupBattlePilesByCharacter { get; private set; }
     public static bool KeepManualTargetCardVisibleWhenHidden { get; private set; } = true;
     public static bool UseArrowManualTargetSelection { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
@@ -70,11 +77,28 @@ public static class UserSettings
             ShowBattleTurnOrderPreview = config
                 .GetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview)
                 .AsBool();
-            ShowEnemyAttackPreview = config
-                .GetValue(SectionName, EnemyAttackPreviewKey, ShowEnemyAttackPreview)
+            ShowIncomingDamagePreview = config
+                .GetValue(SectionName, IncomingDamagePreviewKey, ShowIncomingDamagePreview)
+                .AsBool();
+            ShowIntentionTargetNames = config
+                .GetValue(SectionName, ShowIntentionTargetNamesKey, ShowIntentionTargetNames)
+                .AsBool();
+            ShowSingleTargetDamageIntentionArrows = config
+                .GetValue(
+                    SectionName,
+                    ShowSingleTargetDamageIntentionArrowsKey,
+                    ShowSingleTargetDamageIntentionArrows
+                )
                 .AsBool();
             HideEnemySkills = config
                 .GetValue(SectionName, HideEnemySkillsKey, HideEnemySkills)
+                .AsBool();
+            GroupBattlePilesByCharacter = config
+                .GetValue(
+                    SectionName,
+                    GroupBattlePilesByCharacterKey,
+                    GroupBattlePilesByCharacter
+                )
                 .AsBool();
             KeepManualTargetCardVisibleWhenHidden = config
                 .GetValue(
@@ -135,10 +159,24 @@ public static class UserSettings
         Save();
     }
 
-    public static void SetEnemyAttackPreview(bool value)
+    public static void SetIncomingDamagePreview(bool value)
     {
         EnsureLoaded();
-        ShowEnemyAttackPreview = value;
+        ShowIncomingDamagePreview = value;
+        Save();
+    }
+
+    public static void SetShowIntentionTargetNames(bool value)
+    {
+        EnsureLoaded();
+        ShowIntentionTargetNames = value;
+        Save();
+    }
+
+    public static void SetShowSingleTargetDamageIntentionArrows(bool value)
+    {
+        EnsureLoaded();
+        ShowSingleTargetDamageIntentionArrows = value;
         Save();
     }
 
@@ -146,6 +184,13 @@ public static class UserSettings
     {
         EnsureLoaded();
         HideEnemySkills = value;
+        Save();
+    }
+
+    public static void SetGroupBattlePilesByCharacter(bool value)
+    {
+        EnsureLoaded();
+        GroupBattlePilesByCharacter = value;
         Save();
     }
 
@@ -322,8 +367,19 @@ public static class UserSettings
             UseCompactBattleCardDescriptions
         );
         config.SetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview);
-        config.SetValue(SectionName, EnemyAttackPreviewKey, ShowEnemyAttackPreview);
+        config.SetValue(SectionName, IncomingDamagePreviewKey, ShowIncomingDamagePreview);
+        config.SetValue(SectionName, ShowIntentionTargetNamesKey, ShowIntentionTargetNames);
+        config.SetValue(
+            SectionName,
+            ShowSingleTargetDamageIntentionArrowsKey,
+            ShowSingleTargetDamageIntentionArrows
+        );
         config.SetValue(SectionName, HideEnemySkillsKey, HideEnemySkills);
+        config.SetValue(
+            SectionName,
+            GroupBattlePilesByCharacterKey,
+            GroupBattlePilesByCharacter
+        );
         config.SetValue(
             SectionName,
             KeepManualTargetCardVisibleWhenHiddenKey,

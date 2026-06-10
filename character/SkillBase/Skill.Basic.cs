@@ -89,3 +89,85 @@ public partial class BasicSpecial : Skill
         );
     }
 }
+
+public partial class KasiyaBasicSpecial : Skill
+{
+    private const int PowerGain = 1;
+
+    public KasiyaBasicSpecial()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.kasiya_basic_special.name", "侵袭");
+    public override int EnergyCost => 2;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2),
+            CarryStep(target: TargetReference.Next, skillIndex: 1)
+        );
+    }
+}
+
+public partial class EchoBasicSpecial : Skill
+{
+    public EchoBasicSpecial()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.echo_basic_special.name", "解离");
+    public override int EnergyCost => 0;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.All)
+        );
+    }
+}
+
+public partial class MariyaBasicSpecial : Skill
+{
+    public MariyaBasicSpecial()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.mariya_basic_special.name", "治愈");
+    public override int EnergyCost => 2;
+    public override bool ExhaustsAfterUse => true;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(this, HealStep(5, TargetReference.ManualFriendly));
+    }
+}
+
+public partial class NightingaleBasicSpecial : Skill
+{
+    public NightingaleBasicSpecial()
+        : base(SkillTypes.Special)
+    {
+        UpdateDescription();
+    }
+
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.nightingale_basic_special.name", "隐藏");
+    public override int EnergyCost => 0;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(this, ApplyBuffFriendly(Buff.BuffName.Invisible, 1), DrawCardsStep(1));
+    }
+}

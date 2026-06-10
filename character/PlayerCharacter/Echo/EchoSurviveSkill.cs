@@ -42,7 +42,7 @@ public partial class SonicDeflection : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -55,7 +55,7 @@ public partial class SonicDeflection : Skill
 
 public partial class DeflectionShield : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     private const int DamageImmuneStacks = 1;
 
     public DeflectionShield()
@@ -71,7 +71,7 @@ public partial class DeflectionShield : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -84,7 +84,7 @@ public partial class DeflectionShield : Skill
 public partial class ResonantWard : Skill
 {
     private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     public override int EnergyCost => 2;
 
     public ResonantWard()
@@ -99,7 +99,7 @@ public partial class ResonantWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
@@ -112,9 +112,9 @@ public partial class ResonantWard : Skill
 public partial class DissonantField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 4;
     private const int WeakenStacks = 2;
-    private const int MaxTargets = 2;
+    public override int EnergyCost => 2;
 
     public DissonantField()
         : base(SkillTypes.Survive)
@@ -132,7 +132,7 @@ public partial class DissonantField : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
-                target: HostileTargets(MaxTargets)
+                target: HostileTargetReference.All
             )
         );
     }
@@ -140,7 +140,7 @@ public partial class DissonantField : Skill
 
 public partial class Shelter : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 6;
     private const int CardRefreshStacks = 1;
 
     public Shelter()
@@ -156,11 +156,11 @@ public partial class Shelter : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,
-                target: TargetReference.All
+                target: TargetReference.Others
             )
         );
     }

@@ -6,8 +6,8 @@ using Godot;
 
 public partial class PlayerCharacter : Character
 {
-    public const int MaxBattleHandSize = 8;
-    private const int TurnStartDrawCount = 4;
+    public const int MaxBattleHandSize = 10;
+    public const int TeamTurnStartDrawContribution = 2;
 
     public Frame SelfFrame;
     public Control SkillButtonControl;
@@ -15,6 +15,8 @@ public partial class PlayerCharacter : Character
     public bool Istest;
     public int CharacterIndex;
     public string CharacterKey { get; private set; }
+    protected override bool ResolvesTurnStartOnActionStart =>
+        BattleNode?.IsResolvingPlayerTeamActionPhase != true;
 
     public override void Initialize()
     {
@@ -33,14 +35,37 @@ public partial class PlayerCharacter : Character
         SetCombatStats(
             TalentTree.GetEffectivePower(info),
             TalentTree.GetEffectiveSurvivability(info),
-            TalentTree.GetEffectiveSpeed(info),
+            0,
             info.LifeMax
         );
-        Life = BattleMaxLife;
         base.Initialize();
         IsPlayer = true;
-        BlockLabel.Position += new Vector2(230, 0);
-        BlockLabel.HorizontalAlignment = HorizontalAlignment.Left;
+        Life = Math.Clamp(info.LifeInitialized ? info.Life : BattleMaxLife, 0, BattleMaxLife);
+        if (Life <= 0)
+        {
+            State = CharacterState.Dying;
+            Modulate = new Color(1, 1, 1, 0);
+        }
+        SyncLifeBarsToCurrent(syncBufferValue: true);
+        SyncPersistentLife();
+    }
+
+    public void SyncPersistentLife()
+    {
+        if (
+            CharacterIndex < 0
+            || GameInfo.PlayerCharacters == null
+            || CharacterIndex >= GameInfo.PlayerCharacters.Length
+        )
+        {
+            return;
+        }
+
+        var info = GameInfo.PlayerCharacters[CharacterIndex];
+        info.LifeMax = Math.Max(1, BattleMaxLife);
+        info.Life = Math.Clamp(Life, 0, info.LifeMax);
+        info.LifeInitialized = true;
+        GameInfo.PlayerCharacters[CharacterIndex] = info;
     }
 
     private static string ExtractCharacterKeyFromScenePath(string path)
@@ -68,6 +93,16 @@ public partial class PlayerCharacter : Character
         if (count <= 0)
             return;
 
+        if (
+            BattleNode != null
+            && GodotObject.IsInstanceValid(BattleNode)
+            && BattleNode.IsResolvingPlayerTeamActionPhase
+        )
+        {
+            BattleNode.DrawPlayerBattleCardsToTeamHand(this, count, refreshUi: false);
+            return;
+        }
+
         EnsureBattleHandSize();
         for (int i = 0; i < Skills.Length && count > 0; i++)
         {
@@ -86,11 +121,10 @@ public partial class PlayerCharacter : Character
         }
     }
 
-    public bool TryDrawBattleCards(int count)
+    public bool TryDrawBattleCards(int count, bool refreshUi = true)
     {
         if (
             count <= 0
-            || Skills == null
             || BattleNode == null
             || !GodotObject.IsInstanceValid(BattleNode)
             || State == Character.CharacterState.Dying
@@ -98,6 +132,9 @@ public partial class PlayerCharacter : Character
         {
             return false;
         }
+
+        if (BattleNode.IsResolvingPlayerTeamActionPhase)
+            return BattleNode.DrawPlayerBattleCardsToTeamHand(this, count, refreshUi);
 
         EnsureBattleHandSize();
         int beforeCount = Skills.Count(skill => skill != null);
@@ -107,7 +144,8 @@ public partial class PlayerCharacter : Character
             return false;
 
         InvalidateSkillTooltipCache();
-        BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
+        if (refreshUi)
+            BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
         return true;
     }
 
@@ -139,9 +177,14 @@ public partial class PlayerCharacter : Character
         if (skillIndex < 0 || skillIndex >= Skills.Length)
             return;
 
-        Skill redrawnSkill = DrawBattleSkill(avoidSkillId);
+        Skill oldSkill = Skills[skillIndex];
+        SkillID? resolvedAvoidSkillId = avoidSkillId ?? oldSkill?.SkillId;
+        Skill redrawnSkill = DrawBattleSkill(resolvedAvoidSkillId);
         if (redrawnSkill == null)
             return;
+
+        if (oldSkill != null)
+            BattleNode?.DiscardBattleSkill(GetBattlePileOwner(oldSkill), oldSkill, forceDiscard: true);
 
         redrawnSkill.OwnerCharater = this;
         redrawnSkill.UpdateDescription();
@@ -173,13 +216,12 @@ public partial class PlayerCharacter : Character
             return;
         }
 
-        DrawBattleCards(TurnStartDrawCount + Relic.GetTurnStartDrawBonus(BattleNode));
+        DrawBattleCards(TeamTurnStartDrawContribution + Relic.GetTurnStartDrawBonus(BattleNode));
 
-        int extraDrawCount = Math.Min(GetBattleHandEmptySlotCount(), SpecialBuff.GetCardRefreshStack(this));
-        if (extraDrawCount > 0)
+        if (GetBattleHandEmptySlotCount() > 0 && SpecialBuff.GetCardRefreshStack(this) > 0)
         {
             int beforeCount = GetBattleHandCardCount();
-            DrawBattleCards(extraDrawCount);
+            DrawBattleCards(1);
             int drawnCount = Math.Max(0, GetBattleHandCardCount() - beforeCount);
             SpecialBuff.ConsumeCardRefresh(this, drawnCount);
         }
@@ -251,7 +293,7 @@ public partial class PlayerCharacter : Character
             if (skill == null)
                 continue;
 
-            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
+            BattleNode.DiscardBattleSkill(GetBattlePileOwner(skill), skill, atTurnEnd: true);
             Skills[i] = null;
             discardedAny = true;
         }
@@ -274,6 +316,7 @@ public partial class PlayerCharacter : Character
 
             if (skill.TriggersAtTurnEndInHand)
             {
+                PlayerCharacter skillOwner = GetBattlePileOwner(skill);
                 CharacterControl characterControl = BattleNode.CharacterControl;
                 if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
                 {
@@ -281,16 +324,16 @@ public partial class PlayerCharacter : Character
                         this,
                         i,
                         skill,
-                        () => skill.OnTurnEndInHand(this)
+                        () => skill.OnTurnEndInHand(skillOwner)
                     );
                 }
                 else
-                    await skill.OnTurnEndInHand(this);
+                    await skill.OnTurnEndInHand(skillOwner);
 
                 if (Skills[i] == skill)
                 {
                     BattleNode.DiscardBattleSkill(
-                        this,
+                        GetBattlePileOwner(skill),
                         skill,
                         atTurnEnd: true,
                         forceDiscard: true
@@ -301,7 +344,7 @@ public partial class PlayerCharacter : Character
                 continue;
             }
             else
-                await skill.OnTurnEndInHand(this);
+                await skill.OnTurnEndInHand(GetBattlePileOwner(skill));
 
             if (Skills[i] != skill)
                 continue;
@@ -333,7 +376,7 @@ public partial class PlayerCharacter : Character
             if (skill == null)
                 continue;
 
-            BattleNode.DiscardBattleSkill(this, skill, atTurnEnd: true);
+            BattleNode.DiscardBattleSkill(GetBattlePileOwner(skill), skill, atTurnEnd: true);
             Skills[index] = null;
         }
 
@@ -352,9 +395,13 @@ public partial class PlayerCharacter : Character
         )
             return;
 
-        ResolveTurnStartCardDraw();
-        BattleNode.CharacterControl?.ShowPlayerTurn(this);
-        BattleNode.RetreatButton.Disabled = !BattleNode.CanManualRetreat();
+        if (BattleNode.IsResolvingPlayerTeamActionPhase)
+            BattleNode.BeginPlayerTeamAction();
+        else
+        {
+            ResolveTurnStartCardDraw();
+            BattleNode.CharacterControl?.ShowPlayerTurn(this);
+        }
         BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
     }
 
@@ -366,7 +413,6 @@ public partial class PlayerCharacter : Character
             return;
         }
 
-        BattleNode.RetreatButton.Disabled = true;
         BattleNode.CharacterControl?.DisablePlayerActions(this);
         var mapNode = BattleNode.MapNode;
         if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
@@ -380,10 +426,14 @@ public partial class PlayerCharacter : Character
         if (battleNode == null || !GodotObject.IsInstanceValid(battleNode))
             return;
 
-        await DiscardBattleHandAtTurnEndAsync();
+        bool isTeamActionPhase = battleNode.IsResolvingPlayerTeamActionPhase;
+        if (isTeamActionPhase)
+            await battleNode.DiscardPlayerTeamBattleHandAtTurnEndAsync(this);
+        else
+            await DiscardBattleHandAtTurnEndAsync();
         OnActionEnd();
-
-        await base.ResolveTurnEndPhaseAsync();
+        if (!isTeamActionPhase)
+            await base.ResolveTurnEndPhaseAsync();
 
         await battleNode.EndEmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
@@ -393,6 +443,12 @@ public partial class PlayerCharacter : Character
 
     protected override async Task ResolveTurnEndPhaseAsync()
     {
+        if (BattleNode?.IsResolvingPlayerTeamActionPhase == true)
+        {
+            await base.ResolveTurnEndPhaseAsync();
+            return;
+        }
+
         await DiscardBattleHandAtTurnEndAsync();
         await base.ResolveTurnEndPhaseAsync();
     }
@@ -435,5 +491,10 @@ public partial class PlayerCharacter : Character
         }
 
         Skills = compacted;
+    }
+
+    private PlayerCharacter GetBattlePileOwner(Skill skill)
+    {
+        return skill?.OwnerCharater as PlayerCharacter ?? this;
     }
 }

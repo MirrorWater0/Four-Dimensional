@@ -6,12 +6,13 @@ using Godot;
 public partial class Nightingale : PlayerCharacter
 {
     private const int PassiveUpgradeVulnerableStacks = 1;
+    private Func<bool, Task> _teamTurnEndHandler;
 
     public const string PassiveNameText = "夜光";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.nightingale.passive.description",
-            "队友结束回合时：追击一次：造成{power}点伤害。",
+            "己方阵营回合结束时：造成{power}点伤害。",
             ("power", PropertyType.Power.GetDescription())
         );
 
@@ -27,20 +28,29 @@ public partial class Nightingale : PlayerCharacter
             PassiveDescriptionText,
             HasPassiveTalentUpgrade()
         );
-        BattleNode.EmitList.Add(Pursuit);
+        _teamTurnEndHandler ??= OnTeamTurnEnded;
+        if (BattleNode != null && !BattleNode.TeamTurnEndEmitList.Contains(_teamTurnEndHandler))
+            BattleNode.TeamTurnEndEmitList.Add(_teamTurnEndHandler);
     }
 
-    public async Task Pursuit(Character character)
+    public override void _ExitTree()
     {
-        if (character.IsPlayer && character != this && State != CharacterState.Dying)
-        {
-            using var _ = BeginEffectSource("追击");
-            await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
-            var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = this };
-            Character target = skill.ChosetargetByOrder(applyTaunt: true).FirstOrDefault();
-            ApplyPassiveUpgradeBeforePursuit(target);
-            await skill.Attack(BattlePower, target: target);
-        }
+        if (BattleNode != null && _teamTurnEndHandler != null)
+            BattleNode.TeamTurnEndEmitList.Remove(_teamTurnEndHandler);
+        base._ExitTree();
+    }
+
+    private async Task OnTeamTurnEnded(bool endedTeamIsPlayer)
+    {
+        if (!endedTeamIsPlayer || State == CharacterState.Dying)
+            return;
+
+        using var _ = BeginEffectSource(PassiveNameText);
+        await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
+        var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = this };
+        Character target = skill.ChosetargetByOrder(applyTaunt: true).FirstOrDefault();
+        ApplyPassiveUpgradeBeforePursuit(target);
+        await skill.Attack(BattlePower, target: target);
     }
 
     private void ApplyPassiveUpgradeBeforePursuit(Character target)
@@ -72,12 +82,12 @@ public partial class PlayerCharacterRegistry
             global::Nightingale.PassiveNameText
         ),
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 22,
+        LifeMax = 39,
         Power = 4,
-        Survivability = 4,
-        Speed = 8,
+        Survivability = 3,
+        Speed = 13,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.NightingaleBasicSpecial],
     };
 }

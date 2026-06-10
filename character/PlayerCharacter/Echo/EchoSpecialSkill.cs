@@ -57,7 +57,7 @@ public class VoidForm : Skill
     }
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -190,7 +190,7 @@ public class EchoForm : Skill
     }
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
 
     protected override SkillPlan BuildPlan()
     {

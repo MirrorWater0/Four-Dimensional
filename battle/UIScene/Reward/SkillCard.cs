@@ -22,6 +22,10 @@ public partial class SkillCard : SubViewportContainer
         0.10980392f,
         0.98f
     );
+    private static readonly Color EchoPlateColor = new(0.86f, 0.42f, 1.0f, 1f);
+    private static readonly Color KasiyaPlateColor = new(0.96f, 0.36f, 0.32f, 1f);
+    private static readonly Color MariyaPlateColor = new(0.36f, 0.80f, 0.52f, 1f);
+    private static readonly Color NightingalePlateColor = new(0.10f, 0.28f, 0.72f, 1f);
 
     public Panel BG => field ??= GetNode<Panel>("SubViewport/BG");
     public Panel InnerFrame => field ??= GetNode<Panel>("SubViewport/InnerFrame");
@@ -140,7 +144,7 @@ public partial class SkillCard : SubViewportContainer
             _hoverTween = CreateTween();
             _hoverTween.TweenProperty(this, "scale", _baseScale, 0.15f);
         };
-        RestoreDefaultCardMaterial()?.SetShaderParameter("progress", 1f);
+        RestoreDefaultCardMaterial()?.SetShaderParameter("progress", 0f);
         Button.Pressed += () =>
         {
             if (AutoPressEffect)
@@ -171,7 +175,7 @@ public partial class SkillCard : SubViewportContainer
 
         if (RestoreDefaultCardMaterial() is ShaderMaterial shader)
         {
-            shader.SetShaderParameter("progress", 1f);
+            shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
         }
 
@@ -337,6 +341,7 @@ public partial class SkillCard : SubViewportContainer
         ApplyRarityStyles(CurrentSkill.Rarity);
         if (isStatusCard)
             ApplyStatusCardStyle();
+        ApplyCharacterPlateStyle(CurrentSkill);
 
         Texture2D skillPicture = GetSkillPictureTexture(
             CurrentSkill,
@@ -502,14 +507,14 @@ public partial class SkillCard : SubViewportContainer
             .SetEase(Tween.EaseType.Out);
     }
 
-    public void PressEffectPartial(
+    public Tween PressEffectPartial(
         float centerVanish = 0.72f,
         float glowMultiplier = 1.55f,
         float duration = 0.32f
     )
     {
         if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
-            return;
+            return null;
 
         centerVanish = Mathf.Clamp(centerVanish, 0f, 1f);
         glowMultiplier = Mathf.Max(1f, glowMultiplier);
@@ -529,10 +534,18 @@ public partial class SkillCard : SubViewportContainer
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
+        Color startModulate = Modulate;
+        Color targetModulate = new(
+            startModulate.R * glowMultiplier,
+            startModulate.G * glowMultiplier,
+            startModulate.B * glowMultiplier,
+            startModulate.A
+        );
         _pressTween
-            .TweenProperty(this, "modulate", glowMultiplier * new Color(1, 1, 1, 1f), duration)
+            .TweenProperty(this, "modulate", targetModulate, duration)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
+        return _pressTween;
     }
 
     public void PlayExhaustEffect(float duration = 0.8f)
@@ -552,7 +565,8 @@ public partial class SkillCard : SubViewportContainer
         shader.SetShaderParameter("noise_offset", CreateCardExhaustNoiseOffset());
         Material = shader;
 
-        Modulate = Colors.White;
+        if (Modulate.A <= 0f)
+            Modulate = Colors.White;
         _pressTween = CreateTween();
         _pressTween.SetParallel(true);
         _pressTween
@@ -1160,6 +1174,11 @@ public partial class SkillCard : SubViewportContainer
             NamePlate.Color = accentGlow;
         if (CharacterPlate != null)
             CharacterPlate.Color = footerFill;
+        if (CharacterName != null)
+        {
+            CharacterName.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f, 0.92f));
+            CharacterName.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 1f));
+        }
         if (ArtDiamondOuter != null)
             ArtDiamondOuter.Color = accentColor;
         if (ArtDiamondInner != null)
@@ -1168,6 +1187,77 @@ public partial class SkillCard : SubViewportContainer
 
         if (TopAccent != null)
             TopAccent.Color = WithAlpha(borderColor, 0.58f);
+    }
+
+    private void ApplyCharacterPlateStyle(Skill skill)
+    {
+        if (skill == null)
+            return;
+
+        if (!TryGetCharacterPlateColor(skill, out Color color))
+            return;
+
+        if (CharacterPlate != null)
+            CharacterPlate.Color = WithAlpha(color, 0.42f);
+        if (NamePlate != null)
+            NamePlate.Color = WithAlpha(color, 0.18f);
+        if (CharacterName != null)
+        {
+            CharacterName.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f, 0.96f));
+            CharacterName.AddThemeColorOverride(
+                "font_outline_color",
+                WithAlpha(new Color(color.R * 0.18f, color.G * 0.18f, color.B * 0.18f, 1f), 0.95f)
+            );
+        }
+    }
+
+    private bool TryGetCharacterPlateColor(Skill skill, out Color color)
+    {
+        string key = ResolveCharacterColorKey(skill);
+        color = key switch
+        {
+            "Echo" => EchoPlateColor,
+            "Kasiya" => KasiyaPlateColor,
+            "Mariya" => MariyaPlateColor,
+            "Nightingale" => NightingalePlateColor,
+            _ => default,
+        };
+
+        return !string.IsNullOrWhiteSpace(key)
+            && key is "Echo" or "Kasiya" or "Mariya" or "Nightingale";
+    }
+
+    private string ResolveCharacterColorKey(Skill skill)
+    {
+        if (!string.IsNullOrWhiteSpace(PreviewCharacterKey))
+            return NormalizeCharacterColorKey(PreviewCharacterKey);
+
+        if (skill?.OwnerCharater is PlayerCharacter player && !string.IsNullOrWhiteSpace(player.CharacterKey))
+            return NormalizeCharacterColorKey(player.CharacterKey);
+
+        if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
+            return NormalizeCharacterColorKey(skill.OwnerCharater.CharacterName);
+
+        if (skill?.SkillId.HasValue == true && Skill.TryGetPlayerCharacterKey(skill.SkillId.Value, out var characterKey))
+            return characterKey.ToString();
+
+        if (!string.IsNullOrWhiteSpace(PreviewCharacterName))
+            return NormalizeCharacterColorKey(PreviewCharacterName);
+
+        return string.Empty;
+    }
+
+    private static string NormalizeCharacterColorKey(string value)
+    {
+        string normalized = value?.Trim() ?? string.Empty;
+        return normalized switch
+        {
+            "Echo" or "回声" => "Echo",
+            "Kasiya" or "卡西亚" => "Kasiya",
+            "Mariya" or "玛瑞娅" => "Mariya",
+            "Nightingale" or "夜莺" => "Nightingale",
+            _ => normalized,
+        };
     }
 
     private void ApplyStatusCardStyle()

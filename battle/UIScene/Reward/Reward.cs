@@ -25,7 +25,7 @@ public partial class Reward : CanvasLayer
         "res://shader/Effect/SparkLight.gdshader"
     );
 
-    private const int ExpectedSkillSlots = 4;
+    private const int ExpectedSkillSlots = GameInfo.DefaultPlayerPartySize;
     private const string RuntimeRewardMeta = "reward_runtime";
     private const float TalentNodeWidth = 76f;
     private const float TalentNodeHeight = 76f;
@@ -537,6 +537,7 @@ public partial class Reward : CanvasLayer
         _pickedSkill = false;
         _isSkillRewardOpen = true;
         SkillRewardsContainer.Visible = true;
+        SkillRewardsContainer.Alignment = BoxContainer.AlignmentMode.Center;
         if (SkillRewardSkipButton != null)
         {
             SkillRewardSkipButton.Visible = true;
@@ -1311,7 +1312,7 @@ public partial class Reward : CanvasLayer
         if (GetTree() != null)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
-        SaveSystem.SaveAll();
+        SaveSystem.SaveAllInBackground();
     }
 
     private Control FindTalentRewardNodeControl(string talentId)
@@ -1836,7 +1837,6 @@ public partial class Reward : CanvasLayer
 
         AddStat(segments, equip.Power, I18n.Tr("property.power", "力量"));
         AddStat(segments, equip.Survivability, I18n.Tr("property.survivability", "生存"));
-        AddStat(segments, equip.Speed, I18n.Tr("property.speed", "速度"));
         AddStat(segments, equip.MaxLife, I18n.Tr("ui.common.life", "生命"));
 
         return string.Join("  ", segments);

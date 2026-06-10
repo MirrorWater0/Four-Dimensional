@@ -47,10 +47,11 @@ public partial class FearEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
 
-        MaxLife = 203;
-        Power = 12;
-        Survivability = 11;
-        Speed = 28;
+        MaxLife = 264;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.FearEliteAttack, SkillID.FearEliteSurvive, SkillID.FearEliteSpecial];
 
         PassiveName = global::Fear.PassiveNameText;
@@ -60,8 +61,7 @@ public partial class FearEliteRegedit : EnemyRegedit
 
 public partial class FearEliteAttack : Skill
 {
-    private const int BaseDamage = 9;
-    private const int FearStacks = 3;
+    private const int BaseDamage = 14;
 
     public FearEliteAttack()
         : base(SkillTypes.Attack)
@@ -73,17 +73,13 @@ public partial class FearEliteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
-            ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.AttackKey)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2));
     }
 }
 
 public partial class FearEliteSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 21;
     private const int SurvivabilityGain = 5;
 
     public FearEliteSurvive()
@@ -100,15 +96,15 @@ public partial class FearEliteSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            ModifyPropertyStep(PropertyType.Power, 5)
+            ModifyPropertyStep(PropertyType.Power, 4)
         );
     }
 }
 
 public partial class FearEliteSpecial : Skill
 {
-    private const int BaseDamage = 0;
-    private const int FearStacks = 3;
+    private const int BaseDamage = 14;
+    private const int FearStacks = 4;
 
     public FearEliteSpecial()
         : base(SkillTypes.Special)
@@ -123,9 +119,9 @@ public partial class FearEliteSpecial : Skill
     {
         return new SkillPlan(
             this,
+            ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.All),
             AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            HealStep(15),
-            ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.All)
+            HealStep(15)
         );
     }
 }

@@ -216,21 +216,12 @@ public partial class BattlePreviewTutorialOverlay : CanvasLayer
         };
         body.AddThemeFontSizeOverride("normal_font_size", 21);
         body.AddThemeColorOverride("default_color", new Color(0.86f, 0.92f, 1f, 0.96f));
-        body.Text =
-            "同一阵营会按图中的 [color=#f0d28a]1 -> 9[/color] 顺序轮流出手，行动后会重新排到队尾。\n\n"
-            + "如果想改角色站位和对应战术，点击右下角的 [color=#f0d28a]战术[/color] 就能调整。\n\n"
-            + "[color=#7fc7ff]点击任意位置继续[/color]";
         layout.AddChild(body);
 
         body.Text =
             "同一阵营会按图中的 [color=#f0d28a]1 -> 9[/color] 顺序轮流出手，行动后会重新排到队尾。\n\n"
-            + "可以拖拽我方头像调整站位；悬停双方头像可以查看属性、被动和持有技能。总速度越高，行动点数积累越快。\n\n"
-            + "[color=#7fc7ff]点击任意位置继续[/color]";
-
-        body.Text =
-            "同一阵营会按图中的 [color=#f0d28a]1 -> 9[/color] 顺序轮流出手，行动后会重新排到队尾。\n\n"
             + "可以拖拽我方头像调整站位；悬停双方头像可以查看属性、被动和持有技能。\n\n"
-            + "总速度会决定行动点累积速度：总速度越高，越容易在正常轮流之外抢到额外出手。\n\n"
+            + "战斗会在我方阵营阶段和敌方阵营阶段之间切换，双方都按站位顺序行动。\n\n"
             + "[color=#7fc7ff]点击任意位置继续[/color]";
 
         return card;

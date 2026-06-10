@@ -622,11 +622,10 @@ public partial class Encyclopedia : Control
                 string title = LocalizationHelper.GetEnemyDisplayName(regedit);
                 string subtitle = I18n.Format(
                     "ui.encyclopedia.enemy.subtitle",
-                    "生命 {life} · 力量 {power} · 生存 {survivability} · 速度 {speed}",
+                    "生命 {life} · 力量 {power} · 生存 {survivability}",
                     ("life", regedit.MaxLife),
                     ("power", regedit.Power),
-                    ("survivability", regedit.Survivability),
-                    ("speed", regedit.Speed)
+                    ("survivability", regedit.Survivability)
                 );
                 string detail =
                     $"[b]{EscapeBbcode(title)}[/b]\n{EscapeBbcode(subtitle)}\n"
@@ -704,7 +703,13 @@ public partial class Encyclopedia : Control
             if (skill == null)
                 continue;
 
-            skill.SetPreviewStats(regedit.Power, regedit.Survivability, 1);
+            skill.SetPreviewStats(
+                regedit.Power,
+                regedit.Survivability,
+                1,
+                basePowerContribution: regedit.BasePowerContribution,
+                baseSurvivabilityContribution: regedit.BaseSurvivabilityContribution
+            );
             skill.UpdateDescription();
             string type = skill.SkillType.GetDescription();
             lines.Add($"[b]{EscapeBbcode(skill.SkillName)}[/b] · {EscapeBbcode(type)}");

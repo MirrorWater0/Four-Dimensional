@@ -53,7 +53,7 @@ public partial class ShadowExecution : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One),
             ConditionStep(
                 AnyAttackTargetDying,
                 "击杀任一目标",
@@ -109,7 +109,6 @@ public partial class StasisBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 7;
-    private const int SpeedDown = 4;
 
     public StasisBlade()
         : base(SkillTypes.Attack)
@@ -124,7 +123,7 @@ public partial class StasisBlade : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Speed, SpeedDown, HostileTargetReference.One)
+            DrawCardsStep(1)
         );
     }
 }
@@ -153,7 +152,7 @@ public partial class ContinuousPierce : Skill
             ConditionStep(
                 () => IsAtFullLife,
                 "满血",
-                ApplyBuffHostile(Buff.BuffName.Vulnerable, 2),
+                ApplyBuffHostile(Buff.BuffName.Vulnerable, 1),
                 ApplyBuffHostile(Buff.BuffName.Weaken, 2)
             )
         );
@@ -205,7 +204,7 @@ public partial class NightfallFlurry : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 multiplier: PowerMultiplier,
-                target: HostileTargetReference.Two
+                target: HostileTargetReference.All
             ),
             CarryStep(target: TargetReference.Next, skillIndex: 3)
         );

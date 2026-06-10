@@ -4,22 +4,17 @@ using System.Linq;
 
 public static partial class GameInfo
 {
-    private static readonly SkillID[] StarterBattleDeck =
-    [
-        SkillID.BasicDefense,
-        SkillID.BasicGuard,
-        SkillID.BasicAttack,
-        SkillID.BasicAttack,
-        SkillID.BasicSpecial,
-    ];
+    public const int DefaultPlayerPartySize = 3;
 
-    private static readonly SkillID[] NightingaleStarterBattleDeck =
+    private const int MaxFormationSlots = 9;
+    private static readonly int[] DefaultPlayerFormationSlots = [1, 2, 3];
+
+    private static readonly SkillID[] StarterBattleDeckBase =
     [
-        SkillID.BasicDefense,
         SkillID.BasicGuard,
+        SkillID.BasicDefense,
         SkillID.BasicAttack,
         SkillID.BasicAttack,
-        SkillID.BasicSpecial,
     ];
 
     private static readonly HashSet<SkillID> BasicSkillIds =
@@ -28,6 +23,10 @@ public static partial class GameInfo
         SkillID.BasicDefense,
         SkillID.BasicGuard,
         SkillID.BasicSpecial,
+        SkillID.KasiyaBasicSpecial,
+        SkillID.EchoBasicSpecial,
+        SkillID.MariyaBasicSpecial,
+        SkillID.NightingaleBasicSpecial,
     ];
 
     public static void NormalizePlayerCharacters()
@@ -40,16 +39,95 @@ public static partial class GameInfo
         for (int i = 0; i < PlayerCharacters.Length; i++)
         {
             var info = PlayerCharacters[i];
-            NormalizePlayerInfo(ref info, i + 1);
+            NormalizePlayerInfo(ref info, GetDefaultPlayerFormationPosition(i));
             PlayerCharacters[i] = info;
         }
+
+        NormalizeDefaultPlayerFormation();
 
         for (int i = 0; i < PlayerCharacters.Length; i++)
         {
             var info = PlayerCharacters[i];
-            NormalizePlayerInfo(ref info, i + 1);
+            NormalizePlayerInfo(ref info, GetDefaultPlayerFormationPosition(i));
             PlayerCharacters[i] = info;
         }
+    }
+
+    public static int GetDefaultPlayerFormationPosition(int playerIndex)
+    {
+        if (playerIndex >= 0 && playerIndex < DefaultPlayerFormationSlots.Length)
+            return DefaultPlayerFormationSlots[playerIndex];
+
+        return playerIndex + 1;
+    }
+
+    private static void NormalizeDefaultPlayerFormation()
+    {
+        if (
+            PlayerCharacters == null
+            || PlayerCharacters.Length == 0
+            || PlayerCharacters.Length > DefaultPlayerFormationSlots.Length
+        )
+        {
+            return;
+        }
+
+        HashSet<int> occupied = new();
+
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int positionIndex = info.PositionIndex;
+
+            if (!CanUseFormationPosition(positionIndex, occupied))
+            {
+                positionIndex = PickDefaultFormationPosition(occupied, i);
+                info.PositionIndex = positionIndex;
+                PlayerCharacters[i] = info;
+            }
+
+            occupied.Add(positionIndex);
+        }
+    }
+
+    private static int PickDefaultFormationPosition(
+        HashSet<int> occupied,
+        int playerIndex
+    )
+    {
+        int preferredPosition = GetDefaultPlayerFormationPosition(playerIndex);
+        if (CanUseFormationPosition(preferredPosition, occupied))
+            return preferredPosition;
+
+        foreach (int positionIndex in DefaultPlayerFormationSlots)
+        {
+            if (CanUseFormationPosition(positionIndex, occupied))
+                return positionIndex;
+        }
+
+        for (int positionIndex = 1; positionIndex <= MaxFormationSlots; positionIndex++)
+        {
+            if (CanUseFormationPosition(positionIndex, occupied))
+                return positionIndex;
+        }
+
+        for (int positionIndex = 1; positionIndex <= MaxFormationSlots; positionIndex++)
+        {
+            if (!occupied.Contains(positionIndex))
+                return positionIndex;
+        }
+
+        return preferredPosition;
+    }
+
+    private static bool CanUseFormationPosition(
+        int positionIndex,
+        HashSet<int> occupied
+    )
+    {
+        if (positionIndex <= 0 || positionIndex > MaxFormationSlots)
+            return false;
+        return !occupied.Contains(positionIndex);
     }
 
     public static void SeedTakenSkillsAsGained()
@@ -88,6 +166,16 @@ public static partial class GameInfo
         info.UnlockedTalents ??= new List<string>();
         info.TalentPoints = Math.Max(0, info.TalentPoints);
         info.TakenSkills = NormalizeArray(info.TakenSkills, 3);
+        info.LifeMax = Math.Max(1, info.LifeMax);
+        if (!info.LifeInitialized)
+        {
+            info.Life = info.LifeMax;
+            info.LifeInitialized = true;
+        }
+        else
+        {
+            info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
+        }
         if (info.PositionIndex <= 0)
         {
             info.PositionIndex = defaultPositionIndex;
@@ -96,6 +184,7 @@ public static partial class GameInfo
         info.AllSkills = Skill.GetPlayerSkillPool(info.CharacterName, info.CharacterScenePath);
         NormalizeTakenSkillsForPool(ref info);
         NormalizeStarterBattleDeckIfNeeded(ref info);
+        NormalizeStarterTakenSpecialIfNeeded(ref info);
         EnsureTakenSkillsAreTracked(ref info);
     }
 
@@ -162,6 +251,10 @@ public static partial class GameInfo
         poolSet.Add(SkillID.BasicDefense);
         poolSet.Add(SkillID.BasicGuard);
         poolSet.Add(SkillID.BasicSpecial);
+        poolSet.Add(SkillID.KasiyaBasicSpecial);
+        poolSet.Add(SkillID.EchoBasicSpecial);
+        poolSet.Add(SkillID.MariyaBasicSpecial);
+        poolSet.Add(SkillID.NightingaleBasicSpecial);
         var validGained = (info.GainedSkills ?? new List<SkillID>())
             .Where(poolSet.Contains)
             .Distinct()
@@ -200,13 +293,25 @@ public static partial class GameInfo
 
     private static SkillID[] GetStarterBattleDeck(PlayerInfoStructure info)
     {
-        return string.Equals(
+        return StarterBattleDeckBase.Append(GetStarterSpecialSkill(info)).ToArray();
+    }
+
+    private static SkillID GetStarterSpecialSkill(PlayerInfoStructure info)
+    {
+        return Skill.TryResolvePlayerCharacterKey(
             info.CharacterName,
-            "Nightingale",
-            StringComparison.OrdinalIgnoreCase
+            info.CharacterScenePath,
+            out PlayerCharacterKey key
         )
-            ? NightingaleStarterBattleDeck
-            : StarterBattleDeck;
+            ? key switch
+        {
+            PlayerCharacterKey.Echo => SkillID.EchoBasicSpecial,
+            PlayerCharacterKey.Kasiya => SkillID.KasiyaBasicSpecial,
+            PlayerCharacterKey.Mariya => SkillID.MariyaBasicSpecial,
+            PlayerCharacterKey.Nightingale => SkillID.NightingaleBasicSpecial,
+            _ => SkillID.BasicSpecial,
+        }
+            : SkillID.BasicSpecial;
     }
 
     private static void NormalizeStarterBattleDeckIfNeeded(ref PlayerInfoStructure info)
@@ -214,6 +319,25 @@ public static partial class GameInfo
         info.GainedSkills ??= new List<SkillID>();
         if (IsStarterBasicOnlyDeck(info.GainedSkills))
             info.GainedSkills = new List<SkillID>(GetStarterBattleDeck(info));
+    }
+
+    private static void NormalizeStarterTakenSpecialIfNeeded(ref PlayerInfoStructure info)
+    {
+        if (info.TakenSkills == null || info.TakenSkills.Length == 0)
+            return;
+
+        SkillID starterSpecial = GetStarterSpecialSkill(info);
+        if (starterSpecial == SkillID.BasicSpecial)
+            return;
+
+        for (int i = 0; i < info.TakenSkills.Length; i++)
+        {
+            if (info.TakenSkills[i] != SkillID.BasicSpecial)
+                continue;
+
+            info.TakenSkills[i] = starterSpecial;
+            return;
+        }
     }
 
     private static SkillID PickReplacementSkill(

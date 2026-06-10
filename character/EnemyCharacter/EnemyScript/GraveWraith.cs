@@ -56,9 +56,10 @@ public partial class GraveWraithRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
         MaxLife = 70;
-        Power = 33;
-        Survivability = 14;
-        Speed = 9;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs =
         [
             SkillID.GraveWraithAttack,
@@ -73,7 +74,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 33;
 
     public GraveWraithAttack()
         : base(SkillTypes.Attack)
@@ -91,7 +92,7 @@ public partial class GraveWraithAttack : Skill
 
 public partial class GraveWraithSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 28;
 
     public GraveWraithSurvive()
         : base(SkillTypes.Survive)
@@ -106,7 +107,7 @@ public partial class GraveWraithSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1 , HostileTargetReference.Two)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.All)
         );
     }
 }
@@ -126,7 +127,7 @@ public partial class GraveWraithSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0, multiplier: 1),
+            AttackStep(baseDamage: 33, multiplier: 1),
             LowerTargetPropertyStep(PropertyType.Survivability, 99, HostileTargetReference.All)
         );
     }

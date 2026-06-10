@@ -120,14 +120,14 @@ public partial class DebugConsole : CanvasLayer
         ),
         new(
             "setstat",
-            "setstat <角色> <power|survivability|speed|maxlife> <值>",
+            "setstat <角色> <power|survivability|maxlife> <值>",
             "将角色基础属性直接设为指定值。",
             ["角色名或 1-4", "属性类型", "目标值"],
             "设属性"
         ),
         new(
             "addstat",
-            "addstat <角色> <power|survivability|speed|maxlife> <增量>",
+            "addstat <角色> <power|survivability|maxlife> <增量>",
             "在角色基础属性上增减数值。",
             ["角色名或 1-4", "属性类型", "增量"],
             "加属性"
@@ -1419,7 +1419,6 @@ public partial class DebugConsole : CanvasLayer
         [
             new CompletionItem("power", "power  ·  力量", "power", "力量"),
             new CompletionItem("survivability", "survivability  ·  生存", "survivability", "survive", "生存"),
-            new CompletionItem("speed", "speed  ·  速度", "speed", "速度"),
             new CompletionItem("maxlife", "maxlife  ·  生命上限", "maxlife", "maxhp", "生命", "生命上限"),
         ];
     }
@@ -1795,8 +1794,8 @@ public partial class DebugConsole : CanvasLayer
         {
             AppendError(
                 absolute
-                    ? "用法：setstat <角色> <power|survivability|speed|maxlife> <值>"
-                    : "用法：addstat <角色> <power|survivability|speed|maxlife> <增量>"
+                    ? "用法：setstat <角色> <power|survivability|maxlife> <值>"
+                    : "用法：addstat <角色> <power|survivability|maxlife> <增量>"
             );
             return;
         }
@@ -1820,9 +1819,6 @@ public partial class DebugConsole : CanvasLayer
             case PropertyType.Survivability:
                 info.Survivability = absolute ? value : info.Survivability + value;
                 break;
-            case PropertyType.Speed:
-                info.Speed = absolute ? value : info.Speed + value;
-                break;
             case PropertyType.MaxLife:
                 info.LifeMax = absolute ? value : info.LifeMax + value;
                 break;
@@ -1830,7 +1826,6 @@ public partial class DebugConsole : CanvasLayer
 
         info.Power = Math.Clamp(info.Power, 0, 999);
         info.Survivability = Math.Clamp(info.Survivability, 0, 999);
-        info.Speed = Math.Clamp(info.Speed, 0, 999);
         info.LifeMax = Math.Clamp(info.LifeMax, 1, 9999);
         GameInfo.PlayerCharacters[playerIndex] = info;
         GameInfo.NormalizePlayerCharacters();
@@ -1862,18 +1857,13 @@ public partial class DebugConsole : CanvasLayer
         {
             GameInfo.ElectricityCoin = Math.Max(0, value);
         }
-        else if (Matches(target, "energy", "core", "coreenergy", "能量", "核心能源"))
+        else if (Matches(target, "life", "party", "partylife", "队伍生命"))
         {
-            GameInfo.TransitionEnergy = Math.Clamp(value, 0, GameInfo.TransitionEnergyMax);
+            GameInfo.SetPartyLifeTotal(value);
         }
-        else if (Matches(target, "maxenergy", "energymax", "maxcore", "coremax", "最大能量", "核心能源上限"))
+        else if (Matches(target, "energy", "core", "coreenergy", "能量"))
         {
-            GameInfo.TransitionEnergyMax = Math.Max(0, value);
-            GameInfo.TransitionEnergy = Math.Clamp(
-                GameInfo.TransitionEnergy,
-                0,
-                GameInfo.TransitionEnergyMax
-            );
+            GameInfo.SetPartyLifeTotal(value);
         }
         else
         {
@@ -1972,7 +1962,6 @@ public partial class DebugConsole : CanvasLayer
         {
             PropertyType.Power => info.Power,
             PropertyType.Survivability => info.Survivability,
-            PropertyType.Speed => info.Speed,
             PropertyType.MaxLife => info.LifeMax,
             _ => 0,
         };
@@ -1984,7 +1973,6 @@ public partial class DebugConsole : CanvasLayer
         {
             PropertyType.Power => player.BattlePower,
             PropertyType.Survivability => player.BattleSurvivability,
-            PropertyType.Speed => player.Speed,
             PropertyType.MaxLife => player.BattleMaxLife,
             _ => 0,
         };
@@ -1996,7 +1984,6 @@ public partial class DebugConsole : CanvasLayer
         {
             PropertyType.Power => info.Power,
             PropertyType.Survivability => info.Survivability,
-            PropertyType.Speed => info.Speed,
             PropertyType.MaxLife => info.LifeMax,
             _ => 0,
         };
@@ -2180,12 +2167,6 @@ public partial class DebugConsole : CanvasLayer
             return true;
         }
 
-        if (Matches(token, "speed", "速度"))
-        {
-            propertyType = PropertyType.Speed;
-            return true;
-        }
-
         if (Matches(token, "maxlife", "maxhp", "生命", "生命上限"))
         {
             propertyType = PropertyType.MaxLife;
@@ -2220,7 +2201,6 @@ public partial class DebugConsole : CanvasLayer
         {
             PropertyType.Power => "力量",
             PropertyType.Survivability => "生存",
-            PropertyType.Speed => "速度",
             PropertyType.MaxLife => "生命上限",
             _ => propertyType.ToString(),
         };
@@ -2236,7 +2216,7 @@ public partial class DebugConsole : CanvasLayer
         {
             var info = GameInfo.PlayerCharacters[i];
             builder.AppendLine(
-                $"{i + 1}. {info.CharacterName}  力量 {info.Power}  生存 {info.Survivability}  速度 {info.Speed}  生命上限 {info.LifeMax}"
+                $"{i + 1}. {info.CharacterName}  力量 {info.Power}  生存 {info.Survivability}  生命上限 {info.LifeMax}"
             );
         }
 
@@ -2259,8 +2239,8 @@ public partial class DebugConsole : CanvasLayer
             + "addequipment <装备ID/装备名> [数量]\n"
             + "addrelic <遗物ID/遗物名> [数量]\n"
             + "additem <道具ID/道具名> [数量]\n"
-            + "setstat <角色> <power|survivability|speed|maxlife> <值>\n"
-            + "addstat <角色> <power|survivability|speed|maxlife> <增量>\n"
+            + "setstat <角色> <power|survivability|maxlife> <值>\n"
+            + "addstat <角色> <power|survivability|maxlife> <增量>\n"
             + "setresource <coin|energy|maxenergy> <值>\n"
             + "battletest <on|off|toggle>\n"
             + "save\n\n"
@@ -2270,7 +2250,7 @@ public partial class DebugConsole : CanvasLayer
             + "addrelic Blessing 5\n"
             + "additem Fury 1\n"
             + "setstat Kasiya power 20\n"
-            + "addstat Mariya speed 3\n"
+            + "addstat Mariya survivability 3\n"
             + "setresource coin 999\n\n"
             + "battletest toggle\n\n"
             + "角色名支持英文名，也支持用 1-4 指代当前队伍顺序。";

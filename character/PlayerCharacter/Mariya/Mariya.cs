@@ -4,15 +4,14 @@ using Godot;
 
 public partial class Mariya : PlayerCharacter
 {
-    private const int PassiveHealBase = 6;
-    private const int PassiveUpgradeHealBonus = 8;
+    public const int BattleEndPassiveHeal = 3;
 
     public const string PassiveNameText = "治愈";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.mariya.passive.description",
-            "回合结束时：回复最低生命队友{heal}点基础生命。",
-            ("heal", PassiveHealBase)
+            "战斗结束时：我方全阵恢复{heal}点生命。",
+            ("heal", BattleEndPassiveHeal)
         );
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Mariya;
@@ -29,33 +28,20 @@ public partial class Mariya : PlayerCharacter
         );
     }
 
-    public override void OnTurnEnd()
+    public void TriggerBattleEndPassive()
     {
-        TryHealLowestAlly();
-        base.OnTurnEnd();
-    }
-
-    private void TryHealLowestAlly()
-    {
-        if (BattleNode == null)
+        if (BattleNode == null || State != CharacterState.Normal)
             return;
 
         using var _ = BeginEffectSource("被动");
-
-        var allies = IsPlayer
-            ? BattleNode.PlayersList.Cast<Character>()
-            : BattleNode.EnemiesList.Cast<Character>();
-
-        var target = allies
-            .Where(x => x.Life < x.BattleMaxLife && x.State == CharacterState.Normal)
-            .OrderBy(x => x.Life)
-            .FirstOrDefault();
-
-        if (target == null)
-            return;
-
-        int heal = PassiveHealBase + (HasPassiveTalentUpgrade() ? PassiveUpgradeHealBonus : 0);
-        target.Recover(heal, source: this);
+        foreach (
+            var target in BattleNode
+                .PlayersList.Where(x => x != null && !x.IsSummon)
+                .Cast<Character>()
+        )
+        {
+            target.Recover(BattleEndPassiveHeal, rebirth: true, source: this);
+        }
     }
 }
 
@@ -66,12 +52,12 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.mariya.name", "玛瑞娅"),
         PassiveName = I18n.Tr("character.mariya.passive.name", global::Mariya.PassiveNameText),
         PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 19,
+        LifeMax = 36,
         Power = 3,
-        Survivability = 3,
-        Speed = 7,
+        Survivability = 2,
+        Speed = 12,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.MariyaBasicSpecial],
     };
 }

@@ -40,8 +40,8 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
 
         MaxLife = 5;
         Power = 0;
-        Survivability = 15;
-        Speed = 6;
+        Survivability = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs =
         [
             SkillID.HollowBulwarkAttack,
@@ -79,7 +79,7 @@ public partial class HollowBulwarkAttack : Skill
 
 public partial class HollowBulwarkSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 30;
 
     public HollowBulwarkSurvive()
         : base(SkillTypes.Survive)

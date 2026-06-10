@@ -7,7 +7,7 @@ using Godot;
 
 public partial class EventInterface : Control
 {
-    private static readonly Random ResourceRandom = new();
+    private const int EventResourceRandomSalt = unchecked((int)0x75a0f19b);
 
     [Export(PropertyHint.Range, "0.2,4.0,0.05,or_greater")]
     public float IntroAnimationSpeed = 1.0f;
@@ -77,6 +77,7 @@ public partial class EventInterface : Control
     private readonly Dictionary<EventOption, int> _electricityRolls = new();
     private readonly Dictionary<EventOption, int> _transitionEnergyRolls = new();
     private readonly Dictionary<EventOption, int> _propertyChangeCostRolls = new();
+    private Random _resourceRandom;
 
     private readonly struct AppliedResourceChanges(int transitionEnergyChange, int electricityChange, int propertyChangeElectricityCost = 0)
     {
@@ -108,6 +109,7 @@ public partial class EventInterface : Control
         BindOptionButtons();
         TargetSelectOverlay.CharacterSelected += OnTargetCharacterSelected;
         TargetSelectOverlay.SelectionCanceled += OnTargetSelectionCanceled;
+        _resourceRandom = CreateResourceRandom();
         ApplyEventData(ThisEvent ?? GameEvent.Catalog?.FirstOrDefault());
         CallDeferred(nameof(StartAnimation));
     }
@@ -310,6 +312,7 @@ public partial class EventInterface : Control
                 if (randomIndex >= 0)
                 {
                     ApplyPropertyChangesToPlayer(randomIndex, option.PropertyChange);
+                    RefreshPartyLifeResource();
                     ShowPropertyHint(randomIndex, option.PropertyChange, true);
                 }
 
@@ -352,8 +355,14 @@ public partial class EventInterface : Control
         var option = _pendingTargetOption;
         HideTargetSelection();
         ApplyPropertyChangesToPlayer(index, option.PropertyChange);
+        RefreshPartyLifeResource();
         ShowPropertyHint(index, option.PropertyChange, false);
         await ResolveOptionOutcomeAsync(option, index, false);
+    }
+
+    private void RefreshPartyLifeResource()
+    {
+        GetTree()?.Root.GetNodeOrNull<Map>("/root/Map")?.PlayerResourceState?.RefreshPartyLifeResource();
     }
 
     private static bool IsValidPlayerIndex(int index)
@@ -383,11 +392,11 @@ public partial class EventInterface : Control
                 case PropertyType.Survivability:
                     info.Survivability += kv.Value;
                     break;
-                case PropertyType.Speed:
-                    info.Speed += kv.Value;
-                    break;
                 case PropertyType.MaxLife:
                     info.LifeMax += kv.Value;
+                    info.LifeMax = Math.Max(1, info.LifeMax);
+                    info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
+                    info.LifeInitialized = true;
                     break;
             }
         }
@@ -399,7 +408,8 @@ public partial class EventInterface : Control
         var players = GameInfo.PlayerCharacters;
         if (players == null || players.Length == 0)
             return -1;
-        return new Random().Next(players.Length);
+        _resourceRandom ??= CreateResourceRandom();
+        return _resourceRandom.Next(players.Length);
     }
 
     private void RollOptionResourceRewards(EventOption[] options)
@@ -413,11 +423,11 @@ public partial class EventInterface : Control
         foreach (var option in options)
         {
             if (option?.HasElectricityChange == true)
-                _electricityRolls[option] = option.RollElectricityChange(ResourceRandom);
+                _electricityRolls[option] = option.RollElectricityChange(_resourceRandom);
             if (option?.HasTransitionEnergyChange == true)
-                _transitionEnergyRolls[option] = option.RollTransitionEnergyChange(ResourceRandom);
+                _transitionEnergyRolls[option] = option.RollTransitionEnergyChange(_resourceRandom);
             if (option?.HasPropertyChangeElectricityCost == true)
-                _propertyChangeCostRolls[option] = option.RollPropertyChangeElectricityCost(ResourceRandom);
+                _propertyChangeCostRolls[option] = option.RollPropertyChangeElectricityCost(_resourceRandom);
         }
     }
 
@@ -427,7 +437,8 @@ public partial class EventInterface : Control
             return 0;
         if (_electricityRolls.TryGetValue(option, out int value))
             return value;
-        return option.RollElectricityChange(ResourceRandom);
+        _resourceRandom ??= CreateResourceRandom();
+        return option.RollElectricityChange(_resourceRandom);
     }
 
     private int GetRolledTransitionEnergyChange(EventOption option)
@@ -436,7 +447,8 @@ public partial class EventInterface : Control
             return 0;
         if (_transitionEnergyRolls.TryGetValue(option, out int value))
             return value;
-        return option.RollTransitionEnergyChange(ResourceRandom);
+        _resourceRandom ??= CreateResourceRandom();
+        return option.RollTransitionEnergyChange(_resourceRandom);
     }
 
     private int GetRolledPropertyChangeCost(EventOption option)
@@ -445,7 +457,20 @@ public partial class EventInterface : Control
             return 0;
         if (_propertyChangeCostRolls.TryGetValue(option, out int value))
             return value;
-        return option.RollPropertyChangeElectricityCost(ResourceRandom);
+        _resourceRandom ??= CreateResourceRandom();
+        return option.RollPropertyChangeElectricityCost(_resourceRandom);
+    }
+
+    private Random CreateResourceRandom()
+    {
+        unchecked
+        {
+            int baseSeed = WhichNode?.RandomNum ?? GameInfo.Seed;
+            int hash = (int)2166136261;
+            hash = (hash ^ baseSeed) * 16777619;
+            hash = (hash ^ EventResourceRandomSalt) * 16777619;
+            return new Random(hash);
+        }
     }
 
     private void ShowPropertyHint(
@@ -584,7 +609,7 @@ public partial class EventInterface : Control
         if (transitionEnergyChange == 0 && electricityChange == 0)
             return default;
 
-        int previousTransitionEnergy = GameInfo.TransitionEnergy;
+        int previousTransitionEnergy = GameInfo.GetPartyLife();
         int previousElectricityCoin = GameInfo.ElectricityCoin;
         var map = GetTree().Root.GetNodeOrNull<Map>("/root/Map");
         if (map != null && map.PlayerResourceState != null)
@@ -594,25 +619,21 @@ public partial class EventInterface : Control
             if (electricityChange != 0)
                 map.PlayerResourceState.ElectricityCoin += electricityChange;
             return new AppliedResourceChanges(
-                GameInfo.TransitionEnergy - previousTransitionEnergy,
+                GameInfo.GetPartyLife() - previousTransitionEnergy,
                 GameInfo.ElectricityCoin - previousElectricityCoin
             );
         }
 
         if (transitionEnergyChange != 0)
         {
-            GameInfo.TransitionEnergy = Math.Clamp(
-                GameInfo.TransitionEnergy + transitionEnergyChange,
-                0,
-                GameInfo.TransitionEnergyMax
-            );
+            GameInfo.AdjustPartyLife(transitionEnergyChange);
         }
 
         if (electricityChange != 0)
             GameInfo.ElectricityCoin += electricityChange;
 
         return new AppliedResourceChanges(
-            GameInfo.TransitionEnergy - previousTransitionEnergy,
+            GameInfo.GetPartyLife() - previousTransitionEnergy,
             GameInfo.ElectricityCoin - previousElectricityCoin
         );
     }
@@ -851,7 +872,7 @@ public partial class EventInterface : Control
 
         if (transitionEnergyChange != 0)
         {
-            sb.Append($"核心能源 {FormatSigned(transitionEnergyChange)}\n");
+            sb.Append($"队伍生命 {FormatSigned(transitionEnergyChange)}\n");
             hasAny = true;
         }
 
@@ -911,7 +932,7 @@ public partial class EventInterface : Control
                 sb.Append('\n');
 
             if (resourceChanges.TransitionEnergyChange != 0)
-                sb.Append($"核心能源 {FormatSigned(resourceChanges.TransitionEnergyChange)}\n");
+                sb.Append($"队伍生命 {FormatSigned(resourceChanges.TransitionEnergyChange)}\n");
             if (resourceChanges.ElectricityChange != 0)
                 sb.Append($"电力币 {FormatSigned(resourceChanges.ElectricityChange)}\n");
             if (resourceChanges.PropertyChangeElectricityCost != 0)

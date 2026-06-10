@@ -1,16 +1,13 @@
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class AlienBody : EnemyCharacter
 {
-    private const int PassiveMaxTargets = 2;
-    private const int PassiveDazeCount = 1;
+    private const int StartDebuffImmunityStacks = 1;
 
     public const string PassiveNameText = "寄生馈赠";
     public static string PassiveDescriptionText =>
-        $"回合开始时：向至多{PassiveMaxTargets}个目标抽牌堆塞入{PassiveDazeCount}张"
-        + $"{I18n.Tr("skill.daze_status.name", "晕眩")}。";
+        $"战斗开始时：获得{StartDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。";
 
     public override string CharacterName { get; set; } = "AlienBody";
 
@@ -19,84 +16,14 @@ public partial class AlienBody : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
+        BattleNode.StartEffectList.Add(StartPassive);
     }
 
-    public override void OnTurnStart()
-    {
-        base.OnTurnStart();
-        TriggerPassive(null);
-    }
-
-    public override async void Passive(Skill skill)
+    private Task StartPassive()
     {
         using var _ = BeginEffectSource("被动");
-        if (BattleNode == null)
-            return;
-
-        Character[] targets = ChooseHostileTargetsByOrder(
-                returnDummyWhenEmpty: false,
-                normalOnly: false,
-                dyingFilter: true
-            )
-            .Take(PassiveMaxTargets)
-            .ToArray();
-        if (targets.Length == 0)
-            return;
-
-        var affectedTargets = targets
-            .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
-            .Where(x => x.Player != null && x.Player.BattleNode != null)
-            .GroupBy(x => x.Target)
-            .Select(group => group.First())
-            .ToArray();
-        if (affectedTargets.Length == 0)
-            return;
-
-        foreach (
-            var animationGroup in affectedTargets
-                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
-                .GroupBy(entry => entry.Player.BattleNode.CharacterControl)
-        )
-        {
-            await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
-                animationGroup
-                    .Select(entry => new CharacterControl.StatusCardInsertAnimationEntry(
-                        entry.Target,
-                        SkillID.DazeStatus,
-                        PassiveDazeCount,
-                        this
-                    ))
-                    .ToArray()
-            );
-        }
-
-        foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
-        {
-            PlayerCharacter player = playerGroup.Key;
-            player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
-                player,
-                SkillID.DazeStatus,
-                PassiveDazeCount * playerGroup.Count(),
-                this
-            );
-        }
-    }
-
-    private static PlayerCharacter ResolveCardPileOwner(Character target)
-    {
-        if (target is PlayerCharacter player)
-            return player;
-
-        if (target is SummonCharacter summon)
-        {
-            if (summon.Summoner is PlayerCharacter summoner)
-                return summoner;
-
-            if (summon.LastSummoner is PlayerCharacter lastSummoner)
-                return lastSummoner;
-        }
-
-        return null;
+        SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, this, StartDebuffImmunityStacks, this);
+        return Task.CompletedTask;
     }
 }
 
@@ -110,10 +37,11 @@ public partial class AlienBodyRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
         MaxLife = 27;
-        Power = 16;
-        Survivability = 14;
-        Speed = 5;
-        SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive, SkillID.AlienBodySpecial];
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive];
 
         PassiveName = global::AlienBody.PassiveNameText;
         PassiveDescription = global::AlienBody.PassiveDescriptionText;
@@ -122,7 +50,7 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
 public partial class AlienBodyAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 13;
     private const int PowerDown = 2;
 
     public AlienBodyAttack()
@@ -138,14 +66,18 @@ public partial class AlienBodyAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.AttackKey)
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                PowerDown,
+                HostileTargetReference.AttackKey
+            )
         );
     }
 }
 
 public partial class AlienBodySurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 6;
     private const int SurvivabilityDown = 4;
 
     public AlienBodySurvive()
@@ -161,19 +93,15 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                SurvivabilityDown,
-                HostileTargetReference.One
-            )
+            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.All)
         );
     }
 }
 
 public partial class AlienBodySpecial : Skill
 {
-    private const int PowerDown = 2;
-    private const int SurvivabilityDown = 2;
+    private const int PowerDown = 1;
+    private const int SurvivabilityDown = 1;
 
     public AlienBodySpecial()
         : base(SkillTypes.Special)
@@ -188,6 +116,7 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
+            AttackStep(13, target: HostileTargetReference.RandomPreview),
             AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 1, HostileTargetReference.All),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(

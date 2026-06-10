@@ -19,10 +19,14 @@ public abstract partial class EnemyRegedit
 
     public int PositionIndex;
     public SkillID[] SkillIDs = Array.Empty<SkillID>();
+    public SkillID[] OpeningIntentionSkillIDs = Array.Empty<SkillID>();
     public int Power;
     public int Survivability;
+    public int BasePowerContribution;
+    public int BaseSurvivabilityContribution;
     public int MaxLife;
-    public int Speed;
+    public int CurrentLife = -1;
+    public bool HasAttackVulnerableIntention;
 
     public EnemyRegedit() { }
 

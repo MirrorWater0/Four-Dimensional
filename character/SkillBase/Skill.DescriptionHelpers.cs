@@ -8,7 +8,7 @@ public partial class Skill
     protected const int TooltipTotalMax = 999;
     public const string CarryKeyword = "连携";
     public const string CarryKeywordEffectText =
-        "随机从目标的抽牌堆和弃牌堆中打出1张牌，可指定类型，不消耗能量。";
+        "随机从抽牌堆中打出1张目标所属的牌，可指定类型，不消耗能量。";
     public const string ExhaustKeyword = "消耗";
     public const string ExhaustKeywordEffectText =
         "打出后，本场战斗中移出。";
@@ -196,12 +196,13 @@ public partial class Skill
         if (!IsInBattle)
             return basisText;
 
-        int rawClampedDamage = Math.Clamp(rawDamage, 0, clampMax) * times;
+        int scaledDamage = ApplyOwnerSkillDamageScaling(Math.Clamp(rawDamage, 0, clampMax));
+        int rawClampedDamage = scaledDamage * times;
         var previewState = new AttackBuff.PreviewState();
         int modifiedDamage = Math.Clamp(
             AttackBuff.ApplyOutgoingDamageModifiers(
                 OwnerCharater,
-                rawDamage,
+                scaledDamage,
                 previewState: previewState
             ),
             0,

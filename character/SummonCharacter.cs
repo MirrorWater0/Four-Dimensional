@@ -4,19 +4,24 @@ using System.Text;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class SummonCharacter : Character
+public partial class SummonCharacter : EnemyCharacter
 {
     private const float DeathFadeDurationSeconds = 0.4f;
     public Character Summoner { get; private set; }
     public Character LastSummoner { get; private set; }
-    protected virtual float TriggerActionDelaySeconds => 0.1f;
 
     public override bool IsSummon => true;
     public override bool IsFullCharacter => false;
     public override bool ParticipatesInTurnRotation => false;
-    public override bool CountsTowardTeamSpeed => false;
     public override bool TriggersSkillUseEvents => false;
     public override bool ClearsBlockOnActionStart => false;
+    protected override bool ResolvesTurnStartOnActionStart => true;
+
+    public override void _Ready()
+    {
+        base._Ready();
+        IsPlayer = Summoner?.IsPlayer ?? IsPlayer;
+    }
 
     internal void BindToSummoner(Character summoner)
     {
@@ -36,57 +41,9 @@ public partial class SummonCharacter : Character
         Skill onlySkill = Skills?.FirstOrDefault(x => x != null);
         Skills = onlySkill == null ? Array.Empty<Skill>() : [onlySkill];
         IsPlayer = Summoner?.IsPlayer ?? IsPlayer;
+
         base.Initialize();
-
-        if (SpeedIconLabel?.GetParent() is CanvasItem speedIcon)
-            speedIcon.Visible = false;
-    }
-
-    public override async void StartAction()
-    {
-        if (State == CharacterState.Dying)
-        {
-            EmitBattleNext();
-            return;
-        }
-
-        if (TriggerActionDelaySeconds > 0f)
-            await ToSignal(GetTree().CreateTimer(TriggerActionDelaySeconds), "timeout");
-        if (State == CharacterState.Dying)
-        {
-            EmitBattleNext();
-            return;
-        }
-
-        base.StartAction();
-
-        Skill skill = Skills != null && Skills.Length > 0 ? Skills[0] : null;
-        if (skill != null)
-            await skill.Effect();
-
-        if (!GodotObject.IsInstanceValid(this) || State == CharacterState.Dying)
-        {
-            EmitBattleNext();
-            return;
-        }
-
-        EndAction();
-    }
-
-    public override async void EndAction()
-    {
-        if (EndActionBuffs != null)
-        {
-            foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0).ToArray())
-            {
-                await buff.Trigger();
-            }
-        }
-
-        EmitBattleNext();
-        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
-        await ToSignal(GetTree().CreateTimer(0.2f), "timeout");
-        TrailAnimation.Stop();
+        IntentionIndex = Skills.Length > 0 ? 0 : -1;
     }
 
     public override async Task Dying(Character source = null)
@@ -107,6 +64,7 @@ public partial class SummonCharacter : Character
         if (State == CharacterState.Dying)
             return;
 
+        await DisappearIntention();
         State = CharacterState.Dying;
         CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 0), DeathFadeDurationSeconds);
 
@@ -115,15 +73,6 @@ public partial class SummonCharacter : Character
 
         if (State == CharacterState.Dying)
             BattleNode?.RemoveSummon(this);
-    }
-
-    private void EmitBattleNext()
-    {
-        if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
-            return;
-
-        BattleNode.ClearCurrentActionCharacter(this);
-        BattleNode.EmitSignal(Battle.SignalName.Next, this);
     }
 
     public static string BuildPassiveDescription(
@@ -135,7 +84,7 @@ public partial class SummonCharacter : Character
     )
     {
         var sb = new StringBuilder(128);
-        sb.Append("不参与正常轮转和全阵速度；召唤者行动后依次出手。");
+        sb.Append("不参与正常轮转；召唤者行动后依次出手。");
 
         return sb.ToString();
     }

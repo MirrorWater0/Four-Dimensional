@@ -5,14 +5,9 @@ using Godot;
 public partial class Inexorability : EnemyCharacter
 {
     private const int HurtPowerDown = 1;
-    private const int AllyDyingPowerGain = 2;
 
     public const string PassiveNameText = "不可违逆";
-    public static string PassiveDescriptionText =>
-        $"受到攻击时：攻击者失去{HurtPowerDown}点力量。\n"
-        + $"有角色进入濒死时：获得{AllyDyingPowerGain}点力量。";
-
-    private Func<Character, Character, Task> _allyDyingHandler;
+    public static string PassiveDescriptionText => $"受到攻击时：攻击者失去{HurtPowerDown}点力量。";
 
     public override string CharacterName { get; set; } = "Inexorability";
 
@@ -21,16 +16,6 @@ public partial class Inexorability : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        _allyDyingHandler ??= OnAnyDying;
-        if (BattleNode != null && !BattleNode.DyingEmitList.Contains(_allyDyingHandler))
-            BattleNode.DyingEmitList.Add(_allyDyingHandler);
-    }
-
-    public override void _ExitTree()
-    {
-        if (BattleNode != null && _allyDyingHandler != null)
-            BattleNode.DyingEmitList.Remove(_allyDyingHandler);
-        base._ExitTree();
     }
 
     public override async Task GetHurt(
@@ -55,23 +40,6 @@ public partial class Inexorability : EnemyCharacter
         using var _ = BeginEffectSource("被动");
         await source.DescendingProperties(PropertyType.Power, HurtPowerDown, this);
     }
-
-    private Task OnAnyDying(Character target, Character source)
-    {
-        if (target == null || target.BattleNode != BattleNode || State != CharacterState.Normal)
-        {
-            return Task.CompletedTask;
-        }
-
-        TriggerPassive(null);
-        return Task.CompletedTask;
-    }
-
-    public override void Passive(Skill skill)
-    {
-        using var effectSource = BeginEffectSource("被动");
-        _ = IncreaseProperties(PropertyType.Power, AllyDyingPowerGain, this);
-    }
 }
 
 public partial class InexorabilityRegedit : EnemyRegedit
@@ -83,10 +51,11 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 57;
-        Power = 10;
-        Survivability = 13;
-        Speed = 8;
+        MaxLife = 65;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs =
         [
             SkillID.InexorabilityAttack,
@@ -101,7 +70,7 @@ public partial class InexorabilityRegedit : EnemyRegedit
 
 public partial class InexorabilityAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 18;
     private const int SelfEnergyGain = 1;
 
     public InexorabilityAttack()
@@ -116,7 +85,7 @@ public partial class InexorabilityAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1),
             EnergyStep(SelfEnergyGain)
         );
     }
@@ -124,9 +93,8 @@ public partial class InexorabilityAttack : Skill
 
 public partial class InexorabilitySurvive : Skill
 {
-    private const int BaseBlock = 0;
-    private const int PowerGain = 4;
-    private const int SelfEnergyGain = 1;
+    private const int BaseBlock = 10;
+    private const int PowerGain = 3;
 
     public InexorabilitySurvive()
         : base(SkillTypes.Survive)
@@ -141,16 +109,15 @@ public partial class InexorabilitySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 1),
-            ModifyPropertyStep(PropertyType.Power, PowerGain),
-            EnergyStep(SelfEnergyGain)
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
 
 public partial class InexorabilitySpecial : Skill
 {
-    private const int BaseDamage = 0;
-    private const int PowerMultiplier = 2;
+    private const int BaseDamage = 10;
+    private const int PowerMultiplier = 1;
 
     public InexorabilitySpecial()
         : base(SkillTypes.Special)
@@ -168,7 +135,7 @@ public partial class InexorabilitySpecial : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 multiplier: PowerMultiplier,
-                target: HostileTargetReference.EachRowLast
+                target: HostileTargetReference.All
             )
         );
     }

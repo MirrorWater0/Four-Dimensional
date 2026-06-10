@@ -2,19 +2,16 @@ using Godot;
 
 public partial class Echo : PlayerCharacter
 {
-    private const int PassiveSkillUseThreshold = 2;
     private const int PassiveEnergyGain = 1;
     private const int PassiveUpgradeTurnStartEnergyGain = 1;
     private const int PassiveUpgradeTurnStartTriggerLimit = 2;
-    private int _passiveSkillUseCount;
     private int _passiveUpgradeTurnStartTriggerCount;
 
     public const string PassiveNameText = "余响";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.echo.passive.description",
-            "每使用{threshold}张技能：获得{energy}点能量。",
-            ("threshold", PassiveSkillUseThreshold),
+            "回合开始时：获得{energy}点能量。",
             ("energy", PassiveEnergyGain)
         );
 
@@ -22,20 +19,12 @@ public partial class Echo : PlayerCharacter
     Label label => field ??= GetNode<Label>("Label");
     public override string CharacterName { get; set; } = "Echo";
 
-    public override void _Ready()
-    {
-        base._Ready();
-        label.Text = PositionIndex.ToString();
-    }
-
     public override void Initialize()
     {
         base.Initialize();
-        _passiveSkillUseCount = 0;
         _passiveUpgradeTurnStartTriggerCount = 0;
         PassiveName = PassiveNameText;
         UpdatePassiveDescription();
-        BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
     }
 
     public override void StartAction()
@@ -51,6 +40,11 @@ public partial class Echo : PlayerCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
+        using (BeginEffectSource("被动"))
+        {
+            UpdataEnergy(PassiveEnergyGain, this);
+        }
+
         if (
             !HasPassiveTalentUpgrade()
             || _passiveUpgradeTurnStartTriggerCount >= PassiveUpgradeTurnStartTriggerLimit
@@ -63,35 +57,9 @@ public partial class Echo : PlayerCharacter
         UpdatePassiveDescription();
     }
 
-    public override void Passive(Skill skill)
-    {
-        using var _ = BeginEffectSource("被动");
-        if (skill?.OwnerCharater != this)
-            return;
-
-        _passiveSkillUseCount++;
-        if (_passiveSkillUseCount < PassiveSkillUseThreshold)
-        {
-            UpdatePassiveDescription();
-            return;
-        }
-
-        _passiveSkillUseCount = 0;
-        UpdatePassiveDescription();
-        UpdataEnergy(PassiveEnergyGain, this);
-    }
-
     private void UpdatePassiveDescription()
     {
-        PassiveDescription =
-            PassiveDescriptionText
-            + "\n"
-            + I18n.Format(
-                "character.passive.current_count",
-                "当前计数：{current}/{max}",
-                ("current", _passiveSkillUseCount),
-                ("max", PassiveSkillUseThreshold)
-            );
+        PassiveDescription = PassiveDescriptionText;
         if (HasPassiveTalentUpgrade())
             PassiveDescription +=
                 "\n"
@@ -110,12 +78,12 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.echo.name", "Echo"),
         PassiveName = I18n.Tr("character.echo.passive.name", global::Echo.PassiveNameText),
         PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 23,
-        Power = 4,
-        Survivability = 5,
-        Speed = 8,
+        LifeMax = 41,
+        Power = 3,
+        Survivability = 4,
+        Speed = 12,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.EchoBasicSpecial],
     };
 }

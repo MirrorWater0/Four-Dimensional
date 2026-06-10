@@ -1,23 +1,66 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using Godot;
 
 public static class SaveSystem
 {
     private const string SavePath = "user://autosave.cfg";
+    private static readonly object SaveWriteLock = new();
     private static readonly FieldInfo[] SavableGameInfoFields = typeof(GameInfo)
         .GetFields(BindingFlags.Public | BindingFlags.Static)
         .Where(field => !field.IsLiteral && !field.IsInitOnly)
         .ToArray();
     private static readonly Dictionary<Type, FieldInfo[]> SerializableFieldCache = new();
+    private static int _latestSaveRequestId;
 
     // --- 自动保存 ---
     public static void SaveAll()
     {
+        Interlocked.Increment(ref _latestSaveRequestId);
+        string saveText = BuildSaveText();
+        string savePath = ProjectSettings.GlobalizePath(SavePath);
+        WriteSaveText(savePath, saveText);
+    }
+
+    public static void SaveAllInBackground()
+    {
+        int requestId = Interlocked.Increment(ref _latestSaveRequestId);
         GameInfo.NormalizeRelics();
+        string savePath = ProjectSettings.GlobalizePath(SavePath);
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (requestId != Volatile.Read(ref _latestSaveRequestId))
+                    return;
+
+                string saveText = BuildSaveText(normalizeRelics: false);
+                if (requestId != Volatile.Read(ref _latestSaveRequestId))
+                    return;
+
+                WriteSaveText(savePath, saveText);
+            }
+            catch (Exception ex)
+            {
+                GD.PrintErr($"后台存档失败：{ex.Message}");
+            }
+        });
+    }
+
+    private static string BuildSaveText(bool normalizeRelics = true)
+    {
+        if (normalizeRelics)
+            GameInfo.NormalizeRelics();
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
         var config = new ConfigFile();
         FieldInfo[] fields = GetSavableGameInfoFields();
 
@@ -30,7 +73,25 @@ public static class SaveSystem
             // 统一使用 MapObjectToVariant 转换所有类型的静态变量
             config.SetValue("Data", field.Name, MapObjectToVariant(value));
         }
-        config.Save(SavePath);
+        string saveText = config.EncodeToText();
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds >= 16)
+            GD.Print($"生成存档耗时：{stopwatch.ElapsedMilliseconds}ms。");
+
+        return saveText;
+    }
+
+    private static void WriteSaveText(string savePath, string saveText)
+    {
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        lock (SaveWriteLock)
+        {
+            File.WriteAllText(savePath, saveText);
+        }
+
+        stopwatch.Stop();
+        if (stopwatch.ElapsedMilliseconds >= 16)
+            GD.Print($"写入存档耗时：{stopwatch.ElapsedMilliseconds}ms。");
         GD.Print("存档成功。");
     }
 

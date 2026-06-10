@@ -80,9 +80,10 @@ public partial class TurbineRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
 
         MaxLife = 58;
-        Power = 9;
-        Survivability = 9;
-        Speed = 7;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
 
         PassiveName = global::Turbine.PassiveNameText;
@@ -92,7 +93,7 @@ public partial class TurbineRegedit : EnemyRegedit
 
 public partial class TurbineAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 27;
     private const int AllySurvivabilityGain = 5;
 
     public TurbineAttack()
@@ -119,7 +120,7 @@ public partial class TurbineAttack : Skill
 
 public partial class TurbineSurvive : Skill
 {
-    private const int BaseSurvivabilityGain = 5;
+    private const int BaseSurvivabilityGain = 23;
     private const int SurvivabilityMultiplier = 2;
     private const int AllyPowerGain = 5;
     private const int AllyEnergyGain = 2;
@@ -165,7 +166,7 @@ public partial class TurbineSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(10),
+            AttackStep(19),
             CarryStep(target: TargetReference.Previous, skillIndex: 1),
             AddStatusCardsToDrawPileStep(
                 SkillID.WoundStatus,

@@ -33,8 +33,8 @@ public static partial class GameInfo
     public static void InitNewGame()
     {
         ElectricityCoin = 100;
-        TransitionEnergy = CoreEnergyDefaultMax;
-        TransitionEnergyMax = CoreEnergyDefaultMax;
+        TransitionEnergy = 0;
+        TransitionEnergyMax = 0;
         CurrentLevel = 0;
         SessionPlaySeconds = 0;
         RunStartedAtUtcTicks = DateTime.UtcNow.Ticks;
@@ -49,6 +49,134 @@ public static partial class GameInfo
         Relics.Clear();
         SetRelicCount(RelicID.Blessing, 3);
 
+    }
+
+    public static int GetPartyLife()
+    {
+        NormalizePlayerCharacters();
+        return PlayerCharacters?.Sum(info => Math.Clamp(info.Life, 0, info.LifeMax)) ?? 0;
+    }
+
+    public static int GetPartyMaxLife()
+    {
+        NormalizePlayerCharacters();
+        return PlayerCharacters?.Sum(info => Math.Max(info.LifeMax, 0)) ?? 0;
+    }
+
+    public static void SetPartyLifeTotal(int totalLife)
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0)
+            return;
+
+        int currentLife = GetPartyLife();
+        int clampedTarget = Math.Clamp(totalLife, 0, GetPartyMaxLife());
+        AdjustPartyLife(clampedTarget - currentLife);
+    }
+
+    public static void AdjustPartyLife(int delta)
+    {
+        NormalizePlayerCharacters();
+        if (delta == 0 || PlayerCharacters == null || PlayerCharacters.Length == 0)
+            return;
+
+        if (delta > 0)
+            HealPartyLife(delta);
+        else
+            DamagePartyLife(-delta);
+    }
+
+    public static int HealPartyByMaxLifePercent(float percent)
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0 || percent <= 0f)
+            return 0;
+
+        int totalHealed = 0;
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 0);
+            if (maxLife <= 0)
+                continue;
+
+            int recoverAmount = (int)MathF.Ceiling(maxLife * percent);
+            if (recoverAmount <= 0)
+                continue;
+
+            int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+            int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
+            if (afterLife == beforeLife)
+                continue;
+
+            info.Life = afterLife;
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+            totalHealed += afterLife - beforeLife;
+        }
+
+        return totalHealed;
+    }
+
+    public static int RefillPartyLife()
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0)
+            return 0;
+
+        int totalHealed = 0;
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 1);
+            int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+            if (beforeLife >= maxLife)
+                continue;
+
+            info.Life = maxLife;
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+            totalHealed += maxLife - beforeLife;
+        }
+
+        return totalHealed;
+    }
+
+    private static void HealPartyLife(int amount)
+    {
+        while (amount > 0)
+        {
+            int targetIndex = Array.FindIndex(
+                PlayerCharacters,
+                info => info.Life < info.LifeMax
+            );
+            if (targetIndex < 0)
+                return;
+
+            var info = PlayerCharacters[targetIndex];
+            int applied = Math.Min(amount, info.LifeMax - info.Life);
+            info.Life += applied;
+            info.LifeInitialized = true;
+            PlayerCharacters[targetIndex] = info;
+            amount -= applied;
+        }
+    }
+
+    private static void DamagePartyLife(int amount)
+    {
+        while (amount > 0)
+        {
+            int targetIndex = Array.FindIndex(PlayerCharacters, info => info.Life > 0);
+            if (targetIndex < 0)
+                return;
+
+            var info = PlayerCharacters[targetIndex];
+            int applied = Math.Min(amount, info.Life);
+            info.Life -= applied;
+            info.LifeInitialized = true;
+            PlayerCharacters[targetIndex] = info;
+            amount -= applied;
+        }
     }
 
     public static bool HasRelic(RelicID relicID)
@@ -140,7 +268,9 @@ public struct PlayerInfoStructure
     public PlayerInfoStructure() { }
 
     public string CharacterScenePath;
+    public int Life;
     public int LifeMax;
+    public bool LifeInitialized;
     public int Power;
     public int Survivability;
     public int Speed;
@@ -167,7 +297,7 @@ public static class GlobalFunction
         node.CreateTween()
             .TweenMethod(
                 Callable.From<float>(value =>
-                    ((ShaderMaterial)node.Material).SetShaderParameter(var, value)
+                    SetShaderParameterIfValid(material, var, value)
                 ),
                 GetShaderParameterFloat(material, var),
                 val,
@@ -184,12 +314,28 @@ public static class GlobalFunction
         node.CreateTween()
             .TweenMethod(
                 Callable.From<float>(value =>
-                    ((ShaderMaterial)node.Material).SetShaderParameter(var, value)
+                    SetShaderParameterIfValid(material, var, value)
                 ),
                 GetShaderParameterFloat(material, var),
                 val,
                 duration
             );
+    }
+
+    private static void SetShaderParameterIfValid(
+        ShaderMaterial material,
+        string parameterName,
+        float value
+    )
+    {
+        try
+        {
+            if (GodotObject.IsInstanceValid(material))
+                material.SetShaderParameter(parameterName, value);
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private static float GetShaderParameterFloat(ShaderMaterial material, string parameterName)

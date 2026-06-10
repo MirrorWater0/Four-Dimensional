@@ -22,7 +22,7 @@ public partial class FinalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
             ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
@@ -55,12 +55,7 @@ public partial class RebirthPrayer : Skill
                 preferNonFull: true,
                 rebirth: true
             ),
-            BlockStep(target: TargetReference.HealKey, baseBlock: 0),
-            ModifyPropertyStep(
-                target: TargetReference.HealKey,
-                type: PropertyType.MaxLife,
-                value: 8
-            )
+            BlockStep(target: TargetReference.HealKey, baseBlock: 8)
         );
     }
 }
@@ -85,7 +80,7 @@ public partial class CrystalGuard : Skill
 
 public partial class StillWaterMirror : Skill
 {
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     private const int SurvivabilityGain = 4;
 
     public StillWaterMirror()
@@ -100,8 +95,8 @@ public partial class StillWaterMirror : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
+            DrawCardsStep(2),
             ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2, TargetReference.Next)
         );
     }
@@ -111,7 +106,7 @@ public partial class QuietVeil : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int InvisibleStacks = 2;
-    private const int MaxLifeGain = 8;
+    private const int BaseBlock = 8;
     private const int SurvivabilityGain = 3;
     private const int BaseHeal = 5;
 
@@ -132,7 +127,7 @@ public partial class QuietVeil : Skill
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
             ),
-            ModifyPropertyStep(PropertyType.MaxLife, MaxLifeGain),
+            BlockStep(baseBlock: BaseBlock),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
             HealStep(baseHeal: BaseHeal, target: TargetReference.Self)
         );
@@ -155,7 +150,7 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: 6),
+            BlockStep(target: TargetReference.Self, baseBlock: 6),
             EnergyStep(delta: 1, target: TargetReference.Next),
             EnergyStep(delta: 1, target: TargetReference.Previous)
         );

@@ -6,7 +6,7 @@ public partial class NightingaleSurviveSkill { }
 public partial class VeilStep : Skill
 {
     private const int InvisibleStacks = 3;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     public override int EnergyCost => 0;
 
     public VeilStep()
@@ -34,7 +34,7 @@ public partial class VeilStep : Skill
 public partial class FlashOfLight : Skill
 {
     private const int VulnerableStacks = 2;
-    private const int BaseBlock = 2;
+    private const int BaseBlock = 0;
 
     public FlashOfLight()
         : base(SkillTypes.Survive)
@@ -51,9 +51,9 @@ public partial class FlashOfLight : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargetsEachRowFirst()
+                target: HostileTargetReference.One
             ),
-            BlockStep(baseBlock: BaseBlock)
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock)
         );
     }
 }
@@ -61,7 +61,7 @@ public partial class FlashOfLight : Skill
 public partial class AfterimageWard : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     private const int AfterimageStacks = 1;
 
     public AfterimageWard()
@@ -90,7 +90,7 @@ public partial class AfterimageWard : Skill
 public partial class StarWard : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
     private const int ExtraPowerStacks = 2;
     public override int EnergyCost => 2;
 
@@ -106,7 +106,7 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Previous, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
@@ -119,9 +119,9 @@ public partial class StarWard : Skill
 public partial class TwilightParadox : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
-    private const int VulnerableStacks = 10;
-    private const int selfStacks = 4;
+    private const int BaseBlock = 6;
+    private const int VulnerableStacks = 9;
+    private const int selfStacks = 3;
     public override int EnergyCost => 2;
     public override bool ExhaustsAfterUse => true;
 

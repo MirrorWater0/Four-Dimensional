@@ -13,7 +13,6 @@
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="16_faub5"]
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
 [ext_resource type="Shader" uid="uid://kjsfn7cmaayt" path="res://shader/UI/CharacterHoverFrame.gdshader" id="17_hover"]
-[ext_resource type="Shader" uid="uid://2jepl1o0xuu4" path="res://shader/UI/TurnOrderCircle.gdshader" id="18_turnorder"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
@@ -41,11 +40,11 @@ void fragment() {
 shader = SubResource("Shader_n42br")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_eq06d"]
-bg_color = Color(0.6, 0.6, 0.6, 0)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
+bg_color = Color(0.62, 0.3472, 0.3472, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 border_color = Color(0.34, 0, 0, 1)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
@@ -54,10 +53,10 @@ corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_faub5"]
 bg_color = Color(0.88850313, 0, 0, 1)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 border_color = Color(0.7176471, 0.7176471, 0.7176471, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
@@ -68,104 +67,13 @@ corner_radius_bottom_left = 8
 ProgressBar/styles/background = SubResource("StyleBoxFlat_eq06d")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_faub5")
 
-[sub_resource type="Shader" id="Shader_vajdu"]
-code = "shader_type canvas_item;
-#define iTime TIME
-#define NUM_OCTAVES 5
-#define iResolution (1./SCREEN_PIXEL_SIZE)
-#define fragCoord ((UV * iResolution).xy)
-#define fragColor COLOR
-
-uniform bool isADDtex = false;
-uniform vec4 light:source_color = vec4(0);
-void vertex() {
-	// Called for every vertex the material is visible on.
-}
-
-void fragment() {
-
-	if(COLOR.b > 0.9){
-		COLOR.a = 0.;
-	}
-	if(COLOR.a != 0.){
-		COLOR.rgb = vec3(0.8,1.0,1.0);
-	}
-	float oa = COLOR.a;
-
-	vec4 tex = texture(TEXTURE,UV);
-float t = iTime + 19.0;
-    vec2 uv = 1. - (3.0 * fragCoord - iResolution.xy) / iResolution.y;
-
-    vec3 ro = vec3(0.0, 0.0, -6.0);        // Ray origin (camera)
-    vec3 rd = normalize(vec3(uv, 1.5));    // Ray direction
-
-    float d = 0.0;  // Distance accumulator
-    float i = 0.0;  // Iteration index
-    vec3 col = vec3(0.0);
-
-    // Raymarch loop — simulate volumetric smoke field
-    for (int j = 0; j < 64; ++j) {
-        vec3 p = ro + d * rd;
-        vec3 q = p;
-
-        // Turbulence - recursive offset
-        for (float k = 1.0; k < 5.0; k += 1.0) {
-            q += cos(q.yzx * k + vec3(t * 0.2, t * 0.3, t * 0.1)) / k;
-        }
-
-        float density = 0.2 / length(q.xy) * 0.5;  // Radial density falloff
-        density *= exp(-0.2 * p.z);                // Depth fade
-        col += vec3(0.7, 0.8, 1.0) * density * 0.03;
-
-        d += 0.05 + 0.01 * sin(t + float(j));       // Dynamic step size
-    }
-
-    // Tonemap & finish
-    col = tanh(col * 1.5);                          // Gentle tone mapping
-    fragColor =light + vec4(col, 1.0)/1.5;
-
-	if(isADDtex){
-		fragColor.a = tex.a;
-	}
-	COLOR.a *= oa;
-}
-
-//void light() {
-	// Called for every pixel for every light affecting the CanvasItem.
-	// Uncomment to replace the default light processing function with this one.
-//}
-"
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_evd82"]
-shader = SubResource("Shader_vajdu")
-shader_parameter/isADDtex = true
-shader_parameter/light = Color(0.3529412, 0.43137255, 0.47058824, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lucsw"]
-bg_color = Color(0.6, 0.6, 0.6, 0)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5ewuv"]
-bg_color = Color(0.6, 0.6, 0.6, 0)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-
-[sub_resource type="Theme" id="Theme_faub5"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_lucsw")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_5ewuv")
-
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ek3d4"]
 bg_color = Color(0.6, 0.6, 0.6, 0)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(1, 1, 1, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.62, 0.36580002, 0.36580002, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
@@ -173,10 +81,10 @@ corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yic7g"]
 bg_color = Color(1, 1, 1, 0.95)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 border_color = Color(1, 1, 1, 0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
@@ -187,21 +95,9 @@ corner_radius_bottom_left = 8
 ProgressBar/styles/background = SubResource("StyleBoxFlat_ek3d4")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_yic7g")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_turn_order"]
-shader = ExtResource("18_turnorder")
-shader_parameter/fill_color = Color(0, 0, 0, 0)
-shader_parameter/rim_color = Color(1, 1, 1, 1)
-shader_parameter/glow_color = Color(1, 1, 1, 0.1)
-shader_parameter/ring_width = 0.04800000158148
-shader_parameter/glow_size = 0.012
-shader_parameter/soft_edge = 0.01
-shader_parameter/aa_strength = 1.25
-shader_parameter/center_brightness = 0.0
-shader_parameter/ring_radius = 0.32
-shader_parameter/arrow_radius = 0.43
-shader_parameter/arrow_size = 0.05599999986593
-shader_parameter/ring_rotation_speed = 0.85
-shader_parameter/arrow_rotation_speed = 1.18
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yic7g"]
+shader = ExtResource("15_eq06d")
+shader_parameter/color = Color(0.6, 1, 1, 1)
 
 [sub_resource type="Animation" id="Animation_ttcdc"]
 length = 0.001
@@ -290,27 +186,19 @@ _data = {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hover"]
 shader = ExtResource("17_hover")
-shader_parameter/line_color = Color(0.9, 0.97, 1, 1)
-shader_parameter/accent_color = Color(0.34, 0.86, 1, 1)
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/accent_color = Color(0, 0, 0, 1)
 shader_parameter/fill_color = Color(0.03, 0.16, 0.24, 0.08)
-shader_parameter/border_size = 0.018
+shader_parameter/border_size = 0.02200000104499
 shader_parameter/inner_line_offset = 0.06
 shader_parameter/inner_line_size = 0.004
 shader_parameter/corner_cut = 0.085
 shader_parameter/corner_length = 0.14
-shader_parameter/glow_size = 0.032
-shader_parameter/pulse_speed = 1.5
-shader_parameter/sweep_speed = 0.3
-shader_parameter/sweep_width = 0.045
-shader_parameter/ring_flow_speed = 0.55
-shader_parameter/ring_flow_width = 0.052
-shader_parameter/ring_trail_strength = 0.5
-shader_parameter/ring_glow_strength = 0.45
-shader_parameter/ring_aspect = 0.56
+shader_parameter/glow_size = 0.00999999977648
 
 [sub_resource type="Gradient" id="Gradient_kvlfx"]
 offsets = PackedFloat32Array(0, 0.8066667, 1)
-colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0, 0.78431374, 1, 1, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_4ikhs"]
 gradient = SubResource("Gradient_kvlfx")
@@ -330,10 +218,6 @@ shader_parameter/angle = 0.0
 [sub_resource type="Theme" id="Theme_lucsw"]
 Label/constants/outline_size = 4
 Label/font_sizes/font_size = 25
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_yic7g"]
-shader = ExtResource("15_eq06d")
-shader_parameter/color = Color(0.6, 1, 1, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_oexsw"]
 shader = ExtResource("21_gvqk1")
@@ -571,30 +455,20 @@ show_behind_parent = true
 z_index = 1
 z_as_relative = false
 material = SubResource("ShaderMaterial_igmo8")
-offset_left = -87.2
-offset_top = -218.75
-offset_right = 87.499985
-offset_bottom = -205.00003
+offset_left = -102.5
+offset_top = -220.0
+offset_right = 72.19998
+offset_bottom = -212.50003
+scale = Vector2(1.2, 1.2)
 theme = SubResource("Theme_eq06d")
-value = 30.0
-show_percentage = false
-
-[node name="BlockBar" type="ProgressBar" parent="LifeBar" unique_id=1512011168]
-material = SubResource("ShaderMaterial_evd82")
-layout_mode = 0
-offset_left = -0.049980164
-offset_top = 3.0517578e-05
-offset_right = 174.69998
-offset_bottom = 13.7500305
-theme = SubResource("Theme_faub5")
-value = 100.0
+value = 50.0
 show_percentage = false
 
 [node name="BufferBar" type="ProgressBar" parent="LifeBar" unique_id=2029478116]
 z_as_relative = false
 layout_mode = 0
 offset_right = 174.69998
-offset_bottom = 13.75003
+offset_bottom = 7.4999695
 theme = SubResource("Theme_yic7g")
 value = 50.0
 show_percentage = false
@@ -602,16 +476,26 @@ show_percentage = false
 [node name="Block" type="Label" parent="LifeBar" unique_id=1125559359]
 z_index = 2
 layout_mode = 0
-offset_left = -57.799988
-offset_top = -11.25
-offset_right = 22.200012
-offset_bottom = 37.75
+offset_left = -37.5
+offset_top = -14.583331
+offset_right = 42.5
+offset_bottom = 34.416668
 scale = Vector2(0.7, 0.7)
 theme = ExtResource("1_kvlfx")
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 5
-text = "120"
-horizontal_alignment = 2
+text = "12"
+horizontal_alignment = 1
+
+[node name="SurvivabilityIcon" type="ColorRect" parent="LifeBar/Block" unique_id=1087382189]
+show_behind_parent = true
+material = SubResource("ShaderMaterial_yic7g")
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 0
+offset_left = 7.4404774
+offset_top = -4.4642925
+offset_right = 75.89287
+offset_bottom = 54.88095
 
 [node name="Life" type="Label" parent="LifeBar" unique_id=1787646224]
 z_index = 2
@@ -647,48 +531,6 @@ lifetime = 0.5
 explosiveness = 0.93
 process_material = ExtResource("8_ek3d4")
 
-[node name="Label" type="Label" parent="." unique_id=225863741]
-visible = false
-offset_left = 69.0
-offset_top = -1.0
-offset_right = 115.0
-offset_bottom = 54.0
-theme_override_font_sizes/font_size = 40
-text = "23"
-
-[node name="TurnOrderPreview" type="Control" parent="." unique_id=1903752664]
-z_index = 5
-layout_mode = 3
-anchors_preset = 0
-offset_left = 83.75
-offset_top = -240.0
-offset_right = 133.0
-offset_bottom = -190.75
-mouse_filter = 2
-
-[node name="Circle" type="ColorRect" parent="TurnOrderPreview" unique_id=614205381]
-material = SubResource("ShaderMaterial_turn_order")
-layout_mode = 0
-offset_left = 1.2499996
-offset_top = 3.7500076
-offset_right = 47.499992
-offset_bottom = 50.0
-mouse_filter = 2
-
-[node name="Value" type="Label" parent="TurnOrderPreview" unique_id=926415340]
-layout_mode = 0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = 46.0
-offset_bottom = 46.0
-theme_override_colors/font_color = Color(1, 0.7058824, 0, 1)
-theme_override_constants/outline_size = 6
-theme_override_fonts/font = ExtResource("3_lucsw")
-theme_override_font_sizes/font_size = 35
-text = "1"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="Player" type="AnimationPlayer" parent="." unique_id=371145037]
 libraries/ = SubResource("AnimationLibrary_jeiix")
 autoplay = &"RESET"
@@ -703,7 +545,7 @@ offset_bottom = 200.0
 texture = SubResource("GradientTexture2D_4ikhs")
 metadata/_edit_lock_ = true
 
-[node name="State" type="HBoxContainer" parent="." unique_id=134619418]
+[node name="State" type="GridContainer" parent="." unique_id=1410937281]
 z_index = 2
 material = SubResource("CanvasItemMaterial_yic7g")
 anchors_preset = 8
@@ -711,15 +553,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -78.75
-offset_top = -255.00002
-offset_right = 93.25
-offset_bottom = -215.00002
+offset_left = -115.00001
+offset_top = 235.00002
+offset_right = 56.999992
+offset_bottom = 275.0
 grow_horizontal = 2
 grow_vertical = 2
-scale = Vector2(0.8, 0.8)
-theme_override_constants/separation = 3
-alignment = 1
+columns = 6
 
 [node name="PowerIcon" type="ColorRect" parent="State" unique_id=1018149272]
 material = SubResource("ShaderMaterial_eq06d")
@@ -825,8 +665,8 @@ vertical_alignment = 1
 
 [node name="Path2D" type="Path2D" parent="." unique_id=1145431090]
 modulate = Color(1, 0, 0, 1)
-position = Vector2(-101.50002, 130.74997)
-scale = Vector2(0.753626, 0.753626)
+position = Vector2(-101.50002, 148.94998)
+scale = Vector2(0.753626, 0.452175)
 curve = SubResource("Curve2D_gvqk1")
 script = ExtResource("19_oexsw")
 

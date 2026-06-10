@@ -7,15 +7,12 @@ using Godot;
 public partial class SpaceStationShop : Control
 {
     private const string PrewarmMetaKey = "__shop_prewarm_hidden";
-    private const int ShopCharacterCount = 4;
-    private const int SkillOffersPerCharacter = 2;
-    private const int SkillOfferCount = ShopCharacterCount * SkillOffersPerCharacter;
+    private const int SkillOffersPerCharacter = 3;
     private const int CommonSkillOfferBasePrice = 40;
     private const int UncommonSkillOfferBasePrice = 80;
     private const int RareSkillOfferBasePrice = 120;
     private const int SkillOfferPriceVariance = 10;
     private const int StatOfferBasePrice = 20;
-    private const int SpeedOfferPriceBonus = 20;
     private const int MaxLifeOfferPriceBonus = 10;
     private const int StatOfferPriceVariance = 8;
     private const int EquipmentOfferBasePrice = 100;
@@ -52,7 +49,6 @@ public partial class SpaceStationShop : Control
     [
         ItemID.Health,
         ItemID.Guard,
-        ItemID.Haste,
         ItemID.Fury,
         ItemID.Vitality,
         ItemID.Health,
@@ -192,6 +188,8 @@ public partial class SpaceStationShop : Control
     private Label CatalogHint => field ??= GetNode<Label>("Panel/Decor/CatalogHint");
     private Control TopLine => field ??= GetNode<Control>("Panel/Decor/TopLine");
     private Control FooterLine => field ??= GetNode<Control>("Panel/Decor/FooterLine");
+    private Control TopRow =>
+        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/Sections/TopRow");
     private Control StatPanel =>
         field ??= GetNode<Control>(
             "Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn/StatPanel"
@@ -211,7 +209,15 @@ public partial class SpaceStationShop : Control
         );
     private GridContainer SkillOffersContainer =>
         field ??= GetNode<GridContainer>(
-            "Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox/SkillOffers"
+            "Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/SkillOffers"
+        );
+    private GridContainer BottomSkillOffersContainer =>
+        field ??= GetNode<GridContainer>(
+            "Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/BottomSkillOffers"
+        );
+    private GridContainer InlineCatalogGrid =>
+        field ??= GetNode<GridContainer>(
+            "Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogGrid"
         );
     private Control CatalogViewport => RelicViewport;
     private Control RelicViewport =>
@@ -223,7 +229,7 @@ public partial class SpaceStationShop : Control
             "Panel/MainLayout/ContentArea/Sections/TopRow/ItemColumn/PotionViewport"
         );
     private Control SkillPanel =>
-        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/Sections/SkillPanel");
+        field ??= GetNode<Control>("Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel");
     private Map MapNode => field ??= GetNodeOrNull<Map>("/root/Map");
     private PlayerResourceState ResourceState =>
         field ??= GetNodeOrNull<PlayerResourceState>("/root/Map/PlayerResourceState");
@@ -232,7 +238,7 @@ public partial class SpaceStationShop : Control
     private readonly List<CatalogOffer> _catalogOffers = new();
     private readonly List<SkillOffer> _skillOffers = new();
     public LevelNode WhichNode { get; set; }
-    private ShopModule _currentModule = ShopModule.Stat;
+    private ShopModule _currentModule = ShopModule.Skill;
     private Tween _moduleSelectorTween;
     private Tween _moduleContentTween;
     private Tween _transitionTween;
@@ -427,10 +433,8 @@ public partial class SpaceStationShop : Control
         _statBuildTask = null;
         _singlePageRevealTask = null;
 
-        StartStatOfferBuild();
-
         NormalizeModuleContentLayouts();
-        SetModule(ShopModule.Stat, animateSelector: false);
+        SetModule(ShopModule.Skill, animateSelector: false);
         SnapModuleContentVisualState();
         SetStatus("浏览空间站补给目录。");
         RefreshShopState();
@@ -470,10 +474,6 @@ public partial class SpaceStationShop : Control
         HideSinglePageContentBeforeLayout();
         SetUiInteractive(false);
 
-        await EnsureStatOffersBuiltAsync();
-        if (!IsInsideTree() || _isClosing)
-            return;
-
         await EnsureCatalogOffersBuiltAsync();
         if (!IsInsideTree() || _isClosing)
             return;
@@ -505,6 +505,8 @@ public partial class SpaceStationShop : Control
         RelicGrid.QueueSort();
         PotionGrid.QueueSort();
         SkillOffersContainer.QueueSort();
+        BottomSkillOffersContainer.QueueSort();
+        InlineCatalogGrid.QueueSort();
 
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -558,6 +560,7 @@ public partial class SpaceStationShop : Control
 
             await BuildPotionOffersAsync();
             _catalogOffersBuilt = true;
+            ArrangeSinglePageOffers();
 
             NormalizeModuleContentLayouts();
             ApplyModuleVisibility();
@@ -617,6 +620,51 @@ public partial class SpaceStationShop : Control
         CatalogHint.Text = "属性、技能、遗物与道具集中展示在同一页。";
     }
 
+    private void ArrangeSinglePageOffers()
+    {
+        if (
+            !SinglePageLayoutEnabled
+            || !_skillOffersBuilt
+            || SkillOffersContainer == null
+            || !GodotObject.IsInstanceValid(SkillOffersContainer)
+            || BottomSkillOffersContainer == null
+            || !GodotObject.IsInstanceValid(BottomSkillOffersContainer)
+            || InlineCatalogGrid == null
+            || !GodotObject.IsInstanceValid(InlineCatalogGrid)
+        )
+        {
+            return;
+        }
+
+        for (int i = 0; i < _skillOffers.Count; i++)
+        {
+            var offer = _skillOffers[i];
+            if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
+                continue;
+
+            var target = i < GetSinglePageTopSkillOfferCount()
+                ? SkillOffersContainer
+                : BottomSkillOffersContainer;
+            if (offer.View.GetParent() == target)
+                continue;
+
+            offer.View.GetParent()?.RemoveChild(offer.View);
+            target.AddChild(offer.View);
+        }
+
+        foreach (var offer in _catalogOffers)
+        {
+            if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
+                continue;
+
+            if (offer.View.GetParent() == InlineCatalogGrid)
+                continue;
+
+            offer.View.GetParent()?.RemoveChild(offer.View);
+            InlineCatalogGrid.AddChild(offer.View);
+        }
+    }
+
     private static void CopyModuleRootLayout(Control source, Control target)
     {
         if (source == null || target == null || source == target)
@@ -658,7 +706,10 @@ public partial class SpaceStationShop : Control
             var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
             var priceRng = CreateShopRandom(0x57A7);
 
-            for (int i = 0; i < ShopCharacterCount; i++)
+            int characterCount = GetShopCharacterCount(players);
+            StatOffersContainer.Columns = Math.Max(1, characterCount);
+
+            for (int i = 0; i < characterCount; i++)
             {
                 string characterName =
                     i < players.Length && !string.IsNullOrWhiteSpace(players[i].CharacterName)
@@ -685,15 +736,8 @@ public partial class SpaceStationShop : Control
                     1,
                     ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
-                AddStatOffer(
-                    optionGrid.GetNode<PanelContainer>("Speed"),
-                    i,
-                    characterName,
-                    PropertyType.Speed,
-                    1,
-                    ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
-                        + SpeedOfferPriceBonus
-                );
+                if (optionGrid.GetNodeOrNull<PanelContainer>("Speed") is PanelContainer speedPanel)
+                    speedPanel.Visible = false;
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("MaxLife"),
                     i,
@@ -704,7 +748,7 @@ public partial class SpaceStationShop : Control
                         + MaxLifeOfferPriceBonus
                 );
 
-                if (i + 1 < ShopCharacterCount)
+                if (i + 1 < characterCount)
                     await YieldOfferBuildFramesAsync();
                 if (!IsInsideTree() || _isClosing)
                     return;
@@ -791,8 +835,11 @@ public partial class SpaceStationShop : Control
             var rng = CreateShopRandom(0x7E11);
             Vector2 scale = GetShopSkillCardScaleVector();
             Vector2 cardSize = GetShopSkillCardDisplaySize();
+            int characterCount = GetShopCharacterCount(players);
+            SkillOffersContainer.Columns = GetSinglePageTopSkillOfferCount(characterCount);
+            BottomSkillOffersContainer.Columns = SkillOffersPerCharacter;
 
-            for (int playerIndex = 0; playerIndex < ShopCharacterCount; playerIndex++)
+            for (int playerIndex = 0; playerIndex < characterCount; playerIndex++)
             {
                 int offerPlayerIndex = playerIndex < players.Length ? playerIndex : -1;
                 var pickedSkills = PickSkillOffersForPlayer(players, playerIndex, rng);
@@ -807,7 +854,10 @@ public partial class SpaceStationShop : Control
 
                     var priceLabel = CreateSkillOfferPriceLabel();
                     var tile = CreateSkillOfferTile(cardHolder, priceLabel, cardSize);
-                    SkillOffersContainer.AddChild(tile);
+                    var targetContainer = _skillOffers.Count < GetSinglePageTopSkillOfferCount(characterCount)
+                        ? SkillOffersContainer
+                        : BottomSkillOffersContainer;
+                    targetContainer.AddChild(tile);
 
                     int animationIndex = _skillOffers.Count;
                     card.CallDeferred(
@@ -834,6 +884,7 @@ public partial class SpaceStationShop : Control
             }
 
             _skillOffersBuilt = true;
+            ArrangeSinglePageOffers();
             NormalizeModuleContentLayouts();
             ApplyModuleVisibility();
             SnapModuleContentVisualState();
@@ -1396,6 +1447,7 @@ public partial class SpaceStationShop : Control
         if (!ApplyPropertyToPlayer(offer.PlayerIndex, offer.PropertyType, offer.PropertyValue))
             return;
 
+        ResourceState?.RefreshPartyLifeResource();
         offer.Sold = true;
         SetStatus(
             $"已为 {offer.CharacterName} 提升 {offer.PropertyType.GetDescription()} +{offer.PropertyValue}"
@@ -1495,10 +1547,12 @@ public partial class SpaceStationShop : Control
                 info.Survivability += value;
                 break;
             case PropertyType.Speed:
-                info.Speed += value;
-                break;
+                return false;
             case PropertyType.MaxLife:
                 info.LifeMax += value;
+                info.LifeMax = Math.Max(1, info.LifeMax);
+                info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
+                info.LifeInitialized = true;
                 break;
         }
         players[playerIndex] = info;
@@ -1986,11 +2040,17 @@ public partial class SpaceStationShop : Control
 
         foreach (var child in PotionGrid.GetChildren())
             child.QueueFree();
+
+        foreach (var child in InlineCatalogGrid.GetChildren())
+            child.QueueFree();
     }
 
     private void ClearSkillCards()
     {
         foreach (var child in SkillOffersContainer.GetChildren())
+            child.QueueFree();
+
+        foreach (var child in BottomSkillOffersContainer.GetChildren())
             child.QueueFree();
     }
 
@@ -2008,6 +2068,26 @@ public partial class SpaceStationShop : Control
         }
 
         return playerIndex >= 0 ? $"角色 {playerIndex + 1}" : "角色";
+    }
+
+    private static int GetShopCharacterCount(PlayerInfoStructure[] players = null)
+    {
+        players ??= GameInfo.PlayerCharacters;
+        return Math.Max(1, players?.Length ?? GameInfo.DefaultPlayerPartySize);
+    }
+
+    private static int GetSkillOfferColumnCount(int characterCount = -1)
+    {
+        if (characterCount <= 0)
+            characterCount = GetShopCharacterCount();
+
+        int visibleCharactersPerRow = Math.Min(2, Math.Max(1, characterCount));
+        return visibleCharactersPerRow * SkillOffersPerCharacter;
+    }
+
+    private static int GetSinglePageTopSkillOfferCount(int characterCount = -1)
+    {
+        return GetSkillOfferColumnCount(characterCount);
     }
 
     private static void ShuffleInPlace<T>(IList<T> items, Random rng)
@@ -2148,6 +2228,8 @@ public partial class SpaceStationShop : Control
         RelicGrid.QueueSort();
         PotionGrid.QueueSort();
         SkillOffersContainer.QueueSort();
+        BottomSkillOffersContainer.QueueSort();
+        InlineCatalogGrid.QueueSort();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
     }
@@ -2440,20 +2522,16 @@ public partial class SpaceStationShop : Control
     {
         if (SinglePageLayoutEnabled)
         {
-            StatPanel.Visible = true;
-            RelicViewport.Visible = true;
-            PotionViewport.Visible = true;
+            StatPanel.Visible = false;
+            TopRow.Visible = false;
+            RelicViewport.Visible = false;
+            PotionViewport.Visible = false;
             SkillPanel.Visible = true;
-            RelicGrid.Columns = 3;
-            PotionGrid.Columns = 3;
-            RelicGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            PotionGrid.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            RelicGrid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-            PotionGrid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-            StatPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            SkillOffersContainer.Columns = GetSinglePageTopSkillOfferCount();
+            BottomSkillOffersContainer.Columns = SkillOffersPerCharacter;
+            InlineCatalogGrid.Columns = 3;
             SkillPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-            RelicViewport.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-            PotionViewport.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            ArrangeSinglePageOffers();
 
             for (int i = 0; i < _catalogOffers.Count; i++)
             {
@@ -2466,7 +2544,7 @@ public partial class SpaceStationShop : Control
             }
 
             CatalogTitle.Text = "空间站补给";
-            CatalogHint.Text = "属性、技能、遗物与道具集中展示在同一页。";
+            CatalogHint.Text = "技能、遗物与道具集中展示在同一页。";
             return;
         }
 
@@ -2481,6 +2559,8 @@ public partial class SpaceStationShop : Control
         StatPanel.Visible = true;
         CatalogViewport.Visible = true;
         SkillPanel.Visible = true;
+        StatOffersContainer.Columns = GetShopCharacterCount();
+        SkillOffersContainer.Columns = GetSkillOfferColumnCount();
         CatalogGrid.Columns = _currentModule switch
         {
             ShopModule.Relic or ShopModule.Potion => 3,
@@ -2512,11 +2592,11 @@ public partial class SpaceStationShop : Control
         {
             case ShopModule.Stat:
                 CatalogTitle.Text = "属性模块";
-                CatalogHint.Text = "四名角色分别陈列，点击图标可永久提升对应角色的单项属性。";
+                CatalogHint.Text = "队伍成员分别陈列，点击图标可永久提升对应角色的单项属性。";
                 break;
             case ShopModule.Skill:
                 CatalogTitle.Text = "技能模块";
-                CatalogHint.Text = "随机展示 8 张技能卡，购买后直接加入对应角色技能池。";
+                CatalogHint.Text = "随机展示队伍成员的技能卡，购买后直接加入对应角色技能池。";
                 break;
             case ShopModule.Equipment:
                 CatalogTitle.Text = "装备模块";
@@ -3156,7 +3236,6 @@ public partial class SpaceStationShop : Control
         var parts = new List<string>();
         AddStat(parts, equipment.Power, "力量");
         AddStat(parts, equipment.Survivability, "生存");
-        AddStat(parts, equipment.Speed, "速度");
         AddStat(parts, equipment.MaxLife, "生命");
         string stats = string.Join("  ", parts);
         string effectText = Equipment.GetSpecialEffectText(equipment)?.Trim() ?? string.Empty;

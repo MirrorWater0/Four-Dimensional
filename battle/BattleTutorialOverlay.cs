@@ -8,11 +8,9 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private const string TutorialSavePath = "user://tutorial.cfg";
     private const string TutorialSection = "Tutorial";
     private const string BattleTutorialSeenKey = "BattleTutorialSeenV5";
-    private const string BattleSpeedTutorialBody =
-        "上方是双方行动点数条。左边的数字是当前行动点，括号里是该阵营存活成员的总速度。\n\n"
-        + "一名角色行动结束后，所属阵营会按总速度获得行动点。总速度越高，条涨得越快；减员或速度被降低时，累积也会变慢。\n\n"
-        + "队伍内部仍然按阵位顺序轮流出手，行动后排到队尾。当一方行动点达到 100 时，该阵营会在正常轮流之外获得一次额外出手机会，并给这次行动的角色 1 点能量和 1 点额外抽卡。\n\n"
-        + "所以，速度不只决定谁先动，也会影响哪一方能更频繁抢到额外回合。";
+    private const string TurnOrderTutorialBody =
+        "同一阵营会按站位顺序轮流出手，行动后排到队尾。\n\n"
+        + "我方阵营阶段结束后会进入敌方阵营阶段；敌方也按站位顺序依次行动。";
 
     private readonly List<TutorialStep> _steps = new();
     private TaskCompletionSource<bool> _completion;
@@ -110,8 +108,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
         _steps.Add(
             new TutorialStep(
                 "出手顺序",
-                "上方是双方行动点数条。\n\n队伍内按阵位轮流出手，行动后排到队尾。左边数字是当前行动点数，括号里是阵容总速度；行动点数到达阈值时，对应队伍会获得一次额外出手机会。",
-                battle => battle.GetNodeOrNull<Control>("ActionPoinBox")
+                TurnOrderTutorialBody
             )
         );
         _steps.Add(
@@ -162,11 +159,11 @@ public partial class BattleTutorialOverlay : CanvasLayer
             {
                 new TutorialStep(
                     "战斗教程",
-                    "欢迎来到第一场战斗。\n\n这里是回合制卡牌战斗：观察敌人，轮到我方角色时从该角色的牌组抽牌，打出卡牌削减敌方生命。生命降到 0 会进入濒死。"
+                    "欢迎来到第一场战斗。\n\n这里是回合制卡牌战斗：观察敌人，轮到我方阵营时从队伍牌堆抽牌，打出卡牌削减敌方生命。生命降到 0 会进入濒死。"
                 ),
                 new TutorialStep(
                     "手牌区域",
-                    "下方是当前行动角色的手牌。\n\n每名角色都有自己的抽牌堆和弃牌堆；轮到角色行动时会抽取 4 张牌，打出的牌和回合结束时剩余的手牌会进入弃牌堆。抽牌堆空了以后，会把弃牌堆洗回抽牌堆继续抽。",
+                    "下方是队伍共享手牌。\n\n所有角色的牌会放入同一个队伍抽牌堆；阵营回合开始时抽取队伍手牌，打出的牌和回合结束时剩余的手牌会进入队伍弃牌堆。抽牌堆空了以后，会把弃牌堆洗回抽牌堆继续抽。",
                     battle => battle.CharacterControl?.ActionCardContainer
                 ),
                 new TutorialStep(
@@ -176,7 +173,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
                 ),
                 new TutorialStep(
                     "结束回合",
-                    "如果手牌没有合适的选择，可以点击结束回合，或按 E 快捷结束。\n\n结束回合会弃掉当前手牌，并进入下一名角色或敌人的行动。",
+                    "如果手牌没有合适的选择，可以点击结束回合，或按 E 快捷结束。\n\n结束回合会弃掉当前手牌，并进入敌方阵营行动。",
                     battle => battle.CharacterControl?.EndTurnButton
                 ),
                 new TutorialStep(
@@ -189,8 +186,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
                 ),
                 new TutorialStep(
                     "出手顺序",
-                    BattleSpeedTutorialBody,
-                    battle => battle.GetNodeOrNull<Control>("ActionPoinBox")
+                    TurnOrderTutorialBody
                 ),
                 new TutorialStep(
                     "生命与格挡",
@@ -202,10 +198,10 @@ public partial class BattleTutorialOverlay : CanvasLayer
                     battle => (Control)GetItemContainer(battle) ?? GetRelicContainer(battle)
                 ),
                 new TutorialStep(
-                    "核心能源",
-                    "地图资源栏中的核心能源是整次行动的安全阀，上限为 100，会以连续进度条显示当前剩余值。\n\n"
-                        + "我方非召唤角色进入濒死时，扣除 5 点核心能源；手动撤退时扣除 10 点。\n\n"
-                        + "如果我方全员濒死，不会立刻游戏失败：会扣除 10 点核心能源并撤回地图。当核心能源降到 0 时，才会判定本次游戏失败。",
+                    "队伍生命",
+                    "地图资源栏中的队伍生命显示全队当前生命总和，会跨战斗保留。\n\n"
+                        + "角色生命归零会进入濒死并保持到后续战斗；带有“复生”的技能或状态可以让濒死角色回到战斗。\n\n"
+                        + "如果我方全员濒死，本次行动失败。",
                     battle => GetCoreEnergyControl(battle)
                 ),
                 new TutorialStep(
@@ -344,19 +340,13 @@ public partial class BattleTutorialOverlay : CanvasLayer
         _stepIndex = Math.Clamp(index, 0, _steps.Count - 1);
         var step = _steps[_stepIndex];
         _titleLabel.Text = step.Title;
-        _bodyLabel.Text = IsActionPoinTutorialStep(step) ? BattleSpeedTutorialBody : step.Body;
+        _bodyLabel.Text = step.Body;
         _progressLabel.Text = $"{_stepIndex + 1}/{_steps.Count}";
         _nextButton.Text = _stepIndex >= _steps.Count - 1 ? "开始战斗" : "下一步";
 
         Rect2? targetRect = step.GetTargetRect(_battle);
         PositionHighlight(targetRect);
         PositionCard(targetRect);
-    }
-
-    private bool IsActionPoinTutorialStep(TutorialStep step)
-    {
-        Control target = step.Target?.Invoke(_battle);
-        return target?.Name == "ActionPoinBox";
     }
 
     private static ColorRect CreateScrimRect() =>

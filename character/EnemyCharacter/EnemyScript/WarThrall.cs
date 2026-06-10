@@ -2,8 +2,9 @@ using Godot;
 
 public partial class WarThrall : SummonCharacter
 {
-    internal const int MaxLifeStat = 12;
-    internal const int PowerStat = 4;
+    internal const int MaxLifeStat = 20;
+    internal const int PowerStat = 0;
+    internal const int BasePowerContributionStat = 0;
     internal const int SurvivabilityStat = 0;
     internal const int SpeedStat = 0;
 
@@ -28,6 +29,7 @@ public partial class WarThrall : SummonCharacter
         PassiveName = "召唤物";
         PassiveDescription = GetPassiveDescription();
         Skills = [Skill.GetSkill(SkillID.WarThrallAttack)];
+        SetBaseCombatStatContributions(BasePowerContributionStat, SurvivabilityStat);
         SetCombatStats(PowerStat, SurvivabilityStat, SpeedStat, MaxLifeStat);
         base.Initialize();
     }
@@ -35,7 +37,7 @@ public partial class WarThrall : SummonCharacter
 
 public partial class WarThrallAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 4;
     private const int SelfPowerGain = 1;
 
     public WarThrallAttack()

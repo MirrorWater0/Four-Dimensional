@@ -30,24 +30,24 @@ public partial class ConsumeItem
         [ItemID.Health] = new("治疗道具", ItemEffectType.Buff, 1, BuffName: Buff.BuffName.RebirthI),
         [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 60),
         [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 6, PropertyType.Power),
-        [ItemID.Haste] = new("迅捷之翼", ItemEffectType.PropertyIncrease, 5, PropertyType.Speed),
+        [ItemID.Haste] = new("迅捷之翼", ItemEffectType.DrawCards, 2),
         [ItemID.Vitality] = new(
             "全息装甲",
             ItemEffectType.PropertyIncrease,
             6,
             PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 40),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 80),
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,
-            6,
+            4,
             BuffName: Buff.BuffName.Weaken
         ),
         [ItemID.SpaceOscillation] = new(
             "空间震荡",
             ItemEffectType.Buff,
-            6,
+            4,
             BuffName: Buff.BuffName.Vulnerable
         ),
         [ItemID.StreamingTransmission] = new("流式传输", ItemEffectType.DrawCards, 3),
@@ -188,7 +188,7 @@ public partial class ConsumeItem
             ItemEffectType.Damage => $"{targetPrefix}，造成{config.Value}伤害。",
             ItemEffectType.Buff =>
                 $"{targetPrefix}，给予{config.Value}层{Buff.GetBuffDisplayName(config.BuffName)}。",
-            ItemEffectType.DrawCards => $"{targetPrefix}，抽{config.Value}张牌。",
+            ItemEffectType.DrawCards => $"{targetPrefix}，抽{config.Value}张自身牌。",
             ItemEffectType.Energy => $"{targetPrefix}，获得{config.Value}点能量。",
             _ => string.Empty,
         };
@@ -257,7 +257,6 @@ public partial class ConsumeItem
         return propertyType switch
         {
             PropertyType.Power => "力量",
-            PropertyType.Speed => "速度",
             PropertyType.Survivability => "生存",
             PropertyType.MaxLife => "生命",
             _ => "属性",

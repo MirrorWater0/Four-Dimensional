@@ -50,10 +50,16 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<CheckBox>("DescriptionModeCheckBox");
     private CheckBox TurnOrderPreviewCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("TurnOrderPreviewCheckBox");
-    private CheckBox EnemyAttackPreviewCheckBox =>
-        field ??= GetSettingsPanelNode<CheckBox>("EnemyAttackPreviewCheckBox");
+    private CheckBox IncomingDamagePreviewCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("IncomingDamagePreviewCheckBox");
+    private CheckBox IntentionTargetNamesCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("IntentionTargetNamesCheckBox");
+    private CheckBox SingleTargetDamageIntentionArrowsCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("SingleTargetDamageIntentionArrowsCheckBox");
     private CheckBox HideEnemySkillsCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("HideEnemySkillsCheckBox");
+    private CheckBox GroupBattlePilesByCharacterCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("GroupBattlePilesByCharacterCheckBox");
     private CheckBox KeepManualTargetCardVisibleCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("KeepManualTargetCardVisibleCheckBox");
     private CheckBox ArrowManualTargetSelectionCheckBox =>
@@ -89,6 +95,7 @@ public partial class Menu : Control
     private Button SettingsBackButton =>
         field ??= GetSettingsPanelNode<Button>("SettingsBackButton");
     private Tween _transitionTween;
+    private bool _isAbandoningGame;
 
     private T GetSettingsPanelNode<T>(string nodeName) where T : Node
     {
@@ -124,13 +131,23 @@ public partial class Menu : Control
             DescriptionModeCheckBox.Pressed += OnDescriptionModePressed;
 
         if (TurnOrderPreviewCheckBox != null)
-            TurnOrderPreviewCheckBox.Pressed += OnTurnOrderPreviewPressed;
+            TurnOrderPreviewCheckBox.Visible = false;
 
-        if (EnemyAttackPreviewCheckBox != null)
-            EnemyAttackPreviewCheckBox.Pressed += OnEnemyAttackPreviewPressed;
+        if (IncomingDamagePreviewCheckBox != null)
+            IncomingDamagePreviewCheckBox.Pressed += OnIncomingDamagePreviewPressed;
+
+        if (IntentionTargetNamesCheckBox != null)
+            IntentionTargetNamesCheckBox.Pressed += OnIntentionTargetNamesPressed;
+
+        if (SingleTargetDamageIntentionArrowsCheckBox != null)
+            SingleTargetDamageIntentionArrowsCheckBox.Pressed +=
+                OnSingleTargetDamageIntentionArrowsPressed;
 
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.Pressed += OnHideEnemySkillsPressed;
+
+        if (GroupBattlePilesByCharacterCheckBox != null)
+            GroupBattlePilesByCharacterCheckBox.Pressed += OnGroupBattlePilesByCharacterPressed;
 
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.Pressed += OnKeepManualTargetCardVisiblePressed;
@@ -178,6 +195,7 @@ public partial class Menu : Control
     {
         _transitionTween?.Kill();
         Visible = true;
+        FindActiveBattle(GetTree()?.Root)?.SetIncomingDamagePreviewSuppressed(true);
         if (CenterPanel != null)
             CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
         ShowMainPanel();
@@ -234,6 +252,7 @@ public partial class Menu : Control
         {
             ApplyHiddenState();
             Visible = false;
+            FindActiveBattle(GetTree()?.Root)?.SetIncomingDamagePreviewSuppressed(false);
         };
     }
 
@@ -243,15 +262,26 @@ public partial class Menu : Control
         SceneTransitionLayer.Ensure(this)?.SwitchScene("res://BeginGame/StartInterface.tscn");
     }
 
-    private void OnAbandonGamePressed()
+    private async void OnAbandonGamePressed()
     {
+        if (_isAbandoningGame)
+            return;
+
+        _isAbandoningGame = true;
+        if (AbandonGameButton != null)
+            AbandonGameButton.Disabled = true;
+
         var activeBattle = FindActiveBattle(GetTree()?.Root);
 
         Close();
         activeBattle?.AbortBattle(unlockMapNodes: false);
         GameInfo.RecordCurrentRunHistory(victory: false, includeCurrentNode: true);
-        SaveSystem.SaveAll();
         GameOverSummary.Show(this);
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        SaveSystem.SaveAllInBackground();
     }
 
     private void OnReturnPressed()
@@ -297,13 +327,33 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.RefreshTurnOrderPreviewFromSettings();
     }
 
-    private void OnEnemyAttackPreviewPressed()
+    private void OnIncomingDamagePreviewPressed()
     {
-        if (EnemyAttackPreviewCheckBox == null)
+        if (IncomingDamagePreviewCheckBox == null)
             return;
 
-        UserSettings.SetEnemyAttackPreview(EnemyAttackPreviewCheckBox.ButtonPressed);
-        FindActiveBattle(GetTree()?.Root)?.RefreshEnemyAttackPreviewFromSettings();
+        UserSettings.SetIncomingDamagePreview(IncomingDamagePreviewCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshIncomingDamagePreviewFromSettings();
+    }
+
+    private void OnIntentionTargetNamesPressed()
+    {
+        if (IntentionTargetNamesCheckBox == null)
+            return;
+
+        UserSettings.SetShowIntentionTargetNames(IntentionTargetNamesCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshEnemyIntentionPreviews();
+    }
+
+    private void OnSingleTargetDamageIntentionArrowsPressed()
+    {
+        if (SingleTargetDamageIntentionArrowsCheckBox == null)
+            return;
+
+        UserSettings.SetShowSingleTargetDamageIntentionArrows(
+            SingleTargetDamageIntentionArrowsCheckBox.ButtonPressed
+        );
+        FindActiveBattle(GetTree()?.Root)?.RefreshEnemyIntentionPreviews();
     }
 
     private void OnHideEnemySkillsPressed()
@@ -313,6 +363,16 @@ public partial class Menu : Control
 
         UserSettings.SetHideEnemySkills(HideEnemySkillsCheckBox.ButtonPressed);
         FindActiveBattle(GetTree()?.Root)?.RefreshEnemySkillVisibilityFromSettings();
+    }
+
+    private void OnGroupBattlePilesByCharacterPressed()
+    {
+        if (GroupBattlePilesByCharacterCheckBox == null)
+            return;
+
+        UserSettings.SetGroupBattlePilesByCharacter(
+            GroupBattlePilesByCharacterCheckBox.ButtonPressed
+        );
     }
 
     private void OnKeepManualTargetCardVisiblePressed()
@@ -457,11 +517,22 @@ public partial class Menu : Control
         if (DescriptionModeCheckBox != null)
             DescriptionModeCheckBox.ButtonPressed = UserSettings.UseCompactBattleCardDescriptions;
         if (TurnOrderPreviewCheckBox != null)
-            TurnOrderPreviewCheckBox.ButtonPressed = UserSettings.ShowBattleTurnOrderPreview;
-        if (EnemyAttackPreviewCheckBox != null)
-            EnemyAttackPreviewCheckBox.ButtonPressed = UserSettings.ShowEnemyAttackPreview;
+        {
+            TurnOrderPreviewCheckBox.Visible = false;
+            TurnOrderPreviewCheckBox.ButtonPressed = false;
+        }
+        if (IncomingDamagePreviewCheckBox != null)
+            IncomingDamagePreviewCheckBox.ButtonPressed = UserSettings.ShowIncomingDamagePreview;
+        if (IntentionTargetNamesCheckBox != null)
+            IntentionTargetNamesCheckBox.ButtonPressed = UserSettings.ShowIntentionTargetNames;
+        if (SingleTargetDamageIntentionArrowsCheckBox != null)
+            SingleTargetDamageIntentionArrowsCheckBox.ButtonPressed =
+                UserSettings.ShowSingleTargetDamageIntentionArrows;
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.ButtonPressed = UserSettings.HideEnemySkills;
+        if (GroupBattlePilesByCharacterCheckBox != null)
+            GroupBattlePilesByCharacterCheckBox.ButtonPressed =
+                UserSettings.GroupBattlePilesByCharacter;
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.ButtonPressed =
                 UserSettings.KeepManualTargetCardVisibleWhenHidden;
@@ -679,15 +750,30 @@ public partial class Menu : Control
                 "ui.settings.turn_order_preview",
                 "显示战斗出手顺序"
             );
-        if (EnemyAttackPreviewCheckBox != null)
-            EnemyAttackPreviewCheckBox.Text = I18n.Tr(
-                "ui.settings.enemy_attack_preview",
-                "显示敌方攻击范围与累计伤害"
+        if (IncomingDamagePreviewCheckBox != null)
+            IncomingDamagePreviewCheckBox.Text = I18n.Tr(
+                "ui.settings.incoming_damage_preview",
+                "显示角色即将承受的伤害"
+            );
+        if (IntentionTargetNamesCheckBox != null)
+            IntentionTargetNamesCheckBox.Text = I18n.Tr(
+                "ui.settings.intention_target_names",
+                "意图目标直接显示角色名称"
+            );
+        if (SingleTargetDamageIntentionArrowsCheckBox != null)
+            SingleTargetDamageIntentionArrowsCheckBox.Text = I18n.Tr(
+                "ui.settings.single_target_damage_intention_arrows",
+                "单体伤害意图显示目标箭头"
             );
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.Text = I18n.Tr(
                 "ui.settings.hide_enemy_skills",
                 "隐藏敌人技能"
+            );
+        if (GroupBattlePilesByCharacterCheckBox != null)
+            GroupBattlePilesByCharacterCheckBox.Text = I18n.Tr(
+                "ui.settings.group_battle_piles_by_character",
+                "牌堆查看按角色分类"
             );
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.Text = I18n.Tr(

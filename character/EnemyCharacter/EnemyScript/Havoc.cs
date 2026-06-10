@@ -78,10 +78,11 @@ public partial class HavocRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Havoc_v4.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Havoc.tscn");
 
-        MaxLife = 245;
-        Power = 13;
-        Survivability = 12;
-        Speed = 23;
+        MaxLife = 445;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.HavocAttack, SkillID.HavocSurvive, SkillID.HavocSpecial];
 
         PassiveName = global::Havoc.PassiveNameText;
@@ -91,7 +92,7 @@ public partial class HavocRegedit : EnemyRegedit
 
 public partial class HavocAttack : Skill
 {
-    private const int BaseDamage = 2;
+    private const int BaseDamage = 8;
     private const int WeakenStacks = 1;
 
     public HavocAttack()
@@ -104,16 +105,13 @@ public partial class HavocAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2, target: HostileTargetReference.All));
     }
 }
 
 public partial class HavocSurvive : Skill
 {
-    private const int BaseBlock = 8;
+    private const int BaseBlock = 32;
     private const int SurvivabilityGain = 2;
 
     public HavocSurvive()
@@ -137,8 +135,8 @@ public partial class HavocSurvive : Skill
 
 public partial class HavocSpecial : Skill
 {
-    private const int DisasterStacks = 3;
-    private const int SelfPowerGain = 2;
+    private const int DisasterStacks = 7;
+    private const int SelfPowerGain = 1;
 
     public HavocSpecial()
         : base(SkillTypes.Special)
@@ -153,8 +151,8 @@ public partial class HavocSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0, multiplier: 1, target: HostileTargetReference.All),
-            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
+            AttackStep(baseDamage: 13, multiplier: 1, target: HostileTargetReference.All),
+            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.Random),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

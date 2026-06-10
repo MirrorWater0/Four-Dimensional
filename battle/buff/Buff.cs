@@ -50,7 +50,6 @@ public partial class Buff
         [BuffName.Swift] = "res://battle/buff/StateIcon/Swift.tscn",
         [BuffName.ExtraPower] = "res://battle/buff/StateIcon/ExtraPower.tscn",
         [BuffName.ExtraSurvivability] = "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
-        [BuffName.ExtraTurn] = "res://battle/buff/StateIcon/ExtraTurn.tscn",
         [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
         [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
         [BuffName.Beacon] = "res://battle/buff/StateIcon/Beacon.tscn",
@@ -83,33 +82,34 @@ public partial class Buff
         {
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
-            BuffName.Vulnerable => "受到攻击时，伤害提高50%，消耗1层。",
+            BuffName.Vulnerable => "受到攻击时，伤害提高50%；阵营回合开始时减少1层。",
             BuffName.Fear => "使用攻击技能时，每层受到1点伤害。",
-            BuffName.Taunt => "敌方攻击只能锁定该目标；受到攻击伤害时消耗1层。",
+            BuffName.Taunt => "敌方攻击只能锁定该目标；阵营回合开始时减少1层。",
             BuffName.Thorn => "受到攻击时，每层对攻击者造成1点伤害。",
             BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
-            BuffName.Pursuit => "回合结束时，造成一次伤害。",
+            BuffName.Pursuit => "阵营回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
             BuffName.Invisible => "其他角色存活时,无法被选为攻击目标；回合开始时消耗1层。",
-            BuffName.Swift => "回合开始时，每层抽1张牌。",
+            BuffName.Swift => "阵营回合开始时，每层抽1张该角色的牌。",
             BuffName.ExtraPower => "获得力量时，每层额外获得1点力量。",
             BuffName.ExtraSurvivability => "获得生存时，每层额外获得1点生存。",
-            BuffName.ExtraTurn => "回合结束时消耗1层，触发1个完整额外回合。",
             BuffName.AutoArmor => "受到攻击后，每层获得1点格挡。",
-            BuffName.Barricade => "回合开始时，保留你的格挡。",
-            BuffName.Afterimage => "回合开始时，格挡不会消失，减少1层。",
-            BuffName.Weaken => "造成的伤害降低25%，每次攻击后消耗1层。",
-            BuffName.Disaster => "己方角色行动结束时，每层受到1点伤害，并消耗1层。",
+            BuffName.Barricade => "阵营回合开始时，保留你的格挡。",
+            BuffName.Afterimage => "阵营回合开始时，格挡不会消失，减少1层。",
+            BuffName.Weaken => "造成的伤害降低25%；阵营回合结束时减少1层。",
+            BuffName.Disaster => "己方阵营回合结束时，每层受到1点伤害，并消耗1层。",
             BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
             BuffName.Shadow => "攻击时，每层获得1点力量。",
-            BuffName.Demon => "回合结束时，每层获得1点力量。",
-            BuffName.Void => "其他己方角色回合结束时，每层获得1点力量。",
+            BuffName.Demon =>
+                "阵营回合结束时，每层获得1点力量。",
+            BuffName.Void =>
+                "队友打出生存牌时，获得1点力量。",
             BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
-            BuffName.Sanctuary => "己方角色回合结束时，每层回复0点生命1次。",
-            BuffName.ExtraDraw => "回合开始时，每消耗1层抽1张牌，直到手牌上限。",
+            BuffName.Sanctuary => "己方阵营回合结束时，每层回复0点生命1次。",
+            BuffName.ExtraDraw => "阵营回合开始时，最多消耗1层并抽1张该角色的牌。",
             BuffName.Source => "回合开始时，每层获得1点能量。",
-            BuffName.EnergyStorage => "回合结束时，每层少失去1点能量。",
-            BuffName.EternalDark => "己方其他角色行动后，获得1层隐身。",
+            BuffName.EnergyStorage => "阵营回合结束时，每层少失去1点能量。",
+            BuffName.EternalDark => "回合开始时，获得1层隐身。",
             BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
             BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
             BuffName.WeakeningField => "每给予1层虚弱，己方全阵获得{block}点格挡。",
@@ -167,7 +167,9 @@ public partial class Buff
         Control node,
         Vector2 scale,
         Node parent = null,
-        bool useOffsetMotion = false
+        bool useOffsetMotion = false,
+        bool removeFirstChild = true,
+        float alphaScale = 1f
     )
     {
         if (node == null || !GodotObject.IsInstanceValid(node))
@@ -178,7 +180,7 @@ public partial class Buff
         var ghost = node.Duplicate() as Control;
         if (ghost == null)
             return;
-        if (ghost.GetChildCount() > 0)
+        if (removeFirstChild && ghost.GetChildCount() > 0)
             ghost.GetChild(0).QueueFree();
         ghost.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
 
@@ -215,13 +217,25 @@ public partial class Buff
             ghost.Material = newMat;
         }
 
+        bool preserveSourcePosition =
+            parent != null && node.IsInsideTree() && parent is Control;
+        Vector2 sourceCenterInParent = Vector2.Zero;
+        if (preserveSourcePosition)
+        {
+            var parentControl = parent as Control;
+            sourceCenterInParent =
+                node.GetGlobalRect().GetCenter() - parentControl.GetGlobalRect().Position;
+        }
+
         if (parent != null)
             parent.AddChild(ghost);
         else
             node.AddChild(ghost);
 
         ghost.PivotOffset = ghost.Size / 2;
-        Vector2 centeredPos = -ghost.Size / 2;
+        Vector2 centeredPos = preserveSourcePosition
+            ? sourceCenterInParent - ghost.Size / 2
+            : -ghost.Size / 2;
         Vector2 basePos = centeredPos;
         Vector2 jitterPos = basePos;
         Vector2 arcPos = basePos;
@@ -246,13 +260,14 @@ public partial class Buff
         float settleSpinRad = spinRad * 0.28f;
 
         // Brighter than white to emphasize additive glow.
-        Godot.Color flashColor = new Godot.Color(1.35f, 1.28f, 1.55f, 1.0f);
-        Godot.Color midColor = new Godot.Color(1.1f, 1.08f, 1.28f, 0.76f);
+        alphaScale = Mathf.Clamp(alphaScale, 0f, 1f);
+        Godot.Color flashColor = new Godot.Color(1.35f, 1.28f, 1.55f, 1.0f * alphaScale);
+        Godot.Color midColor = new Godot.Color(1.1f, 1.08f, 1.28f, 0.76f * alphaScale);
         Godot.Color fadeColor = new Godot.Color(0.8f, 0.86f, 1.12f, 0.0f);
 
         ghost.Position = basePos;
         ghost.Rotation = 0f;
-        ghost.Modulate = new Godot.Color(1.1f, 1.1f, 1.2f, 0.95f);
+        ghost.Modulate = new Godot.Color(1.1f, 1.1f, 1.2f, 0.95f * alphaScale);
         ghost.Scale = Vector2.One;
 
         var tween = ghost.CreateTween();
@@ -373,6 +388,7 @@ public partial class Buff
         [Description("额外生存")]
         ExtraSurvivability,
 
+        [Obsolete("Removed gameplay buff; kept as an enum placeholder.")]
         [Description("额外行动")]
         ExtraTurn,
 
@@ -457,7 +473,6 @@ public partial class Buff
             BuffName.Swift => Nature.positive,
             BuffName.ExtraPower => Nature.positive,
             BuffName.ExtraSurvivability => Nature.positive,
-            BuffName.ExtraTurn => Nature.positive,
             BuffName.AutoArmor => Nature.positive,
             BuffName.Barricade => Nature.positive,
             BuffName.Afterimage => Nature.positive,
@@ -675,7 +690,8 @@ public partial class Buff
             target?.MarkBuffSeen(name);
         target?.InvalidateBuffTooltipCache();
         RecordBuffGain(target, name, stack, source);
-        RefreshTurnOrderPreviewIfNeeded(target, name);
+        if (name == BuffName.Invisible && stack > 0)
+            target?.BattleNode?.RetargetEnemySingleTargetDamageIntentionsForInvisible(target);
         return true;
     }
 
@@ -693,13 +709,8 @@ public partial class Buff
             target.MarkBuffSeen(buff.ThisBuffName);
         target.InvalidateBuffTooltipCache();
         RecordBuffGain(target, buff.ThisBuffName, buff.Stack, source);
-        RefreshTurnOrderPreviewIfNeeded(target, buff.ThisBuffName);
-    }
-
-    protected static void RefreshTurnOrderPreviewIfNeeded(Character target, BuffName name)
-    {
-        if (name == BuffName.ExtraTurn)
-            target?.BattleNode?.RefreshTurnOrderPreview();
+        if (buff.ThisBuffName == BuffName.Invisible && buff.Stack > 0)
+            target.BattleNode?.RetargetEnemySingleTargetDamageIntentionsForInvisible(target);
     }
 
     protected bool IsOwnerUnavailableForTrigger() =>
@@ -722,7 +733,6 @@ public partial class Buff
         buffs?.Remove((TBuff)this);
         Owner?.InvalidateBuffTooltipCache();
         Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
-        RefreshTurnOrderPreviewIfNeeded(Owner, ThisBuffName);
 
         if (showVanishHint)
             Hint(ThisBuffName, BuffHintLabel.Which.vanish);
@@ -747,6 +757,9 @@ public class DyingBuff : Buff
             case BuffName.RebirthI:
                 if (Stack >= 1)
                 {
+                    if (Owner.IsPlayer && Owner.BattleNode?.CanReviveDyingPlayerNow() != true)
+                        break;
+
                     Owner.Recover(Owner.BattleMaxLife / 2, true, Owner);
                     Stack--;
                     UpdateStackLabel();
@@ -760,6 +773,15 @@ public class DyingBuff : Buff
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
+        if (
+            name == BuffName.RebirthI
+            && target?.IsPlayer == true
+            && target.BattleNode?.CanReviveDyingPlayerNow() != true
+        )
+        {
+            return;
+        }
+
         if (TryStackExisting(target?.DyingBuffs, name, stack, target, source))
             return;
 
@@ -800,15 +822,6 @@ public partial class HurtBuff : Buff
                 if (damageKind == Character.DamageKind.Attack)
                 {
                     damage *= 1.5f;
-                    Stack--;
-                    UpdateStackLabel();
-                }
-                break;
-            case BuffName.Taunt:
-                if (damageKind == Character.DamageKind.Attack)
-                {
-                    Stack--;
-                    UpdateStackLabel();
                 }
                 break;
             case BuffName.Thorn:
@@ -835,6 +848,25 @@ public partial class HurtBuff : Buff
         TweenLabel();
         TryRemoveIfEmpty(Owner.HurtBuffs);
         return damage;
+    }
+
+    public void ConsumeTeamTurnStartStack()
+    {
+        if (
+            (ThisBuffName != BuffName.Taunt && ThisBuffName != BuffName.Vulnerable)
+            || Stack <= 0
+            || Owner == null
+            || !GodotObject.IsInstanceValid(Owner)
+            || Owner.State == Character.CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        Stack--;
+        UpdateStackLabel();
+        TweenLabel();
+        TryRemoveIfEmpty(Owner.HurtBuffs);
     }
 
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
@@ -886,7 +918,7 @@ public partial class StartActionBuff : Buff
                 UpdateStackLabel();
                 break;
             case BuffName.EternalDark:
-                // Passive effect: handled by Battle.TriggerGlobalTurnEndBuffs.
+                StartActionBuff.BuffAdd(BuffName.Invisible, Owner, 1, Owner);
                 break;
             case BuffName.Swift:
                 if (Owner is PlayerCharacter player)
@@ -1009,10 +1041,6 @@ public partial class AttackBuff : Buff
         {
             case BuffName.Weaken:
                 context.Damage = Math.Max((int)MathF.Floor(context.Damage * WeakenMultiplier), 0);
-                if (context.ConsumeStack)
-                {
-                    SetCurrentStack(ref context, currentStack - 1);
-                }
                 break;
             case BuffName.Shadow:
                 if (context.State == null && Owner != null)
@@ -1028,6 +1056,25 @@ public partial class AttackBuff : Buff
                 }
                 break;
         }
+    }
+
+    public void ConsumeTeamTurnEndStack()
+    {
+        if (
+            ThisBuffName != BuffName.Weaken
+            || Stack <= 0
+            || Owner == null
+            || !GodotObject.IsInstanceValid(Owner)
+            || Owner.State == Character.CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        Stack--;
+        UpdateStackLabel();
+        TweenLabel();
+        TryRemoveIfEmpty(Owner.AttackBuffs);
     }
 
     private static bool HasDivinity(Character attacker)
@@ -1089,11 +1136,7 @@ public partial class AttackBuff : Buff
 
         if (
             target?.AttackBuffs == null
-            || (
-                name != BuffName.Weaken
-                && name != BuffName.Shadow
-                && name != BuffName.CursePower
-            )
+            || (name != BuffName.Weaken && name != BuffName.Shadow && name != BuffName.CursePower)
         )
             return;
 
@@ -1134,7 +1177,7 @@ public partial class SkillBuff : Buff
                 Stack--;
                 UpdateStackLabel();
 
-                if (skill?.OwnerCharater != null && skill.OwnerCharater.Energy > 0)
+                if (skill?.OwnerCharater != null && skill.OwnerCharater.CurrentEnergy > 0)
                     skill.OwnerCharater.UpdataEnergy(-1, skill.OwnerCharater);
 
                 if (Owner != null)
@@ -1204,6 +1247,8 @@ public partial class SkillBuff : Buff
 
 public partial class EndActionBuff : Buff
 {
+    private const int PursuitFixedDamage = 10;
+
     public EndActionBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
@@ -1215,7 +1260,6 @@ public partial class EndActionBuff : Buff
         Stack--;
         UpdateStackLabel();
         TweenLabel();
-        RefreshTurnOrderPreviewIfNeeded(Owner, ThisBuffName);
         return TryRemoveIfEmpty(Owner.EndActionBuffs, showVanishHint);
     }
 
@@ -1231,11 +1275,7 @@ public partial class EndActionBuff : Buff
             case BuffName.Pursuit:
                 ConsumeOneStack();
                 var skill = new Skill(Skill.SkillTypes.Attack) { OwnerCharater = Owner };
-                await skill.Attack(Owner.BattlePower);
-                break;
-            case BuffName.ExtraTurn:
-                ConsumeOneStack();
-                Owner.BattleNode?.RequestExtraAction(Owner);
+                await skill.Attack(PursuitFixedDamage);
                 break;
             case BuffName.Demon:
                 await Owner.IncreaseProperties(PropertyType.Power, Stack, Owner);
@@ -1256,7 +1296,6 @@ public partial class EndActionBuff : Buff
 
         if (
             name != BuffName.Pursuit
-            && name != BuffName.ExtraTurn
             && name != BuffName.Disaster
             && name != BuffName.Demon
             && name != BuffName.Void
@@ -1276,7 +1315,7 @@ public partial class EndActionBuff : Buff
 public partial class SpecialBuff : Buff
 {
     private static bool _sharingBeaconBlock;
-    internal const int WeakeningFieldBlock = 4;
+    internal const int WeakeningFieldBlock = 3;
 
     public SpecialBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
@@ -1287,15 +1326,13 @@ public partial class SpecialBuff : Buff
             owner?.SpecialBuffs == null
             || weakenStacks <= 0
             || owner.SpecialBuffs.All(x =>
-                x == null
-                || x.ThisBuffName != BuffName.WeakeningField
-                || x.Stack <= 0
+                x == null || x.ThisBuffName != BuffName.WeakeningField || x.Stack <= 0
             )
         )
             return;
 
-        var allies = owner.BattleNode
-            ?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+        var allies = owner
+            .BattleNode?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
             .Where(x => x != null && x.State != Character.CharacterState.Dying)
             .ToArray();
         if (allies == null || allies.Length == 0)
@@ -1316,8 +1353,8 @@ public partial class SpecialBuff : Buff
         if (_sharingBeaconBlock || owner?.SpecialBuffs == null || gainedBlock <= 0)
             return;
 
-        int beaconStacks = owner.SpecialBuffs
-            .Where(x => x != null && x.ThisBuffName == BuffName.Beacon && x.Stack > 0)
+        int beaconStacks = owner
+            .SpecialBuffs.Where(x => x != null && x.ThisBuffName == BuffName.Beacon && x.Stack > 0)
             .Sum(x => x.Stack);
         if (beaconStacks <= 0)
             return;
@@ -1326,13 +1363,9 @@ public partial class SpecialBuff : Buff
         if (sharedBlock <= 0)
             return;
 
-        var allies = owner.BattleNode
-            ?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
-            .Where(x =>
-                x != null
-                && x != owner
-                && x.State != Character.CharacterState.Dying
-            )
+        var allies = owner
+            .BattleNode?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+            .Where(x => x != null && x != owner && x.State != Character.CharacterState.Dying)
             .ToArray();
         if (allies == null || allies.Length == 0)
             return;
@@ -1404,9 +1437,11 @@ public partial class SpecialBuff : Buff
 
     public static int GetCardRefreshStack(Character target)
     {
-        return target?.SpecialBuffs?.FirstOrDefault(x =>
-            x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
-        )?.Stack ?? 0;
+        return target
+                ?.SpecialBuffs?.FirstOrDefault(x =>
+                    x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
+                )
+                ?.Stack ?? 0;
     }
 
     public static int ConsumeCardRefresh(Character target, int count)
@@ -1433,8 +1468,10 @@ public partial class SpecialBuff : Buff
         if (target?.SpecialBuffs == null)
             return 0;
 
-        return target.SpecialBuffs
-            .Where(x => x != null && x.ThisBuffName == BuffName.EnergyStorage && x.Stack > 0)
+        return target
+            .SpecialBuffs.Where(x =>
+                x != null && x.ThisBuffName == BuffName.EnergyStorage && x.Stack > 0
+            )
             .Sum(x => x.Stack);
     }
 

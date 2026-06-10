@@ -8,6 +8,7 @@ uniform vec4 shadow_color : source_color = vec4(0.02, 0.03, 0.04, 0.52);
 uniform float hover_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float disabled_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float pressed_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float receive_amount : hint_range(0.0, 1.0) = 0.0;
 uniform float stack_tilt : hint_range(-0.5, 0.5) = -0.10;
 uniform float fan_amount : hint_range(0.0, 0.35) = 0.12;
 uniform float card_radius : hint_range(0.01, 0.12) = 0.045;
@@ -51,12 +52,14 @@ void blend_layer(inout vec3 rgb, inout float alpha, vec4 color, float layer_alph
 
 void fragment() {
     vec2 uv = UV - vec2(0.5);
-    float spread = fan_amount + hover_amount * 0.035;
-    vec2 card_size = vec2(0.17, 0.235) * (1.0 + hover_amount * 0.035);
+    float receive_wave = sin(receive_amount * 3.1415926);
+    float spread = fan_amount + hover_amount * 0.035 + receive_wave * 0.05;
+    vec2 card_size = vec2(0.17, 0.235) * (1.0 + hover_amount * 0.035 + receive_wave * 0.08);
 
-    vec2 back_pos = vec2(-0.10 - hover_amount * 0.015, 0.080);
-    vec2 mid_pos = vec2(0.0, 0.015);
-    vec2 front_pos = vec2(0.10 + hover_amount * 0.015, -0.070);
+    vec2 receive_pull = vec2(0.0, -0.035 * receive_wave);
+    vec2 back_pos = vec2(-0.10 - hover_amount * 0.015, 0.080) + receive_pull;
+    vec2 mid_pos = vec2(0.0, 0.015) + receive_pull * 0.6;
+    vec2 front_pos = vec2(0.10 + hover_amount * 0.015, -0.070) + receive_pull * 0.2;
 
     float back_angle = stack_tilt - spread;
     float mid_angle = stack_tilt * 0.45;
@@ -84,6 +87,12 @@ void fragment() {
 
     float face_glint = smoothstep(0.58, 0.96, uv.y + uv.x * 0.35 + 0.28) * front;
     blend_layer(rgb, alpha, edge_color, face_glint * hover_amount * 0.16);
+
+    float receive_ring_dist = abs(length(uv) - mix(0.16, 0.43, receive_amount));
+    float receive_ring = smoothstep(0.030, 0.0, receive_ring_dist) * (1.0 - receive_amount);
+    float receive_spark = smoothstep(0.92, 1.0, sin((uv.x - uv.y) * 28.0 + TIME * 16.0));
+    blend_layer(rgb, alpha, edge_color, receive_ring * 0.78);
+    rgb += edge_color.rgb * receive_spark * receive_wave * 0.16;
 
     rgb *= 1.0 - pressed_amount * 0.16;
     float gray = dot(rgb, vec3(0.299, 0.587, 0.114));

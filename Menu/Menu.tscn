@@ -317,12 +317,26 @@ theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示战斗出手顺序"
 
-[node name="EnemyAttackPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=146422513]
+[node name="IncomingDamagePreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
-text = "显示敌方攻击范围与累计伤害"
+text = "显示角色即将承受的伤害"
+
+[node name="IntentionTargetNamesCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=146422513]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "意图目标直接显示角色名称"
+
+[node name="SingleTargetDamageIntentionArrowsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "单体伤害意图显示目标箭头"
 
 [node name="HideEnemySkillsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
@@ -330,6 +344,13 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "隐藏敌人技能"
+
+[node name="GroupBattlePilesByCharacterCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "牌堆查看按角色分类"
 
 [node name="KeepManualTargetCardVisibleCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)

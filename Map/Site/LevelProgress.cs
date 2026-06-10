@@ -5,9 +5,10 @@ using Godot;
 
 public partial class LevelProgress : Control
 {
-    private const int RegionOneMapLength = 12; // Number of stages
+    private const int RegionOneMapLength = 13; // Number of stages
     private const int RegionTwoMapLength = RegionOneMapLength - 2;
     private static int MapLength => GameInfo.CurrentLevel > 0 ? RegionTwoMapLength : RegionOneMapLength;
+    private static int PreBossRestStage => MapLength - 2;
     private const int MaxMapHeight = 4; // Maximum vertical slots per stage
     private const int BossSlot = 1;
     private const int PathCount = 6;
@@ -15,14 +16,19 @@ public partial class LevelProgress : Control
     private const int MaxEliteNodes = 6;
     private const int MinShopNodes = 2;
     private const int MaxShopNodes = 5;
+    private const int MinRestNodes = 2;
+    private const int MaxRestNodes = 4;
     private const int RegionTwoMaxEliteNodes = MaxEliteNodes - 1;
     private const int RegionTwoMaxShopNodes = MaxShopNodes - 1;
+    private const int RegionTwoMaxRestNodes = MaxRestNodes - 1;
     private const int FirstEliteStage = 3;
     private const int FirstShopStage = 1;
+    private const int FirstRestStage = 2;
     private const int EventChancePercent = 24;
     private const float NodeSpacingX = 250f; // Distance between stages
     private const float NodeSpacingY = 290f; // Vertical distance between slots
     private const float MapLeftMargin = 200f;
+    public const float RestHealPercent = 0.3f;
 
     [Export]
     public float JitterAmount = 90f;
@@ -121,8 +127,33 @@ public partial class LevelProgress : Control
         foreach (int startY in startSlots)
             GenerateSinglePath(startY, activeNodes, edges);
 
+        ForcePreBossRestStage(activeNodes, edges);
         activeNodes[MapLength - 1, BossSlot] = true;
         return activeNodes;
+    }
+
+    private void ForcePreBossRestStage(bool[,] activeNodes, bool[,,] edges)
+    {
+        int restStage = PreBossRestStage;
+        int previousStage = restStage - 1;
+        int[] previousSlots = Enumerable
+            .Range(0, MaxMapHeight)
+            .Where(y => activeNodes[previousStage, y])
+            .ToArray();
+
+        if (previousSlots.Length == 0)
+        {
+            activeNodes[previousStage, BossSlot] = true;
+            previousSlots = new[] { BossSlot };
+        }
+
+        for (int y = 0; y < MaxMapHeight; y++)
+        {
+            int fromY = previousSlots.OrderBy(slot => Math.Abs(slot - y)).First();
+            activeNodes[restStage, y] = true;
+            edges[previousStage, fromY, y] = true;
+            edges[restStage, y, BossSlot] = true;
+        }
     }
 
     private void GenerateSinglePath(int startY, bool[,] activeNodes, bool[,,] edges)
@@ -623,7 +654,7 @@ public partial class LevelProgress : Control
             await transition.FadeToBlackAsync(0.36f);
 
         GameInfo.CurrentLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
-        GameInfo.TransitionEnergy = GameInfo.TransitionEnergyMax;
+        GameInfo.RefillPartyLife();
         bool showBossRelicChoice = GameInfo.CurrentLevel == 1;
         if (showBossRelicChoice)
             GameInfo.PendingBossRelicChoice = true;
@@ -637,7 +668,7 @@ public partial class LevelProgress : Control
 
         _map ??= GetParent() as Map;
         if (_map?.PlayerResourceState != null)
-            _map.PlayerResourceState.TransitionEnergy = GameInfo.TransitionEnergy;
+            _map.PlayerResourceState.RefreshPartyLifeResource();
         _map?.ForceUpdateRegionLabel();
         _map?.ResetCameraToStart();
         SaveSystem.SaveAll();
@@ -830,6 +861,8 @@ public partial class LevelProgress : Control
                 int x = node.SelfCoordinate.X;
                 if (x == 0)
                     node.Type = LevelNode.LevelType.Normal;
+                else if (x == PreBossRestStage)
+                    node.Type = LevelNode.LevelType.Rest;
                 else if (x == MapLength - 1)
                     node.Type = LevelNode.LevelType.Boss;
                 else
@@ -842,20 +875,30 @@ public partial class LevelProgress : Control
 
         int maxShopNodes = GetMaxShopNodesForCurrentRegion();
         int maxEliteNodes = GetMaxEliteNodesForCurrentRegion();
+        int maxRestNodes = GetMaxRestNodesForCurrentRegion();
         int shopCount = rng.Next(MinShopNodes, maxShopNodes + 1);
         int eliteCount = rng.Next(MinEliteNodes, maxEliteNodes + 1);
+        int restCount = rng.Next(MinRestNodes, maxRestNodes + 1);
+        int lastRandomSpecialStage = PreBossRestStage - 1;
         AssignDistributedNodeType(
             LevelNode.LevelType.Shop,
             shopCount,
             FirstShopStage,
-            MapLength - 2,
+            lastRandomSpecialStage,
+            rng
+        );
+        AssignDistributedNodeType(
+            LevelNode.LevelType.Rest,
+            restCount,
+            FirstRestStage,
+            lastRandomSpecialStage,
             rng
         );
         AssignDistributedNodeType(
             LevelNode.LevelType.Elite,
             eliteCount,
             FirstEliteStage,
-            MapLength - 2,
+            lastRandomSpecialStage,
             rng
         );
 
@@ -880,6 +923,11 @@ public partial class LevelProgress : Control
     private static int GetMaxShopNodesForCurrentRegion()
     {
         return GameInfo.CurrentLevel > 0 ? RegionTwoMaxShopNodes : MaxShopNodes;
+    }
+
+    private static int GetMaxRestNodesForCurrentRegion()
+    {
+        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxRestNodes : MaxRestNodes;
     }
 
     private void AssignDistributedNodeType(
@@ -974,7 +1022,12 @@ public partial class LevelProgress : Control
                 if (node == null)
                     continue;
 
-                if (node.Type == LevelNode.LevelType.Boss || node.Type == LevelNode.LevelType.Elite || node.Type == LevelNode.LevelType.Shop)
+                if (
+                    node.Type == LevelNode.LevelType.Boss
+                    || node.Type == LevelNode.LevelType.Elite
+                    || node.Type == LevelNode.LevelType.Shop
+                    || node.Type == LevelNode.LevelType.Rest
+                )
                     continue;
 
                 if (enforceConnectionSpacing && !CanAssignNodeType(node, type))
@@ -1010,7 +1063,11 @@ public partial class LevelProgress : Control
 
     private static bool CanAssignNodeType(LevelNode node, LevelNode.LevelType type)
     {
-        if (type != LevelNode.LevelType.Shop && type != LevelNode.LevelType.Elite)
+        if (
+            type != LevelNode.LevelType.Shop
+            && type != LevelNode.LevelType.Elite
+            && type != LevelNode.LevelType.Rest
+        )
             return true;
 
         foreach (var parent in node.ParentNodes)

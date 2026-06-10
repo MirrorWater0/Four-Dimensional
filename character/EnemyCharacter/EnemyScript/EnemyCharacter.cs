@@ -4,20 +4,30 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
-public partial class EnemyCharacter : Character
+public partial class EnemyCharacter : Character, IIntentionPreviewSource
 {
+    private const float NormalEnemyMaxLifeMultiplier = 2f;
+    private const float EliteEnemyMaxLifeMultiplier = 1.5f;
+
+    public enum EnemyIntentionActionPhase
+    {
+        PureAttack = 0,
+        AttackWithVulnerable = 1,
+        NonAttack = 2,
+    }
+
     private const float DefaultIntentWeight = 3f;
-    private const int DefaultSpecialIntentThreshold = 3;
     private const float SpecialIntentWeightMin = 0.5f;
     private const float SpecialIntentWeightMax = 7f;
-    private const float IntentCurveTargetLift = 92f;
-    private const float IntentCurveSplitX = 26f;
-    private const float IntentCurveGroupSpreadX = 36f;
-    private static readonly Color AttackIntentCurveColor = new(1f, 0.42f, 0.32f, 0.82f);
-    private static readonly Color DebuffIntentCurveColor = new(0.52f, 0.94f, 1f, 0.88f);
+    private const string StunIntentionIconPath = "res://battle/buff/StateIcon/Stun.tscn";
     public const int NextActionEnergyPreviewBonus = 3;
     private static readonly Color IntentionHostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
-    private static readonly Color IntentionFriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
+    private static readonly Color IntentionFriendlyTargetPreviewColor = new(
+        0.48f,
+        0.82f,
+        0.62f,
+        0.82f
+    );
     private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
     private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
     private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 58f);
@@ -25,20 +35,28 @@ public partial class EnemyCharacter : Character
     private static readonly Color IntentionDamageOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
     public EnemyRegedit Registry;
+    public Character SourceCharacter => this;
+    public Control IntentionControl => IntentionContorl;
     public Control IntentionContorl => field ??= GetNode<Control>("Intention");
     public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
     public ColorRect SurviveIntention => field ??= GetNode<ColorRect>("Intention/Survive");
     public ColorRect SpecialIntention => field ??= GetNode<ColorRect>("Intention/Special");
+    public ColorRect StunIntention => field ??= GetOrCreateStunIntention();
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
     public int IntentionIndex = -1;
+    protected override bool ResolvesTurnStartOnActionStart =>
+        BattleNode?.IsResolvingEnemyTeamActionPhase != true;
     private Character[] _intentionPreviewHostileTargets = Array.Empty<Character>();
     private Character[] _intentionPreviewFriendlyTargets = Array.Empty<Character>();
     private int _intentionPreviewHoverDepth;
     private readonly List<VBoxContainer> _intentionDamagePanels = new();
-    private readonly Dictionary<string, Line2D> _intentPreviewLines = new();
     private Label _intentionDamageSummaryLabel;
+    private SkillID[] _openingIntentionSkillIds = Array.Empty<SkillID>();
+    private int _openingIntentionStep;
+    private Skill _currentOpeningIntentionSkill;
+    private bool _preserveCurrentIntentionOnNextRefresh;
 
     public override void _Ready()
     {
@@ -53,7 +71,6 @@ public partial class EnemyCharacter : Character
     public override void _ExitTree()
     {
         HideIntentionTargetPreview();
-        HideAttackIntentCurve();
         FreeIntentionDamageLabels();
         base._ExitTree();
     }
@@ -63,7 +80,6 @@ public partial class EnemyCharacter : Character
         _intentionPreviewHoverDepth = 0;
         HideIntentionDamageSummary();
         HideIntentionTargetPreview();
-        HideAttackIntentCurve();
         await base.Dying(source);
     }
 
@@ -71,19 +87,57 @@ public partial class EnemyCharacter : Character
     {
         if (Registry != null)
         {
+            int effectiveMaxLife = GetEffectiveMaxLife(
+                Registry,
+                BattleNode?.CurrentLevelNode?.Type
+            );
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
-            SetCombatStats(Registry.Power, Registry.Survivability, Registry.Speed, Registry.MaxLife);
-            Life = BattleMaxLife;
+            SetBaseCombatStatContributions(
+                Registry.BasePowerContribution,
+                Registry.BaseSurvivabilityContribution
+            );
+            SetCombatStats(Registry.Power, Registry.Survivability, 0, effectiveMaxLife);
+            if (Registry.CurrentLife < 0 || Registry.CurrentLife == Registry.MaxLife)
+                Registry.CurrentLife = effectiveMaxLife;
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
                 .Select(Skill.GetSkill)
                 .Where(x => x != null)
                 .ToArray();
             if (Skills.Length == 0)
                 Skills = new Skill[3];
+
+            _openingIntentionSkillIds = Registry.OpeningIntentionSkillIDs ?? Array.Empty<SkillID>();
+            _openingIntentionStep = 0;
+            _currentOpeningIntentionSkill = null;
         }
         base.Initialize();
+        if (Registry != null)
+        {
+            Life = Math.Clamp(Registry.CurrentLife, 0, BattleMaxLife);
+            SyncLifeBarsToCurrent(syncBufferValue: true);
+        }
+        if (SpeedIconLabel?.GetParent() is CanvasItem speedIcon)
+            speedIcon.Visible = false;
+    }
+
+    public static bool UsesNormalEnemyLifeBonus(LevelNode.LevelType? levelType) =>
+        levelType != LevelNode.LevelType.Elite && levelType != LevelNode.LevelType.Boss;
+
+    public static int GetEffectiveMaxLife(EnemyRegedit regedit, LevelNode.LevelType? levelType)
+    {
+        if (regedit == null)
+            return 0;
+
+        int maxLife = Math.Max(1, regedit.MaxLife);
+        if (levelType == LevelNode.LevelType.Elite)
+            return Math.Max(1, (int)MathF.Ceiling(maxLife * EliteEnemyMaxLifeMultiplier));
+
+        if (!UsesNormalEnemyLifeBonus(levelType))
+            return maxLife;
+
+        return Math.Max(1, (int)MathF.Ceiling(maxLife * NormalEnemyMaxLifeMultiplier));
     }
 
     protected Character[] ChooseHostileTargetsByOrder(
@@ -108,15 +162,20 @@ public partial class EnemyCharacter : Character
     {
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
         base.StartAction();
-        Skill skill = GetCurrentIntentionSkill();
-        if (!CanUseIntentionSkill(skill, Energy))
+        bool hadActiveStun = HasActiveStun();
+        if (hadActiveStun)
+            _preserveCurrentIntentionOnNextRefresh = true;
+
+        Skill skill = CurrentIntentionSkill;
+        if (!hadActiveStun && !CanUseIntentionSkill(skill, EnergySources))
         {
             IntentionIndex = RollIntentionIndex();
-            skill = GetCurrentIntentionSkill();
+            skill = CurrentIntentionSkill;
+            LockCurrentIntentionTargets(skill);
         }
 
         await DisappearIntention();
-        if (CanUseIntentionSkill(skill, Energy))
+        if (skill != null && (hadActiveStun || CanUseIntentionSkill(skill, EnergySources)))
             await skill.Effect();
 
         EndAction();
@@ -124,20 +183,43 @@ public partial class EnemyCharacter : Character
 
     public override void OnTurnEnd()
     {
+        if (BattleNode?.IsDeferringEnemyIntentionRefresh != true)
+        {
+            RefreshNextIntentionAfterAction();
+        }
+
+        base.OnTurnEnd();
+    }
+
+    public void RefreshNextIntentionAfterAction()
+    {
+        if (_preserveCurrentIntentionOnNextRefresh)
+        {
+            _preserveCurrentIntentionOnNextRefresh = false;
+            DisplayIntention();
+            return;
+        }
+
+        AdvanceOpeningIntentionStep();
         IntentionIndex = RollIntentionIndex(NextActionEnergyPreviewBonus);
         DisplayIntention();
-        base.OnTurnEnd();
     }
 
     public int RollIntentionIndex(int energyPreviewBonus = 0)
     {
+        ClearIntentionSkillPreviewState();
+        _currentOpeningIntentionSkill = null;
+
+        int availableEnergy = Math.Max(EnergySources + energyPreviewBonus, 0);
+        if (TryCreateOpeningIntentionSkill(availableEnergy, out Skill openingSkill))
+        {
+            _currentOpeningIntentionSkill = openingSkill;
+            return -1;
+        }
+
         if (Skills == null || Skills.Length == 0)
             return -1;
 
-        foreach (var skill in Skills)
-            skill?.ClearPreviewableRandomHostileTargets();
-
-        int availableEnergy = Math.Max(Energy + energyPreviewBonus, 0);
         int avoidIndex = GetRepeatIntentionAvoidIndex(availableEnergy);
         float totalWeight = 0f;
         float[] weights = new float[Skills.Length];
@@ -175,6 +257,53 @@ public partial class EnemyCharacter : Character
         return -1;
     }
 
+    private void ClearIntentionSkillPreviewState()
+    {
+        foreach (var skill in Skills ?? Array.Empty<Skill>())
+        {
+            skill?.ClearPreviewableRandomHostileTargets();
+            skill?.ClearLockedExecutionTargets();
+        }
+
+        _currentOpeningIntentionSkill?.ClearPreviewableRandomHostileTargets();
+        _currentOpeningIntentionSkill?.ClearLockedExecutionTargets();
+    }
+
+    private bool TryCreateOpeningIntentionSkill(int availableEnergy, out Skill openingSkill)
+    {
+        openingSkill = null;
+        if (
+            _openingIntentionSkillIds == null
+            || _openingIntentionStep < 0
+            || _openingIntentionStep >= _openingIntentionSkillIds.Length
+        )
+        {
+            return false;
+        }
+
+        SkillID openingSkillId = _openingIntentionSkillIds[_openingIntentionStep];
+        Skill skill = Skill.GetSkill(openingSkillId);
+        if (!CanUseIntentionSkill(skill, availableEnergy))
+            return false;
+
+        openingSkill = skill;
+        return true;
+    }
+
+    private void AdvanceOpeningIntentionStep()
+    {
+        if (
+            _openingIntentionSkillIds == null
+            || _openingIntentionSkillIds.Length == 0
+            || _openingIntentionStep >= _openingIntentionSkillIds.Length
+        )
+        {
+            return;
+        }
+
+        _openingIntentionStep++;
+    }
+
     private int GetRepeatIntentionAvoidIndex(int availableEnergy)
     {
         if (IntentionIndex < 0 || IntentionIndex >= (Skills?.Length ?? 0))
@@ -200,7 +329,7 @@ public partial class EnemyCharacter : Character
         if (skill.SkillType != Skill.SkillTypes.Special)
             return DefaultIntentWeight;
 
-        int energyDelta = Energy - DefaultSpecialIntentThreshold;
+        int energyDelta = availableEnergy - skill.CardEnergyCost;
         return Math.Clamp(
             DefaultIntentWeight + energyDelta,
             SpecialIntentWeightMin,
@@ -217,34 +346,115 @@ public partial class EnemyCharacter : Character
         return skill.CanUseEnergy(availableEnergy);
     }
 
+    public bool HasActiveStun()
+    {
+        return SkillBuffs?.Any(buff =>
+                buff != null && buff.ThisBuffName == Buff.BuffName.Stun && buff.Stack > 0
+            ) == true;
+    }
+
+    private ColorRect GetOrCreateStunIntention()
+    {
+        var existing = IntentionContorl.GetNodeOrNull<ColorRect>("Stun");
+        if (existing != null)
+            return existing;
+
+        PackedScene scene = GD.Load<PackedScene>(StunIntentionIconPath);
+        var stun = scene?.Instantiate<ColorRect>();
+        if (stun == null)
+        {
+            stun = new ColorRect { Color = new Color(0.94f, 0.87f, 0.13f, 1f) };
+        }
+
+        stun.Name = "Stun";
+        stun.Visible = false;
+        stun.MouseFilter = Control.MouseFilterEnum.Ignore;
+        stun.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        stun.CustomMinimumSize = Vector2.Zero;
+        stun.Position = new Vector2(-30f, -30f);
+        stun.Size = new Vector2(60f, 60f);
+        if (stun.GetChildOrNull<Label>(0) is Label label)
+            label.Visible = false;
+
+        IntentionContorl.AddChild(stun);
+        return stun;
+    }
+
     public async Task DisappearIntention()
     {
         HideIntentionTargetPreview();
         HideIntentionDamageSummary();
-        Buff.GhostExplode(IntentionContorl, new Vector2(2, 2), useOffsetMotion: false);
+        Buff.GhostExplode(
+            IntentionContorl,
+            new Vector2(2, 2),
+            useOffsetMotion: false,
+            removeFirstChild: false
+        );
         await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
         AttackIntention.Visible = false;
         SurviveIntention.Visible = false;
         SpecialIntention.Visible = false;
+        StunIntention.Visible = false;
     }
 
     public void DisplayIntention()
     {
-        AttackIntention.Visible = false;
-        SurviveIntention.Visible = false;
-        SpecialIntention.Visible = false;
-
-        var skill = GetCurrentIntentionSkill();
-        if (skill == null)
+        var skill = CurrentIntentionSkill;
+        if (!ApplyCurrentIntentionIconState(skill))
         {
-            HideIntentionDamageSummary();
-            IntentionContorl.Visible = false;
             return;
         }
 
-        IntentionContorl.Visible = true;
         IntentionContorl.Modulate = new Color(1, 1, 1, 0);
         IntentionContorl.Scale = new Vector2(1.8f, 1.8f);
+        Tween tween = CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(IntentionContorl, "modulate", new Color(1, 1, 1, 1), 0.2f);
+        tween
+            .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
+            .SetEase(Tween.EaseType.Out);
+
+        if (_intentionPreviewHoverDepth > 0)
+            ShowIntentionTargetPreview();
+    }
+
+    public void RefreshIntentionDisplayForCurrentState()
+    {
+        if (State == CharacterState.Dying)
+            return;
+
+        if (!ApplyCurrentIntentionIconState(CurrentIntentionSkill))
+            return;
+
+        IntentionContorl.Modulate = Colors.White;
+        IntentionContorl.Scale = Vector2.One;
+    }
+
+    private bool ApplyCurrentIntentionIconState(Skill skill)
+    {
+        AttackIntention.Visible = false;
+        SurviveIntention.Visible = false;
+        SpecialIntention.Visible = false;
+        StunIntention.Visible = false;
+
+        bool hasActiveStun = HasActiveStun();
+        if (skill == null && !hasActiveStun)
+        {
+            HideIntentionDamageSummary();
+            IntentionContorl.Visible = false;
+            return false;
+        }
+
+        IntentionContorl.Visible = true;
+        if (hasActiveStun)
+        {
+            StunIntention.Visible = true;
+            HideIntentionDamageSummary();
+            HideIntentionTargetPreview();
+            return true;
+        }
+
+        LockCurrentIntentionTargets(skill);
         switch (skill.SkillType)
         {
             case Skill.SkillTypes.Attack:
@@ -258,22 +468,13 @@ public partial class EnemyCharacter : Character
                 break;
         }
 
-        Tween tween = CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(IntentionContorl, "modulate", new Color(1, 1, 1, 1), 0.2f);
-        tween
-            .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
-            .SetEase(Tween.EaseType.Out);
-
         RefreshIntentionDamageSummary();
-
-        if (_intentionPreviewHoverDepth > 0)
-            ShowIntentionTargetPreview();
+        return true;
     }
 
     public void RefreshIntentionDamageSummary()
     {
-        if (State == CharacterState.Dying)
+        if (State == CharacterState.Dying || HasActiveStun())
         {
             HideIntentionDamageSummary();
             return;
@@ -281,7 +482,7 @@ public partial class EnemyCharacter : Character
 
         InvalidateSkillTooltipCache();
 
-        var skill = GetCurrentIntentionSkill();
+        var skill = CurrentIntentionSkill;
         if (skill == null)
         {
             HideIntentionDamageSummary();
@@ -315,6 +516,15 @@ public partial class EnemyCharacter : Character
             _intentionDamageSummaryLabel.Visible = false;
     }
 
+    private void LockCurrentIntentionTargets(Skill skill)
+    {
+        if (skill == null)
+            return;
+
+        skill.OwnerCharater = this;
+        skill.LockPreviewTargetsForExecution();
+    }
+
     private void OnIntentionPreviewHoverEntered()
     {
         if (State == CharacterState.Dying)
@@ -341,10 +551,10 @@ public partial class EnemyCharacter : Character
     {
         ulong totalStartUsec = Time.GetTicksUsec();
         HideIntentionTargetPreview();
-        if (State == CharacterState.Dying)
+        if (State == CharacterState.Dying || HasActiveStun())
             return;
 
-        var skill = GetCurrentIntentionSkill();
+        var skill = CurrentIntentionSkill;
         if (skill == null)
             return;
 
@@ -364,15 +574,13 @@ public partial class EnemyCharacter : Character
         stepStartUsec = Time.GetTicksUsec();
         for (int i = 0; i < _intentionPreviewHostileTargets.Length; i++)
         {
-            _intentionPreviewHostileTargets[i].ShowTargetPreview(
-                IntentionHostileTargetPreviewColor
-            );
+            _intentionPreviewHostileTargets[i]
+                .ShowTargetPreview(IntentionHostileTargetPreviewColor);
         }
         for (int i = 0; i < _intentionPreviewFriendlyTargets.Length; i++)
         {
-            _intentionPreviewFriendlyTargets[i].ShowTargetPreview(
-                IntentionFriendlyTargetPreviewColor
-            );
+            _intentionPreviewFriendlyTargets[i]
+                .ShowTargetPreview(IntentionFriendlyTargetPreviewColor);
         }
         BattleNode?.LogHoverPerfWork(this, "enemy-intention-highlight", stepStartUsec);
 
@@ -419,250 +627,41 @@ public partial class EnemyCharacter : Character
         ClearIntentionDamageLabels();
     }
 
-    private Skill GetCurrentIntentionSkill()
+    public Skill CurrentIntentionSkill
     {
-        if (Skills == null || IntentionIndex < 0 || IntentionIndex >= Skills.Length)
-            return null;
-
-        return Skills[IntentionIndex];
-    }
-
-    public Character[] GetCurrentIntentionPreviewTargets()
-    {
-        var skill = GetCurrentIntentionSkill();
-        return skill?
-                .GetPreviewHostileTargets()
-                .Where(GodotObject.IsInstanceValid)
-                .Distinct()
-                .ToArray()
-            ?? Array.Empty<Character>();
-    }
-
-    public Skill.PreviewDamageEntry[] GetCurrentIntentionPreviewDamageEntries()
-    {
-        var skill = GetCurrentIntentionSkill();
-        return skill?.GetPreviewHostileDamageEntries() ?? Array.Empty<Skill.PreviewDamageEntry>();
-    }
-
-    public Skill.PreviewDamageEntry[] GetCurrentIntentionPreviewDamageEntries(
-        bool includeTargetVulnerable
-    )
-    {
-        var skill = GetCurrentIntentionSkill();
-        return skill?.GetPreviewHostileDamageEntries(includeTargetVulnerable)
-            ?? Array.Empty<Skill.PreviewDamageEntry>();
-    }
-
-    public Skill.PreviewEffectEntry[] GetCurrentIntentionPreviewEffectEntries()
-    {
-        var skill = GetCurrentIntentionSkill();
-        return skill?.GetPreviewEffectEntries() ?? Array.Empty<Skill.PreviewEffectEntry>();
-    }
-
-    public Character[] GetCurrentIntentionPreviewDebuffTargets()
-    {
-        var skill = GetCurrentIntentionSkill();
-        return skill?
-                .GetPreviewHostileDebuffTargets()
-                .Where(GodotObject.IsInstanceValid)
-                .Distinct()
-                .ToArray()
-            ?? Array.Empty<Character>();
-    }
-
-    public Character[] GetCurrentIntentionPreviewAttackTargets()
-    {
-        return GetCurrentIntentionPreviewDamageEntries()
-            .Select(entry => entry.Target)
-            .Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target.State == CharacterState.Normal
-            )
-            .Distinct()
-            .ToArray();
-    }
-
-    public void ShowIntentionPreviewCurves(
-        IReadOnlyList<Character> attackTargets,
-        IReadOnlyList<Character> debuffTargets
-    )
-    {
-        var validAttackTargets = (attackTargets ?? Array.Empty<Character>())
-            .Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target.State == CharacterState.Normal
-            )
-            .Distinct()
-            .ToArray();
-        var validDebuffTargets = (debuffTargets ?? Array.Empty<Character>())
-            .Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target.State == CharacterState.Normal
-            )
-            .Distinct()
-            .ToArray();
-
-        if (validAttackTargets.Length == 0 && validDebuffTargets.Length == 0)
+        get
         {
-            HideAttackIntentCurve();
-            return;
-        }
+            if (_currentOpeningIntentionSkill != null)
+                return _currentOpeningIntentionSkill;
 
-        var activeKeys = new HashSet<string>();
-        var attackTargetIds = validAttackTargets.Select(target => target.GetInstanceId()).ToHashSet();
-        var debuffTargetIds = validDebuffTargets.Select(target => target.GetInstanceId()).ToHashSet();
+            if (Skills == null || IntentionIndex < 0 || IntentionIndex >= Skills.Length)
+                return null;
 
-        for (int i = 0; i < validAttackTargets.Length; i++)
-        {
-            Character target = validAttackTargets[i];
-            bool hasDebuffLine = debuffTargetIds.Contains(target.GetInstanceId());
-            string key = $"attack:{target.GetInstanceId()}";
-            activeKeys.Add(key);
-            UpdateIntentPreviewLine(
-                key,
-                BuildIntentPreviewTargetPoint(
-                    target,
-                    indexInGroup: i,
-                    totalInGroup: validAttackTargets.Length,
-                    lateralSplit: hasDebuffLine ? -IntentCurveSplitX : 0f,
-                    verticalExtraLift: hasDebuffLine ? 0f : 8f
-                ),
-                AttackIntentCurveColor,
-                width: 7f,
-                controlOffsetX: hasDebuffLine ? -18f : 0f
-            );
-        }
-
-        for (int i = 0; i < validDebuffTargets.Length; i++)
-        {
-            Character target = validDebuffTargets[i];
-            bool hasAttackLine = attackTargetIds.Contains(target.GetInstanceId());
-            string key = $"debuff:{target.GetInstanceId()}";
-            activeKeys.Add(key);
-            UpdateIntentPreviewLine(
-                key,
-                BuildIntentPreviewTargetPoint(
-                    target,
-                    indexInGroup: i,
-                    totalInGroup: validDebuffTargets.Length,
-                    lateralSplit: hasAttackLine ? IntentCurveSplitX : 0f,
-                    verticalExtraLift: hasAttackLine ? 24f : 18f
-                ),
-                DebuffIntentCurveColor,
-                width: 5f,
-                controlOffsetX: hasAttackLine ? 18f : 0f
-            );
-        }
-
-        foreach (var kv in _intentPreviewLines)
-        {
-            if (!activeKeys.Contains(kv.Key) && GodotObject.IsInstanceValid(kv.Value))
-            {
-                kv.Value.Visible = false;
-                kv.Value.ClearPoints();
-            }
+            return Skills[IntentionIndex];
         }
     }
 
-    public void HideAttackIntentCurve()
+    public EnemyIntentionActionPhase GetCurrentIntentionActionPhase()
     {
-        foreach (var kv in _intentPreviewLines)
-        {
-            if (!GodotObject.IsInstanceValid(kv.Value))
-                continue;
+        if (HasActiveStun())
+            return EnemyIntentionActionPhase.NonAttack;
 
-            kv.Value.Visible = false;
-            kv.Value.ClearPoints();
-        }
-    }
+        Skill skill = CurrentIntentionSkill;
+        if (skill == null)
+            return EnemyIntentionActionPhase.NonAttack;
 
-    private Vector2 BuildIntentPreviewTargetPoint(
-        Character target,
-        int indexInGroup,
-        int totalInGroup,
-        float lateralSplit,
-        float verticalExtraLift
-    )
-    {
-        float centeredIndex = indexInGroup - (totalInGroup - 1) * 0.5f;
-        float groupOffsetX = centeredIndex * IntentCurveGroupSpreadX;
-        return target.GlobalPosition
-            + new Vector2(groupOffsetX + lateralSplit, -IntentCurveTargetLift - verticalExtraLift);
-    }
+        skill.OwnerCharater = this;
+        var entries = skill.GetPreviewEffectEntries(includeTargetVulnerable: false);
+        bool hasDamage = entries.Any(entry => entry.Kind == Skill.PreviewEffectKind.Damage);
+        if (!hasDamage)
+            return EnemyIntentionActionPhase.NonAttack;
 
-    private void UpdateIntentPreviewLine(
-        string key,
-        Vector2 targetGlobalPoint,
-        Color color,
-        float width,
-        float controlOffsetX
-    )
-    {
-        Line2D line = GetOrCreateIntentPreviewLine(key);
-        Vector2 start = Sprite != null && GodotObject.IsInstanceValid(Sprite) ? Sprite.Position : Vector2.Zero;
-        Vector2 end = ToLocal(targetGlobalPoint);
-        if (start.DistanceTo(end) <= 4f)
-        {
-            line.Visible = false;
-            line.ClearPoints();
-            return;
-        }
-
-        Vector2 delta = end - start;
-        float arcHeight = Mathf.Clamp(delta.Length() * 0.18f, 80f, 190f);
-        Vector2 control = (start + end) * 0.5f + new Vector2(controlOffsetX, -arcHeight);
-
-        line.DefaultColor = color;
-        line.Width = width;
-        line.ClearPoints();
-        const int sampleCount = 18;
-        for (int i = 0; i <= sampleCount; i++)
-        {
-            float t = i / (float)sampleCount;
-            line.AddPoint(SampleIntentPreviewCurve(start, control, end, t));
-        }
-
-        line.Visible = true;
-    }
-
-    private Line2D GetOrCreateIntentPreviewLine(string key)
-    {
-        if (_intentPreviewLines.TryGetValue(key, out Line2D existingLine))
-        {
-            if (GodotObject.IsInstanceValid(existingLine))
-                return existingLine;
-        }
-
-        var line = new Line2D
-        {
-            Name = $"IntentPreviewLine_{key}",
-            Visible = false,
-            Width = 6f,
-            Antialiased = true,
-            ZIndex = 30,
-            ZAsRelative = false,
-            JointMode = Line2D.LineJointMode.Round,
-            BeginCapMode = Line2D.LineCapMode.Round,
-            EndCapMode = Line2D.LineCapMode.Round,
-        };
-        AddChild(line);
-        _intentPreviewLines[key] = line;
-        return line;
-    }
-
-    private static Vector2 SampleIntentPreviewCurve(
-        Vector2 start,
-        Vector2 control,
-        Vector2 end,
-        float t
-    )
-    {
-        Vector2 startToControl = start.Lerp(control, t);
-        Vector2 controlToEnd = control.Lerp(end, t);
-        return startToControl.Lerp(controlToEnd, t);
+        bool appliesVulnerable = entries.Any(entry =>
+            entry.Kind == Skill.PreviewEffectKind.Buff && entry.BuffName == Buff.BuffName.Vulnerable
+        );
+        return appliesVulnerable
+            ? EnemyIntentionActionPhase.AttackWithVulnerable
+            : EnemyIntentionActionPhase.PureAttack;
     }
 
     private void ShowIntentionDamageLabels(IReadOnlyList<Skill.PreviewEffectEntry> entries)
@@ -750,11 +749,7 @@ public partial class EnemyCharacter : Character
             return _intentionDamageSummaryLabel;
         }
 
-        _intentionDamageSummaryLabel = new Label
-        {
-            Name = "DamageSummary",
-            Visible = false,
-        };
+        _intentionDamageSummaryLabel = new Label { Name = "DamageSummary", Visible = false };
         ConfigureIntentionDamageSummaryLabel(_intentionDamageSummaryLabel);
         IntentionContorl.AddChild(_intentionDamageSummaryLabel);
         return _intentionDamageSummaryLabel;
@@ -773,10 +768,7 @@ public partial class EnemyCharacter : Character
         label.AddThemeFontSizeOverride("font_size", 22);
         label.AddThemeConstantOverride("outline_size", 4);
         label.AddThemeColorOverride("font_color", IntentionDamageColor);
-        label.AddThemeColorOverride(
-            "font_outline_color",
-            IntentionDamageOutlineColor
-        );
+        label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
     }
 
     private string BuildIntentionDamageSummaryText(Skill skill)
@@ -813,16 +805,51 @@ public partial class EnemyCharacter : Character
             return string.Empty;
 
         string text = string.Join("/", damageTexts);
-        string targetSummary = BuildIntentionDamageTargetSummary(skill, uniqueTargets.Length);
-        return string.IsNullOrWhiteSpace(targetSummary)
-            ? text
-            : $"{text}\n{targetSummary}";
+        string targetSummary = BuildIntentionDamageTargetSummary(skill, uniqueTargets);
+        return string.IsNullOrWhiteSpace(targetSummary) ? text : $"{text}\n{targetSummary}";
     }
 
-    private string BuildIntentionDamageTargetSummary(Skill skill, int targetCount)
+    private string BuildIntentionDamageTargetSummary(Skill skill, Character[] uniqueTargets)
     {
         if (skill == null)
             return string.Empty;
+
+        uniqueTargets =
+            uniqueTargets
+                ?.Where(target =>
+                    target != null
+                    && GodotObject.IsInstanceValid(target)
+                    && target.State == CharacterState.Normal
+                )
+                .Distinct()
+                .ToArray() ?? Array.Empty<Character>();
+        int targetCount = uniqueTargets.Length;
+        if (targetCount == 0)
+            return string.Empty;
+
+        int allHostileCount =
+            BattleNode
+                ?.GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
+                .Count(target =>
+                    target != null
+                    && GodotObject.IsInstanceValid(target)
+                    && target.State == CharacterState.Normal
+                ) ?? 0;
+        if (allHostileCount > 0 && targetCount >= allHostileCount)
+            return I18n.Tr("skill.preview.all_formation", "全阵");
+
+        UserSettings.EnsureLoaded();
+        if (UserSettings.ShowIntentionTargetNames)
+        {
+            string[] targetNames = uniqueTargets
+                .OrderBy(target => target.PositionIndex)
+                .Select(GetIntentionTargetDisplayName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct()
+                .ToArray();
+            if (targetNames.Length > 0)
+                return string.Join("/", targetNames);
+        }
 
         string[] effectSummaries = skill
             .GetPreviewEffectEntries(includeTargetVulnerable: false)
@@ -844,15 +871,15 @@ public partial class EnemyCharacter : Character
         if (targetCount <= 1)
             return string.Empty;
 
-        int allHostileCount =
-            BattleNode
-                ?.GetOrderedTeamCharacters(!IsPlayer, includeSummons: true, dyingFilter: true)
-                .Count(target =>
-                    target != null
-                    && GodotObject.IsInstanceValid(target)
-                    && target.State == CharacterState.Normal
-                ) ?? 0;
-        return allHostileCount > 0 && targetCount >= allHostileCount ? "全体" : $"{targetCount}个";
+        return $"{targetCount}个";
+    }
+
+    private static string GetIntentionTargetDisplayName(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return string.Empty;
+
+        return string.IsNullOrWhiteSpace(target.CharacterName) ? target.Name : target.CharacterName;
     }
 
     private static string FormatIntentionDamageEntry(Skill.PreviewDamageEntry entry)
@@ -874,7 +901,11 @@ public partial class EnemyCharacter : Character
         return powerMultiplier >= 2 ? $"（{powerMultiplier}倍）" : string.Empty;
     }
 
-    private void ShowDamageLabel(Label label, Skill.PreviewDamageEntry entry, Vector2 targetScreenPosition)
+    private void ShowDamageLabel(
+        Label label,
+        Skill.PreviewDamageEntry entry,
+        Vector2 targetScreenPosition
+    )
     {
         label.Text =
             entry.HitCount > 1

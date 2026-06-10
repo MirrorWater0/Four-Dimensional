@@ -33,7 +33,7 @@ public partial class MarrowReaver : EnemyCharacter
         if (loss <= 0)
             return;
 
-        await target.DescendingProperties(PropertyType.MaxLife, loss, this);
+        await target.DescendingMaxLifeFromPassive(loss, this);
         ApplyPermanentMaxLifeLoss(target, loss);
     }
 
@@ -51,6 +51,8 @@ public partial class MarrowReaver : EnemyCharacter
 
         PlayerInfoStructure info = GameInfo.PlayerCharacters[index];
         info.LifeMax = Math.Max(1, info.LifeMax - loss);
+        info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
+        info.LifeInitialized = true;
         GameInfo.PlayerCharacters[index] = info;
     }
 }
@@ -65,15 +67,11 @@ public partial class MarrowReaverRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
 
         MaxLife = 69;
-        Power = 13;
-        Survivability = 16;
-        Speed = 12;
-        SkillIDs =
-        [
-            SkillID.MarrowReaverAttack,
-            SkillID.MarrowReaverSurvive,
-            SkillID.MarrowReaverSpecial,
-        ];
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        SkillIDs = [SkillID.MarrowReaverAttack, SkillID.MarrowReaverSpecial];
 
         PassiveName = global::MarrowReaver.PassiveNameText;
         PassiveDescription = global::MarrowReaver.PassiveDescriptionText;
@@ -82,7 +80,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 3;
+    private const int BaseDamage = 15;
 
     public MarrowReaverAttack()
         : base(SkillTypes.Attack)
@@ -96,7 +94,7 @@ public partial class MarrowReaverAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Three),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             ModifyPropertyStep(PropertyType.Survivability, 5)
         );
     }
@@ -104,7 +102,7 @@ public partial class MarrowReaverAttack : Skill
 
 public partial class MarrowReaverSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 32;
     private const int PowerGain = 5;
 
     public MarrowReaverSurvive()
@@ -127,7 +125,7 @@ public partial class MarrowReaverSurvive : Skill
 
 public partial class MarrowReaverSpecial : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 12;
     private const int HitCount = 2;
 
     public MarrowReaverSpecial()
@@ -142,7 +140,7 @@ public partial class MarrowReaverSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: HitCount, target: HostileTargetReference.Two)
+            AttackStep(baseDamage: BaseDamage, times: HitCount, target: HostileTargetReference.All)
         );
     }
 }

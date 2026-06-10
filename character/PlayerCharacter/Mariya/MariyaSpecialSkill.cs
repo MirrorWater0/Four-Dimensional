@@ -56,7 +56,7 @@ public partial class RearlineRevival : Skill
 public partial class GroupHealing : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseHeal = 5;
+    private const int BaseHeal = 13;
 
     public GroupHealing()
         : base(SkillTypes.Special)
@@ -71,7 +71,6 @@ public partial class GroupHealing : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(type: PropertyType.MaxLife, value: 13, target: TargetReference.All),
             HealStep(
                 baseHeal: BaseHeal,
                 target: TargetReference.All,
@@ -152,7 +151,7 @@ public partial class SanctuaryForm : Skill
     }
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()

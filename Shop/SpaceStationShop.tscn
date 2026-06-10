@@ -321,26 +321,114 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
 
 [node name="Sections" type="VBoxContainer" parent="Panel/MainLayout/ContentArea" unique_id=1644216061]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 18
 
-[node name="TopSpacer" type="Control" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216068]
-custom_minimum_size = Vector2(0, 132)
+[node name="SkillColumn" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=735109421]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TopSpacer" type="Control" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=1644216068]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="TopRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216065]
-custom_minimum_size = Vector2(0, 420)
+[node name="SkillTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=1644216063]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "技能模块"
+
+[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=2003971415]
+custom_minimum_size = Vector2(0, 760)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 18
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel" unique_id=53835426]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 150
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin" unique_id=409129123]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=1103841539]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 6
+
+[node name="BottomRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=255268829]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="BottomSkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow" unique_id=716338886]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="InlineCatalogPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow" unique_id=505300537]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+
+[node name="InlineCatalogMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel" unique_id=808432649]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="InlineCatalogVBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin" unique_id=1907034088]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="InlineCatalogTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=1764662206]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.93, 0.96, 0.9)
+theme_override_font_sizes/font_size = 18
+text = "遗物 / 道具"
+horizontal_alignment = 1
+
+[node name="InlineCatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=411383537]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=746639838]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.9, 0.68)
+theme_override_font_sizes/font_size = 13
+text = "技能卡购买后会立即加入其所属角色的技能池。"
+horizontal_alignment = 1
+
+[node name="TopRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216065]
+visible = false
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+theme_override_constants/separation = 0
 
 [node name="StatColumn" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/TopRow" unique_id=1644216066]
+visible = false
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
 [node name="StatTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/TopRow/StatColumn" unique_id=1644216062]
@@ -420,42 +508,6 @@ size_flags_horizontal = 3
 theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 18
 columns = 3
-
-[node name="SkillTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216063]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "技能模块"
-
-[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=2003971415]
-custom_minimum_size = Vector2(0, 760)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
-
-[node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel" unique_id=53835426]
-layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
-
-[node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin" unique_id=409129123]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox" unique_id=1103841539]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 4
-
-[node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillPanel/Margin/VBox" unique_id=746639838]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.76, 0.84, 0.9, 0.68)
-theme_override_font_sizes/font_size = 13
-text = "技能卡购买后会立即加入其所属角色的技能池。"
-horizontal_alignment = 1
 
 [node name="Decor" type="Control" parent="Panel" unique_id=1783009613]
 layout_mode = 2

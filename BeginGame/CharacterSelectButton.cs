@@ -27,11 +27,10 @@ public partial class CharacterSelectButton : Button
         if (StatsLabel != null)
             StatsLabel.Text = I18n.Format(
                 "ui.common.character_stats_inline",
-                "生命 {life}  力量 {power}  生存 {survivability}  速度 {speed}",
+                "生命 {life}  力量 {power}  生存 {survivability}",
                 ("life", info.LifeMax),
                 ("power", info.Power),
-                ("survivability", info.Survivability),
-                ("speed", info.Speed)
+                ("survivability", info.Survivability)
             );
     }
 

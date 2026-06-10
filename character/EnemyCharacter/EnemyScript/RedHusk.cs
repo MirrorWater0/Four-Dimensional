@@ -36,9 +36,10 @@ public partial class RedHuskRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
         MaxLife = 50;
-        Power = 20;
-        Survivability = 10;
-        Speed = 7;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
 
         PassiveName = global::RedHusk.PassiveNameText;
@@ -48,7 +49,7 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 7;
 
     public RedHuskAttack()
         : base(SkillTypes.Attack)
@@ -62,14 +63,14 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.Two)
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.All)
         );
     }
 }
 
 public partial class RedHuskSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 20;
 
     public RedHuskSurvive()
         : base(SkillTypes.Survive)
@@ -84,7 +85,7 @@ public partial class RedHuskSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1, HostileTargetReference.Two)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.All)
         );
     }
 }
@@ -107,7 +108,7 @@ public partial class RedHuskSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0),
+            AttackStep(baseDamage: 14),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,

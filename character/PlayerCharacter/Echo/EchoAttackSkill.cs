@@ -85,7 +85,7 @@ public partial class ResonantSlash : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 1),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 3, HostileTargetReference.One)
+            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -93,7 +93,7 @@ public partial class ResonantSlash : Skill
 public partial class EchoPuncture : Skill
 {
     private const int BaseDamage = 0;
-    private const int VulnerableStacks = 2;
+    private const int VulnerableStacks = 1;
 
     public EchoPuncture()
         : base(SkillTypes.Attack)
@@ -120,7 +120,7 @@ public partial class EchoPuncture : Skill
 public partial class Extract : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 7;
 
     public Extract()
         : base(SkillTypes.Attack)
@@ -133,11 +133,7 @@ public partial class Extract : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 2, TargetReference.ManualFriendly)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage), DrawCardsStep(2));
     }
 }
 
@@ -185,12 +181,7 @@ public partial class DisasterImpact : Skill
             AttackStep(baseDamage: BaseDamage),
             ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.AttackKey),
             TextStep(GetExtraDrawFromTargetWeakenText()),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.ExtraDraw,
-                stacks: _ => GetExtraDrawStacksFromAttackTarget(),
-                target: TargetReference.All,
-                hideDescription: true
-            )
+            DrawCardsStep(_ => GetExtraDrawStacksFromAttackTarget())
         );
     }
 
@@ -198,7 +189,7 @@ public partial class DisasterImpact : Skill
     {
         string weakenText = Buff.BuffName.Weaken.GetDescription();
         string extraDrawText = Buff.GetBuffDisplayName(Buff.BuffName.ExtraDraw);
-        return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，己方全阵获得1层{extraDrawText}。";
+        return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，抽{1}张。";
     }
 
     private int GetExtraDrawStacksFromAttackTarget() =>
@@ -206,7 +197,8 @@ public partial class DisasterImpact : Skill
 
     private int GetAttackTargetWeakenStacks()
     {
-        Character target = ChosetargetByOrder(byBehindRow: false, applyTaunt: true).FirstOrDefault();
+        Character target = ChosetargetByOrder(byBehindRow: false, applyTaunt: true)
+            .FirstOrDefault();
         return target
                 ?.AttackBuffs?.FirstOrDefault(buff =>
                     buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0
@@ -315,7 +307,7 @@ public class ReverbChain : Skill
             TextStep(
                 I18n.Tr(
                     "skill.reverb_chain.text.loop_by_allied_actions",
-                    "释放x次(x为本场战斗中其他己方角色的行动次数)。"
+                    "释放x次(x为本场战斗经过的回合数)。"
                 )
             ),
             WhileStep(
@@ -326,5 +318,5 @@ public class ReverbChain : Skill
     }
 
     private int GetLoopTimes() =>
-        OwnerCharater?.BattleNode?.GetAlliedActionCountExcludingSelf(OwnerCharater) ?? 0;
+        OwnerCharater?.BattleNode?.GetElapsedTurnCount(OwnerCharater) ?? 0;
 }

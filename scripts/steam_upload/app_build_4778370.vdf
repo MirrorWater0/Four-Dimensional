@@ -1,0 +1,13 @@
+"AppBuild"
+{
+    "AppID" "4778370"
+    "Desc" "Four-Dimensional Demo Windows build"
+    "BuildOutput" "C:/godot_project/steam_build_output"
+    "ContentRoot" "C:/godot_project/export/Four-Dimensional"
+    "SetLive" ""
+
+    "Depots"
+    {
+        "4778371" "C:/godot_project/Four-Dimensional/scripts/steam_upload/depot_build_4778371.vdf"
+    }
+}

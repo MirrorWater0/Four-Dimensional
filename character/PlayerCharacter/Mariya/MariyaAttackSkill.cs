@@ -7,7 +7,8 @@ public partial class MariyaAttackSkill { }
 public partial class MendSlash : Skill
 {
     private const int BaseDamage = 7;
-    private const int BaseHeal = 0;
+    private const int BaseHeal = 2;
+    public override bool ExhaustsAfterUse => true;
 
     public MendSlash()
         : base(SkillTypes.Attack)
@@ -71,7 +72,7 @@ public partial class SiphonSlash : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ModifyPropertyStep(PropertyType.MaxLife, 10, TargetReference.All)
+            HealStep(baseHeal: 10, target: TargetReference.All, preferNonFull: false)
         );
     }
 }
@@ -95,32 +96,7 @@ public partial class ShatterSlash : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            CustomStep(
-                _ =>
-                {
-                    // Record enemy hits before follow-up ally damage changes the battlefield state.
-                    _recordedHitCount = ChosetargetByOrder(
-                        byBehindRow: false,
-                        applyTaunt: true
-                    ).Length;
-                    return Task.CompletedTask;
-                },
-                _ => Array.Empty<string>()
-            ),
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            ConditionStep(
-                () => _recordedHitCount >= RequiredHitCount,
-                $"命中至少{RequiredHitCount}个敌人",
-                ApplyBuffFriendly(
-                    buffName: Buff.BuffName.RebirthI,
-                    stacks: RebirthStacks,
-                    target: TargetReference.Next
-                )
-            ),
-            HurtFriendly(NextAllySelfDamage, TargetReference.Next)
-        );
+        return new SkillPlan(this, AttackStep(4), SelectDrawPileCardsToHandStep(1));
     }
 }
 
@@ -142,7 +118,7 @@ public partial class ChargedBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Two),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             AttackStep(baseDamage: BaseDamage),
             ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
         );
@@ -153,7 +129,7 @@ public partial class CrescentWind : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 4;
-    private const int WeakenStacks = 2;
+    private const int WeakenStacks = 1;
 
     public CrescentWind()
         : base(SkillTypes.Attack)
@@ -167,15 +143,11 @@ public partial class CrescentWind : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                multiplier: 1,
-                target: HostileTargetReference.EachRowFirst
-            ),
+            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.All),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
-                target: HostileTargetsEachRowFirst()
+                target: HostileTargetReference.All
             )
         );
     }
@@ -184,7 +156,7 @@ public partial class CrescentWind : Skill
 public partial class ArcTrack : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 2;
 
     public ArcTrack()
         : base(SkillTypes.Attack)
@@ -200,14 +172,14 @@ public partial class ArcTrack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 1, TargetReference.All)
+            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 1, TargetReference.Others)
         );
     }
 }
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 20;
+    int basisDamage = 5;
     int allyHurt = 10;
     int DeMax = 10;
     public override string SkillName { get; set; } = "献祭";
@@ -224,11 +196,6 @@ public partial class Sacrifice : Skill
         return new SkillPlan(
             this,
             HurtFriendly(allyHurt, TargetReference.All),
-            ModifyPropertyStep(
-                type: PropertyType.MaxLife,
-                value: -DeMax,
-                target: TargetReference.All
-            ),
             AttackStep(baseDamage: basisDamage, multiplier: 2, target: HostileTargetReference.All)
         );
     }

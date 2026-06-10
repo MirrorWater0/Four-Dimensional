@@ -931,7 +931,6 @@ public partial class GameStatistics : CanvasLayer
         column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.life_line", "生命 {value}", ("value", character.MaxLife)), new Color(0.96f, 0.92f, 0.82f, 0.96f)));
         column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.power_line", "力量 {value}", ("value", character.Power)), new Color(1.00f, 0.56f, 0.42f, 0.96f)));
         column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.survivability_line", "生存 {value}", ("value", character.Survivability)), new Color(0.50f, 0.82f, 1.00f, 0.96f)));
-        column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.speed_line", "速度 {value}", ("value", character.Speed)), new Color(0.74f, 1.00f, 0.72f, 0.96f)));
 
         int talentCount = character.UnlockedTalentIds?.Count
             ?? character.UnlockedTalentNames?.Count
@@ -1332,7 +1331,7 @@ public partial class GameStatistics : CanvasLayer
         if (record.ElectricityCoinChange != 0)
             parts.Add(I18n.Format("ui.statistics.node_coins", "电力币：{value}", ("value", FormatSigned(record.ElectricityCoinChange))));
         if (record.TransitionEnergyChange != 0)
-            parts.Add(I18n.Format("ui.statistics.node_core_energy", "核心能源：{value}", ("value", FormatSigned(record.TransitionEnergyChange))));
+            parts.Add(I18n.Format("ui.statistics.node_core_energy", "队伍生命：{value}", ("value", FormatSigned(record.TransitionEnergyChange))));
         AppendJoined(parts, I18n.Tr("ui.statistics.skills", "技能"), record.SkillChanges);
         AppendJoined(parts, I18n.Tr("ui.statistics.items", "道具"), record.GainedItems);
         AppendJoined(parts, I18n.Tr("ui.statistics.relics", "遗物"), record.RelicChanges);
@@ -1397,11 +1396,10 @@ public partial class GameStatistics : CanvasLayer
         sb.Append(
             I18n.Format(
                 "ui.statistics.character_snapshot_stats",
-                "\n生命 {life}  力量 {power}  生存 {survivability}  速度 {speed}",
+                "\n生命 {life}  力量 {power}  生存 {survivability}",
                 ("life", character.MaxLife),
                 ("power", character.Power),
-                ("survivability", character.Survivability),
-                ("speed", character.Speed)
+                ("survivability", character.Survivability)
             )
         );
         sb.Append(
@@ -1469,7 +1467,6 @@ public partial class GameStatistics : CanvasLayer
         var parts = new List<string>();
         AddEquipmentStat(parts, I18n.Tr("property.power", "力量"), record.Power);
         AddEquipmentStat(parts, I18n.Tr("property.survivability", "生存"), record.Survivability);
-        AddEquipmentStat(parts, I18n.Tr("property.speed", "速度"), record.Speed);
         AddEquipmentStat(parts, I18n.Tr("property.max_life", "生命上限"), record.MaxLife);
         return string.Join("  ", parts);
     }

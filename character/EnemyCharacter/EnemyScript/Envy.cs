@@ -64,10 +64,11 @@ public partial class EnvyEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Envy.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Envy.tscn");
 
-        MaxLife = 223;
-        Power = 14;
-        Survivability = 17;
-        Speed = 37;
+        MaxLife = 290;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.EnvyEliteAttack, SkillID.EnvyEliteSurvive, SkillID.EnvyEliteSpecial];
 
         PassiveName = global::Envy.PassiveNameText;
@@ -77,8 +78,8 @@ public partial class EnvyEliteRegedit : EnemyRegedit
 
 public partial class EnvyEliteAttack : Skill
 {
-    private const int BaseDamage = 0;
-    private const int SurvivabilityDown = 1;
+    private const int BaseDamage = 24;
+    private const int SurvivabilityDown = 3;
 
     public EnvyEliteAttack()
         : base(SkillTypes.Attack)
@@ -92,7 +93,7 @@ public partial class EnvyEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.Three),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
@@ -104,7 +105,7 @@ public partial class EnvyEliteAttack : Skill
 
 public partial class EnvyEliteSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 27;
     private const int SurvivabilityGain = 4;
 
     public EnvyEliteSurvive()
@@ -128,7 +129,7 @@ public partial class EnvyEliteSurvive : Skill
 
 public partial class EnvyEliteSpecial : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 18;
     private const int PowerDown = 2;
     private const int SelfPowerGain = 2;
 
@@ -145,7 +146,7 @@ public partial class EnvyEliteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.EachRowLast),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             LowerTargetPropertyStep(
                 PropertyType.Power,
                 PowerDown,

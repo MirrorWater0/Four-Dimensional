@@ -5,11 +5,11 @@ using Godot;
 public partial class BlackHawk : EnemyCharacter
 {
     private const int PassivePowerGain = 1;
-    private Func<Character, Task> _allyActionEndedHandler;
+    private Func<bool, Task> _teamTurnEndHandler;
 
     public const string PassiveNameText = "暗羽蓄势";
     public static string PassiveDescriptionText =>
-        $"己方角色行动后：获得{PassivePowerGain}点力量。";
+        $"己方阵营回合结束时：获得{PassivePowerGain}点力量。";
 
     public override string CharacterName { get; set; } = "BlackHawk";
 
@@ -18,27 +18,21 @@ public partial class BlackHawk : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        _allyActionEndedHandler ??= OnAllyActionEnded;
-        if (BattleNode != null && !BattleNode.EmitList.Contains(_allyActionEndedHandler))
-            BattleNode.EmitList.Add(_allyActionEndedHandler);
+        _teamTurnEndHandler ??= OnTeamTurnEnded;
+        if (BattleNode != null && !BattleNode.TeamTurnEndEmitList.Contains(_teamTurnEndHandler))
+            BattleNode.TeamTurnEndEmitList.Add(_teamTurnEndHandler);
     }
 
     public override void _ExitTree()
     {
-        if (BattleNode != null && _allyActionEndedHandler != null)
-            BattleNode.EmitList.Remove(_allyActionEndedHandler);
+        if (BattleNode != null && _teamTurnEndHandler != null)
+            BattleNode.TeamTurnEndEmitList.Remove(_teamTurnEndHandler);
         base._ExitTree();
     }
 
-    private Task OnAllyActionEnded(Character actingCharacter)
+    private Task OnTeamTurnEnded(bool endedTeamIsPlayer)
     {
-        if (
-            actingCharacter == null
-            || actingCharacter.IsPlayer != IsPlayer
-            || actingCharacter.BattleNode != BattleNode
-            || State != CharacterState.Normal
-            || actingCharacter.IsSummon
-        )
+        if (State != CharacterState.Normal || endedTeamIsPlayer != IsPlayer)
             return Task.CompletedTask;
 
         TriggerPassive(null);
@@ -61,11 +55,13 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 44;
-        Power = 6;
-        Survivability = 9;
-        Speed = 11;
-        SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
+        MaxLife = 52;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        HasAttackVulnerableIntention = true;
+        SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSpecial];
 
         PassiveName = global::BlackHawk.PassiveNameText;
         PassiveDescription = global::BlackHawk.PassiveDescriptionText;
@@ -89,7 +85,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0, multiplier: PowerMultiplier, times: 3),
+            AttackStep(baseDamage: 7, multiplier: PowerMultiplier, times: 3),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -121,8 +117,7 @@ public partial class BlackHawkSurvive : Skill
 
 public partial class BlackHawkSpecial : Skill
 {
-    private const int VulnerableStacks = 6;
-    int rtimes = 3;
+    int rtimes = 2;
 
     public BlackHawkSpecial()
         : base(SkillTypes.Special)
@@ -131,22 +126,17 @@ public partial class BlackHawkSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "黑羽风暴";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 5;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, VulnerableStacks),
             WhileStep(
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(
-                        baseDamage: 0,
-                        multiplier: 1,
-                        target: HostileTargetReference.Two
-                    ),
+                    AttackStep(baseDamage: 7, multiplier: 1, target: HostileTargetReference.All),
                 ]
             )
         );

@@ -11,7 +11,7 @@ public partial class FearWorm : EnemyCharacter
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
-        $"其他己方角色每行动{PassiveAllyActionThreshold}次：获得{PassivePowerGain}点力量。";
+        $"其他己方角色每行动{PassiveAllyActionThreshold}次：敌阵回合结束时获得{PassivePowerGain}点力量。";
 
     public override void Initialize()
     {
@@ -62,6 +62,9 @@ public partial class FearWorm : EnemyCharacter
 
     public override async void Passive(Skill skill)
     {
+        if (BattleNode?.QueueEnemyPhaseEndPowerGain(this, PassivePowerGain, this, "被动") == true)
+            return;
+
         using var _ = BeginEffectSource("被动");
         await IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
@@ -76,11 +79,13 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 27;
-        Power = 7;
-        Survivability = 12;
-        Speed = 8;
-        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormSurvive, SkillID.FearWormTermin];
+        MaxLife = 28;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        HasAttackVulnerableIntention = true;
+        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin];
 
         PassiveName = global::FearWorm.PassiveNameText;
         PassiveDescription = global::FearWorm.PassiveDescriptionText;
@@ -89,8 +94,8 @@ public partial class FearWormRegedit : EnemyRegedit
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 0;
-    private const int VulnerableStacks = 1;
+    private const int BaseDamage = 4;
+    private const int VulnerableStacks = 2;
     private const int MaxTargets = 3;
     private const int EnergyGain = 1;
 
@@ -109,14 +114,14 @@ public partial class FearWormAttack : Skill
             EnergyStep(EnergyGain),
             AttackStep(
                 baseDamage: BaseDamage,
-                target: HostileTargetReference.Three,
+                target: HostileTargetReference.All,
                 times: 1,
                 clampMax: 999
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargets(MaxTargets)
+                target: HostileTargetReference.AttackKey
             )
         );
     }
@@ -124,7 +129,7 @@ public partial class FearWormAttack : Skill
 
 public partial class FearWormSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 12;
 
     public FearWormSurvive()
         : base(SkillTypes.Survive)
@@ -147,7 +152,7 @@ public partial class FearWormSurvive : Skill
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 15;
     private const int StunStacks = 2;
 
     public FearWormTermin()
@@ -161,14 +166,6 @@ public partial class FearWormTermin : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Stun,
-                stacks: StunStacks,
-                target: HostileTargetReference.One
-            ),
-            AttackStep(BaseDamage)
-        );
+        return new SkillPlan(this, AttackStep(BaseDamage));
     }
 }

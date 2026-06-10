@@ -7,6 +7,7 @@ public partial class KasiyaAttackSkill { }
 public partial class Determination : Skill
 {
     private const int BaseDamage = 7;
+    public override int EnergyCost => 2;
 
     public Determination()
         : base(SkillTypes.Attack)
@@ -21,7 +22,7 @@ public partial class Determination : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.AttackKey)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -141,11 +142,6 @@ public partial class VulnerablePurge : Skill
                         && buff.Stack > 0
                     ) == true,
                 conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
-            ),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: 1,
-                target: HostileTargetReference.All
             )
         );
     }
@@ -164,8 +160,10 @@ public partial class VulnerabilityStrike : Skill
 
     public override string SkillName { get; set; } = "易伤追击";
 
-    private static bool TargetHasEverHadVulnerable(Character target) =>
-        target?.HasSeenBuff(Buff.BuffName.Vulnerable) == true;
+    private static bool TargetHasVulnerable(Character target) =>
+        target?.HurtBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Vulnerable && buff.Stack > 0
+        ) == true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -173,8 +171,8 @@ public partial class VulnerabilityStrike : Skill
             this,
             AttackStep(baseDamage: BaseDamage),
             ConditionStep(
-                () => TargetHasEverHadVulnerable(GetAttackTarget()),
-                $"若目标拥有过{Buff.BuffName.Vulnerable.GetDescription()}",
+                () => TargetHasVulnerable(GetAttackTarget()),
+                $"若目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
                 AttackStep(
                     target: HostileTargetReference.AttackKey,
                     baseDamage: BaseDamage,
@@ -245,11 +243,6 @@ public class VulnerabilityConversion : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: 7, multiplier: 2),
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: 1,
-                target: HostileTargetReference.One
-            ),
             ModifyPropertyStep(
                 PropertyType.Power,
                 _ => GetTotalHostileVulnerableStacks(),

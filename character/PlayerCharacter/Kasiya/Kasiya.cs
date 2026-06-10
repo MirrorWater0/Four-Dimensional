@@ -4,15 +4,15 @@ using Godot;
 
 public partial class Kasiya : PlayerCharacter
 {
-    private const int PassiveAttackBaseHeal = -4;
+    private const int PassiveAttackBlock = 2;
     private const int PassiveUpgradeSpecialPowerGain = 1;
 
     public const string PassiveNameText = "战意";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.kasiya.passive.description",
-            "当其他队友使用攻击技能：回复{heal}点基础生命。",
-            ("heal", PassiveAttackBaseHeal)
+            "当其他队友使用攻击技能：获得{block}点格挡。",
+            ("block", PassiveAttackBlock)
         );
 
     Label label => field ??= GetNode<Label>("Label");
@@ -46,7 +46,7 @@ public partial class Kasiya : PlayerCharacter
 
         if (skill.SkillType == Skill.SkillTypes.Attack)
         {
-            Recover(PassiveAttackBaseHeal, source: this);
+            UpdataBlock(PassiveAttackBlock, source: this);
             return;
         }
 
@@ -62,12 +62,12 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.kasiya.name", "Kasiya"),
         PassiveName = I18n.Tr("character.kasiya.passive.name", global::Kasiya.PassiveNameText),
         PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 25,
-        Power = 5,
-        Survivability = 5,
-        Speed = 6,
+        LifeMax = 47,
+        Power = 4,
+        Survivability = 4,
+        Speed = 10,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
-        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.BasicSpecial],
+        TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.KasiyaBasicSpecial],
     };
 }

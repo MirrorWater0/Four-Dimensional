@@ -37,9 +37,9 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
 
         MaxLife = 20;
-        Power = 11;
+        Power = 0;
         Survivability = 0;
-        Speed = 7;
+        BasePowerContribution = 0;
         SkillIDs =
         [
             SkillID.VoidAcolyteAttack,
@@ -54,7 +54,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
 
 public partial class VoidAcolyteAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 11;
 
     public VoidAcolyteAttack()
         : base(SkillTypes.Attack)
@@ -66,7 +66,7 @@ public partial class VoidAcolyteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, 2));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2));
     }
 }
 
@@ -111,7 +111,7 @@ public partial class VoidAcolyteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(6, multiplier: 1, target: HostileTargetReference.Two),
+            AttackStep(17, multiplier: 1, target: HostileTargetReference.All),
             AddStatusCardsToDrawPileStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,

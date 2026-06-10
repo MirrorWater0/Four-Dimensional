@@ -7,7 +7,7 @@ using Godot;
 public partial class StartInterface : CanvasLayer
 {
     private const string AutosavePath = "user://autosave.cfg";
-    private const int RequiredCharacterSelectionCount = 4;
+    private const int RequiredCharacterSelectionCount = GameInfo.DefaultPlayerPartySize;
     private const float MenuButtonHoverTextOffset = 20f;
     private const float MenuButtonHoverDuration = 0.12f;
     private const float CharacterSelectionTransitionDuration = 0.22f;
@@ -130,7 +130,13 @@ public partial class StartInterface : CanvasLayer
 
     public void NewStart()
     {
-        GameInfo.PlayerCharacters = BuildDefaultRoster();
+        GameInfo.PlayerCharacters = BuildDefaultRoster()
+            .Take(RequiredCharacterSelectionCount)
+            .Select(
+                (info, index) =>
+                    CloneStarterPlayerInfo(info, GameInfo.GetDefaultPlayerFormationPosition(index))
+            )
+            .ToArray();
         GameInfo.NormalizePlayerCharacters();
         GameInfo.SeedTakenSkillsAsGained();
         test();
@@ -352,7 +358,9 @@ public partial class StartInterface : CanvasLayer
         return new PlayerInfoStructure
         {
             CharacterScenePath = source.CharacterScenePath,
+            Life = source.LifeInitialized ? source.Life : source.LifeMax,
             LifeMax = source.LifeMax,
+            LifeInitialized = true,
             Power = source.Power,
             Survivability = source.Survivability,
             Speed = source.Speed,

@@ -45,6 +45,9 @@ public partial class Skill
 {
     private const string BuiltinAttackTargetKey = "__attack_target";
     private const string BuiltinHealTargetKey = "__heal_target";
+    private readonly Dictionary<string, Character[]> _lockedHostileTargetSelections = new();
+    private bool _capturingLockedHostileTargets;
+    private bool _useLockedHostileTargetsForExecution;
 
     public readonly struct PreviewDamageEntry
     {
@@ -246,8 +249,10 @@ public partial class Skill
         BackMost,
         LowestLife,
         All,
+        Others,
         HealKey,
         ManualFriendly,
+        ManualOthers,
     }
 
     private enum TargetSelectionKind
@@ -266,6 +271,7 @@ public partial class Skill
         public AbsoluteFriendlySelector AbsoluteSelector { get; }
         public int RelativeIndex { get; }
         public string StoredKey { get; }
+        public bool ExcludeSelf { get; }
         public bool UsesStoredTarget =>
             Kind == TargetSelectionKind.Stored || Kind == TargetSelectionKind.StoredArray;
 
@@ -273,20 +279,25 @@ public partial class Skill
             TargetSelectionKind kind,
             AbsoluteFriendlySelector absoluteSelector,
             int relativeIndex,
-            string storedKey
+            string storedKey,
+            bool excludeSelf = false
         )
         {
             Kind = kind;
             AbsoluteSelector = absoluteSelector;
             RelativeIndex = relativeIndex;
             StoredKey = storedKey;
+            ExcludeSelf = excludeSelf;
         }
 
         public static TargetSelection FromRelative(int relativeIndex) =>
             new TargetSelection(TargetSelectionKind.Relative, default, relativeIndex, null);
 
-        public static TargetSelection FromAbsolute(AbsoluteFriendlySelector selector) =>
-            new TargetSelection(TargetSelectionKind.Absolute, selector, 0, null);
+        public static TargetSelection FromAbsolute(
+            AbsoluteFriendlySelector selector,
+            bool excludeSelf = false
+        ) =>
+            new TargetSelection(TargetSelectionKind.Absolute, selector, 0, null, excludeSelf);
 
         public static TargetSelection FromStored(string storedKey) =>
             new TargetSelection(TargetSelectionKind.Stored, default, 0, storedKey);
@@ -294,8 +305,8 @@ public partial class Skill
         public static TargetSelection FromStoredArray(string storedKey) =>
             new TargetSelection(TargetSelectionKind.StoredArray, default, 0, storedKey);
 
-        public static TargetSelection FromManualFriendly() =>
-            new TargetSelection(TargetSelectionKind.ManualFriendly, default, 0, null);
+        public static TargetSelection FromManualFriendly(bool excludeSelf = false) =>
+            new TargetSelection(TargetSelectionKind.ManualFriendly, default, 0, null, excludeSelf);
 
         public static TargetSelection FromEnum(TargetReference target) =>
             target switch
@@ -307,8 +318,13 @@ public partial class Skill
                 TargetReference.BackMost => FromAbsolute(AbsoluteFriendlySelector.BackMost),
                 TargetReference.LowestLife => FromAbsolute(AbsoluteFriendlySelector.LowestLife),
                 TargetReference.All => FromAbsolute(AbsoluteFriendlySelector.All),
+                TargetReference.Others => FromAbsolute(
+                    AbsoluteFriendlySelector.All,
+                    excludeSelf: true
+                ),
                 TargetReference.HealKey => FromStored(BuiltinHealTargetKey),
                 TargetReference.ManualFriendly => FromManualFriendly(),
+                TargetReference.ManualOthers => FromManualFriendly(excludeSelf: true),
                 _ => default,
             };
 
@@ -318,36 +334,21 @@ public partial class Skill
     protected enum HostileTargetReference
     {
         One,
-        Two,
-        Three,
-        Four,
-        Five,
-        Six,
-        Seven,
-        Eight,
-        Nine,
         All,
         Random,
         RandomPreview,
         AttackKey,
-        EachRowFirst,
-        EachRowLast,
-        EachColFirst,
-        EachColLast,
     }
 
     protected readonly struct HostileTargetSelection
     {
         public enum _Kind
         {
+            DefaultRule,
             Ordered,
             Random,
             PreviewableRandom,
             Stored,
-            EachRowFirst,
-            EachRowLast,
-            EachColFirst,
-            EachColLast,
             All,
         }
 
@@ -395,14 +396,24 @@ public partial class Skill
 
         public static HostileTargetSelection PreviewableRandom(
             int maxTargets = 1,
-            bool byBehindRow = false
+            bool byBehindRow = false,
+            string randomKey = null
         ) =>
             new HostileTargetSelection(
                 HostileTargetSelection._Kind.PreviewableRandom,
                 maxTargets,
                 byBehindRow,
                 null,
-                Guid.NewGuid().ToString("N")
+                string.IsNullOrWhiteSpace(randomKey) ? Guid.NewGuid().ToString("N") : randomKey
+            );
+
+        public static HostileTargetSelection Default(bool byBehindRow = false) =>
+            new HostileTargetSelection(
+                HostileTargetSelection._Kind.DefaultRule,
+                1,
+                byBehindRow,
+                null,
+                null
             );
 
         public static HostileTargetSelection Stored(string storedKey) =>
@@ -411,42 +422,6 @@ public partial class Skill
                 0,
                 false,
                 storedKey,
-                null
-            );
-
-        public static HostileTargetSelection EachRowFirst() =>
-            new HostileTargetSelection(
-                HostileTargetSelection._Kind.EachRowFirst,
-                0,
-                false,
-                null,
-                null
-            );
-
-        public static HostileTargetSelection EachRowLast() =>
-            new HostileTargetSelection(
-                HostileTargetSelection._Kind.EachRowLast,
-                0,
-                false,
-                null,
-                null
-            );
-
-        public static HostileTargetSelection EachColFirst() =>
-            new HostileTargetSelection(
-                HostileTargetSelection._Kind.EachColFirst,
-                0,
-                false,
-                null,
-                null
-            );
-
-        public static HostileTargetSelection EachColLast() =>
-            new HostileTargetSelection(
-                HostileTargetSelection._Kind.EachColLast,
-                0,
-                false,
-                null,
                 null
             );
 
@@ -464,22 +439,10 @@ public partial class Skill
             return target switch
             {
                 HostileTargetReference.One => Ordered(1),
-                HostileTargetReference.Two => Ordered(2),
-                HostileTargetReference.Three => Ordered(3),
-                HostileTargetReference.Four => Ordered(4),
-                HostileTargetReference.Five => Ordered(5),
-                HostileTargetReference.Six => Ordered(6),
-                HostileTargetReference.Seven => Ordered(7),
-                HostileTargetReference.Eight => Ordered(8),
-                HostileTargetReference.Nine => Ordered(9),
                 HostileTargetReference.All => All(),
                 HostileTargetReference.Random => PreviewableRandom(1),
                 HostileTargetReference.RandomPreview => PreviewableRandom(1),
                 HostileTargetReference.AttackKey => Stored(BuiltinAttackTargetKey),
-                HostileTargetReference.EachRowFirst => EachRowFirst(),
-                HostileTargetReference.EachRowLast => EachRowLast(),
-                HostileTargetReference.EachColFirst => EachColFirst(),
-                HostileTargetReference.EachColLast => EachColLast(),
                 _ => default,
             };
         }
@@ -524,6 +487,25 @@ public partial class Skill
             ?? Array.Empty<PreviewEffectEntry>();
     }
 
+    public void LockPreviewTargetsForExecution()
+    {
+        var plan = GetPlan();
+        if (plan == null)
+        {
+            ClearLockedExecutionTargets();
+            return;
+        }
+
+        plan.LockPreviewTargetsForExecution();
+    }
+
+    public void ClearLockedExecutionTargets()
+    {
+        _lockedHostileTargetSelections.Clear();
+        _capturingLockedHostileTargets = false;
+        _useLockedHostileTargetsForExecution = false;
+    }
+
     public Character[] GetPreviewHostileDebuffTargets()
     {
         var plan = GetPlan();
@@ -553,11 +535,22 @@ public partial class Skill
         return plan?.ManualFriendlyTargetAllowsDying() == true;
     }
 
+    public bool TryGetManualFriendlyCarrySkillType(out SkillTypes skillType)
+    {
+        var plan = GetPlan();
+        if (plan != null && plan.TryGetManualFriendlyCarrySkillType(out skillType))
+            return true;
+
+        skillType = SkillTypes.none;
+        return false;
+    }
+
     public void SetManualFriendlyTarget(Character target)
     {
         _manualFriendlyTarget = IsValidManualFriendlyTarget(
             target,
-            dyingFilter: !ManualFriendlyTargetAllowsDying()
+            dyingFilter: !ManualFriendlyTargetAllowsDying(),
+            excludeSelf: ManualFriendlyTargetExcludesSelf()
         )
             ? target
             : null;
@@ -571,37 +564,34 @@ public partial class Skill
     public bool HasManualFriendlyTarget() =>
         IsValidManualFriendlyTarget(
             _manualFriendlyTarget,
-            dyingFilter: !ManualFriendlyTargetAllowsDying()
+            dyingFilter: !ManualFriendlyTargetAllowsDying(),
+            excludeSelf: ManualFriendlyTargetExcludesSelf()
         );
+
+    public Character GetManualFriendlyTarget() =>
+        HasManualFriendlyTarget() ? _manualFriendlyTarget : null;
 
     private static TargetSelection TargetValue(TargetReference target) =>
         TargetSelection.FromEnum(target);
 
     private static HostileTargetSelection ResolveHostileTargetSelection(
-        HostileTargetReference target,
+        HostileTargetReference? target,
         bool byBehindRow = false
-    ) =>
-        target switch
+    )
+    {
+        if (!target.HasValue)
+            return HostileTargetSelection.Default(byBehindRow);
+
+        return target.Value switch
         {
             HostileTargetReference.One => HostileTargets(1, byBehindRow),
-            HostileTargetReference.Two => HostileTargets(2, byBehindRow),
-            HostileTargetReference.Three => HostileTargets(3, byBehindRow),
-            HostileTargetReference.Four => HostileTargets(4, byBehindRow),
-            HostileTargetReference.Five => HostileTargets(5, byBehindRow),
-            HostileTargetReference.Six => HostileTargets(6, byBehindRow),
-            HostileTargetReference.Seven => HostileTargets(7, byBehindRow),
-            HostileTargetReference.Eight => HostileTargets(8, byBehindRow),
-            HostileTargetReference.Nine => HostileTargets(9, byBehindRow),
             HostileTargetReference.All => HostileTargetSelection.All(),
             HostileTargetReference.Random => HostilePreviewableRandomTargets(1, byBehindRow),
             HostileTargetReference.RandomPreview => HostilePreviewableRandomTargets(1, byBehindRow),
             HostileTargetReference.AttackKey => HostileTargetSelection.Stored(BuiltinAttackTargetKey),
-            HostileTargetReference.EachRowFirst => HostileTargetsEachRowFirst(),
-            HostileTargetReference.EachRowLast => HostileTargetsEachRowLast(),
-            HostileTargetReference.EachColFirst => HostileTargetsEachColFirst(),
-            HostileTargetReference.EachColLast => HostileTargetsEachColLast(),
             _ => HostileTargets(1, byBehindRow),
         };
+    }
 
     protected static HostileTargetSelection HostileTargets(
         int maxTargets = 1,
@@ -617,18 +607,6 @@ public partial class Skill
         int maxTargets = 1,
         bool byBehindRow = false
     ) => HostileTargetSelection.PreviewableRandom(maxTargets, byBehindRow);
-
-    protected static HostileTargetSelection HostileTargetsEachRowFirst() =>
-        HostileTargetSelection.EachRowFirst();
-
-    protected static HostileTargetSelection HostileTargetsEachRowLast() =>
-        HostileTargetSelection.EachRowLast();
-
-    protected static HostileTargetSelection HostileTargetsEachColFirst() =>
-        HostileTargetSelection.EachColFirst();
-
-    protected static HostileTargetSelection HostileTargetsEachColLast() =>
-        HostileTargetSelection.EachColLast();
 
     private void StoreTarget(string storedKey, Character target)
     {
@@ -705,6 +683,19 @@ public partial class Skill
         bool applyTaunt = false
     )
     {
+        if (
+            _useLockedHostileTargetsForExecution
+            && !_capturingLockedHostileTargets
+            && target.Kind == TargetSelectionKind.DefaultRule
+            && TryGetLockedHostileTargets(
+                BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt),
+                out Character[] lockedTargets
+            )
+        )
+        {
+            return lockedTargets;
+        }
+
         if (target.Kind == TargetSelectionKind.StoredArray)
         {
             Character[] stored = GetStoredTargetArray(target.StoredKey);
@@ -737,7 +728,12 @@ public partial class Skill
         if (count <= 0)
             return Array.Empty<Character>();
 
-        return targets.Take(count).Where(x => x != null).ToArray();
+        Character[] selected = targets.Take(count).Where(x => x != null).ToArray();
+        CaptureLockedHostileTargets(
+            BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt),
+            selected
+        );
+        return selected;
     }
 
     private Character ResolveHostileTarget(
@@ -753,6 +749,18 @@ public partial class Skill
     )
     {
         HostileTargetSelection value = target;
+        value = ResolveDefaultHostileSelection(value);
+        string lockKey = BuildHostileTargetSelectionLockKey(value, targetCondition, applyTaunt);
+        if (
+            _useLockedHostileTargetsForExecution
+            && !_capturingLockedHostileTargets
+            && value.Kind != HostileTargetSelection._Kind.Stored
+            && TryGetLockedHostileTargets(lockKey, out Character[] lockedTargets)
+        )
+        {
+            return lockedTargets;
+        }
+
         if (value.Kind == HostileTargetSelection._Kind.Stored)
         {
             Character[] storedTargets = GetStoredTargetArray(value.StoredKey);
@@ -783,13 +791,75 @@ public partial class Skill
             targetCondition == null ? ordered : ordered.Where(targetCondition).ToArray();
 
         if (value.Kind == HostileTargetSelection._Kind.PreviewableRandom)
-            return GetOrPickPreviewableRandomHostileTargets(value, matched);
+        {
+            Character[] selected = GetOrPickPreviewableRandomHostileTargets(value, matched);
+            CaptureLockedHostileTargets(lockKey, selected);
+            return selected;
+        }
 
-        return SelectHostileTargets(
+        Character[] resolvedTargets = SelectHostileTargets(
             matched,
             target,
             OwnerCharater?.BattleNode?.BattleIntentionRandom
         );
+        CaptureLockedHostileTargets(lockKey, resolvedTargets);
+        return resolvedTargets;
+    }
+
+    private static string BuildTargetSelectionLockKey(
+        TargetSelection target,
+        int maxTargets,
+        bool byBehindRow,
+        bool applyTaunt
+    ) =>
+        $"target:{target.Kind}:{target.StoredKey}:{target.RelativeIndex}:{target.AbsoluteSelector}:{target.ExcludeSelf}:{maxTargets}:{byBehindRow}:{applyTaunt}";
+
+    private static string BuildHostileTargetSelectionLockKey(
+        HostileTargetSelection target,
+        Func<Character, bool> targetCondition,
+        bool applyTaunt
+    ) =>
+        $"hostile:{target.Kind}:{target.MaxTargets}:{target.ByBehindRow}:{target.StoredKey}:{target.RandomKey}:{targetCondition?.GetHashCode() ?? 0}:{applyTaunt}";
+
+    private void CaptureLockedHostileTargets(string key, Character[] targets)
+    {
+        if (!_capturingLockedHostileTargets || string.IsNullOrWhiteSpace(key))
+            return;
+
+        Character[] filteredTargets = FilterLockedHostileTargets(targets);
+        if (filteredTargets.Length == 0)
+            _lockedHostileTargetSelections.Remove(key);
+        else
+            _lockedHostileTargetSelections[key] = filteredTargets;
+    }
+
+    private bool TryGetLockedHostileTargets(string key, out Character[] targets)
+    {
+        targets = Array.Empty<Character>();
+        if (
+            string.IsNullOrWhiteSpace(key)
+            || !_lockedHostileTargetSelections.TryGetValue(key, out Character[] lockedTargets)
+        )
+        {
+            return false;
+        }
+
+        targets = FilterLockedHostileTargets(lockedTargets);
+        return true;
+    }
+
+    private Character[] FilterLockedHostileTargets(Character[] targets)
+    {
+        Character dummy = OwnerCharater?.BattleNode?.dummy;
+        return targets
+            ?.Where(target =>
+                target != null
+                && GodotObject.IsInstanceValid(target)
+                && target != dummy
+                && target.State == Character.CharacterState.Normal
+            )
+            .Distinct()
+            .ToArray() ?? Array.Empty<Character>();
     }
 
     private Character[] ResolveFriendlyTargets(
@@ -813,10 +883,15 @@ public partial class Skill
                 dyingFilter,
                 preferNonFull,
                 rebirth,
-                includeSummonsWhenAll
+                includeSummonsWhenAll,
+                target.ExcludeSelf
             ),
             TargetSelectionKind.ManualFriendly => SingleTargetArray(
-                IsValidManualFriendlyTarget(_manualFriendlyTarget, dyingFilter)
+                IsValidManualFriendlyTarget(
+                    _manualFriendlyTarget,
+                    dyingFilter,
+                    target.ExcludeSelf
+                )
                     ? _manualFriendlyTarget
                     : null
             ),
@@ -824,7 +899,11 @@ public partial class Skill
         };
     }
 
-    private bool IsValidManualFriendlyTarget(Character target, bool dyingFilter)
+    private bool IsValidManualFriendlyTarget(
+        Character target,
+        bool dyingFilter,
+        bool excludeSelf = false
+    )
     {
         if (
             target == null
@@ -835,6 +914,9 @@ public partial class Skill
         {
             return false;
         }
+
+        if (excludeSelf && target == OwnerCharater)
+            return false;
 
         if (dyingFilter && target.State == Character.CharacterState.Dying)
             return false;
@@ -887,6 +969,7 @@ public partial class Skill
             return Array.Empty<Character>();
 
         HostileTargetSelection value = target;
+        value = skill.ResolveDefaultHostileSelection(value);
         if (value.Kind == HostileTargetSelection._Kind.Stored)
         {
             Character[] storedTargets = skill.GetStoredTargetArray(value.StoredKey);
@@ -981,6 +1064,7 @@ public partial class Skill
         HostileTargetSelection value = target;
         return value.Kind switch
         {
+            HostileTargetSelection._Kind.DefaultRule => SelectOrderedHostileTargets(ordered, 1),
             HostileTargetSelection._Kind.Stored => Array.Empty<Character>(),
             HostileTargetSelection._Kind.Ordered => SelectOrderedHostileTargets(
                 ordered,
@@ -991,26 +1075,6 @@ public partial class Skill
                 : SelectRandomHostileTargets(ordered, value.MaxTargets, random),
             HostileTargetSelection._Kind.PreviewableRandom =>
                 SelectRandomHostileTargets(ordered, value.MaxTargets, random),
-            HostileTargetSelection._Kind.EachRowFirst => SelectGroupedHostileTargets(
-                ordered,
-                groupKeySelector: x => x.PositionIndex > 0 ? (x.PositionIndex - 1) % 3 : 0,
-                pickLast: false
-            ),
-            HostileTargetSelection._Kind.EachRowLast => SelectGroupedHostileTargets(
-                ordered,
-                groupKeySelector: x => x.PositionIndex > 0 ? (x.PositionIndex - 1) % 3 : 0,
-                pickLast: true
-            ),
-            HostileTargetSelection._Kind.EachColFirst => SelectGroupedHostileTargets(
-                ordered,
-                groupKeySelector: x => x.PositionIndex > 0 ? (x.PositionIndex - 1) / 3 : 0,
-                pickLast: false
-            ),
-            HostileTargetSelection._Kind.EachColLast => SelectGroupedHostileTargets(
-                ordered,
-                groupKeySelector: x => x.PositionIndex > 0 ? (x.PositionIndex - 1) / 3 : 0,
-                pickLast: true
-            ),
             HostileTargetSelection._Kind.All => ordered.Where(x => x != null).ToArray(),
             _ => Array.Empty<Character>(),
         };
@@ -1026,6 +1090,20 @@ public partial class Skill
             return Array.Empty<Character>();
 
         return ordered.Take(count).Where(x => x != null).ToArray();
+    }
+
+    private HostileTargetSelection ResolveDefaultHostileSelection(HostileTargetSelection target)
+    {
+        if (target.Kind != HostileTargetSelection._Kind.DefaultRule)
+            return target;
+
+        return OwnerCharater != null && !OwnerCharater.IsPlayer
+            ? HostileTargetSelection.PreviewableRandom(
+                1,
+                target.ByBehindRow,
+                "enemy_default_attack"
+            )
+            : HostileTargetSelection.Ordered(1, target.ByBehindRow);
     }
 
     private static Character[] SelectRandomHostileTargets(
@@ -1050,28 +1128,6 @@ public partial class Skill
         }
 
         return candidates.Take(count).ToArray();
-    }
-
-    private static Character[] SelectGroupedHostileTargets(
-        Character[] ordered,
-        Func<Character, int> groupKeySelector,
-        bool pickLast
-    )
-    {
-        if (ordered == null || ordered.Length == 0)
-            return Array.Empty<Character>();
-
-        return ordered
-            .Where(x => x != null)
-            .GroupBy(groupKeySelector)
-            .OrderBy(group => group.Key)
-            .Select(group =>
-                pickLast
-                    ? group.OrderByDescending(x => x.PositionIndex).FirstOrDefault()
-                    : group.OrderBy(x => x.PositionIndex).FirstOrDefault()
-            )
-            .Where(x => x != null)
-            .ToArray();
     }
 
     private static IEnumerable<Character> CollectPreviewTargets(
@@ -1153,11 +1209,44 @@ public partial class Skill
             ClearStoredTargets();
         }
 
+        public void LockPreviewTargetsForExecution()
+        {
+            Dictionary<string, Character> storedTargetSnapshot = new(_skill._storedTargets);
+            Dictionary<string, Character[]> storedTargetArraySnapshot = new(
+                _skill._storedTargetArrays
+            );
+            _skill._lockedHostileTargetSelections.Clear();
+            _skill._capturingLockedHostileTargets = true;
+            _skill._useLockedHostileTargetsForExecution = false;
+            try
+            {
+                ClearStoredTargets();
+
+                var context = new PreviewDamageContext(_skill.OwnerCharater);
+                for (int i = 0; i < _steps.Length; i++)
+                {
+                    _ = (_steps[i]?.PreviewTargets(_skill) ?? Array.Empty<Character>()).ToArray();
+                    _ = (
+                        _steps[i]?.PreviewEffects(_skill, context)
+                        ?? Array.Empty<PreviewEffectEntry>()
+                    ).ToArray();
+                }
+            }
+            finally
+            {
+                RestoreStoredTargets(storedTargetSnapshot, storedTargetArraySnapshot);
+                _skill._capturingLockedHostileTargets = false;
+                _skill._useLockedHostileTargetsForExecution =
+                    _skill._lockedHostileTargetSelections.Count > 0;
+            }
+        }
+
         public string[] DescribeLines()
         {
             var lines = new List<string>();
             bool groupManualFriendlySteps = ManualFriendlyTargetReferenceCount() > 1;
             var manualFriendlyGroupLines = new List<string>();
+            bool manualFriendlyGroupExcludesSelf = false;
 
             for (int i = 0; i < _steps.Length; i++)
             {
@@ -1171,25 +1260,36 @@ public partial class Skill
                 if (groupManualFriendlySteps && StepRequiresManualFriendlyTarget(_steps[i]))
                 {
                     manualFriendlyGroupLines.AddRange(stepLines);
+                    manualFriendlyGroupExcludesSelf |= StepManualFriendlyTargetExcludesSelf(_steps[i]);
                     continue;
                 }
 
-                FlushManualFriendlyGroup(lines, manualFriendlyGroupLines);
+                FlushManualFriendlyGroup(
+                    lines,
+                    manualFriendlyGroupLines,
+                    manualFriendlyGroupExcludesSelf
+                );
+                manualFriendlyGroupExcludesSelf = false;
                 lines.AddRange(stepLines);
             }
-            FlushManualFriendlyGroup(lines, manualFriendlyGroupLines);
+            FlushManualFriendlyGroup(
+                lines,
+                manualFriendlyGroupLines,
+                manualFriendlyGroupExcludesSelf
+            );
             return lines.ToArray();
         }
 
         private static void FlushManualFriendlyGroup(
             List<string> lines,
-            List<string> manualFriendlyGroupLines
+            List<string> manualFriendlyGroupLines,
+            bool excludesSelf
         )
         {
             if (manualFriendlyGroupLines.Count == 0)
                 return;
 
-            lines.Add("选择一名己方角色：");
+            lines.Add(excludesSelf ? "选择一名其他己方角色：" : "选择一名己方角色：");
             lines.Add(
                 FormatBracketedDescriptionLines(
                     manualFriendlyGroupLines.Select(StripGroupedManualFriendlyTargetText)
@@ -1200,18 +1300,24 @@ public partial class Skill
 
         private static string StripGroupedManualFriendlyTargetText(string line)
         {
-            const string targetText = "选择的己方角色";
             if (string.IsNullOrWhiteSpace(line))
                 return line;
 
             string result = line.Trim();
-            string[] removablePrefixes =
+            string[] targetTexts =
             [
-                $"令{targetText}",
-                $"使{targetText}",
-                $"{targetText}，",
-                targetText,
+                "选择的其他己方角色",
+                "选择的己方角色",
             ];
+            string[] removablePrefixes = targetTexts
+                .SelectMany(targetText => new[]
+                {
+                    $"令{targetText}",
+                    $"使{targetText}",
+                    $"{targetText}，",
+                    targetText,
+                })
+                .ToArray();
 
             for (int i = 0; i < removablePrefixes.Length; i++)
             {
@@ -1526,6 +1632,18 @@ public partial class Skill
         public bool ManualFriendlyTargetAllowsDying() =>
             _steps.Any(step => StepManualFriendlyTargetAllowsDying(step));
 
+        public bool TryGetManualFriendlyCarrySkillType(out SkillTypes skillType)
+        {
+            foreach (SkillStep step in _steps)
+            {
+                if (StepTryGetManualFriendlyCarrySkillType(step, out skillType))
+                    return true;
+            }
+
+            skillType = SkillTypes.none;
+            return false;
+        }
+
         private int ManualFriendlyTargetReferenceCount() =>
             _steps.Sum(step => CountStepManualFriendlyTargetReferences(step));
 
@@ -1662,6 +1780,15 @@ public partial class Skill
         for (int i = 0; i < fields.Length; i++)
         {
             object value = fields[i].GetValue(step);
+            if (
+                value is TargetSelection target
+                && target.Kind == TargetSelectionKind.ManualFriendly
+                && target.ExcludeSelf
+            )
+            {
+                return true;
+            }
+
             if (value is SkillStep nestedStep && StepManualFriendlyTargetExcludesSelf(nestedStep))
                 return true;
 
@@ -1707,6 +1834,53 @@ public partial class Skill
         return false;
     }
 
+    private static bool StepTryGetManualFriendlyCarrySkillType(
+        SkillStep step,
+        out SkillTypes skillType
+    )
+    {
+        if (step == null)
+        {
+            skillType = SkillTypes.none;
+            return false;
+        }
+
+        if (
+            step is CarrySkillStepImpl carryStep
+            && carryStep.TargetIsManualFriendly
+            && carryStep.TryResolveCarrySkillType(out skillType)
+        )
+        {
+            return true;
+        }
+
+        var fields = step.GetType()
+            .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        for (int i = 0; i < fields.Length; i++)
+        {
+            object value = fields[i].GetValue(step);
+            if (
+                value is SkillStep nestedStep
+                && StepTryGetManualFriendlyCarrySkillType(nestedStep, out skillType)
+            )
+            {
+                return true;
+            }
+
+            if (value is IEnumerable<SkillStep> nestedSteps)
+            {
+                foreach (SkillStep item in nestedSteps)
+                {
+                    if (StepTryGetManualFriendlyCarrySkillType(item, out skillType))
+                        return true;
+                }
+            }
+        }
+
+        skillType = SkillTypes.none;
+        return false;
+    }
+
     // Offensive hostile steps
     protected SkillStep AttackStep(
         int baseDamage = 0,
@@ -1716,7 +1890,7 @@ public partial class Skill
         int times = 1,
         int clampMax = 9999,
         bool byBehindRow = false,
-        HostileTargetReference target = HostileTargetReference.One,
+        HostileTargetReference? target = null,
         Func<Character, bool> targetCondition = null,
         string conditionText = null,
         string storeAs = null
@@ -1743,7 +1917,7 @@ public partial class Skill
         int times = 1,
         int clampMax = 9999,
         bool byBehindRow = false,
-        HostileTargetReference target = HostileTargetReference.One,
+        HostileTargetReference? target = null,
         Func<Character, bool> targetCondition = null,
         string conditionText = null,
         string storeAs = null
@@ -2105,6 +2279,27 @@ public partial class Skill
 
     protected SkillStep DrawCardsStep(Func<Skill, int> count, string description = null) =>
         new DrawCardsSkillStep(count, description);
+
+    protected SkillStep DiscardCardsStep(int count) => new DiscardCardsSkillStep(count);
+
+    protected SkillStep DiscardCardsStep(Func<Skill, int> count, string description = null) =>
+        new DiscardCardsSkillStep(count, description);
+
+    protected SkillStep SelectDrawPileCardsToHandStep(int count) =>
+        new SelectPileCardsToHandSkillStep(count, fromDiscardPile: false);
+
+    protected SkillStep SelectDrawPileCardsToHandStep(
+        Func<Skill, int> count,
+        string description = null
+    ) => new SelectPileCardsToHandSkillStep(count, fromDiscardPile: false, description);
+
+    protected SkillStep SelectDiscardPileCardsToHandStep(int count) =>
+        new SelectPileCardsToHandSkillStep(count, fromDiscardPile: true);
+
+    protected SkillStep SelectDiscardPileCardsToHandStep(
+        Func<Skill, int> count,
+        string description = null
+    ) => new SelectPileCardsToHandSkillStep(count, fromDiscardPile: true, description);
 
     protected SkillStep AddStatusCardsToDrawPileStep(
         SkillID statusSkillId,
@@ -2902,8 +3097,7 @@ public partial class Skill
                 info.Speed -= loss;
                 break;
             case PropertyType.MaxLife:
-                info.LifeMax -= loss;
-                break;
+                return;
             default:
                 return;
         }
@@ -2958,7 +3152,6 @@ public partial class Skill
                 SkillBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             case Buff.BuffName.Pursuit:
-            case Buff.BuffName.ExtraTurn:
             case Buff.BuffName.Disaster:
             case Buff.BuffName.Demon:
             case Buff.BuffName.Void:
@@ -3006,8 +3199,16 @@ public partial class Skill
         {
             TargetSelectionKind.Stored => StoredTargetText(target.StoredKey),
             TargetSelectionKind.Relative => RelativeFriendlyTargetText(target.RelativeIndex),
-            TargetSelectionKind.Absolute => AbsoluteFriendlySelectorText(target.AbsoluteSelector),
-            TargetSelectionKind.ManualFriendly => "选择的己方角色",
+            TargetSelectionKind.Absolute => target.ExcludeSelf
+                && target.AbsoluteSelector == AbsoluteFriendlySelector.All
+                    ? I18n.Tr("skill.step.target.other_allies", "其他己方角色")
+                    : AbsoluteFriendlySelectorText(target.AbsoluteSelector),
+            TargetSelectionKind.ManualFriendly => target.ExcludeSelf
+                ? I18n.Tr(
+                    "skill.step.target.selected_other_ally",
+                    "选择的其他己方角色"
+                )
+                : I18n.Tr("skill.step.target.selected_ally", "选择的己方角色"),
             _ => RelativeFriendlyTargetText(0),
         };
     }
@@ -3133,8 +3334,7 @@ public partial class Skill
 
     private static int ResolveFriendlyHealAmount(int baseHeal, Character target, int clampMax)
     {
-        int survivabilityBonus = target?.BattleSurvivability ?? 0;
-        return Math.Clamp(baseHeal + survivabilityBonus, 0, clampMax);
+        return Math.Clamp(baseHeal, 0, clampMax);
     }
 
     private static string FriendlyHealAmountText(
@@ -3241,17 +3441,7 @@ public partial class Skill
         if (maxTargets <= 0)
             return I18n.Tr("skill.step.target.all_hit", "所有命中目标");
 
-        return byBehindRow
-            ? I18n.Format(
-                "skill.step.target.max_back_hostile",
-                "至多{count}名后排目标",
-                ("count", maxTargets)
-            )
-            : I18n.Format(
-                "skill.step.target.max_hostile",
-                "至多{count}名目标",
-                ("count", maxTargets)
-            );
+        return I18n.Tr("skill.step.target.all_hit", "所有命中目标");
     }
 
     private static bool ShouldDescribeHostileAttackTarget(
@@ -3276,73 +3466,15 @@ public partial class Skill
         return target.Kind switch
         {
             HostileTargetSelection._Kind.Stored => StoredTargetText(target.StoredKey),
-            HostileTargetSelection._Kind.Ordered => target.MaxTargets switch
-            {
-                1 => target.ByBehindRow
-                    ? I18n.Tr("skill.step.target.hostile_back", "后排目标")
-                    : I18n.Tr("skill.step.target.hostile", "目标"),
-                _ => target.ByBehindRow
-                    ? I18n.Format(
-                        "skill.step.target.max_back_hostile",
-                        "至多{count}名后排目标",
-                        ("count", target.MaxTargets)
-                    )
-                    : I18n.Format(
-                        "skill.step.target.max_hostile",
-                        "至多{count}名目标",
-                        ("count", target.MaxTargets)
-                    ),
-            },
-            HostileTargetSelection._Kind.Random => target.MaxTargets switch
-            {
-                1 => target.ByBehindRow
-                    ? I18n.Tr("skill.step.target.random_hostile_back", "随机1名后排目标")
-                    : I18n.Tr("skill.step.target.random_hostile", "随机1名目标"),
-                _ => target.ByBehindRow
-                    ? I18n.Format(
-                        "skill.step.target.random_max_back_hostile",
-                        "随机{count}名后排目标",
-                        ("count", target.MaxTargets)
-                    )
-                    : I18n.Format(
-                        "skill.step.target.random_max_hostile",
-                        "随机{count}名目标",
-                        ("count", target.MaxTargets)
-                    ),
-            },
-            HostileTargetSelection._Kind.PreviewableRandom => target.MaxTargets switch
-            {
-                1 => target.ByBehindRow
-                    ? I18n.Tr("skill.step.target.previewable_random_hostile_back", "随机1名后排目标")
-                    : I18n.Tr("skill.step.target.previewable_random_hostile", "随机1名目标"),
-                _ => target.ByBehindRow
-                    ? I18n.Format(
-                        "skill.step.target.previewable_random_max_back_hostile",
-                        "随机{count}名后排目标",
-                        ("count", target.MaxTargets)
-                    )
-                    : I18n.Format(
-                        "skill.step.target.previewable_random_max_hostile",
-                        "随机{count}名目标",
-                        ("count", target.MaxTargets)
-                    ),
-            },
-            HostileTargetSelection._Kind.EachRowFirst => I18n.Tr(
-                "skill.step.target.each_row_first",
-                "各横排第一名角色"
-            ),
-            HostileTargetSelection._Kind.EachRowLast => I18n.Tr(
-                "skill.step.target.each_row_last",
-                "各横排最后一名角色"
-            ),
-            HostileTargetSelection._Kind.EachColFirst => I18n.Tr(
-                "skill.step.target.each_col_first",
-                "各列第一名角色"
-            ),
-            HostileTargetSelection._Kind.EachColLast => I18n.Tr(
-                "skill.step.target.each_col_last",
-                "各列最后一名角色"
-            ),
+            HostileTargetSelection._Kind.Ordered => target.ByBehindRow
+                ? I18n.Tr("skill.step.target.hostile_back", "后排目标")
+                : I18n.Tr("skill.step.target.hostile", "目标"),
+            HostileTargetSelection._Kind.Random => target.ByBehindRow
+                ? I18n.Tr("skill.step.target.random_hostile_back", "随机1名后排目标")
+                : I18n.Tr("skill.step.target.random_hostile", "随机1名目标"),
+            HostileTargetSelection._Kind.PreviewableRandom => target.ByBehindRow
+                ? I18n.Tr("skill.step.target.previewable_random_hostile_back", "随机1名后排目标")
+                : I18n.Tr("skill.step.target.previewable_random_hostile", "随机1名目标"),
             HostileTargetSelection._Kind.All => I18n.Tr(
                 "skill.step.target.all_hostile",
                 "所有目标"
@@ -3365,14 +3497,6 @@ public partial class Skill
                 I18n.Format("skill.preview.random_target_count", "随机{count}个", ("count", count)),
             HostileTargetSelection._Kind.PreviewableRandom when count > 0 =>
                 I18n.Format("skill.preview.random_target_count", "随机{count}个", ("count", count)),
-            HostileTargetSelection._Kind.EachRowFirst =>
-                I18n.Tr("skill.preview.each_row_first", "每横排第一个"),
-            HostileTargetSelection._Kind.EachRowLast =>
-                I18n.Tr("skill.preview.each_row_last", "每横排最后一个"),
-            HostileTargetSelection._Kind.EachColFirst =>
-                I18n.Tr("skill.preview.each_col_first", "每列第一个"),
-            HostileTargetSelection._Kind.EachColLast =>
-                I18n.Tr("skill.preview.each_col_last", "每列最后一个"),
             HostileTargetSelection._Kind.All when count > 0 =>
                 I18n.Tr("skill.preview.all_targets", "所有目标"),
             _ => string.Empty,
@@ -3483,7 +3607,8 @@ public partial class Skill
         bool dyingFilter,
         bool preferNonFull,
         bool rebirth,
-        bool includeSummonsWhenAll
+        bool includeSummonsWhenAll,
+        bool excludeSelf = false
     )
     {
         if (selector == AbsoluteFriendlySelector.All)
@@ -3493,12 +3618,18 @@ public partial class Skill
 
             return skill
                 .GetAllAllyWithOrder(dyingFilter, includeSummons: includeSummonsWhenAll)
-                .Where(x => x != null)
+                .Where(x => x != null && (!excludeSelf || x != skill.OwnerCharater))
                 .ToArray();
         }
 
         return SingleTargetArray(
-            SelectAbsoluteFriendlyTarget(skill, selector, preferNonFull, rebirth)
+            SelectAbsoluteFriendlyTarget(
+                skill,
+                selector,
+                preferNonFull,
+                rebirth,
+                excludeSelf ? new HashSet<Character> { skill?.OwnerCharater } : null
+            )
         );
     }
 
@@ -4032,7 +4163,7 @@ public partial class Skill
         private readonly string _storeAs;
         private readonly bool _includeSummonsWhenAll;
         private readonly int _repeatCount;
-        public bool AllowsDyingManualFriendlyTarget => _rebirth && IsManualFriendlyTarget(_target);
+        public bool AllowsDyingManualFriendlyTarget => false;
 
         public HealFriendlySkillStep(
             int baseHeal,
@@ -4061,6 +4192,7 @@ public partial class Skill
 
         public override Task Execute(Skill skill)
         {
+            bool canRebirth = CanApplyRebirth(skill);
             List<Character> allTargets = new();
             HashSet<Character> selectedTargets = _repeatCount > 1 ? new() : null;
             for (int repeat = 0; repeat < _repeatCount; repeat++)
@@ -4076,7 +4208,7 @@ public partial class Skill
                         skill,
                         _target.AbsoluteSelector,
                         _preferNonFull,
-                        _rebirth,
+                        canRebirth,
                         selectedTargets
                     );
                     if (uniqueTarget == null)
@@ -4089,9 +4221,9 @@ public partial class Skill
                 {
                     targets = skill.ResolveFriendlyTargets(
                         _target,
-                        !_rebirth,
+                        !canRebirth,
                         _preferNonFull,
-                        _rebirth,
+                        canRebirth,
                         _includeSummonsWhenAll
                     );
                 }
@@ -4103,12 +4235,24 @@ public partial class Skill
                 int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealFunc);
                 for (int i = 0; i < targets.Length; i++)
                 {
-                    targets[i].Recover(baseHeal, rebirth: _rebirth, source: skill?.OwnerCharater);
+                    targets[i].Recover(baseHeal, rebirth: canRebirth, source: skill?.OwnerCharater);
                 }
             }
 
             skill.StoreAutoHealTargets(allTargets.ToArray());
             return Task.CompletedTask;
+        }
+
+        private bool CanApplyRebirth(Skill skill)
+        {
+            if (!_rebirth)
+                return false;
+
+            Character owner = skill?.OwnerCharater;
+            if (owner == null)
+                return false;
+
+            return !owner.IsPlayer || owner.BattleNode?.CanReviveDyingPlayerNow() == true;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -4123,7 +4267,7 @@ public partial class Skill
             int baseHeal = ResolveStepBaseValue(skill, _baseHeal, _baseHealFunc);
             string healText = Math.Clamp(baseHeal, 0, _clampMax).ToString();
 
-            if (_rebirth)
+            if (CanApplyRebirth(skill))
             {
                 if (IsImplicitSelfFriendlyTarget(_target))
                 {
@@ -4169,11 +4313,12 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
+            bool canRebirth = CanApplyRebirth(skill);
             Character[] targets = skill.ResolveFriendlyTargets(
                 _target,
-                !_rebirth,
+                !canRebirth,
                 _preferNonFull,
-                _rebirth,
+                canRebirth,
                 _includeSummonsWhenAll
             );
             skill.StoreAutoHealTargets(targets);
@@ -4685,6 +4830,9 @@ public partial class Skill
         private readonly string _descriptionLine;
         public bool TargetIsManualFriendly => _target.Kind == TargetSelectionKind.ManualFriendly;
 
+        public bool TryResolveCarrySkillType(out SkillTypes skillType) =>
+            Skill.TryGetCarrySkillType(_skillIndex, out skillType);
+
         public CarrySkillStepImpl(
             TargetSelection target,
             int skillIndex,
@@ -5001,13 +5149,22 @@ public partial class Skill
             if (targets.Length == 0)
                 return Task.CompletedTask;
 
+            bool doubledPlayerEnergyPool = false;
             for (int i = 0; i < targets.Length; i++)
             {
                 if (ShouldAbortStepExecution(skill))
                     return Task.CompletedTask;
 
                 Character target = targets[i];
-                int energyGain = Math.Max(0, target?.Energy ?? 0);
+                if (target?.IsPlayer == true)
+                {
+                    if (doubledPlayerEnergyPool)
+                        continue;
+
+                    doubledPlayerEnergyPool = true;
+                }
+
+                int energyGain = Math.Max(0, target?.CurrentEnergy ?? 0);
                 if (energyGain <= 0)
                     continue;
 
@@ -5064,7 +5221,10 @@ public partial class Skill
             if (count <= 0 || skill?.OwnerCharater is not PlayerCharacter player)
                 return Task.CompletedTask;
 
-            player.TryDrawBattleCards(count);
+            if (player.BattleNode?.IsResolvingPlayerTeamActionPhase == true)
+                player.BattleNode.TryDrawPlayerTeamBattleCards(count);
+            else
+                player.TryDrawBattleCards(count);
             return Task.CompletedTask;
         }
 
@@ -5087,6 +5247,126 @@ public partial class Skill
                 "抽{count}张牌。",
                 ("count", count)
             );
+        }
+    }
+
+    private sealed class DiscardCardsSkillStep : SkillStep
+    {
+        private readonly int _count;
+        private readonly Func<Skill, int> _countProvider;
+        private readonly string _description;
+
+        public DiscardCardsSkillStep(int count)
+        {
+            _count = count;
+            _countProvider = null;
+        }
+
+        public DiscardCardsSkillStep(Func<Skill, int> count, string description = null)
+        {
+            _count = 0;
+            _countProvider = count;
+            _description = description;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0 || skill?.OwnerCharater is not PlayerCharacter player)
+                return;
+
+            CharacterControl characterControl = player.BattleNode?.CharacterControl;
+            if (characterControl == null || !GodotObject.IsInstanceValid(characterControl))
+                return;
+
+            await characterControl.SelectAndDiscardHandCardsAsync(player, count);
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (!string.IsNullOrWhiteSpace(_description))
+            {
+                yield return _description.EndsWith("。")
+                    ? _description
+                    : I18n.Format("skill.step.with_period", "{text}。", ("text", _description));
+                yield break;
+            }
+
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0)
+                yield break;
+
+            yield return I18n.Format(
+                "skill.step.discard_cards",
+                "选择{count}张手牌丢弃。",
+                ("count", count)
+            );
+        }
+    }
+
+    private sealed class SelectPileCardsToHandSkillStep : SkillStep
+    {
+        private readonly int _count;
+        private readonly Func<Skill, int> _countProvider;
+        private readonly bool _fromDiscardPile;
+        private readonly string _description;
+
+        public SelectPileCardsToHandSkillStep(int count, bool fromDiscardPile)
+        {
+            _count = count;
+            _fromDiscardPile = fromDiscardPile;
+            _countProvider = null;
+        }
+
+        public SelectPileCardsToHandSkillStep(
+            Func<Skill, int> count,
+            bool fromDiscardPile,
+            string description = null
+        )
+        {
+            _count = 0;
+            _countProvider = count;
+            _fromDiscardPile = fromDiscardPile;
+            _description = description;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0 || skill?.OwnerCharater is not PlayerCharacter player)
+                return;
+
+            CharacterControl characterControl = player.BattleNode?.CharacterControl;
+            if (characterControl == null || !GodotObject.IsInstanceValid(characterControl))
+                return;
+
+            if (_fromDiscardPile)
+                await characterControl.SelectDiscardPileCardsToHandAsync(player, count);
+            else
+                await characterControl.SelectDrawPileCardsToHandAsync(player, count);
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (!string.IsNullOrWhiteSpace(_description))
+            {
+                yield return _description.EndsWith("。")
+                    ? _description
+                    : I18n.Format("skill.step.with_period", "{text}。", ("text", _description));
+                yield break;
+            }
+
+            int count = ResolveStepBaseValue(skill, _count, _countProvider);
+            if (count <= 0)
+                yield break;
+
+            string key = _fromDiscardPile
+                ? "skill.step.select_discard_pile_cards_to_hand"
+                : "skill.step.select_draw_pile_cards_to_hand";
+            string fallback = _fromDiscardPile
+                ? "选择弃牌堆中的{count}张牌加入手牌。"
+                : "选择抽牌堆中的{count}张牌加入手牌。";
+            yield return I18n.Format(key, fallback, ("count", count));
         }
     }
 
@@ -5236,22 +5516,9 @@ public partial class Skill
                 return source.ToArray();
             }
 
-            int attackerRow = GetBattleRow(owner.PositionIndex);
             IEnumerable<Character> ordered = target.ByBehindRow
-                ? source
-                    .OrderBy(targetCharacter =>
-                        Math.Abs(GetBattleRow(targetCharacter.PositionIndex) - attackerRow)
-                    )
-                    .ThenBy(targetCharacter => GetBattleRow(targetCharacter.PositionIndex))
-                    .ThenByDescending(targetCharacter =>
-                        GetBattleCol(targetCharacter.PositionIndex)
-                    )
-                : source
-                    .OrderBy(targetCharacter =>
-                        Math.Abs(GetBattleRow(targetCharacter.PositionIndex) - attackerRow)
-                    )
-                    .ThenBy(targetCharacter => GetBattleRow(targetCharacter.PositionIndex))
-                    .ThenBy(targetCharacter => GetBattleCol(targetCharacter.PositionIndex));
+                ? source.OrderByDescending(targetCharacter => targetCharacter.PositionIndex)
+                : source.OrderBy(targetCharacter => targetCharacter.PositionIndex);
 
             return ordered.ToArray();
         }
@@ -5550,21 +5817,11 @@ public partial class Skill
             if (!CanPassEnergyTimesLoop(skill, _times))
                 return Array.Empty<PreviewDamageEntry>();
 
-            IEnumerable<PreviewDamageEntry> entries = CollectPreviewDamage(
-                skill,
-                _loopSteps,
-                context
-            );
             int loopCount = GetPreviewLoopCount(skill);
-            if (loopCount <= 1)
-                return entries;
+            if (loopCount <= 0)
+                return Array.Empty<PreviewDamageEntry>();
 
-            return entries.Select(entry => new PreviewDamageEntry(
-                entry.Target,
-                entry.Damage * loopCount,
-                entry.HitCount * loopCount,
-                entry.PowerMultiplier
-            ));
+            return CollectLoopPreviewDamage(skill, context, loopCount);
         }
 
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
@@ -5583,16 +5840,11 @@ public partial class Skill
             if (!CanPassEnergyTimesLoop(skill, _times))
                 return Array.Empty<PreviewEffectEntry>();
 
-            IEnumerable<PreviewEffectEntry> entries = CollectPreviewEffects(
-                skill,
-                _loopSteps,
-                context
-            );
             int loopCount = GetPreviewLoopCount(skill);
-            if (loopCount <= 1)
-                return entries;
+            if (loopCount <= 0)
+                return Array.Empty<PreviewEffectEntry>();
 
-            return entries.Select(entry => MultiplyPreviewEffectEntry(entry, loopCount));
+            return CollectLoopPreviewEffects(skill, context, loopCount);
         }
 
         private int GetPreviewLoopCount(Skill skill)
@@ -5602,37 +5854,40 @@ public partial class Skill
 
             return skill?.GetPaidEnergyLoopCount() ?? 0;
         }
-    }
 
-    private static PreviewEffectEntry MultiplyPreviewEffectEntry(
-        PreviewEffectEntry entry,
-        int multiplier
-    )
-    {
-        int value = entry.Value * multiplier;
-        return entry.Kind switch
+        private IEnumerable<PreviewDamageEntry> CollectLoopPreviewDamage(
+            Skill skill,
+            PreviewDamageContext context,
+            int loopCount
+        )
         {
-            PreviewEffectKind.Damage => PreviewEffectEntry.Damage(
-                entry.Target,
-                value,
-                entry.HitCount * multiplier,
-                entry.PowerMultiplier,
-                entry.Source,
-                entry.TargetSummary
-            ),
-            PreviewEffectKind.Heal => PreviewEffectEntry.Heal(entry.Target, value, entry.Source),
-            PreviewEffectKind.Block => PreviewEffectEntry.Block(entry.Target, value, entry.Source),
-            PreviewEffectKind.Property when entry.PropertyType.HasValue =>
-                PreviewEffectEntry.Property(
-                    entry.Target,
-                    entry.PropertyType.Value,
-                    value,
-                    entry.Source
-                ),
-            PreviewEffectKind.Buff when entry.BuffName.HasValue =>
-                PreviewEffectEntry.Buff(entry.Target, entry.BuffName.Value, value, entry.Source),
-            _ => entry,
-        };
+            for (int loop = 0; loop < loopCount; loop++)
+            {
+                foreach (
+                    PreviewDamageEntry entry in CollectPreviewDamage(skill, _loopSteps, context)
+                )
+                {
+                    yield return entry;
+                }
+            }
+        }
+
+        private IEnumerable<PreviewEffectEntry> CollectLoopPreviewEffects(
+            Skill skill,
+            PreviewDamageContext context,
+            int loopCount
+        )
+        {
+            for (int loop = 0; loop < loopCount; loop++)
+            {
+                foreach (
+                    PreviewEffectEntry entry in CollectPreviewEffects(skill, _loopSteps, context)
+                )
+                {
+                    yield return entry;
+                }
+            }
+        }
     }
 
     private static bool CanPassTimesGate(Skill skill, Func<int> times)

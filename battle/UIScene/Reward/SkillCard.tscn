@@ -10,10 +10,10 @@ resource_local_to_scene = true
 shader = ExtResource("1_imej8")
 shader_parameter/progress = 0.0
 shader_parameter/center_vanish = 0.0
-shader_parameter/line_density = 80.0
-shader_parameter/line_speed = 8.0
-shader_parameter/aberration_amount = 0.006
-shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
+shader_parameter/line_density = 1.0
+shader_parameter/line_speed = 0.0
+shader_parameter/aberration_amount = 0.0
+shader_parameter/beam_color = Color(0.85128284, 0.9111106, 0.9999997, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -351,7 +351,7 @@ polygon = PackedVector2Array(8, 8, 208, 8, 208, 40.000004, 8, 40.000004)
 [node name="CharacterPlate" type="Polygon2D" parent="SubViewport/BG2" unique_id=1127487847]
 color = Color(0.6901961, 0.84313726, 1, 0.1)
 antialiased = true
-polygon = PackedVector2Array(8, 48, 207.99998, 48, 200, 72, 16, 72)
+polygon = PackedVector2Array(7.9999924, 48, 107.625046, 48, 207.99998, 48, 200, 72, 16, 72)
 
 [node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
 custom_minimum_size = Vector2(204, 24)
@@ -369,13 +369,13 @@ vertical_alignment = 1
 
 [node name="CharacterName" type="Label" parent="SubViewport" unique_id=803558591]
 custom_minimum_size = Vector2(168, 16)
-offset_left = 36.0
-offset_top = 60.0
-offset_right = 204.0
-offset_bottom = 76.0
+offset_left = 34.166664
+offset_top = 57.5
+offset_right = 202.16666
+offset_bottom = 80.5
 theme_override_colors/font_color = Color(1, 1, 1, 0.92)
-theme_override_font_sizes/font_size = 14
-text = "name"
+theme_override_font_sizes/font_size = 16
+text = "name回声"
 horizontal_alignment = 1
 vertical_alignment = 1
 

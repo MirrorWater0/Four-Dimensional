@@ -5,13 +5,14 @@ using Godot;
 public partial class Armon : EnemyCharacter
 {
     private const int FirstTurnEndBlockMultiplier = 2;
+    private const int FirstTurnEndBaseBlock = 18;
 
     private bool _grantedFirstTurnEndBlock;
 
     public const string PassiveNameText = "矩阵核心";
 
     public static string UpdatedPassiveDescriptionText =>
-        $"第一次回合结束时：全阵获得{FirstTurnEndBlockMultiplier}x（生存）点格挡。";
+        $"第一次阵营回合结束时：全阵获得{FirstTurnEndBaseBlock}+{FirstTurnEndBlockMultiplier}x（生存）点格挡。";
 
     public override string CharacterName { get; set; } = "Armon";
 
@@ -41,7 +42,11 @@ public partial class Armon : EnemyCharacter
 
         using var _ = BeginEffectSource("被动");
 
-        int block = Math.Clamp(BattleSurvivability * FirstTurnEndBlockMultiplier, 0, 999);
+        int block = Math.Clamp(
+            FirstTurnEndBaseBlock + BattleSurvivability * FirstTurnEndBlockMultiplier,
+            0,
+            999
+        );
         var allies = BattleNode.GetTeamCharacters(IsPlayer, includeSummons: true);
 
         foreach (var ally in allies.Where(x => x != null && x.State == CharacterState.Normal))
@@ -61,9 +66,10 @@ public partial class ArmonRegedit : EnemyRegedit
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
         MaxLife = 66;
-        Power = 19;
-        Survivability = 9;
-        Speed = 7;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSurvive, SkillID.ArmonSpecial];
 
         PassiveName = global::Armon.PassiveNameText;
@@ -73,7 +79,8 @@ public partial class ArmonRegedit : EnemyRegedit
 
 public partial class ArmonAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 19;
+    private const int AllyBaseBlock = 9;
 
     public ArmonAttack()
         : base(SkillTypes.Attack)
@@ -88,15 +95,15 @@ public partial class ArmonAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            BlockStep(target: TargetReference.Previous),
-            BlockStep(target: TargetReference.Next)
+            BlockStep(baseBlock: AllyBaseBlock, target: TargetReference.Previous),
+            BlockStep(baseBlock: AllyBaseBlock, target: TargetReference.Next)
         );
     }
 }
 
 public partial class ArmonSurvive : Skill
 {
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 18;
     private const int EnergyGain = 2;
 
     public ArmonSurvive()
@@ -136,7 +143,7 @@ public partial class ArmonSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0),
+            AttackStep(baseDamage: 19),
             WhileStep(
                 loopSteps: new[]
                 {

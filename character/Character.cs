@@ -18,6 +18,12 @@ public partial class Character : Node2D
 
     private const ulong IncreasePropertyEffectCooldownMsec = 300;
     private const int SkillTooltipDelayMs = 120;
+    private const float BlockDisplayFadeDuration = 0.2f;
+    private const float BlockDisplayShowScaleFactor = 1.8f;
+    private const float BlockGhostExplodeAlphaScale = 0.45f;
+    private static readonly Vector2 BlockGhostExplodeScale = new(1.35f, 1.35f);
+    private static readonly Color BlockedLifeBarFillColor = Color.FromHtml("#70d2ff");
+    private static readonly Color BlockedBufferBarFillColor = Color.FromHtml("#9EDBFFF2");
     private static readonly PackedScene TooltipScene = ResourceLoader.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
     );
@@ -45,10 +51,9 @@ public partial class Character : Node2D
                 BattleNode?.ClearNextActionPreviewCharacter(this);
             if (changed)
                 BattleNode?.RefreshTurnOrderPreview();
-            RefreshBattleActionPoinUi();
         }
     }
-    public BoxContainer StateIconContainer => field ??= GetNode<BoxContainer>("State");
+    public GridContainer StateIconContainer => field ??= GetNode<GridContainer>("State");
 
     //charater basic properties
     [Export]
@@ -70,9 +75,14 @@ public partial class Character : Node2D
 
     public int BattleSurvivability { get; private set; }
 
+    public int BasePowerContribution { get; private set; }
+
+    public int BaseSurvivabilityContribution { get; private set; }
+
     public int Speed { get; private set; }
     public int Block { get; protected set; }
-    public int Energy { get; protected set; } = 1;
+    public int EnergySources { get; protected set; } = 0;
+    public int CurrentEnergy => IsPlayer ? BattleNode?.PlayerEnergy ?? 0 : EnergySources;
 
     private string _passiveName;
     protected virtual string PassiveNameKey =>
@@ -90,7 +100,8 @@ public partial class Character : Node2D
     public Label DefenseLabel;
     public Label SpeedLabel;
     public Label BlockLabel => field ??= GetNode<Label>("LifeBar/Block");
-    public ProgressBar BlockBar => field ??= GetNode<ProgressBar>("LifeBar/BlockBar");
+    private Control BlockIcon =>
+        field ??= GetNodeOrNull<Control>("LifeBar/Block/SurvivabilityIcon");
     public ProgressBar LifeBar => field ??= GetNode<ProgressBar>("LifeBar");
     public ProgressBar BufferBar => field ??= GetNode<ProgressBar>("LifeBar/BufferBar");
     public Label PowerIconLabel => field ??= GetNode<Label>("State/PowerIcon/Label");
@@ -98,6 +109,7 @@ public partial class Character : Node2D
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
     public Label SpeedIconLabel => field ??= GetNode<Label>("State/SpeedIcon/Label");
     public Label EnergeIconLabel => field ??= GetNode<Label>("State/EnergeIcon/Label");
+    private Control EnergeIcon => field ??= GetNodeOrNull<Control>("State/EnergeIcon");
     private Control TurnOrderPreviewRoot => field ??= GetNodeOrNull<Control>("TurnOrderPreview");
     private ColorRect TurnOrderPreviewCircle =>
         field ??= GetNodeOrNull<ColorRect>("TurnOrderPreview/Circle");
@@ -136,9 +148,9 @@ public partial class Character : Node2D
     public virtual bool IsSummon => false;
     public virtual bool IsFullCharacter => true;
     public virtual bool ParticipatesInTurnRotation => true;
-    public virtual bool CountsTowardTeamSpeed => true;
     public virtual bool TriggersSkillUseEvents => true;
     public virtual bool ClearsBlockOnActionStart => true;
+    protected virtual bool ResolvesTurnStartOnActionStart => true;
     private readonly HashSet<Buff.BuffName> _seenBuffs = new();
     public List<SummonCharacter> Summons { get; } = new();
 
@@ -169,9 +181,16 @@ public partial class Character : Node2D
     private Tween _bufferBarTween;
     private Tween _lifeBarTween;
     private Tween _lifeBarMaxTween;
+    private StyleBox _defaultLifeBarFillStyle;
+    private StyleBox _defaultBufferBarFillStyle;
+    private bool _lifeBarBlockColorActive;
+    private Tween _blockDisplayTween;
+    private Vector2 _blockLabelBaseScale;
+    private bool _blockLabelBaseScaleCached;
     private Tween _nextActionPreviewTween;
     private Tween _trailPreviewTween;
     private Tween _turnOrderPreviewTween;
+    private Control _energyUsePreviewFrame;
     private bool _nextActionPreviewVisible;
     private Color _nextActionPreviewColor = new(1f, 1f, 1f, 0.82f);
     private Gradient _defaultTrailLineGradient;
@@ -207,6 +226,17 @@ public partial class Character : Node2D
         BattleMaxLife = MaxLife;
     }
 
+    protected void SetBaseCombatStatContributions(int power, int survivability)
+    {
+        BasePowerContribution = power;
+        BaseSurvivabilityContribution = survivability;
+    }
+
+    public int GetEffectivePowerForSkillScaling() => BattlePower + BasePowerContribution;
+
+    public int GetEffectiveSurvivabilityForSkillScaling() =>
+        BattleSurvivability + BaseSurvivabilityContribution;
+
     public void ConfigureCombatStats(int power, int survivability, int speed, int maxLife)
     {
         SetCombatStats(power, survivability, speed, maxLife);
@@ -223,15 +253,21 @@ public partial class Character : Node2D
             ScaleCombatStat(Speed, multiplier),
             ScaleCombatStat(BattleMaxLife, multiplier)
         );
+        SetBaseCombatStatContributions(
+            ScaleCombatStat(BasePowerContribution, multiplier),
+            ScaleCombatStat(BaseSurvivabilityContribution, multiplier)
+        );
 
         Life = refillLife ? BattleMaxLife : Math.Min(Life, BattleMaxLife);
         SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
         SpeedIconLabel.Text = Speed.ToString();
-        EnergeIconLabel.Text = Energy.ToString();
+        EnergeIconLabel.Text = EnergySources.ToString();
+        RefreshCombatStatIconVisibility();
+        RefreshEnergyIconVisibility();
+        SetEnergyUsePreviewVisible(false);
         InvalidateHoverTooltipCache();
-        RefreshBattleActionPoinUi();
     }
 
     private static int ScaleCombatStat(int value, float multiplier)
@@ -256,16 +292,17 @@ public partial class Character : Node2D
         //初始化数值
         State = CharacterState.Normal;
 
-        BlockLabel.Text = Block.ToString();
         Life = BattleMaxLife;
         SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-        EnergeIconLabel.Text = Energy.ToString();
-        SpeedIconLabel.Text = Speed.ToString();
+        EnergeIconLabel.Text = EnergySources.ToString();
+        RefreshCombatStatIconVisibility();
+        RefreshEnergyIconVisibility();
 
         Block = 0;
-        BlockLabel.Text = Block.ToString();
+        RefreshBlockDisplay(immediate: true);
+        RefreshLifeBarBlockColor();
 
         Hoverframe.PivotOffset = Hoverframe.Size / 2;
         _isHoverframeHovered = false;
@@ -514,7 +551,6 @@ public partial class Character : Node2D
 
         const string separator = "[hr]\n";
         const string skillNameColor = "#b56bff";
-        const string energyCostNumberColor = "#ffd36b";
         int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
 
         var validSkills = Skills.Where(x => x != null).ToArray();
@@ -531,9 +567,6 @@ public partial class Character : Node2D
 
             sb.Append(
                 $"[font_size={skillNameFontSize}][color={skillNameColor}]{skill.SkillName}[/color][/font_size]  [color=#cccccc]({skill.SkillType.GetDescription()})[/color]\n"
-            );
-            sb.Append(
-                $"{I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", $"[color={energyCostNumberColor}]{skill.CardEnergyCostText}[/color]"))}\n"
             );
             if (!string.IsNullOrWhiteSpace(skill.Description))
                 sb.Append(skill.Description);
@@ -564,12 +597,16 @@ public partial class Character : Node2D
             return;
 
         SkillID[] drawPileIds =
-            player.BattleNode?.GetDrawBattleCardPile(player)
+            GetSkillIdsFromPileEntries(player.BattleNode?.GetOwnedDrawBattleCardPileEntries(player))
             ?? GetOwnedPlayerSkillIds(player.CharacterIndex);
         SkillID[] discardPileIds =
-            player.BattleNode?.GetDiscardBattleCardPile(player) ?? Array.Empty<SkillID>();
+            GetSkillIdsFromPileEntries(
+                player.BattleNode?.GetOwnedDiscardBattleCardPileEntries(player)
+            ) ?? Array.Empty<SkillID>();
         SkillID[] exhaustedIds =
-            player.BattleNode?.GetExhaustedBattleCardPile(player) ?? Array.Empty<SkillID>();
+            GetSkillIdsFromPileEntries(
+                player.BattleNode?.GetOwnedExhaustedBattleCardPileEntries(player)
+            ) ?? Array.Empty<SkillID>();
 
         const string skillNameColor = "#b56bff";
         int skillNameFontSize = UserSettings.ScaleTextFontSize(32);
@@ -617,6 +654,13 @@ public partial class Character : Node2D
         return (
             GameInfo.PlayerCharacters[characterIndex].GainedSkills ?? new List<SkillID>()
         ).ToArray();
+    }
+
+    private static SkillID[] GetSkillIdsFromPileEntries(
+        Battle.BattleCardPileEntry[] entries
+    )
+    {
+        return entries?.Select(entry => entry.SkillId).ToArray();
     }
 
     private static Skill[] GetSkillsFromIds(IEnumerable<SkillID> skillIds)
@@ -884,15 +928,6 @@ public partial class Character : Node2D
 
     public override void _Process(double delta)
     {
-        if (Block > 0)
-        {
-            BlockBar.Visible = true;
-        }
-        else
-        {
-            BlockBar.Visible = false;
-        }
-
         if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Invisible))
         {
             Sprite.SelfModulate = new Color(0.8f, 0.8f, 1f, 0.95f);
@@ -942,18 +977,24 @@ public partial class Character : Node2D
     public virtual void StartAction()
     {
         BattleNode?.SetCurrentActionCharacter(this);
-        ResolveTurnStartPhase();
+        if (ResolvesTurnStartOnActionStart)
+            ResolveTurnStartPhase();
 
         OnActionStart();
         _customTrailPreviewVisible = false;
         RefreshCurvedTrailPreviewLine();
-        TrailAnimation.Play("trail");
+        bool showActionTrail = !(IsPlayer && BattleNode?.IsResolvingPlayerTeamActionPhase == true);
+        if (showActionTrail)
+            TrailAnimation.Play("trail");
         _nextActionPreviewVisible = false;
         _nextActionPreviewTween?.Kill();
         _trailPreviewTween?.Kill();
         RestoreDefaultTrailLineStyle();
         RestoreDefaultTrailGeometry();
-        CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
+        if (showActionTrail)
+            CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 1f), 0.2f);
+        else if (trail != null)
+            trail.Modulate = new Color(1, 0, 0, 0f);
     }
 
     public void ShowNextActionPreview()
@@ -1133,26 +1174,8 @@ public partial class Character : Node2D
             }
         }
 
-        if (ClearsBlockOnActionStart)
-        {
-            bool keepBlock =
-                StartActionBuffs != null
-                && StartActionBuffs.Any(x =>
-                    x != null
-                    && x.Stack > 0
-                    && StartActionBuff.KeepsBlockOnTurnStart(x.ThisBuffName)
-                );
-
-            if (!keepBlock)
-            {
-                Block = 0;
-                UpdataBlock(0);
-            }
-
-            ClearOwnedSummonsBlock();
-        }
-
-        UpdataEnergy(TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this));
+        if (!IsPlayer)
+            UpdataEnergy(TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this));
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -1164,6 +1187,31 @@ public partial class Character : Node2D
         {
             buff.Trigger();
         }
+    }
+
+    public void ResolveTeamTurnStartPhase()
+    {
+        ResolveTurnStartPhase();
+    }
+
+    public void ResolveBlockExpirationAtTeamTurnStart()
+    {
+        if (!ClearsBlockOnActionStart)
+            return;
+
+        bool keepBlock =
+            StartActionBuffs != null
+            && StartActionBuffs.Any(x =>
+                x != null && x.Stack > 0 && StartActionBuff.KeepsBlockOnTurnStart(x.ThisBuffName)
+            );
+
+        if (!keepBlock)
+        {
+            Block = 0;
+            UpdataBlock(0);
+        }
+
+        ClearOwnedSummonsBlock();
     }
 
     private void ClearOwnedSummonsBlock()
@@ -1189,7 +1237,6 @@ public partial class Character : Node2D
         var battleNode = BattleNode;
         if (battleNode == null || !GodotObject.IsInstanceValid(battleNode))
             return;
-        await ResolveTurnEndPhaseAsync();
 
         await battleNode.EndEmitS(this);
         CreateTween().TweenProperty(trail, "modulate", new Color(1, 0, 0, 0), 0.2f);
@@ -1208,6 +1255,11 @@ public partial class Character : Node2D
         }
 
         OnTurnEnd();
+    }
+
+    public Task ResolveTeamTurnEndPhaseAsync()
+    {
+        return ResolveTurnEndPhaseAsync();
     }
 
     public virtual async Task GetHurt(
@@ -1249,6 +1301,7 @@ public partial class Character : Node2D
         Block = Math.Clamp(Block - (int)damage, 0, 99999);
         UpdataBlock(0);
         AnimateLifeBarsAfterDamage();
+        BattleNode?.SyncPlayerLifeToGameInfo();
         BattleNode?.RecordDamage(this, actualDamage, blockedDamage, source);
         if (actualDamage > 0)
             source?.OnDealUnblockedDamage(this, actualDamage, damageKind);
@@ -1300,19 +1353,26 @@ public partial class Character : Node2D
 
     public virtual void Recover(int num, bool rebirth = false, Character source = null)
     {
-        int heal = Math.Clamp(num + BattleSurvivability, 0, 999);
+        int heal = Math.Clamp(num, 0, 999);
         ApplyRecover(heal, rebirth, source, canRevive: num > 0);
     }
 
     private void ApplyRecover(int heal, bool rebirth, Character source, bool canRevive)
     {
-        if (State == CharacterState.Dying && !rebirth)
-            return;
+        if (State == CharacterState.Dying)
+        {
+            if (!rebirth)
+                return;
+
+            if (IsPlayer && BattleNode != null && !BattleNode.CanReviveDyingPlayerNow())
+                return;
+        }
 
         int previousLife = Life;
         Life = Math.Clamp(Life + heal, 0, BattleMaxLife);
         int actualHeal = Life - previousLife;
         AnimateLifeBarsAfterRecover();
+        BattleNode?.SyncPlayerLifeToGameInfo();
         global::Number.Spawn(this, heal.ToString("+0;-0;0"), heal >= 0 ? Colors.Green : Colors.Red);
 
         var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
@@ -1378,26 +1438,59 @@ public partial class Character : Node2D
 
     public virtual void UpdataEnergy(int num, Character source = null)
     {
-        int oldEnergy = Math.Max(0, Energy);
+        if (IsPlayer && BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
+        {
+            int actualPlayerDelta = BattleNode.UpdataPlayerEnergy(num, source ?? this);
+            if (actualPlayerDelta == 0)
+                return;
+
+            if (actualPlayerDelta > 0)
+            {
+                BattleNode?.BattleAnimationPlayer?.Play("blue");
+            }
+            else
+            {
+                var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+                effect.Position = new Vector2(0, -50);
+                AddChild(effect);
+                effect.Animation.Play("energe");
+            }
+
+            BuffHintLabel.Spawn(
+                this,
+                $"[color=#87CEEB]Energy[/color] {actualPlayerDelta:+0;-0;0}",
+                GlobalPosition
+            );
+            return;
+        }
+
+        int oldEnergy = Math.Max(0, EnergySources);
         int newEnergy = Math.Max(0, oldEnergy + num);
         int actualDelta = newEnergy - oldEnergy;
 
-        if (actualDelta > 0)
-        {
-            BattleNode?.BattleAnimationPlayer?.Play("blue");
-        }
-        Energy = newEnergy;
-        EnergeIconLabel.Text = Energy.ToString();
+        EnergySources = newEnergy;
+        EnergeIconLabel.Text = EnergySources.ToString();
+        RefreshEnergyIconVisibility();
         InvalidateSkillTooltipCache();
         if (IsPlayer)
             BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
         if (actualDelta == 0)
             return;
+        if (!IsPlayer)
+            return;
 
-        var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        Effect.Position = new Vector2(0, -50);
-        AddChild(Effect);
-        Effect.Animation.Play("energe");
+        if (actualDelta > 0)
+        {
+            BattleNode?.BattleAnimationPlayer?.Play("blue");
+        }
+        else
+        {
+            var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
+            Effect.Position = new Vector2(0, -50);
+            AddChild(Effect);
+            Effect.Animation.Play("energe");
+        }
+
         BuffHintLabel.Spawn(
             this,
             $"[color=#87CEEB]Energy[/color] {actualDelta:+0;-0;0}",
@@ -1406,6 +1499,83 @@ public partial class Character : Node2D
 
         if (source != null || BattleNode?.HasEffectSourceContext == true)
             BattleNode?.RecordEnergyChange(this, actualDelta, source);
+    }
+
+    private void RefreshEnergyIconVisibility()
+    {
+        if (EnergeIcon != null)
+            EnergeIcon.Visible = IsPlayer;
+    }
+
+    public void SetEnergyUsePreviewVisible(bool visible)
+    {
+        Control frame = EnsureEnergyUsePreviewFrame();
+        if (frame == null)
+            return;
+
+        frame.Visible = visible && IsPlayer && State != CharacterState.Dying;
+        if (frame.Visible)
+            EnergeIconLabel?.MoveToFront();
+    }
+
+    private Control EnsureEnergyUsePreviewFrame()
+    {
+        Control icon = EnergeIcon;
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
+            return null;
+
+        if (_energyUsePreviewFrame != null && GodotObject.IsInstanceValid(_energyUsePreviewFrame))
+            return _energyUsePreviewFrame;
+
+        var frame = new Panel
+        {
+            Name = "EnergyUsePreviewFrame",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            Visible = false,
+            ZIndex = 1,
+        };
+        frame.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        frame.OffsetLeft = -7f;
+        frame.OffsetTop = -7f;
+        frame.OffsetRight = 7f;
+        frame.OffsetBottom = 7f;
+
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color(1f, 1f, 1f, 0f),
+            BorderColor = new Color(0.62f, 0.96f, 1f, 1f),
+            BorderWidthLeft = 3,
+            BorderWidthTop = 3,
+            BorderWidthRight = 3,
+            BorderWidthBottom = 3,
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomLeft = 4,
+            CornerRadiusBottomRight = 4,
+            ShadowColor = new Color(0.28f, 0.92f, 1f, 0.42f),
+            ShadowSize = 8,
+        };
+        frame.AddThemeStyleboxOverride("panel", style);
+
+        icon.AddChild(frame);
+        EnergeIconLabel.ZIndex = 2;
+        EnergeIconLabel.MoveToFront();
+        _energyUsePreviewFrame = frame;
+        return _energyUsePreviewFrame;
+    }
+
+    private void RefreshCombatStatIconVisibility()
+    {
+        SetCombatStatIconVisibility(PowerIconLabel, BattlePower);
+        SetCombatStatIconVisibility(SurvivabilityIconLabel, BattleSurvivability);
+        if (SpeedIconLabel?.GetParent() is CanvasItem speedIcon)
+            speedIcon.Visible = false;
+    }
+
+    private static void SetCombatStatIconVisibility(Label label, int value)
+    {
+        if (label?.GetParent() is CanvasItem icon)
+            icon.Visible = value != 0;
     }
 
     public void UpdataBlock(int num, bool record = true, Character source = null)
@@ -1420,7 +1590,8 @@ public partial class Character : Node2D
             AudioManager.PlayBlockGain(this);
         }
         Block = Math.Clamp(Block + num, 0, 999);
-        BlockLabel.Text = Block.ToString();
+        RefreshBlockDisplay();
+        RefreshLifeBarBlockColor();
         BattleNode?.RefreshEnemyIntentionPreviews();
 
         if (num > 0)
@@ -1451,22 +1622,16 @@ public partial class Character : Node2D
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Speed:
-                Speed -= value;
-                icon = SpeedIconLabel.GetParent() as ColorRect;
-                RefreshBattleActionPoinUi();
-                break;
+                return;
             case PropertyType.MaxLife:
-                BattleMaxLife -= value;
-                Life = Math.Min(Life, BattleMaxLife);
-                AnimateLifeBarCapacityChange();
-                break;
+                return;
         }
 
         if (icon != null)
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-            SpeedIconLabel.Text = Speed.ToString();
+            RefreshCombatStatIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
@@ -1482,6 +1647,39 @@ public partial class Character : Node2D
         );
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, -value, source);
+        BattleNode?.RefreshEnemyIntentionPreviews();
+        await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
+    }
+
+    public async Task DescendingMaxLifeFromPassive(int value, Character source = null)
+    {
+        if (value <= 0)
+            return;
+
+        if (SpecialBuff.TryConsumeDebuffImmunity(this, source))
+            return;
+
+        int appliedValue = Math.Min(value, Math.Max(0, BattleMaxLife - 1));
+        if (appliedValue <= 0)
+            return;
+
+        BattleMaxLife -= appliedValue;
+        Life = Math.Min(Life, BattleMaxLife);
+        AnimateLifeBarCapacityChange();
+        BattleNode?.SyncPlayerLifeToGameInfo();
+
+        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
+        AddChild(characterEffect);
+        characterEffect.Animation.Play("lightning");
+
+        BuffHintLabel.Spawn(
+            this,
+            $"{Skill.GetColoredPropertyLabel(PropertyType.MaxLife)} -{appliedValue}",
+            GlobalPosition + new Vector2(0, 150),
+            randomOffset: true
+        );
+        InvalidateSkillTooltipCache();
+        BattleNode?.RecordPropertyChange(this, PropertyType.MaxLife, -appliedValue, source);
         BattleNode?.RefreshEnemyIntentionPreviews();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
@@ -1507,14 +1705,9 @@ public partial class Character : Node2D
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
             case PropertyType.Speed:
-                Speed += appliedValue;
-                icon = SpeedIconLabel.GetParent() as ColorRect;
-                RefreshBattleActionPoinUi();
-                break;
+                return;
             case PropertyType.MaxLife:
-                BattleMaxLife += appliedValue;
-                AnimateLifeBarCapacityChange();
-                break;
+                return;
         }
 
         TryPlayIncreasePropertyEffect();
@@ -1523,7 +1716,7 @@ public partial class Character : Node2D
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-            SpeedIconLabel.Text = Speed.ToString();
+            RefreshCombatStatIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
@@ -1537,15 +1730,6 @@ public partial class Character : Node2D
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
         BattleNode?.RefreshEnemyIntentionPreviews();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
-    }
-
-    private void RefreshBattleActionPoinUi()
-    {
-        if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
-            return;
-
-        BattleNode.RequestActionPoinUiRefresh(IsPlayer);
-        BattleNode.RefreshTurnOrderPreview();
     }
 
     private void TryPlayIncreasePropertyEffect()
@@ -1590,10 +1774,10 @@ public partial class Character : Node2D
 
     public virtual void OnTurnEnd()
     {
-        if (IsPlayer && Energy > 0)
+        if (!IsPlayer && EnergySources > 0)
         {
             int energyLossReduction = SpecialBuff.GetEnergyStorageReduction(this);
-            int energyLoss = Math.Max(0, Energy - energyLossReduction);
+            int energyLoss = Math.Max(0, EnergySources - energyLossReduction);
             if (energyLoss > 0)
                 UpdataEnergy(-energyLoss, this);
         }
@@ -1609,7 +1793,7 @@ public partial class Character : Node2D
         tween = null;
     }
 
-    private void SyncLifeBarsToCurrent(bool syncBufferValue)
+    protected void SyncLifeBarsToCurrent(bool syncBufferValue)
     {
         if (LifeBar == null || BufferBar == null)
             return;
@@ -1624,6 +1808,146 @@ public partial class Character : Node2D
             ? clampedLife
             : Math.Clamp(BufferBar.Value, 0, BattleMaxLife);
         LifeLabel.Text = $"{Life}/{BattleMaxLife}";
+        RefreshLifeBarBlockColor();
+    }
+
+    private void RefreshLifeBarBlockColor()
+    {
+        if (LifeBar == null || BufferBar == null)
+            return;
+
+        CacheDefaultLifeBarFillStyles();
+        bool hasBlock = Block > 0;
+        if (_lifeBarBlockColorActive == hasBlock)
+            return;
+
+        _lifeBarBlockColorActive = hasBlock;
+        if (hasBlock)
+        {
+            ApplyProgressBarFillColor(LifeBar, _defaultLifeBarFillStyle, BlockedLifeBarFillColor);
+            ApplyProgressBarFillColor(
+                BufferBar,
+                _defaultBufferBarFillStyle,
+                BlockedBufferBarFillColor
+            );
+            return;
+        }
+
+        RestoreProgressBarFillStyle(LifeBar, _defaultLifeBarFillStyle);
+        RestoreProgressBarFillStyle(BufferBar, _defaultBufferBarFillStyle);
+    }
+
+    private void RefreshBlockDisplay(bool immediate = false)
+    {
+        CacheBlockLabelBaseScale();
+        bool hasBlock = Block > 0;
+        bool wasVisible = BlockLabel.Visible;
+        BlockLabel.Text = Block.ToString();
+        _blockDisplayTween?.Kill();
+
+        if (immediate)
+        {
+            BlockLabel.Visible = hasBlock;
+            BlockLabel.Scale = _blockLabelBaseScale;
+            BlockLabel.Modulate = hasBlock ? Colors.White : new Color(1f, 1f, 1f, 0f);
+            return;
+        }
+
+        if (hasBlock)
+        {
+            if (!wasVisible)
+            {
+                BlockLabel.Visible = true;
+                BlockLabel.Scale = _blockLabelBaseScale * BlockDisplayShowScaleFactor;
+                BlockLabel.Modulate = new Color(1f, 1f, 1f, 0f);
+
+                _blockDisplayTween = CreateTween();
+                _blockDisplayTween.SetParallel(true);
+                _blockDisplayTween.TweenProperty(
+                    BlockLabel,
+                    "modulate",
+                    Colors.White,
+                    BlockDisplayFadeDuration
+                );
+                _blockDisplayTween
+                    .TweenProperty(
+                        BlockLabel,
+                        "scale",
+                        _blockLabelBaseScale,
+                        BlockDisplayFadeDuration
+                    )
+                    .SetEase(Tween.EaseType.Out);
+            }
+            else
+            {
+                BlockLabel.Scale = _blockLabelBaseScale;
+                BlockLabel.Modulate = Colors.White;
+            }
+            return;
+        }
+
+        if (!wasVisible)
+        {
+            BlockLabel.Scale = _blockLabelBaseScale;
+            BlockLabel.Modulate = new Color(1f, 1f, 1f, 0f);
+            return;
+        }
+
+        if (BlockIcon != null)
+        {
+            Buff.GhostExplode(
+                BlockIcon,
+                BlockGhostExplodeScale,
+                LifeBar,
+                useOffsetMotion: false,
+                removeFirstChild: false,
+                alphaScale: BlockGhostExplodeAlphaScale
+            );
+        }
+        BlockLabel.Visible = false;
+        BlockLabel.Scale = _blockLabelBaseScale;
+        BlockLabel.Modulate = Colors.White;
+    }
+
+    private void CacheBlockLabelBaseScale()
+    {
+        if (_blockLabelBaseScaleCached)
+            return;
+
+        _blockLabelBaseScale = BlockLabel.Scale == Vector2.Zero ? Vector2.One : BlockLabel.Scale;
+        _blockLabelBaseScaleCached = true;
+    }
+
+    private void CacheDefaultLifeBarFillStyles()
+    {
+        _defaultLifeBarFillStyle ??=
+            LifeBar.GetThemeStylebox("fill", "ProgressBar")?.Duplicate() as StyleBox;
+        _defaultBufferBarFillStyle ??=
+            BufferBar.GetThemeStylebox("fill", "ProgressBar")?.Duplicate() as StyleBox;
+    }
+
+    private static void ApplyProgressBarFillColor(
+        ProgressBar bar,
+        StyleBox defaultFillStyle,
+        Color fillColor
+    )
+    {
+        if (bar == null || defaultFillStyle == null)
+            return;
+
+        var fillStyle = defaultFillStyle.Duplicate() as StyleBox;
+        if (fillStyle is StyleBoxFlat flat)
+            flat.BgColor = fillColor;
+
+        bar.AddThemeStyleboxOverride("fill", fillStyle);
+    }
+
+    private static void RestoreProgressBarFillStyle(ProgressBar bar, StyleBox defaultFillStyle)
+    {
+        if (bar == null || defaultFillStyle == null)
+            return;
+
+        bar.AddThemeStyleboxOverride("fill", defaultFillStyle.Duplicate() as StyleBox);
     }
 
     private void AnimateLifeBarsAfterDamage(double duration = 0.2)

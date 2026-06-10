@@ -11,7 +11,7 @@ public partial class War : EnemyCharacter
 
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
-        "回合开始时：优先在有存活玩家角色的排随机召唤1个召唤物。";
+        "阵营回合结束时：优先在有存活玩家角色的排随机召唤1个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -22,9 +22,9 @@ public partial class War : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void OnTurnStart()
+    public override void OnTurnEnd()
     {
-        base.OnTurnStart();
+        base.OnTurnEnd();
         _ = SummonAtRandomEmptySlot();
     }
 
@@ -76,13 +76,15 @@ public partial class WarRegedit : EnemyRegedit
     {
         CharacterName = "War";
         PType = EnemyPositionType.BackRow;
+        PositionIndex = Battle.MaxEnemyFormationSlots;
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 226;
-        Power = 9;
-        Survivability = 7;
-        Speed = 10;
+        MaxLife = 326;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
 
         PassiveName = global::War.PassiveNameText;
@@ -92,7 +94,7 @@ public partial class WarRegedit : EnemyRegedit
 
 public partial class WarAttack : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 9;
     private const int ThrallPowerGain = 2;
 
     public WarAttack()
@@ -107,11 +109,7 @@ public partial class WarAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: BaseDamage,
-                multiplier: 2,
-                target: HostileTargetReference.Random
-            ),
+            AttackStep(baseDamage: BaseDamage, times: 2),
             ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
         );
     }
@@ -119,8 +117,8 @@ public partial class WarAttack : Skill
 
 public partial class WarSurvive : Skill
 {
-    private const int BaseBlock = 7;
-    private const int SelfSurvivabilityGain = 2;
+    private const int BaseBlock = 13;
+    private const int SelfSurvivabilityGain = 4;
     private const int ThrallBlock = 0;
 
     public WarSurvive()
@@ -137,7 +135,7 @@ public partial class WarSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             BlockSummonsStep(baseBlock: ThrallBlock),
-            HealStep(0),
+            HealStep(15),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
@@ -158,7 +156,7 @@ public partial class WarSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 0),
+            AttackStep(baseDamage: 9),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             ModifyPropertyStep(PropertyType.Power, 2)

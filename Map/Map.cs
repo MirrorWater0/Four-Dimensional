@@ -17,38 +17,38 @@ public partial class Map : Control
     public DynamicCamera Camera => field ??= GetNode("Camera") as DynamicCamera;
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
     public Label RegionLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/RegionLabel")
-            ?? GetNodeOrNull<Label>("UI/RegionLabel");
+        field ??=
+            GetNodeOrNull<Label>("MapLabel/RegionLabel") ?? GetNodeOrNull<Label>("UI/RegionLabel");
     public Label DifficultyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
     private Label TransitionEnergyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Label");
     private Label RelicLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/RelicContainer/Label");
-    private Label ReadyButtonLabel =>
-        field ??= GetNodeOrNull<Label>("UI/ReadyButton/Label");
+    private Label ReadyButtonLabel => field ??= GetNodeOrNull<Label>("UI/ReadyButton/Label");
     private Label NodeLegendTitleLabel =>
         field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Title");
     private Label NodeLegendNormalLabel =>
-        field ??=
-            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row/Label");
+        field ??= GetNodeOrNull<Label>(
+            "MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row/Label"
+        );
     private Label NodeLegendEventLabel =>
-        field ??=
-            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row/Label");
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row/Label");
     private Label NodeLegendShopLabel =>
-        field ??=
-            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row/Label");
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row/Label");
+    private Label NodeLegendRestLabel =>
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Rest/Row/Label");
     private Label NodeLegendEliteLabel =>
-        field ??=
-            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row/Label");
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row/Label");
     private Label NodeLegendBossLabel =>
-        field ??=
-            GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row/Label");
+        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row/Label");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
-    private TextureRect MiniMapPreview => field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
+    private TextureRect MiniMapPreview =>
+        field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
     private Control MiniMapPlayerIndicator =>
         field ??= GetNodeOrNull<Control>("UI/MiniMap/MapPreview/PlayerIndicator");
-    private LevelProgress LevelProgressNode => field ??= GetNodeOrNull<LevelProgress>("LevelProgress");
+    private LevelProgress LevelProgressNode =>
+        field ??= GetNodeOrNull<LevelProgress>("LevelProgress");
     private Control NodeTypeLegend => field ??= GetNodeOrNull<Control>("MapLabel/NodeTypeLegend");
 
     [Export(PropertyHint.Range, "0,40,1")]
@@ -346,7 +346,7 @@ public partial class Map : Control
         HideForMapPeek(MenuLayer);
         HideForMapPeek(GetNodeOrNull<CanvasItem>("UI/ReadyButton"));
         HideRootCanvasLayersForMapPeek();
-        HideBattleRewardsForMapPeek();
+        HideBattleOverlaysForMapPeek();
 
         _isDrag = false;
         _isDragActive = false;
@@ -394,16 +394,16 @@ public partial class Map : Control
         }
     }
 
-    private void HideBattleRewardsForMapPeek()
+    private void HideBattleOverlaysForMapPeek()
     {
         var root = GetTree()?.Root;
         if (root == null)
             return;
 
-        HideBattleRewardsForMapPeek(root);
+        HideBattleOverlaysForMapPeek(root);
     }
 
-    private void HideBattleRewardsForMapPeek(Node node)
+    private void HideBattleOverlaysForMapPeek(Node node)
     {
         if (node == null || !GodotObject.IsInstanceValid(node) || node.IsQueuedForDeletion())
             return;
@@ -411,8 +411,28 @@ public partial class Map : Control
         if (node is Reward)
             HideForMapPeek(node);
 
+        if (node is Battle battle)
+            HideBattleCanvasLayersForMapPeek(battle);
+
         foreach (Node child in node.GetChildren())
-            HideBattleRewardsForMapPeek(child);
+            HideBattleOverlaysForMapPeek(child);
+    }
+
+    private void HideBattleCanvasLayersForMapPeek(Node node)
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node) || node.IsQueuedForDeletion())
+            return;
+
+        foreach (Node child in node.GetChildren())
+        {
+            if (child == null || !GodotObject.IsInstanceValid(child) || child.IsQueuedForDeletion())
+                continue;
+
+            if (child is CanvasLayer layer)
+                HideForMapPeek(layer);
+
+            HideBattleCanvasLayersForMapPeek(child);
+        }
     }
 
     private static bool ShouldPreserveRootLayerForMapPeek(CanvasLayer layer)
@@ -538,7 +558,9 @@ public partial class Map : Control
         _isWheelPanning = false;
         _dragVelocity = Vector2.Zero;
         _velocity = Vector2.Zero;
-        _targetPos = Camera.ClampToBoundary(new Vector2(Camera.WorldLeftBoundary, Camera.FixedCenterY));
+        _targetPos = Camera.ClampToBoundary(
+            new Vector2(Camera.WorldLeftBoundary, Camera.FixedCenterY)
+        );
         SetCameraPosition(_targetPos);
         UpdateMiniMapIndicator();
     }
@@ -647,7 +669,12 @@ public partial class Map : Control
 
     private void UpdateMiniMapIndicator()
     {
-        if (MiniMapRoot == null || MiniMapPreview == null || MiniMapPlayerIndicator == null || Camera == null)
+        if (
+            MiniMapRoot == null
+            || MiniMapPreview == null
+            || MiniMapPlayerIndicator == null
+            || Camera == null
+        )
             return;
 
         Vector2 previewSize = MiniMapPreview.Size;
@@ -672,8 +699,16 @@ public partial class Map : Control
             targetCenterY - indicatorSize.Y * 0.5f
         );
 
-        localPosition.X = Mathf.Clamp(localPosition.X, 0.0f, Mathf.Max(0.0f, previewSize.X - indicatorSize.X));
-        localPosition.Y = Mathf.Clamp(localPosition.Y, 0.0f, Mathf.Max(0.0f, previewSize.Y - indicatorSize.Y));
+        localPosition.X = Mathf.Clamp(
+            localPosition.X,
+            0.0f,
+            Mathf.Max(0.0f, previewSize.X - indicatorSize.X)
+        );
+        localPosition.Y = Mathf.Clamp(
+            localPosition.Y,
+            0.0f,
+            Mathf.Max(0.0f, previewSize.Y - indicatorSize.Y)
+        );
 
         MiniMapPlayerIndicator.Position = localPosition;
     }
@@ -701,7 +736,7 @@ public partial class Map : Control
     private void LocalizeStaticTexts()
     {
         if (TransitionEnergyLabel != null)
-            TransitionEnergyLabel.Text = I18n.Tr("ui.common.core_energy", "跃迁能量");
+            TransitionEnergyLabel.Text = I18n.Tr("ui.common.party_life", "队伍生命");
 
         if (RelicLabel != null)
             RelicLabel.Text = I18n.Tr("ui.common.relics", "遗物");
@@ -720,6 +755,9 @@ public partial class Map : Control
 
         if (NodeLegendShopLabel != null)
             NodeLegendShopLabel.Text = I18n.Tr("ui.map.node_type.shop", "商店");
+
+        if (NodeLegendRestLabel != null)
+            NodeLegendRestLabel.Text = I18n.Tr("ui.map.node_type.rest", "休息");
 
         if (NodeLegendEliteLabel != null)
             NodeLegendEliteLabel.Text = I18n.Tr("ui.map.node_type.elite", "精英");

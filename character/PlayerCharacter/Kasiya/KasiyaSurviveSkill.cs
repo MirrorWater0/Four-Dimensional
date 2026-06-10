@@ -8,8 +8,8 @@ public partial class KasiyaSurviveSkill { }
 
 public partial class ShockWave : Skill
 {
-    private const int VulnerableStacks = 2;
-    private const int BaseBlock = 3;
+    private const int VulnerableStacks = 1;
+    private const int BaseBlock = 6;
 
     public override string SkillName { get; set; } = "冲击波";
 
@@ -35,8 +35,8 @@ public partial class ShockWave : Skill
 
 public partial class ReNewedSpirit : Skill
 {
-    private const int PowerGain = 4;
-    private const int SurvivabilityGain = 4;
+    private const int PowerGain = 2;
+    private const int SurvivabilityGain = 2;
     public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "重振精神";
@@ -64,8 +64,6 @@ public partial class AbsouluteDefense : Skill
     public override int EnergyCost => XEnergyCost;
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
-    int basisBlock = 0;
-
     public AbsouluteDefense()
         : base(SkillTypes.Survive)
     {
@@ -76,13 +74,8 @@ public partial class AbsouluteDefense : Skill
     {
         return new SkillPlan(
             this,
-            WhileStep(
-                loopSteps:
-                [
-                    BlockStep(baseBlock: 7, multiplier: 1),
-                    ApplyBuffFriendly(Buff.BuffName.Taunt, 1),
-                ]
-            )
+            WhileStep(loopSteps: [BlockStep(baseBlock: 6, multiplier: 1)]),
+            ApplyBuffFriendly(Buff.BuffName.Taunt, 1)
         );
     }
 }
@@ -90,7 +83,7 @@ public partial class AbsouluteDefense : Skill
 public partial class TauntingGuard : Skill
 {
     private const int TauntStacks = 2;
-    private const int BaseBlock = 0;
+    private const int BaseBlock = 4;
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
@@ -109,7 +102,7 @@ public partial class TauntingGuard : Skill
                 stacks: TauntStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(baseBlock: BaseBlock, multiplier: 2)
+            BlockStep(baseBlock: BaseBlock, multiplier: 1)
         );
     }
 }
@@ -117,7 +110,7 @@ public partial class TauntingGuard : Skill
 public partial class WeakpointBulwark : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
+    private const int BaseBlock = 6;
 
     public override string SkillName { get; set; } = "蓄势待发";
 
@@ -131,7 +124,7 @@ public partial class WeakpointBulwark : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
             new DoubleEnemyFormationVulnerableStep()
         );
     }
@@ -235,8 +228,6 @@ public partial class WeakpointBulwark : Skill
 
 public partial class Purification : Skill
 {
-    private const int BaseBlock = 7;
-
     public override string SkillName { get; set; } = "净化";
 
     public Purification()
@@ -249,13 +240,12 @@ public partial class Purification : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
             CustomStep(
                 skill =>
                     skill?.OwnerCharater?.BattleNode?.ExhaustAllPlayerBattleStatusCardsAsync(
                         skill.OwnerCharater
                     ) ?? Task.CompletedTask,
-                _ => new[] { "消耗所有角色的所有状态牌。" }
+                _ => new[] { "消耗所有状态牌。" }
             )
         );
     }
@@ -274,32 +264,38 @@ public partial class BarrierDuplication : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            CustomStep(
-                _ =>
-                {
-                    int currentBlock = OwnerCharater?.Block ?? 0;
-                    if (currentBlock > 0)
-                    {
-                        int previousBlock = OwnerCharater.Block;
-                        OwnerCharater?.UpdataBlock(currentBlock, source: OwnerCharater);
-                        int gainedBlock = System.Math.Max(
-                            0,
-                            (OwnerCharater?.Block ?? 0) - previousBlock
-                        );
-                        SpecialBuff.TriggerBeaconBlockShare(
-                            OwnerCharater,
-                            gainedBlock,
-                            OwnerCharater
-                        );
-                    }
+        return new SkillPlan(this, new DoubleSelfBlockStep());
+    }
 
-                    return System.Threading.Tasks.Task.CompletedTask;
-                },
-                _ => new[] { "格挡翻倍。" }
-            ),
-            BlockStep(baseBlock: 3)
-        );
+    private sealed class DoubleSelfBlockStep : SkillStep
+    {
+        public override Task Execute(Skill skill)
+        {
+            Character target = skill?.OwnerCharater;
+            if (target == null)
+                return Task.CompletedTask;
+
+            int currentBlock = target.Block;
+            if (currentBlock > 0)
+            {
+                int previousBlock = target.Block;
+                target.UpdataBlock(currentBlock, source: skill.OwnerCharater);
+                int gainedBlock = System.Math.Max(0, target.Block - previousBlock);
+                SpecialBuff.TriggerBeaconBlockShare(skill.OwnerCharater, gainedBlock, target);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            yield return "令自己的格挡翻倍。";
+        }
+
+        public override IEnumerable<Character> PreviewTargets(Skill skill)
+        {
+            Character target = skill?.OwnerCharater;
+            return target != null ? [target] : Array.Empty<Character>();
+        }
     }
 }

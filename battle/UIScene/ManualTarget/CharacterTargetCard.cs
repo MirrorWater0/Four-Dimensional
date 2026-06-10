@@ -82,7 +82,7 @@ public partial class CharacterTargetCard : Control
                 "生命 {life}/{max_life}  能量 {energy}",
                 ("life", target.Life),
                 ("max_life", target.BattleMaxLife),
-                ("energy", target.Energy)
+                ("energy", target.EnergySources)
             );
     }
 

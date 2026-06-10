@@ -7,7 +7,7 @@ using Godot;
 
 public partial class CharacterSelectionOverlay : Control
 {
-    private const int DefaultRequiredSelectionCount = 4;
+    private const int DefaultRequiredSelectionCount = GameInfo.DefaultPlayerPartySize;
     private const int MinDifficulty = GameInfo.MinDifficulty;
     private const int MaxDifficulty = GameInfo.MaxDifficulty;
     private const int MaxSeedDigits = 9;
@@ -533,13 +533,12 @@ public partial class CharacterSelectionOverlay : Control
         else
             StatusLabel.Text = I18n.Format(
                 "ui.character_select.status.inspect",
-                "{squad}    |    查看 {name}：生命 {life}    力量 {power}    生存 {survivability}    速度 {speed}",
+                "{squad}    |    查看 {name}：生命 {life}    力量 {power}    生存 {survivability}",
                 ("squad", BuildSquadStatusText()),
                 ("name", _focusedOption.Info.CharacterName),
                 ("life", _focusedOption.Info.LifeMax),
                 ("power", _focusedOption.Info.Power),
-                ("survivability", _focusedOption.Info.Survivability),
-                ("speed", _focusedOption.Info.Speed)
+                ("survivability", _focusedOption.Info.Survivability)
             );
     }
 
@@ -921,7 +920,9 @@ public partial class CharacterSelectionOverlay : Control
             if (option == null)
                 continue;
 
-            selectedCharacters.Add(ClonePlayerInfo(option.Info, i + 1));
+            selectedCharacters.Add(
+                ClonePlayerInfo(option.Info, GameInfo.GetDefaultPlayerFormationPosition(i))
+            );
         }
 
         _ = ConfirmSelectionAsync(selectedCharacters.ToArray(), ResolveSeed(), _selectedDifficulty);
@@ -1328,7 +1329,9 @@ public partial class CharacterSelectionOverlay : Control
         return new PlayerInfoStructure
         {
             CharacterScenePath = source.CharacterScenePath,
+            Life = source.LifeInitialized ? source.Life : source.LifeMax,
             LifeMax = source.LifeMax,
+            LifeInitialized = true,
             Power = source.Power,
             Survivability = source.Survivability,
             Speed = source.Speed,

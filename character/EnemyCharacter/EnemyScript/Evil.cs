@@ -71,12 +71,13 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 21;
-        Power = 4;
-        Survivability = 4;
-        Speed = 5;
-        SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive, SkillID.EvilTermin];
-
+        MaxLife = 24;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive];
+        OpeningIntentionSkillIDs = [SkillID.EvilAttack];
         PassiveName = global::Evil.PassiveNameText;
         PassiveDescription = global::Evil.PassiveBaseDescriptionText;
     }
@@ -84,7 +85,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 5;
+    private const int HitDamage = 6;
 
     public EvilAttack()
         : base(Skill.SkillTypes.Attack)
@@ -102,9 +103,8 @@ public partial class EvilAttack : Skill
 
 public partial class EvilSurvive : Skill
 {
-    private const int PowerGain = 1;
-    private const int BaseBlock = 8;
-    private const int DescendingNum = 4;
+    private const int PowerGain = 2;
+    private const int BaseBlock = 4;
 
     public EvilSurvive()
         : base(SkillTypes.Survive)
@@ -139,7 +139,10 @@ public partial class EvilTermin : Skill
     {
         return new SkillPlan(
             this,
-            WhileStep(loopSteps: [AttackStep(baseDamage: 0, multiplier: 1, clampMax: 9999)])
+            WhileStep(
+                times: () => 5,
+                loopSteps: [AttackStep(baseDamage: 7, multiplier: 1, clampMax: 9999)]
+            )
         );
     }
 }

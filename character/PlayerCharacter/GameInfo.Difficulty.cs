@@ -7,7 +7,6 @@ public enum GameDifficultyBonus
     RandomRelics = 1,
     PlayerStats = 2,
     ElectricityCoin = 3,
-    FreeRetreat = 4,
     RandomTalentPoints = 5,
 }
 
@@ -16,8 +15,7 @@ public static partial class GameInfo
     public static int Difficulty;
 
     public const int MinDifficulty = 0;
-    public const int MaxDifficulty = 6;
-    public const int BossDyingCoreEnergyPenaltyDifficulty = 6;
+    public const int MaxDifficulty = 5;
 
     private const int StarterRelicCount = 1;
     private const int StarterElectricityCoinBonus = 100;
@@ -64,9 +62,6 @@ public static partial class GameInfo
         if (string.IsNullOrWhiteSpace(activeBonusText))
             activeBonusText = "无开局增益";
 
-        if (IsBossDyingCoreEnergyPenaltyActive(difficulty))
-            activeBonusText += " / Boss战濒死损失15核心能源";
-
         return $"难度 {difficulty}：{activeBonusText}";
     }
 
@@ -86,22 +81,12 @@ public static partial class GameInfo
             lines.AddRange(activeBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
         }
 
-        if (IsBossDyingCoreEnergyPenaltyActive(difficulty))
-        {
-            lines.Add(string.Empty);
-            lines.Add("额外规则：");
-            lines.Add("- Boss战中角色濒死时损失15点核心能源。");
-        }
-
         if (difficulty < MaxDifficulty)
         {
             List<GameDifficultyBonus> nextBonuses = GetActiveDifficultyBonuses(difficulty + 1).ToList();
             List<GameDifficultyBonus> lostBonuses = activeBonuses
                 .Where(bonus => !nextBonuses.Contains(bonus))
                 .ToList();
-            bool gainsBossDyingPenalty =
-                !IsBossDyingCoreEnergyPenaltyActive(difficulty)
-                && IsBossDyingCoreEnergyPenaltyActive(difficulty + 1);
 
             if (lostBonuses.Count > 0)
             {
@@ -111,23 +96,10 @@ public static partial class GameInfo
                 );
                 lines.AddRange(lostBonuses.Select(bonus => $"- {GetDifficultyBonusLabel(bonus)}"));
             }
-
-            if (gainsBossDyingPenalty)
-            {
-                lines.Add(string.Empty);
-                lines.Add($"提高到难度 {difficulty + 1} 后会新增：");
-                lines.Add("- Boss战中角色濒死时损失15点核心能源。");
-            }
         }
 
         return string.Join("\n", lines);
     }
-
-    public static bool IsBossDyingCoreEnergyPenaltyActive() =>
-        IsBossDyingCoreEnergyPenaltyActive(Difficulty);
-
-    public static bool IsBossDyingCoreEnergyPenaltyActive(int difficulty) =>
-        difficulty >= BossDyingCoreEnergyPenaltyDifficulty;
 
     private static IEnumerable<GameDifficultyBonus> GetActiveDifficultyBonuses(int difficulty)
     {
@@ -138,18 +110,17 @@ public static partial class GameInfo
             yield return GameDifficultyBonus.RandomRelics;
             yield return GameDifficultyBonus.PlayerStats;
             yield return GameDifficultyBonus.ElectricityCoin;
-            yield return GameDifficultyBonus.FreeRetreat;
             yield return GameDifficultyBonus.RandomTalentPoints;
             yield break;
         }
 
-        if (difficulty <= 4)
-            yield return GameDifficultyBonus.RandomTalentPoints;
         if (difficulty <= 3)
-            yield return GameDifficultyBonus.RandomRelics;
+            yield return GameDifficultyBonus.RandomTalentPoints;
         if (difficulty <= 2)
-            yield return GameDifficultyBonus.PlayerStats;
+            yield return GameDifficultyBonus.RandomRelics;
         if (difficulty <= 1)
+            yield return GameDifficultyBonus.PlayerStats;
+        if (difficulty <= 0)
             yield return GameDifficultyBonus.ElectricityCoin;
     }
 
@@ -158,13 +129,11 @@ public static partial class GameInfo
         return bonus switch
         {
             GameDifficultyBonus.RandomRelics => "开局1随机遗物",
-            GameDifficultyBonus.FreeRetreat =>
-                "撤退不消耗核心能源",
             GameDifficultyBonus.RandomTalentPoints =>
                 "开局随机2名角色各+1天赋点",
             GameDifficultyBonus.ElectricityCoin => "开局+100电力币",
             GameDifficultyBonus.PlayerStats =>
-                "全员力量/生存/速度+1，血量+3",
+                "全员力量/生存+1，血量+3",
             _ => string.Empty,
         };
     }
@@ -203,8 +172,9 @@ public static partial class GameInfo
             var info = PlayerCharacters[i];
             info.Power += StarterPropertyBonus;
             info.Survivability += StarterPropertyBonus;
-            info.Speed += StarterPropertyBonus;
             info.LifeMax += StarterLifeMaxBonus;
+            if (info.LifeInitialized)
+                info.Life += StarterLifeMaxBonus;
             PlayerCharacters[i] = info;
         }
     }

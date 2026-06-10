@@ -33,7 +33,8 @@ public class HolySeal : Skill
     }
 
     public override string SkillName { get; set; } = "圣光封印";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => 3;
+    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -107,7 +108,7 @@ public class HopeBeacon : Skill
 public class WarGodWill : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int PowerGain = 3;
+    private const int PowerGain = 2;
 
     public WarGodWill()
         : base(SkillTypes.Special)
@@ -130,7 +131,7 @@ public class WarGodWill : Skill
 public class TacticalPreparation : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int ExtraDrawStacks = 3;
+    private const int ExtraDrawStacks = 2;
 
     public TacticalPreparation()
         : base(SkillTypes.Special)
@@ -146,6 +147,7 @@ public class TacticalPreparation : Skill
     {
         return new SkillPlan(
             this,
+            DrawCardsStep(3),
             AddStatusCardsToDrawPileStep(SkillID.VoidStatus, 1, TargetReference.All),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
@@ -194,7 +196,7 @@ public class DemonForm : Skill
     }
 
     public override string SkillName { get; set; } = "恶魔形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => 3;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()

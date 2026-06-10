@@ -141,7 +141,7 @@ public static partial class GameInfo
                 EnemyTotalTurnCount = node?.EnemyTotalTurnCount ?? 0,
                 PlayerDamageSummaryLines = CopyStringList(node?.PlayerDamageSummaryLines),
                 ElectricityCoin = GameInfo.ElectricityCoin,
-                TransitionEnergy = GameInfo.TransitionEnergy,
+                TransitionEnergy = GameInfo.GetPartyLife(),
                 Relics = CloneRelicMap(GameInfo.Relics),
                 Items = CloneItemList(GameInfo.Items),
                 PlayerGainedSkills = CapturePlayerGainedSkills(GameInfo.PlayerCharacters),
@@ -163,7 +163,7 @@ public static partial class GameInfo
                     ? CopyStringList(node.PlayerDamageSummaryLines)
                     : CopyStringList(PlayerDamageSummaryLines),
                 ElectricityCoinChange = GameInfo.ElectricityCoin - ElectricityCoin,
-                TransitionEnergyChange = GameInfo.TransitionEnergy - TransitionEnergy,
+                TransitionEnergyChange = GameInfo.GetPartyLife() - TransitionEnergy,
                 SkillChanges = BuildSkillChanges(PlayerGainedSkills, GameInfo.PlayerCharacters),
                 GainedItems = BuildPositiveItemChanges(Items, GameInfo.Items),
                 ConsumedItems = BuildNegativeItemChanges(Items, GameInfo.Items),
@@ -462,7 +462,7 @@ public static partial class GameInfo
                 MaxLife = player.LifeMax,
                 Power = TalentTree.GetEffectivePower(player),
                 Survivability = TalentTree.GetEffectiveSurvivability(player),
-                Speed = TalentTree.GetEffectiveSpeed(player),
+                Speed = player.Speed,
                 TalentPoints = player.TalentPoints,
                 UnlockedTalentIds = CopyStringList(player.UnlockedTalents),
                 UnlockedTalentNames = BuildUnlockedTalentNames(player),
@@ -544,7 +544,7 @@ public static partial class GameInfo
                 ?? character.UnlockedTalentNames?.Count
                 ?? 0;
             sb.Append(
-                $"\n{name}：生命 {character.MaxLife} / 力量 {character.Power} / 生存 {character.Survivability} / 速度 {character.Speed} / 天赋 {talentCount} / 剩余点 {character.TalentPoints}"
+                $"\n{name}：生命 {character.MaxLife} / 力量 {character.Power} / 生存 {character.Survivability} / 天赋 {talentCount} / 剩余点 {character.TalentPoints}"
             );
 
             string talentText = BuildJoinedText(character.UnlockedTalentNames, "、");
@@ -600,6 +600,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Boss,
             LevelNode.LevelType.Event,
             LevelNode.LevelType.Shop,
+            LevelNode.LevelType.Rest,
         ];
 
         return string.Join(
@@ -620,7 +621,7 @@ public static partial class GameInfo
         if (node.ElectricityCoinChange != 0)
             parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
         if (node.TransitionEnergyChange != 0)
-            parts.Add($"核心能源 {FormatSigned(node.TransitionEnergyChange)}");
+            parts.Add($"队伍生命 {FormatSigned(node.TransitionEnergyChange)}");
 
         AddNodeRecordPart(parts, "技能", node.SkillChanges);
         AddNodeRecordPart(parts, "物品", node.GainedItems);
@@ -720,6 +721,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Boss => "Boss",
             LevelNode.LevelType.Event => "事件",
             LevelNode.LevelType.Shop => "商店",
+            LevelNode.LevelType.Rest => "休息",
             _ => "未知",
         };
     }
@@ -839,13 +841,13 @@ public static partial class GameInfo
                 $"\n总回合数：我方 {record.PlayerTotalTurnCount} / 敌方 {record.EnemyTotalTurnCount}"
             );
 
-        AppendJoinedLines(sb, "角色伤害(含格挡)", record.PlayerDamageSummaryLines);
+        AppendJoinedLines(sb, "角色受伤", record.PlayerDamageSummaryLines);
 
         if (record.ElectricityCoinChange != 0)
             sb.Append($"\n电力币：{FormatSigned(record.ElectricityCoinChange)}");
 
         if (record.TransitionEnergyChange != 0)
-            sb.Append($"\n核心能源：{FormatSigned(record.TransitionEnergyChange)}");
+            sb.Append($"\n队伍生命：{FormatSigned(record.TransitionEnergyChange)}");
 
         sb.Append($"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%");
 
@@ -898,7 +900,6 @@ public static partial class GameInfo
         var segments = new List<string>(4);
         AppendStatSegment(segments, PropertyType.Power, change.PowerChange);
         AppendStatSegment(segments, PropertyType.Survivability, change.SurvivabilityChange);
-        AppendStatSegment(segments, PropertyType.Speed, change.SpeedChange);
         AppendStatSegment(segments, PropertyType.MaxLife, change.MaxLifeChange);
 
         if (segments.Count == 0)
@@ -926,6 +927,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Boss => "首领战斗",
             LevelNode.LevelType.Event => "事件",
             LevelNode.LevelType.Shop => "商店",
+            LevelNode.LevelType.Rest => "休息",
             _ => "未知节点",
         };
     }
@@ -1190,14 +1192,13 @@ public static partial class GameInfo
                 CharacterName = GetPlayerName(current, i),
                 PowerChange = current.Power - previous.Power,
                 SurvivabilityChange = current.Survivability - previous.Survivability,
-                SpeedChange = current.Speed - previous.Speed,
+                SpeedChange = 0,
                 MaxLifeChange = current.LifeMax - previous.MaxLife,
             };
 
             if (
                 change.PowerChange == 0
                 && change.SurvivabilityChange == 0
-                && change.SpeedChange == 0
                 && change.MaxLifeChange == 0
             )
             {

@@ -21,7 +21,7 @@ public partial class GameEvent
             ),
             Option(
                 "手动指定校准对象",
-                propertyChange: Stats((PropertyType.Speed, 2))
+                propertyChange: Stats((PropertyType.Survivability, 2))
             ),
             Option("稳定场核并回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
@@ -33,8 +33,8 @@ public partial class GameEvent
             Option(
                 "随机解码事故航迹",
                 propertyChange: Stats(
-                    (PropertyType.Speed, 2),
-                    (PropertyType.Power, 1),
+                    (PropertyType.Power, 2),
+                    (PropertyType.Survivability, 1),
                     (PropertyType.MaxLife, -3)
                 ),
                 randomChange: true
@@ -53,7 +53,7 @@ public partial class GameEvent
             ),
             Option(
                 "让系统随机分配观测增益",
-                propertyChange: Stats((PropertyType.Survivability, 5), (PropertyType.Speed, -1)),
+                propertyChange: Stats((PropertyType.Survivability, 4)),
                 randomChange: true
             ),
             Option("打包星图数据出售", electricityChangeMin: 70, electricityChangeMax: 100)
@@ -65,13 +65,12 @@ public partial class GameEvent
                 + "也可以放弃搜刮，把能拆下来的零件直接换成电力币。",
             Option(
                 "为一名角色装配高能模块",
-                propertyChange: Stats((PropertyType.Power, 4), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.Power, 3))
             ),
             Option(
                 "随机接入军械协议",
                 propertyChange: Stats(
                     (PropertyType.Power, 3),
-                    (PropertyType.Speed, 1),
                     (PropertyType.Survivability, -1)
                 ),
                 randomChange: true
@@ -85,7 +84,7 @@ public partial class GameEvent
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option(
                 "为一名角色执行修补程序",
-                propertyChange: Stats((PropertyType.MaxLife, 12), (PropertyType.Speed, -1))
+                propertyChange: Stats((PropertyType.MaxLife, 10))
             ),
             Option(
                 "随机唤醒一具维修躯体协助强化",
@@ -111,7 +110,6 @@ public partial class GameEvent
                 "随机暴露于焦点中心",
                 propertyChange: Stats(
                     (PropertyType.Power, 3),
-                    (PropertyType.Speed, 1),
                     (PropertyType.MaxLife, -3)
                 ),
                 randomChange: true
@@ -130,7 +128,6 @@ public partial class GameEvent
             Option(
                 "随机读取静默训练记录",
                 propertyChange: Stats(
-                    (PropertyType.Speed, 1),
                     (PropertyType.Survivability, 3),
                     (PropertyType.Power, -1)
                 ),

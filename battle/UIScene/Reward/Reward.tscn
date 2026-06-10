@@ -424,6 +424,7 @@ offset_top = -200.0
 offset_right = 560.0
 offset_bottom = 200.0
 theme_override_constants/separation = 60
+alignment = 1
 
 [node name="SkillRewardSkipButton" type="Button" parent="." unique_id=1941787308]
 visible = false

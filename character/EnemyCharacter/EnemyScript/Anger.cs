@@ -4,12 +4,12 @@ using Godot;
 
 public partial class Anger : EnemyCharacter
 {
-    private const int PassivePowerGain = 3;
+    private const int PassivePowerGain = 2;
     private Action<Skill> _skillUsedHandler;
 
     public const string PassiveNameText = "愤怒";
     public static string PassiveDescriptionText =>
-        $"敌方打出非攻击牌时：获得{PassivePowerGain}点力量。";
+        $"敌方打出非攻击牌时：敌阵回合结束时获得{PassivePowerGain}点力量。";
 
     public override string CharacterName { get; set; } = "怒镰兽";
 
@@ -45,6 +45,9 @@ public partial class Anger : EnemyCharacter
             return;
         }
 
+        if (BattleNode?.QueueEnemyPhaseEndPowerGain(this, PassivePowerGain, this, "被动") == true)
+            return;
+
         using var _ = BeginEffectSource("被动");
         await IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
@@ -59,12 +62,14 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 125;
-        Power = 11;
-        Survivability = 8;
-        Speed = 38;
-        SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive, SkillID.AngerEliteSpecial];
-
+        MaxLife = 118;
+        Power = 0;
+        Survivability = 0;
+        BasePowerContribution = 0;
+        BaseSurvivabilityContribution = 0;
+        HasAttackVulnerableIntention = true;
+        SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSpecial];
+        OpeningIntentionSkillIDs = [SkillID.AngerEliteSurvive];
         PassiveName = global::Anger.PassiveNameText;
         PassiveDescription = global::Anger.PassiveDescriptionText;
     }
@@ -72,7 +77,7 @@ public partial class AngerEliteRegedit : EnemyRegedit
 
 public partial class AngerEliteAttack : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 18;
 
     public AngerEliteAttack()
         : base(SkillTypes.Attack)
@@ -84,13 +89,17 @@ public partial class AngerEliteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage), BlockStep());
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 9, HostileTargetReference.AttackKey)
+        );
     }
 }
 
 public partial class AngerEliteSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private const int BaseBlock = 15;
     private const int SelfSurvivabilityGain = 4;
 
     public AngerEliteSurvive()
@@ -103,18 +112,14 @@ public partial class AngerEliteSurvive : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
-        );
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock));
     }
 }
 
 public partial class AngerEliteSpecial : Skill
 {
-    private const int BaseDamage = 0;
-    private const int PowerMultiplier = 2;
+    private const int BaseDamage = 8;
+    private const int HitCount = 2;
 
     public AngerEliteSpecial()
         : base(SkillTypes.Special)
@@ -127,6 +132,6 @@ public partial class AngerEliteSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: HitCount));
     }
 }

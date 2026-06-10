@@ -285,8 +285,6 @@ public partial class BattleReady : Control
         AddPreviewStat(statGrid, I18n.Tr("ui.common.life", "生命"), "LifeMax", new Color(1f, 0.48f, 0.52f));
         AddPreviewStat(statGrid, I18n.Tr("property.power", "力量"), "Power", new Color(1f, 0.78f, 0.38f));
         AddPreviewStat(statGrid, I18n.Tr("property.survivability", "生存"), "Survivability", new Color(0.54f, 1f, 0.99f));
-        AddPreviewStat(statGrid, I18n.Tr("property.speed", "速度"), "Speed", new Color(0.64f, 0.9f, 1f));
-        AddPreviewStat(statGrid, I18n.Tr("ui.common.total_speed", "总速度"), "TotalSpeed", new Color(0.86f, 0.74f, 1f));
 
         var separator = new ColorRect
         {
@@ -344,11 +342,10 @@ public partial class BattleReady : Control
             root,
             "SurvivabilityValue"
         );
-        _characterPreviewStatLabels["Speed"] = FindCharacterPreviewNode<Label>(root, "SpeedValue");
-        _characterPreviewStatLabels["TotalSpeed"] = FindCharacterPreviewNode<Label>(
-            root,
-            "TotalSpeedValue"
-        );
+        SetPreviewNodeVisible(root, "SpeedLabel", false);
+        SetPreviewNodeVisible(root, "SpeedValue", false);
+        SetPreviewNodeVisible(root, "TotalSpeedLabel", false);
+        SetPreviewNodeVisible(root, "TotalSpeedValue", false);
     }
 
     private void EnsureCharacterPreviewSpineNodes(Control visualRoot)
@@ -417,6 +414,12 @@ public partial class BattleReady : Control
         );
     }
 
+    private static void SetPreviewNodeVisible(Control root, string nodeName, bool visible)
+    {
+        if (root.FindChild(nodeName, true, false) is CanvasItem item)
+            item.Visible = visible;
+    }
+
     private static PanelContainer CreatePreviewPanel(Vector2 minimumSize)
     {
         var panel = new PanelContainer
@@ -482,7 +485,7 @@ public partial class BattleReady : Control
         RefreshCharacterPreview(_selectedCharacterIndex);
     }
 
-    private void RefreshCharacterPreview(int characterIndex)
+    private void RefreshCharacterPreview(int characterIndex, bool refreshVisual = true)
     {
         _ = CharacterPreviewRoot;
 
@@ -491,7 +494,8 @@ public partial class BattleReady : Control
             return;
 
         var info = players[characterIndex];
-        RefreshCharacterPreviewVisual(info);
+        if (refreshVisual)
+            RefreshCharacterPreviewVisual(info);
         _characterPreviewNameLabel.Text = string.IsNullOrWhiteSpace(info.CharacterName)
             ? I18n.Format("ui.common.character_n_compact", "角色{index}", ("index", characterIndex + 1))
             : info.CharacterName;
@@ -499,8 +503,6 @@ public partial class BattleReady : Control
         SetPreviewStat("LifeMax", info.LifeMax);
         SetPreviewStat("Power", TalentTree.GetEffectivePower(info));
         SetPreviewStat("Survivability", TalentTree.GetEffectiveSurvivability(info));
-        SetPreviewStat("Speed", TalentTree.GetEffectiveSpeed(info));
-        SetPreviewStat("TotalSpeed", CalculatePlayerTotalSpeed());
 
         string passiveName = string.IsNullOrWhiteSpace(info.PassiveName)
             ? I18n.Tr("ui.common.passive", "被动")
@@ -616,21 +618,6 @@ public partial class BattleReady : Control
     {
         if (_characterPreviewStatLabels.TryGetValue(key, out var label))
             label.Text = value.ToString();
-    }
-
-    private static int CalculatePlayerTotalSpeed()
-    {
-        if (GameInfo.PlayerCharacters == null)
-            return 0;
-
-        int sum = 0;
-        for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
-        {
-            var info = GameInfo.PlayerCharacters[i];
-            sum += TalentTree.GetEffectiveSpeed(info);
-        }
-
-        return sum;
     }
 
     private static string GetSkillDisplayName(Skill skill, int count)
@@ -1067,7 +1054,7 @@ public partial class BattleReady : Control
         {
             players[characterIndex] = info;
             _skillPreviewCharacterIndex = -1;
-            RefreshCharacterPreview(characterIndex);
+            RefreshCharacterPreview(characterIndex, refreshVisual: false);
         }
 
         GD.Print(message);
@@ -1084,7 +1071,7 @@ public partial class BattleReady : Control
         if (GetTree() != null)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
-        SaveSystem.SaveAll();
+        SaveSystem.SaveAllInBackground();
     }
 
     private Control FindTalentNodeControl(string talentId)
