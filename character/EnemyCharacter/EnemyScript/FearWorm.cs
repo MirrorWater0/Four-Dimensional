@@ -46,7 +46,7 @@ public partial class FearWormRegedit : EnemyRegedit
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
-        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin];
+        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin,SkillID.FearWormSurvive];
 
         PassiveName = global::FearWorm.PassiveNameText;
         PassiveDescription = global::FearWorm.PassiveDescriptionText;
@@ -105,7 +105,6 @@ public partial class FearWormSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.Previous),
             ModifyPropertyStep(PropertyType.Power, 3, TargetReference.Self)
         );
     }
