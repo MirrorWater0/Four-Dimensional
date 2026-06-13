@@ -81,7 +81,7 @@ public partial class Character : Node2D
 
     public int Speed { get; private set; }
     public int Block { get; protected set; }
-    public int EnergySources { get; protected set; } = 0;
+    public int EnergySources { get; internal set; } = 1;
     public int CurrentEnergy => IsPlayer ? BattleNode?.PlayerEnergy ?? 0 : EnergySources;
 
     private string _passiveName;
@@ -928,7 +928,11 @@ public partial class Character : Node2D
 
     public override void _Process(double delta)
     {
-        if (StartActionBuffs.Any(x => x.ThisBuffName == Buff.BuffName.Invisible))
+        if (
+            StartActionBuffs.Any(x =>
+                x != null && x.ThisBuffName == Buff.BuffName.Invisible && x.Stack > 0
+            )
+        )
         {
             Sprite.SelfModulate = new Color(0.8f, 0.8f, 1f, 0.95f);
         }
@@ -1175,7 +1179,10 @@ public partial class Character : Node2D
         }
 
         if (!IsPlayer)
-            UpdataEnergy(TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this));
+            BattleNode?.UpdataEnergy(
+                this,
+                TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this)
+            );
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -1436,75 +1443,10 @@ public partial class Character : Node2D
         DamageKind damageKind
     ) { }
 
-    public virtual void UpdataEnergy(int num, Character source = null)
-    {
-        if (IsPlayer && BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
-        {
-            int actualPlayerDelta = BattleNode.UpdataPlayerEnergy(num, source ?? this);
-            if (actualPlayerDelta == 0)
-                return;
-
-            if (actualPlayerDelta > 0)
-            {
-                BattleNode?.BattleAnimationPlayer?.Play("blue");
-            }
-            else
-            {
-                var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-                effect.Position = new Vector2(0, -50);
-                AddChild(effect);
-                effect.Animation.Play("energe");
-            }
-
-            BuffHintLabel.Spawn(
-                this,
-                $"[color=#87CEEB]Energy[/color] {actualPlayerDelta:+0;-0;0}",
-                GlobalPosition
-            );
-            return;
-        }
-
-        int oldEnergy = Math.Max(0, EnergySources);
-        int newEnergy = Math.Max(0, oldEnergy + num);
-        int actualDelta = newEnergy - oldEnergy;
-
-        EnergySources = newEnergy;
-        EnergeIconLabel.Text = EnergySources.ToString();
-        RefreshEnergyIconVisibility();
-        InvalidateSkillTooltipCache();
-        if (IsPlayer)
-            BattleNode?.CharacterControl?.RefreshCurrentTurnUi();
-        if (actualDelta == 0)
-            return;
-        if (!IsPlayer)
-            return;
-
-        if (actualDelta > 0)
-        {
-            BattleNode?.BattleAnimationPlayer?.Play("blue");
-        }
-        else
-        {
-            var Effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-            Effect.Position = new Vector2(0, -50);
-            AddChild(Effect);
-            Effect.Animation.Play("energe");
-        }
-
-        BuffHintLabel.Spawn(
-            this,
-            $"[color=#87CEEB]Energy[/color] {actualDelta:+0;-0;0}",
-            GlobalPosition
-        );
-
-        if (source != null || BattleNode?.HasEffectSourceContext == true)
-            BattleNode?.RecordEnergyChange(this, actualDelta, source);
-    }
-
-    private void RefreshEnergyIconVisibility()
+    internal void RefreshEnergyIconVisibility()
     {
         if (EnergeIcon != null)
-            EnergeIcon.Visible = IsPlayer;
+            EnergeIcon.Visible = IsPlayer && EnergySources > 0;
     }
 
     public void SetEnergyUsePreviewVisible(bool visible)
@@ -1625,13 +1567,24 @@ public partial class Character : Node2D
                 return;
             case PropertyType.MaxLife:
                 return;
+            case PropertyType.EnergySources:
+                int oldEnergySources = EnergySources;
+                EnergySources = Math.Max(0, EnergySources - value);
+                value = oldEnergySources - EnergySources;
+                icon = EnergeIcon as ColorRect;
+                break;
         }
+
+        if (value <= 0)
+            return;
 
         if (icon != null)
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+            EnergeIconLabel.Text = EnergySources.ToString();
             RefreshCombatStatIconVisibility();
+            RefreshEnergyIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
@@ -1708,6 +1661,10 @@ public partial class Character : Node2D
                 return;
             case PropertyType.MaxLife:
                 return;
+            case PropertyType.EnergySources:
+                EnergySources = Math.Max(0, EnergySources + appliedValue);
+                icon = EnergeIcon as ColorRect;
+                break;
         }
 
         TryPlayIncreasePropertyEffect();
@@ -1716,7 +1673,9 @@ public partial class Character : Node2D
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+            EnergeIconLabel.Text = EnergySources.ToString();
             RefreshCombatStatIconVisibility();
+            RefreshEnergyIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
@@ -1779,7 +1738,7 @@ public partial class Character : Node2D
             int energyLossReduction = SpecialBuff.GetEnergyStorageReduction(this);
             int energyLoss = Math.Max(0, EnergySources - energyLossReduction);
             if (energyLoss > 0)
-                UpdataEnergy(-energyLoss, this);
+                BattleNode?.UpdataEnergy(this, -energyLoss, this);
         }
     }
 

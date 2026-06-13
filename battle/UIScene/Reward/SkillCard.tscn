@@ -1,19 +1,44 @@
 [gd_scene format=3 uid="uid://tstwg1ja8lsd"]
 
-[ext_resource type="Shader" uid="uid://ndicj2v6r4ix" path="res://shader/Effect/RewardCard.gdshader" id="1_imej8"]
 [ext_resource type="Script" uid="uid://cxo8un4io6wki" path="res://battle/UIScene/Reward/SkillCard.cs" id="1_td24b"]
+[ext_resource type="Shader" uid="uid://cor3ybvi6p8o6" path="res://shader/Effect/RewardCardCanvasGroup.gdshader" id="1_wi1bx"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="3_line"]
+[ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="3_sitiv"]
+[ext_resource type="Texture2D" uid="uid://bqoajgvusvrn6" path="res://asset/CardPicture/Kasiya/AbsouluteDefense.png" id="3_xqx8h"]
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
+[ext_resource type="Shader" uid="uid://cqhlq7i8p42di" path="res://shader/Effect/PlayableCardCrystalBorder.gdshader" id="5_playable_highlight"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_i77dj"]
-resource_local_to_scene = true
-shader = ExtResource("1_imej8")
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_wi1bx"]
+shader = ExtResource("1_wi1bx")
 shader_parameter/progress = 0.0
 shader_parameter/center_vanish = 0.0
-shader_parameter/line_density = 1.0
-shader_parameter/line_speed = 0.0
-shader_parameter/aberration_amount = 0.0
-shader_parameter/beam_color = Color(0.85128284, 0.9111106, 0.9999997, 1)
+shader_parameter/line_density = 80.0
+shader_parameter/line_speed = 8.0
+shader_parameter/line_strength = 0.7310000347225
+shader_parameter/aberration_amount = 0.002000000095
+shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_playable_highlight"]
+resource_local_to_scene = true
+shader = ExtResource("5_playable_highlight")
+shader_parameter/highlight_enabled = 5.0
+shader_parameter/highlight_strength = 0.95600004541
+shader_parameter/effect_opacity = 0.1610000076475
+shader_parameter/crystal_color = Color(2.587751, 3.194369, 2.9606783, 1)
+shader_parameter/inner_color = Color(0.92021066, 1, 1, 0.26200002)
+shader_parameter/rim_power = 4.0
+shader_parameter/glow_power = 4.0
+shader_parameter/inner_glow_power = 0.542000025745
+shader_parameter/effect_margin_pixels = 16.0
+shader_parameter/corner_radius = 0.0
+shader_parameter/border_width = 0.0070000003325
+shader_parameter/glow_width = 0.078
+shader_parameter/shimmer_speed = 1.5710000746225
+shader_parameter/facet_flash_contrast = 5.226000224485
+shader_parameter/cell_count = Vector2(5, 8)
+shader_parameter/cell_min_brightness = 0.42
+shader_parameter/cell_edge_thickness = 0.00400000019
+shader_parameter/cell_edge_softness = 0.018
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -47,7 +72,7 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
 bg_color = Color(0.050980393, 0.07058824, 0.10980392, 0.972549)
@@ -55,7 +80,25 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.90790474, 0.78602916, 0.48081934, 1)
+border_color = Color(0, 0, 0, 0)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sitiv"]
+shader = ExtResource("3_sitiv")
+shader_parameter/color_start = Color(0.6, 0.9, 1, 1)
+shader_parameter/color_end = Color(0.6, 0.9, 1, 1)
+shader_parameter/size = 0.76900003326762
+shader_parameter/thickness = 0.1130000053675
+shader_parameter/curvature = 0.61500002595262
+shader_parameter/rotation_speed = 0.0
+shader_parameter/pulse_speed = 0.0
+shader_parameter/edge_softness = 0.5
+
+[sub_resource type="Gradient" id="Gradient_sitiv"]
+colors = PackedColorArray(0.67631733, 0.81812185, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_xqx8h"]
+gradient = SubResource("Gradient_sitiv")
+width = 50
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
 bg_color = Color(1, 1, 1, 0.03529412)
@@ -151,28 +194,35 @@ point_count = 3
 offsets = PackedFloat32Array(0, 0.556338, 1)
 colors = PackedColorArray(1, 0.96, 0.82, 0.08, 0.72366214, 0.8955898, 0.9607042, 0.7835211, 0.6464867, 0.8776014, 1, 0.98)
 
-[node name="SkillCard" type="SubViewportContainer" unique_id=1597769257]
+[node name="SkillCard" type="Control" unique_id=1597769257]
 texture_filter = 4
-material = SubResource("ShaderMaterial_i77dj")
+custom_minimum_size = Vector2(240, 370)
+layout_mode = 3
+anchors_preset = 0
 offset_right = 240.0
 offset_bottom = 370.0
-scale = Vector2(1.2, 1.2)
 script = ExtResource("1_td24b")
 metadata/_edit_lock_ = true
 
-[node name="SubViewport" type="SubViewport" parent="." unique_id=15917497]
-transparent_bg = true
-handle_input_locally = false
-msaa_2d = 3
-size = Vector2i(240, 370)
-render_target_update_mode = 4
+[node name="SubViewport" type="CanvasGroup" parent="." unique_id=15917497]
+material = SubResource("ShaderMaterial_wi1bx")
+fit_margin = 32.0
+clear_margin = 32.0
+
+[node name="PlayableHighlight" type="ColorRect" parent="SubViewport" unique_id=1878566179]
+visible = false
+material = SubResource("ShaderMaterial_playable_highlight")
+offset_left = -24.0
+offset_top = -24.0
+offset_right = 264.0
+offset_bottom = 392.0
+mouse_filter = 2
 
 [node name="BackShade" type="ColorRect" parent="SubViewport" unique_id=577549818]
 offset_left = 4.0
 offset_top = 4.0
 offset_right = 236.0
 offset_bottom = 366.0
-mouse_filter = 2
 color = Color(0.0128999995, 0.017175, 0.03, 0.73333335)
 
 [node name="BG" type="Panel" parent="SubViewport" unique_id=1048061845]
@@ -254,21 +304,17 @@ layout_mode = 0
 offset_right = 216.0
 offset_bottom = 114.0
 mouse_filter = 2
+texture = ExtResource("3_xqx8h")
 expand_mode = 1
 stretch_mode = 6
-
-[node name="RarityPlate" type="Polygon2D" parent="SubViewport" unique_id=629383793]
-color = Color(0.6901961, 0.84313726, 1, 0.16)
-antialiased = true
-polygon = PackedVector2Array(8.000004, 90, 80, 90, 72, 114, 8.000004, 114)
 
 [node name="TypeBadge" type="Control" parent="SubViewport" unique_id=1653600046]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 2.0
-offset_top = 90.0
-offset_right = 78.0
-offset_bottom = 114.0
+offset_left = 175.83333
+offset_top = 94.166664
+offset_right = 251.83333
+offset_bottom = 118.166664
 mouse_filter = 2
 
 [node name="TypeLabel" type="Label" parent="SubViewport/TypeBadge" unique_id=1519905069]
@@ -283,28 +329,24 @@ text = "type"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="EnergyPlate" type="Polygon2D" parent="SubViewport" unique_id=656025175]
-color = Color(0.6901961, 0.84313726, 1, 0.16)
-antialiased = true
-polygon = PackedVector2Array(156, 90, 232.00002, 90, 232.00002, 114, 166, 114)
-
 [node name="EnergyBadge" type="Control" parent="SubViewport" unique_id=1300825066]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 162.0
-offset_top = 90.0
-offset_right = 236.0
-offset_bottom = 114.0
+offset_left = 8.333333
+offset_top = 84.166664
+offset_right = 90.333336
+offset_bottom = 119.166664
 mouse_filter = 2
 
 [node name="EnergyCost" type="RichTextLabel" parent="SubViewport/EnergyBadge" unique_id=1575399771]
 layout_mode = 0
-offset_left = 2.1666641
-offset_top = -1.666673
-offset_right = 74.166664
-offset_bottom = 22.333326
+offset_top = -1.0
+offset_right = 82.0
+offset_bottom = 30.833336
 theme_override_colors/default_color = Color(1, 1, 1, 0.95)
-theme_override_font_sizes/normal_font_size = 18
+theme_override_colors/font_outline_color = Color(0.01, 0.018, 0.035, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/normal_font_size = 17
 bbcode_enabled = true
 text = "Energy"
 scroll_active = false
@@ -331,15 +373,15 @@ theme_override_constants/outline_size = 1
 theme_override_font_sizes/normal_font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_description")
 bbcode_enabled = true
-text = "none"
+text = "是这样的"
 scroll_active = false
 autowrap_mode = 1
 
 [node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 228.0
-offset_bottom = 84.0
+offset_left = 14.5
+offset_top = 17.0
+offset_right = 230.5
+offset_bottom = 89.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_footer")
 
@@ -355,10 +397,10 @@ polygon = PackedVector2Array(7.9999924, 48, 107.625046, 48, 207.99998, 48, 200, 
 
 [node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
 custom_minimum_size = Vector2(204, 24)
-offset_left = 18.0
-offset_top = 22.0
-offset_right = 222.0
-offset_bottom = 46.0
+offset_left = 20.5
+offset_top = 27.0
+offset_right = 224.5
+offset_bottom = 54.0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 1
@@ -369,19 +411,146 @@ vertical_alignment = 1
 
 [node name="CharacterName" type="Label" parent="SubViewport" unique_id=803558591]
 custom_minimum_size = Vector2(168, 16)
-offset_left = 34.166664
-offset_top = 57.5
-offset_right = 202.16666
-offset_bottom = 80.5
+offset_left = 36.666664
+offset_top = 62.5
+offset_right = 204.66666
+offset_bottom = 85.5
 theme_override_colors/font_color = Color(1, 1, 1, 0.92)
 theme_override_font_sizes/font_size = 16
 text = "name回声"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="NativeFrame" type="Node2D" parent="SubViewport" unique_id=48530284]
+metadata/_edit_lock_ = true
+
+[node name="OuterFrameLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=2109916705]
+points = PackedVector2Array(15, 5, 225, 5, 235, 15, 235, 355, 225, 365, 15, 365, 5, 355, 5, 15, 15, 5)
+width = 1.4
+default_color = Color(0.86, 0.92, 1, 0.82)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="SoftInnerFrameLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=731891712]
+points = PackedVector2Array(10, 10, 230, 10, 230, 360, 10, 360, 10, 10)
+width = 1.0
+default_color = Color(0.86, 0.92, 1, 0.24)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+metadata/_edit_lock_ = true
+
+[node name="SoftTopSeparator" type="Line2D" parent="SubViewport/NativeFrame" unique_id=2024187140]
+points = PackedVector2Array(18, 84, 222, 84)
+width = 1.0
+default_color = Color(0.86, 0.92, 1, 0.24)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="AccentArtSeparator" type="Line2D" parent="SubViewport/NativeFrame" unique_id=969332473]
+points = PackedVector2Array(14, 230, 226, 230)
+width = 1.2
+default_color = Color(0.42, 0.86, 0.92, 0.48)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="SoftDescriptionInsetLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=581895750]
+points = PackedVector2Array(22, 235, 218, 235)
+width = 0.8
+default_color = Color(0.86, 0.92, 1, 0.24)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="CornerTL" type="Line2D" parent="SubViewport/NativeFrame" unique_id=922231237]
+points = PackedVector2Array(14, 40, 14, 14, 42, 14)
+width = 1.1
+default_color = Color(0.86, 0.92, 1, 0.82)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="CornerTR" type="Line2D" parent="SubViewport/NativeFrame" unique_id=238283750]
+points = PackedVector2Array(226, 40, 226, 14, 198, 14)
+width = 1.1
+default_color = Color(0.86, 0.92, 1, 0.82)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="CornerBL" type="Line2D" parent="SubViewport/NativeFrame" unique_id=1114133019]
+points = PackedVector2Array(14, 330, 14, 356, 42, 356)
+width = 1.1
+default_color = Color(0.86, 0.92, 1, 0.82)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="CornerBR" type="Line2D" parent="SubViewport/NativeFrame" unique_id=1818864175]
+points = PackedVector2Array(226, 330, 226, 356, 198, 356)
+width = 1.1
+default_color = Color(0.86, 0.92, 1, 0.82)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="CornerDiamondTL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=51735338]
+color = Color(0.42, 0.86, 0.92, 0.74)
+antialiased = true
+polygon = PackedVector2Array(29, 25.8, 32.2, 29, 29, 32.2, 25.8, 29)
+
+[node name="CornerDiamondTR" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=799575946]
+color = Color(0.42, 0.86, 0.92, 0.74)
+antialiased = true
+polygon = PackedVector2Array(211, 25.8, 214.2, 29, 211, 32.2, 207.8, 29)
+
+[node name="CornerDiamondBL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=322484918]
+color = Color(0.42, 0.86, 0.92, 0.74)
+antialiased = true
+polygon = PackedVector2Array(29, 337.8, 32.2, 341, 29, 344.2, 25.8, 341)
+
+[node name="CornerDiamondBR" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=344071293]
+color = Color(0.42, 0.86, 0.92, 0.74)
+antialiased = true
+polygon = PackedVector2Array(211, 337.8, 214.2, 341, 211, 344.2, 207.8, 341)
+
+[node name="EnergeIcon" type="ColorRect" parent="SubViewport/NativeFrame" unique_id=1338420480]
+material = SubResource("ShaderMaterial_sitiv")
+offset_left = 110.0
+offset_top = 3.333333
+offset_right = 134.16667
+offset_bottom = 27.5
+
+[node name="TextureRect" type="TextureRect" parent="SubViewport/NativeFrame/EnergeIcon" unique_id=147294065]
+layout_mode = 0
+offset_left = 25.833332
+offset_top = 9.999666
+offset_right = 75.83333
+offset_bottom = 13.332666
+texture = SubResource("GradientTexture1D_xqx8h")
+metadata/_edit_use_anchors_ = true
+
+[node name="TextureRect2" type="TextureRect" parent="SubViewport/NativeFrame/EnergeIcon" unique_id=1656552174]
+layout_mode = 0
+offset_left = -1.6666628
+offset_top = 10.0
+offset_right = 48.333336
+offset_bottom = 13.333
+scale = Vector2(-1, 1)
+texture = SubResource("GradientTexture1D_xqx8h")
+
 [node name="HoverHint" type="Panel" parent="SubViewport" unique_id=904079227]
+visible = false
 modulate = Color(18.892157, 18.892157, 18.892157, 1)
-custom_minimum_size = Vector2(230, 360)
 offset_left = 2.0
 offset_top = 2.0
 offset_right = 238.0
@@ -395,6 +564,7 @@ custom_minimum_size = Vector2(240, 370)
 offset_top = 1.0
 offset_right = 240.0
 offset_bottom = 371.0
+metadata/_edit_lock_ = true
 
 [node name="DrawCardTrailTarget" type="Node2D" parent="." unique_id=1140895484]
 visible = false

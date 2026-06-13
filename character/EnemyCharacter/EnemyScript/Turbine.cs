@@ -142,7 +142,7 @@ public partial class TurbineSurvive : Skill
                 multiplier: SurvivabilityMultiplier
             ),
             ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next),
-            EnergyStep(AllyEnergyGain, TargetReference.All)
+            EnergyStep(AllyEnergyGain)
         );
     }
 }
@@ -168,12 +168,7 @@ public partial class TurbineSpecial : Skill
             this,
             AttackStep(19),
             CarryStep(target: TargetReference.Previous, skillIndex: 1),
-            AddStatusCardsToDrawPileStep(
-                SkillID.WoundStatus,
-                WoundCount,
-                HostileTargetReference.All,
-                "敌方全阵"
-            )
+            AddStatusCardsStep(SkillID.WoundStatus, WoundCount)
         );
     }
 }

@@ -34,7 +34,7 @@ public partial class FinalGuard : Skill
 
 public partial class RebirthPrayer : Skill
 {
-    private const int BaseRebirthHeal = 10;
+    private const int BaseRebirthHeal = 2;
 
     public RebirthPrayer()
         : base(SkillTypes.Survive)
@@ -52,10 +52,9 @@ public partial class RebirthPrayer : Skill
             HealStep(
                 baseHeal: BaseRebirthHeal,
                 target: TargetReference.ManualFriendly,
-                preferNonFull: true,
-                rebirth: true
+                preferNonFull: true
             ),
-            BlockStep(target: TargetReference.HealKey, baseBlock: 8)
+            BlockStep(target: TargetReference.HealKey, baseBlock: 4)
         );
     }
 }
@@ -106,9 +105,7 @@ public partial class QuietVeil : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int InvisibleStacks = 2;
-    private const int BaseBlock = 8;
-    private const int SurvivabilityGain = 3;
-    private const int BaseHeal = 5;
+    private const int SurvivabilityGain = 2;
 
     public QuietVeil()
         : base(SkillTypes.Survive)
@@ -127,9 +124,7 @@ public partial class QuietVeil : Skill
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            HealStep(baseHeal: BaseHeal, target: TargetReference.Self)
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }
 }
@@ -137,6 +132,7 @@ public partial class QuietVeil : Skill
 public partial class EnergyRelay : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override int EnergyCost => 2;
 
     public EnergyRelay()
         : base(SkillTypes.Survive)
@@ -151,8 +147,7 @@ public partial class EnergyRelay : Skill
         return new SkillPlan(
             this,
             BlockStep(target: TargetReference.Self, baseBlock: 6),
-            EnergyStep(delta: 1, target: TargetReference.Next),
-            EnergyStep(delta: 1, target: TargetReference.Previous)
+            SelectDrawPileCardsToHandStep(1)
         );
     }
 }

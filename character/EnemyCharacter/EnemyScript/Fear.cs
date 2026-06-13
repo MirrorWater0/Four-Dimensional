@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Fear : EnemyCharacter
 {
-    private const int StartFearStacks = 6;
+    private const int StartFearStacks = 3;
 
     public const string PassiveNameText = "恐惧具现";
     public static string PassiveDescriptionText =>
@@ -47,7 +47,7 @@ public partial class FearEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
 
-        MaxLife = 264;
+        MaxLife = 204;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -61,7 +61,7 @@ public partial class FearEliteRegedit : EnemyRegedit
 
 public partial class FearEliteAttack : Skill
 {
-    private const int BaseDamage = 14;
+    private const int BaseDamage = 10;
 
     public FearEliteAttack()
         : base(SkillTypes.Attack)
@@ -73,14 +73,16 @@ public partial class FearEliteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2)
+        );
     }
 }
 
 public partial class FearEliteSurvive : Skill
 {
     private const int BaseBlock = 21;
-    private const int SurvivabilityGain = 5;
 
     public FearEliteSurvive()
         : base(SkillTypes.Survive)
@@ -95,16 +97,15 @@ public partial class FearEliteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            ModifyPropertyStep(PropertyType.Power, 4)
+            ModifyPropertyStep(PropertyType.Power, 3)
         );
     }
 }
 
 public partial class FearEliteSpecial : Skill
 {
-    private const int BaseDamage = 14;
-    private const int FearStacks = 4;
+    private const int BaseDamage = 10;
+    private const int FearStacks = 2;
 
     public FearEliteSpecial()
         : base(SkillTypes.Special)
@@ -113,7 +114,7 @@ public partial class FearEliteSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "梦魇扩散";
-    public override int EnergyCost => 6;
+    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {

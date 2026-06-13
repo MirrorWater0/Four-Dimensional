@@ -91,10 +91,18 @@ public partial class DebugConsole : CanvasLayer
         ),
         new(
             "addskill",
-            "addskill <角色> <技能ID/技能名>",
+            "addskill <角色> <技能ID/技能名> [数量]",
             "向角色牌库添加技能。",
-            ["角色名或 1-4", "技能 ID 或技能名"],
+            ["角色名或 1-4", "技能 ID 或技能名", "可选：数量，默认 1"],
             "加技能"
+        ),
+        new(
+            "drawcards",
+            "drawcards [数量]",
+            "战斗中按普通规则抽牌到队伍共享手牌。",
+            ["可选：数量，默认 1"],
+            "draw",
+            "抽牌"
         ),
         new(
             "addequipment",
@@ -1197,6 +1205,7 @@ public partial class DebugConsole : CanvasLayer
         {
             "catalog" => BuildCatalogCompletions(context),
             "addskill" => BuildAddSkillCompletions(context),
+            "drawcards" => BuildDrawCardsCompletions(context),
             "addequipment" => FilterCompletionItems(BuildEquipmentCompletions(), prefix),
             "addrelic" => FilterCompletionItems(BuildRelicCompletions(), prefix),
             "additem" => FilterCompletionItems(BuildItemCompletions(), prefix),
@@ -1254,7 +1263,21 @@ public partial class DebugConsole : CanvasLayer
             return FilterCompletionItems(BuildPlayerCompletions(includeIndices: true), prefix);
         if (context.TargetTokenIndex == 2)
             return FilterCompletionItems(BuildSkillCompletionsForContext(context, playerTokenIndex: 1), prefix);
+        if (context.TargetTokenIndex == 3)
+            return FilterCompletionItems(BuildNumberCompletions(), prefix);
         return Enumerable.Empty<CompletionItem>();
+    }
+
+    private IEnumerable<CompletionItem> BuildDrawCardsCompletions(InputContext context)
+    {
+        if (context.TargetTokenIndex != 1)
+            return Enumerable.Empty<CompletionItem>();
+
+        string prefix = context.CurrentToken;
+        if (context.Tokens.Length <= 1)
+            return FilterCompletionItems(BuildNumberCompletions(), prefix);
+
+        return FilterCompletionItems(BuildNumberCompletions(), prefix);
     }
 
     private IEnumerable<CompletionItem> BuildStatCompletions(InputContext context)
@@ -1531,6 +1554,12 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
+        if (Matches(command, "drawcards", "draw", "抽牌"))
+        {
+            ExecuteDrawCards(args);
+            return;
+        }
+
         if (Matches(command, "addequipment", "加装备"))
         {
             ExecuteAddEquipment(args);
@@ -1657,13 +1686,17 @@ public partial class DebugConsole : CanvasLayer
     {
         if (args.Length < 3)
         {
-            AppendError("用法：addskill <角色> <技能ID/技能名>");
+            AppendError("用法：addskill <角色> <技能ID/技能名> [数量]");
             return;
         }
 
         if (!TryResolvePlayer(args[1], out int playerIndex))
             return;
         if (!TryResolveSkillId(args[2], out SkillID skillId))
+            return;
+
+        int count = 1;
+        if (args.Length >= 4 && !TryParsePositiveInt(args[3], out count))
             return;
 
         var info = GameInfo.PlayerCharacters[playerIndex];
@@ -1674,7 +1707,7 @@ public partial class DebugConsole : CanvasLayer
         }
 
         info.GainedSkills ??= new List<SkillID>();
-        if (IsStarterSkillId(skillId) || !info.GainedSkills.Contains(skillId))
+        for (int i = 0; i < count; i++)
             info.GainedSkills.Add(skillId);
 
         GameInfo.PlayerCharacters[playerIndex] = info;
@@ -1683,7 +1716,9 @@ public partial class DebugConsole : CanvasLayer
         SaveSystem.SaveAll();
         await Task.CompletedTask;
 
-        AppendSuccess($"已为 {info.CharacterName} 添加技能 {GetSkillDisplayName(skillId)}。");
+        AppendSuccess(
+            $"已为 {info.CharacterName} 添加技能 {GetSkillDisplayName(skillId)} x{count}。"
+        );
     }
 
     private static SkillID[] GetConsoleSkillPool(PlayerInfoStructure info)
@@ -1700,6 +1735,33 @@ public partial class DebugConsole : CanvasLayer
     }
 
     private static bool IsStarterSkillId(SkillID skillId) => StarterSkillIds.Contains(skillId);
+
+    private void ExecuteDrawCards(string[] args)
+    {
+        int count = 1;
+        if (args.Length >= 2 && !TryParsePositiveInt(args[1], out count))
+            return;
+
+        Battle battle = FindBattle();
+        if (battle == null || !GodotObject.IsInstanceValid(battle))
+        {
+            AppendError("当前不在战斗中。");
+            return;
+        }
+
+        int beforeCount = battle.GetPlayerTeamBattleHand().Count(skill => skill != null);
+        bool drewAny = battle.TryDrawPlayerTeamBattleCards(count, refreshUi: true);
+        int afterCount = battle.GetPlayerTeamBattleHand().Count(skill => skill != null);
+        int drawnCount = Math.Max(0, afterCount - beforeCount);
+
+        if (!drewAny || drawnCount <= 0)
+        {
+            AppendError("未能抽到新牌，可能是手牌已满，或抽牌堆与弃牌堆都已空。");
+            return;
+        }
+
+        AppendSuccess($"已按普通规则抽牌 {drawnCount} 张。");
+    }
 
     private void ExecuteAddEquipment(string[] args)
     {

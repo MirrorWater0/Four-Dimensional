@@ -62,7 +62,7 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 118;
+        MaxLife = 138;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;

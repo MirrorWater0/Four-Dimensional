@@ -50,7 +50,7 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
 public partial class AlienBodyAttack : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 11;
     private const int PowerDown = 2;
 
     public AlienBodyAttack()
@@ -77,7 +77,7 @@ public partial class AlienBodyAttack : Skill
 
 public partial class AlienBodySurvive : Skill
 {
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 8;
     private const int SurvivabilityDown = 4;
 
     public AlienBodySurvive()
@@ -93,7 +93,8 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.All)
+            AddStatusCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards),
+            ModifyPropertyStep(PropertyType.Power, 1, TargetReference.All)
         );
     }
 }
@@ -117,7 +118,7 @@ public partial class AlienBodySpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(13, target: HostileTargetReference.RandomPreview),
-            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 1, HostileTargetReference.All),
+            AddStatusCardsStep(SkillID.DazeStatus, 1),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,

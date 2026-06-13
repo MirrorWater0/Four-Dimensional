@@ -19,6 +19,9 @@ public enum PropertyType
 
     [Description("生命上限")]
     MaxLife,
+
+    [Description("能量源")]
+    EnergySources,
 }
 
 public partial class Skill
@@ -79,8 +82,11 @@ public partial class Skill
     public Character OwnerCharater;
     public SkillID? SkillId { get; internal set; }
     public virtual int EnergyCost => GetDefaultEnergyCost();
+    public virtual int EnemySpecialIntentionCooldown =>
+        SkillType == SkillTypes.Special ? 1 : 0;
     public virtual bool ExhaustsAfterUse => false;
     public virtual bool ExhaustsAtTurnEndInHand => false;
+    public virtual bool RetainsAtTurnEndInHand => false;
     public virtual bool TriggersAtTurnEndInHand => false;
     public virtual bool CanBePlayed => SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
     public bool IsStatusCard => SkillType == SkillTypes.Status;
@@ -380,7 +386,12 @@ public partial class Skill
         if (paymentCost <= 0)
             return true;
 
-        OwnerCharater.UpdataEnergy(-paymentCost, OwnerCharater);
+        if (
+            OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, -paymentCost, OwnerCharater)
+            != -paymentCost
+        )
+            return false;
+
         _prepaidDisplayedEnergy += paymentCost;
         _paidEnergyForCurrentEffect = paymentCost;
         return true;
@@ -394,7 +405,7 @@ public partial class Skill
         int refund = _prepaidDisplayedEnergy;
         _prepaidDisplayedEnergy = 0;
         _paidEnergyForCurrentEffect = 0;
-        OwnerCharater.UpdataEnergy(refund, OwnerCharater);
+        OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, refund, OwnerCharater);
     }
 
     private bool TryPayEnergyCostForEffect()
@@ -417,7 +428,15 @@ public partial class Skill
             if (paymentCost <= 0)
                 return false;
 
-            OwnerCharater.UpdataEnergy(-paymentCost, OwnerCharater);
+            if (
+                OwnerCharater.BattleNode?.UpdataEnergy(
+                    OwnerCharater,
+                    -paymentCost,
+                    OwnerCharater
+                ) != -paymentCost
+            )
+                return false;
+
             _paidEnergyForCurrentEffect = paymentCost;
             return true;
         }
@@ -435,7 +454,12 @@ public partial class Skill
         if (OwnerCharater.CurrentEnergy < cost)
             return false;
 
-        OwnerCharater.UpdataEnergy(-cost, OwnerCharater);
+        if (
+            OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, -cost, OwnerCharater)
+            != -cost
+        )
+            return false;
+
         _paidEnergyForCurrentEffect = cost;
         return true;
     }

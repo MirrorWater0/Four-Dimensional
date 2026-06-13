@@ -64,7 +64,7 @@ public partial class EnvyEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Envy.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Envy.tscn");
 
-        MaxLife = 290;
+        MaxLife = 230;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -78,8 +78,8 @@ public partial class EnvyEliteRegedit : EnemyRegedit
 
 public partial class EnvyEliteAttack : Skill
 {
-    private const int BaseDamage = 24;
-    private const int SurvivabilityDown = 3;
+    private const int BaseDamage = 16;
+    private const int SurvivabilityDown = 2;
 
     public EnvyEliteAttack()
         : base(SkillTypes.Attack)
@@ -98,15 +98,15 @@ public partial class EnvyEliteAttack : Skill
                 PropertyType.Survivability,
                 SurvivabilityDown,
                 HostileTargetReference.AttackKey
-            )
+            ),
+            AddStatusCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DrawPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSurvive : Skill
 {
-    private const int BaseBlock = 27;
-    private const int SurvivabilityGain = 4;
+    private const int BaseBlock = 20;
 
     public EnvyEliteSurvive()
         : base(SkillTypes.Survive)
@@ -122,14 +122,15 @@ public partial class EnvyEliteSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
+            ModifyPropertyStep(PropertyType.Power, 2),
+            AddStatusCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSpecial : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 10;
     private const int PowerDown = 2;
     private const int SelfPowerGain = 2;
 
@@ -140,7 +141,7 @@ public partial class EnvyEliteSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "夺辉";
-    public override int EnergyCost => 8;
+    public override int EnemySpecialIntentionCooldown => 3;
 
     protected override SkillPlan BuildPlan()
     {
@@ -152,8 +153,7 @@ public partial class EnvyEliteSpecial : Skill
                 PowerDown,
                 HostileTargetReference.AttackKey
             ),
-            ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
-            HealStep(0)
+            ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
 }

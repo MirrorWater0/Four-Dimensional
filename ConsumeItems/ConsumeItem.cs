@@ -28,26 +28,26 @@ public partial class ConsumeItem
     private static readonly Dictionary<ItemID, ItemConfig> ItemConfigs = new()
     {
         [ItemID.Health] = new("治疗道具", ItemEffectType.Buff, 1, BuffName: Buff.BuffName.RebirthI),
-        [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 60),
-        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 6, PropertyType.Power),
+        [ItemID.Guard] = new("脉冲护盾", ItemEffectType.Block, 20),
+        [ItemID.Fury] = new("肾上腺素", ItemEffectType.PropertyIncrease, 4, PropertyType.Power),
         [ItemID.Haste] = new("迅捷之翼", ItemEffectType.DrawCards, 2),
         [ItemID.Vitality] = new(
             "全息装甲",
             ItemEffectType.PropertyIncrease,
-            6,
+            4,
             PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 80),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 45),
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,
-            4,
+            3,
             BuffName: Buff.BuffName.Weaken
         ),
         [ItemID.SpaceOscillation] = new(
             "空间震荡",
             ItemEffectType.Buff,
-            4,
+            3,
             BuffName: Buff.BuffName.Vulnerable
         ),
         [ItemID.StreamingTransmission] = new("流式传输", ItemEffectType.DrawCards, 3),
@@ -290,7 +290,7 @@ public partial class ConsumeItem
                     playerCharacter.TryDrawBattleCards(config.Value);
                 break;
             case ItemEffectType.Energy:
-                target.UpdataEnergy(config.Value, target);
+                target.BattleNode?.UpdataEnergy(target, config.Value, target);
                 break;
         }
     }

@@ -204,9 +204,11 @@ public partial class Battle : Node2D
     private int _playerEnergy = 0;
     private int _playerActionCount = 0;
     private int _enemyActionCount = 0;
+    private int _elapsedTurnCount = 0;
     private readonly Dictionary<ulong, int> _characterActionCounts = new();
-    public int PlayerTotalTurnCount => _playerActionCount;
-    public int EnemyTotalTurnCount => _enemyActionCount;
+    public int ElapsedTurnCount => _elapsedTurnCount;
+    public int PlayerTotalTurnCount => _elapsedTurnCount;
+    public int EnemyTotalTurnCount => 0;
     private readonly Dictionary<ulong, int> _pendingExtraActions = new();
     private readonly HashSet<ulong> _activeExtraActionCharacters = new();
     private Character _nextActionPreviewCharacter;
@@ -251,7 +253,7 @@ public partial class Battle : Node2D
     public ProgressBar PlayerActionPoinBar =>
         field ??= GetNodeOrNull<ProgressBar>("ActionPoinBox/PlayerActionPoin");
     public Label PlayerEnergyLabel =>
-        field ??= GetNodeOrNull<Label>("ActionPoinBox/PlayerEnergyLabel");
+        field ??= GetNodeOrNull<Label>("CharacterControlLayer/EnergyBG/EnergyLabel");
     public int PlayerEnergy => _playerEnergy;
     public LevelNode CurrentLevelNode;
     public Character dummy => field ??= GetNode<Character>("Dummy");
@@ -262,6 +264,8 @@ public partial class Battle : Node2D
     public const int EnemyCenterFormationSlot = (MaxEnemyFormationSlots + 1) / 2;
     private const int MaxBattleTurns = 100;
     private const int PostActionDelayMs = 800;
+    private const int PlayerPostActionDelayMs = 300;
+    private const int EnemyPostActionDelayMs = 400;
     private const int BattleOverDelayMs = 5000;
     private const int PlayerActionPoinHintDelayMs = 200;
     private const int BattleStartEffectIntervalMs = 100;
@@ -419,6 +423,7 @@ public partial class Battle : Node2D
         _carrySkillRandom ??= CreateBattleRandom(unchecked((int)0x5A17C0DE));
         _playerActionCount = 0;
         _enemyActionCount = 0;
+        _elapsedTurnCount = 0;
         _playerBattleCardPiles.Clear();
         _playerTeamBattleCardPiles = null;
         _playerBattleSkillRandoms.Clear();
@@ -489,23 +494,43 @@ public partial class Battle : Node2D
         return index >= 0 && index < hand.Length ? hand[index] : null;
     }
 
-    public void BeginPlayerTeamAction()
+    public async void BeginPlayerTeamAction()
     {
         PlayerCharacter teamContext = GetPlayerPhaseActionOrder().FirstOrDefault(IsCharacterAlive);
         if (teamContext == null)
             return;
 
         EnsurePlayerTeamBattleHandSize();
-        DrawPlayerTeamBattleCards(GetPlayerTeamTurnStartDrawCount());
-        ResolvePlayerTeamExtraDraw();
         CharacterControl?.ShowPlayerTurn(teamContext);
+        CharacterControl?.SetPlayerInputsEnabled(teamContext, false);
+        try
+        {
+            await DrawPlayerTeamTurnStartCardsWithShuffleBreaksAsync(
+                GetPlayerTeamTurnStartDrawCount(),
+                _lifetimeCts.Token
+            );
+            Skill[] oldHand = GetPlayerTeamBattleHand().ToArray();
+            Relic.ApplyPlayerTeamTurnStartRelicEffects(this, teamContext, refreshUi: false);
+            ResolvePlayerTeamExtraDraw();
+            CharacterControl?.QueueBatchDrawMakeRoomAnimation(
+                oldHand,
+                GetPlayerTeamBattleHand()
+            );
+            CharacterControl?.RefreshCurrentTurnUi();
+        }
+        finally
+        {
+            if (IsBattleAlive() && !HasBattleEnded())
+                CharacterControl?.SetPlayerInputsEnabled(teamContext, true);
+        }
     }
 
     private int GetPlayerTeamTurnStartDrawCount()
     {
-        int alivePlayers = GetPlayerPhaseActionOrder().Count(IsCharacterAlive);
+        var playerPhaseOrder = GetPlayerPhaseActionOrder();
+        int alivePlayers = playerPhaseOrder.Count(IsCharacterAlive);
         return alivePlayers * PlayerCharacter.TeamTurnStartDrawContribution
-            + Relic.GetTurnStartDrawBonus(this);
+            + Relic.GetTurnStartDrawBonus(this, playerPhaseOrder.FirstOrDefault(IsCharacterAlive));
     }
 
     public int GetAvailableEnergy(Character character)
@@ -516,7 +541,37 @@ public partial class Battle : Node2D
         return character.IsPlayer ? PlayerEnergy : Math.Max(0, character.EnergySources);
     }
 
-    public int UpdataPlayerEnergy(int delta, Character source = null)
+    public int UpdataEnergy(Character target, int delta, Character source = null)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return 0;
+
+        if (target.IsPlayer)
+        {
+            int actualPlayerDelta = UpdataPlayerEnergy(delta, source ?? target);
+            if (actualPlayerDelta == 0)
+                return 0;
+
+            if (actualPlayerDelta < 0)
+                PlayEnergyLossEffect(target);
+
+            SpawnEnergyHint(target, actualPlayerDelta);
+            return actualPlayerDelta;
+        }
+
+        int oldEnergy = Math.Max(0, target.EnergySources);
+        int newEnergy = Math.Max(0, oldEnergy + delta);
+        int actualDelta = newEnergy - oldEnergy;
+
+        target.EnergySources = newEnergy;
+        target.EnergeIconLabel.Text = target.EnergySources.ToString();
+        target.RefreshEnergyIconVisibility();
+        target.InvalidateSkillTooltipCache();
+
+        return actualDelta;
+    }
+
+    private int UpdataPlayerEnergy(int delta, Character source = null)
     {
         int oldEnergy = Math.Max(0, _playerEnergy);
         int newEnergy = Math.Max(0, oldEnergy + delta);
@@ -528,14 +583,39 @@ public partial class Battle : Node2D
         RefreshPlayerEnergyUi();
         InvalidatePlayerTeamSkillTooltips();
         CharacterControl?.RefreshCurrentTurnUi();
+        if (actualDelta > 0)
+            BattleAnimationPlayer?.Play("blue");
         RecordPlayerEnergyChange(actualDelta, source);
         return actualDelta;
+    }
+
+    private static void PlayEnergyLossEffect(Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return;
+
+        var effect = target.CharacterEffectScene.Instantiate<CharacterEffect>();
+        effect.Position = new Vector2(0, -50);
+        target.AddChild(effect);
+        effect.Animation.Play("energe");
+    }
+
+    private static void SpawnEnergyHint(Character target, int delta)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target) || delta == 0)
+            return;
+
+        BuffHintLabel.Spawn(
+            target,
+            $"[color=#87CEEB]Energy[/color] {delta:+0;-0;0}",
+            target.GlobalPosition
+        );
     }
 
     private void RefreshPlayerEnergyUi()
     {
         if (PlayerEnergyLabel != null)
-            PlayerEnergyLabel.Text = $"能量 {_playerEnergy}";
+            PlayerEnergyLabel.Text = _playerEnergy.ToString();
     }
 
     private int GetPlayerTeamTurnStartEnergyGain(IReadOnlyList<PlayerCharacter> playerPhaseOrder)
@@ -573,25 +653,132 @@ public partial class Battle : Node2D
         if (count <= 0)
             return;
 
-        Skill[] hand = GetPlayerTeamBattleHand();
-        for (int i = 0; i < hand.Length && count > 0; i++)
+        while (count > 0)
         {
-            if (hand[i] != null)
-                continue;
-
-            Skill drawnSkill = DrawPlayerTeamBattleSkill();
-            if (drawnSkill == null)
+            if (!DrawOnePlayerTeamBattleCard())
                 return;
 
-            PlayerCharacter owner = drawnSkill.OwnerCharater as PlayerCharacter;
-            drawnSkill.UpdateDescription();
-            hand[i] = drawnSkill;
-            owner?.InvalidateSkillTooltipCache();
-            drawnSkill.OnDrawnToHand(owner);
             count--;
         }
 
         InvalidatePlayerTeamSkillTooltips();
+    }
+
+    private async Task DrawPlayerTeamTurnStartCardsWithShuffleBreaksAsync(
+        int count,
+        CancellationToken token
+    )
+    {
+        if (count <= 0)
+            return;
+
+        PlayerTeamBattleCardPiles piles = GetOrCreatePlayerTeamBattleCardPiles();
+        if (piles == null)
+            return;
+
+        Skill[] batchOldHand = GetPlayerTeamBattleHand().ToArray();
+        bool batchDrewAny = false;
+        int remaining = count;
+        while (remaining > 0)
+        {
+            if (PickDrawableTeamCardIndex(piles.DrawPile, Skill.SkillTypes.none) < 0)
+            {
+                if (piles.DrawPile.Count > 0 || piles.DiscardPile.Count == 0)
+                    break;
+
+                if (batchDrewAny)
+                {
+                    CharacterControl?.QueueBatchDrawMakeRoomAnimation(
+                        batchOldHand,
+                        GetPlayerTeamBattleHand()
+                    );
+                    CharacterControl?.RefreshCurrentTurnUi();
+                    batchOldHand = GetPlayerTeamBattleHand().ToArray();
+                    batchDrewAny = false;
+                }
+
+                float shuffleDuration =
+                    CharacterControl?.PlayBattleDeckShuffleAnimation(piles.DiscardPile.Count) ?? 0f;
+                if (shuffleDuration > 0f)
+                {
+                    bool continued = await DelayOrCancel(
+                        Mathf.CeilToInt(shuffleDuration * 1000f),
+                        token
+                    );
+                    if (!continued || HasBattleEnded() || !IsBattleAlive())
+                        return;
+                }
+
+                RefillTeamDrawPileFromDiscard(piles, GetOrCreatePlayerTeamBattleSkillRandom());
+                batchOldHand = GetPlayerTeamBattleHand().ToArray();
+                continue;
+            }
+
+            if (!DrawOneAvailablePlayerTeamBattleCard(piles))
+                break;
+
+            batchDrewAny = true;
+            remaining--;
+        }
+
+        if (batchDrewAny)
+        {
+            CharacterControl?.QueueBatchDrawMakeRoomAnimation(
+                batchOldHand,
+                GetPlayerTeamBattleHand()
+            );
+            CharacterControl?.RefreshCurrentTurnUi();
+        }
+
+        InvalidatePlayerTeamSkillTooltips();
+    }
+
+    private bool DrawOneAvailablePlayerTeamBattleCard(PlayerTeamBattleCardPiles piles)
+    {
+        if (piles == null)
+            return false;
+
+        Skill[] hand = GetPlayerTeamBattleHand();
+        int handIndex = Array.FindIndex(hand, skill => skill == null);
+        if (handIndex < 0)
+            return false;
+
+        int pickedIndex = PickDrawableTeamCardIndex(piles.DrawPile, Skill.SkillTypes.none);
+        if (pickedIndex < 0)
+            return false;
+
+        BattleCardPileEntry picked = piles.DrawPile[pickedIndex];
+        piles.DrawPile.RemoveAt(pickedIndex);
+        Skill drawnSkill = Skill.GetSkill(picked.SkillId);
+        if (drawnSkill == null)
+            return false;
+
+        drawnSkill.OwnerCharater = picked.Owner;
+        PlayerCharacter owner = drawnSkill.OwnerCharater as PlayerCharacter;
+        drawnSkill.UpdateDescription();
+        hand[handIndex] = drawnSkill;
+        owner?.InvalidateSkillTooltipCache();
+        drawnSkill.OnDrawnToHand(owner);
+        return true;
+    }
+
+    private bool DrawOnePlayerTeamBattleCard()
+    {
+        Skill[] hand = GetPlayerTeamBattleHand();
+        int handIndex = Array.FindIndex(hand, skill => skill == null);
+        if (handIndex < 0)
+            return false;
+
+        Skill drawnSkill = DrawPlayerTeamBattleSkill();
+        if (drawnSkill == null)
+            return false;
+
+        PlayerCharacter owner = drawnSkill.OwnerCharater as PlayerCharacter;
+        drawnSkill.UpdateDescription();
+        hand[handIndex] = drawnSkill;
+        owner?.InvalidateSkillTooltipCache();
+        drawnSkill.OnDrawnToHand(owner);
+        return true;
     }
 
     public bool TryDrawPlayerTeamBattleCards(int count, bool refreshUi = true)
@@ -640,7 +827,7 @@ public partial class Battle : Node2D
                 continue;
 
             int beforeCount = GetPlayerTeamBattleHandCardCount();
-            player.TryDrawBattleCards(1, refreshUi: false);
+            TryDrawPlayerTeamBattleCards(1, refreshUi: false);
             int drawnCount = Math.Max(0, GetPlayerTeamBattleHandCardCount() - beforeCount);
             SpecialBuff.ConsumeCardRefresh(player, drawnCount);
         }
@@ -797,9 +984,10 @@ public partial class Battle : Node2D
         return true;
     }
 
-    private void CompactPlayerTeamBattleHand()
+    private bool CompactPlayerTeamBattleHand()
     {
         Skill[] hand = GetPlayerTeamBattleHand();
+        Skill[] oldHand = hand.ToArray();
         Skill[] compacted = new Skill[PlayerCharacter.MaxBattleHandSize];
         int next = 0;
         for (int i = 0; i < hand.Length; i++)
@@ -810,7 +998,25 @@ public partial class Battle : Node2D
             compacted[next++] = hand[i];
         }
 
+        bool changed = oldHand.Length != compacted.Length;
+        if (!changed)
+        {
+            for (int i = 0; i < oldHand.Length; i++)
+            {
+                if (!ReferenceEquals(oldHand[i], compacted[i]))
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (!changed)
+            return false;
+
+        CharacterControl?.QueueHandReorderAnimation(oldHand, compacted);
         _playerTeamBattleHand = compacted;
+        return true;
     }
 
     private PlayerCharacter GetBattlePileOwner(Skill skill, PlayerCharacter fallback = null)
@@ -851,6 +1057,14 @@ public partial class Battle : Node2D
         SkillID skillId,
         int count,
         Character source = null
+    ) => AddPlayerBattleStatusCards(player, skillId, count, BattleCardPileTarget.DrawPileCards, source);
+
+    public void AddPlayerBattleStatusCards(
+        PlayerCharacter player,
+        SkillID skillId,
+        int count,
+        BattleCardPileTarget pileTarget = BattleCardPileTarget.DrawPileCards,
+        Character source = null
     )
     {
         if (count <= 0 || player == null || !GodotObject.IsInstanceValid(player))
@@ -861,15 +1075,29 @@ public partial class Battle : Node2D
             return;
 
         Random rng = GetOrCreatePlayerTeamBattleSkillRandom();
-        RefillTeamDrawPileFromDiscard(piles, rng);
-        for (int i = 0; i < count; i++)
+        if (pileTarget == BattleCardPileTarget.HandCards)
         {
-            int insertIndex = rng.Next(piles.DrawPile.Count + 1);
-            piles.DrawPile.Insert(insertIndex, new BattleCardPileEntry(player, skillId));
+            AddPlayerBattleStatusCardsToHand(player, skillId, count, source);
+            return;
+        }
+
+        if (pileTarget == BattleCardPileTarget.DiscardPileCards)
+        {
+            for (int i = 0; i < count; i++)
+                piles.DiscardPile.Add(new BattleCardPileEntry(player, skillId));
+        }
+        else
+        {
+            RefillTeamDrawPileFromDiscard(piles, rng);
+            for (int i = 0; i < count; i++)
+            {
+                int insertIndex = rng.Next(piles.DrawPile.Count + 1);
+                piles.DrawPile.Insert(insertIndex, new BattleCardPileEntry(player, skillId));
+            }
         }
 
         player.InvalidateSkillTooltipCache();
-        RecordStatusCardInsert(player, skillId, count, source: source);
+        RecordStatusCardInsert(player, skillId, count, pileTarget: pileTarget, source: source);
     }
 
     public int AddPlayerBattleStatusCardsToHand(
@@ -1018,6 +1246,248 @@ public partial class Battle : Node2D
         }
 
         CharacterControl?.RefreshCurrentTurnUi();
+    }
+
+    public async Task<int> ExhaustPlayerTeamBattleCardsAsync(
+        BattleCardPileTarget pileTarget,
+        int count,
+        bool random = true,
+        PlayerCharacter teamContext = null
+    )
+    {
+        count = Math.Max(0, count);
+        if (count <= 0)
+            return 0;
+
+        PlayerTeamBattleCardPiles piles = GetOrCreatePlayerTeamBattleCardPiles();
+        if (piles == null)
+            return 0;
+
+        teamContext ??= GetPlayerPhaseActionOrder().FirstOrDefault(IsCharacterAlive);
+        var handIndexes = new List<int>();
+        var previewEntries = new List<CharacterControl.StatusCardExhaustAnimationEntry>();
+        Random rng = random ? GetOrCreatePlayerTeamBattleSkillRandom() : null;
+
+        int exhaustedCount = pileTarget switch
+        {
+            BattleCardPileTarget.HandCards => ExhaustPlayerTeamHandCards(
+                piles,
+                count,
+                random,
+                teamContext,
+                handIndexes,
+                previewEntries
+            ),
+            BattleCardPileTarget.DiscardPileCards => ExhaustBattlePileCards(
+                piles.DiscardPile,
+                piles.Exhausted,
+                count,
+                random,
+                rng,
+                previewEntries
+            ),
+            _ => ExhaustBattlePileCards(
+                piles.DrawPile,
+                piles.Exhausted,
+                count,
+                random,
+                rng,
+                previewEntries
+            ),
+        };
+
+        if (exhaustedCount <= 0)
+            return 0;
+
+        if (CharacterControl != null && GodotObject.IsInstanceValid(CharacterControl))
+        {
+            var animationTasks = new List<Task>();
+            if (
+                handIndexes.Count > 0
+                && teamContext != null
+                && CharacterControl.CanAnimateHandCardsFor(teamContext)
+            )
+            {
+                animationTasks.Add(
+                    CharacterControl.PlayHandCardExhaustAnimationAsync(teamContext, handIndexes)
+                );
+            }
+            if (previewEntries.Count > 0)
+                animationTasks.Add(CharacterControl.PlayStatusCardExhaustPreviewAnimationAsync(previewEntries));
+
+            if (animationTasks.Count > 0)
+                await Task.WhenAll(animationTasks);
+        }
+
+        Skill[] hand = GetPlayerTeamBattleHand();
+        foreach (int index in handIndexes.OrderByDescending(x => x))
+        {
+            if (index < 0 || index >= hand.Length)
+                continue;
+
+            hand[index] = null;
+        }
+        CompactPlayerTeamBattleHand();
+        InvalidatePlayerTeamSkillTooltips();
+        CharacterControl?.RefreshCurrentTurnUi();
+        return exhaustedCount;
+    }
+
+    public int ExhaustPlayerTeamBattleSkills(IEnumerable<Skill> skills, PlayerCharacter fallbackOwner = null)
+    {
+        if (skills == null)
+            return 0;
+
+        PlayerTeamBattleCardPiles piles = GetOrCreatePlayerTeamBattleCardPiles();
+        if (piles == null)
+            return 0;
+
+        int exhaustedCount = 0;
+        foreach (Skill skill in skills)
+        {
+            if (skill == null || !skill.SkillId.HasValue)
+                continue;
+
+            PlayerCharacter owner = GetBattlePileOwner(skill, fallbackOwner);
+            piles.Exhausted.Add(new BattleCardPileEntry(owner, skill.SkillId.Value));
+            owner?.InvalidateSkillTooltipCache();
+            exhaustedCount++;
+        }
+
+        if (exhaustedCount > 0)
+        {
+            InvalidatePlayerTeamSkillTooltips();
+            CharacterControl?.RefreshCurrentTurnUi();
+        }
+
+        return exhaustedCount;
+    }
+
+    public bool TryExhaustBattlePileCard(
+        BattleCardPileTarget pileTarget,
+        int pileIndex,
+        bool refreshUi = true
+    )
+    {
+        if (pileIndex < 0)
+            return false;
+
+        PlayerTeamBattleCardPiles piles = GetOrCreatePlayerTeamBattleCardPiles();
+        List<BattleCardPileEntry> sourcePile = pileTarget switch
+        {
+            BattleCardPileTarget.DiscardPileCards => piles?.DiscardPile,
+            BattleCardPileTarget.DrawPileCards => piles?.DrawPile,
+            _ => null,
+        };
+        if (sourcePile == null || pileIndex >= sourcePile.Count)
+            return false;
+
+        BattleCardPileEntry entry = sourcePile[pileIndex];
+        sourcePile.RemoveAt(pileIndex);
+        piles.Exhausted.Add(entry);
+        entry.Owner?.InvalidateSkillTooltipCache();
+        InvalidatePlayerTeamSkillTooltips();
+        if (refreshUi)
+            CharacterControl?.RefreshCurrentTurnUi();
+        return true;
+    }
+
+    private int ExhaustPlayerTeamHandCards(
+        PlayerTeamBattleCardPiles piles,
+        int count,
+        bool random,
+        PlayerCharacter teamContext,
+        List<int> handIndexes,
+        List<CharacterControl.StatusCardExhaustAnimationEntry> previewEntries
+    )
+    {
+        if (piles == null || count <= 0 || handIndexes == null)
+            return 0;
+
+        Skill[] hand = GetPlayerTeamBattleHand();
+        bool canAnimateHand =
+            CharacterControl != null
+            && GodotObject.IsInstanceValid(CharacterControl)
+            && teamContext != null
+            && CharacterControl.CanAnimateHandCardsFor(teamContext);
+
+        int[] indexes = hand
+            .Select((skill, index) => new { skill, index })
+            .Where(entry => entry.skill?.SkillId.HasValue == true)
+            .Select(entry => entry.index)
+            .ToArray();
+        if (random && indexes.Length > 1)
+            ShuffleIndexes(indexes, GetOrCreatePlayerTeamBattleSkillRandom());
+
+        int exhaustedCount = 0;
+        for (int i = 0; i < indexes.Length && exhaustedCount < count; i++)
+        {
+            int handIndex = indexes[i];
+            Skill skill = hand[handIndex];
+            if (skill == null || !skill.SkillId.HasValue)
+                continue;
+
+            PlayerCharacter owner = GetBattlePileOwner(skill, teamContext);
+            SkillID skillId = skill.SkillId.Value;
+            piles.Exhausted.Add(new BattleCardPileEntry(owner, skillId));
+            handIndexes.Add(handIndex);
+            if (!canAnimateHand && owner != null)
+            {
+                previewEntries?.Add(
+                    new CharacterControl.StatusCardExhaustAnimationEntry(owner, skillId)
+                );
+            }
+            exhaustedCount++;
+        }
+
+        return exhaustedCount;
+    }
+
+    private static int ExhaustBattlePileCards(
+        List<BattleCardPileEntry> source,
+        List<BattleCardPileEntry> exhausted,
+        int count,
+        bool random,
+        Random rng,
+        List<CharacterControl.StatusCardExhaustAnimationEntry> previewEntries = null
+    )
+    {
+        if (source == null || exhausted == null || count <= 0)
+            return 0;
+
+        int exhaustedCount = 0;
+        for (int i = 0; source.Count > 0 && exhaustedCount < count; i++)
+        {
+            int index = random ? (rng ?? new Random()).Next(source.Count) : 0;
+            BattleCardPileEntry entry = source[index];
+            source.RemoveAt(index);
+            exhausted.Add(entry);
+            if (entry.Owner != null)
+            {
+                previewEntries?.Add(
+                    new CharacterControl.StatusCardExhaustAnimationEntry(
+                        entry.Owner,
+                        entry.SkillId
+                    )
+                );
+            }
+            exhaustedCount++;
+        }
+
+        return exhaustedCount;
+    }
+
+    private static void ShuffleIndexes(int[] indexes, Random rng)
+    {
+        if (indexes == null || indexes.Length <= 1)
+            return;
+
+        rng ??= new Random();
+        for (int i = indexes.Length - 1; i > 0; i--)
+        {
+            int swapIndex = rng.Next(i + 1);
+            (indexes[i], indexes[swapIndex]) = (indexes[swapIndex], indexes[i]);
+        }
     }
 
     public async Task RemovePlayerOwnedBattleCardsOnDyingAsync(PlayerCharacter player)
@@ -1178,6 +1648,7 @@ public partial class Battle : Node2D
             return;
 
         var discardIndexes = new HashSet<int>();
+        bool handChanged = false;
         for (int i = 0; i < hand.Length; i++)
         {
             Skill skill = hand[i];
@@ -1199,27 +1670,31 @@ public partial class Battle : Node2D
                 else
                     await skill.OnTurnEndInHand(skillOwner);
 
-                if (hand[i] == skill)
+                if (hand[i] == skill && !skill.RetainsAtTurnEndInHand)
                 {
                     DiscardBattleSkill(skillOwner, skill, atTurnEnd: true, forceDiscard: true);
                     hand[i] = null;
+                    handChanged = true;
                 }
                 continue;
             }
 
             await skill.OnTurnEndInHand(skillOwner);
-            if (hand[i] == skill)
+            if (hand[i] == skill && !skill.RetainsAtTurnEndInHand)
                 discardIndexes.Add(i);
         }
 
         if (discardIndexes.Count == 0)
         {
+            bool compacted = CompactPlayerTeamBattleHand();
+            if (handChanged || compacted)
+                CharacterControl?.RefreshCurrentTurnUi();
             InvalidatePlayerTeamSkillTooltips();
             return;
         }
 
         if (CharacterControl != null && GodotObject.IsInstanceValid(CharacterControl))
-            await CharacterControl.PlayEndTurnHandDiscardAnimationsAsync(teamContext, discardIndexes);
+            _ = CharacterControl.PlayEndTurnHandDiscardAnimationsAsync(teamContext, discardIndexes);
 
         foreach (int index in discardIndexes)
         {
@@ -1232,8 +1707,12 @@ public partial class Battle : Node2D
 
             DiscardBattleSkill(GetBattlePileOwner(skill, teamContext), skill, atTurnEnd: true);
             hand[index] = null;
+            handChanged = true;
         }
 
+        bool compactedAfterDiscard = CompactPlayerTeamBattleHand();
+        if (handChanged || compactedAfterDiscard)
+            CharacterControl?.RefreshCurrentTurnUi();
         InvalidatePlayerTeamSkillTooltips();
     }
 
@@ -2500,6 +2979,11 @@ public partial class Battle : Node2D
             : 1;
     }
 
+    private void RegisterPlayerTurnStart()
+    {
+        _elapsedTurnCount++;
+    }
+
     public void RequestExtraAction(Character character, int count = 1)
     {
         if (
@@ -2601,7 +3085,7 @@ public partial class Battle : Node2D
         if (character == null)
             return 0;
 
-        return character.IsPlayer ? PlayerTotalTurnCount : EnemyTotalTurnCount;
+        return ElapsedTurnCount;
     }
 
     private async Task<bool> InitializeEnemyIntentions(CancellationToken token)
@@ -2615,9 +3099,7 @@ public partial class Battle : Node2D
 
             if (source is EnemyCharacter enemy)
             {
-                enemy.IntentionIndex = enemy.RollIntentionIndex(
-                    EnemyCharacter.NextActionEnergyPreviewBonus
-                );
+                enemy.IntentionIndex = enemy.RollIntentionIndex();
             }
 
             await source.DisappearIntention();
@@ -3322,6 +3804,7 @@ public partial class Battle : Node2D
         if (playerPhaseOrder.Count == 0)
             return;
 
+        RegisterPlayerTurnStart();
         ResolveTeamBlockExpiration(isPlayer: true);
         GainPlayerActionPoinAtTeamPhaseStart();
         ConsumeTeamTurnStartHurtDebuffStacks(isPlayer: true);
@@ -3356,7 +3839,7 @@ public partial class Battle : Node2D
                 () => GetNextEnemyPhaseCharacter()
             );
 
-            if (!await DelayOrCancel(PostActionDelayMs, token) || await HandleBattleOver(token))
+            if (!await DelayOrCancel(PlayerPostActionDelayMs, token) || await HandleBattleOver(token))
                 return;
 
             await ResolveTeamTurnEndPhase(isPlayer: true);
@@ -3380,6 +3863,8 @@ public partial class Battle : Node2D
             await EmitTeamTurnEnd(isPlayer: true);
         if (completedPhase && CanContinue(token) && IsBattleAlive() && !HasBattleEnded())
             ConsumeTeamTurnEndDebuffStacks(isPlayer: true);
+        if (completedPhase && CanContinue(token) && IsBattleAlive() && !HasBattleEnded())
+            ConsumeOpposingTeamTurnEndInvisibleStacks(activeTeamIsPlayer: true);
     }
 
     private void GainPlayerActionPoinAtTeamPhaseStart()
@@ -3425,7 +3910,7 @@ public partial class Battle : Node2D
                     () => GetNextEnemyPhaseCharacter(enemyPhaseOrder, nextIndex)
                 );
 
-                if (!await DelayOrCancel(PostActionDelayMs, token) || await HandleBattleOver(token))
+                if (!await DelayOrCancel(EnemyPostActionDelayMs, token) || await HandleBattleOver(token))
                     return;
             }
 
@@ -3458,6 +3943,8 @@ public partial class Battle : Node2D
                     await EmitTeamTurnEnd(isPlayer: false);
                 if (CanContinue(token) && IsBattleAlive() && !HasBattleEnded())
                     ConsumeTeamTurnEndDebuffStacks(isPlayer: false);
+                if (CanContinue(token) && IsBattleAlive() && !HasBattleEnded())
+                    ConsumeOpposingTeamTurnEndInvisibleStacks(activeTeamIsPlayer: false);
 
                 refreshIntentions = CanContinue(token) && IsBattleAlive() && !HasBattleEnded();
                 if (refreshIntentions)
@@ -3550,6 +4037,35 @@ public partial class Battle : Node2D
             )
             {
                 weaken.ConsumeTeamTurnEndStack();
+            }
+        }
+    }
+
+    private void ConsumeOpposingTeamTurnEndInvisibleStacks(bool activeTeamIsPlayer)
+    {
+        bool protectedTeamIsPlayer = !activeTeamIsPlayer;
+        foreach (Character character in GetTeamCharacters(protectedTeamIsPlayer, includeSummons: true))
+        {
+            if (
+                character == null
+                || !GodotObject.IsInstanceValid(character)
+                || character.State == Character.CharacterState.Dying
+            )
+            {
+                continue;
+            }
+
+            foreach (
+                StartActionBuff invisible in character
+                    .StartActionBuffs?.Where(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Invisible
+                        && buff.Stack > 0
+                    )
+                    .ToArray() ?? Array.Empty<StartActionBuff>()
+            )
+            {
+                invisible.ConsumeOpposingTeamTurnEndStack();
             }
         }
     }
@@ -3998,8 +4514,8 @@ public partial class Battle : Node2D
             return;
 
         CurrentLevelNode.PlayerDamageSummaryLines = BuildPlayerDamageSummaryLines();
-        CurrentLevelNode.PlayerTotalTurnCount = PlayerTotalTurnCount;
-        CurrentLevelNode.EnemyTotalTurnCount = EnemyTotalTurnCount;
+        CurrentLevelNode.PlayerTotalTurnCount = ElapsedTurnCount;
+        CurrentLevelNode.EnemyTotalTurnCount = 0;
         GameInfo.UpdateActiveLevelNodeBattleStatistics(CurrentLevelNode);
     }
 
@@ -4138,11 +4654,6 @@ public partial class Battle : Node2D
                 GetUpcomingPlayerActionNumber(expectedCharacter)
             );
             expectedCharacter.StartAction();
-            Relic.ApplyPlayerActionStartedRelicEffects(
-                this,
-                expectedCharacter,
-                GetUpcomingPlayerActionNumber(expectedCharacter)
-            );
 
             while (CanWaitForActionNext(expectedCharacter) && !receivedNext)
             {
@@ -4201,7 +4712,7 @@ public partial class Battle : Node2D
 
     private bool HasBattleEnded() => IsTeamDefeated(PlayersList) || IsTeamDefeated(EnemiesList);
 
-    public bool CanReviveDyingPlayerNow() => _retreating;
+    public bool CanReviveDyingPlayerNow() => IsBattleAlive();
 
     public void HandleCharacterEnteredDying(Character target)
     {

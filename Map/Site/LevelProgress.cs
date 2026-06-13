@@ -6,7 +6,7 @@ using Godot;
 public partial class LevelProgress : Control
 {
     private const int RegionOneMapLength = 13; // Number of stages
-    private const int RegionTwoMapLength = RegionOneMapLength - 2;
+    private const int RegionTwoMapLength = RegionOneMapLength - 1;
     private static int MapLength => GameInfo.CurrentLevel > 0 ? RegionTwoMapLength : RegionOneMapLength;
     private static int PreBossRestStage => MapLength - 2;
     private const int MaxMapHeight = 4; // Maximum vertical slots per stage

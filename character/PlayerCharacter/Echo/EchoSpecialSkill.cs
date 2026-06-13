@@ -5,6 +5,7 @@ public partial class EchoSpecialSkill : Node { }
 public partial class TuningStance : Skill
 {
     public override int EnergyCost => 1;
+    public override bool RetainsAtTurnEndInHand => true;
 
     public TuningStance()
         : base(SkillTypes.Special)
@@ -16,7 +17,7 @@ public partial class TuningStance : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, EnergyStep(1, TargetReference.All));
+        return new SkillPlan(this, SelectDiscardPileCardsToHandStep(2));
     }
 }
 
@@ -37,8 +38,7 @@ public partial class RelayShift : Skill
     {
         return new SkillPlan(
             this,
-            SwapPositionFriendlyStep(relativeIndexA: 0, relativeIndexB: 1),
-            EnergyStep(2, TargetReference.Previous),
+            EnergyStep(2),
             CarryStep(target: TargetReference.Previous, skillIndex: 2)
         );
     }
@@ -64,7 +64,6 @@ public class VoidForm : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, -2),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Void,
                 stacks: VoidStacks,
@@ -76,7 +75,7 @@ public class VoidForm : Skill
 
 public partial class Purity : Skill
 {
-    private const int EnergyGain = 3;
+    private const int EnergyGain = 2;
 
     public Purity()
         : base(SkillTypes.Special)

@@ -35,7 +35,7 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 50;
+        MaxLife = 35;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -93,7 +93,6 @@ public partial class RedHuskSurvive : Skill
 public partial class RedHuskSpecial : Skill
 {
     private const int AutoArmorStacks = 3;
-    private const int RebirthStacks = 1;
 
     public RedHuskSpecial()
         : base(SkillTypes.Special)
@@ -112,11 +111,6 @@ public partial class RedHuskSpecial : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,
-                target: TargetReference.Self
-            ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.RebirthI,
-                stacks: RebirthStacks,
                 target: TargetReference.Self
             )
         );

@@ -44,12 +44,8 @@ public partial class Smite : Skill
     {
         return new SkillPlan(
             this,
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                SurvivalDown,
-                HostileTargetReference.One
-            ),
-            AttackStep(baseDamage: BaseDamage)
+            AttackStep(baseDamage: BaseDamage),
+            ExhaustCardsStep(BattleCardPileTarget.HandCards, 1, false)
         );
     }
 }
@@ -142,7 +138,8 @@ public partial class VulnerablePurge : Skill
                         && buff.Stack > 0
                     ) == true,
                 conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
-            )
+            ),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1, HostileTargetReference.All)
         );
     }
 }

@@ -85,7 +85,7 @@ size_flags_vertical = 0
 mouse_filter = 2
 theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 26
-columns = 6
+columns = 5
 
 [node name="DiscardSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=2110271464]
 layout_mode = 2
@@ -125,7 +125,7 @@ size_flags_vertical = 0
 mouse_filter = 2
 theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 26
-columns = 6
+columns = 5
 
 [node name="ExhaustedSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=260655227]
 layout_mode = 2
@@ -165,4 +165,4 @@ size_flags_vertical = 0
 mouse_filter = 2
 theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 26
-columns = 6
+columns = 5

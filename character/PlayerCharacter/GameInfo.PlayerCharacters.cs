@@ -29,6 +29,8 @@ public static partial class GameInfo
         SkillID.NightingaleBasicSpecial,
     ];
 
+    public static bool IsBasicSkill(SkillID skillId) => BasicSkillIds.Contains(skillId);
+
     public static void NormalizePlayerCharacters()
     {
         if (PlayerCharacters == null)

@@ -53,7 +53,7 @@ public partial class VoidRotorRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidRotor.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidRotor.tscn");
 
-        MaxLife = 63;
+        MaxLife = 43;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -67,7 +67,7 @@ public partial class VoidRotorRegedit : EnemyRegedit
 
 public partial class VoidRotorAttack : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 4;
     private const int PowerMultiplier = 1;
 
     public VoidRotorAttack()
@@ -105,14 +105,14 @@ public partial class VoidRotorSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 2, HostileTargetReference.One)
+            AddStatusCardsStep(SkillID.DazeStatus, 2)
         );
     }
 }
 
 public partial class VoidRotorSpecial : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 5;
     private const int DazeCardsPerTarget = 2;
 
     public VoidRotorSpecial()
@@ -129,10 +129,10 @@ public partial class VoidRotorSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 2),
-            AddStatusCardsToDrawPileStep(
+            AddStatusCardsStep(
                 SkillID.DazeStatus,
                 DazeCardsPerTarget,
-                HostileTargetReference.One
+                BattleCardPileTarget.DiscardPileCards
             )
         );
     }

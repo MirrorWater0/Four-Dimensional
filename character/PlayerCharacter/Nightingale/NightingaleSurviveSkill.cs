@@ -53,7 +53,7 @@ public partial class FlashOfLight : Skill
                 stacks: VulnerableStacks,
                 target: HostileTargetReference.One
             ),
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock)
+            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock)
         );
     }
 }
@@ -91,7 +91,7 @@ public partial class StarWard : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseBlock = 6;
-    private const int ExtraPowerStacks = 2;
+    private const int ExtraPowerStacks = 1;
     public override int EnergyCost => 2;
 
     public StarWard()
@@ -110,7 +110,7 @@ public partial class StarWard : Skill
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
-                target: TargetReference.Self
+                target: TargetReference.ManualFriendly
             )
         );
     }

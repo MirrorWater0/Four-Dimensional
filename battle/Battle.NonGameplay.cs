@@ -105,12 +105,12 @@ public partial class Battle
     private const string RecordDamageColor = "#ff7b7b";
     private const string RecordHealColor = "#6bff8f";
     private const string RecordNeutralColor = "#d9e2f2";
-    private const int IncomingDamagePreviewLayerOrder = 40;
-    private const string IncomingDamagePreviewLayerName = "IncomingDamagePreviewLayer";
     private const int SingleTargetDamageIntentionArrowLayerOrder = 4;
     private const string SingleTargetDamageIntentionArrowLayerName =
         "SingleTargetDamageIntentionArrowLayer";
-    private static readonly Vector2 IncomingDamagePreviewOffset = new(0f, -240f);
+    private static readonly Vector2 IncomingDamagePreviewOffset = new(0f, -300f);
+    private const float IncomingDamagePreviewFloatAmplitude = 20f;
+    private const float IncomingDamagePreviewFloatHalfDuration = 1.5f;
     private static readonly Vector2 IntentionArrowTargetOffset = new(0f, -170f);
     private static readonly Vector2 IntentionArrowSourceGap = new(-26f, 0f);
     private static readonly Color IntentionArrowColor = new(1f, 0.26f, 0.22f, 0.84f);
@@ -128,6 +128,7 @@ public partial class Battle
     private readonly List<DamageRecordEntry> _damageRecords = new();
     private readonly Dictionary<Character, int> _playerDamageTotals = new();
     private readonly List<VBoxContainer> _incomingDamagePreviewPanels = new();
+    private readonly Dictionary<VBoxContainer, Tween> _incomingDamagePreviewTweens = new();
     private readonly List<SingleTargetDamageIntentionArrow> _singleTargetDamageIntentionArrows =
         new();
     private bool _suppressIncomingDamagePreview;
@@ -184,26 +185,34 @@ public partial class Battle
             return;
         }
 
-        var layer = EnsureIncomingDamagePreviewLayer();
-        if (layer == null)
-            return;
-
         int panelIndex = 0;
         foreach (Skill.PreviewEffectEntry entry in incomingDamageEntries)
         {
-            var panel = GetOrCreateIncomingDamagePreviewPanel(layer, panelIndex++);
+            var panel = GetOrCreateIncomingDamagePreviewPanel(
+                entry.Target,
+                panelIndex++,
+                out bool resetPosition
+            );
+            if (panel == null)
+                continue;
+
             PreviewEffectDisplay.ShowPanel(
                 panel,
                 new[] { entry },
-                GetTargetScreenPosition(entry.Target),
-                IncomingDamagePreviewOffset
+                Vector2.Zero,
+                IncomingDamagePreviewOffset,
+                preservePosition: !resetPosition
             );
+            EnsureIncomingDamagePreviewFloat(panel, panelIndex, restart: resetPosition);
         }
 
         for (int i = panelIndex; i < _incomingDamagePreviewPanels.Count; i++)
         {
             if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+            {
                 _incomingDamagePreviewPanels[i].Visible = false;
+                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
+            }
         }
     }
 
@@ -548,7 +557,10 @@ public partial class Battle
         for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
         {
             if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+            {
                 _incomingDamagePreviewPanels[i].Visible = false;
+                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
+            }
         }
     }
 
@@ -557,17 +569,90 @@ public partial class Battle
         for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
         {
             if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+            {
+                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
                 _incomingDamagePreviewPanels[i].QueueFree();
+            }
         }
         _incomingDamagePreviewPanels.Clear();
+        _incomingDamagePreviewTweens.Clear();
     }
 
-    private VBoxContainer GetOrCreateIncomingDamagePreviewPanel(CanvasLayer layer, int index)
+    private void EnsureIncomingDamagePreviewFloat(
+        VBoxContainer panel,
+        int phaseIndex,
+        bool restart = false
+    )
     {
+        if (panel == null || !GodotObject.IsInstanceValid(panel))
+            return;
+
+        if (
+            !restart
+            && _incomingDamagePreviewTweens.TryGetValue(panel, out Tween activeTween)
+            && GodotObject.IsInstanceValid(activeTween)
+        )
+        {
+            return;
+        }
+
+        StartIncomingDamagePreviewFloat(panel, phaseIndex);
+    }
+
+    private void StartIncomingDamagePreviewFloat(VBoxContainer panel, int phaseIndex)
+    {
+        if (panel == null || !GodotObject.IsInstanceValid(panel))
+            return;
+
+        StopIncomingDamagePreviewFloat(panel);
+
+        Vector2 basePosition = panel.Position;
+        Vector2 floatPosition = basePosition + new Vector2(0f, -IncomingDamagePreviewFloatAmplitude);
+        float phaseDelay = 0.12f * (phaseIndex % 3);
+
+        Tween tween = panel.CreateTween();
+        tween.SetLoops();
+        if (phaseDelay > 0f)
+            tween.TweenInterval(phaseDelay);
+        tween
+            .TweenProperty(panel, "position", floatPosition, IncomingDamagePreviewFloatHalfDuration)
+            .SetEase(Tween.EaseType.InOut)
+            .SetTrans(Tween.TransitionType.Sine);
+        tween
+            .TweenProperty(panel, "position", basePosition, IncomingDamagePreviewFloatHalfDuration)
+            .SetEase(Tween.EaseType.InOut)
+            .SetTrans(Tween.TransitionType.Sine);
+
+        _incomingDamagePreviewTweens[panel] = tween;
+    }
+
+    private void StopIncomingDamagePreviewFloat(VBoxContainer panel)
+    {
+        if (panel == null)
+            return;
+
+        if (_incomingDamagePreviewTweens.TryGetValue(panel, out Tween tween))
+        {
+            if (GodotObject.IsInstanceValid(tween))
+                tween.Kill();
+            _incomingDamagePreviewTweens.Remove(panel);
+        }
+    }
+
+    private VBoxContainer GetOrCreateIncomingDamagePreviewPanel(
+        Character target,
+        int index,
+        out bool resetPosition
+    )
+    {
+        resetPosition = true;
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return null;
+
         while (_incomingDamagePreviewPanels.Count <= index)
         {
             var panel = PreviewEffectDisplay.CreatePanel();
-            layer.AddChild(panel);
+            target.AddChild(panel);
             _incomingDamagePreviewPanels.Add(panel);
         }
 
@@ -575,42 +660,27 @@ public partial class Battle
         if (!GodotObject.IsInstanceValid(pooledPanel))
         {
             pooledPanel = PreviewEffectDisplay.CreatePanel();
-            layer.AddChild(pooledPanel);
+            target.AddChild(pooledPanel);
             _incomingDamagePreviewPanels[index] = pooledPanel;
+            resetPosition = true;
         }
         else if (pooledPanel.GetParent() == null)
         {
-            layer.AddChild(pooledPanel);
+            target.AddChild(pooledPanel);
+            resetPosition = true;
         }
-        else if (pooledPanel.GetParent() != layer)
+        else if (pooledPanel.GetParent() != target)
         {
             pooledPanel.GetParent().RemoveChild(pooledPanel);
-            layer.AddChild(pooledPanel);
+            target.AddChild(pooledPanel);
+            resetPosition = true;
+        }
+        else
+        {
+            resetPosition = !pooledPanel.Visible;
         }
 
         return pooledPanel;
-    }
-
-    private CanvasLayer EnsureIncomingDamagePreviewLayer()
-    {
-        var root = GetTree()?.Root;
-        if (root == null)
-            return null;
-
-        var existingLayer = root.GetNodeOrNull<CanvasLayer>(IncomingDamagePreviewLayerName);
-        if (existingLayer != null)
-        {
-            existingLayer.Layer = IncomingDamagePreviewLayerOrder;
-            return existingLayer;
-        }
-
-        existingLayer = new CanvasLayer
-        {
-            Layer = IncomingDamagePreviewLayerOrder,
-            Name = IncomingDamagePreviewLayerName,
-        };
-        root.AddChild(existingLayer);
-        return existingLayer;
     }
 
     private CanvasLayer EnsureSingleTargetDamageIntentionArrowLayer()
@@ -1058,6 +1128,7 @@ public partial class Battle
         SkillID skillId,
         int count,
         bool toHand = false,
+        BattleCardPileTarget pileTarget = BattleCardPileTarget.DrawPileCards,
         Character source = null
     )
     {
@@ -1070,7 +1141,14 @@ public partial class Battle
         string skillName = string.IsNullOrWhiteSpace(skill?.SkillName)
             ? skillId.ToString()
             : skill.SkillName;
-        string destination = toHand ? "手牌" : "抽牌堆";
+        string destination = toHand
+            ? "手牌"
+            : pileTarget switch
+            {
+                BattleCardPileTarget.HandCards => "手牌",
+                BattleCardPileTarget.DiscardPileCards => "弃牌堆",
+                _ => "抽牌堆",
+            };
         AppendRecordLine(
             $"{sourceText} -> {targetText}  向{destination}塞入  [color={RecordNeutralColor}]{count}[/color] 张[color={RecordSkillColor}]{skillName}[/color]",
             indent: true
@@ -1164,8 +1242,19 @@ public partial class Battle
             if (target == null || !GodotObject.IsInstanceValid(target))
                 continue;
 
+            int voidStacks =
+                target
+                    .EndActionBuffs?.Where(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Void
+                        && buff.Stack > 0
+                    )
+                    .Sum(buff => buff.Stack) ?? 0;
+            if (voidStacks <= 0)
+                continue;
+
             using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
-            await target.IncreaseProperties(PropertyType.Power, 1, target);
+            await target.IncreaseProperties(PropertyType.Power, voidStacks, target);
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;

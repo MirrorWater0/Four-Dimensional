@@ -5,7 +5,7 @@ using Godot;
 
 public static class PreviewEffectDisplay
 {
-    private const float IconSize = 28f;
+    private const float IconSize = 60f;
     private const float IconVerticalOffset = 6f;
     private const float ActionIconVerticalOffset = 1f;
     private const float StatIconSourceSize = 40f;
@@ -17,6 +17,7 @@ public static class PreviewEffectDisplay
     private const string SwordShaderPath = "res://shader/Icon/sword.gdshader";
     private const string RhomboidShaderPath = "res://shader/Icon/Rhomboid.gdshader";
     private const string WingShaderPath = "res://shader/Icon/wing.gdshader";
+    private const string EnergySourceShaderPath = "res://shader/Icon/EnergeStartIcon.gdshader";
     private const string DamagePreviewIconPath = "res://asset/svg/SkillIcon/attack.svg";
     private const string HealPreviewIconPath = "res://asset/svg/SkillIcon/HealPreview.svg";
     private const string BlockPreviewIconPath = "res://asset/svg/SkillIcon/survive.svg";
@@ -30,7 +31,9 @@ public static class PreviewEffectDisplay
     private static readonly Color SurvivabilityColor = new(0.52f, 0.95f, 1f, 1f);
     private static readonly Color SpeedColor = Colors.White;
     private static readonly Color MaxLifeColor = new(1f, 0.9f, 0.58f, 1f);
+    private static readonly Color EnergySourcesColor = new(0.53f, 0.81f, 0.92f, 1f);
     private static readonly Color BuffColor = new(0.9f, 0.96f, 1f, 1f);
+    private static readonly Color MessageColor = new(1f, 0.86f, 0.48f, 1f);
 
     public static VBoxContainer CreatePanel()
     {
@@ -50,12 +53,15 @@ public static class PreviewEffectDisplay
         VBoxContainer panel,
         IReadOnlyList<Skill.PreviewEffectEntry> effects,
         Vector2 targetScreenPosition,
-        Vector2 offset
+        Vector2 offset,
+        bool preservePosition = false
     )
     {
         if (panel == null)
             return;
 
+        bool wasVisible = panel.Visible;
+        Vector2 previousPosition = panel.Position;
         ClearPanel(panel);
         foreach (Skill.PreviewEffectEntry effect in OrderEffects(effects))
             AddEffectRow(panel, effect);
@@ -74,8 +80,15 @@ public static class PreviewEffectDisplay
             size = new Vector2(120f, 44f);
 
         panel.Size = size;
-        Vector2 anchor = targetScreenPosition + offset;
-        panel.Position = new Vector2(anchor.X - size.X / 2f, anchor.Y);
+        if (preservePosition && wasVisible)
+        {
+            panel.Position = previousPosition;
+        }
+        else
+        {
+            Vector2 anchor = targetScreenPosition + offset;
+            panel.Position = new Vector2(anchor.X - size.X / 2f, anchor.Y);
+        }
     }
 
     public static void ClearPanel(VBoxContainer panel)
@@ -132,6 +145,9 @@ public static class PreviewEffectDisplay
                     );
                 }
                 break;
+            case Skill.PreviewEffectKind.Message:
+                AddRow(panel, CreateMessagePreviewIcon(), effect.Text, MessageColor);
+                break;
         }
     }
 
@@ -159,6 +175,7 @@ public static class PreviewEffectDisplay
             Skill.PreviewEffectKind.Block => 2,
             Skill.PreviewEffectKind.Property => 3,
             Skill.PreviewEffectKind.Buff => 4,
+            Skill.PreviewEffectKind.Message => 5,
             _ => 99,
         };
     }
@@ -171,6 +188,7 @@ public static class PreviewEffectDisplay
             PropertyType.Survivability => 1,
             PropertyType.Speed => 2,
             PropertyType.MaxLife => 3,
+            PropertyType.EnergySources => 4,
             _ => 99,
         };
     }
@@ -190,7 +208,7 @@ public static class PreviewEffectDisplay
         if (icon != null)
             row.AddChild(icon);
 
-        row.AddChild(CreatePreviewLabel(text, color, 26, 5));
+        row.AddChild(CreatePreviewLabel(text, color, 40, 6));
         panel.AddChild(row);
     }
 
@@ -208,7 +226,7 @@ public static class PreviewEffectDisplay
         row.AddThemeConstantOverride("separation", 4);
         row.AddChild(CreateDamagePreviewIcon());
 
-        row.AddChild(CreatePreviewLabel(damageText, DamageColor, 26, 5));
+        row.AddChild(CreatePreviewLabel(damageText, DamageColor, 30, 5));
         panel.AddChild(row);
     }
 
@@ -261,6 +279,24 @@ public static class PreviewEffectDisplay
         return CreateActionIconHolder(icon);
     }
 
+    private static Control CreateMessagePreviewIcon()
+    {
+        var label = new Label
+        {
+            Text = "!",
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CustomMinimumSize = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
+            Size = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
+        };
+        label.AddThemeFontSizeOverride("font_size", 34);
+        label.AddThemeConstantOverride("outline_size", 6);
+        label.AddThemeColorOverride("font_color", MessageColor);
+        label.AddThemeColorOverride("font_outline_color", OutlineColor);
+        return CreateActionIconHolder(label);
+    }
+
     private static Control CreatePreviewStatIcon(PropertyType type)
     {
         if (type == PropertyType.MaxLife)
@@ -271,6 +307,7 @@ public static class PreviewEffectDisplay
             PropertyType.Power => SwordShaderPath,
             PropertyType.Survivability => RhomboidShaderPath,
             PropertyType.Speed => WingShaderPath,
+            PropertyType.EnergySources => EnergySourceShaderPath,
             _ => null,
         };
 
@@ -465,6 +502,7 @@ public static class PreviewEffectDisplay
             PropertyType.Survivability => SurvivabilityColor,
             PropertyType.Speed => SpeedColor,
             PropertyType.MaxLife => MaxLifeColor,
+            PropertyType.EnergySources => EnergySourcesColor,
             _ => Colors.White,
         };
     }

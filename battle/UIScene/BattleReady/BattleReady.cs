@@ -94,7 +94,7 @@ public partial class BattleReady : Control
     private const float SkillCardEnterStagger = 0.035f;
     private const float SkillCardExitSettleTime = 0.14f;
     private static readonly Vector2 SkillCardBaseDisplaySize = new(240f, 370f);
-    private static readonly Vector2 BattleReadySkillCardScale = new(0.78f, 0.78f);
+    private static readonly Vector2 BattleReadySkillCardScale = new(0.92f, 0.92f);
     private static readonly Vector2 SkillCardHoverPadding = Vector2.Zero;
     private const float TalentNodeWidth = 76f;
     private const float TalentNodeHeight = 76f;

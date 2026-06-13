@@ -23,10 +23,11 @@ using Godot;
 // - HealStep: 对友方治疗（target 支持相对位 / 绝对位 / 已储存目标；可储存目标）。
 // - HurtFriendly: 对友方造成伤害（damage/index/all）。
 // - EnergyStep: 改变自身或友方目标能量（target 支持相对位 / 绝对位 / 已储存目标）。
+// - ExhaustCardsStep: 消耗指定数量的手牌、抽牌堆牌、弃牌堆牌。
 // - BlockStep: 相对位友方获得格挡（0自己、-1前一位、+1后一位...；可选对自己不生效）。
 // - CarryStep: 连携指定友方目标释放指定技能（target 支持相对位 / 绝对位 / 已存储目标；index:0攻击/1生存/2特殊）。
 // - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
-// - AddStatusCardsToDrawPileStep: 向目标所属玩家的抽牌堆塞入状态牌（支持敌方/友方重载与召唤物归属解析）。
+// - AddStatusCardsStep: 向玩家队伍的指定牌堆塞入状态牌。
 // - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
 // - EnergyTimesWhileStep: while循环（传times时按次数循环；未传times时按本技能已支付能量循环）。
 // - ConditionStep: 条件执行（condition/steps/conditionDescription）。
@@ -41,6 +42,13 @@ public enum SummonPositionMode
     RandomHasEnemy,
 }
 
+public enum BattleCardPileTarget
+{
+    HandCards,
+    DrawPileCards,
+    DiscardPileCards,
+}
+
 public partial class Skill
 {
     private const string BuiltinAttackTargetKey = "__attack_target";
@@ -48,6 +56,7 @@ public partial class Skill
     private readonly Dictionary<string, Character[]> _lockedHostileTargetSelections = new();
     private bool _capturingLockedHostileTargets;
     private bool _useLockedHostileTargetsForExecution;
+    private Character _avoidRepeatSingleTargetIntentionLock;
 
     public readonly struct PreviewDamageEntry
     {
@@ -77,6 +86,7 @@ public partial class Skill
         Block,
         Property,
         Buff,
+        Message,
     }
 
     public readonly struct PreviewEffectEntry
@@ -90,7 +100,8 @@ public partial class Skill
             Character source,
             PropertyType? propertyType,
             Buff.BuffName? buffName,
-            string targetSummary
+            string targetSummary,
+            string text
         )
         {
             Target = target;
@@ -102,6 +113,7 @@ public partial class Skill
             PropertyType = propertyType;
             BuffName = buffName;
             TargetSummary = targetSummary;
+            Text = text;
         }
 
         public Character Target { get; }
@@ -113,6 +125,7 @@ public partial class Skill
         public PropertyType? PropertyType { get; }
         public Buff.BuffName? BuffName { get; }
         public string TargetSummary { get; }
+        public string Text { get; }
 
         public static PreviewEffectEntry Damage(
             Character target,
@@ -131,14 +144,15 @@ public partial class Skill
                 source,
                 null,
                 null,
-                targetSummary
+                targetSummary,
+                null
             );
 
         public static PreviewEffectEntry Block(Character target, int block, Character source) =>
-            new(target, PreviewEffectKind.Block, block, 1, 1, source, null, null, null);
+            new(target, PreviewEffectKind.Block, block, 1, 1, source, null, null, null, null);
 
         public static PreviewEffectEntry Heal(Character target, int heal, Character source) =>
-            new(target, PreviewEffectKind.Heal, heal, 1, 1, source, null, null, null);
+            new(target, PreviewEffectKind.Heal, heal, 1, 1, source, null, null, null, null);
 
         public static PreviewEffectEntry Property(
             Character target,
@@ -155,6 +169,7 @@ public partial class Skill
                 source,
                 propertyType,
                 null,
+                null,
                 null
             );
 
@@ -164,7 +179,10 @@ public partial class Skill
             int stacks,
             Character source
         ) =>
-            new(target, PreviewEffectKind.Buff, stacks, 1, 1, source, null, buffName, null);
+            new(target, PreviewEffectKind.Buff, stacks, 1, 1, source, null, buffName, null, null);
+
+        public static PreviewEffectEntry Message(Character target, string text, Character source) =>
+            new(target, PreviewEffectKind.Message, 1, 1, 1, source, null, null, null, text);
     }
 
     protected sealed class PreviewDamageContext
@@ -172,7 +190,6 @@ public partial class Skill
         private readonly Character _attacker;
         private readonly bool _includeTargetVulnerable;
         private readonly AttackBuff.PreviewState _attackBuffState = new();
-        private readonly Dictionary<Character, int> _vulnerableStacks = new();
 
         public PreviewDamageContext(Character attacker, bool includeTargetVulnerable = true)
         {
@@ -190,7 +207,7 @@ public partial class Skill
                         _attacker,
                         baseDamage,
                         target,
-                        consumeStacks: true,
+                        consumeStacks: false,
                         previewState: _attackBuffState
                     ),
                     0
@@ -199,25 +216,15 @@ public partial class Skill
 
             if (_includeTargetVulnerable && target != null)
             {
-                if (!_vulnerableStacks.TryGetValue(target, out int vulnerableStacks))
-                {
-                    vulnerableStacks =
-                        target
-                            .HurtBuffs?.FirstOrDefault(x =>
-                                x != null
-                                && x.ThisBuffName == Buff.BuffName.Vulnerable
-                                && x.Stack > 0
-                            )
-                            ?.Stack ?? 0;
-                }
-
-                if (vulnerableStacks > 0)
-                {
+                bool hasVulnerable =
+                    target
+                        .HurtBuffs?.Any(x =>
+                            x != null
+                            && x.ThisBuffName == Buff.BuffName.Vulnerable
+                            && x.Stack > 0
+                        ) == true;
+                if (hasVulnerable)
                     damage = Math.Max((int)MathF.Floor(damage * 1.5f), 0);
-                    vulnerableStacks--;
-                }
-
-                _vulnerableStacks[target] = vulnerableStacks;
             }
 
             return damage;
@@ -517,6 +524,46 @@ public partial class Skill
         _previewableRandomHostileTargets.Clear();
     }
 
+    internal void SetAvoidRepeatSingleTargetIntentionLock(Character target)
+    {
+        _avoidRepeatSingleTargetIntentionLock =
+            target != null && GodotObject.IsInstanceValid(target) ? target : null;
+    }
+
+    internal void ClearAvoidRepeatSingleTargetIntentionLock()
+    {
+        _avoidRepeatSingleTargetIntentionLock = null;
+    }
+
+    private Character[] ApplyAvoidRepeatSingleTargetIntentionLockFilter(
+        Character[] candidates,
+        int maxTargets
+    )
+    {
+        if (
+            maxTargets != 1
+            || candidates == null
+            || candidates.Length <= 1
+            || OwnerCharater == null
+            || OwnerCharater.IsPlayer
+            || _avoidRepeatSingleTargetIntentionLock == null
+            || !GodotObject.IsInstanceValid(_avoidRepeatSingleTargetIntentionLock)
+            || _avoidRepeatSingleTargetIntentionLock.State == Character.CharacterState.Dying
+        )
+        {
+            return candidates ?? Array.Empty<Character>();
+        }
+
+        Character[] filtered = candidates
+            .Where(candidate =>
+                candidate != null
+                && GodotObject.IsInstanceValid(candidate)
+                && candidate != _avoidRepeatSingleTargetIntentionLock
+            )
+            .ToArray();
+        return filtered.Length > 0 ? filtered : candidates;
+    }
+
     public bool RequiresManualFriendlyTarget()
     {
         var plan = GetPlan();
@@ -728,6 +775,9 @@ public partial class Skill
         if (count <= 0)
             return Array.Empty<Character>();
 
+        if (count == 1)
+            targets = ApplyAvoidRepeatSingleTargetIntentionLockFilter(targets, 1);
+
         Character[] selected = targets.Take(count).Where(x => x != null).ToArray();
         CaptureLockedHostileTargets(
             BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt),
@@ -789,6 +839,15 @@ public partial class Skill
 
         Character[] matched =
             targetCondition == null ? ordered : ordered.Where(targetCondition).ToArray();
+
+        if (
+            value.MaxTargets == 1
+            && value.Kind != HostileTargetSelection._Kind.Stored
+            && value.Kind != HostileTargetSelection._Kind.All
+        )
+        {
+            matched = ApplyAvoidRepeatSingleTargetIntentionLockFilter(matched, 1);
+        }
 
         if (value.Kind == HostileTargetSelection._Kind.PreviewableRandom)
         {
@@ -1562,6 +1621,7 @@ public partial class Skill
                             current.Value + entry.Value,
                             entry.Source ?? current.Source
                         ),
+                    PreviewEffectKind.Message => entry,
                     _ => entry,
                 };
             }
@@ -1592,6 +1652,7 @@ public partial class Skill
             {
                 PreviewEffectKind.Property => entry.PropertyType?.ToString() ?? string.Empty,
                 PreviewEffectKind.Buff => entry.BuffName?.ToString() ?? string.Empty,
+                PreviewEffectKind.Message => entry.Text ?? string.Empty,
                 _ => string.Empty,
             };
             return $"{entry.Target.GetInstanceId()}:{entry.Kind}:{detail}";
@@ -2264,16 +2325,11 @@ public partial class Skill
         bool includeSummonsWhenAll = true
     ) => new HurtFriendlySkillStep(damage, TargetValue(target), includeSummonsWhenAll);
 
-    protected SkillStep EnergyStep(int delta, TargetReference target = TargetReference.Self) =>
-        new EnergySkillStep(delta, TargetValue(target));
+    protected SkillStep EnergyStep(int delta) => new EnergySkillStep(delta);
 
-    protected SkillStep EnergyStep(
-        Func<Skill, int> delta,
-        TargetReference target = TargetReference.Self
-    ) => new EnergySkillStep(delta, TargetValue(target));
+    protected SkillStep EnergyStep(Func<Skill, int> delta) => new EnergySkillStep(delta);
 
-    protected SkillStep DoubleEnergyStep(TargetReference target = TargetReference.Self) =>
-        new DoubleEnergySkillStep(TargetValue(target));
+    protected SkillStep DoubleEnergyStep() => new DoubleEnergySkillStep();
 
     protected SkillStep DrawCardsStep(int count) => new DrawCardsSkillStep(count);
 
@@ -2284,6 +2340,12 @@ public partial class Skill
 
     protected SkillStep DiscardCardsStep(Func<Skill, int> count, string description = null) =>
         new DiscardCardsSkillStep(count, description);
+
+    protected SkillStep ExhaustCardsStep(
+        BattleCardPileTarget pileTarget,
+        int count,
+        bool random = true
+    ) => new ExhaustCardsSkillStep(pileTarget, count, random);
 
     protected SkillStep SelectDrawPileCardsToHandStep(int count) =>
         new SelectPileCardsToHandSkillStep(count, fromDiscardPile: false);
@@ -2301,31 +2363,11 @@ public partial class Skill
         string description = null
     ) => new SelectPileCardsToHandSkillStep(count, fromDiscardPile: true, description);
 
-    protected SkillStep AddStatusCardsToDrawPileStep(
+    protected SkillStep AddStatusCardsStep(
         SkillID statusSkillId,
         int count,
-        HostileTargetSelection target,
-        string targetText = null
-    ) => new AddStatusCardsToDrawPileSkillStep(
-        statusSkillId,
-        count,
-        target,
-        targetText ?? HostileTargetText(target)
-    );
-
-    protected SkillStep AddStatusCardsToDrawPileStep(
-        SkillID statusSkillId,
-        int count,
-        TargetReference target = TargetReference.All,
-        string targetText = null,
-        bool includeSummonsWhenAll = false
-    ) => new AddStatusCardsToDrawPileSkillStep(
-        statusSkillId,
-        count,
-        TargetValue(target),
-        targetText ?? FriendlyTargetTextForDescription(TargetValue(target)),
-        includeSummonsWhenAll
-    );
+        BattleCardPileTarget pileTarget = BattleCardPileTarget.DrawPileCards
+    ) => new AddStatusCardsSkillStep(statusSkillId, count, pileTarget);
 
     // Friendly property / defense / utility steps
     protected SkillStep ModifyPropertyStep(
@@ -3115,6 +3157,7 @@ public partial class Skill
             PropertyType.Survivability => target.BattleSurvivability,
             PropertyType.Speed => target.Speed,
             PropertyType.MaxLife => target.BattleMaxLife,
+            PropertyType.EnergySources => target.EnergySources,
             _ => 0,
         };
     }
@@ -3161,7 +3204,6 @@ public partial class Skill
             case Buff.BuffName.Invisible:
             case Buff.BuffName.EternalDark:
             case Buff.BuffName.Swift:
-            case Buff.BuffName.Source:
             case Buff.BuffName.Barricade:
             case Buff.BuffName.Afterimage:
             case Buff.BuffName.Divinity:
@@ -4902,6 +4944,33 @@ public partial class Skill
             return SingleTargetArray(skill.ResolveFriendlyTarget(_target, dyingFilter: true));
         }
 
+        public override IEnumerable<PreviewEffectEntry> PreviewEffects(
+            Skill skill,
+            PreviewDamageContext context
+        )
+        {
+            if (!TryGetCarrySkillType(_skillIndex, out SkillTypes skillType))
+                yield break;
+
+            foreach (Character target in PreviewTargets(skill))
+            {
+                if (!IsPlayerCarryDrawPileMissing(target, skillType))
+                    continue;
+
+                yield return PreviewEffectEntry.Message(
+                    target,
+                    I18n.Tr("battle.carry.no_available_card", "无可用牌"),
+                    skill?.OwnerCharater
+                );
+            }
+        }
+
+        private static bool IsPlayerCarryDrawPileMissing(Character target, SkillTypes skillType)
+        {
+            return target is PlayerCharacter player
+                && player.BattleNode?.HasDrawablePlayerCarrySkill(player, skillType) != true;
+        }
+
         private static string GetCarrySkillText(int skillIndex)
         {
             return skillIndex switch
@@ -4987,39 +5056,17 @@ public partial class Skill
     {
         private readonly int _delta;
         private readonly Func<Skill, int> _deltaProvider;
-        private readonly TargetSelection _target;
-        private readonly bool _useFriendlyTarget;
 
         public EnergySkillStep(int delta)
         {
             _delta = delta;
             _deltaProvider = null;
-            _target = default;
-            _useFriendlyTarget = false;
         }
 
         public EnergySkillStep(Func<Skill, int> delta)
         {
             _delta = 0;
             _deltaProvider = delta;
-            _target = default;
-            _useFriendlyTarget = false;
-        }
-
-        public EnergySkillStep(int delta, TargetSelection target)
-        {
-            _delta = delta;
-            _deltaProvider = null;
-            _target = target;
-            _useFriendlyTarget = true;
-        }
-
-        public EnergySkillStep(Func<Skill, int> delta, TargetSelection target)
-        {
-            _delta = 0;
-            _deltaProvider = delta;
-            _target = target;
-            _useFriendlyTarget = true;
         }
 
         public override Task Execute(Skill skill)
@@ -5028,26 +5075,14 @@ public partial class Skill
             if (delta == 0)
                 return Task.CompletedTask;
 
-            if (_useFriendlyTarget)
-            {
-                Character[] targets = skill.ResolveFriendlyTargets(_target, dyingFilter: true);
-                if (targets.Length == 0)
-                    return Task.CompletedTask;
-
-                for (int i = 0; i < targets.Length; i++)
-                {
-                    if (ShouldAbortStepExecution(skill))
-                        return Task.CompletedTask;
-
-                    targets[i].UpdataEnergy(delta, skill?.OwnerCharater);
-                }
-                return Task.CompletedTask;
-            }
-
             if (skill.OwnerCharater == null)
                 return Task.CompletedTask;
 
-            skill.OwnerCharater.UpdataEnergy(delta, skill.OwnerCharater);
+            skill.OwnerCharater.BattleNode?.UpdataEnergy(
+                skill.OwnerCharater,
+                delta,
+                skill.OwnerCharater
+            );
             return Task.CompletedTask;
         }
 
@@ -5056,56 +5091,6 @@ public partial class Skill
             int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
             if (delta == 0)
                 yield break;
-
-            string energyText = delta > 0
-                ? I18n.Format(
-                    "skill.step.energy.gain_phrase",
-                    "获得{amount}点能量",
-                    ("amount", delta)
-                )
-                : I18n.Format(
-                    "skill.step.energy.lose_phrase",
-                    "失去{amount}点能量",
-                    ("amount", -delta)
-                );
-            if (_useFriendlyTarget)
-            {
-                string targetText = FriendlyTargetTextForDescription(_target);
-                if (IsSelfFriendlyTarget(_target))
-                    yield return delta > 0
-                        ? I18n.Format(
-                            "skill.step.energy.gain_self",
-                            "获得{amount}点能量。",
-                            ("amount", delta)
-                        )
-                        : I18n.Format(
-                            "skill.step.energy.lose_self",
-                            "失去{amount}点能量。",
-                            ("amount", -delta)
-                        );
-                else if (IsManualFriendlyTarget(_target))
-                    yield return delta > 0
-                        ? I18n.Format(
-                            "skill.step.energy.manual_gain",
-                            "{target}，使其获得{amount}点能量。",
-                            ("target", targetText),
-                            ("amount", delta)
-                        )
-                        : I18n.Format(
-                            "skill.step.energy.manual_lose",
-                            "{target}，使其失去{amount}点能量。",
-                            ("target", targetText),
-                            ("amount", -delta)
-                        );
-                else
-                    yield return I18n.Format(
-                        "skill.step.energy.target",
-                        "使{target}{energy}。",
-                        ("target", targetText),
-                        ("energy", energyText)
-                    );
-                yield break;
-            }
 
             if (delta > 0)
                 yield return I18n.Format(
@@ -5123,76 +5108,32 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            if (!_useFriendlyTarget)
-                return Array.Empty<Character>();
-
-            int delta = ResolveStepBaseValue(skill, _delta, _deltaProvider);
-            if (delta == 0)
-                return Array.Empty<Character>();
-
-            return skill.ResolveFriendlyTargets(_target, dyingFilter: true);
+            return Array.Empty<Character>();
         }
     }
 
     private sealed class DoubleEnergySkillStep : SkillStep
     {
-        private readonly TargetSelection _target;
-
-        public DoubleEnergySkillStep(TargetSelection target)
-        {
-            _target = target;
-        }
-
         public override Task Execute(Skill skill)
         {
-            Character[] targets = skill.ResolveFriendlyTargets(_target, dyingFilter: true);
-            if (targets.Length == 0)
+            Character owner = skill?.OwnerCharater;
+            if (owner == null || !GodotObject.IsInstanceValid(owner))
                 return Task.CompletedTask;
 
-            bool doubledPlayerEnergyPool = false;
-            for (int i = 0; i < targets.Length; i++)
-            {
-                if (ShouldAbortStepExecution(skill))
-                    return Task.CompletedTask;
-
-                Character target = targets[i];
-                if (target?.IsPlayer == true)
-                {
-                    if (doubledPlayerEnergyPool)
-                        continue;
-
-                    doubledPlayerEnergyPool = true;
-                }
-
-                int energyGain = Math.Max(0, target?.CurrentEnergy ?? 0);
-                if (energyGain <= 0)
-                    continue;
-
-                target.UpdataEnergy(energyGain, skill?.OwnerCharater);
-            }
-
+            int energyGain = Math.Max(0, owner.CurrentEnergy);
+            if (energyGain > 0)
+                owner.BattleNode?.UpdataEnergy(owner, energyGain, owner);
             return Task.CompletedTask;
         }
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            string targetText = FriendlyTargetTextForDescription(_target);
-            if (IsSelfFriendlyTarget(_target))
-            {
-                yield return I18n.Tr("skill.step.energy.double_self", "使自身能量翻倍。");
-                yield break;
-            }
-
-            yield return I18n.Format(
-                "skill.step.energy.double_target",
-                "使{target}能量翻倍。",
-                ("target", targetText)
-            );
+            yield return I18n.Tr("skill.step.energy.double_self", "使能量翻倍。");
         }
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            return skill.ResolveFriendlyTargets(_target, dyingFilter: true);
+            return Array.Empty<Character>();
         }
     }
 
@@ -5370,44 +5311,135 @@ public partial class Skill
         }
     }
 
-    private sealed class AddStatusCardsToDrawPileSkillStep : SkillStep
+    private sealed class ExhaustCardsSkillStep : SkillStep
+    {
+        private readonly BattleCardPileTarget _pileTarget;
+        private readonly int _count;
+        private readonly bool _random;
+
+        public ExhaustCardsSkillStep(BattleCardPileTarget pileTarget, int count, bool random)
+        {
+            _pileTarget = pileTarget;
+            _count = Math.Max(0, count);
+            _random = random;
+        }
+
+        public override async Task Execute(Skill skill)
+        {
+            if (skill?.OwnerCharater?.BattleNode == null)
+                return;
+
+            PlayerCharacter teamContext =
+                ResolveCardPileOwner(skill.OwnerCharater)
+                ?? skill.OwnerCharater.BattleNode.PlayersList?.FirstOrDefault(player =>
+                    player != null
+                    && GodotObject.IsInstanceValid(player)
+                    && player.State == Character.CharacterState.Normal
+                );
+
+            if (_count <= 0)
+                return;
+
+            if (_random)
+            {
+                await skill.OwnerCharater.BattleNode.ExhaustPlayerTeamBattleCardsAsync(
+                    _pileTarget,
+                    _count,
+                    random: true,
+                    teamContext: teamContext
+                );
+                return;
+            }
+
+            CharacterControl characterControl = skill.OwnerCharater.BattleNode.CharacterControl;
+            if (
+                characterControl != null
+                && GodotObject.IsInstanceValid(characterControl)
+                && teamContext != null
+                && GodotObject.IsInstanceValid(teamContext)
+            )
+            {
+                if (_pileTarget == BattleCardPileTarget.HandCards)
+                {
+                    await characterControl.SelectAndExhaustHandCardsAsync(teamContext, _count);
+                    return;
+                }
+
+                await characterControl.SelectPileCardsToExhaustAsync(teamContext, _pileTarget, _count);
+                return;
+            }
+
+            await skill.OwnerCharater.BattleNode.ExhaustPlayerTeamBattleCardsAsync(
+                _pileTarget,
+                _count,
+                random: false,
+                teamContext: teamContext
+            );
+        }
+
+        public override IEnumerable<string> Describe(Skill skill)
+        {
+            if (_count <= 0)
+                yield break;
+
+            yield return BuildDescriptionLine(_pileTarget, _count, _random);
+        }
+
+        private static string BuildDescriptionLine(
+            BattleCardPileTarget pileTarget,
+            int count,
+            bool random
+        )
+        {
+            string targetText = GetBattleCardPileTargetCountText(pileTarget, count);
+            return I18n.Format(
+                random ? "skill.step.exhaust_cards.random" : "skill.step.exhaust_cards.manual",
+                random ? "随机消耗{targets}。" : "选择并消耗{targets}。",
+                ("targets", targetText)
+            );
+        }
+
+        private static string GetBattleCardPileTargetCountText(
+            BattleCardPileTarget pileTarget,
+            int count
+        )
+        {
+            return pileTarget switch
+            {
+                BattleCardPileTarget.HandCards => I18n.Format(
+                    "skill.step.exhaust_cards.hand_part",
+                    "{count}张手牌",
+                    ("count", count)
+                ),
+                BattleCardPileTarget.DiscardPileCards => I18n.Format(
+                    "skill.step.exhaust_cards.discard_pile_part",
+                    "弃牌堆中的{count}张牌",
+                    ("count", count)
+                ),
+                _ => I18n.Format(
+                    "skill.step.exhaust_cards.draw_pile_part",
+                    "抽牌堆中的{count}张牌",
+                    ("count", count)
+                ),
+            };
+        }
+    }
+
+    private sealed class AddStatusCardsSkillStep : SkillStep
     {
         private readonly SkillID _statusSkillId;
         private readonly int _count;
-        private readonly bool _targetsHostile;
-        private readonly HostileTargetSelection _hostileTarget;
-        private readonly TargetSelection _friendlyTarget;
-        private readonly string _targetText;
-        private readonly bool _includeSummonsWhenAll;
+        private readonly BattleCardPileTarget _pileTarget;
 
-        public AddStatusCardsToDrawPileSkillStep(
+        public AddStatusCardsSkillStep(
             SkillID statusSkillId,
             int count,
-            HostileTargetSelection hostileTarget,
-            string targetText
+            BattleCardPileTarget pileTarget
         )
         {
             _statusSkillId = statusSkillId;
             _count = count;
-            _targetsHostile = true;
-            _hostileTarget = hostileTarget;
-            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
-        }
-
-        public AddStatusCardsToDrawPileSkillStep(
-            SkillID statusSkillId,
-            int count,
-            TargetSelection friendlyTarget,
-            string targetText,
-            bool includeSummonsWhenAll
-        )
-        {
-            _statusSkillId = statusSkillId;
-            _count = count;
-            _targetsHostile = false;
-            _friendlyTarget = friendlyTarget;
-            _targetText = string.IsNullOrWhiteSpace(targetText) ? "目标" : targetText;
-            _includeSummonsWhenAll = includeSummonsWhenAll;
+            _pileTarget = pileTarget;
         }
 
         public override async Task Execute(Skill skill)
@@ -5415,112 +5447,57 @@ public partial class Skill
             if (skill == null || _count <= 0)
                 return;
 
-            Character[] targets = ResolveStatusInsertTargets(skill);
-            if (targets.Length == 0)
+            PlayerCharacter player = ResolveStatusCardPilePlayer(skill);
+            if (player == null || player.BattleNode == null)
                 return;
 
-            var affectedTargets = targets
-                .Select(target => new { Target = target, Player = ResolveCardPileOwner(target) })
-                .Where(x => x.Player != null && x.Player.BattleNode != null)
-                .GroupBy(x => x.Target)
-                .Select(group => group.First())
-                .ToArray();
-
-            foreach (var animationGroup in affectedTargets
-                .Where(entry => entry.Player.BattleNode.CharacterControl != null)
-                .GroupBy(entry => entry.Player.BattleNode.CharacterControl))
+            CharacterControl characterControl = player.BattleNode.CharacterControl;
+            if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
             {
-                await animationGroup.Key.PlayStatusCardInsertAnimationAsync(
-                    animationGroup.Select(
-                            entry =>
-                                new CharacterControl.StatusCardInsertAnimationEntry(
-                                    entry.Target,
-                                    _statusSkillId,
-                                    _count,
-                                    skill.OwnerCharater
-                                )
-                        )
-                        .ToArray()
-                );
-            }
-
-            foreach (var playerGroup in affectedTargets.GroupBy(entry => entry.Player))
-            {
-                PlayerCharacter player = playerGroup.Key;
-                player.BattleNode.AddPlayerBattleStatusCardsToDrawPile(
+                await characterControl.PlayStatusCardInsertAnimationAsync(
                     player,
                     _statusSkillId,
-                    _count * playerGroup.Count(),
+                    _count,
+                    _pileTarget,
                     skill.OwnerCharater
                 );
             }
-        }
 
-        private Character[] ResolveStatusInsertTargets(Skill skill)
-        {
-            if (skill?.OwnerCharater?.BattleNode == null)
-                return Array.Empty<Character>();
-
-            if (!_targetsHostile)
-            {
-                return skill.ResolveFriendlyTargets(
-                    _friendlyTarget,
-                    dyingFilter: true,
-                    includeSummonsWhenAll: _includeSummonsWhenAll
-                );
-            }
-
-            if (_hostileTarget.Kind == HostileTargetSelection._Kind.Stored)
-                return skill.ResolveHostileTargets(_hostileTarget);
-
-            Character[] ordered = GetStatusInsertHostileTargetsIgnoringInvisible(
-                skill,
-                _hostileTarget
-            );
-            if (ordered.Length == 0)
-                return Array.Empty<Character>();
-
-            if (_hostileTarget.Kind == HostileTargetSelection._Kind.PreviewableRandom)
-                return skill.GetOrPickPreviewableRandomHostileTargets(_hostileTarget, ordered);
-
-            return SelectHostileTargets(
-                ordered,
-                _hostileTarget,
-                skill.OwnerCharater?.BattleNode?.BattleIntentionRandom
+            player.BattleNode.AddPlayerBattleStatusCards(
+                player,
+                _statusSkillId,
+                _count,
+                _pileTarget,
+                skill.OwnerCharater
             );
         }
 
-        private static Character[] GetStatusInsertHostileTargetsIgnoringInvisible(
-            Skill skill,
-            HostileTargetSelection target
-        )
+        private static PlayerCharacter ResolveStatusCardPilePlayer(Skill skill)
         {
             Character owner = skill?.OwnerCharater;
             if (owner?.BattleNode == null)
-                return Array.Empty<Character>();
+                return null;
 
-            IEnumerable<Character> source = owner
+            PlayerCharacter ownerPlayer = ResolveCardPileOwner(owner);
+            if (ownerPlayer != null)
+                return ownerPlayer;
+
+            return owner
                 .BattleNode.GetOrderedTeamCharacters(
-                    !owner.IsPlayer,
-                    includeSummons: true,
+                    isPlayer: true,
+                    includeSummons: false,
                     dyingFilter: true
                 )
-                .Where(targetCharacter => targetCharacter != null);
-
-            if (
-                target.Kind != HostileTargetSelection._Kind.Ordered
-                && target.Kind != HostileTargetSelection._Kind.Random
-                && target.Kind != HostileTargetSelection._Kind.PreviewableRandom
-            )
-            {
-                return source.ToArray();
-            }
-
-            IEnumerable<Character> ordered = target.ByBehindRow
-                ? source.OrderByDescending(targetCharacter => targetCharacter.PositionIndex)
-                : source.OrderBy(targetCharacter => targetCharacter.PositionIndex);
-
-            return ordered.ToArray();
+                .OfType<PlayerCharacter>()
+                .FirstOrDefault()
+                ?? owner
+                    .BattleNode.GetOrderedTeamCharacters(
+                        isPlayer: true,
+                        includeSummons: false,
+                        dyingFilter: false
+                    )
+                    .OfType<PlayerCharacter>()
+                    .FirstOrDefault();
         }
 
         public override IEnumerable<string> Describe(Skill skill)
@@ -5530,53 +5507,34 @@ public partial class Skill
 
             string statusName =
                 Skill.GetSkill(_statusSkillId)?.SkillName ?? _statusSkillId.ToString();
+            string pileText = GetBattleCardPileTargetText(_pileTarget);
             yield return I18n.Format(
-                "skill.step.add_status_to_draw_pile",
-                "向{target}抽牌堆塞入{count}张{status}。",
-                ("target", _targetText),
+                "skill.step.add_status_cards",
+                "向{pile}塞入{count}张{status}。",
+                ("pile", pileText),
                 ("count", _count),
                 ("status", statusName)
             );
         }
 
+        private static string GetBattleCardPileTargetText(BattleCardPileTarget target)
+        {
+            return target switch
+            {
+                BattleCardPileTarget.HandCards => I18n.Tr("ui.pile.hand", "手牌"),
+                BattleCardPileTarget.DiscardPileCards => I18n.Tr("ui.pile.discard", "弃牌堆"),
+                _ => I18n.Tr("ui.pile.draw", "抽牌堆"),
+            };
+        }
+
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
         {
-            if (!_targetsHostile)
-                return Array.Empty<Character>();
-
-            if (skill?.OwnerCharater?.BattleNode == null)
-                return Array.Empty<Character>();
-
-            if (_hostileTarget.Kind == HostileTargetSelection._Kind.Stored)
-                return PreviewHostileTargets(skill, _hostileTarget);
-
-            Character[] ordered = GetStatusInsertHostileTargetsIgnoringInvisible(
-                skill,
-                _hostileTarget
-            );
-            if (ordered.Length == 0)
-                return Array.Empty<Character>();
-
-            if (_hostileTarget.Kind == HostileTargetSelection._Kind.PreviewableRandom)
-                return skill.GetOrPickPreviewableRandomHostileTargets(_hostileTarget, ordered);
-
-            return SelectHostileTargets(
-                ordered,
-                _hostileTarget,
-                previewRandomAsAll: true
-            );
+            return Array.Empty<Character>();
         }
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            if (_targetsHostile)
-                return Array.Empty<Character>();
-
-            return skill.ResolveFriendlyTargets(
-                _friendlyTarget,
-                dyingFilter: true,
-                includeSummonsWhenAll: _includeSummonsWhenAll
-            );
+            return Array.Empty<Character>();
         }
     }
 

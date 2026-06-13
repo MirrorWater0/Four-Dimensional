@@ -1477,16 +1477,36 @@ public partial class SpaceStationShop : Control
         RefreshShopState();
     }
 
-    private void OnSkillOfferPressed(SkillOffer offer)
+    private async void OnSkillOfferPressed(SkillOffer offer)
     {
         if (offer == null || offer.Sold || offer.SkillId == null)
             return;
-        if (!TrySpendCurrency(offer.Price))
+
+        var players = GameInfo.PlayerCharacters;
+        if (players == null || offer.PlayerIndex < 0 || offer.PlayerIndex >= players.Length)
             return;
-        if (!GrantSkillOffer(offer))
+        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
             return;
 
+        SkillID skillId = offer.SkillId.Value;
         offer.Sold = true;
+        RefreshSkillOfferCard(offer);
+
+        var result = await BattleReady.AcquireDeckCardAsync(
+            this,
+            offer.PlayerIndex,
+            skillId,
+            offer.Card
+        );
+        if (!result.Changed)
+        {
+            SetCurrentCurrency(GetCurrentCurrency() + offer.Price);
+            offer.Sold = false;
+            SetStatus("购入技能卡失败。");
+            RefreshShopState();
+            return;
+        }
+
         var name =
             GameInfo.PlayerCharacters != null
             && offer.PlayerIndex >= 0
@@ -1511,24 +1531,6 @@ public partial class SpaceStationShop : Control
             default:
                 return false;
         }
-    }
-
-    private bool GrantSkillOffer(SkillOffer offer)
-    {
-        if (offer.SkillId == null)
-            return false;
-
-        var players = GameInfo.PlayerCharacters;
-        if (players == null || offer.PlayerIndex < 0 || offer.PlayerIndex >= players.Length)
-            return false;
-
-        var info = players[offer.PlayerIndex];
-        info.GainedSkills ??= new List<SkillID>();
-        if (!info.GainedSkills.Contains(offer.SkillId.Value))
-            info.GainedSkills.Add(offer.SkillId.Value);
-        players[offer.PlayerIndex] = info;
-        GameInfo.PlayerCharacters = players;
-        return true;
     }
 
     private bool ApplyPropertyToPlayer(int playerIndex, PropertyType type, int value)
@@ -1887,15 +1889,10 @@ public partial class SpaceStationShop : Control
         }
         card.SetSkill(skill);
 
-        bool canBuy = !offer.Sold && GetCurrentCurrency() >= offer.Price;
+        bool hasCurrency = GetCurrentCurrency() >= offer.Price;
+        bool canBuy = !offer.Sold && hasCurrency;
         card.Button.Disabled = !canBuy;
-        card.Modulate = canBuy
-            ? Colors.White
-            : (
-                offer.Sold
-                    ? new Color(0.72f, 0.76f, 0.84f, 0.65f)
-                    : new Color(0.82f, 0.84f, 0.9f, 0.82f)
-            );
+        card.Modulate = offer.Sold ? new Color(0.72f, 0.76f, 0.84f, 0.65f) : Colors.White;
         if (tileView != null && GodotObject.IsInstanceValid(tileView))
             tileView.Modulate = card.Modulate;
 
@@ -1906,11 +1903,11 @@ public partial class SpaceStationShop : Control
         SetSkillOfferPriceLabel(
             offer,
             offer.Sold ? "已售"
-                : canBuy ? $"{offer.Price} 电力币"
+                : hasCurrency ? $"{offer.Price} 电力币"
                 : $"需 {offer.Price} 电力币",
             offer.Sold ? new Color(0.7f, 0.76f, 0.84f, 0.76f)
-                : canBuy ? new Color(1f, 0.84f, 0.33f, 0.98f)
-                : new Color(0.94f, 0.72f, 0.48f, 0.94f)
+                : hasCurrency ? new Color(1f, 0.84f, 0.33f, 0.98f)
+                : new Color(0.55f, 0.56f, 0.62f, 0.82f)
         );
     }
 

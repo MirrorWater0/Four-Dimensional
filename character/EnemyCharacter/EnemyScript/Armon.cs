@@ -119,7 +119,7 @@ public partial class ArmonSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, 1, HostileTargetReference.All),
+            AddStatusCardsStep(SkillID.DazeStatus, 1),
             EnergyStep(EnergyGain)
         );
     }
@@ -127,8 +127,9 @@ public partial class ArmonSurvive : Skill
 
 public partial class ArmonSpecial : Skill
 {
-    private const int PowerGainPerEnergy = 2;
-    private const int SurvivabilityGainPerEnergy = 2;
+    private const int OverloadTimes = 3;
+    private const int PowerGainPerLoop = 2;
+    private const int SurvivabilityGainPerLoop = 2;
 
     public ArmonSpecial()
         : base(SkillTypes.Special)
@@ -137,7 +138,7 @@ public partial class ArmonSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "矩阵过载";
-    public override int EnergyCost => XEnergyCost;
+    public override int EnergyCost => 0;
 
     protected override SkillPlan BuildPlan()
     {
@@ -145,12 +146,13 @@ public partial class ArmonSpecial : Skill
             this,
             AttackStep(baseDamage: 19),
             WhileStep(
+                times: () => OverloadTimes,
                 loopSteps: new[]
                 {
-                    ModifyPropertyStep(PropertyType.Power, PowerGainPerEnergy, TargetReference.All),
+                    ModifyPropertyStep(PropertyType.Power, PowerGainPerLoop, TargetReference.All),
                     ModifyPropertyStep(
                         PropertyType.Survivability,
-                        SurvivabilityGainPerEnergy,
+                        SurvivabilityGainPerLoop,
                         TargetReference.All
                     ),
                 }

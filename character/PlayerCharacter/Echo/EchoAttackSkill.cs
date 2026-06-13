@@ -179,7 +179,6 @@ public partial class DisasterImpact : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.AttackKey),
             TextStep(GetExtraDrawFromTargetWeakenText()),
             DrawCardsStep(_ => GetExtraDrawStacksFromAttackTarget())
         );
@@ -255,7 +254,7 @@ public class SonicBoom : Skill
         return new SkillPlan(
             this,
             WhileStep(
-                times: () => 3,
+                times: () => 4,
                 loopSteps: [AttackStep(BaseDamage, target: HostileTargetReference.All)]
             )
         );
@@ -298,7 +297,7 @@ public class ReverbChain : Skill
     }
 
     public override string SkillName { get; set; } = "回声连奏";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 2;
 
     protected override SkillPlan BuildPlan()
     {

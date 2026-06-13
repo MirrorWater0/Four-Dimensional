@@ -6,19 +6,22 @@ using Godot;
 
 public partial class Relic
 {
-    private const int BlessingDamage = 17;
+    private const int BlessingDamage = 25;
     private const int MatrixShieldBlock = 6;
     private const int BackpackFirstTurnDrawBonus = 2;
     private const int EnergyTankEnergy = 1;
     private const int EnergyStorageTankStacks = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
-    private const int SpiralAcceleratorActionInterval = 3;
+    private const int SpiralAcceleratorTurnInterval = 3;
     private const int SpiralAcceleratorDrawCount = 1;
     private const int MechanicalEnergyConverterEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
     private const int PhilosophersStoneEnemyPower = 1;
     private const int EternalGlassDrawBonus = 1;
+    private const int TrianglePartyPower = 1;
+    private const int SquarePartySurvivability = 1;
+    private const int PentagonPartyMaxLife = 5;
     private const int KingsSwordPartyPower = 4;
     private const int RefractometerDamageImmuneStacks = 1;
     private const int PurifierDebuffImmunityStacks = 1;
@@ -29,6 +32,9 @@ public partial class Relic
     private const int KnightHelmetBlock = 6;
     private const int IonizedVoiceExtraDrawStacks = 1;
     private const int HexagonBattleEndHeal = 4;
+    private const float TriggerPopupIconSize = 44f;
+    private const float TriggerPopupHeadOffset = -168f;
+    private const float TriggerPopupRise = -82f;
 
     public RelicID ID;
     public string RelicName;
@@ -271,7 +277,7 @@ public partial class Relic
 
             if (relic.ID == RelicID.MatrixShield && playerActionNumber == 1)
             {
-                ApplyBlockToPlayers(battle, MatrixShieldBlock);
+                ApplyBlockToPlayers(battle, MatrixShieldBlock, relic.ID);
                 continue;
             }
 
@@ -288,17 +294,17 @@ public partial class Relic
         }
     }
 
-    public static void ApplyPlayerActionStartedRelicEffects(
+    public static void ApplyPlayerTeamTurnStartRelicEffects(
         Battle battle,
-        Character actingCharacter,
-        int playerActionNumber
+        Character teamContext,
+        bool refreshUi = true
     )
     {
         if (
             battle?.MapNode?.PlayerResourceState?.RelicList == null
-            || actingCharacter == null
-            || !actingCharacter.IsPlayer
-            || playerActionNumber <= 0
+            || teamContext == null
+            || !teamContext.IsPlayer
+            || teamContext.State == Character.CharacterState.Dying
         )
         {
             return;
@@ -310,9 +316,9 @@ public partial class Relic
                 continue;
 
             relic.Num = Math.Max(0, relic.Num) + 1;
-            if (relic.Num >= SpiralAcceleratorActionInterval)
+            if (relic.Num >= SpiralAcceleratorTurnInterval)
             {
-                ApplySpiralAcceleratorActionStart(actingCharacter);
+                ApplySpiralAcceleratorTeamTurnStart(battle, teamContext, refreshUi);
                 relic.Num = 0;
             }
             relic.UpdateIconLabel();
@@ -333,7 +339,12 @@ public partial class Relic
         using var _ = carriedCharacter.BeginEffectSource(
             GetRelicName(RelicID.MechanicalEnergyConverter)
         );
-        carriedCharacter.UpdataEnergy(MechanicalEnergyConverterEnergy, carriedCharacter);
+        ShowRelicTriggerPopup(carriedCharacter, RelicID.MechanicalEnergyConverter);
+        carriedCharacter.BattleNode?.UpdataEnergy(
+            carriedCharacter,
+            MechanicalEnergyConverterEnergy,
+            carriedCharacter
+        );
     }
 
     public static int GetTurnStartEnergyGainBonus(Character character)
@@ -344,11 +355,21 @@ public partial class Relic
         return HasRelic(RelicID.PhilosophersStone) ? PhilosophersStoneEnergyBonus : 0;
     }
 
-    public static int GetTurnStartDrawBonus(Battle battle)
+    public static int GetTurnStartDrawBonus(Battle battle, Character visualTarget = null)
     {
-        int bonus = HasRelic(RelicID.EternalGlass) ? EternalGlassDrawBonus : 0;
-        if (HasRelic(RelicID.Backpack) && battle?.PlayerTotalTurnCount == 0)
+        int bonus = 0;
+        if (HasRelic(RelicID.EternalGlass))
+        {
+            ShowRelicTriggerPopup(visualTarget, RelicID.EternalGlass);
+            bonus += EternalGlassDrawBonus;
+        }
+
+        if (HasRelic(RelicID.Backpack) && battle?.ElapsedTurnCount == 1)
+        {
+            ShowRelicTriggerPopup(visualTarget, RelicID.Backpack, 34f);
             bonus += BackpackFirstTurnDrawBonus;
+        }
+
         return bonus;
     }
 
@@ -385,6 +406,7 @@ public partial class Relic
             return;
 
         using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.KnightHelmet));
+        ShowRelicTriggerPopup(skill.OwnerCharater, RelicID.KnightHelmet);
         skill.OwnerCharater.UpdataBlock(KnightHelmetBlock, source: skill.OwnerCharater);
     }
 
@@ -394,6 +416,7 @@ public partial class Relic
             return;
 
         using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.IonizedVoice));
+        ShowRelicTriggerPopup(skill.OwnerCharater, RelicID.IonizedVoice);
         SpecialBuff.BuffAdd(
             Buff.BuffName.ExtraDraw,
             skill.OwnerCharater,
@@ -423,36 +446,34 @@ public partial class Relic
                     return;
                 List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
+                {
+                    ShowRelicTriggerPopup(battle.EnemiesList[i], ID);
                     list.Add(battle.EnemiesList[i].GetHurt(BlessingDamage));
+                }
                 await Task.WhenAll(list);
                 Num--;
                 break;
             case RelicID.Triangle:
-                await ApplyEffectToFrontPlayers(battle, PropertyType.Survivability, 2);
-                break;
             case RelicID.Square:
-                await ApplyEffectToFrontPlayers(battle, PropertyType.Power, 2);
-                break;
             case RelicID.Pentagon:
-                ApplyEnergyToFrontPlayers(battle, 1);
                 break;
             case RelicID.Hexagon:
                 break;
             case RelicID.Heptagon:
-                ApplyDebuffToEnemies(battle, Buff.BuffName.Vulnerable, 1);
+                ApplyDebuffToEnemies(battle, Buff.BuffName.Vulnerable, 1, ID);
                 break;
             case RelicID.Octagon:
-                ApplyDebuffToEnemies(battle, Buff.BuffName.Weaken, 1);
+                ApplyDebuffToEnemies(battle, Buff.BuffName.Weaken, 1, ID);
                 break;
             case RelicID.CompressionCore:
                 break;
             case RelicID.Backpack:
                 break;
             case RelicID.EnergyTank:
-                ApplyEnergyToFrontPlayers(battle, EnergyTankEnergy);
+                ApplyPlayerEnergy(battle, EnergyTankEnergy, ID);
                 break;
             case RelicID.EnergyStorageTank:
-                ApplyEnergyStorageToPlayers(battle, EnergyStorageTankStacks);
+                ApplyEnergyStorageToPlayers(battle, EnergyStorageTankStacks, ID);
                 break;
             case RelicID.FusionCore:
             case RelicID.SpiralAccelerator:
@@ -468,7 +489,7 @@ public partial class Relic
             case RelicID.IonizedVoice:
                 break;
             case RelicID.PhilosophersStone:
-                await ApplyPowerToEnemies(battle, PhilosophersStoneEnemyPower);
+                await ApplyPowerToEnemies(battle, PhilosophersStoneEnemyPower, ID);
                 break;
             case RelicID.EternalGlass:
             case RelicID.KingsSword:
@@ -536,19 +557,19 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
-            RelicID.Triangle => "战斗开始时第一位和第二位角色获得2点生存。",
-            RelicID.Square => "战斗开始时第一位和第二位角色获得2点力量。",
-            RelicID.Pentagon => "战斗开始时第一位和第二位角色获得1点能量。",
+            RelicID.Triangle => $"拾起时全阵获得{TrianglePartyPower}点力量。",
+            RelicID.Square => $"拾起时全阵获得{SquarePartySurvivability}点生存。",
+            RelicID.Pentagon => $"拾起时全阵获得{PentagonPartyMaxLife}点生命上限。",
             RelicID.Hexagon => $"战斗结束时，为血量最低的角色回复{HexagonBattleEndHeal}点生命。",
             RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
             RelicID.MatrixShield => $"第一次己方阵营回合开始时全阵获得{MatrixShieldBlock}点格挡。",
             RelicID.Backpack => $"第一次己方阵营回合开始时，额外抽{BackpackFirstTurnDrawBonus}张牌。",
-            RelicID.EnergyTank => $"战斗开始时前2位角色获得{EnergyTankEnergy}点能量。",
+            RelicID.EnergyTank => $"战斗开始时获得{EnergyTankEnergy}点能量。",
             RelicID.EnergyStorageTank => $"战斗开始时全阵获得{EnergyStorageTankStacks}层{Buff.BuffName.EnergyStorage.GetDescription()}。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
-            RelicID.SpiralAccelerator => $"每有{SpiralAcceleratorActionInterval}个己方角色回合开始，当前角色抽{SpiralAcceleratorDrawCount}张自身牌。",
+            RelicID.SpiralAccelerator => $"每{SpiralAcceleratorTurnInterval}个己方阵营回合开始时，抽{SpiralAcceleratorDrawCount}张牌。",
             RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
@@ -565,7 +586,8 @@ public partial class Relic
     private static async Task ApplyEffectToFrontPlayers(
         Battle battle,
         PropertyType propertyType,
-        int amount
+        int amount,
+        RelicID relicID
     )
     {
         int targetCount = Math.Min(2, battle.PlayersList.Count);
@@ -575,6 +597,7 @@ public partial class Relic
             if (player == null || player.State == Character.CharacterState.Dying)
                 continue;
 
+            ShowRelicTriggerPopup(player, relicID);
             await player.IncreaseProperties(propertyType, amount);
         }
     }
@@ -591,10 +614,16 @@ public partial class Relic
             return;
 
         using var _ = target.BeginEffectSource(GetRelicName(RelicID.Hexagon));
+        ShowRelicTriggerPopup(target, RelicID.Hexagon);
         target.Recover(HexagonBattleEndHeal, rebirth: true, source: target);
     }
 
-    private static void ApplyDebuffToEnemies(Battle battle, Buff.BuffName buffName, int stacks)
+    private static void ApplyDebuffToEnemies(
+        Battle battle,
+        Buff.BuffName buffName,
+        int stacks,
+        RelicID relicID
+    )
     {
         if (battle?.EnemiesList == null)
             return;
@@ -605,6 +634,7 @@ public partial class Relic
             if (enemy == null || enemy.State == Character.CharacterState.Dying)
                 continue;
 
+            ShowRelicTriggerPopup(enemy, relicID);
             switch (buffName)
             {
                 case Buff.BuffName.Vulnerable:
@@ -617,7 +647,7 @@ public partial class Relic
         }
     }
 
-    private static void ApplyBlockToPlayers(Battle battle, int block)
+    private static void ApplyBlockToPlayers(Battle battle, int block, RelicID relicID)
     {
         if (battle?.PlayersList == null || block <= 0)
             return;
@@ -628,11 +658,12 @@ public partial class Relic
             if (player == null || player.State == Character.CharacterState.Dying)
                 continue;
 
+            ShowRelicTriggerPopup(player, relicID);
             player.UpdataBlock(block);
         }
     }
 
-    private static void ApplyEnergyToFrontPlayers(Battle battle, int energy)
+    private static void ApplyEnergyToFrontPlayers(Battle battle, int energy, RelicID relicID)
     {
         if (battle?.PlayersList == null || energy == 0)
             return;
@@ -644,11 +675,27 @@ public partial class Relic
             if (player == null || player.State == Character.CharacterState.Dying)
                 continue;
 
-            player.UpdataEnergy(energy, player);
+            ShowRelicTriggerPopup(player, relicID);
+            battle.UpdataEnergy(player, energy, player);
         }
     }
 
-    private static void ApplyEnergyStorageToPlayers(Battle battle, int stacks)
+    private static void ApplyPlayerEnergy(Battle battle, int energy, RelicID relicID)
+    {
+        if (battle?.PlayersList == null || energy == 0)
+            return;
+
+        Character target = battle.PlayersList.FirstOrDefault(player =>
+            player != null && player.State != Character.CharacterState.Dying
+        );
+        if (target == null)
+            return;
+
+        ShowRelicTriggerPopup(target, relicID);
+        battle.UpdataEnergy(target, energy, target);
+    }
+
+    private static void ApplyEnergyStorageToPlayers(Battle battle, int stacks, RelicID relicID)
     {
         if (battle?.PlayersList == null || stacks <= 0)
             return;
@@ -659,6 +706,7 @@ public partial class Relic
             if (player == null || player.State == Character.CharacterState.Dying)
                 continue;
 
+            ShowRelicTriggerPopup(player, relicID);
             SpecialBuff.BuffAdd(Buff.BuffName.EnergyStorage, player, stacks, player);
         }
     }
@@ -682,6 +730,7 @@ public partial class Relic
         int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x4EF1AC70);
         var rng = new Random(seed);
         Character target = candidates[rng.Next(candidates.Length)];
+        ShowRelicTriggerPopup(target, RelicID.Refractometer);
         HurtBuff.BuffAdd(
             Buff.BuffName.DamageImmune,
             target,
@@ -707,6 +756,7 @@ public partial class Relic
                 continue;
             }
 
+            ShowRelicTriggerPopup(player, RelicID.Purifier);
             SpecialBuff.BuffAdd(Buff.BuffName.DebuffImmunity, player, stacks, player);
         }
     }
@@ -730,12 +780,13 @@ public partial class Relic
         int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x51A7C011);
         var rng = new Random(seed);
         Character target = candidates[rng.Next(candidates.Length)];
+        ShowRelicTriggerPopup(target, RelicID.PulseController);
         SkillBuff.BuffAdd(Buff.BuffName.Stun, target, PulseControllerStunStacks, target);
         HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PulseControllerVulnerableStacks, target);
         AttackBuff.BuffAdd(Buff.BuffName.Weaken, target, PulseControllerWeakenStacks, target);
     }
 
-    private static async Task ApplyPowerToEnemies(Battle battle, int power)
+    private static async Task ApplyPowerToEnemies(Battle battle, int power, RelicID relicID)
     {
         if (battle?.EnemiesList == null || power == 0)
             return;
@@ -745,22 +796,43 @@ public partial class Relic
             if (enemy == null || enemy.State == Character.CharacterState.Dying)
                 continue;
 
+            ShowRelicTriggerPopup(enemy, relicID);
             await enemy.IncreaseProperties(PropertyType.Power, power, enemy);
         }
     }
 
     private static void ApplyAcquireEffect(RelicID relicID)
     {
-        if (relicID != RelicID.KingsSword)
-            return;
+        switch (relicID)
+        {
+            case RelicID.Triangle:
+                ApplyPartyAcquireStat(power: TrianglePartyPower);
+                break;
+            case RelicID.Square:
+                ApplyPartyAcquireStat(survivability: SquarePartySurvivability);
+                break;
+            case RelicID.Pentagon:
+                ApplyPartyAcquireStat(maxLife: PentagonPartyMaxLife);
+                break;
+            case RelicID.KingsSword:
+                ApplyPartyAcquireStat(power: KingsSwordPartyPower);
+                break;
+        }
+    }
 
+    private static void ApplyPartyAcquireStat(int power = 0, int survivability = 0, int maxLife = 0)
+    {
         if (GameInfo.PlayerCharacters == null)
             return;
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var info = GameInfo.PlayerCharacters[i];
-            info.Power += KingsSwordPartyPower;
+            info.Power += power;
+            info.Survivability += survivability;
+            info.LifeMax = Math.Max(1, info.LifeMax + maxLife);
+            if (info.LifeInitialized)
+                info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
             GameInfo.PlayerCharacters[i] = info;
         }
     }
@@ -771,16 +843,101 @@ public partial class Relic
             return;
 
         using var _ = actingCharacter.BeginEffectSource(GetRelicName(RelicID.FusionCore));
-        actingCharacter.UpdataEnergy(FusionCoreEnergy, actingCharacter);
+        ShowRelicTriggerPopup(actingCharacter, RelicID.FusionCore);
+        actingCharacter.BattleNode?.UpdataEnergy(
+            actingCharacter,
+            FusionCoreEnergy,
+            actingCharacter
+        );
     }
 
-    private static void ApplySpiralAcceleratorActionStart(Character actingCharacter)
+    private static void ApplySpiralAcceleratorTeamTurnStart(
+        Battle battle,
+        Character teamContext,
+        bool refreshUi
+    )
     {
-        if (actingCharacter is not PlayerCharacter player)
+        if (battle == null || teamContext == null)
             return;
 
-        using var _ = player.BeginEffectSource(GetRelicName(RelicID.SpiralAccelerator));
-        player.TryDrawBattleCards(SpiralAcceleratorDrawCount);
+        using var _ = teamContext.BeginEffectSource(GetRelicName(RelicID.SpiralAccelerator));
+        ShowRelicTriggerPopup(teamContext, RelicID.SpiralAccelerator);
+        battle.TryDrawPlayerTeamBattleCards(SpiralAcceleratorDrawCount, refreshUi);
+    }
+
+    private static void ShowRelicTriggerPopup(
+        Character target,
+        RelicID relicID,
+        float horizontalOffset = 0f
+    )
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target) || IconScene == null)
+            return;
+
+        var popup = new Node2D
+        {
+            Name = $"RelicTrigger_{relicID}",
+            ZIndex = 1000,
+            ZAsRelative = false,
+            Modulate = new Color(1f, 1f, 1f, 0f),
+            Scale = new Vector2(0.55f, 0.55f),
+        };
+
+        var icon = IconScene.Instantiate<Control>();
+        ConfigureTriggerPopupIcon(icon, relicID);
+        popup.AddChild(icon);
+        target.AddChild(popup);
+
+        Vector2 start = target.GlobalPosition + new Vector2(horizontalOffset, TriggerPopupHeadOffset);
+        popup.GlobalPosition = start;
+
+        Tween tween = popup.CreateTween();
+        tween.SetParallel(true);
+        tween.TweenProperty(popup, "modulate:a", 1f, 0.1f).SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(popup, "scale", Vector2.One, 0.14f)
+            .SetEase(Tween.EaseType.Out)
+            .SetTrans(Tween.TransitionType.Back);
+        tween
+            .TweenProperty(popup, "global_position", start + new Vector2(0f, -24f), 0.2f)
+            .SetEase(Tween.EaseType.Out)
+            .SetTrans(Tween.TransitionType.Quad);
+        tween
+            .TweenProperty(popup, "global_position", start + new Vector2(0f, TriggerPopupRise), 0.55f)
+            .SetDelay(0.2f)
+            .SetEase(Tween.EaseType.InOut)
+            .SetTrans(Tween.TransitionType.Sine);
+        tween.TweenProperty(popup, "modulate:a", 0f, 0.28f).SetDelay(0.47f);
+        tween.TweenProperty(popup, "scale", new Vector2(0.82f, 0.82f), 0.28f).SetDelay(0.47f);
+        tween.Finished += () =>
+        {
+            if (GodotObject.IsInstanceValid(popup))
+                popup.QueueFree();
+        };
+    }
+
+    private static void ConfigureTriggerPopupIcon(Control icon, RelicID relicID)
+    {
+        if (icon == null)
+            return;
+
+        Vector2 size = new(TriggerPopupIconSize, TriggerPopupIconSize);
+        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        icon.Position = -size * 0.5f;
+        icon.Size = size;
+        icon.CustomMinimumSize = size;
+        icon.PivotOffset = size * 0.5f;
+        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+        ApplyIconVisual(icon, relicID);
+
+        icon.GetNodeOrNull<Label>("Label")?.Hide();
+        if (icon.GetNodeOrNull<Panel>("Panel") is Panel panel)
+        {
+            panel.MouseFilter = Control.MouseFilterEnum.Ignore;
+            panel.Position = Vector2.Zero;
+            panel.Size = size;
+            panel.CustomMinimumSize = size;
+        }
     }
 
     private string GetIconCountText()

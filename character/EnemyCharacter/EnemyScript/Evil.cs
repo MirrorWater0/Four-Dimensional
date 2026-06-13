@@ -6,7 +6,7 @@ public partial class Evil : EnemyCharacter
 {
     private const int StartEnergyGain = 2;
     private const int StartRebirthStacks = 1;
-    private const int TriggerCount = 3;
+    private const int TriggerCount = 4;
 
     public const string PassiveNameText = "重生律动";
     public static string PassiveBaseDescriptionText =>
@@ -31,7 +31,7 @@ public partial class Evil : EnemyCharacter
         _basePassiveDescription = PassiveBaseDescriptionText;
         UpdatePassiveDescription();
         using var _ = BeginEffectSource("被动");
-        UpdataEnergy(StartEnergyGain, this);
+        BattleNode?.UpdataEnergy(this, StartEnergyGain, this);
         DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
     }
 
@@ -71,7 +71,7 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 24;
+        MaxLife = 18;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -126,6 +126,8 @@ public partial class EvilSurvive : Skill
 
 public partial class EvilTermin : Skill
 {
+    private const int AttackTimes = 5;
+
     public EvilTermin()
         : base(Skill.SkillTypes.Special)
     {
@@ -133,14 +135,14 @@ public partial class EvilTermin : Skill
     }
 
     public override string SkillName { set; get; } = "虚空终结";
-    public override int EnergyCost => XEnergyCost;
+    public override int EnergyCost => 0;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             WhileStep(
-                times: () => 5,
+                times: () => AttackTimes,
                 loopSteps: [AttackStep(baseDamage: 7, multiplier: 1, clampMax: 9999)]
             )
         );

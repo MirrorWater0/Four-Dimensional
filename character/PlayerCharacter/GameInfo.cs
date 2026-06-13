@@ -515,6 +515,7 @@ public static class GlobalFunction
         AddKeywordVariants(entries, "keyword.block", "格挡", cambridgeBlue);
         AddKeywordVariants(entries, "keyword.energy", "能量", "#c9cdff");
         AddKeywordVariants(entries, "keyword.exhaust", "消耗", "#ffb86b");
+        AddKeywordVariants(entries, "keyword.retain", "保留", "#ffd98f");
         AddKeywordVariants(entries, "keyword.voidness", "虚无", "#b9a6ff");
         AddKeywordVariants(
             entries,

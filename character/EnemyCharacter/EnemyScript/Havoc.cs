@@ -4,12 +4,12 @@ using Godot;
 public partial class Havoc : EnemyCharacter
 {
     private const int PassiveTriggerInterval = 3;
-    private const int PassivePlagueCount = 1;
-    private int _turnStartCount;
+    private const int PassivePlagueCount = 3;
+    private int _turnEndCount;
 
     public const string PassiveNameText = "灾厄脉冲";
     public static string PassiveDescriptionText =>
-        $"每{PassiveTriggerInterval}次回合开始时：向所有角色抽牌堆加入{PassivePlagueCount}张{Skill.GetSkill(SkillID.PlagueStatus)?.SkillName ?? "瘟疫"}。";
+        $"每{PassiveTriggerInterval}回合结束时：向弃牌堆加入{PassivePlagueCount}张{Skill.GetSkill(SkillID.PlagueStatus)?.SkillName ?? "瘟疫"}。";
 
     public override string CharacterName { get; set; } = "Havoc";
 
@@ -20,12 +20,12 @@ public partial class Havoc : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void OnTurnStart()
+    public override void OnTurnEnd()
     {
-        base.OnTurnStart();
-        _turnStartCount++;
-        if (_turnStartCount % PassiveTriggerInterval == 0)
+        _turnEndCount++;
+        if (_turnEndCount % PassiveTriggerInterval == 0)
             TriggerPassive(null);
+        base.OnTurnEnd();
     }
 
     public override async void Passive(Skill skill)
@@ -34,38 +34,33 @@ public partial class Havoc : EnemyCharacter
         if (BattleNode == null)
             return;
 
-        PlayerCharacter[] targets = BattleNode
+        PlayerCharacter target = BattleNode
             .GetOrderedTeamCharacters(!IsPlayer, includeSummons: false, dyingFilter: true)
             .OfType<PlayerCharacter>()
             .Where(target => target.State == CharacterState.Normal)
-            .ToArray();
-        if (targets.Length == 0)
+            .FirstOrDefault();
+        if (target == null)
             return;
 
         CharacterControl characterControl = BattleNode.CharacterControl;
         if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
         {
             await characterControl.PlayStatusCardInsertAnimationAsync(
-                targets
-                    .Select(target => new CharacterControl.StatusCardInsertAnimationEntry(
-                        target,
-                        SkillID.PlagueStatus,
-                        PassivePlagueCount,
-                        this
-                    ))
-                    .ToArray()
-            );
-        }
-
-        foreach (var target in targets)
-        {
-            BattleNode.AddPlayerBattleStatusCardsToDrawPile(
                 target,
                 SkillID.PlagueStatus,
                 PassivePlagueCount,
+                BattleCardPileTarget.DiscardPileCards,
                 this
             );
         }
+
+        BattleNode.AddPlayerBattleStatusCards(
+            target,
+            SkillID.PlagueStatus,
+            PassivePlagueCount,
+            BattleCardPileTarget.DiscardPileCards,
+            this
+        );
     }
 }
 
@@ -105,7 +100,7 @@ public partial class HavocAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2, target: HostileTargetReference.All));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2));
     }
 }
 
@@ -136,7 +131,7 @@ public partial class HavocSurvive : Skill
 public partial class HavocSpecial : Skill
 {
     private const int DisasterStacks = 7;
-    private const int SelfPowerGain = 1;
+    private const int SelfPowerGain = 2;
 
     public HavocSpecial()
         : base(SkillTypes.Special)

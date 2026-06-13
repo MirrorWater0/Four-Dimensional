@@ -184,7 +184,7 @@ public partial class RuinBlade : Skill
 
 public partial class NightfallFlurry : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 4;
     private const int PowerMultiplier = 1;
 
     public NightfallFlurry()

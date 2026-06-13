@@ -150,7 +150,7 @@ public partial class MariyaBasicSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, HealStep(5, TargetReference.ManualFriendly));
+        return new SkillPlan(this, HealStep(8, TargetReference.ManualFriendly));
     }
 }
 

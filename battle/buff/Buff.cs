@@ -64,7 +64,6 @@ public partial class Buff
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
         [BuffName.ExtraDraw] = "res://battle/buff/StateIcon/CardRefresh.tscn",
-        [BuffName.Source] = "res://battle/buff/StateIcon/Source.tscn",
         [BuffName.EnergyStorage] = "res://battle/buff/StateIcon/Source.tscn",
     };
 
@@ -89,8 +88,8 @@ public partial class Buff
             BuffName.Stun => "下1次释放技能会被阻止，并固定失去1点能量；触发后消耗1层。",
             BuffName.Pursuit => "阵营回合结束时，造成一次伤害。",
             BuffName.DebuffImmunity => "抵消1次负面状态添加，消耗1层。",
-            BuffName.Invisible => "其他角色存活时,无法被选为攻击目标；回合开始时消耗1层。",
-            BuffName.Swift => "阵营回合开始时，每层抽1张该角色的牌。",
+            BuffName.Invisible => "其他角色存活时,无法被选为攻击目标；对方阵营回合结束时减少1层。",
+            BuffName.Swift => "阵营回合开始时，每层抽1张牌。",
             BuffName.ExtraPower => "获得力量时，每层额外获得1点力量。",
             BuffName.ExtraSurvivability => "获得生存时，每层额外获得1点生存。",
             BuffName.AutoArmor => "受到攻击后，每层获得1点格挡。",
@@ -103,13 +102,12 @@ public partial class Buff
             BuffName.Demon =>
                 "阵营回合结束时，每层获得1点力量。",
             BuffName.Void =>
-                "队友打出生存牌时，获得1点力量。",
+                "其他己方角色使用生存牌时，每层获得1点力量。",
             BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
             BuffName.Sanctuary => "己方阵营回合结束时，每层回复0点生命1次。",
-            BuffName.ExtraDraw => "阵营回合开始时，最多消耗1层并抽1张该角色的牌。",
-            BuffName.Source => "回合开始时，每层获得1点能量。",
+            BuffName.ExtraDraw => "阵营回合开始时，最多消耗1层并抽1张牌。",
             BuffName.EnergyStorage => "阵营回合结束时，每层少失去1点能量。",
-            BuffName.EternalDark => "回合开始时，获得1层隐身。",
+            BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
             BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
             BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
             BuffName.WeakeningField => "每给予1层虚弱，己方全阵获得{block}点格挡。",
@@ -434,7 +432,6 @@ public partial class Buff
         [Description("迅捷")]
         Swift,
 
-        [Description("源泉")]
         Source,
 
         [Description("能量储存")]
@@ -486,7 +483,6 @@ public partial class Buff
             BuffName.Void => Nature.positive,
             BuffName.Sanctuary => Nature.positive,
             BuffName.ExtraDraw => Nature.positive,
-            BuffName.Source => Nature.positive,
             BuffName.EnergyStorage => Nature.positive,
             BuffName.Beacon => Nature.positive,
             _ => Nature.positive,
@@ -913,19 +909,12 @@ public partial class StartActionBuff : Buff
 
         switch (ThisBuffName)
         {
-            case BuffName.Invisible:
-                Stack--;
-                UpdateStackLabel();
-                break;
             case BuffName.EternalDark:
-                StartActionBuff.BuffAdd(BuffName.Invisible, Owner, 1, Owner);
+                StartActionBuff.BuffAdd(BuffName.Invisible, Owner, Stack, Owner);
                 break;
             case BuffName.Swift:
-                if (Owner is PlayerCharacter player)
-                    player.TryDrawBattleCards(Stack);
-                break;
-            case BuffName.Source:
-                Owner.UpdataEnergy(Stack, Owner);
+                if (Owner?.BattleNode != null)
+                    Owner.BattleNode.TryDrawPlayerTeamBattleCards(Stack);
                 break;
             case BuffName.Barricade:
                 // Passive effect: checked by Character.StartAction before block reset.
@@ -944,6 +933,25 @@ public partial class StartActionBuff : Buff
         TryRemoveIfEmpty(Owner.StartActionBuffs);
     }
 
+    public void ConsumeOpposingTeamTurnEndStack()
+    {
+        if (
+            ThisBuffName != BuffName.Invisible
+            || Stack <= 0
+            || Owner == null
+            || !GodotObject.IsInstanceValid(Owner)
+            || Owner.State == Character.CharacterState.Dying
+        )
+        {
+            return;
+        }
+
+        Stack--;
+        UpdateStackLabel();
+        TweenLabel();
+        TryRemoveIfEmpty(Owner.StartActionBuffs);
+    }
+
     public static void BuffAdd(BuffName name, Character target, int stack, Character source = null)
     {
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
@@ -958,7 +966,6 @@ public partial class StartActionBuff : Buff
                 name != BuffName.Invisible
                 && name != BuffName.EternalDark
                 && name != BuffName.Swift
-                && name != BuffName.Source
                 && name != BuffName.Barricade
                 && name != BuffName.Afterimage
                 && name != BuffName.Divinity
@@ -1178,7 +1185,11 @@ public partial class SkillBuff : Buff
                 UpdateStackLabel();
 
                 if (skill?.OwnerCharater != null && skill.OwnerCharater.CurrentEnergy > 0)
-                    skill.OwnerCharater.UpdataEnergy(-1, skill.OwnerCharater);
+                    skill.OwnerCharater.BattleNode?.UpdataEnergy(
+                        skill.OwnerCharater,
+                        -1,
+                        skill.OwnerCharater
+                    );
 
                 if (Owner != null)
                 {

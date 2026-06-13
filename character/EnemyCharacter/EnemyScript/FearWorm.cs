@@ -1,63 +1,24 @@
-using System;
-using System.Threading.Tasks;
 using Godot;
 
 public partial class FearWorm : EnemyCharacter
 {
-    private const int PassiveAllyActionThreshold = 2;
-    private const int PassivePowerGain = 4;
-    private int _passiveAllyActionCount;
-    private Func<Character, Task> _allyActionEndedHandler;
+    private const int PassivePowerGain = 1;
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
-        $"其他己方角色每行动{PassiveAllyActionThreshold}次：敌阵回合结束时获得{PassivePowerGain}点力量。";
+        $"回合结束时：获得{PassivePowerGain}点力量。";
 
     public override void Initialize()
     {
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveDescriptionText;
-        UpdatePassiveDescription();
-        _allyActionEndedHandler ??= OnAllyActionEnded;
-        if (BattleNode != null && !BattleNode.EmitList.Contains(_allyActionEndedHandler))
-            BattleNode.EmitList.Add(_allyActionEndedHandler);
     }
 
-    public override void _ExitTree()
+    public override void OnTurnEnd()
     {
-        if (BattleNode != null && _allyActionEndedHandler != null)
-            BattleNode.EmitList.Remove(_allyActionEndedHandler);
-        base._ExitTree();
-    }
-
-    private Task OnAllyActionEnded(Character actingCharacter)
-    {
-        if (
-            actingCharacter == null
-            || actingCharacter == this
-            || actingCharacter.IsPlayer != IsPlayer
-            || actingCharacter.BattleNode != BattleNode
-            || State != CharacterState.Normal
-            || actingCharacter.IsSummon
-        )
-            return Task.CompletedTask;
-
-        _passiveAllyActionCount++;
-        UpdatePassiveDescription();
-        if (_passiveAllyActionCount < PassiveAllyActionThreshold)
-            return Task.CompletedTask;
-
-        _passiveAllyActionCount = 0;
-        UpdatePassiveDescription();
         TriggerPassive(null);
-        return Task.CompletedTask;
-    }
-
-    private void UpdatePassiveDescription()
-    {
-        PassiveDescription =
-            $"{PassiveDescriptionText}\n当前计数：{_passiveAllyActionCount}/{PassiveAllyActionThreshold}";
+        base.OnTurnEnd();
     }
 
     public override async void Passive(Skill skill)
@@ -152,7 +113,7 @@ public partial class FearWormSurvive : Skill
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 12;
     private const int StunStacks = 2;
 
     public FearWormTermin()

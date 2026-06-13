@@ -25,6 +25,7 @@ public partial class EventInterface : Control
     private Control HeaderTitle => field ??= GetNode<Control>("Frame/HeaderBar/HeaderTitle");
     private Control HeaderCode => field ??= GetNode<Control>("Frame/HeaderBar/HeaderCode");
     private Control HeaderAccent => field ??= GetNode<Control>("Frame/HeaderBar/HeaderAccent");
+    private Control FrameNode => field ??= GetNode<Control>("Frame");
     private Control LeftAccent => field ??= GetNode<Control>("Frame/LeftAccent");
     private Control RightAccent => field ??= GetNode<Control>("Frame/RightAccent");
     private Control Divider => field ??= GetNode<Control>("Frame/Divider");
@@ -73,10 +74,13 @@ public partial class EventInterface : Control
     private bool _isShowingOutcomeOverlay;
     private string[] _optionTipTexts = Array.Empty<string>();
     private EventOption _pendingTargetOption;
+    private EventOption _pendingCardOption;
     private TaskCompletionSource<bool> _outcomeDismissSource;
     private readonly Dictionary<EventOption, int> _electricityRolls = new();
     private readonly Dictionary<EventOption, int> _transitionEnergyRolls = new();
     private readonly Dictionary<EventOption, int> _propertyChangeCostRolls = new();
+    private readonly Dictionary<EventOption, RelicID?> _relicRewardRolls = new();
+    private EventCardSelectOverlay _cardSelectOverlay;
     private Random _resourceRandom;
 
     private readonly struct AppliedResourceChanges(int transitionEnergyChange, int electricityChange, int propertyChangeElectricityCost = 0)
@@ -109,6 +113,7 @@ public partial class EventInterface : Control
         BindOptionButtons();
         TargetSelectOverlay.CharacterSelected += OnTargetCharacterSelected;
         TargetSelectOverlay.SelectionCanceled += OnTargetSelectionCanceled;
+        EnsureCardSelectOverlay();
         _resourceRandom = CreateResourceRandom();
         ApplyEventData(ThisEvent ?? GameEvent.Catalog?.FirstOrDefault());
         CallDeferred(nameof(StartAnimation));
@@ -118,6 +123,11 @@ public partial class EventInterface : Control
     {
         TargetSelectOverlay.CharacterSelected -= OnTargetCharacterSelected;
         TargetSelectOverlay.SelectionCanceled -= OnTargetSelectionCanceled;
+        if (_cardSelectOverlay != null)
+        {
+            _cardSelectOverlay.CardSelected -= OnCardSelected;
+            _cardSelectOverlay.SelectionCanceled -= OnCardSelectionCanceled;
+        }
         if (OutcomeOverlay != null)
             OutcomeOverlay.GuiInput -= OnOutcomeOverlayGuiInput;
         _outcomeDismissSource?.TrySetResult(false);
@@ -155,13 +165,8 @@ public partial class EventInterface : Control
             var button = OptionButtons[i];
             bool exists = i < options.Length;
             button.Visible = exists;
-            bool canAfford = true;
-            if (exists && options[i].PropertyChange != null && options[i].PropertyChange.Count > 0)
-            {
-                int cost = GetRolledPropertyChangeCost(options[i]);
-                canAfford = GameInfo.ElectricityCoin >= cost;
-            }
-            button.Disabled = !exists || !canAfford;
+            bool canUse = exists && CanUseOption(options[i]);
+            button.Disabled = !exists || !canUse;
             if (exists)
             {
                 button.Text = string.IsNullOrWhiteSpace(options[i].Text)
@@ -171,7 +176,8 @@ public partial class EventInterface : Control
                     options[i],
                     GetRolledElectricityChange(options[i]),
                     GetRolledTransitionEnergyChange(options[i]),
-                    GetRolledPropertyChangeCost(options[i])
+                    GetRolledPropertyChangeCost(options[i]),
+                    GetRolledRelicReward(options[i])
                 );
             }
         }
@@ -284,6 +290,7 @@ public partial class EventInterface : Control
 
         HideOptionTip();
         HideTargetSelection();
+        HideCardSelection();
         _ = PlayCloseAnimationAsync(false);
     }
 
@@ -293,6 +300,7 @@ public partial class EventInterface : Control
             _isTransitioning
             || _isShowingOutcomeOverlay
             || TargetSelectOverlay.Visible
+            || (_cardSelectOverlay?.Visible == true)
             || ThisEvent?.Options == null
         )
             return;
@@ -302,6 +310,8 @@ public partial class EventInterface : Control
         HideOptionTip();
         var option = ThisEvent.Options[optionIndex];
         if (option == null)
+            return;
+        if (!CanUseOption(option))
             return;
 
         if (option.PropertyChange != null && option.PropertyChange.Count > 0)
@@ -324,7 +334,14 @@ public partial class EventInterface : Control
             return;
         }
 
-        await ResolveOptionOutcomeAsync(option);
+        if (option.RequiresCardSelection)
+        {
+            ShowCardSelection(option);
+            return;
+        }
+
+        string actionOutcomeText = ApplyImmediateOptionAction(option);
+        await ResolveOptionOutcomeAsync(option, actionOutcomeText: actionOutcomeText);
     }
 
     private void ShowTargetSelection(EventOption option)
@@ -340,9 +357,49 @@ public partial class EventInterface : Control
         TargetSelectOverlay.HideSelection();
     }
 
+    private EventCardSelectOverlay EnsureCardSelectOverlay()
+    {
+        if (_cardSelectOverlay != null && GodotObject.IsInstanceValid(_cardSelectOverlay))
+            return _cardSelectOverlay;
+
+        _cardSelectOverlay = FrameNode.GetNodeOrNull<EventCardSelectOverlay>("CardSelectOverlay");
+        if (_cardSelectOverlay == null)
+        {
+            _cardSelectOverlay = new EventCardSelectOverlay { Name = "CardSelectOverlay" };
+            FrameNode.AddChild(_cardSelectOverlay);
+        }
+
+        _cardSelectOverlay.CardSelected -= OnCardSelected;
+        _cardSelectOverlay.SelectionCanceled -= OnCardSelectionCanceled;
+        _cardSelectOverlay.CardSelected += OnCardSelected;
+        _cardSelectOverlay.SelectionCanceled += OnCardSelectionCanceled;
+        return _cardSelectOverlay;
+    }
+
+    private void ShowCardSelection(EventOption option)
+    {
+        _pendingCardOption = option;
+        var overlay = EnsureCardSelectOverlay();
+        overlay.ShowSelection(
+            BuildSelectableCardEntries(option.ActionType),
+            GetCardSelectionHint(option.ActionType)
+        );
+    }
+
+    private void HideCardSelection()
+    {
+        _pendingCardOption = null;
+        _cardSelectOverlay?.HideSelection();
+    }
+
     private void OnTargetSelectionCanceled()
     {
         _pendingTargetOption = null;
+    }
+
+    private void OnCardSelectionCanceled()
+    {
+        _pendingCardOption = null;
     }
 
     private async void OnTargetCharacterSelected(int index)
@@ -358,6 +415,17 @@ public partial class EventInterface : Control
         RefreshPartyLifeResource();
         ShowPropertyHint(index, option.PropertyChange, false);
         await ResolveOptionOutcomeAsync(option, index, false);
+    }
+
+    private async void OnCardSelected(EventCardSelection selection)
+    {
+        if (_pendingCardOption == null)
+            return;
+
+        var option = _pendingCardOption;
+        string actionOutcomeText = await ApplyCardOptionActionAsync(option, selection);
+        HideCardSelection();
+        await ResolveOptionOutcomeAsync(option, actionOutcomeText: actionOutcomeText);
     }
 
     private void RefreshPartyLifeResource()
@@ -417,6 +485,7 @@ public partial class EventInterface : Control
         _electricityRolls.Clear();
         _transitionEnergyRolls.Clear();
         _propertyChangeCostRolls.Clear();
+        _relicRewardRolls.Clear();
         if (options == null)
             return;
 
@@ -428,6 +497,8 @@ public partial class EventInterface : Control
                 _transitionEnergyRolls[option] = option.RollTransitionEnergyChange(_resourceRandom);
             if (option?.HasPropertyChangeElectricityCost == true)
                 _propertyChangeCostRolls[option] = option.RollPropertyChangeElectricityCost(_resourceRandom);
+            if (option?.ActionType == EventOptionActionType.GainRelic)
+                _relicRewardRolls[option] = RollRelicReward(option);
         }
     }
 
@@ -461,6 +532,55 @@ public partial class EventInterface : Control
         return option.RollPropertyChangeElectricityCost(_resourceRandom);
     }
 
+    private RelicID? GetRolledRelicReward(EventOption option)
+    {
+        if (option == null || option.ActionType != EventOptionActionType.GainRelic)
+            return null;
+        if (_relicRewardRolls.TryGetValue(option, out RelicID? relicId))
+            return relicId;
+
+        _resourceRandom ??= CreateResourceRandom();
+        relicId = RollRelicReward(option);
+        _relicRewardRolls[option] = relicId;
+        return relicId;
+    }
+
+    private RelicID? RollRelicReward(EventOption option)
+    {
+        if (option?.RelicReward != null)
+            return option.RelicReward.Value;
+
+        var pool = Relic.GetUnownedOfferPool();
+        if (pool == null || pool.Length == 0)
+            return null;
+
+        _resourceRandom ??= CreateResourceRandom();
+        return pool[_resourceRandom.Next(pool.Length)];
+    }
+
+    private bool CanUseOption(EventOption option)
+    {
+        if (option == null)
+            return false;
+
+        if (option.PropertyChange != null && option.PropertyChange.Count > 0)
+        {
+            int cost = GetRolledPropertyChangeCost(option);
+            if (GameInfo.ElectricityCoin < cost)
+                return false;
+        }
+
+        return option.ActionType switch
+        {
+            EventOptionActionType.CopyCard
+            or EventOptionActionType.TransformCard
+            or EventOptionActionType.RemoveCard => BuildSelectableCardEntries(option.ActionType).Any(),
+            EventOptionActionType.GainRelic => GetRolledRelicReward(option).HasValue,
+            EventOptionActionType.GainTalentPoint => HasTalentPointCandidate(),
+            _ => true,
+        };
+    }
+
     private Random CreateResourceRandom()
     {
         unchecked
@@ -471,6 +591,221 @@ public partial class EventInterface : Control
             hash = (hash ^ EventResourceRandomSalt) * 16777619;
             return new Random(hash);
         }
+    }
+
+    private List<EventCardSelectionEntry> BuildSelectableCardEntries(
+        EventOptionActionType actionType
+    )
+    {
+        GameInfo.NormalizePlayerCharacters();
+        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+        var result = new List<EventCardSelectionEntry>();
+
+        for (int playerIndex = 0; playerIndex < players.Length; playerIndex++)
+        {
+            var info = players[playerIndex];
+            var grouped = (info.GainedSkills ?? new List<SkillID>())
+                .Where(IsSelectableEventCard)
+                .GroupBy(skillId => skillId)
+                .OrderBy(group => GetSkillSortIndex(group.Key))
+                .ThenBy(group => GetSkillDisplayName(group.Key));
+
+            string characterName = string.IsNullOrWhiteSpace(info.CharacterName)
+                ? $"角色{playerIndex + 1}"
+                : info.CharacterName;
+            string characterKey = ExtractCharacterKeyFromScenePath(info.CharacterScenePath);
+            foreach (var group in grouped)
+            {
+                if (
+                    actionType == EventOptionActionType.TransformCard
+                    && !BattleReady.CanTransformDeckCard(info, group.Key)
+                )
+                {
+                    continue;
+                }
+
+                result.Add(
+                    new EventCardSelectionEntry(
+                        playerIndex,
+                        group.Key,
+                        group.Count(),
+                        characterName,
+                        characterKey,
+                        TalentTree.GetEffectivePower(info),
+                        TalentTree.GetEffectiveSurvivability(info)
+                    )
+                );
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsSelectableEventCard(SkillID skillId)
+    {
+        var skill = Skill.GetSkill(skillId);
+        return skill != null && skill.SkillType != Skill.SkillTypes.none && !skill.IsStatusCard;
+    }
+
+    private static int GetSkillSortIndex(SkillID skillId)
+    {
+        var skill = Skill.GetSkill(skillId);
+        return skill?.SkillType switch
+        {
+            Skill.SkillTypes.Attack => 0,
+            Skill.SkillTypes.Survive => 1,
+            Skill.SkillTypes.Special => 2,
+            _ => 3,
+        };
+    }
+
+    private static string GetCardSelectionHint(EventOptionActionType actionType)
+    {
+        return actionType switch
+        {
+            EventOptionActionType.CopyCard => "请选择要复制的卡牌",
+            EventOptionActionType.TransformCard => "请选择要变化的卡牌",
+            EventOptionActionType.RemoveCard => "请选择要删除的卡牌",
+            _ => "请选择一张卡牌",
+        };
+    }
+
+    private string ApplyImmediateOptionAction(EventOption option)
+    {
+        return option?.ActionType switch
+        {
+            EventOptionActionType.GainRelic => GrantRelicReward(option),
+            EventOptionActionType.GainTalentPoint => GrantTalentPointReward(option),
+            _ => string.Empty,
+        };
+    }
+
+    private async Task<string> ApplyCardOptionActionAsync(
+        EventOption option,
+        EventCardSelection selection
+    )
+    {
+        BattleReadyDeckOperationResult result = option?.ActionType switch
+        {
+            EventOptionActionType.CopyCard => await BattleReady.CopyDeckCardAsync(
+                this,
+                selection.PlayerIndex,
+                selection.SkillId,
+                selection.SourceCard
+            ),
+            EventOptionActionType.TransformCard => await BattleReady.TransformDeckCardAsync(
+                this,
+                selection.PlayerIndex,
+                selection.SkillId,
+                selection.SourceCard,
+                _resourceRandom
+            ),
+            EventOptionActionType.RemoveCard => await BattleReady.RemoveDeckCardAsync(
+                this,
+                selection.PlayerIndex,
+                selection.SkillId,
+                selection.SourceCard
+            ),
+            _ => default,
+        };
+
+        return result.Message ?? string.Empty;
+    }
+
+    private string GrantRelicReward(EventOption option)
+    {
+        RelicID? relicId = GetRolledRelicReward(option);
+        if (!relicId.HasValue)
+            return "没有可获得的遗物";
+
+        var resourceState = GetResourceState();
+        if (resourceState != null)
+        {
+            Relic.RelicAdd(resourceState, relicId.Value);
+        }
+        else
+        {
+            GameInfo.SetRelicCount(relicId.Value, Relic.GetAcquireAmount(relicId.Value));
+        }
+
+        return $"获得遗物：[b]{Relic.Create(relicId.Value).RelicName}[/b]";
+    }
+
+    private string GrantTalentPointReward(EventOption option)
+    {
+        var candidates = GetTalentPointCandidateIndices();
+        if (candidates.Count == 0)
+            return "没有可获得天赋点的角色";
+
+        _resourceRandom ??= CreateResourceRandom();
+        int characterIndex = candidates[_resourceRandom.Next(candidates.Count)];
+        int amount = Math.Max(1, option?.TalentPointAmount ?? 1);
+        var players = GameInfo.PlayerCharacters;
+        var info = players[characterIndex];
+        TalentTree.AddTalentPoints(ref info, amount);
+        players[characterIndex] = info;
+        GameInfo.PlayerCharacters = players;
+
+        string name = GetPlayerDisplayName(characterIndex);
+        return $"[b]{name}[/b]\n天赋点 {FormatSigned(amount)}";
+    }
+
+    private static bool HasTalentPointCandidate() => GetTalentPointCandidateIndices().Count > 0;
+
+    private static List<int> GetTalentPointCandidateIndices()
+    {
+        GameInfo.NormalizePlayerCharacters();
+        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+        var result = new List<int>();
+
+        for (int i = 0; i < players.Length; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(players[i].CharacterName) && CanGainTalentPoint(players[i]))
+                result.Add(i);
+        }
+
+        return result;
+    }
+
+    private static bool CanGainTalentPoint(PlayerInfoStructure info)
+    {
+        var nodes = TalentTree.GetNodes(info);
+        if (nodes.Count == 0)
+            return false;
+
+        int totalCost = nodes.Sum(node => node.Cost);
+        if (totalCost <= 0)
+            return false;
+
+        var unlockedTalentIds = new HashSet<string>(
+            info.UnlockedTalents ?? [],
+            StringComparer.Ordinal
+        );
+        int spentCost = nodes
+            .Where(node => unlockedTalentIds.Contains(node.Id))
+            .Sum(node => node.Cost);
+        int earnedTalentPoints = Math.Max(0, info.TalentPoints) + spentCost;
+        return earnedTalentPoints < totalCost;
+    }
+
+    private PlayerResourceState GetResourceState()
+    {
+        return GetTree()?.Root.GetNodeOrNull<PlayerResourceState>("Map/PlayerResourceState")
+            ?? GetTree()?.Root.GetNodeOrNull<PlayerResourceState>("/root/Map/PlayerResourceState");
+    }
+
+    private static string GetSkillDisplayName(SkillID skillId)
+    {
+        return Skill.GetSkill(skillId)?.SkillName ?? skillId.ToString();
+    }
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        string[] parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : string.Empty;
     }
 
     private void ShowPropertyHint(
@@ -507,7 +842,8 @@ public partial class EventInterface : Control
     private async Task ResolveOptionOutcomeAsync(
         EventOption option,
         int targetIndex = -1,
-        bool randomTarget = false
+        bool randomTarget = false,
+        string actionOutcomeText = null
     )
     {
         var resourceChanges = ApplyResourceChanges(option);
@@ -529,7 +865,8 @@ public partial class EventInterface : Control
             option,
             targetIndex,
             randomTarget,
-            resourceChanges
+            resourceChanges,
+            actionOutcomeText
         );
         if (!string.IsNullOrWhiteSpace(outcomeText))
             await ShowOutcomeOverlayAsync(outcomeText);
@@ -744,6 +1081,7 @@ public partial class EventInterface : Control
 
         _isTransitioning = true;
         HideTargetSelection();
+        HideCardSelection();
         await PlayDisassembleAnimationAsync();
         if (callComplete)
         {
@@ -847,7 +1185,13 @@ public partial class EventInterface : Control
         OptionTooltip?.HideTooltip();
     }
 
-    private static string BuildOptionTipText(EventOption option, int electricityChange, int transitionEnergyChange, int propertyChangeCost)
+    private static string BuildOptionTipText(
+        EventOption option,
+        int electricityChange,
+        int transitionEnergyChange,
+        int propertyChangeCost,
+        RelicID? relicReward
+    )
     {
         if (option == null)
             return string.Empty;
@@ -867,6 +1211,12 @@ public partial class EventInterface : Control
             {
                 sb.Append($"[color=#ff6b6b]电力币 {FormatSigned(-propertyChangeCost)}[/color]\n");
             }
+            hasAny = true;
+        }
+
+        if (option.ActionType != EventOptionActionType.None)
+        {
+            AppendActionTipText(sb, option, relicReward);
             hasAny = true;
         }
 
@@ -896,11 +1246,38 @@ public partial class EventInterface : Control
         return text;
     }
 
+    private static void AppendActionTipText(StringBuilder sb, EventOption option, RelicID? relicReward)
+    {
+        switch (option.ActionType)
+        {
+            case EventOptionActionType.CopyCard:
+                sb.Append("复制：选择一张已拥有卡牌，获得其副本\n");
+                break;
+            case EventOptionActionType.TransformCard:
+                sb.Append("变化：选择一张卡牌，替换为同角色随机卡牌\n");
+                break;
+            case EventOptionActionType.RemoveCard:
+                sb.Append("删除：选择一张卡牌，从牌组移除\n");
+                break;
+            case EventOptionActionType.GainRelic:
+                if (relicReward.HasValue)
+                    sb.Append($"获得遗物：{Relic.Create(relicReward.Value).RelicName}\n");
+                else
+                    sb.Append("获得遗物：无可获得遗物\n");
+                break;
+            case EventOptionActionType.GainTalentPoint:
+                int amount = Math.Max(1, option.TalentPointAmount);
+                sb.Append($"随机角色 天赋点 {FormatSigned(amount)}\n");
+                break;
+        }
+    }
+
     private static string BuildOutcomeSummaryText(
         EventOption option,
         int targetIndex = -1,
         bool randomTarget = false,
-        AppliedResourceChanges resourceChanges = default
+        AppliedResourceChanges resourceChanges = default,
+        string actionOutcomeText = null
     )
     {
         if (option == null)
@@ -923,6 +1300,16 @@ public partial class EventInterface : Control
             foreach (var kv in option.PropertyChange)
                 sb.Append($"{Skill.GetColoredPropertyLabel(kv.Key)} {FormatSigned(kv.Value)}\n");
 
+            hasAny = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(actionOutcomeText))
+        {
+            if (hasAny)
+                sb.Append('\n');
+
+            sb.Append(actionOutcomeText.TrimEnd());
+            sb.Append('\n');
             hasAny = true;
         }
 

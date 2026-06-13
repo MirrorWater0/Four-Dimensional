@@ -615,8 +615,9 @@ public static partial class GameInfo
             return string.Empty;
 
         var parts = new List<string>();
-        if (node.PlayerTotalTurnCount > 0 || node.EnemyTotalTurnCount > 0)
-            parts.Add($"回合 我方 {node.PlayerTotalTurnCount} / 敌方 {node.EnemyTotalTurnCount}");
+        int totalTurnCount = GetNodeTotalTurnCount(node);
+        if (totalTurnCount > 0)
+            parts.Add($"回合 {totalTurnCount}");
 
         if (node.ElectricityCoinChange != 0)
             parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
@@ -639,6 +640,14 @@ public static partial class GameInfo
 
         AddNodeRecordPart(parts, "备注", node.Notes);
         return parts.Count == 0 ? "无额外记录" : string.Join("；", parts);
+    }
+
+    private static int GetNodeTotalTurnCount(LevelNodeCompletionRecord node)
+    {
+        if (node == null)
+            return 0;
+
+        return Math.Max(node.PlayerTotalTurnCount, node.EnemyTotalTurnCount);
     }
 
     private static void AddNodeRecordPart(List<string> parts, string label, List<string> values)
@@ -836,10 +845,9 @@ public static partial class GameInfo
         if (record.EnemyNames != null && record.EnemyNames.Count > 0)
             sb.Append($"\n敌人：{string.Join("，", record.EnemyNames)}");
 
-        if (record.PlayerTotalTurnCount > 0 || record.EnemyTotalTurnCount > 0)
-            sb.Append(
-                $"\n总回合数：我方 {record.PlayerTotalTurnCount} / 敌方 {record.EnemyTotalTurnCount}"
-            );
+        int totalTurnCount = GetNodeTotalTurnCount(record);
+        if (totalTurnCount > 0)
+            sb.Append($"\n回合数：{totalTurnCount}");
 
         AppendJoinedLines(sb, "角色受伤", record.PlayerDamageSummaryLines);
 

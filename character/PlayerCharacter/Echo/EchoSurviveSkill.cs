@@ -7,7 +7,7 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 6;
 
     public SoundBarrier()
         : base(SkillTypes.Survive)
@@ -42,11 +42,11 @@ public partial class SonicDeflection : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
-                target: TargetReference.Self
+                target: TargetReference.ManualFriendly
             ),
             ModifyPropertyStep(PropertyType.Survivability, -3, TargetReference.Self)
         );
@@ -140,7 +140,7 @@ public partial class DissonantField : Skill
 
 public partial class Shelter : Skill
 {
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 4;
     private const int CardRefreshStacks = 1;
 
     public Shelter()
@@ -156,7 +156,7 @@ public partial class Shelter : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,

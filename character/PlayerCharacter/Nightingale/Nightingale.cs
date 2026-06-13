@@ -82,9 +82,9 @@ public partial class PlayerCharacterRegistry
             global::Nightingale.PassiveNameText
         ),
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 39,
-        Power = 4,
-        Survivability = 3,
+        LifeMax = 36,
+        Power = 5,
+        Survivability = 4,
         Speed = 13,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",

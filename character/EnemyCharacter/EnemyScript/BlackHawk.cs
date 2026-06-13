@@ -136,7 +136,7 @@ public partial class BlackHawkSpecial : Skill
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(baseDamage: 7, multiplier: 1, target: HostileTargetReference.All),
+                    AttackStep(baseDamage: 5, multiplier: 1, target: HostileTargetReference.All),
                 ]
             )
         );

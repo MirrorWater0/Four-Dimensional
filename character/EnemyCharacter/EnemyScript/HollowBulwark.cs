@@ -4,7 +4,7 @@ using Godot;
 public partial class HollowBulwark : EnemyCharacter
 {
     private const int StartBarricadeStacks = 1;
-    private const int StartBlock = 60;
+    private const int StartBlock = 40;
 
     public const string PassiveNameText = "空壳壁障";
     public static string PassiveDescriptionText =>
@@ -48,7 +48,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
             SkillID.HollowBulwarkSurvive,
             SkillID.HollowBulwarkSpecial,
         ];
-
+        OpeningIntentionSkillIDs = [SkillID.HollowBulwarkSpecial];
         PassiveName = global::HollowBulwark.PassiveNameText;
         PassiveDescription = global::HollowBulwark.PassiveDescriptionText;
     }
@@ -66,14 +66,7 @@ public partial class HollowBulwarkAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(
-                baseDamage: skill => (skill?.OwnerCharater?.Block ?? 0) / 2,
-                prefix: "造成当前格挡/2（",
-                suffix: "）点伤害。"
-            )
-        );
+        return new SkillPlan(this, AttackStep(15));
     }
 }
 
@@ -91,7 +84,7 @@ public partial class HollowBulwarkSurvive : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, multiplier: 2));
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, multiplier: 1));
     }
 }
 
@@ -104,14 +97,14 @@ public partial class HollowBulwarkSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "闭合";
-    public override int EnergyCost => 4;
+    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(20),
-            ModifyPropertyStep(PropertyType.Survivability, 3),
+            AttackStep(14),
+            ModifyPropertyStep(PropertyType.Survivability, 10),
             CustomStep(
                 _ =>
                 {

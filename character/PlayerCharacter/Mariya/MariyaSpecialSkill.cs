@@ -16,10 +16,7 @@ public partial class EnergyTransfer : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            EnergyStep(delta: AllyEnergyGain, target: TargetReference.ManualFriendly)
-        );
+        return new SkillPlan(this, EnergyStep(delta: AllyEnergyGain));
     }
 }
 
@@ -45,8 +42,7 @@ public partial class RearlineRevival : Skill
             HealStep(
                 baseHeal: BaseRebirthHeal,
                 target: TargetReference.ManualFriendly,
-                preferNonFull: true,
-                rebirth: true
+                preferNonFull: true
             ),
             ApplyBuffFriendly(Buff.BuffName.RebirthI, 2, TargetReference.HealKey)
         );
@@ -56,7 +52,9 @@ public partial class RearlineRevival : Skill
 public partial class GroupHealing : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseHeal = 13;
+    public override bool ExhaustsAfterUse => true;
+
+    private const int BaseHeal = 8;
 
     public GroupHealing()
         : base(SkillTypes.Special)
@@ -114,7 +112,7 @@ public partial class Ragnarok : Skill
 public partial class HolyOfHolies : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int SourceStacks = 1;
+    private const int EnergySourcesGain = 1;
 
     public HolyOfHolies()
         : base(SkillTypes.Special)
@@ -130,11 +128,7 @@ public partial class HolyOfHolies : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Source,
-                stacks: SourceStacks,
-                target: TargetReference.All
-            )
+            ModifyPropertyStep(PropertyType.EnergySources, EnergySourcesGain)
         );
     }
 }

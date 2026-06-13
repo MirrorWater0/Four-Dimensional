@@ -7,6 +7,7 @@ uniform float center_vanish : hint_range(0.0, 1.0) = 0.0;
 
 uniform float line_density : hint_range(1.0, 200.0) = 80.0;
 uniform float line_speed = 8.0;
+uniform float line_strength : hint_range(0.0, 1.0) = 1.0;
 uniform float aberration_amount : hint_range(0.0, 0.1) = 0.03;
 uniform vec4 beam_color : source_color = vec4(0.5, 0.7, 1.0, 1.0);
 
@@ -71,7 +72,7 @@ void fragment() {
     float lines = step(0.95, sin(line_input));
     
     // 线条随任意进度增强
-    float line_effect = lines * color.a * total_p;
+    float line_effect = lines * color.a * p * line_strength;
     
     
     // --- 5. 颜色合成 ---

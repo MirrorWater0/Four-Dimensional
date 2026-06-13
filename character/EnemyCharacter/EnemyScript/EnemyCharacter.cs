@@ -6,8 +6,10 @@ using Godot;
 
 public partial class EnemyCharacter : Character, IIntentionPreviewSource
 {
-    private const float NormalEnemyMaxLifeMultiplier = 2f;
-    private const float EliteEnemyMaxLifeMultiplier = 1.5f;
+    private const float NormalEnemyMaxLifeMultiplier = 1.8f;
+    private const float EliteEnemyMaxLifeMultiplier = 1.2f;
+    private const float DefaultIntentWeight = 3f;
+    private const float ActionStartDelaySeconds = 0.2f;
 
     public enum EnemyIntentionActionPhase
     {
@@ -16,11 +18,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         NonAttack = 2,
     }
 
-    private const float DefaultIntentWeight = 3f;
-    private const float SpecialIntentWeightMin = 0.5f;
-    private const float SpecialIntentWeightMax = 7f;
     private const string StunIntentionIconPath = "res://battle/buff/StateIcon/Stun.tscn";
-    public const int NextActionEnergyPreviewBonus = 3;
     private static readonly Color IntentionHostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color IntentionFriendlyTargetPreviewColor = new(
         0.48f,
@@ -57,6 +55,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     private int _openingIntentionStep;
     private Skill _currentOpeningIntentionSkill;
     private bool _preserveCurrentIntentionOnNextRefresh;
+    private readonly Dictionary<SkillID, int> _specialIntentionCooldowns = new();
+    private Character _lastSingleTargetIntentionLock;
 
     public override void _Ready()
     {
@@ -111,6 +111,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             _openingIntentionSkillIds = Registry.OpeningIntentionSkillIDs ?? Array.Empty<SkillID>();
             _openingIntentionStep = 0;
             _currentOpeningIntentionSkill = null;
+            _specialIntentionCooldowns.Clear();
+            _lastSingleTargetIntentionLock = null;
         }
         base.Initialize();
         if (Registry != null)
@@ -160,23 +162,28 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
 
     public override async void StartAction()
     {
-        await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
+        await ToSignal(GetTree().CreateTimer(ActionStartDelaySeconds), "timeout");
         base.StartAction();
         bool hadActiveStun = HasActiveStun();
         if (hadActiveStun)
             _preserveCurrentIntentionOnNextRefresh = true;
 
         Skill skill = CurrentIntentionSkill;
-        if (!hadActiveStun && !CanUseIntentionSkill(skill, EnergySources))
+        if (!hadActiveStun && !CanExecuteIntentionSkill(skill))
         {
             IntentionIndex = RollIntentionIndex();
             skill = CurrentIntentionSkill;
-            LockCurrentIntentionTargets(skill);
+            LockCurrentIntentionTargets(skill, applyRepeatSingleTargetAvoidance: true);
         }
 
         await DisappearIntention();
-        if (skill != null && (hadActiveStun || CanUseIntentionSkill(skill, EnergySources)))
-            await skill.Effect();
+        if (skill != null && (hadActiveStun || CanExecuteIntentionSkill(skill)))
+        {
+            using (skill.BeginEnergyCostWaiver())
+            {
+                await skill.Effect();
+            }
+        }
 
         EndAction();
     }
@@ -201,31 +208,32 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         }
 
         AdvanceOpeningIntentionStep();
-        IntentionIndex = RollIntentionIndex(NextActionEnergyPreviewBonus);
+        AdvanceSpecialIntentionCooldowns();
+        IntentionIndex = RollIntentionIndex();
         DisplayIntention();
     }
 
-    public int RollIntentionIndex(int energyPreviewBonus = 0)
+    public int RollIntentionIndex()
     {
         ClearIntentionSkillPreviewState();
         _currentOpeningIntentionSkill = null;
 
-        int availableEnergy = Math.Max(EnergySources + energyPreviewBonus, 0);
-        if (TryCreateOpeningIntentionSkill(availableEnergy, out Skill openingSkill))
+        if (TryCreateOpeningIntentionSkill(out Skill openingSkill))
         {
             _currentOpeningIntentionSkill = openingSkill;
+            RecordSelectedSpecialIntentionCooldown(openingSkill);
             return -1;
         }
 
         if (Skills == null || Skills.Length == 0)
             return -1;
 
-        int avoidIndex = GetRepeatIntentionAvoidIndex(availableEnergy);
+        int avoidIndex = GetRepeatIntentionAvoidIndex();
         float totalWeight = 0f;
         float[] weights = new float[Skills.Length];
         for (int i = 0; i < Skills.Length; i++)
         {
-            float weight = i == avoidIndex ? 0f : GetIntentionWeight(Skills[i], availableEnergy);
+            float weight = i == avoidIndex ? 0f : GetIntentionWeight(Skills[i]);
             weights[i] = weight;
             totalWeight += weight;
         }
@@ -234,8 +242,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         {
             for (int i = 0; i < Skills.Length; i++)
             {
-                if (CanUseIntentionSkill(Skills[i], availableEnergy))
-                    return i;
+                if (CanSelectIntentionSkill(Skills[i]))
+                    return RecordAndReturnIntentionIndex(i);
             }
             return -1;
         }
@@ -245,13 +253,13 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         {
             roll -= weights[i];
             if (roll <= 0f)
-                return i;
+                return RecordAndReturnIntentionIndex(i);
         }
 
         for (int i = weights.Length - 1; i >= 0; i--)
         {
             if (weights[i] > 0f)
-                return i;
+                return RecordAndReturnIntentionIndex(i);
         }
 
         return -1;
@@ -269,7 +277,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         _currentOpeningIntentionSkill?.ClearLockedExecutionTargets();
     }
 
-    private bool TryCreateOpeningIntentionSkill(int availableEnergy, out Skill openingSkill)
+    private bool TryCreateOpeningIntentionSkill(out Skill openingSkill)
     {
         openingSkill = null;
         if (
@@ -283,7 +291,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
 
         SkillID openingSkillId = _openingIntentionSkillIds[_openingIntentionStep];
         Skill skill = Skill.GetSkill(openingSkillId);
-        if (!CanUseIntentionSkill(skill, availableEnergy))
+        if (!CanExecuteIntentionSkill(skill))
             return false;
 
         openingSkill = skill;
@@ -304,46 +312,90 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         _openingIntentionStep++;
     }
 
-    private int GetRepeatIntentionAvoidIndex(int availableEnergy)
+    private int GetRepeatIntentionAvoidIndex()
     {
         if (IntentionIndex < 0 || IntentionIndex >= (Skills?.Length ?? 0))
             return -1;
 
-        if (!CanUseIntentionSkill(Skills[IntentionIndex], availableEnergy))
+        if (!CanSelectIntentionSkill(Skills[IntentionIndex]))
             return -1;
 
         for (int i = 0; i < Skills.Length; i++)
         {
-            if (i != IntentionIndex && CanUseIntentionSkill(Skills[i], availableEnergy))
+            if (i != IntentionIndex && CanSelectIntentionSkill(Skills[i]))
                 return IntentionIndex;
         }
 
         return -1;
     }
 
-    private float GetIntentionWeight(Skill skill, int availableEnergy)
+    private float GetIntentionWeight(Skill skill)
     {
-        if (!CanUseIntentionSkill(skill, availableEnergy))
+        if (!CanSelectIntentionSkill(skill))
             return 0f;
 
-        if (skill.SkillType != Skill.SkillTypes.Special)
-            return DefaultIntentWeight;
-
-        int energyDelta = availableEnergy - skill.CardEnergyCost;
-        return Math.Clamp(
-            DefaultIntentWeight + energyDelta,
-            SpecialIntentWeightMin,
-            SpecialIntentWeightMax
-        );
+        return DefaultIntentWeight;
     }
 
-    private bool CanUseIntentionSkill(Skill skill, int availableEnergy)
+    private bool CanSelectIntentionSkill(Skill skill)
+    {
+        return CanExecuteIntentionSkill(skill) && !IsSpecialIntentionOnCooldown(skill);
+    }
+
+    private bool CanExecuteIntentionSkill(Skill skill)
     {
         if (skill == null)
             return false;
 
         skill.OwnerCharater = this;
-        return skill.CanUseEnergy(availableEnergy);
+        return skill.CanBePlayed && State != CharacterState.Dying;
+    }
+
+    private int RecordAndReturnIntentionIndex(int index)
+    {
+        if (index >= 0 && index < (Skills?.Length ?? 0))
+            RecordSelectedSpecialIntentionCooldown(Skills[index]);
+
+        return index;
+    }
+
+    private bool IsSpecialIntentionOnCooldown(Skill skill)
+    {
+        if (skill?.SkillType != Skill.SkillTypes.Special || !skill.SkillId.HasValue)
+            return false;
+
+        return _specialIntentionCooldowns.TryGetValue(skill.SkillId.Value, out int remaining)
+            && remaining > 0;
+    }
+
+    private void RecordSelectedSpecialIntentionCooldown(Skill skill)
+    {
+        if (skill?.SkillType != Skill.SkillTypes.Special || !skill.SkillId.HasValue)
+            return;
+
+        int cooldown = Math.Max(0, skill.EnemySpecialIntentionCooldown);
+        if (cooldown <= 0)
+        {
+            _specialIntentionCooldowns.Remove(skill.SkillId.Value);
+            return;
+        }
+
+        _specialIntentionCooldowns[skill.SkillId.Value] = cooldown + 1;
+    }
+
+    private void AdvanceSpecialIntentionCooldowns()
+    {
+        if (_specialIntentionCooldowns.Count == 0)
+            return;
+
+        foreach (SkillID skillId in _specialIntentionCooldowns.Keys.ToArray())
+        {
+            int remaining = _specialIntentionCooldowns[skillId] - 1;
+            if (remaining <= 0)
+                _specialIntentionCooldowns.Remove(skillId);
+            else
+                _specialIntentionCooldowns[skillId] = remaining;
+        }
     }
 
     public bool HasActiveStun()
@@ -400,7 +452,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     public void DisplayIntention()
     {
         var skill = CurrentIntentionSkill;
-        if (!ApplyCurrentIntentionIconState(skill))
+        if (!ApplyCurrentIntentionIconState(skill, applyRepeatSingleTargetAvoidance: true))
         {
             return;
         }
@@ -423,14 +475,17 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         if (State == CharacterState.Dying)
             return;
 
-        if (!ApplyCurrentIntentionIconState(CurrentIntentionSkill))
+        if (!ApplyCurrentIntentionIconState(CurrentIntentionSkill, applyRepeatSingleTargetAvoidance: false))
             return;
 
         IntentionContorl.Modulate = Colors.White;
         IntentionContorl.Scale = Vector2.One;
     }
 
-    private bool ApplyCurrentIntentionIconState(Skill skill)
+    private bool ApplyCurrentIntentionIconState(
+        Skill skill,
+        bool applyRepeatSingleTargetAvoidance
+    )
     {
         AttackIntention.Visible = false;
         SurviveIntention.Visible = false;
@@ -454,7 +509,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             return true;
         }
 
-        LockCurrentIntentionTargets(skill);
+        LockCurrentIntentionTargets(skill, applyRepeatSingleTargetAvoidance);
         switch (skill.SkillType)
         {
             case Skill.SkillTypes.Attack:
@@ -516,13 +571,45 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             _intentionDamageSummaryLabel.Visible = false;
     }
 
-    private void LockCurrentIntentionTargets(Skill skill)
+    private void LockCurrentIntentionTargets(Skill skill, bool applyRepeatSingleTargetAvoidance)
     {
         if (skill == null)
             return;
 
         skill.OwnerCharater = this;
-        skill.LockPreviewTargetsForExecution();
+        if (applyRepeatSingleTargetAvoidance)
+            skill.SetAvoidRepeatSingleTargetIntentionLock(_lastSingleTargetIntentionLock);
+        try
+        {
+            skill.LockPreviewTargetsForExecution();
+            if (applyRepeatSingleTargetAvoidance)
+                RecordSingleTargetIntentionLock(skill);
+        }
+        finally
+        {
+            skill.ClearAvoidRepeatSingleTargetIntentionLock();
+        }
+    }
+
+    private void RecordSingleTargetIntentionLock(Skill skill)
+    {
+        if (skill == null || HasActiveStun())
+            return;
+
+        Character[] uniqueTargets = skill
+            .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
+            .Where(entry =>
+                entry.Target != null
+                && GodotObject.IsInstanceValid(entry.Target)
+                && entry.Target.State == CharacterState.Normal
+                && entry.Damage > 0
+            )
+            .Select(entry => entry.Target)
+            .Distinct()
+            .ToArray();
+
+        if (uniqueTargets.Length == 1)
+            _lastSingleTargetIntentionLock = uniqueTargets[0];
     }
 
     private void OnIntentionPreviewHoverEntered()
@@ -777,7 +864,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             return string.Empty;
 
         Skill.PreviewDamageEntry[] entries = skill
-            .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
+            .GetPreviewHostileDamageEntries(includeTargetVulnerable: true)
             .Where(entry =>
                 entry.Target != null
                 && GodotObject.IsInstanceValid(entry.Target)
@@ -852,7 +939,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         }
 
         string[] effectSummaries = skill
-            .GetPreviewEffectEntries(includeTargetVulnerable: false)
+            .GetPreviewEffectEntries(includeTargetVulnerable: true)
             .Where(entry =>
                 entry.Kind == Skill.PreviewEffectKind.Damage
                 && entry.Target != null

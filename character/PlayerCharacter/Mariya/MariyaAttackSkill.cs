@@ -7,7 +7,7 @@ public partial class MariyaAttackSkill { }
 public partial class MendSlash : Skill
 {
     private const int BaseDamage = 7;
-    private const int BaseHeal = 2;
+    private const int BaseHeal = 3;
     public override bool ExhaustsAfterUse => true;
 
     public MendSlash()
@@ -35,7 +35,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 12;
 
     public SwapSlash()
         : base(SkillTypes.Attack)
@@ -50,7 +50,7 @@ public partial class SwapSlash : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 2),
-            HurtFriendly(6, TargetReference.All)
+            HurtFriendly(3, TargetReference.All)
         );
     }
 }
@@ -72,8 +72,25 @@ public partial class SiphonSlash : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            HealStep(baseHeal: 10, target: TargetReference.All, preferNonFull: false)
+            HealStep(
+                _ => GetSiphonHealAmount(),
+                target: TargetReference.Self,
+                descriptionOverride: "回复等同于此次造成伤害一半的生命。"
+            )
         );
+    }
+
+    private int GetSiphonHealAmount()
+    {
+        int damage =
+            OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
+                source: OwnerCharater,
+                target: GetAttackTarget()
+            ) ?? 0;
+        if (damage > 0)
+            return Math.Max(0, damage / 2);
+
+        return Math.Max(0, DamageFromPower(BaseDamage) / 2);
     }
 }
 

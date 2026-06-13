@@ -2,11 +2,11 @@ using Godot;
 
 public partial class GraveWraith : EnemyCharacter
 {
-    private const int PassiveSurvivabilityDown = 99;
+    private const int PassiveHeal = 7;
 
     public const string PassiveNameText = "凋零威压";
     public static string PassiveDescriptionText =>
-        $"回合开始时：减少目标{PassiveSurvivabilityDown}点生存。";
+        $"造成未被格挡的伤害时：恢复{PassiveHeal}点生命。";
 
     public override string CharacterName { get; set; } = "冥骨游魂";
 
@@ -17,32 +17,17 @@ public partial class GraveWraith : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void OnTurnStart()
+    public override void OnDealUnblockedDamage(
+        Character target,
+        int actualDamage,
+        DamageKind damageKind
+    )
     {
-        base.OnTurnStart();
-        TriggerPassive(null);
-    }
+        if (target == null || actualDamage <= 0 || target == this)
+            return;
 
-    public override async void Passive(Skill skill)
-    {
         using var _ = BeginEffectSource("被动");
-        if (BattleNode == null)
-            return;
-
-        Character[] targets = ChooseHostileTargetsByOrder(
-            returnDummyWhenEmpty: false,
-            normalOnly: false,
-            dyingFilter: true
-        );
-        Character target = targets.Length > 0 ? targets[0] : null;
-        if (target == null)
-            return;
-
-        await target.DescendingProperties(
-            PropertyType.Survivability,
-            PassiveSurvivabilityDown,
-            this
-        );
+        Recover(PassiveHeal, source: this);
     }
 }
 
@@ -55,7 +40,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 70;
+        MaxLife = 63;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -74,7 +59,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 33;
+    private const int BaseDamage = 20;
 
     public GraveWraithAttack()
         : base(SkillTypes.Attack)
@@ -86,7 +71,15 @@ public partial class GraveWraithAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage),
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                99,
+                HostileTargetReference.AttackKey
+            )
+        );
     }
 }
 
@@ -101,6 +94,7 @@ public partial class GraveWraithSurvive : Skill
     }
 
     public override string SkillName { get; set; } = "骨壳蜷护";
+
 
     protected override SkillPlan BuildPlan()
     {
@@ -121,14 +115,14 @@ public partial class GraveWraithSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "冥骸觉醒";
-    public override int EnergyCost => 7;
+    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 33, multiplier: 1),
-            LowerTargetPropertyStep(PropertyType.Survivability, 99, HostileTargetReference.All)
+            AttackStep(baseDamage: 10, multiplier: 1, target: HostileTargetReference.All),
+            ModifyPropertyStep(PropertyType.Power, 5)
         );
     }
 }

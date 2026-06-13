@@ -3,15 +3,15 @@ using Godot;
 public partial class Echo : PlayerCharacter
 {
     private const int PassiveEnergyGain = 1;
-    private const int PassiveUpgradeTurnStartEnergyGain = 1;
+    private const int PassiveTurnStartTriggerLimit = 1;
     private const int PassiveUpgradeTurnStartTriggerLimit = 2;
-    private int _passiveUpgradeTurnStartTriggerCount;
+    private int _passiveTurnStartTriggerCount;
 
     public const string PassiveNameText = "余响";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.echo.passive.description",
-            "回合开始时：获得{energy}点能量。",
+            "第1次回合开始时：额外获得{energy}点能量。",
             ("energy", PassiveEnergyGain)
         );
 
@@ -22,7 +22,7 @@ public partial class Echo : PlayerCharacter
     public override void Initialize()
     {
         base.Initialize();
-        _passiveUpgradeTurnStartTriggerCount = 0;
+        _passiveTurnStartTriggerCount = 0;
         PassiveName = PassiveNameText;
         UpdatePassiveDescription();
     }
@@ -40,20 +40,16 @@ public partial class Echo : PlayerCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-        using (BeginEffectSource("被动"))
-        {
-            UpdataEnergy(PassiveEnergyGain, this);
-        }
 
-        if (
-            !HasPassiveTalentUpgrade()
-            || _passiveUpgradeTurnStartTriggerCount >= PassiveUpgradeTurnStartTriggerLimit
-        )
+        int triggerLimit = HasPassiveTalentUpgrade()
+            ? PassiveUpgradeTurnStartTriggerLimit
+            : PassiveTurnStartTriggerLimit;
+        if (_passiveTurnStartTriggerCount >= triggerLimit)
             return;
 
-        _passiveUpgradeTurnStartTriggerCount++;
-        using var _ = BeginEffectSource("被动强化");
-        UpdataEnergy(PassiveUpgradeTurnStartEnergyGain, this);
+        _passiveTurnStartTriggerCount++;
+        using var _ = BeginEffectSource("被动");
+        BattleNode?.UpdataEnergy(this, PassiveEnergyGain, this);
         UpdatePassiveDescription();
     }
 
@@ -78,9 +74,9 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.echo.name", "Echo"),
         PassiveName = I18n.Tr("character.echo.passive.name", global::Echo.PassiveNameText),
         PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 41,
-        Power = 3,
-        Survivability = 4,
+        LifeMax = 38,
+        Power = 4,
+        Survivability = 5,
         Speed = 12,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",

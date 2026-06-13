@@ -6,7 +6,7 @@ public partial class Death : EnemyCharacter
 
     public const string PassiveNameText = "终末游行";
     public static string PassiveDescriptionText =>
-        $"回合开始时：令目标获得{DisasterStacks}层{Buff.BuffName.Disaster.GetDescription()}。";
+        $"回合开始时：随机一名敌人获得{DisasterStacks}层{Buff.BuffName.Disaster.GetDescription()}。";
 
     public override string CharacterName { get; set; } = "Death";
 
@@ -33,10 +33,12 @@ public partial class Death : EnemyCharacter
         using var _ = BeginEffectSource("被动");
         Character[] targets = ChooseHostileTargetsByOrder(
             returnDummyWhenEmpty: false,
-            normalOnly: false,
+            normalOnly: true,
             dyingFilter: true
         );
-        Character target = targets.Length > 0 ? targets[0] : null;
+        int targetIndex =
+            targets.Length > 0 ? BattleNode?.BattleIntentionRandom?.Next(targets.Length) ?? 0 : -1;
+        Character target = targetIndex >= 0 ? targets[targetIndex] : null;
         if (target == null)
             return;
 
@@ -67,7 +69,7 @@ public partial class DeathRegedit : EnemyRegedit
 
 public partial class DeathAttack : Skill
 {
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 5;
     private const int HitCount = 2;
 
     public DeathAttack()
@@ -113,7 +115,7 @@ public partial class DeathSurvive : Skill
 
 public partial class DeathSpecial : Skill
 {
-    private const int SelfPowerGain = 3;
+    private const int SelfPowerGain = 2;
     private const int DisasterStacks = 4;
 
     public DeathSpecial()
@@ -123,7 +125,8 @@ public partial class DeathSpecial : Skill
     }
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnergyCost => 10;
+    public override int EnemySpecialIntentionCooldown => 3;
+
 
     protected override SkillPlan BuildPlan()
     {
@@ -131,7 +134,7 @@ public partial class DeathSpecial : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
-            AddStatusCardsToDrawPileStep(SkillID.PlagueStatus, 2, HostileTargetReference.All)
+            AddStatusCardsStep(SkillID.PlagueStatus, 2)
         );
     }
 }

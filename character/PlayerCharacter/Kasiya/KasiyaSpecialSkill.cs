@@ -17,7 +17,11 @@ public partial class ReadyStance : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, DoubleEnergyStep(TargetReference.All));
+        return new SkillPlan(
+            this,
+            DoubleEnergyStep(),
+            AddStatusCardsStep(SkillID.VoidStatus, 1, BattleCardPileTarget.DiscardPileCards)
+        );
     }
 }
 
@@ -108,7 +112,7 @@ public class HopeBeacon : Skill
 public class WarGodWill : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int PowerGain = 2;
+    private const int PowerGain = 3;
 
     public WarGodWill()
         : base(SkillTypes.Special)
@@ -131,7 +135,7 @@ public class WarGodWill : Skill
 public class TacticalPreparation : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int ExtraDrawStacks = 2;
+    private const int ExtraDrawStacks = 1;
 
     public TacticalPreparation()
         : base(SkillTypes.Special)
@@ -147,8 +151,8 @@ public class TacticalPreparation : Skill
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(3),
-            AddStatusCardsToDrawPileStep(SkillID.VoidStatus, 1, TargetReference.All),
+            DrawCardsStep(2),
+            AddStatusCardsStep(SkillID.VoidStatus, 1, BattleCardPileTarget.DiscardPileCards),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: ExtraDrawStacks,
@@ -162,7 +166,7 @@ public class RadiantOverload : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int DazeCount = 1;
-    private const int EnergyGain = 2;
+    private const int EnergyGain = 3;
 
     public RadiantOverload()
         : base(SkillTypes.Special)
@@ -178,8 +182,8 @@ public class RadiantOverload : Skill
     {
         return new SkillPlan(
             this,
-            AddStatusCardsToDrawPileStep(SkillID.DazeStatus, DazeCount),
-            EnergyStep(EnergyGain, TargetReference.All)
+            AddStatusCardsStep(SkillID.DazeStatus, DazeCount),
+            EnergyStep(EnergyGain)
         );
     }
 }
@@ -187,7 +191,7 @@ public class RadiantOverload : Skill
 public class DemonForm : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int DemonStacks = 5;
+    private const int DemonStacks = 3;
 
     public DemonForm()
         : base(SkillTypes.Special)

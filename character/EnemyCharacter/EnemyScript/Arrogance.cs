@@ -42,7 +42,13 @@ public partial class ArroganceRegedit : EnemyRegedit
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
-        OpeningIntentionSkillIDs = [SkillID.ArroganceSpecial, SkillID.ArroganceAttack];
+        OpeningIntentionSkillIDs =
+        [
+            SkillID.ArroganceSpecial,
+            SkillID.ArroganceAttack,
+            SkillID.ArroganceSurvive,
+            SkillID.ArroganceAttack,
+        ];
         PassiveName = global::Arrogance.PassiveNameText;
         PassiveDescription = global::Arrogance.PassiveDescriptionText;
     }
@@ -115,7 +121,7 @@ public partial class ArroganceSpecial : Skill
         return new SkillPlan(
             this,
             HealStep(baseHeal: 10, target: TargetReference.Self),
-            ModifyPropertyStep(PropertyType.Power, 3),
+            ModifyPropertyStep(PropertyType.Power, 4),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

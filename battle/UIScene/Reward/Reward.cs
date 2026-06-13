@@ -67,6 +67,7 @@ public partial class Reward : CanvasLayer
     private int[] _offeredPlayerIndexes = Array.Empty<int>();
     private bool _isSkillRewardOpen;
     private bool _pickedSkill;
+    private Control _skillRewardFlyPlaceholder;
     private Control _activeSkillRewardControl;
     private LevelNode _completeNodeOnClose;
     private Tween _introTween;
@@ -562,6 +563,7 @@ public partial class Reward : CanvasLayer
         _pickedSkill = false;
         _isSkillRewardOpen = false;
         _activeSkillRewardControl = null;
+        ClearSkillRewardFlyPlaceholder();
         InventoryGridNode?.SetInputBlocked(false);
         if (SkillRewardsContainer != null)
             SkillRewardsContainer.Visible = false;
@@ -601,7 +603,7 @@ public partial class Reward : CanvasLayer
                 continue;
 
             int slotIndex = i;
-            slot.Button.Pressed += () => PickSkillReward(slotIndex);
+            slot.Button.Pressed += () => _ = PickSkillRewardAsync(slotIndex);
             _wiredSkillCards.Add(slot);
         }
     }
@@ -755,8 +757,10 @@ public partial class Reward : CanvasLayer
         bool allowRare = true
     )
     {
-        var pool = info.AllSkills;
-        if (pool == null || pool.Length == 0)
+        SkillID[] pool = (info.AllSkills ?? Array.Empty<SkillID>())
+            .Where(skillId => !GameInfo.IsBasicSkill(skillId))
+            .ToArray();
+        if (pool.Length == 0)
             return null;
 
         Skill.SkillRarity rolledRarity = forcedRarity ?? Skill.RollRewardRarity(rng, allowRare);
@@ -768,9 +772,6 @@ public partial class Reward : CanvasLayer
             filteredPool = allowRare
                 ? pool
                 : pool.Where(skillId => Skill.GetRarity(skillId) != Skill.SkillRarity.Rare).ToArray();
-        if (filteredPool.Length == 0)
-            filteredPool = pool;
-
         SkillID[] pickPool = filteredPool;
         if (avoidSkillIds != null && avoidSkillIds.Count > 0)
         {
@@ -818,10 +819,21 @@ public partial class Reward : CanvasLayer
     }
 
     /// <summary>Pick the skill reward from a slot and hide the skill cards.</summary>
-    private void PickSkillReward(int slotIndex)
+    private async Task PickSkillRewardAsync(int slotIndex)
     {
         if (_pickedSkill)
             return;
+        if (
+            slotIndex < 0
+            || slotIndex >= _offeredSkillIds.Length
+            || slotIndex >= _offeredPlayerIndexes.Length
+            || slotIndex >= _skillRewardSlots.Count
+            || _offeredSkillIds[slotIndex] == null
+        )
+        {
+            return;
+        }
+
         _pickedSkill = true;
         if (SkillRewardSkipButton != null)
         {
@@ -831,16 +843,6 @@ public partial class Reward : CanvasLayer
 
         var skillId = _offeredSkillIds[slotIndex]!.Value;
         int playerIndex = _offeredPlayerIndexes[slotIndex];
-
-        var players =
-            GameInfo.PlayerCharacters
-            ?? throw new InvalidOperationException("GameInfo.PlayerCharacters is null.");
-
-        var info = players[playerIndex];
-        info.GainedSkills ??= new List<SkillID>();
-        info.GainedSkills.Add(skillId);
-        players[playerIndex] = info;
-        GameInfo.PlayerCharacters = players;
 
         for (int i = 0; i < _skillRewardSlots.Count; i++)
             _skillRewardSlots[i].Button.Disabled = true;
@@ -853,15 +855,84 @@ public partial class Reward : CanvasLayer
             slot.Vanish();
         }
 
-        var tween = CreateTween();
-        tween.TweenInterval(0.35f);
-        tween.TweenCallback(Callable.From(CloseSkillRewardPanel));
+        SkillCard pickedCard = PreparePickedSkillRewardCardForFly(slotIndex);
+        var result = await BattleReady.AcquireDeckCardAsync(this, playerIndex, skillId, pickedCard);
+        if (!result.Changed && pickedCard != null && GodotObject.IsInstanceValid(pickedCard))
+            pickedCard.QueueFree();
+
+        CloseSkillRewardPanel();
+    }
+
+    private SkillCard PreparePickedSkillRewardCardForFly(int slotIndex)
+    {
+        SkillCard card =
+            slotIndex >= 0 && slotIndex < _skillRewardSlots.Count ? _skillRewardSlots[slotIndex] : null;
+        if (card == null || !GodotObject.IsInstanceValid(card) || !card.Visible)
+            return null;
+
+        Vector2 globalPosition = card.GlobalPosition;
+        Vector2 scale = card.Scale;
+        float rotation = card.Rotation;
+        Vector2 pivotOffset = card.PivotOffset;
+
+        Node parent = card.GetParent();
+        AddSkillRewardFlyPlaceholder(card, parent);
+        parent?.RemoveChild(card);
+        AddChild(card);
+
+        card.GlobalPosition = globalPosition;
+        card.Scale = scale;
+        card.Rotation = rotation;
+        card.PivotOffset = pivotOffset;
+        card.MouseFilter = Control.MouseFilterEnum.Ignore;
+        card.Button.Disabled = true;
+        card.Button.MouseFilter = Control.MouseFilterEnum.Ignore;
+        card.HoverHint.Visible = false;
+        card.ZIndex = 1000;
+        card.MoveToFront();
+        card.HideMoveTrail();
+        return card;
+    }
+
+    private void AddSkillRewardFlyPlaceholder(SkillCard card, Node parent)
+    {
+        if (card == null || parent == null)
+            return;
+
+        ClearSkillRewardFlyPlaceholder();
+
+        var placeholder = new Control
+        {
+            Name = "SkillRewardFlyPlaceholder",
+            CustomMinimumSize = card.CustomMinimumSize,
+            Size = card.Size,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = card.SizeFlagsHorizontal,
+            SizeFlagsVertical = card.SizeFlagsVertical,
+            Visible = card.Visible,
+        };
+
+        int index = card.GetIndex();
+        parent.AddChild(placeholder);
+        parent.MoveChild(placeholder, index);
+        _skillRewardFlyPlaceholder = placeholder;
+    }
+
+    private void ClearSkillRewardFlyPlaceholder()
+    {
+        if (_skillRewardFlyPlaceholder == null)
+            return;
+
+        if (GodotObject.IsInstanceValid(_skillRewardFlyPlaceholder))
+            _skillRewardFlyPlaceholder.QueueFree();
+        _skillRewardFlyPlaceholder = null;
     }
 
     private void CloseSkillRewardPanel()
     {
         _isSkillRewardOpen = false;
         _pickedSkill = false;
+        ClearSkillRewardFlyPlaceholder();
         if (SkillRewardsContainer != null)
             SkillRewardsContainer.Visible = false;
         if (SkillRewardSkipButton != null)

@@ -24,13 +24,6 @@ public partial class SkillButton : Button
     private ColorRect TerminateSkillIcon => field ??= GetNode<ColorRect>("TerminateSkillIcon");
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
-    private Character[] _previewHostileTargets = Array.Empty<Character>();
-    private Character[] _previewFriendlyTargets = Array.Empty<Character>();
-    private readonly List<VBoxContainer> _previewDamagePanels = new();
-    private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
-    private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
-    private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
-
     public Tip globalTooltip => field ??= EnsureGlobalTooltip();
 
     public override void _Ready()
@@ -103,8 +96,6 @@ public partial class SkillButton : Button
                 globalTooltip.SetText(buffTooltipText);
         }
 
-        ShowTargetPreview();
-        ShowDamagePreview();
     }
 
     public void mouse_exited()
@@ -114,15 +105,10 @@ public partial class SkillButton : Button
         // Hide tooltip
         globalTooltip?.HideTooltip();
 
-        HideDamagePreview();
-        HideTargetPreview();
     }
 
     public override void _ExitTree()
     {
-        HideDamagePreview();
-        HideTargetPreview();
-        FreeDamagePreviewLabels();
         base._ExitTree();
     }
 
@@ -184,173 +170,6 @@ public partial class SkillButton : Button
                 0.4f
             )
             .SetEase(Tween.EaseType.Out);
-    }
-
-    private void ShowTargetPreview()
-    {
-        HideTargetPreview();
-        if (SelfSkill == null)
-            return;
-
-        _previewHostileTargets = SelfSkill.GetPreviewHostileTargets();
-        _previewFriendlyTargets = SelfSkill.GetPreviewFriendlyTargets();
-
-        foreach (
-            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-        {
-            target.ShowTargetPreview(HostileTargetPreviewColor);
-        }
-
-        foreach (
-            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-        {
-            target.ShowTargetPreview(FriendlyTargetPreviewColor);
-        }
-    }
-
-    private void ShowDamagePreview()
-    {
-        HideDamagePreview();
-        if (SelfSkill == null)
-            return;
-
-        var entries = SelfSkill.GetPreviewEffectEntries();
-        if (entries == null || entries.Length == 0)
-            return;
-
-        var layer = EnsureTipLayer();
-        if (layer == null)
-            return;
-
-        int panelIndex = 0;
-        foreach (
-            var group in entries
-                .Where(entry =>
-                    entry.Target != null && GodotObject.IsInstanceValid(entry.Target)
-                )
-                .GroupBy(entry => entry.Target)
-        )
-        {
-            var panel = GetOrCreateDamagePanel(layer, panelIndex++);
-            PreviewEffectDisplay.ShowPanel(
-                panel,
-                group.ToArray(),
-                GetTargetScreenPosition(group.Key),
-                DamagePreviewLabelOffset
-            );
-        }
-
-        for (int i = panelIndex; i < _previewDamagePanels.Count; i++)
-        {
-            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
-                _previewDamagePanels[i].Visible = false;
-        }
-    }
-
-    private void HideTargetPreview()
-    {
-        if (
-            (_previewHostileTargets == null || _previewHostileTargets.Length == 0)
-            && (_previewFriendlyTargets == null || _previewFriendlyTargets.Length == 0)
-        )
-        {
-            _previewHostileTargets = Array.Empty<Character>();
-            _previewFriendlyTargets = Array.Empty<Character>();
-            return;
-        }
-
-        foreach (
-            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-        {
-            target.HideTargetPreview();
-        }
-
-        foreach (
-            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-        {
-            target.HideTargetPreview();
-        }
-
-        _previewHostileTargets = Array.Empty<Character>();
-        _previewFriendlyTargets = Array.Empty<Character>();
-    }
-
-    private void HideDamagePreview()
-    {
-        for (int i = 0; i < _previewDamagePanels.Count; i++)
-        {
-            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
-                _previewDamagePanels[i].Visible = false;
-        }
-    }
-
-    private void FreeDamagePreviewLabels()
-    {
-        for (int i = 0; i < _previewDamagePanels.Count; i++)
-        {
-            if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
-                _previewDamagePanels[i].QueueFree();
-        }
-        _previewDamagePanels.Clear();
-    }
-
-    private VBoxContainer GetOrCreateDamagePanel(CanvasLayer layer, int index)
-    {
-        while (_previewDamagePanels.Count <= index)
-        {
-            var panel = PreviewEffectDisplay.CreatePanel();
-            layer.AddChild(panel);
-            _previewDamagePanels.Add(panel);
-        }
-
-        var pooledPanel = _previewDamagePanels[index];
-        if (!GodotObject.IsInstanceValid(pooledPanel))
-        {
-            pooledPanel = PreviewEffectDisplay.CreatePanel();
-            layer.AddChild(pooledPanel);
-            _previewDamagePanels[index] = pooledPanel;
-        }
-        else if (pooledPanel.GetParent() == null)
-        {
-            layer.AddChild(pooledPanel);
-        }
-
-        return pooledPanel;
-    }
-
-    private CanvasLayer EnsureTipLayer()
-    {
-        var root = GetTree()?.Root;
-        if (root == null)
-            return null;
-
-        var existingLayer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
-        if (existingLayer != null)
-            return existingLayer;
-
-        existingLayer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
-        root.AddChild(existingLayer);
-        return existingLayer;
-    }
-
-    private static Vector2 GetTargetScreenPosition(Character target)
-    {
-        if (target == null || !GodotObject.IsInstanceValid(target))
-            return Vector2.Zero;
-
-        return target.GetGlobalTransformWithCanvas().Origin;
     }
 
     private static string BuildBuffTooltipText(Skill skill)

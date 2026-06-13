@@ -196,9 +196,9 @@ metadata/_edit_lock_ = true
 
 [node name="ModeSelectorRoot" type="Control" parent="." unique_id=389790671]
 anchors_preset = 0
-offset_left = 322.0
+offset_left = 158.0
 offset_top = 328.0
-offset_right = 410.0
+offset_right = 246.0
 offset_bottom = 746.0
 
 [node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
@@ -286,20 +286,20 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 955.0
-offset_top = 161.0
-offset_right = 955.0
-offset_bottom = 161.0
+offset_left = 942.99994
+offset_top = 60.0
+offset_right = 942.99994
+offset_bottom = 60.0
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(1.1, 1.1)
 
 [node name="FormationHeaderFrame" type="Panel" parent="FormationModeRoot" unique_id=119332421]
 layout_mode = 0
-offset_left = -205.45454
-offset_top = -10.000002
-offset_right = -83.6364
-offset_bottom = 44.0
+offset_left = -220.90903
+offset_top = 38.181816
+offset_right = -99.09088
+offset_bottom = 92.181816
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
@@ -314,10 +314,10 @@ text = "角色预览"
 
 [node name="CharacterPreviewRoot" type="Control" parent="FormationModeRoot" unique_id=1970557118]
 anchors_preset = 0
-offset_left = -250.0
-offset_top = 178.18182
-offset_right = 268.0
-offset_bottom = 660.1818
+offset_left = -248.18176
+offset_top = 223.63637
+offset_right = 269.81824
+offset_bottom = 705.63635
 mouse_filter = 2
 
 [node name="PreviewLayout" type="HBoxContainer" parent="FormationModeRoot/CharacterPreviewRoot" unique_id=1427427153]
@@ -494,14 +494,14 @@ theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="TotalSpeedLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid"]
+[node name="TotalSpeedLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=316450550]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "总速度"
 vertical_alignment = 1
 
-[node name="TotalSpeedValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid"]
+[node name="TotalSpeedValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=1511239496]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.86, 0.74, 1, 1)
@@ -535,10 +535,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 318.0
-offset_top = -24.0
-offset_right = 318.0
-offset_bottom = -24.0
+offset_left = 120.0
+offset_top = -72.0
+offset_right = 120.0
+offset_bottom = -72.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -565,9 +565,8 @@ layout_mode = 0
 offset_left = 114.0
 offset_top = 323.0
 offset_right = 1274.0
-offset_bottom = 1098.0
+offset_bottom = 1207.0
 horizontal_scroll_mode = 0
-metadata/_edit_lock_ = true
 
 [node name="SkillScrollMargin" type="MarginContainer" parent="TacticsModeRoot/SkillContainer" unique_id=792204793]
 layout_mode = 2
@@ -580,16 +579,16 @@ theme_override_constants/margin_bottom = 34
 [node name="SkillGrid" type="GridContainer" parent="TacticsModeRoot/SkillContainer/SkillScrollMargin" unique_id=1439102249]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 26
+theme_override_constants/h_separation = 32
+theme_override_constants/v_separation = 35
 columns = 5
 
 [node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
 anchors_preset = 0
-offset_left = 722.0
-offset_top = 161.0
-offset_right = 1242.0
-offset_bottom = 301.0
+offset_left = 688.0
+offset_top = 113.0
+offset_right = 1208.0
+offset_bottom = 253.0
 
 [node name="CharacterSelectFrame" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1033239150]
 layout_mode = 0
@@ -685,10 +684,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -22.0
-offset_top = -21.0
-offset_right = -22.0
-offset_bottom = -21.0
+offset_left = -56.0
+offset_top = -69.0
+offset_right = -56.0
+offset_bottom = -69.0
 grow_horizontal = 2
 grow_vertical = 2
 

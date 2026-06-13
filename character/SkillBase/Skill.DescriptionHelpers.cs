@@ -12,12 +12,22 @@ public partial class Skill
     public const string ExhaustKeyword = "消耗";
     public const string ExhaustKeywordEffectText =
         "打出后，本场战斗中移出。";
+    public const string RetainKeyword = "保留";
+    public const string RetainKeywordEffectText =
+        "回合结束时若在手牌中，不会被丢弃。";
     public const string VoidnessKeyword = "虚无";
     public const string VoidnessKeywordEffectText =
         "回合结束时若在手牌中则消耗。";
     public const string RebirthKeyword = "复生";
     public const string RebirthKeywordEffectText =
         "可对濒死目标生效。";
+    private static readonly SkillID[] StatusKeywordSkillIds =
+    {
+        SkillID.VoidStatus,
+        SkillID.WoundStatus,
+        SkillID.DazeStatus,
+        SkillID.PlagueStatus,
+    };
 
     protected enum StatX
     {
@@ -43,6 +53,7 @@ public partial class Skill
             PropertyType.Power => "#ff0000",
             PropertyType.Survivability => "#89fffd",
             PropertyType.Speed => "#b56bff",
+            PropertyType.EnergySources => "#87CEEB",
             _ => "white",
         };
     }
@@ -160,6 +171,8 @@ public partial class Skill
     {
         var plan = GetPlan();
         IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
+        if (RetainsAtTurnEndInHand)
+            lines = new[] { GetRetainKeywordLine() }.Concat(lines);
         if (ExhaustsAfterUse)
             lines = new[] { GetExhaustKeywordLine() }.Concat(lines);
 
@@ -328,9 +341,23 @@ public partial class Skill
                 (-1, BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText()))
             );
         }
+        if (skill.RetainsAtTurnEndInHand)
+        {
+            entries.Add(
+                (-1, BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText()))
+            );
+        }
 
         string description = skill.Description ?? string.Empty;
         string plainDescription = StripBbCodeTags(description);
+
+        int retainIndex = FindKeywordIndex(plainDescription, GetRetainKeyword(), RetainKeyword);
+        if (retainIndex >= 0)
+        {
+            entries.Add(
+                (retainIndex, BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText()))
+            );
+        }
 
         int carryIndex = FindKeywordIndex(plainDescription, GetCarryKeyword(), CarryKeyword);
         if (carryIndex >= 0)
@@ -366,6 +393,7 @@ public partial class Skill
             );
 
         AddStatXTooltipEntries(entries, description, plainDescription);
+        AddStatusCardTooltipEntries(entries, plainDescription);
 
         foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
         {
@@ -376,6 +404,8 @@ public partial class Skill
 
             int matchIndex = FindKeywordIndex(plainDescription, displayName, fallbackName);
             if (matchIndex < 0)
+                continue;
+            if (IsIndexInsideStatusCardName(plainDescription, matchIndex))
                 continue;
 
             string effectText = Buff.GetBuffEffectText(buffName);
@@ -396,6 +426,80 @@ public partial class Skill
                 .Select(entry => entry.Text)
                 .Where(entry => !string.IsNullOrWhiteSpace(entry))
         );
+    }
+
+    private static void AddStatusCardTooltipEntries(
+        List<(int Index, string Text)> entries,
+        string plainDescription
+    )
+    {
+        if (string.IsNullOrWhiteSpace(plainDescription))
+            return;
+
+        foreach (SkillID skillId in StatusKeywordSkillIds)
+        {
+            Skill statusSkill = GetSkill(skillId);
+            if (statusSkill == null)
+                continue;
+
+            string statusName = statusSkill.SkillName;
+            int matchIndex = FindTokenIndex(plainDescription, statusName);
+            if (matchIndex < 0)
+                continue;
+
+            string effectText = BuildStatusCardTooltipEffectText(statusSkill);
+            if (string.IsNullOrWhiteSpace(effectText))
+                continue;
+
+            entries.Add((matchIndex, BuildKeywordTooltipEntry(statusName, effectText)));
+        }
+    }
+
+    private static string BuildStatusCardTooltipEffectText(Skill statusSkill)
+    {
+        string effectText = StripBbCodeTags(statusSkill.Description ?? string.Empty).Trim();
+        string statusCardText = I18n.Tr("skill.status.desc.status_card", "状态牌。");
+        string plainStatusCardText = StripBbCodeTags(statusCardText);
+        if (!effectText.Contains(plainStatusCardText, StringComparison.Ordinal))
+        {
+            effectText = string.IsNullOrWhiteSpace(effectText)
+                ? statusCardText
+                : $"{statusCardText}\n{effectText}";
+        }
+
+        return effectText;
+    }
+
+    private static bool IsIndexInsideStatusCardName(string plainDescription, int index)
+    {
+        if (string.IsNullOrWhiteSpace(plainDescription) || index < 0)
+            return false;
+
+        foreach (SkillID skillId in StatusKeywordSkillIds)
+        {
+            string statusName = GetSkill(skillId)?.SkillName;
+            if (string.IsNullOrWhiteSpace(statusName))
+                continue;
+
+            int searchStart = 0;
+            while (searchStart <= plainDescription.Length - statusName.Length)
+            {
+                int statusIndex = plainDescription.IndexOf(
+                    statusName,
+                    searchStart,
+                    StringComparison.OrdinalIgnoreCase
+                );
+                if (statusIndex < 0)
+                    break;
+
+                if (index >= statusIndex && index < statusIndex + statusName.Length)
+                    return true;
+
+                searchStart = statusIndex + 1;
+            }
+        }
+
+        return false;
     }
 
     private static void AddStatXTooltipEntries(
@@ -544,6 +648,11 @@ public partial class Skill
     private static string GetExhaustKeywordEffectText() =>
         I18n.Tr("keyword.exhaust.effect", ExhaustKeywordEffectText);
 
+    private static string GetRetainKeyword() => I18n.Tr("keyword.retain", RetainKeyword);
+
+    private static string GetRetainKeywordEffectText() =>
+        I18n.Tr("keyword.retain.effect", RetainKeywordEffectText);
+
     private static string GetVoidnessKeyword() => I18n.Tr("keyword.voidness", VoidnessKeyword);
 
     private static string GetVoidnessKeywordEffectText() =>
@@ -555,6 +664,7 @@ public partial class Skill
         I18n.Tr("keyword.rebirth.effect", RebirthKeywordEffectText);
 
     private static string GetExhaustKeywordLine() => $"{GetExhaustKeyword()}。";
+    private static string GetRetainKeywordLine() => $"{GetRetainKeyword()}。";
 
     private static int FindKeywordIndex(
         string text,

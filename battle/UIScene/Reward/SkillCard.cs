@@ -1,13 +1,29 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
-public partial class SkillCard : SubViewportContainer
+public sealed class CardTrailMoveOptions
+{
+    public float CompressDuration { get; init; } = 0.18f;
+    public float FlyDuration { get; init; } = 0.34f;
+    public float TrailFadeDuration { get; init; } = 0.14f;
+    public float CompressedScaleFactor { get; init; } = 0.38f;
+    public float TargetScaleFactor { get; init; } = 0.18f;
+    public float CenterVanish { get; init; } = 0.9f;
+    public float GlowMultiplier { get; init; } = 1.2f;
+    public bool HideCardVisualOnArrival { get; init; } = true;
+    public bool RotateWithVelocity { get; init; } = true;
+}
+
+public partial class SkillCard : Control
 {
     private const int DefaultDescriptionFontSize = 17;
     private const int MinDescriptionFontSize = 8;
-    private const string EnergyCostNumberColor = "#ffd36b";
+    private const string EnergyCostNumberColor = "#fff05a";
+    private const string EnergyCostInsufficientNumberColor = "#9aa0a8";
+    private static readonly Vector2 CardBaseSize = new(240f, 370f);
     private static readonly Color CardBaseColor = new(0.028700002f, 0.04109f, 0.07f, 0.82f);
     private static readonly Color ArtFrameBaseColor = new(0.07350001f, 0.09389999f, 0.15f, 0.56f);
     private static readonly Color DescriptionBaseColor = new(
@@ -32,6 +48,7 @@ public partial class SkillCard : SubViewportContainer
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("SubViewport/Description");
     public Label NameLabel => field ??= GetNode<Label>("SubViewport/NameLabel");
     public Button Button => field ??= GetNode<Button>("SubViewport/Button");
+    public CanvasGroup CardVisualRoot => field ??= GetNodeOrNull<CanvasGroup>("SubViewport");
     public TextureRect SkillPicture =>
         field ??= GetNodeOrNull<TextureRect>("SubViewport/ArtFrame/SkillPicture");
     public TextureRect SkillIcon =>
@@ -53,6 +70,7 @@ public partial class SkillCard : SubViewportContainer
         field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtDiamondOuter");
     public ColorRect ArtDiamondInner =>
         field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtDiamondInner");
+    public Node2D NativeFrame => field ??= GetNodeOrNull<Node2D>("SubViewport/NativeFrame");
     public Polygon2D RarityPlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/RarityPlate");
     public Polygon2D EnergyPlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/EnergyPlate");
     public Polygon2D NamePlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/NamePlate");
@@ -73,12 +91,14 @@ public partial class SkillCard : SubViewportContainer
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
     public bool HoverUiEnabled { get; set; } = true;
+    public bool AutoAdjustDescriptionTextSize { get; set; } = true;
 
     private Tween _progressTween;
     private Tween _pressTween;
     private Tween _hoverTween;
     private Tween _motionTween;
     private Tween _drawSettleTween;
+    private Tween _playableHighlightTween;
     private int _baseDescriptionFontSize;
     private int _textAdjustVersion;
     private Vector2 _baseScale = Vector2.One;
@@ -89,35 +109,59 @@ public partial class SkillCard : SubViewportContainer
     private StyleBoxFlat _bg2Style;
     private StyleBoxFlat _artFrameStyle;
     private ShaderMaterial _defaultCardMaterial;
+    private ShaderMaterial _playableHighlightMaterial;
+    private ColorRect _playableHighlight;
+    private float _playableHighlightEnabledValue = 1f;
+    private CanvasItem _cardEffectMaterialTarget;
     private Character[] _previewHostileTargets = Array.Empty<Character>();
     private Character[] _previewFriendlyTargets = Array.Empty<Character>();
+    private bool _energyCostAffordable = true;
     private readonly List<VBoxContainer> _previewDamagePanels = new();
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
-    private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -130f);
+    private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -115f);
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
     private static readonly HashSet<string> MissingSkillPicturePaths = new(StringComparer.Ordinal);
     private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
     private static Shader _defaultCardShader;
+    private static Shader _defaultCanvasGroupCardShader;
     private static Shader _cardExhaustShader;
+    private static Shader _cardCanvasGroupExhaustShader;
+    private static Shader _playableHighlightShader;
     private static Shader DefaultCardShader =>
         _defaultCardShader ??= GD.Load<Shader>("res://shader/Effect/RewardCard.gdshader");
+    private static Shader DefaultCanvasGroupCardShader =>
+        _defaultCanvasGroupCardShader ??= GD.Load<Shader>(
+            "res://shader/Effect/RewardCardCanvasGroup.gdshader"
+        );
     private static Shader CardExhaustShader =>
         _cardExhaustShader ??= GD.Load<Shader>("res://shader/Effect/CardExhaust.gdshader");
+    private static Shader CardCanvasGroupExhaustShader =>
+        _cardCanvasGroupExhaustShader ??= GD.Load<Shader>(
+            "res://shader/Effect/CardExhaustCanvasGroup.gdshader"
+        );
+    private static Shader PlayableHighlightShader =>
+        _playableHighlightShader ??= GD.Load<Shader>(
+            "res://shader/Effect/PlayableCardCrystalBorder.gdshader"
+        );
     private static NoiseTexture2D _cardExhaustNoiseTexture;
     private static ShaderMaterial _cardExhaustMaterialTemplate;
     private static Texture2D _defaultSkillIcon;
     private Tip _keywordTooltip;
+    private Skill.SkillRarity _lastAppliedRarity = Skill.SkillRarity.Common;
+    private bool _lastAppliedStatusCard;
+    private string _lastAppliedStyleCharacterKey = string.Empty;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
 
     public override void _Ready()
     {
         CacheDefaultCardMaterial();
+        CacheBaseFontSizes();
+        EnsurePlayableHighlight();
         ApplySkillToUi();
         HoverHint.Visible = false;
-        CacheBaseFontSizes();
         ApplyConfiguredDisplayScale();
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
         Button.MouseEntered += () =>
@@ -165,11 +209,16 @@ public partial class SkillCard : SubViewportContainer
         _hoverTween?.Kill();
         _motionTween?.Kill();
         _drawSettleTween?.Kill();
+        _playableHighlightTween?.Kill();
+        SetPlayableHighlight(false, instant: true);
 
+        SetCardVisualVisible(true);
         HoverHint.Visible = false;
+        PivotOffset = CardBaseSize * 0.5f;
         ApplyConfiguredDisplayScale();
         Scale = _baseScale;
         Position = Vector2.Zero;
+        Rotation = 0f;
         ZIndex = 0;
         Modulate = new Color(1, 1, 1, 1);
 
@@ -177,6 +226,7 @@ public partial class SkillCard : SubViewportContainer
         {
             shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
+            shader.SetShaderParameter("line_strength", 1f);
         }
 
         ResetDiscardTrailEffects();
@@ -189,17 +239,23 @@ public partial class SkillCard : SubViewportContainer
         _hoverTween?.Kill();
         _motionTween?.Kill();
         _drawSettleTween?.Kill();
+        _playableHighlightTween?.Kill();
+        SetPlayableHighlight(false, instant: true);
 
+        SetCardVisualVisible(true);
         HoverHint.Visible = false;
+        PivotOffset = CardBaseSize * 0.5f;
         ApplyConfiguredDisplayScale();
         Scale = _baseScale;
         Position = Vector2.Zero;
+        Rotation = 0f;
         ZIndex = 0;
 
         if (RestoreDefaultCardMaterial() is ShaderMaterial shader)
         {
             shader.SetShaderParameter("progress", 0f);
             shader.SetShaderParameter("center_vanish", 0f);
+            shader.SetShaderParameter("line_strength", 1f);
         }
 
         ResetDiscardTrailEffects();
@@ -242,6 +298,12 @@ public partial class SkillCard : SubViewportContainer
 
         if (DrawTrailTarget != null && GodotObject.IsInstanceValid(DrawTrailTarget))
             DrawTrailTarget.Visible = false;
+    }
+
+    public void SetCardVisualVisible(bool visible)
+    {
+        if (CardVisualRoot != null && GodotObject.IsInstanceValid(CardVisualRoot))
+            CardVisualRoot.Visible = visible;
     }
 
     public void StartAnimation(float delay = 0f)
@@ -307,41 +369,95 @@ public partial class SkillCard : SubViewportContainer
 
         if (CurrentSkill == null)
         {
-            NameLabel.Text = string.Empty;
-            CharacterName.Text = string.Empty;
-            TypeLabel.Text = string.Empty;
-            Description.Text = string.Empty;
-            SetEnergyCostText(string.Empty);
+            _energyCostAffordable = true;
+            if (NameLabel.Text.Length > 0)
+                NameLabel.Text = string.Empty;
+            if (CharacterName.Text.Length > 0)
+                CharacterName.Text = string.Empty;
+            if (TypeLabel.Text.Length > 0)
+                TypeLabel.Text = string.Empty;
+            if (Description.Text.Length > 0)
+                Description.Text = string.Empty;
+            if (EnergyCost.Text.Length > 0)
+                SetEnergyCostText(string.Empty);
             if (SkillPicture != null)
             {
-                SkillPicture.Texture = null;
-                SkillPicture.Visible = false;
+                if (SkillPicture.Texture != null)
+                    SkillPicture.Texture = null;
+                if (SkillPicture.Visible)
+                    SkillPicture.Visible = false;
             }
-            SkillIcon.Texture = null;
-            SkillIcon.Visible = false;
+            if (SkillIcon.Texture != null)
+                SkillIcon.Texture = null;
+            if (SkillIcon.Visible)
+                SkillIcon.Visible = false;
             SetArtPlaceholderVisible(true);
             ApplyRarityStyles(Skill.SkillRarity.Common);
+            _lastAppliedRarity = Skill.SkillRarity.Common;
+            _lastAppliedStatusCard = false;
+            _lastAppliedStyleCharacterKey = string.Empty;
+            ApplyPreferredDescriptionFontSize();
             return;
         }
 
         CurrentSkill.UpdateDescription();
-        NameLabel.Text = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
-        CharacterName.Text =
-            PreviewCharacterName ?? CurrentSkill.OwnerCharater?.CharacterName ?? string.Empty;
+        _energyCostAffordable = true;
         bool isStatusCard = IsStatusCard(CurrentSkill);
+        string displayName = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
+        string characterName = isStatusCard
+            ? string.Empty
+            : PreviewCharacterName ?? CurrentSkill.OwnerCharater?.CharacterName ?? string.Empty;
         string skillTypeText = isStatusCard
             ? I18n.Tr("ui.encyclopedia.skill_type.status", "状态")
             : CurrentSkill.SkillType.GetDescription();
-        TypeLabel.Text = skillTypeText;
-        Description.Text = CurrentSkill.Description ?? string.Empty;
-        if (!CurrentSkill.CanBePlayed)
-            SetEnergyCostText(I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出"));
-        else
-            SetEnergyCostCostText(CurrentSkill.CardEnergyCostText);
-        ApplyRarityStyles(CurrentSkill.Rarity);
-        if (isStatusCard)
-            ApplyStatusCardStyle();
-        ApplyCharacterPlateStyle(CurrentSkill);
+        string descriptionText = CurrentSkill.Description ?? string.Empty;
+        string centeredEnergyText = BuildEnergyCostText(CurrentSkill, _energyCostAffordable);
+        bool textChanged = false;
+        if (NameLabel.Text != displayName)
+        {
+            NameLabel.Text = displayName;
+            textChanged = true;
+        }
+        if (CharacterName.Text != characterName)
+            CharacterName.Text = characterName;
+        if (TypeLabel.Text != skillTypeText)
+        {
+            TypeLabel.Text = skillTypeText;
+            textChanged = true;
+        }
+        if (Description.Text != descriptionText)
+        {
+            Description.Text = descriptionText;
+            textChanged = true;
+        }
+        if (EnergyCost.Text != centeredEnergyText)
+            EnergyCost.Text = centeredEnergyText;
+
+        string styleCharacterKey = isStatusCard
+            ? string.Empty
+            : PreviewCharacterKey
+                ?? (CurrentSkill.OwnerCharater as PlayerCharacter)?.CharacterKey
+                ?? CurrentSkill.OwnerCharater?.CharacterName
+                ?? string.Empty;
+        bool shouldRefreshStyle =
+            _lastAppliedRarity != CurrentSkill.Rarity
+            || _lastAppliedStatusCard != isStatusCard
+            || !string.Equals(
+                _lastAppliedStyleCharacterKey,
+                styleCharacterKey,
+                StringComparison.Ordinal
+            );
+        if (shouldRefreshStyle)
+        {
+            ApplyRarityStyles(CurrentSkill.Rarity);
+            if (isStatusCard)
+                ApplyStatusCardStyle();
+            else
+                ApplyCharacterPlateStyle(CurrentSkill);
+            _lastAppliedRarity = CurrentSkill.Rarity;
+            _lastAppliedStatusCard = isStatusCard;
+            _lastAppliedStyleCharacterKey = styleCharacterKey;
+        }
 
         Texture2D skillPicture = GetSkillPictureTexture(
             CurrentSkill,
@@ -351,20 +467,32 @@ public partial class SkillCard : SubViewportContainer
         bool hasSkillPicture = skillPicture != null;
         if (SkillPicture != null)
         {
-            SkillPicture.Texture = skillPicture;
-            SkillPicture.Visible = hasSkillPicture;
-            SkillPicture.Modulate = Colors.White;
+            if (SkillPicture.Texture != skillPicture)
+                SkillPicture.Texture = skillPicture;
+            if (SkillPicture.Visible != hasSkillPicture)
+                SkillPicture.Visible = hasSkillPicture;
+            if (SkillPicture.Modulate != Colors.White)
+                SkillPicture.Modulate = Colors.White;
         }
 
         SetArtPlaceholderVisible(!hasSkillPicture);
-        SkillIcon.Visible = !hasSkillPicture;
+        if (SkillIcon.Visible != !hasSkillPicture)
+            SkillIcon.Visible = !hasSkillPicture;
         if (!hasSkillPicture)
         {
-            SkillIcon.Texture = GetSkillIconTexture(CurrentSkill);
-            SkillIcon.Modulate = Colors.White;
+            Texture2D iconTexture = GetSkillIconTexture(CurrentSkill);
+            if (SkillIcon.Texture != iconTexture)
+                SkillIcon.Texture = iconTexture;
+            if (SkillIcon.Modulate != Colors.White)
+                SkillIcon.Modulate = Colors.White;
+        }
+        else if (SkillIcon.Texture != null)
+        {
+            SkillIcon.Texture = null;
         }
 
-        QueueAdjustTextSizes();
+        if (textChanged)
+            ApplyDescriptionFontSizing();
     }
 
     public void SetEnergyCostText(string text)
@@ -376,10 +504,43 @@ public partial class SkillCard : SubViewportContainer
 
     public void SetEnergyCostCostText(string costText)
     {
-        string coloredCost = $"[color={EnergyCostNumberColor}]{costText}[/color]";
+        string coloredCost =
+            $"[font_size=28][b][color={EnergyCostNumberColor}]{costText}[/color][/b][/font_size]";
         SetEnergyCostText(
             I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", coloredCost))
         );
+    }
+
+    public void SetEnergyCostAffordable(bool affordable)
+    {
+        _energyCostAffordable = affordable;
+        if (CurrentSkill == null)
+            return;
+
+        string energyText = BuildEnergyCostText(CurrentSkill, affordable);
+        if (EnergyCost.Text != energyText)
+            EnergyCost.Text = energyText;
+    }
+
+    private static string BuildEnergyCostText(Skill skill, bool affordable)
+    {
+        if (skill == null)
+            return string.Empty;
+
+        string energyText;
+        if (skill.CanBePlayed)
+        {
+            string color = affordable ? EnergyCostNumberColor : EnergyCostInsufficientNumberColor;
+            string coloredCost =
+                $"[font_size=28][b][color={color}]{skill.CardEnergyCostText}[/color][/b][/font_size]";
+            energyText = I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", coloredCost));
+        }
+        else
+        {
+            energyText = I18n.Tr("ui.encyclopedia.skill_cost.unplayable", "不可打出");
+        }
+
+        return string.IsNullOrWhiteSpace(energyText) ? string.Empty : $"[center]{energyText}[/center]";
     }
 
     public void ShowSkillPreview()
@@ -392,6 +553,51 @@ public partial class SkillCard : SubViewportContainer
     {
         HideDamagePreview();
         HideTargetPreview();
+    }
+
+    public void SetPlayableHighlight(bool enabled, bool instant = false)
+    {
+        ColorRect highlight = EnsurePlayableHighlight();
+        if (highlight == null || _playableHighlightMaterial == null)
+            return;
+
+        float target = enabled ? _playableHighlightEnabledValue : 0f;
+        _playableHighlightTween?.Kill();
+        if (!enabled && !highlight.Visible)
+        {
+            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", 0f);
+            return;
+        }
+
+        if (enabled && !highlight.Visible && !instant && IsInsideTree())
+            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", 0f);
+
+        if (instant || !IsInsideTree())
+        {
+            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", target);
+            highlight.Visible = enabled;
+            return;
+        }
+
+        highlight.Visible = true;
+        float current = GetShaderParameterFloat(_playableHighlightMaterial, "highlight_enabled");
+        _playableHighlightTween = CreateTween();
+        _playableHighlightTween
+            .TweenMethod(
+                Callable.From<float>(
+                    value => _playableHighlightMaterial.SetShaderParameter(
+                        "highlight_enabled",
+                        value
+                    )
+                ),
+                current,
+                target,
+                enabled ? 0.18f : 0.14f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        if (!enabled)
+            _playableHighlightTween.TweenCallback(Callable.From(() => highlight.Visible = false));
     }
 
     public void SetHoverUiEnabled(bool enabled)
@@ -426,7 +632,7 @@ public partial class SkillCard : SubViewportContainer
 
     public void RefreshTextSizeFromSettings()
     {
-        QueueAdjustTextSizes();
+        ApplyDescriptionFontSizing(force: true);
         _keywordTooltip?.RefreshTextSizeFromSettings();
     }
 
@@ -436,6 +642,7 @@ public partial class SkillCard : SubViewportContainer
             return;
 
         _progressTween?.Kill();
+        shader.SetShaderParameter("line_strength", 0f);
         _progressTween = CreateTween();
         _progressTween
             .TweenMethod(
@@ -451,7 +658,11 @@ public partial class SkillCard : SubViewportContainer
     public void StopBattleMotion()
     {
         _hoverTween?.Kill();
+        _hoverTween = null;
         _motionTween?.Kill();
+        _motionTween = null;
+        _drawSettleTween?.Kill();
+        _drawSettleTween = null;
     }
 
     public void TweenBattleMotion(
@@ -482,11 +693,338 @@ public partial class SkillCard : SubViewportContainer
             .SetEase(Tween.EaseType.Out);
     }
 
+    public async Task<bool> FlyWithTrailToControlAsync(
+        Control target,
+        CardTrailMoveOptions options = null
+    )
+    {
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || !target.IsInsideTree()
+        )
+        {
+            return false;
+        }
+
+        return await FlyWithTrailToPointAsync(target.GetGlobalRect().GetCenter(), options);
+    }
+
+    public async Task<bool> FlyWithTrailToPointAsync(
+        Vector2 endCenter,
+        CardTrailMoveOptions options = null
+    )
+    {
+        options ??= new CardTrailMoveOptions();
+        if (!GodotObject.IsInstanceValid(this) || !IsInsideTree())
+            return false;
+
+        Rect2 startRect = GetGlobalRect();
+        Vector2 startCenter = startRect.Position + startRect.Size * 0.5f;
+        if (startCenter.DistanceSquaredTo(endCenter) < 16f)
+            return false;
+
+        PivotOffset = CardBaseSize * 0.5f;
+        if (options.CompressDuration > 0f)
+        {
+            Tween compressShaderTween = PressEffectPartial(
+                centerVanish: options.CenterVanish,
+                glowMultiplier: options.GlowMultiplier,
+                duration: options.CompressDuration
+            );
+
+            Tween compressTween = CreateTween();
+            compressTween.SetParallel(true);
+            compressTween
+                .TweenProperty(
+                    this,
+                    "scale",
+                    Vector2.One * options.CompressedScaleFactor,
+                    options.CompressDuration
+                )
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.In);
+            compressTween
+                .TweenMethod(
+                    Callable.From<float>(_ => SetPivotCenterAt(startCenter)),
+                    0f,
+                    1f,
+                    options.CompressDuration
+                )
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.In);
+            compressTween.SetParallel(false);
+            await Task.WhenAll(
+                WaitForTweenFinishedAsync(compressTween),
+                WaitForTweenFinishedAsync(compressShaderTween)
+            );
+        }
+
+        if (!GodotObject.IsInstanceValid(this))
+            return false;
+
+        Vector2 flyStartCenter = startCenter;
+        PrepareMoveTrail(out Line trail, out GpuParticles2D particles);
+        Vector2 control = GetCardFlyControlPoint(flyStartCenter, endCenter);
+        Vector2 initialVelocity = GetQuadraticBezierVelocity(
+            flyStartCenter,
+            control,
+            endCenter,
+            0.01f
+        );
+
+        if (options.RotateWithVelocity)
+            Rotation = GetRotationWithTopFacingVelocity(initialVelocity);
+        UpdateTrailParticlesRotation(particles, initialVelocity);
+
+        Tween flyShaderTween = PressEffectPartial(
+            centerVanish: options.CenterVanish,
+            glowMultiplier: options.GlowMultiplier,
+            duration: options.FlyDuration
+        );
+        Tween flyTween = CreateTween();
+        flyTween.SetParallel(true);
+        flyTween
+            .TweenProperty(
+                this,
+                "scale",
+                Vector2.One * options.TargetScaleFactor,
+                options.FlyDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        flyTween
+            .TweenMethod(
+                Callable.From<float>(t =>
+                {
+                    if (!GodotObject.IsInstanceValid(this))
+                        return;
+
+                    Vector2 center = QuadraticBezier(flyStartCenter, control, endCenter, t);
+                    Vector2 velocity = GetQuadraticBezierVelocity(
+                        flyStartCenter,
+                        control,
+                        endCenter,
+                        t
+                    );
+                    SetPivotCenterAt(center);
+                    if (options.RotateWithVelocity)
+                        Rotation = GetRotationWithTopFacingVelocity(velocity);
+                    UpdateTrailParticlesRotation(particles, velocity);
+                }),
+                0f,
+                1f,
+                options.FlyDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        flyTween.SetParallel(false);
+
+        await Task.WhenAll(
+            WaitForTweenFinishedAsync(flyTween),
+            WaitForTweenFinishedAsync(flyShaderTween)
+        );
+
+        if (GodotObject.IsInstanceValid(this) && options.HideCardVisualOnArrival)
+        {
+            SetCardVisualVisible(false);
+            Button.Disabled = true;
+            HoverHint.Visible = false;
+        }
+
+        await FadeAndHideMoveTrailAsync(trail, particles, options.TrailFadeDuration);
+        return true;
+    }
+
+    public void HideMoveTrail()
+    {
+        HideTrail(DiscardTrail, DiscardTrailParticles);
+        if (DiscardTrailTarget != null && GodotObject.IsInstanceValid(DiscardTrailTarget))
+            DiscardTrailTarget.Visible = false;
+    }
+
+    private static async Task WaitForTweenFinishedAsync(Tween tween)
+    {
+        if (tween == null || !GodotObject.IsInstanceValid(tween))
+            return;
+
+        var completion = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        tween.Finished += () => completion.TrySetResult(true);
+        await completion.Task;
+    }
+
+    private void SetPivotCenterAt(Vector2 center)
+    {
+        if (!GodotObject.IsInstanceValid(this))
+            return;
+
+        Vector2 currentPivotCenter = GetGlobalTransformWithCanvas() * PivotOffset;
+        GlobalPosition += center - currentPivotCenter;
+    }
+
+    private void PrepareMoveTrail(out Line trail, out GpuParticles2D particles)
+    {
+        trail = null;
+        particles = null;
+        Node2D target = DiscardTrailTarget;
+        trail = DiscardTrail;
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || trail == null
+            || !GodotObject.IsInstanceValid(trail)
+        )
+        {
+            return;
+        }
+
+        target.Visible = true;
+        target.Position = PivotOffset;
+        trail.Target = target;
+        trail.ManualPreviewMode = false;
+        trail.Visible = true;
+        trail.GlobalPosition = Vector2.Zero;
+        trail.Modulate = Colors.White;
+        trail.ClearPoints();
+
+        particles = DiscardTrailParticles;
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Visible = true;
+        particles.Modulate = Colors.White;
+        particles.Emitting = false;
+        particles.Restart();
+        particles.Emitting = true;
+    }
+
+    private static async Task FadeAndHideMoveTrailAsync(
+        Line trail,
+        GpuParticles2D particles,
+        float duration
+    )
+    {
+        if (particles != null && GodotObject.IsInstanceValid(particles))
+            particles.Emitting = false;
+
+        if (trail == null || !GodotObject.IsInstanceValid(trail))
+        {
+            HideTrailParticles(particles);
+            return;
+        }
+
+        trail.ManualPreviewMode = true;
+        float startWidth = trail.Width;
+        Tween tween = trail.CreateTween();
+        tween.TweenMethod(
+            Callable.From<float>(fade =>
+            {
+                if (trail == null || !GodotObject.IsInstanceValid(trail))
+                    return;
+
+                trail.Modulate = new Color(1f, 1f, 1f, 1f - fade);
+                trail.Width = Mathf.Lerp(startWidth, 0.5f, fade);
+            }),
+            0f,
+            1f,
+            Math.Max(0.01f, duration)
+        );
+        tween.TweenCallback(
+            Callable.From(() =>
+            {
+                HideTrail(trail, particles);
+                if (trail?.Target != null && GodotObject.IsInstanceValid(trail.Target))
+                    trail.Target.Visible = false;
+                if (trail != null && GodotObject.IsInstanceValid(trail))
+                    trail.Width = startWidth;
+            })
+        );
+
+        await WaitForTweenFinishedAsync(tween);
+    }
+
+    private static void HideTrail(Line trail, GpuParticles2D particles)
+    {
+        if (trail != null && GodotObject.IsInstanceValid(trail))
+        {
+            trail.Visible = false;
+            trail.ClearPoints();
+            trail.Modulate = Colors.White;
+            trail.ManualPreviewMode = false;
+        }
+
+        HideTrailParticles(particles);
+    }
+
+    private static void HideTrailParticles(GpuParticles2D particles)
+    {
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Emitting = false;
+        particles.Visible = false;
+        particles.Modulate = Colors.White;
+    }
+
+    private static void UpdateTrailParticlesRotation(GpuParticles2D particles, Vector2 velocity)
+    {
+        if (
+            particles == null
+            || !GodotObject.IsInstanceValid(particles)
+            || velocity.LengthSquared() < 0.001f
+        )
+        {
+            return;
+        }
+
+        particles.GlobalRotation = velocity.Angle() + Mathf.Pi;
+    }
+
+    private static Vector2 GetCardFlyControlPoint(Vector2 start, Vector2 end)
+    {
+        Vector2 mid = (start + end) * 0.5f;
+        float distance = start.DistanceTo(end);
+        float lift =
+            Math.Min(330f, Math.Max(120f, distance * 0.28f)) + (float)GD.RandRange(-28f, 52f);
+        float side = end.X >= start.X ? 1f : -1f;
+        float sideOffset = side * Math.Min(190f, distance * 0.16f) + (float)GD.RandRange(-90f, 90f);
+        return mid + new Vector2(sideOffset, -lift);
+    }
+
+    private static Vector2 QuadraticBezier(Vector2 start, Vector2 control, Vector2 end, float t)
+    {
+        Vector2 a = start.Lerp(control, t);
+        Vector2 b = control.Lerp(end, t);
+        return a.Lerp(b, t);
+    }
+
+    private static Vector2 GetQuadraticBezierVelocity(
+        Vector2 start,
+        Vector2 control,
+        Vector2 end,
+        float t
+    )
+    {
+        t = Mathf.Clamp(t, 0f, 1f);
+        return 2f * ((1f - t) * (control - start) + t * (end - control));
+    }
+
+    private static float GetRotationWithTopFacingVelocity(Vector2 velocity)
+    {
+        if (velocity.LengthSquared() < 0.001f)
+            return 0f;
+
+        return velocity.Angle() + Mathf.Pi * 0.5f;
+    }
+
     public void PressEffect()
     {
         if (RestoreDefaultCardMaterial() is not ShaderMaterial shader)
             return;
 
+        StopProgressEffect(shader);
         _pressTween?.Kill();
         _pressTween = CreateTween();
         _pressTween.SetParallel(true);
@@ -520,6 +1058,7 @@ public partial class SkillCard : SubViewportContainer
         glowMultiplier = Mathf.Max(1f, glowMultiplier);
         duration = Math.Max(0.01f, duration);
 
+        StopProgressEffect(shader);
         _pressTween?.Kill();
         _pressTween = CreateTween();
         _pressTween.SetParallel(true);
@@ -548,9 +1087,16 @@ public partial class SkillCard : SubViewportContainer
         return _pressTween;
     }
 
+    private void StopProgressEffect(ShaderMaterial shader)
+    {
+        _progressTween?.Kill();
+        _progressTween = null;
+        shader?.SetShaderParameter("progress", 0f);
+    }
+
     public void PlayExhaustEffect(float duration = 0.8f)
     {
-        if (CardExhaustShader == null)
+        if (GetCardExhaustShader() == null)
         {
             PressEffect();
             return;
@@ -563,7 +1109,7 @@ public partial class SkillCard : SubViewportContainer
 
         var shader = CreateCardExhaustMaterial();
         shader.SetShaderParameter("noise_offset", CreateCardExhaustNoiseOffset());
-        Material = shader;
+        CardEffectMaterialTarget.Material = shader;
 
         if (Modulate.A <= 0f)
             Modulate = Colors.White;
@@ -589,8 +1135,9 @@ public partial class SkillCard : SubViewportContainer
         if (_defaultCardMaterial != null)
             return;
 
+        CanvasItem materialTarget = CardEffectMaterialTarget;
         if (
-            Material is ShaderMaterial sceneMaterial
+            materialTarget.Material is ShaderMaterial sceneMaterial
             && IsDefaultCardShader(sceneMaterial.Shader)
             && sceneMaterial.Duplicate() is ShaderMaterial duplicatedSceneMaterial
         )
@@ -599,7 +1146,7 @@ public partial class SkillCard : SubViewportContainer
         }
         else
         {
-            _defaultCardMaterial = new ShaderMaterial { Shader = DefaultCardShader };
+            _defaultCardMaterial = new ShaderMaterial { Shader = GetDefaultCardShader() };
             InitializeDefaultCardShaderParameters(_defaultCardMaterial);
         }
 
@@ -607,24 +1154,104 @@ public partial class SkillCard : SubViewportContainer
             return;
 
         _defaultCardMaterial.ResourceLocalToScene = true;
-        Material = _defaultCardMaterial;
+        materialTarget.Material = _defaultCardMaterial;
     }
 
     private ShaderMaterial RestoreDefaultCardMaterial()
     {
         CacheDefaultCardMaterial();
-        if (_defaultCardMaterial != null && Material != _defaultCardMaterial)
-            Material = _defaultCardMaterial;
+        CanvasItem materialTarget = CardEffectMaterialTarget;
+        if (_defaultCardMaterial != null && materialTarget.Material != _defaultCardMaterial)
+            materialTarget.Material = _defaultCardMaterial;
 
-        return Material as ShaderMaterial;
+        return materialTarget.Material as ShaderMaterial;
     }
 
-    private static bool IsDefaultCardShader(Shader shader)
+    private ColorRect EnsurePlayableHighlight()
     {
-        if (shader == null || DefaultCardShader == null)
+        if (_playableHighlight != null && GodotObject.IsInstanceValid(_playableHighlight))
+            return _playableHighlight;
+
+        CanvasGroup root = CardVisualRoot;
+        Shader shader = PlayableHighlightShader;
+        if (root == null || !GodotObject.IsInstanceValid(root) || shader == null)
+            return null;
+
+        _playableHighlight = root.GetNodeOrNull<ColorRect>("PlayableHighlight");
+        if (_playableHighlight != null && GodotObject.IsInstanceValid(_playableHighlight))
+        {
+            _playableHighlightMaterial =
+                _playableHighlight.Material as ShaderMaterial
+                ?? CreatePlayableHighlightMaterial(shader);
+            _playableHighlight.Material = _playableHighlightMaterial;
+            _playableHighlight.MouseFilter = MouseFilterEnum.Ignore;
+            _playableHighlightEnabledValue = Math.Max(
+                0.001f,
+                GetShaderParameterFloat(_playableHighlightMaterial, "highlight_enabled")
+            );
+            if (_playableHighlight.GetIndex() != 0)
+                root.MoveChild(_playableHighlight, 0);
+            return _playableHighlight;
+        }
+
+        _playableHighlightMaterial = CreatePlayableHighlightMaterial(shader);
+        _playableHighlight = new ColorRect
+        {
+            Name = "PlayableHighlight",
+            Position = Vector2.Zero,
+            Size = CardBaseSize,
+            CustomMinimumSize = CardBaseSize,
+            MouseFilter = MouseFilterEnum.Ignore,
+            Color = Colors.White,
+            Material = _playableHighlightMaterial,
+            Visible = false,
+        };
+        root.AddChild(_playableHighlight);
+        root.MoveChild(_playableHighlight, 0);
+        return _playableHighlight;
+    }
+
+    private static ShaderMaterial CreatePlayableHighlightMaterial(Shader shader)
+    {
+        var material = new ShaderMaterial
+        {
+            Shader = shader,
+            ResourceLocalToScene = true,
+        };
+        material.SetShaderParameter("highlight_enabled", 0f);
+        return material;
+    }
+
+    private CanvasItem CardEffectMaterialTarget
+    {
+        get
+        {
+            if (_cardEffectMaterialTarget != null && GodotObject.IsInstanceValid(_cardEffectMaterialTarget))
+                return _cardEffectMaterialTarget;
+
+            _cardEffectMaterialTarget = GetNodeOrNull<CanvasItem>("CardGroup");
+            if (_cardEffectMaterialTarget == null)
+                _cardEffectMaterialTarget = GetNodeOrNull<CanvasGroup>("SubViewport");
+            _cardEffectMaterialTarget ??= this;
+            return _cardEffectMaterialTarget;
+        }
+    }
+
+    private bool UsesCanvasGroupCardMaterial => CardEffectMaterialTarget is CanvasGroup;
+
+    private Shader GetDefaultCardShader() =>
+        UsesCanvasGroupCardMaterial ? DefaultCanvasGroupCardShader : DefaultCardShader;
+
+    private Shader GetCardExhaustShader() =>
+        UsesCanvasGroupCardMaterial ? CardCanvasGroupExhaustShader : CardExhaustShader;
+
+    private bool IsDefaultCardShader(Shader shader)
+    {
+        Shader defaultShader = GetDefaultCardShader();
+        if (shader == null || defaultShader == null)
             return false;
 
-        return shader == DefaultCardShader || shader.ResourcePath == DefaultCardShader.ResourcePath;
+        return shader == defaultShader || shader.ResourcePath == defaultShader.ResourcePath;
     }
 
     private static void InitializeDefaultCardShaderParameters(ShaderMaterial shader)
@@ -636,6 +1263,7 @@ public partial class SkillCard : SubViewportContainer
         shader.SetShaderParameter("center_vanish", 0f);
         shader.SetShaderParameter("line_density", 30f);
         shader.SetShaderParameter("line_speed", 8f);
+        shader.SetShaderParameter("line_strength", 1f);
         shader.SetShaderParameter("aberration_amount", 0.03f);
         shader.SetShaderParameter("beam_color", new Color(0f, 1f, 1f, 1f));
     }
@@ -692,23 +1320,37 @@ public partial class SkillCard : SubViewportContainer
         _cardExhaustNoiseTexture = null;
         _cardExhaustMaterialTemplate = null;
         _defaultCardShader = null;
+        _defaultCanvasGroupCardShader = null;
         _cardExhaustShader = null;
+        _cardCanvasGroupExhaustShader = null;
+        _playableHighlightShader = null;
     }
 
-    private static ShaderMaterial CreateCardExhaustMaterial()
+    private ShaderMaterial CreateCardExhaustMaterial()
     {
         PrewarmExhaustEffect();
-        ShaderMaterial shader =
-            _cardExhaustMaterialTemplate?.Duplicate() as ShaderMaterial
-            ?? CreateCardExhaustMaterialTemplate();
+        ShaderMaterial shader;
+        if (UsesCanvasGroupCardMaterial)
+        {
+            shader = CreateCardExhaustMaterialTemplate(GetCardExhaustShader());
+        }
+        else
+        {
+            shader =
+                _cardExhaustMaterialTemplate?.Duplicate() as ShaderMaterial
+                ?? CreateCardExhaustMaterialTemplate(CardExhaustShader);
+        }
         shader.ResourceLocalToScene = true;
         shader.SetShaderParameter("exhaust_progress", 0f);
         return shader;
     }
 
-    private static ShaderMaterial CreateCardExhaustMaterialTemplate()
+    private static ShaderMaterial CreateCardExhaustMaterialTemplate() =>
+        CreateCardExhaustMaterialTemplate(CardExhaustShader);
+
+    private static ShaderMaterial CreateCardExhaustMaterialTemplate(Shader shaderResource)
     {
-        var shader = new ShaderMaterial { Shader = CardExhaustShader, ResourceLocalToScene = true };
+        var shader = new ShaderMaterial { Shader = shaderResource, ResourceLocalToScene = true };
         shader.SetShaderParameter("exhaust_progress", 0f);
         shader.SetShaderParameter("ember_color", new Color(0.50f, 0.62f, 1f, 1f));
         shader.SetShaderParameter("ash_color", new Color(0.09f, 0.075f, 0.105f, 1f));
@@ -1114,21 +1756,134 @@ public partial class SkillCard : SubViewportContainer
         AdjustDescriptionFont();
     }
 
+    private void ApplyDescriptionFontSizing(bool force = false)
+    {
+        if (!AutoAdjustDescriptionTextSize)
+        {
+            _textAdjustVersion++;
+            ApplyPreferredDescriptionFontSize();
+            return;
+        }
+
+        ApplyPreferredDescriptionFontSize();
+        if (force)
+            _textAdjustVersion++;
+
+        QueueAdjustTextSizes();
+    }
+
+    private void ApplyPreferredDescriptionFontSize()
+    {
+        int preferredFontSize = UserSettings.ScaleTextFontSize(_baseDescriptionFontSize);
+        if (preferredFontSize <= 0)
+            preferredFontSize = DefaultDescriptionFontSize;
+
+        Description.AddThemeFontSizeOverride("normal_font_size", preferredFontSize);
+    }
+
     private void AdjustDescriptionFont()
     {
+        ApplyPreferredDescriptionFontSize();
         float availableHeight = Description.Size.Y;
-        if (availableHeight <= 0.0f)
+        float availableWidth = Description.Size.X;
+        if (availableHeight <= 0.0f || availableWidth <= 0.0f)
             return;
 
         int preferredFontSize = UserSettings.ScaleTextFontSize(_baseDescriptionFontSize);
-        for (int fontSize = preferredFontSize; fontSize >= MinDescriptionFontSize; fontSize--)
+        if (preferredFontSize <= 0)
+            preferredFontSize = DefaultDescriptionFontSize;
+
+        if (DoesDescriptionFitAtFontSize(preferredFontSize, availableWidth, availableHeight))
+            return;
+
+        for (int fontSize = preferredFontSize - 1; fontSize >= MinDescriptionFontSize; fontSize--)
         {
             Description.AddThemeFontSizeOverride("normal_font_size", fontSize);
-            if (Description.GetContentHeight() <= availableHeight)
+            if (DoesDescriptionFitAtFontSize(fontSize, availableWidth, availableHeight))
                 return;
         }
 
         Description.AddThemeFontSizeOverride("normal_font_size", MinDescriptionFontSize);
+    }
+
+    private bool DoesDescriptionFitAtFontSize(int fontSize, float availableWidth, float availableHeight)
+    {
+        string plainText = StripBbCodeTags(Description.Text);
+        float estimatedHeight = EstimateDescriptionContentHeight(
+            plainText,
+            fontSize,
+            availableWidth
+        );
+        return estimatedHeight <= availableHeight;
+    }
+
+    private static float EstimateDescriptionContentHeight(
+        string text,
+        int fontSize,
+        float availableWidth
+    )
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0f;
+
+        float unitsPerLine = Math.Max(1f, availableWidth / Math.Max(1f, fontSize * 0.92f));
+        int lineCount = 0;
+        foreach (string paragraph in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            float units = EstimateDescriptionTextUnits(paragraph);
+            lineCount += Math.Max(1, Mathf.CeilToInt(units / unitsPerLine));
+        }
+
+        return lineCount * fontSize * 1.22f;
+    }
+
+    private static float EstimateDescriptionTextUnits(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0f;
+
+        float units = 0f;
+        foreach (char ch in text)
+        {
+            if (char.IsWhiteSpace(ch))
+                units += 0.35f;
+            else if (ch <= 0x007f)
+                units += char.IsLetterOrDigit(ch) ? 0.55f : 0.35f;
+            else
+                units += 1f;
+        }
+
+        return units;
+    }
+
+    private static string StripBbCodeTags(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return string.Empty;
+
+        char[] buffer = new char[text.Length];
+        int count = 0;
+        bool inTag = false;
+
+        foreach (char ch in text)
+        {
+            if (ch == '[')
+            {
+                inTag = true;
+                continue;
+            }
+
+            if (ch == ']')
+            {
+                inTag = false;
+                continue;
+            }
+
+            if (!inTag)
+                buffer[count++] = ch;
+        }
+
+        return new string(buffer, 0, count);
     }
 
     private void ApplyRarityStyles(Skill.SkillRarity rarity)
@@ -1153,12 +1908,12 @@ public partial class SkillCard : SubViewportContainer
             _innerFrameStyle.BorderColor = innerBorder;
         if (_descriptionStyle != null)
         {
-            _descriptionStyle.BorderColor = borderColor;
+            _descriptionStyle.BorderColor = Colors.Transparent;
             _descriptionStyle.BgColor = DescriptionBaseColor;
         }
         if (_bg2Style != null)
         {
-            _bg2Style.BorderColor = borderColor;
+            _bg2Style.BorderColor = Colors.Transparent;
             _bg2Style.BgColor = FooterBaseColor;
         }
         if (_artFrameStyle != null)
@@ -1187,6 +1942,8 @@ public partial class SkillCard : SubViewportContainer
 
         if (TopAccent != null)
             TopAccent.Color = WithAlpha(borderColor, 0.58f);
+
+        SetNativeFramePalette(borderColor, accentColor);
     }
 
     private void ApplyCharacterPlateStyle(Skill skill)
@@ -1209,6 +1966,8 @@ public partial class SkillCard : SubViewportContainer
                 WithAlpha(new Color(color.R * 0.18f, color.G * 0.18f, color.B * 0.18f, 1f), 0.95f)
             );
         }
+
+        SetNativeFramePalette(Skill.GetRarityBorderColor(skill.Rarity), color);
     }
 
     private bool TryGetCharacterPlateColor(Skill skill, out Color color)
@@ -1277,12 +2036,12 @@ public partial class SkillCard : SubViewportContainer
             _innerFrameStyle.BorderColor = new Color(0.82f, 0.7f, 1f, 0.34f);
         if (_descriptionStyle != null)
         {
-            _descriptionStyle.BorderColor = borderColor;
+            _descriptionStyle.BorderColor = Colors.Transparent;
             _descriptionStyle.BgColor = surfaceColor;
         }
         if (_bg2Style != null)
         {
-            _bg2Style.BorderColor = borderColor;
+            _bg2Style.BorderColor = Colors.Transparent;
             _bg2Style.BgColor = new Color(0.04f, 0.032f, 0.075f, 0.98f);
         }
         if (_artFrameStyle != null)
@@ -1306,6 +2065,7 @@ public partial class SkillCard : SubViewportContainer
             TopAccent.Color = new Color(0.86f, 0.72f, 1f, 0.72f);
 
         SetCardBeamColor(borderColor);
+        SetNativeFramePalette(borderColor, accentColor);
     }
 
     private static bool IsStatusCard(Skill skill) => skill?.IsStatusCard == true;
@@ -1350,10 +2110,60 @@ public partial class SkillCard : SubViewportContainer
 
     private void SetCardBeamColor(Color color)
     {
-        if (Material is not ShaderMaterial shader)
+        if (CardEffectMaterialTarget.Material is not ShaderMaterial shader)
             return;
 
         shader.SetShaderParameter("beam_color", new Color(color.R, color.G, color.B, 1f));
+    }
+
+    private void SetNativeFramePalette(Color lineColor, Color accentColor)
+    {
+        if (NativeFrame == null || !GodotObject.IsInstanceValid(NativeFrame))
+            return;
+
+        Color strongLine = WithAlpha(lineColor, 0.82f);
+        Color softLine = WithAlpha(lineColor, 0.24f);
+        Color accent = WithAlpha(accentColor, 0.74f);
+        Color accentSoft = WithAlpha(accentColor, 0.48f);
+        Color transparentAccent = WithAlpha(accentColor, 0f);
+        Color recessShadow = new(0.004f, 0.012f, 0.024f, 0.78f);
+
+        foreach (Node child in NativeFrame.GetChildren())
+        {
+            string nodeName = child.Name.ToString();
+            if (child is Line2D line)
+            {
+                if (line.Gradient != null)
+                {
+                    if (nodeName.Contains("Left"))
+                    {
+                        line.Gradient.SetColor(0, transparentAccent);
+                        line.Gradient.SetColor(1, accentSoft);
+                    }
+                    else if (nodeName.Contains("Right"))
+                    {
+                        line.Gradient.SetColor(0, accentSoft);
+                        line.Gradient.SetColor(1, transparentAccent);
+                    }
+                }
+
+                line.DefaultColor = nodeName.Contains("Shadow")
+                    ? recessShadow
+                    : nodeName.Contains("Recess")
+                        ? accent
+                        : nodeName.Contains("Soft")
+                    ? softLine
+                    : nodeName.Contains("Accent")
+                        ? accentSoft
+                        : strongLine;
+            }
+            else if (child is Polygon2D polygon)
+            {
+                polygon.Color = nodeName.Contains("Inner")
+                    ? WithAlpha(lineColor, 0.72f)
+                    : accent;
+            }
+        }
     }
 
     private static float GetShaderParameterFloat(ShaderMaterial shader, string parameterName)

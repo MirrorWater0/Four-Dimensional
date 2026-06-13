@@ -12,7 +12,7 @@ public partial class VoidStatus : Skill
 
     public override string SkillName
     {
-        get => I18n.Tr("skill.void_status.name", "虚空");
+        get => I18n.Tr("skill.void_status.name", "虚空之唤");
         set { }
     }
     public override int EnergyCost => 0;
@@ -24,7 +24,7 @@ public partial class VoidStatus : Skill
         if (player == null)
             return;
 
-        player.UpdataEnergy(-EnergyLossOnDraw, player);
+        player.BattleNode?.UpdataEnergy(player, -EnergyLossOnDraw, player);
     }
 
     public override void UpdateDescription()
@@ -94,7 +94,7 @@ public partial class DazeStatus : Skill
 
 public partial class PlagueStatus : Skill
 {
-    private const int DamageAtTurnEnd = 5;
+    private const int TeamDamageAtTurnEnd = 3;
 
     public PlagueStatus()
         : base(SkillTypes.Status)
@@ -114,10 +114,25 @@ public partial class PlagueStatus : Skill
 
     public override async Task OnTurnEndInHand(PlayerCharacter player)
     {
-        if (player == null || player.State == Character.CharacterState.Dying)
+        if (player?.BattleNode == null)
             return;
 
-        await player.GetHurt(DamageAtTurnEnd, damageKind: Character.DamageKind.Other);
+        Character[] targets = player.BattleNode.GetOrderedTeamCharacters(
+            player.IsPlayer,
+            includeSummons: true,
+            dyingFilter: true
+        );
+        foreach (Character target in targets)
+        {
+            if (target == null || !Godot.GodotObject.IsInstanceValid(target))
+                continue;
+
+            await target.GetHurt(
+                TeamDamageAtTurnEnd,
+                source: player,
+                damageKind: Character.DamageKind.Other
+            );
+        }
     }
 
     public override void UpdateDescription()
@@ -127,8 +142,8 @@ public partial class PlagueStatus : Skill
             $"{I18n.Tr("keyword.exhaust", "消耗")}。",
             I18n.Format(
                 "skill.plague_status.desc.turn_end_damage",
-                "回合结束时若在手牌中：受到{amount}点伤害。",
-                ("amount", DamageAtTurnEnd)
+                "回合结束时若在手牌中：己方全阵受到{amount}点伤害。",
+                ("amount", TeamDamageAtTurnEnd)
             )
         );
     }

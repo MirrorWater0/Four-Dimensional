@@ -45,7 +45,7 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 20;
+        MaxLife = 15;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -59,7 +59,7 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 10;
     private const int SelfPowerGain = 2;
 
     public FerociouessAttack()
@@ -130,11 +130,7 @@ public partial class FerociouessSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: 13,
-                times: HitCount,
-                target: HostileTargetReference.All
-            )
+            AttackStep(baseDamage: 5, times: HitCount, target: HostileTargetReference.All)
         );
     }
 }

@@ -216,7 +216,9 @@ public partial class PlayerCharacter : Character
             return;
         }
 
-        DrawBattleCards(TeamTurnStartDrawContribution + Relic.GetTurnStartDrawBonus(BattleNode));
+        DrawBattleCards(
+            TeamTurnStartDrawContribution + Relic.GetTurnStartDrawBonus(BattleNode, this)
+        );
 
         if (GetBattleHandEmptySlotCount() > 0 && SpecialBuff.GetCardRefreshStack(this) > 0)
         {
@@ -308,6 +310,7 @@ public partial class PlayerCharacter : Character
             return;
 
         var discardIndexes = new HashSet<int>();
+        bool handChanged = false;
         for (int i = 0; i < Skills.Length; i++)
         {
             Skill skill = Skills[i];
@@ -330,7 +333,7 @@ public partial class PlayerCharacter : Character
                 else
                     await skill.OnTurnEndInHand(skillOwner);
 
-                if (Skills[i] == skill)
+                if (Skills[i] == skill && !skill.RetainsAtTurnEndInHand)
                 {
                     BattleNode.DiscardBattleSkill(
                         GetBattlePileOwner(skill),
@@ -339,6 +342,7 @@ public partial class PlayerCharacter : Character
                         forceDiscard: true
                     );
                     Skills[i] = null;
+                    handChanged = true;
                     InvalidateSkillTooltipCache();
                 }
                 continue;
@@ -346,14 +350,22 @@ public partial class PlayerCharacter : Character
             else
                 await skill.OnTurnEndInHand(GetBattlePileOwner(skill));
 
-            if (Skills[i] != skill)
+            if (Skills[i] != skill || skill.RetainsAtTurnEndInHand)
                 continue;
 
             discardIndexes.Add(i);
         }
 
         if (discardIndexes.Count == 0)
+        {
+            bool compacted = CompactBattleHand();
+            if (handChanged || compacted)
+            {
+                BattleNode.CharacterControl?.RefreshCurrentTurnUi();
+                InvalidateSkillTooltipCache();
+            }
             return;
+        }
 
         CharacterControl endTurnCharacterControl = BattleNode.CharacterControl;
         if (
@@ -378,10 +390,15 @@ public partial class PlayerCharacter : Character
 
             BattleNode.DiscardBattleSkill(GetBattlePileOwner(skill), skill, atTurnEnd: true);
             Skills[index] = null;
+            handChanged = true;
         }
 
-        if (discardIndexes.Count > 0)
-            InvalidateSkillTooltipCache();
+        bool compactedAfterDiscard = CompactBattleHand();
+        if (handChanged || compactedAfterDiscard)
+        {
+            BattleNode.CharacterControl?.RefreshCurrentTurnUi();
+        }
+        InvalidateSkillTooltipCache();
     }
 
     public override void OnActionStart()
@@ -477,9 +494,10 @@ public partial class PlayerCharacter : Character
         Skills = resized;
     }
 
-    private void CompactBattleHand()
+    private bool CompactBattleHand()
     {
         EnsureBattleHandSize();
+        Skill[] oldHand = Skills.ToArray();
         Skill[] compacted = new Skill[MaxBattleHandSize];
         int next = 0;
         for (int i = 0; i < Skills.Length; i++)
@@ -490,7 +508,25 @@ public partial class PlayerCharacter : Character
             compacted[next++] = Skills[i];
         }
 
+        bool changed = oldHand.Length != compacted.Length;
+        if (!changed)
+        {
+            for (int i = 0; i < oldHand.Length; i++)
+            {
+                if (!ReferenceEquals(oldHand[i], compacted[i]))
+                {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (!changed)
+            return false;
+
+        BattleNode?.CharacterControl?.QueueHandReorderAnimation(oldHand, compacted);
         Skills = compacted;
+        return true;
     }
 
     private PlayerCharacter GetBattlePileOwner(Skill skill)

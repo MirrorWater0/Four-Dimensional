@@ -65,7 +65,7 @@ public partial class BossRelicChoice : CanvasLayer
         if (!PopulateRelics())
         {
             GameInfo.PendingBossRelicChoice = false;
-            SaveSystem.SaveAll();
+            SaveSystem.SaveAllInBackground();
             return;
         }
 
@@ -304,8 +304,8 @@ public partial class BossRelicChoice : CanvasLayer
         }
 
         GameInfo.PendingBossRelicChoice = false;
-        SaveSystem.SaveAll();
         PlayOutro();
+        SaveSystem.SaveAllInBackground();
     }
 
     private void PlayIntro()
