@@ -6,8 +6,6 @@ using Godot;
 
 public partial class EnemyCharacter : Character, IIntentionPreviewSource
 {
-    private const float NormalEnemyMaxLifeMultiplier = 1.8f;
-    private const float EliteEnemyMaxLifeMultiplier = 1.2f;
     private const float DefaultIntentWeight = 3f;
     private const float ActionStartDelaySeconds = 0.2f;
 
@@ -62,6 +60,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     {
         base._Ready();
         IsPlayer = false;
+        if (FootMarker != null && GodotObject.IsInstanceValid(FootMarker))
+            FootMarker.Visible = false;
         Hoverframe.MouseEntered += OnIntentionPreviewHoverEntered;
         Hoverframe.MouseExited += OnIntentionPreviewHoverExited;
         IntentionContorl.MouseEntered += OnIntentionPreviewHoverEntered;
@@ -87,10 +87,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     {
         if (Registry != null)
         {
-            int effectiveMaxLife = GetEffectiveMaxLife(
-                Registry,
-                BattleNode?.CurrentLevelNode?.Type
-            );
+            int maxLife = Math.Max(1, Registry.MaxLife);
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
@@ -98,9 +95,9 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
                 Registry.BasePowerContribution,
                 Registry.BaseSurvivabilityContribution
             );
-            SetCombatStats(Registry.Power, Registry.Survivability, 0, effectiveMaxLife);
+            SetCombatStats(Registry.Power, Registry.Survivability, maxLife);
             if (Registry.CurrentLife < 0 || Registry.CurrentLife == Registry.MaxLife)
-                Registry.CurrentLife = effectiveMaxLife;
+                Registry.CurrentLife = maxLife;
             Skills = (Registry.SkillIDs ?? Array.Empty<SkillID>())
                 .Select(Skill.GetSkill)
                 .Where(x => x != null)
@@ -120,26 +117,14 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             Life = Math.Clamp(Registry.CurrentLife, 0, BattleMaxLife);
             SyncLifeBarsToCurrent(syncBufferValue: true);
         }
-        if (SpeedIconLabel?.GetParent() is CanvasItem speedIcon)
-            speedIcon.Visible = false;
     }
-
-    public static bool UsesNormalEnemyLifeBonus(LevelNode.LevelType? levelType) =>
-        levelType != LevelNode.LevelType.Elite && levelType != LevelNode.LevelType.Boss;
 
     public static int GetEffectiveMaxLife(EnemyRegedit regedit, LevelNode.LevelType? levelType)
     {
         if (regedit == null)
             return 0;
 
-        int maxLife = Math.Max(1, regedit.MaxLife);
-        if (levelType == LevelNode.LevelType.Elite)
-            return Math.Max(1, (int)MathF.Ceiling(maxLife * EliteEnemyMaxLifeMultiplier));
-
-        if (!UsesNormalEnemyLifeBonus(levelType))
-            return maxLife;
-
-        return Math.Max(1, (int)MathF.Ceiling(maxLife * NormalEnemyMaxLifeMultiplier));
+        return Math.Max(1, regedit.MaxLife);
     }
 
     protected Character[] ChooseHostileTargetsByOrder(
@@ -179,10 +164,13 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         await DisappearIntention();
         if (skill != null && (hadActiveStun || CanExecuteIntentionSkill(skill)))
         {
+            Character[] executedSingleTargetDamageTargets = CaptureSingleTargetDamageTargets(skill);
             using (skill.BeginEnergyCostWaiver())
             {
                 await skill.Effect();
             }
+
+            RecordExecutedSingleTargetLock(executedSingleTargetDamageTargets);
         }
 
         EndAction();
@@ -475,7 +463,13 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         if (State == CharacterState.Dying)
             return;
 
-        if (!ApplyCurrentIntentionIconState(CurrentIntentionSkill, applyRepeatSingleTargetAvoidance: false))
+        if (
+            !ApplyCurrentIntentionIconState(
+                CurrentIntentionSkill,
+                applyRepeatSingleTargetAvoidance: false,
+                relockTargets: false
+            )
+        )
             return;
 
         IntentionContorl.Modulate = Colors.White;
@@ -484,7 +478,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
 
     private bool ApplyCurrentIntentionIconState(
         Skill skill,
-        bool applyRepeatSingleTargetAvoidance
+        bool applyRepeatSingleTargetAvoidance,
+        bool relockTargets = true
     )
     {
         AttackIntention.Visible = false;
@@ -509,7 +504,8 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             return true;
         }
 
-        LockCurrentIntentionTargets(skill, applyRepeatSingleTargetAvoidance);
+        if (relockTargets)
+            LockCurrentIntentionTargets(skill, applyRepeatSingleTargetAvoidance);
         switch (skill.SkillType)
         {
             case Skill.SkillTypes.Attack:
@@ -582,8 +578,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         try
         {
             skill.LockPreviewTargetsForExecution();
-            if (applyRepeatSingleTargetAvoidance)
-                RecordSingleTargetIntentionLock(skill);
         }
         finally
         {
@@ -591,25 +585,31 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         }
     }
 
-    private void RecordSingleTargetIntentionLock(Skill skill)
+    private Character[] CaptureSingleTargetDamageTargets(Skill skill)
     {
         if (skill == null || HasActiveStun())
-            return;
+            return Array.Empty<Character>();
 
-        Character[] uniqueTargets = skill
+        skill.OwnerCharater = this;
+        return skill
             .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
             .Where(entry =>
                 entry.Target != null
                 && GodotObject.IsInstanceValid(entry.Target)
-                && entry.Target.State == CharacterState.Normal
+                && Skill.IsSelectableHostileTarget(this, entry.Target)
                 && entry.Damage > 0
             )
             .Select(entry => entry.Target)
             .Distinct()
             .ToArray();
+    }
 
-        if (uniqueTargets.Length == 1)
-            _lastSingleTargetIntentionLock = uniqueTargets[0];
+    private void RecordExecutedSingleTargetLock(Character[] uniqueTargets)
+    {
+        if (uniqueTargets == null || uniqueTargets.Length != 1)
+            return;
+
+        _lastSingleTargetIntentionLock = uniqueTargets[0];
     }
 
     private void OnIntentionPreviewHoverEntered()

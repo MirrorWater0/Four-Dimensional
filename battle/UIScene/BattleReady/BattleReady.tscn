@@ -479,36 +479,6 @@ theme_override_font_sizes/font_size = 20
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="SpeedLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=1695357776]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "速度"
-vertical_alignment = 1
-
-[node name="SpeedValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=622451317]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.64, 0.9, 1, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="TotalSpeedLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=316450550]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "总速度"
-vertical_alignment = 1
-
-[node name="TotalSpeedValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=1511239496]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.86, 0.74, 1, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 2
-vertical_alignment = 1
-
 [node name="Separator" type="ColorRect" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=1442242451]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2

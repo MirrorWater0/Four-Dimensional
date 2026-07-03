@@ -39,7 +39,6 @@ public sealed class LevelNodePropertyChangeRecord
     public string CharacterName;
     public int PowerChange;
     public int SurvivabilityChange;
-    public int SpeedChange;
     public int MaxLifeChange;
 }
 
@@ -80,7 +79,6 @@ public sealed class RunHistoryEquipmentRecord
     public string TypeLabel;
     public int Power;
     public int Survivability;
-    public int Speed;
     public int MaxLife;
     public string Description;
     public int Count;
@@ -99,7 +97,6 @@ public sealed class RunHistoryCharacterSkillRecord
     public int MaxLife;
     public int Power;
     public int Survivability;
-    public int Speed;
     public int TalentPoints;
     public List<string> UnlockedTalentIds = new();
     public List<string> UnlockedTalentNames = new();
@@ -119,6 +116,7 @@ public static partial class GameInfo
         public LevelNode.LevelType NodeType;
         public int RandomNum;
         public List<string> EnemyNames = new();
+        public List<string> Notes = new();
         public int PlayerTotalTurnCount;
         public int EnemyTotalTurnCount;
         public List<string> PlayerDamageSummaryLines = new();
@@ -173,7 +171,7 @@ public static partial class GameInfo
                     GameInfo.PlayerCharacters
                 ),
                 RelicGainedCount = CountRelicsGained(Relics, GameInfo.ToRelicDictionary()),
-                NextBattleItemDropChance = GameInfo.BattleItemDropChance,
+                NextBattleItemDropChance = GameInfo.GetBattleItemDropChanceForNextBattleAfter(node),
             };
 
             if (record.EnemyNames.Count == 0 && EnemyNames.Count > 0)
@@ -183,6 +181,7 @@ public static partial class GameInfo
                 ? record.EnemyNames?.Count ?? 0
                 : 0;
             record.ElectricityCoinGained = Math.Max(0, record.ElectricityCoinChange);
+            record.Notes = CopyStringList(Notes);
 
             return record;
         }
@@ -193,7 +192,6 @@ public static partial class GameInfo
         public string CharacterName;
         public int Power;
         public int Survivability;
-        public int Speed;
         public int MaxLife;
     }
 
@@ -332,7 +330,8 @@ public static partial class GameInfo
             activeRecord.CompletedAtUtcTicks = DateTime.UtcNow.Ticks;
             activeRecord.MapLevel = CurrentLevel;
             activeRecord.Notes ??= new List<string>();
-            activeRecord.Notes.Add("本节点未完成。");
+            if (!activeRecord.Notes.Contains("本节点未完成。"))
+                activeRecord.Notes.Add("本节点未完成。");
             activeRecord.Summary = BuildLevelNodeSummary(activeRecord);
             result.Add(activeRecord);
         }
@@ -397,7 +396,6 @@ public static partial class GameInfo
                     CharacterName = change.CharacterName,
                     PowerChange = change.PowerChange,
                     SurvivabilityChange = change.SurvivabilityChange,
-                    SpeedChange = change.SpeedChange,
                     MaxLifeChange = change.MaxLifeChange,
                 }
             );
@@ -462,7 +460,6 @@ public static partial class GameInfo
                 MaxLife = player.LifeMax,
                 Power = TalentTree.GetEffectivePower(player),
                 Survivability = TalentTree.GetEffectiveSurvivability(player),
-                Speed = player.Speed,
                 TalentPoints = player.TalentPoints,
                 UnlockedTalentIds = CopyStringList(player.UnlockedTalents),
                 UnlockedTalentNames = BuildUnlockedTalentNames(player),
@@ -601,6 +598,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Event,
             LevelNode.LevelType.Shop,
             LevelNode.LevelType.Rest,
+            LevelNode.LevelType.Treasure,
         ];
 
         return string.Join(
@@ -731,6 +729,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Event => "事件",
             LevelNode.LevelType.Shop => "商店",
             LevelNode.LevelType.Rest => "休息",
+            LevelNode.LevelType.Treasure => "宝箱",
             _ => "未知",
         };
     }
@@ -748,6 +747,11 @@ public static partial class GameInfo
 
     public static void BeginLevelNodeTracking(LevelNode node)
     {
+        EnsureActiveLevelNodeSnapshot(node);
+    }
+
+    public static void EnsureActiveLevelNodeSnapshot(LevelNode node)
+    {
         if (node == null)
             return;
 
@@ -755,6 +759,16 @@ public static partial class GameInfo
             return;
 
         _activeLevelNodeSnapshot = ActiveLevelNodeSnapshot.Capture(node);
+    }
+
+    public static void AppendActiveLevelNodeNote(string note)
+    {
+        if (string.IsNullOrWhiteSpace(note) || _activeLevelNodeSnapshot == null)
+            return;
+
+        _activeLevelNodeSnapshot.Notes ??= new List<string>();
+        if (!_activeLevelNodeSnapshot.Notes.Contains(note))
+            _activeLevelNodeSnapshot.Notes.Add(note);
     }
 
     public static void UpdateActiveLevelNodeBattleStatistics(LevelNode node)
@@ -794,6 +808,9 @@ public static partial class GameInfo
         CompletedLevelNodeRecords ??= new Dictionary<string, LevelNodeCompletionRecord>();
         CompletedLevelNodeRecords[GetLevelNodeRecordKey(record.MapLevel, node.SelfCoordinate)] = record;
 
+        if (IsBattleNode(node.Type))
+            RefreshBattleItemDropChancePreview();
+
         if (_activeLevelNodeSnapshot?.Coordinate == node.SelfCoordinate)
             _activeLevelNodeSnapshot = null;
     }
@@ -805,6 +822,12 @@ public static partial class GameInfo
 
         return CompletedLevelNodeRecords?.Values.Any(record => record?.NodeType == LevelNode.LevelType.Boss) == true;
     }
+
+    /// <summary>
+    /// Boss 已通关但 CurrentLevel 仍停留在区域 1，说明进层过程中存档未写入。
+    /// </summary>
+    public static bool NeedsRegionTransitionRecovery() =>
+        CurrentLevel <= 0 && IsRegionTwoUnlocked();
 
     public static string GetLevelNodeCompletionSummary(Vector2I coordinate)
     {
@@ -936,6 +959,7 @@ public static partial class GameInfo
             LevelNode.LevelType.Event => "事件",
             LevelNode.LevelType.Shop => "商店",
             LevelNode.LevelType.Rest => "休息",
+            LevelNode.LevelType.Treasure => "宝箱",
             _ => "未知节点",
         };
     }
@@ -970,7 +994,7 @@ public static partial class GameInfo
                 node.Type == LevelNode.LevelType.Normal
                 || node.Type == LevelNode.LevelType.Elite
                 || node.Type == LevelNode.LevelType.Boss
-                    ? node.ProduceEnemies()
+                    ? node.ProduceEnemies(allocateVisitIndex: false)
                     : null
             );
 
@@ -1024,7 +1048,6 @@ public static partial class GameInfo
                 CharacterName = GetPlayerName(player, i),
                 Power = player.Power,
                 Survivability = player.Survivability,
-                Speed = player.Speed,
                 MaxLife = player.LifeMax,
             };
         }
@@ -1200,7 +1223,6 @@ public static partial class GameInfo
                 CharacterName = GetPlayerName(current, i),
                 PowerChange = current.Power - previous.Power,
                 SurvivabilityChange = current.Survivability - previous.Survivability,
-                SpeedChange = 0,
                 MaxLifeChange = current.LifeMax - previous.MaxLife,
             };
 

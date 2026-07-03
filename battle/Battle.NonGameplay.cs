@@ -87,6 +87,15 @@ public partial class Battle
     [Export]
     public double HoverPerfWorkSpikeMs { get; set; } = 2.0;
 
+    [Export]
+    public bool PilePerfLogEnabled { get; set; } = true;
+
+    [Export]
+    public bool PilePerfAlwaysLogSummary { get; set; } = true;
+
+    [Export]
+    public double PilePerfWorkSpikeMs { get; set; } = 2.0;
+
     private ulong _lastHoverPerfTickMsec;
     private ulong _lastHoverFrameSpikeLogTickMsec;
     private string _lastHoverPerfLabel = string.Empty;
@@ -94,7 +103,6 @@ public partial class Battle
 
     public RichTextLabel BattleRecord => field ??= GetNodeOrNull<RichTextLabel>("UI/BattleRecord");
     public Button RecordButton => field ??= GetNodeOrNull<Button>("UI/RecordButton");
-    private Control ActionPoinBox => field ??= GetNodeOrNull<Control>("ActionPoinBox");
 
     private const float RecordSlideDuration = 0.2f;
     private const float RecordHideMargin = 18f;
@@ -127,7 +135,7 @@ public partial class Battle
     private readonly List<EffectSourceContext> _effectSourceStack = new();
     private readonly List<DamageRecordEntry> _damageRecords = new();
     private readonly Dictionary<Character, int> _playerDamageTotals = new();
-    private readonly List<VBoxContainer> _incomingDamagePreviewPanels = new();
+    private readonly Dictionary<ulong, VBoxContainer> _incomingDamagePreviewPanelsByTarget = new();
     private readonly Dictionary<VBoxContainer, Tween> _incomingDamagePreviewTweens = new();
     private readonly List<SingleTargetDamageIntentionArrow> _singleTargetDamageIntentionArrows =
         new();
@@ -149,6 +157,7 @@ public partial class Battle
             BattleRecord.Text = string.Empty;
         }
 
+        InitializeBattleAutomationLog();
         InitRecordButton();
     }
 
@@ -185,34 +194,56 @@ public partial class Battle
             return;
         }
 
-        int panelIndex = 0;
+        var usedTargets = new HashSet<ulong>();
         foreach (Skill.PreviewEffectEntry entry in incomingDamageEntries)
         {
-            var panel = GetOrCreateIncomingDamagePreviewPanel(
-                entry.Target,
-                panelIndex++,
-                out bool resetPosition
-            );
+            Character target = entry.Target;
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            usedTargets.Add(target.GetInstanceId());
+            VBoxContainer panel = GetOrCreateIncomingDamagePreviewPanel(target);
             if (panel == null)
                 continue;
 
+            bool preservePosition = panel.Visible;
             PreviewEffectDisplay.ShowPanel(
                 panel,
                 new[] { entry },
                 Vector2.Zero,
                 IncomingDamagePreviewOffset,
-                preservePosition: !resetPosition
+                preservePosition: preservePosition
             );
-            EnsureIncomingDamagePreviewFloat(panel, panelIndex, restart: resetPosition);
+            EnsureIncomingDamagePreviewFloat(
+                panel,
+                GetIncomingDamagePreviewFloatPhase(target),
+                restart: !preservePosition
+            );
         }
 
-        for (int i = panelIndex; i < _incomingDamagePreviewPanels.Count; i++)
+        PruneIncomingDamagePreviewPanels(usedTargets);
+    }
+
+    private static int GetIncomingDamagePreviewFloatPhase(Character target) =>
+        target?.PositionIndex ?? 0;
+
+    private void PruneIncomingDamagePreviewPanels(HashSet<ulong> usedTargets)
+    {
+        foreach (var pair in _incomingDamagePreviewPanelsByTarget.ToArray())
         {
-            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+            VBoxContainer panel = pair.Value;
+            if (!GodotObject.IsInstanceValid(panel))
             {
-                _incomingDamagePreviewPanels[i].Visible = false;
-                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
+                StopIncomingDamagePreviewFloat(panel);
+                _incomingDamagePreviewPanelsByTarget.Remove(pair.Key);
+                continue;
             }
+
+            if (usedTargets.Contains(pair.Key))
+                continue;
+
+            panel.Visible = false;
+            StopIncomingDamagePreviewFloat(panel);
         }
     }
 
@@ -295,7 +326,7 @@ public partial class Battle
                 entry.Target != null
                 && GodotObject.IsInstanceValid(entry.Target)
                 && entry.Target.IsPlayer
-                && entry.Target.State == Character.CharacterState.Normal
+                && Skill.IsCurrentlyHostileTargetable(sourceCharacter, entry.Target)
                 && entry.Damage > 0
             )
             .Select(entry => entry.Target)
@@ -468,6 +499,7 @@ public partial class Battle
                     || !GodotObject.IsInstanceValid(entry.Target)
                     || !entry.Target.IsPlayer
                     || entry.Target.State != Character.CharacterState.Normal
+                    || !Skill.IsCurrentlyHostileTargetable(sourceCharacter, entry.Target)
                     || entry.Value <= 0
                 )
                 {
@@ -554,27 +586,28 @@ public partial class Battle
 
     private void HideIncomingDamagePreview()
     {
-        for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
+        foreach (VBoxContainer panel in _incomingDamagePreviewPanelsByTarget.Values)
         {
-            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
-            {
-                _incomingDamagePreviewPanels[i].Visible = false;
-                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
-            }
+            if (!GodotObject.IsInstanceValid(panel))
+                continue;
+
+            panel.Visible = false;
+            StopIncomingDamagePreviewFloat(panel);
         }
     }
 
     private void FreeIncomingDamagePreviewLabels()
     {
-        for (int i = 0; i < _incomingDamagePreviewPanels.Count; i++)
+        foreach (VBoxContainer panel in _incomingDamagePreviewPanelsByTarget.Values)
         {
-            if (GodotObject.IsInstanceValid(_incomingDamagePreviewPanels[i]))
+            if (GodotObject.IsInstanceValid(panel))
             {
-                StopIncomingDamagePreviewFloat(_incomingDamagePreviewPanels[i]);
-                _incomingDamagePreviewPanels[i].QueueFree();
+                StopIncomingDamagePreviewFloat(panel);
+                panel.QueueFree();
             }
         }
-        _incomingDamagePreviewPanels.Clear();
+
+        _incomingDamagePreviewPanelsByTarget.Clear();
         _incomingDamagePreviewTweens.Clear();
     }
 
@@ -639,48 +672,25 @@ public partial class Battle
         }
     }
 
-    private VBoxContainer GetOrCreateIncomingDamagePreviewPanel(
-        Character target,
-        int index,
-        out bool resetPosition
-    )
+    private VBoxContainer GetOrCreateIncomingDamagePreviewPanel(Character target)
     {
-        resetPosition = true;
         if (target == null || !GodotObject.IsInstanceValid(target))
             return null;
 
-        while (_incomingDamagePreviewPanels.Count <= index)
+        ulong targetId = target.GetInstanceId();
+        if (
+            _incomingDamagePreviewPanelsByTarget.TryGetValue(targetId, out VBoxContainer panel)
+            && GodotObject.IsInstanceValid(panel)
+            && panel.GetParent() == target
+        )
         {
-            var panel = PreviewEffectDisplay.CreatePanel();
-            target.AddChild(panel);
-            _incomingDamagePreviewPanels.Add(panel);
+            return panel;
         }
 
-        var pooledPanel = _incomingDamagePreviewPanels[index];
-        if (!GodotObject.IsInstanceValid(pooledPanel))
-        {
-            pooledPanel = PreviewEffectDisplay.CreatePanel();
-            target.AddChild(pooledPanel);
-            _incomingDamagePreviewPanels[index] = pooledPanel;
-            resetPosition = true;
-        }
-        else if (pooledPanel.GetParent() == null)
-        {
-            target.AddChild(pooledPanel);
-            resetPosition = true;
-        }
-        else if (pooledPanel.GetParent() != target)
-        {
-            pooledPanel.GetParent().RemoveChild(pooledPanel);
-            target.AddChild(pooledPanel);
-            resetPosition = true;
-        }
-        else
-        {
-            resetPosition = !pooledPanel.Visible;
-        }
-
-        return pooledPanel;
+        panel = PreviewEffectDisplay.CreatePanel();
+        target.AddChild(panel);
+        _incomingDamagePreviewPanelsByTarget[targetId] = panel;
+        return panel;
     }
 
     private CanvasLayer EnsureSingleTargetDamageIntentionArrowLayer()
@@ -780,6 +790,40 @@ public partial class Battle
     {
         string line = $"[HoverPerf] {text}";
         GD.Print(line);
+    }
+
+    public void MarkPilePerfEvent(string label)
+    {
+        MarkHoverPerfEvent(null, label ?? "pile");
+    }
+
+    public void LogPilePerf(string text)
+    {
+        if (!PilePerfLogEnabled)
+            return;
+
+        GD.Print($"[PilePerf] {text}");
+    }
+
+    public void LogPilePerfSummary(string text)
+    {
+        if (!PilePerfLogEnabled || !PilePerfAlwaysLogSummary)
+            return;
+
+        LogPilePerf(text);
+    }
+
+    public void LogPilePerfWork(string label, ulong startUsec)
+    {
+        if (!PilePerfLogEnabled)
+            return;
+
+        double elapsedMs = (Time.GetTicksUsec() - startUsec) / 1000.0;
+        MarkPilePerfEvent(label);
+        if (elapsedMs < PilePerfWorkSpikeMs)
+            return;
+
+        LogPilePerf($"{label} work {elapsedMs:F2}ms");
     }
 
     private static string GetCharacterLogName(Character character)
@@ -902,6 +946,19 @@ public partial class Battle
             return;
 
         record.AppendText(indent ? $"    {line}\n" : $"{line}\n");
+        RecordAutomationEvent(
+            "record_line",
+            new Dictionary<string, object>
+            {
+                ["line"] = line,
+                ["indent"] = indent,
+            }
+        );
+    }
+
+    public void NotifyAllyAttackExecuted(Character attacker)
+    {
+        _ = TriggerShadowOnAllyAttackAsync(attacker);
     }
 
     public void RecordDamage(
@@ -926,6 +983,16 @@ public partial class Battle
             )
         );
         RecordPlayerDamageTotal(target, actualDamage);
+        RecordAutomationEvent(
+            "damage",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(resolvedSource),
+                ["target"] = CharacterAutomationId(target),
+                ["actualDamage"] = actualDamage,
+                ["blockedDamage"] = blockedDamage,
+            }
+        );
 
         string sourceText = FormatRecordSource(source);
         string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
@@ -1020,6 +1087,16 @@ public partial class Battle
             $"{sourceText} -> {targetText}  回复  [color={RecordHealColor}]{actualHeal}[/color] 点生命",
             indent: true
         );
+        RecordAutomationEvent(
+            "heal",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["actualHeal"] = actualHeal,
+            }
+        );
+        _ = TriggerSanctuaryOnHealAsync(target, source);
     }
 
     public void RecordBlockGain(Character target, int blockGain, Character source = null)
@@ -1032,6 +1109,15 @@ public partial class Battle
         AppendRecordLine(
             $"{sourceText} -> {targetText}  获得  [color={RecordNeutralColor}]{blockGain}[/color] 点格挡",
             indent: true
+        );
+        RecordAutomationEvent(
+            "block_gain",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["blockGain"] = blockGain,
+            }
         );
     }
 
@@ -1047,6 +1133,15 @@ public partial class Battle
             $"{sourceText} -> {targetText}  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] 点能量",
             indent: true
         );
+        RecordAutomationEvent(
+            "character_energy_change",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["delta"] = delta,
+            }
+        );
     }
 
     public void RecordPlayerEnergyChange(int delta, Character source = null)
@@ -1059,6 +1154,14 @@ public partial class Battle
         AppendRecordLine(
             $"{sourceText} -> [color={RecordTargetColor}]玩家能量[/color]  {action}  [color={RecordNeutralColor}]{Math.Abs(delta)}[/color] 点能量",
             indent: true
+        );
+        RecordAutomationEvent(
+            "player_energy_change",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["delta"] = delta,
+            }
         );
     }
 
@@ -1083,6 +1186,16 @@ public partial class Battle
 
         if (delta > 0)
             PropertyIncreased?.Invoke(target, type, delta, source);
+        RecordAutomationEvent(
+            "property_change",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["property"] = type.ToString(),
+                ["delta"] = delta,
+            }
+        );
     }
 
     public void RecordBuffGain(
@@ -1100,6 +1213,16 @@ public partial class Battle
         AppendRecordLine(
             $"{sourceText} -> {targetText}  获得  [color={RecordNeutralColor}]{stacks}[/color] 层{buffName.GetDescription()}",
             indent: true
+        );
+        RecordAutomationEvent(
+            "buff_gain",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["buff"] = buffName.ToString(),
+                ["stacks"] = stacks,
+            }
         );
     }
 
@@ -1132,11 +1255,14 @@ public partial class Battle
         Character source = null
     )
     {
-        if (target == null || count <= 0)
+        if (count <= 0)
             return;
 
         string sourceText = FormatRecordSource(source);
-        string targetText = FormatRecordActor(target, RecordTargetColor, "未知目标");
+        string targetText =
+            target != null
+                ? FormatRecordActor(target, RecordTargetColor, "未知目标")
+                : I18n.Tr("battle.record.team_pile", "全队牌堆");
         Skill skill = Skill.GetSkill(skillId);
         string skillName = string.IsNullOrWhiteSpace(skill?.SkillName)
             ? skillId.ToString()
@@ -1153,6 +1279,18 @@ public partial class Battle
             $"{sourceText} -> {targetText}  向{destination}塞入  [color={RecordNeutralColor}]{count}[/color] 张[color={RecordSkillColor}]{skillName}[/color]",
             indent: true
         );
+        RecordAutomationEvent(
+            "status_card_insert",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["target"] = CharacterAutomationId(target),
+                ["skillId"] = skillId.ToString(),
+                ["skillName"] = skillName,
+                ["count"] = count,
+                ["destination"] = destination,
+            }
+        );
     }
 
     public void RecordSummon(Character summon, Character source = null)
@@ -1163,6 +1301,14 @@ public partial class Battle
         string sourceText = FormatRecordSource(source);
         string targetText = FormatRecordActor(summon, RecordTargetColor, "召唤物");
         AppendRecordLine($"{sourceText} -> {targetText}  召唤登场", indent: true);
+        RecordAutomationEvent(
+            "summon",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(source),
+                ["summon"] = CharacterAutomationId(summon),
+            }
+        );
     }
 
     public void RecordDying(Character target, Character source = null)
@@ -1181,6 +1327,14 @@ public partial class Battle
 
         string sourceText = FormatRecordSource(source);
         AppendRecordLine($"{sourceText} -> {targetText}  使其进入濒死", indent: true);
+        RecordAutomationEvent(
+            "dying",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(resolvedSource),
+                ["target"] = CharacterAutomationId(target),
+            }
+        );
     }
 
     private void OnSkillUsed(Skill skill)
@@ -1202,6 +1356,16 @@ public partial class Battle
             : skill.SkillName;
         record.AppendText(
             $"[color={RecordIndexColor}]{++_recordIndex:00}[/color]  [color={RecordSourceColor}]{characterName}[/color]  释放  [color={RecordSkillColor}]{skillName}[/color]\n"
+        );
+        RecordAutomationEvent(
+            "skill_used",
+            new Dictionary<string, object>
+            {
+                ["source"] = CharacterAutomationId(skill.OwnerCharater),
+                ["skillId"] = skill.SkillId?.ToString(),
+                ["skillName"] = skillName,
+                ["skillType"] = skill.SkillType.ToString(),
+            }
         );
     }
 
@@ -1253,8 +1417,123 @@ public partial class Battle
             if (voidStacks <= 0)
                 continue;
 
+            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Void);
             using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
             await target.IncreaseProperties(PropertyType.Power, voidStacks, target);
+
+            if (HasBattleEnded() || !IsBattleAlive())
+                return;
+        }
+    }
+
+    private async Task TriggerShadowOnAllyAttackAsync(Character attacker)
+    {
+        if (
+            attacker == null
+            || !GodotObject.IsInstanceValid(attacker)
+            || !attacker.IsPlayer
+            || attacker.State == Character.CharacterState.Dying
+            || attacker.BattleNode != this
+            || HasBattleEnded()
+            || !IsBattleAlive()
+        )
+        {
+            return;
+        }
+
+        Character[] targets = GetTeamCharacters(attacker.IsPlayer, includeSummons: true)
+            .Where(target =>
+                target != null
+                && target != attacker
+                && GodotObject.IsInstanceValid(target)
+                && target.State != Character.CharacterState.Dying
+                && target.AttackBuffs?.Any(buff =>
+                    buff != null
+                    && buff.ThisBuffName == Buff.BuffName.Shadow
+                    && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            int shadowStacks =
+                target
+                    .AttackBuffs?.Where(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Shadow
+                        && buff.Stack > 0
+                    )
+                    .Sum(buff => buff.Stack) ?? 0;
+            if (shadowStacks <= 0)
+                continue;
+
+            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Shadow);
+            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Shadow));
+            await target.IncreaseProperties(PropertyType.Power, shadowStacks, attacker);
+
+            if (HasBattleEnded() || !IsBattleAlive())
+                return;
+        }
+    }
+
+    private async Task TriggerSanctuaryOnHealAsync(Character healedCharacter, Character source)
+    {
+        if (
+            healedCharacter == null
+            || !GodotObject.IsInstanceValid(healedCharacter)
+            || healedCharacter.State == Character.CharacterState.Dying
+            || healedCharacter.BattleNode != this
+            || HasBattleEnded()
+            || !IsBattleAlive()
+        )
+        {
+            return;
+        }
+
+        Character[] targets = GetTeamCharacters(healedCharacter.IsPlayer, includeSummons: true)
+            .Where(target =>
+                target != null
+                && GodotObject.IsInstanceValid(target)
+                && target.State != Character.CharacterState.Dying
+                && target.EndActionBuffs?.Any(buff =>
+                    buff != null
+                    && buff.ThisBuffName == Buff.BuffName.Sanctuary
+                    && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            int sanctuaryStacks =
+                target
+                    .EndActionBuffs?.Where(buff =>
+                        buff != null
+                        && buff.ThisBuffName == Buff.BuffName.Sanctuary
+                        && buff.Stack > 0
+                    )
+                    .Sum(buff => buff.Stack) ?? 0;
+            if (sanctuaryStacks <= 0)
+                continue;
+
+            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Sanctuary);
+            using var _ = target.BeginEffectSource(
+                Buff.GetBuffDisplayName(Buff.BuffName.Sanctuary)
+            );
+            await target.IncreaseProperties(
+                PropertyType.Power,
+                sanctuaryStacks,
+                source ?? healedCharacter
+            );
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;

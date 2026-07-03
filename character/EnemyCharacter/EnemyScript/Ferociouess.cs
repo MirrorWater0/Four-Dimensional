@@ -3,7 +3,7 @@ using Godot;
 
 public partial class Ferociouess : EnemyCharacter
 {
-    private const int StartDamageImmuneStacks = 3;
+    private const int StartDamageImmuneStacks = 4;
     private const int TurnEndDamageImmuneStacks = 1;
 
     public const string PassiveNameText = "骨骼硬化";
@@ -45,7 +45,7 @@ public partial class FerociouessRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
 
-        MaxLife = 15;
+        MaxLife = 51;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -59,14 +59,10 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 11;
     private const int SelfPowerGain = 2;
 
-    public FerociouessAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "凶恶冲击";
 
@@ -86,11 +82,7 @@ public partial class FerociouessSurvive : Skill
     private const int DamageImmuneStacks = 0;
     private const int VulnerableStacks = 2;
 
-    public FerociouessSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "骨骼免疫";
 
@@ -117,11 +109,7 @@ public partial class FerociouessSpecial : Skill
 {
     private const int HitCount = 2;
 
-    public FerociouessSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "狂暴";
     public override int EnergyCost => 4;

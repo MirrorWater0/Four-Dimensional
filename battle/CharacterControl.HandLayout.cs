@@ -1,0 +1,1293 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Godot;
+
+public partial class CharacterControl
+{
+    private void LayoutActionCards()
+    {
+        LayoutActionCards(instant: false);
+    }
+
+    private void LayoutActionCards(bool instant)
+    {
+        if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
+            return;
+
+        SyncHandInputBlockerRect();
+        if (_manualTargetArrowSelectionActive)
+            return;
+
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
+        int handCount = visibleSlotIndexes.Length;
+        float rowWidth = Math.Max(_cardRow.Size.X, 0f);
+        float rowHeight = Math.Max(_cardRow.Size.Y, cardSize.Y);
+        float cardY = GetHandCardY(rowHeight, cardSize);
+        Vector2 hiddenPosition = new(-cardSize.X * 2f, cardY);
+        Dictionary<int, Vector2> targetPositions = BuildHandLayoutTargetPositions(
+            visibleSlotIndexes,
+            cardSize,
+            rowWidth,
+            rowHeight
+        );
+        var handOrderBySlotIndex = new Dictionary<int, int>();
+        for (int order = 0; order < visibleSlotIndexes.Length; order++)
+            handOrderBySlotIndex[visibleSlotIndexes[order]] = order;
+
+        for (int i = 0; i < _cardSlots.Length; i++)
+        {
+            Control slot = _cardSlots[i];
+            if (slot == null || !GodotObject.IsInstanceValid(slot))
+                continue;
+
+            if (_turnEndStatusTriggerCardIndexes.Contains(i))
+                continue;
+
+            bool isDetachedFromHand = IsCardDetachedFromHandLayout(i) || IsCardCommitted(i);
+            slot.Size = cardSize;
+            slot.CustomMinimumSize = cardSize;
+            slot.PivotOffset = cardSize * 0.5f;
+            if (handOrderBySlotIndex.TryGetValue(i, out int handOrder))
+                ApplyHandCardLayer(i, handOrder);
+            else
+                ApplyHandCardLayer(i, 0);
+
+            if (isDetachedFromHand)
+            {
+                _cardSlotLayoutTweens[i]?.Kill();
+                _cardSlotLayoutTweens[i] = null;
+                _cardSlotLayoutTargets[i] = null;
+                _cardSlotLayoutRotationTargets[i] = null;
+                _cardSlotLayoutFollowActive[i] = false;
+                _cardSlotLayoutPixelsPerSecondOverrides[i] = 0f;
+                ClearDrawEntryState(i, revealCard: true);
+                continue;
+            }
+
+            Vector2 targetPosition = targetPositions.TryGetValue(i, out Vector2 visiblePosition)
+                ? visiblePosition
+                : hiddenPosition;
+            if (_discardSelectionFlyingReturnHandIndexes.Contains(i))
+            {
+                _cardSlotLayoutTargets[i] = targetPosition;
+                _cardSlotLayoutRotationTargets[i] = 0f;
+                if (!_cardSlotLayoutFollowActive[i])
+                {
+                    _cardSlotLayoutFollowActive[i] = true;
+                    UpdateProcessState();
+                }
+                continue;
+            }
+
+            bool drawEntry = _drawEntrySlotIndexes.Contains(i);
+            MoveCardSlotTo(i, targetPosition, 0f, instant || !_layoutInitialized, drawEntry);
+        }
+
+        _layoutInitialized = true;
+    }
+
+    private Dictionary<int, Vector2> BuildHandLayoutTargetPositions(
+        int[] visibleSlotIndexes,
+        Vector2 cardSize,
+        float rowWidth,
+        float rowHeight
+    )
+    {
+        visibleSlotIndexes ??= Array.Empty<int>();
+        int handCount = visibleSlotIndexes?.Length ?? 0;
+        float preferredStep =
+            handCount > 1 ? cardSize.X * HandCardOverlapStepRatio : cardSize.X + HandCardGap;
+        float minStep = cardSize.X * HandCardMinStepRatio;
+        float cardStep =
+            handCount > 1
+                ? Mathf.Clamp((rowWidth - cardSize.X) / (handCount - 1), minStep, preferredStep)
+                : 0f;
+        float totalWidth =
+            handCount > 1 ? cardSize.X + cardStep * (handCount - 1) : handCount * cardSize.X;
+        float x = (rowWidth - totalWidth) / 2f;
+        float cardY = GetHandCardY(rowHeight, cardSize);
+        int hoveredOrder = Array.IndexOf(visibleSlotIndexes, _hoveredCardIndex);
+        float overlapWidth = Math.Max(0f, cardSize.X - cardStep);
+        float hoverSpread = Mathf.Clamp(
+            overlapWidth * HandCardHoverSpreadRatio,
+            0f,
+            HandCardMaxHoverSpread
+        );
+        var targetPositions = new Dictionary<int, Vector2>();
+        for (int order = 0; order < handCount; order++)
+        {
+            int slotIndex = visibleSlotIndexes[order];
+            float targetX = x + cardStep * order;
+            if (hoveredOrder != -1 && order != hoveredOrder)
+            {
+                int distance = Math.Abs(order - hoveredOrder);
+                float distanceFalloff = 1f / distance;
+                targetX += Math.Sign(order - hoveredOrder) * hoverSpread * distanceFalloff;
+            }
+
+            targetPositions[slotIndex] = new Vector2(targetX, cardY);
+        }
+
+        return targetPositions;
+    }
+
+    private float GetHandCardY(float rowHeight, Vector2 cardSize)
+    {
+        return Math.Max(0f, rowHeight - cardSize.Y) + HandCardYOffset;
+    }
+
+    private void UpdateHandLayoutFollowers(float delta)
+    {
+        if (delta <= 0f || _cardSlots == null)
+            return;
+
+        bool hasActiveFollower = false;
+        float followRatio = 1f - Mathf.Exp(-HandLayoutFollowSharpness * delta);
+        for (int i = 0; i < _cardSlots.Length; i++)
+        {
+            if (
+                !_cardSlotLayoutFollowActive[i]
+                || !_cardSlotLayoutTargets[i].HasValue
+                || !_cardSlotLayoutRotationTargets[i].HasValue
+            )
+            {
+                continue;
+            }
+
+            Control slot = _cardSlots[i];
+            if (slot == null || !GodotObject.IsInstanceValid(slot))
+            {
+                _cardSlotLayoutFollowActive[i] = false;
+                _cardSlotLayoutPixelsPerSecondOverrides[i] = 0f;
+                continue;
+            }
+
+            Vector2 targetPosition = _cardSlotLayoutTargets[i].Value;
+            float targetRotation = _cardSlotLayoutRotationTargets[i].Value;
+            float distance = slot.Position.DistanceTo(targetPosition);
+            float rotationDistance = Math.Abs(slot.Rotation - targetRotation);
+            if (
+                distance <= HandLayoutFollowSnapDistance
+                && rotationDistance <= HandLayoutFollowSnapRotation
+            )
+            {
+                slot.Position = targetPosition;
+                slot.Rotation = targetRotation;
+                _cardSlotLayoutFollowActive[i] = false;
+                _cardSlotLayoutPixelsPerSecondOverrides[i] = 0f;
+                continue;
+            }
+
+            bool hasSpeedOverride = _cardSlotLayoutPixelsPerSecondOverrides[i] > 0f;
+            float pixelsPerSecond = hasSpeedOverride
+                ? _cardSlotLayoutPixelsPerSecondOverrides[i]
+                : HandLayoutPixelsPerSecond;
+            float maxMove = pixelsPerSecond * delta;
+            float move = Math.Min(
+                maxMove,
+                hasSpeedOverride
+                    ? distance
+                    : Math.Max(HandLayoutFollowSnapDistance, distance * followRatio)
+            );
+            bool drawEntryFollower =
+                _drawEntryPreviewCards.ContainsKey(i)
+                || _drawEntrySlotIndexes.Contains(i)
+                || _discardSelectionFlyingReturnHandIndexes.Contains(i);
+            slot.Position = drawEntryFollower
+                ? slot.Position.Lerp(targetPosition, followRatio)
+                : slot.Position.MoveToward(targetPosition, move);
+            slot.Rotation = Mathf.Lerp(slot.Rotation, targetRotation, followRatio);
+            hasActiveFollower = true;
+        }
+
+        if (!hasActiveFollower)
+            UpdateProcessState();
+    }
+
+    private void UpdateProcessState()
+    {
+        SetProcess(
+            _liftedCardIndex != -1
+                || IsAnyHandLayoutFollowerActive()
+                || _pileOverlaySmoothScrollActive
+        );
+    }
+
+    private bool IsAnyHandLayoutFollowerActive()
+    {
+        return _cardSlotLayoutFollowActive?.Any(active => active) == true;
+    }
+
+    private void ApplyHandCardLayer(int index, int handOrder)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        Control slot = _cardSlots[index];
+        SkillCard card = _cards[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        int layer = handOrder + 1;
+        if (index == _hoveredCardIndex)
+            layer = HandCardHoverZIndex;
+        else if (index == _liftedCardIndex || IsCardCommitted(index))
+            layer = Math.Max(slot.ZIndex, PlayedCardZIndex);
+        else if (_discardSelectionFlyingReturnHandIndexes.Contains(index))
+            layer = DiscardSelectionSelectedCardZIndex;
+
+        slot.ZIndex = layer;
+        if (card != null && GodotObject.IsInstanceValid(card))
+            card.ZIndex = layer;
+    }
+
+    private List<int> BuildHandCardInputPriorityOrder()
+    {
+        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
+        var ordered = new List<int>(visibleSlotIndexes.Length);
+        foreach (int index in visibleSlotIndexes)
+            ordered.Add(index);
+
+        if (_hoveredCardIndex >= 0 && ordered.Remove(_hoveredCardIndex))
+            ordered.Add(_hoveredCardIndex);
+
+        return ordered;
+    }
+
+    private int GetHandCardInputInsertIndex()
+    {
+        if (
+            _handInputBlocker != null
+            && GodotObject.IsInstanceValid(_handInputBlocker)
+            && _handInputBlocker.GetParent() == _cardRow
+        )
+        {
+            return _handInputBlocker.GetIndex();
+        }
+
+        return _cardRow?.GetChildCount() ?? 0;
+    }
+
+    private void SyncHandCardInputOrder()
+    {
+        if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
+            return;
+
+        List<int> orderedVisible = BuildHandCardInputPriorityOrder();
+        if (orderedVisible.Count == 0)
+            return;
+
+        int insertIndex = GetHandCardInputInsertIndex();
+        foreach (int slotIndex in orderedVisible)
+        {
+            Control slot = _cardSlots[slotIndex];
+            if (slot == null || !GodotObject.IsInstanceValid(slot) || slot.GetParent() != _cardRow)
+                continue;
+
+            _cardRow.MoveChild(slot, insertIndex);
+        }
+    }
+
+    private void ApplyHandCardHoverInputOrder()
+    {
+        if (_hoveredCardIndex != -1)
+            ScheduleCardHoverRefresh();
+    }
+
+    private int GetHandOrderForSlotIndex(int index)
+    {
+        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
+        int order = Array.IndexOf(visibleSlotIndexes, index);
+        return order >= 0 ? order : Math.Max(0, index);
+    }
+
+    private void MoveCardSlotTo(
+        int index,
+        Vector2 targetPosition,
+        float targetRotation,
+        bool instant,
+        bool drawEntry = false,
+        float layoutDelay = 0f
+    )
+    {
+        if (index < 0 || index >= _cardSlots.Length)
+            return;
+
+        Control slot = _cardSlots[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        if (drawEntry)
+        {
+            _cardSlotLayoutTweens[index]?.Kill();
+            _cardSlotLayoutTweens[index] = null;
+            _cardSlotLayoutTargets[index] = targetPosition;
+            _cardSlotLayoutRotationTargets[index] = targetRotation;
+            slot.Scale = Vector2.One;
+
+            if (_drawEntryPreviewCards.ContainsKey(index))
+            {
+                _cardSlotLayoutFollowActive[index] = true;
+                UpdateProcessState();
+            }
+            else if (!_pendingDrawEntryAnimations.Contains(index))
+            {
+                StartDrawEntryPreviewAnimation(index, targetPosition, targetPosition, layoutDelay);
+            }
+
+            return;
+        }
+
+        if (
+            instant
+            || (
+                slot.Position.DistanceSquaredTo(targetPosition) < 0.25f
+                && Math.Abs(slot.Rotation - targetRotation) < 0.002f
+            )
+        )
+        {
+            _cardSlotLayoutTweens[index]?.Kill();
+            _cardSlotLayoutTweens[index] = null;
+            _cardSlotLayoutTargets[index] = targetPosition;
+            _cardSlotLayoutRotationTargets[index] = targetRotation;
+            _cardSlotLayoutFollowActive[index] = false;
+            _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+            ClearDrawEntryState(index, revealCard: true);
+            CancelDrawEntryPreview(index);
+            slot.Position = targetPosition;
+            slot.Rotation = targetRotation;
+            slot.Scale = Vector2.One;
+            return;
+        }
+
+        if (
+            _cardSlotLayoutTargets[index].HasValue
+            && _cardSlotLayoutTargets[index].Value.DistanceSquaredTo(targetPosition) < 0.25f
+            && _cardSlotLayoutRotationTargets[index].HasValue
+            && Math.Abs(_cardSlotLayoutRotationTargets[index].Value - targetRotation) < 0.002f
+            && (_cardSlotLayoutTweens[index] != null || _cardSlotLayoutFollowActive[index])
+        )
+        {
+            return;
+        }
+
+        if (_cardSlotLayoutTweens[index] != null)
+        {
+            _cardSlotLayoutTweens[index]?.Kill();
+            HideCardDrawEntryTrail(index);
+        }
+
+        CancelDrawEntryPreview(index);
+        _cardSlotLayoutTweens[index] = null;
+        _cardSlotLayoutTargets[index] = targetPosition;
+        _cardSlotLayoutRotationTargets[index] = targetRotation;
+        _cardSlotLayoutFollowActive[index] = true;
+        slot.Scale = Vector2.One;
+        UpdateProcessState();
+    }
+
+    private static float GetHandLayoutTweenDuration(Vector2 startPosition, Vector2 targetPosition)
+    {
+        float distance = startPosition.DistanceTo(targetPosition);
+        return Mathf.Clamp(
+            distance / HandLayoutPixelsPerSecond,
+            HandLayoutMinTweenDuration,
+            HandLayoutMaxTweenDuration
+        );
+    }
+
+    private float GetDrawEntryDelay(int index)
+    {
+        return _drawEntrySlotOrders.TryGetValue(index, out int order)
+            ? GetDrawEntryDelayForOrder(order, GetDrawEntryBatchCount())
+            : 0f;
+    }
+
+    private int GetDrawEntryBatchCount() => Math.Max(1, _drawEntrySlotOrders.Count);
+
+    private static float GetDrawEntryTweenDuration(
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        int batchCount
+    )
+    {
+        float distance = startPosition.DistanceTo(targetPosition);
+        float duration = Mathf.Clamp(
+            distance / HandDrawEntryPixelsPerSecond,
+            HandDrawEntryMinTweenDuration,
+            HandDrawEntryMaxTweenDuration
+        );
+
+        if (batchCount >= HandDrawEntryCompactDurationThreshold)
+            duration *= HandDrawEntryManyCardDurationScale;
+
+        return Mathf.Max(0.16f, duration);
+    }
+
+    private static float GetDrawEntryDelayForOrder(int order, int batchCount)
+    {
+        order = Math.Max(0, order);
+        batchCount = Math.Max(1, batchCount);
+        if (order == 0 || batchCount <= 1)
+            return 0f;
+
+        float dynamicStagger = Math.Min(
+            HandDrawEntryStagger,
+            HandDrawEntryMaxTotalStaggerDuration / Math.Max(1, batchCount - 1)
+        );
+        dynamicStagger = Mathf.Clamp(dynamicStagger, HandDrawEntryMinStagger, HandDrawEntryStagger);
+        return order * dynamicStagger;
+    }
+
+    private void StartDrawEntryPreviewAnimation(
+        int index,
+        Vector2 targetPosition,
+        Vector2 entryTarget,
+        float layoutDelay
+    )
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        int version = ++_drawEntryAnimationVersions[index];
+        _pendingDrawEntryAnimations.Add(index);
+        _ = PlayDrawEntryPreviewAnimationAsync(
+            index,
+            targetPosition,
+            entryTarget,
+            layoutDelay,
+            version
+        );
+    }
+
+    private async Task PlayDrawEntryPreviewAnimationAsync(
+        int index,
+        Vector2 targetPosition,
+        Vector2 entryTarget,
+        float layoutDelay,
+        int version
+    )
+    {
+        float delay = GetDrawEntryDelay(index) + GetPendingShuffleDrawEntryDelay();
+        delay = Math.Max(delay, layoutDelay);
+        if (delay > 0f && IsInsideTree())
+            await ToSignal(GetTree().CreateTimer(delay), SceneTreeTimer.SignalName.Timeout);
+
+        if (!CanStartDrawEntryAnimation(index, version))
+            return;
+
+        Vector2 currentTargetPosition = GetDrawEntryTargetSlotPosition(index, targetPosition);
+        SkillCard movingCard = ActivateDrawEntryCardInHandSlot(index, currentTargetPosition);
+        if (movingCard == null)
+        {
+            _pendingDrawEntryAnimations.Remove(index);
+            FinishDrawEntryAnimation(index, version, revealCard: true);
+            return;
+        }
+
+        _pendingDrawEntryAnimations.Remove(index);
+
+        if (!CanContinueDrawEntryAnimation(index, version, movingCard))
+            return;
+
+        if (!_drawEntryFromPlayedCardOrigin.Contains(index))
+            PulsePileButtonReceive(_drawPileButton);
+        movingCard.Visible = true;
+        movingCard.Modulate = Colors.White;
+
+        Vector2 startCenter = GetDrawEntryStartCenter(index);
+        Vector2 targetCenter = GetDrawEntryTargetCenter(index, currentTargetPosition);
+
+        PrepareDrawEntryPreviewTrail(movingCard, out Line trail, out GpuParticles2D particles);
+        UpdateTrailParticlesRotation(particles, targetCenter - startCenter);
+
+        await WaitForDrawEntrySlotArrivalAsync(index, version, movingCard, particles);
+        if (!IsInsideTree() || !CanContinueDrawEntryAnimation(index, version, movingCard))
+            return;
+
+        FinishDrawEntrySlotArrival(index, movingCard);
+        _ = FadeAndHideDrawEntryPreviewTrailAsync(trail, particles);
+        if (
+            _drawEntryPreviewCards.TryGetValue(index, out SkillCard currentPreview)
+            && currentPreview == movingCard
+        )
+        {
+            _drawEntryPreviewCards.Remove(index);
+        }
+        FinishDrawEntryAnimation(index, version, revealCard: false);
+        ScheduleCardHoverRefresh();
+    }
+
+    private SkillCard ActivateDrawEntryCardInHandSlot(int index, Vector2 targetPosition)
+    {
+        Skill[] hand = GetActiveHandSkills();
+        Skill skill = hand != null && index < hand.Length ? hand[index] : null;
+        if (skill == null)
+            return null;
+
+        CancelDrawEntryPreview(index, invalidateAnimation: false);
+
+        SkillCard card = _cards[index];
+        Control slot = _cardSlots[index];
+        if (
+            card == null
+            || !GodotObject.IsInstanceValid(card)
+            || slot == null
+            || !GodotObject.IsInstanceValid(slot)
+        )
+        {
+            return null;
+        }
+
+        Node oldParent = card.GetParent();
+        if (oldParent != slot)
+        {
+            oldParent?.RemoveChild(card);
+            slot.AddChild(card);
+        }
+
+        slot.ClipContents = false;
+        slot.Position = GetDrawEntryStartSlotPosition(index);
+        slot.Rotation = 0f;
+        slot.Scale = Vector2.One;
+
+        card.RestoreDisplayState();
+        card.SetSkill(skill);
+        card.CharacterName.Text = GetSkillOwnerDisplayName(skill);
+        card.Visible = true;
+        card.MouseFilter = MouseFilterEnum.Stop;
+        SetCardButtonInputEnabled(card, false);
+        card.HoverHint.Visible = false;
+        card.PivotOffset = BattleCardBaseSize * 0.5f;
+        card.Scale = BattleCardScale;
+        card.Rotation = 0f;
+        card.Position = Vector2.Zero;
+        ApplyHandCardLayer(index, GetHandOrderForSlotIndex(index));
+        _hiddenPendingDrawEntrySlotIndexes.Remove(index);
+        _cardSlotLayoutTargets[index] = targetPosition;
+        _cardSlotLayoutRotationTargets[index] = 0f;
+        _cardSlotLayoutFollowActive[index] = true;
+        UpdateProcessState();
+        _drawEntryPreviewCards[index] = card;
+        return card;
+    }
+
+    private async Task WaitForDrawEntrySlotArrivalAsync(
+        int index,
+        int version,
+        SkillCard movingCard,
+        GpuParticles2D particles
+    )
+    {
+        while (
+            CanContinueDrawEntryAnimation(index, version, movingCard)
+            && _cardSlotLayoutFollowActive[index]
+            && IsInsideTree()
+        )
+        {
+            Vector2 currentCenter =
+                movingCard.GetGlobalTransformWithCanvas() * movingCard.PivotOffset;
+            Vector2 targetCenter = GetDrawEntryTargetCenter(
+                index,
+                GetDrawEntryTargetSlotPosition(index, Vector2.Zero)
+            );
+            UpdateTrailParticlesRotation(particles, targetCenter - currentCenter);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+    }
+
+    private void FinishDrawEntrySlotArrival(int index, SkillCard card)
+    {
+        if (!IsCardIndexValid(index) || card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Control slot = _cardSlots[index];
+        if (slot != null && GodotObject.IsInstanceValid(slot))
+        {
+            slot.Position = GetDrawEntryTargetSlotPosition(index, slot.Position);
+            slot.Rotation = 0f;
+            slot.Scale = Vector2.One;
+            _cardSlotLayoutFollowActive[index] = false;
+            _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        }
+
+        card.Position = Vector2.Zero;
+        card.Rotation = 0f;
+        card.Scale = BattleCardScale;
+    }
+
+    private async Task ReturnDrawEntryCardToSlotSmoothAsync(int index, SkillCard card)
+    {
+        if (!ReturnDrawEntryCardToSlot(index, card, preserveGlobalCenter: true))
+            return;
+
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        float distance = card.Position.DistanceTo(Vector2.Zero);
+        if (distance <= 0.5f || !card.IsInsideTree())
+        {
+            card.Position = Vector2.Zero;
+            return;
+        }
+
+        float duration = Mathf.Clamp(distance / HandDrawEntryPixelsPerSecond, 0.045f, 0.12f);
+        Tween settleTween = card.CreateTween();
+        settleTween
+            .TweenProperty(card, "position", Vector2.Zero, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        await ToSignal(settleTween, Tween.SignalName.Finished);
+
+        if (card != null && GodotObject.IsInstanceValid(card))
+            card.Position = Vector2.Zero;
+    }
+
+    private bool ReturnDrawEntryCardToSlot(
+        int index,
+        SkillCard card,
+        bool preserveGlobalCenter = false
+    )
+    {
+        if (
+            !IsCardIndexValid(index)
+            || card == null
+            || !GodotObject.IsInstanceValid(card)
+            || _cardSlots[index] == null
+            || !GodotObject.IsInstanceValid(_cardSlots[index])
+        )
+        {
+            return false;
+        }
+
+        Vector2 globalCenter = preserveGlobalCenter
+            ? card.GetGlobalTransformWithCanvas() * card.PivotOffset
+            : Vector2.Zero;
+        Node parent = card.GetParent();
+        parent?.RemoveChild(card);
+        _cardSlots[index].AddChild(card);
+        card.Position = Vector2.Zero;
+        card.Rotation = 0f;
+        card.Scale = BattleCardScale;
+        if (preserveGlobalCenter)
+            SetCardPivotCenterAt(card, globalCenter);
+        card.Visible = true;
+        card.MouseFilter = MouseFilterEnum.Stop;
+        SetCardButtonInputEnabled(card, false);
+        card.HoverHint.Visible = false;
+        _cards[index] = card;
+        return true;
+    }
+
+    private int GetDrawEntryOrder(int index) =>
+        _drawEntrySlotOrders.TryGetValue(index, out int order) ? order : 0;
+
+    private Vector2 GetDrawEntryStartCenter()
+    {
+        if (
+            _drawPileButton != null
+            && GodotObject.IsInstanceValid(_drawPileButton)
+            && _drawPileButton.IsInsideTree()
+        )
+        {
+            return GetPileButtonVisualCenter(_drawPileButton);
+        }
+
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        return GetCardRowGlobalPosition(new Vector2(-cardSize.X * 0.85f, 0f)) + cardSize * 0.5f;
+    }
+
+    private Vector2 GetDrawEntryStartCenter(int index)
+    {
+        return _drawEntryStartCenters.TryGetValue(index, out Vector2 center)
+            ? center
+            : GetDrawEntryStartCenter();
+    }
+
+    private Vector2 GetDrawEntryStartSlotPosition(int index)
+    {
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        return GetCardRowLocalPosition(GetDrawEntryStartCenter(index)) - cardSize * 0.5f;
+    }
+
+    private Vector2 GetDrawEntryTargetSlotPosition(int index, Vector2 fallbackTargetPosition)
+    {
+        return IsCardIndexValid(index) && _cardSlotLayoutTargets[index].HasValue
+            ? _cardSlotLayoutTargets[index].Value
+            : fallbackTargetPosition;
+    }
+
+    private Vector2 GetDrawEntryTargetCenter(int index, Vector2 fallbackTargetPosition)
+    {
+        Vector2 landingOffset = new(0f, HandDrawEntryLandingYOffset);
+        Vector2 targetPosition = GetDrawEntryTargetSlotPosition(index, fallbackTargetPosition);
+        return GetCardRowGlobalPosition(targetPosition)
+            + BattleCardBaseSize * BattleCardScale * 0.5f
+            + landingOffset;
+    }
+
+    private Vector2 GetCardRowGlobalPosition(Vector2 localPosition)
+    {
+        if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
+            return localPosition;
+
+        return _cardRow.GetGlobalTransformWithCanvas() * localPosition;
+    }
+
+    private Vector2 GetCardRowLocalPosition(Vector2 globalPosition)
+    {
+        if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
+            return globalPosition;
+
+        return _cardRow.GetGlobalTransformWithCanvas().AffineInverse() * globalPosition;
+    }
+
+    private void FinishDrawEntryAnimation(int index, int version, bool revealCard)
+    {
+        if (!IsCardIndexValid(index) || _drawEntryAnimationVersions[index] != version)
+            return;
+
+        ClearDrawEntryState(index, revealCard, hideTrail: true);
+        RefreshTurnUi();
+    }
+
+    private bool CanContinueDrawEntryAnimation(int index, int version, SkillCard previewCard)
+    {
+        return IsCardIndexValid(index)
+            && _drawEntryAnimationVersions[index] == version
+            && _drawEntrySlotIndexes.Contains(index)
+            && previewCard != null
+            && GodotObject.IsInstanceValid(previewCard);
+    }
+
+    private bool CanStartDrawEntryAnimation(int index, int version)
+    {
+        return IsCardIndexValid(index)
+            && _drawEntryAnimationVersions[index] == version
+            && _drawEntrySlotIndexes.Contains(index);
+    }
+
+    private void CancelDrawEntryPreview(int index, bool invalidateAnimation = true)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        if (invalidateAnimation)
+            _drawEntryAnimationVersions[index]++;
+        _pendingDrawEntryAnimations.Remove(index);
+        if (!_drawEntryPreviewCards.TryGetValue(index, out SkillCard previewCard))
+            return;
+
+        _drawEntryPreviewCards.Remove(index);
+        if (previewCard != null && GodotObject.IsInstanceValid(previewCard))
+            ReturnDrawEntryCardToSlot(index, previewCard);
+    }
+
+    private float GetPendingShuffleDrawEntryDelay()
+    {
+        return GetRemainingShuffleDrawEntryDelay();
+    }
+
+    private float GetRemainingShuffleDrawEntryDelay()
+    {
+        if (_shuffleDrawEntryDelayUntilMsec == 0)
+            return 0f;
+
+        ulong now = Time.GetTicksMsec();
+        if (now >= _shuffleDrawEntryDelayUntilMsec)
+        {
+            _shuffleDrawEntryDelayUntilMsec = 0;
+            return 0f;
+        }
+
+        return (_shuffleDrawEntryDelayUntilMsec - now) / 1000f;
+    }
+
+    private bool ShouldDelayHandLayoutForShuffleDraw()
+    {
+        return _hiddenPendingDrawEntrySlotIndexes.Count > 0
+            && GetRemainingShuffleDrawEntryDelay() > 0f;
+    }
+
+    private void ScheduleHandLayoutAfterShuffleDrawDelay()
+    {
+        float delay = GetRemainingShuffleDrawEntryDelay();
+        if (delay <= 0f || !IsInsideTree())
+            return;
+
+        int version = ++_shuffleDelayedLayoutRefreshVersion;
+        _ = RefreshTurnUiAfterShuffleDrawDelayAsync(version, delay);
+    }
+
+    private async Task RefreshTurnUiAfterShuffleDrawDelayAsync(int version, float delay)
+    {
+        await ToSignal(GetTree().CreateTimer(delay), SceneTreeTimer.SignalName.Timeout);
+        if (version != _shuffleDelayedLayoutRefreshVersion || !IsInsideTree())
+            return;
+
+        RefreshTurnUi();
+    }
+
+    private int[] GetVisibleHandSlotIndexes(bool excludeLiftedCard = false)
+    {
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null)
+            return Array.Empty<int>();
+
+        int max = Math.Min(hand.Length, _cards.Length);
+        var indexes = new List<int>(max);
+        for (int i = 0; i < max; i++)
+        {
+            if (excludeLiftedCard && IsCardDetachedFromHandLayout(i))
+                continue;
+            if (_turnEndStatusTriggerCardIndexes.Contains(i))
+                continue;
+            if (hand[i] != null)
+                indexes.Add(i);
+        }
+
+        return indexes.ToArray();
+    }
+
+    private bool IsCardDetachedFromHandLayout(int index)
+    {
+        if (!IsCardIndexValid(index))
+            return false;
+
+        return index == _liftedCardIndex
+            || (
+                _manualTargetArrowSelectionActive
+                && index == _manualTargetArrowCardIndex
+            );
+    }
+
+    private Vector2?[] CaptureCardSlotPositions()
+    {
+        var positions = new Vector2?[_cardSlots.Length];
+        for (int i = 0; i < _cardSlots.Length; i++)
+        {
+            Control slot = _cardSlots[i];
+            if (slot == null || !GodotObject.IsInstanceValid(slot))
+                continue;
+
+            positions[i] = slot.Position;
+        }
+
+        return positions;
+    }
+
+    private float?[] CaptureCardSlotRotations()
+    {
+        var rotations = new float?[_cardSlots.Length];
+        for (int i = 0; i < _cardSlots.Length; i++)
+        {
+            Control slot = _cardSlots[i];
+            if (slot == null || !GodotObject.IsInstanceValid(slot))
+                continue;
+
+            rotations[i] = slot.Rotation;
+        }
+
+        return rotations;
+    }
+
+    private bool IsDiscardSelectionReturnSlot(int index) =>
+        _discardSelectionReturningHandIndexes.Contains(index)
+        || _discardSelectionFlyingReturnHandIndexes.Contains(index);
+
+    private bool TryDetachDrawEntryStateForHandReorder(int index, out Vector2 startPosition)
+    {
+        startPosition = Vector2.Zero;
+        if (
+            !IsCardIndexValid(index)
+            || !IsCardDrawEntryBusy(index)
+            || _cardSlots[index] == null
+            || !GodotObject.IsInstanceValid(_cardSlots[index])
+        )
+        {
+            return false;
+        }
+
+        SkillCard card = _cards[index];
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        if (card != null && GodotObject.IsInstanceValid(card) && card.Visible)
+        {
+            Vector2 globalCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
+            startPosition = GetCardRowLocalPosition(globalCenter) - cardSize * 0.5f;
+        }
+        else if (_hiddenPendingDrawEntrySlotIndexes.Contains(index))
+        {
+            startPosition = GetDrawEntryStartSlotPosition(index);
+        }
+        else if (_cardSlotLayoutTargets[index].HasValue)
+        {
+            startPosition = _cardSlotLayoutTargets[index].Value;
+        }
+        else
+        {
+            startPosition = _cardSlots[index].Position;
+        }
+
+        CancelDrawEntryPreview(index);
+        ClearDrawEntryState(index, revealCard: true);
+        _cardSlotLayoutTweens[index]?.Kill();
+        _cardSlotLayoutTweens[index] = null;
+        _cardSlotLayoutTargets[index] = null;
+        _cardSlotLayoutRotationTargets[index] = null;
+        _cardSlotLayoutFollowActive[index] = false;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        _cardSlots[index].Position = startPosition;
+        _cardSlots[index].Rotation = 0f;
+        _cardSlots[index].Scale = Vector2.One;
+
+        if (card != null && GodotObject.IsInstanceValid(card))
+        {
+            if (card.GetParent() != _cardSlots[index])
+            {
+                card.GetParent()?.RemoveChild(card);
+                _cardSlots[index].AddChild(card);
+            }
+
+            card.Position = Vector2.Zero;
+            card.Rotation = 0f;
+            card.Scale = BattleCardScale;
+            card.Visible = true;
+            card.HoverHint.Visible = false;
+        }
+
+        startPosition = NormalizeHandReorderStartPosition(startPosition);
+
+        return true;
+    }
+
+    private void DetachDrawEntryStateForImmediateInteraction(int index)
+    {
+        if (!IsCardIndexValid(index) || !IsCardDrawEntryBusy(index))
+            return;
+
+        TryDetachDrawEntryStateForHandReorder(index, out _);
+
+        Control slot = _cardSlots[index];
+        SkillCard card = _cards[index];
+        if (
+            slot == null
+            || !GodotObject.IsInstanceValid(slot)
+            || card == null
+            || !GodotObject.IsInstanceValid(card)
+        )
+        {
+            return;
+        }
+
+        Vector2 globalCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
+        slot.Position = GetCardRowLocalPosition(globalCenter)
+            - BattleCardBaseSize * BattleCardScale * 0.5f;
+        slot.Rotation = 0f;
+        slot.Scale = Vector2.One;
+        card.Position = Vector2.Zero;
+        card.Rotation = 0f;
+        card.Scale = BattleCardScale;
+        card.Visible = true;
+    }
+
+    private void PrepareNewHandCardSlotForDrawEntry(int index)
+    {
+        if (IsDiscardSelectionReturnSlot(index))
+            return;
+
+        if (
+            index < 0
+            || index >= _cardSlots.Length
+            || _cardRow == null
+            || !GodotObject.IsInstanceValid(_cardRow)
+        )
+        {
+            return;
+        }
+
+        Control slot = _cardSlots[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        int drawOrder = _drawEntrySlotOrders.Count;
+        if (!_drawEntryStartCenters.ContainsKey(index))
+        {
+            if (
+                _customDrawEntryStartPositions.TryGetValue(index, out Vector2 customStartPosition)
+            )
+            {
+                _drawEntryStartCenters[index] =
+                    GetCardRowGlobalPosition(customStartPosition) + cardSize * 0.5f;
+                _customDrawEntryStartPositions.Remove(index);
+            }
+            else
+            {
+                _drawEntryStartCenters[index] = GetDrawEntryStartCenter();
+            }
+        }
+        _cardSlotLayoutTargets[index] = null;
+        _cardSlotLayoutRotationTargets[index] = null;
+        _cardSlotLayoutFollowActive[index] = false;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        _drawEntrySlotIndexes.Add(index);
+        _drawEntrySlotOrders[index] = drawOrder;
+        _hiddenPendingDrawEntrySlotIndexes.Add(index);
+
+        SkillCard card = _cards[index];
+        if (card != null && GodotObject.IsInstanceValid(card))
+        {
+            card.Visible = false;
+            SetCardButtonInputEnabled(card, false);
+            card.HoverHint.Visible = false;
+        }
+    }
+
+    private void PrepareMovedHandCardSlotFromPreviousPosition(
+        int index,
+        int previousIndex,
+        Vector2?[] previousSlotPositions,
+        float?[] previousSlotRotations
+    )
+    {
+        if (
+            index < 0
+            || index >= _cardSlots.Length
+            || previousIndex < 0
+            || previousSlotPositions == null
+            || previousIndex >= previousSlotPositions.Length
+            || !previousSlotPositions[previousIndex].HasValue
+        )
+        {
+            return;
+        }
+
+        Control slot = _cardSlots[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        _cardSlotLayoutTweens[index]?.Kill();
+        _cardSlotLayoutTweens[index] = null;
+        _cardSlotLayoutTargets[index] = null;
+        _cardSlotLayoutRotationTargets[index] = null;
+        _cardSlotLayoutFollowActive[index] = false;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        CancelDrawEntryPreview(index);
+        _drawEntrySlotIndexes.Remove(index);
+        _drawEntrySlotOrders.Remove(index);
+        _hiddenPendingDrawEntrySlotIndexes.Remove(index);
+        _drawEntryStartCenters.Remove(index);
+        _drawEntryFromPlayedCardOrigin.Remove(index);
+        slot.Scale = Vector2.One;
+        slot.Position = NormalizeHandReorderStartPosition(
+            previousSlotPositions[previousIndex].Value
+        );
+        slot.Rotation = 0f;
+    }
+
+    private bool PreparePendingHandReorderMove(int index, Skill skill)
+    {
+        if (
+            skill == null
+            || !_pendingHandReorderStarts.TryGetValue(skill, out var start)
+            || index < 0
+            || index >= _cardSlots.Length
+        )
+        {
+            return false;
+        }
+
+        _pendingHandReorderStarts.Remove(skill);
+
+        Control slot = _cardSlots[index];
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return false;
+
+        _cardSlotLayoutTweens[index]?.Kill();
+        _cardSlotLayoutTweens[index] = null;
+        _cardSlotLayoutTargets[index] = null;
+        _cardSlotLayoutRotationTargets[index] = null;
+        _cardSlotLayoutFollowActive[index] = false;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        CancelDrawEntryPreview(index);
+        _drawEntrySlotIndexes.Remove(index);
+        _drawEntrySlotOrders.Remove(index);
+        _hiddenPendingDrawEntrySlotIndexes.Remove(index);
+        _drawEntryStartCenters.Remove(index);
+        _drawEntryFromPlayedCardOrigin.Remove(index);
+        slot.Scale = Vector2.One;
+        slot.Position = start.Position;
+        slot.Rotation = 0f;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = start.PixelsPerSecond;
+        return true;
+    }
+
+    private Vector2 NormalizeHandReorderStartPosition(Vector2 position)
+    {
+        position.Y = GetCurrentHandCardY();
+        return position;
+    }
+
+    private float GetCurrentHandCardY()
+    {
+        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
+        float rowHeight = Math.Max(
+            _cardRow != null && GodotObject.IsInstanceValid(_cardRow)
+                ? _cardRow.Size.Y
+                : cardSize.Y,
+            cardSize.Y
+        );
+        return GetHandCardY(rowHeight, cardSize);
+    }
+
+    private void ClearDrawEntryState(int index, bool revealCard, bool hideTrail = true)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        if (hideTrail)
+            HideCardDrawEntryTrail(index);
+
+        bool wasHidden = _hiddenPendingDrawEntrySlotIndexes.Remove(index);
+        _pendingDrawEntryAnimations.Remove(index);
+        _drawEntrySlotIndexes.Remove(index);
+        _drawEntrySlotOrders.Remove(index);
+        _drawEntryStartCenters.Remove(index);
+        _drawEntryFromPlayedCardOrigin.Remove(index);
+        if (_cardSlots[index] != null && GodotObject.IsInstanceValid(_cardSlots[index]))
+            _cardSlots[index].Scale = Vector2.One;
+
+        if (!revealCard || !wasHidden)
+            return;
+
+        SkillCard card = _cards[index];
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        card.Visible = true;
+    }
+
+    private void HideCardDrawEntryTrail(int index)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        HideCardDrawEntryTrail(_cards[index]);
+    }
+
+    private static void HideCardDrawEntryTrail(SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Line trail = card.DrawTrail;
+        if (trail != null && GodotObject.IsInstanceValid(trail))
+        {
+            trail.Visible = false;
+            trail.ClearPoints();
+            trail.Modulate = Colors.White;
+            trail.Width = HandDrawTrailWidth;
+            trail.ManualPreviewMode = false;
+            if (trail.Target != null && GodotObject.IsInstanceValid(trail.Target))
+                trail.Target.Visible = false;
+        }
+
+        HideCardTrailParticles(card.DrawTrailParticles);
+    }
+
+    private static void PrepareDrawEntryPreviewTrail(
+        SkillCard card,
+        out Line trail,
+        out GpuParticles2D particles
+    )
+    {
+        trail = null;
+        particles = null;
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Node2D target = card.DrawTrailTarget;
+        trail = card.DrawTrail;
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || trail == null
+            || !GodotObject.IsInstanceValid(trail)
+        )
+        {
+            return;
+        }
+
+        target.Visible = true;
+        target.Position = card.PivotOffset;
+        trail.Target = target;
+        trail.ManualPreviewMode = false;
+        trail.Visible = true;
+        trail.GlobalPosition = Vector2.Zero;
+        trail.Modulate = Colors.White;
+        trail.Width = HandDrawTrailWidth;
+        trail.ClearPoints();
+
+        particles = card.DrawTrailParticles;
+        if (particles == null || !GodotObject.IsInstanceValid(particles))
+            return;
+
+        particles.Visible = true;
+        particles.Modulate = Colors.White;
+        particles.Emitting = false;
+        particles.Restart();
+        particles.Emitting = true;
+    }
+
+    private async Task FadeAndHideDrawEntryPreviewTrailAsync(Line trail, GpuParticles2D particles)
+    {
+        if (particles != null && GodotObject.IsInstanceValid(particles))
+            particles.Emitting = false;
+
+        if (trail == null || !GodotObject.IsInstanceValid(trail))
+        {
+            HideCardTrailParticles(particles);
+            return;
+        }
+
+        trail.ManualPreviewMode = true;
+        float startWidth = trail.Width;
+        Tween tween = trail.CreateTween();
+        tween.TweenMethod(
+            Callable.From<float>(fade =>
+            {
+                if (trail == null || !GodotObject.IsInstanceValid(trail))
+                    return;
+
+                trail.Modulate = new Color(1f, 1f, 1f, 1f - fade);
+                trail.Width = Mathf.Lerp(startWidth, 0.5f, fade);
+            }),
+            0f,
+            1f,
+            HandDrawTrailFadeDuration
+        );
+        tween.TweenCallback(
+            Callable.From(() =>
+            {
+                if (trail != null && GodotObject.IsInstanceValid(trail))
+                {
+                    trail.Visible = false;
+                    trail.ClearPoints();
+                    trail.Modulate = Colors.White;
+                    trail.Width = HandDrawTrailWidth;
+                    if (trail.Target != null && GodotObject.IsInstanceValid(trail.Target))
+                        trail.Target.Visible = false;
+                }
+
+                HideCardTrailParticles(particles);
+            })
+        );
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+    }
+
+
+}

@@ -9,11 +9,7 @@ public partial class VeilStep : Skill
     private const int BaseBlock = 6;
     public override int EnergyCost => 0;
 
-    public VeilStep()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "夜幕潜行";
 
@@ -25,8 +21,7 @@ public partial class VeilStep : Skill
                 buffName: Buff.BuffName.Invisible,
                 stacks: InvisibleStacks,
                 target: TargetReference.Self
-            ),
-            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock, multiplier: 1)
+            )
         );
     }
 }
@@ -36,11 +31,7 @@ public partial class FlashOfLight : Skill
     private const int VulnerableStacks = 2;
     private const int BaseBlock = 0;
 
-    public FlashOfLight()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "闪耀之光";
 
@@ -64,11 +55,7 @@ public partial class AfterimageWard : Skill
     private const int BaseBlock = 6;
     private const int AfterimageStacks = 1;
 
-    public AfterimageWard()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "月落残影";
 
@@ -94,11 +81,7 @@ public partial class StarWard : Skill
     private const int ExtraPowerStacks = 1;
     public override int EnergyCost => 2;
 
-    public StarWard()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "星辉守势";
 
@@ -125,11 +108,7 @@ public partial class TwilightParadox : Skill
     public override int EnergyCost => 2;
     public override bool ExhaustsAfterUse => true;
 
-    public TwilightParadox()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "暮光悖论";
 
@@ -137,7 +116,7 @@ public partial class TwilightParadox : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 2),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -148,6 +127,25 @@ public partial class TwilightParadox : Skill
                 stacks: selfStacks,
                 target: TargetReference.Self
             )
+        );
+    }
+}
+
+public partial class BladeDance : Skill
+{
+    private const int BladeCount = 3;
+
+    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    public override string SkillName { get; set; } = "刀刃之舞";
+    public override int EnergyCost => 2;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(4),
+            AddCardsToHandStep(SkillID.Blade, BladeCount, TargetReference.ManualFriendly)
         );
     }
 }

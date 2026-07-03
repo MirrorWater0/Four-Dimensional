@@ -342,10 +342,6 @@ public partial class BattleReady : Control
             root,
             "SurvivabilityValue"
         );
-        SetPreviewNodeVisible(root, "SpeedLabel", false);
-        SetPreviewNodeVisible(root, "SpeedValue", false);
-        SetPreviewNodeVisible(root, "TotalSpeedLabel", false);
-        SetPreviewNodeVisible(root, "TotalSpeedValue", false);
     }
 
     private void EnsureCharacterPreviewSpineNodes(Control visualRoot)
@@ -667,7 +663,11 @@ public partial class BattleReady : Control
         }
     }
 
-    private SkillCard CreateSkillCard(SkillDisplayEntry entry, PlayerInfoStructure character)
+    private SkillCard CreateSkillCard(
+        SkillDisplayEntry entry,
+        PlayerInfoStructure character,
+        int characterIndex
+    )
     {
         var skill = Skill.GetSkill(entry.SkillId);
         if (skill == null)
@@ -676,7 +676,8 @@ public partial class BattleReady : Control
         skill.SetPreviewStats(
             TalentTree.GetEffectivePower(character),
             TalentTree.GetEffectiveSurvivability(character),
-            1
+            1,
+            playerIndex: characterIndex
         );
 
         var card = SkillCardScene.Instantiate<SkillCard>();
@@ -1060,18 +1061,7 @@ public partial class BattleReady : Control
         GD.Print(message);
         RefreshTalentTree(characterIndex);
         if (unlocked)
-        {
             await PlayTalentUnlockEffectAsync(FindTalentNodeControl(talentId));
-            await SaveAfterTalentUnlockFeedbackAsync();
-        }
-    }
-
-    private async Task SaveAfterTalentUnlockFeedbackAsync()
-    {
-        if (GetTree() != null)
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-        SaveSystem.SaveAllInBackground();
     }
 
     private Control FindTalentNodeControl(string talentId)
@@ -1113,7 +1103,12 @@ public partial class BattleReady : Control
         Vector2 baseScale = nodeControl.Scale;
         nodeControl.PivotOffset = new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
 
+        var shockWaveMaterial = shockWave.Material as ShaderMaterial;
+        var sparkLightMaterial = sparkLight.Material as ShaderMaterial;
+
         var tween = CreateTween();
+        tween.BindNode(this);
+        tween.BindNode(nodeControl);
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.Out);
         tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
@@ -1121,23 +1116,22 @@ public partial class BattleReady : Control
         tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
         tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
         tween.TweenMethod(
-            Callable.From<float>(value =>
-                ((ShaderMaterial)shockWave.Material).SetShaderParameter("progress", value)
-            ),
+            Callable.From<float>(value => SetTalentUnlockEffectProgress(shockWaveMaterial, value)),
             0.24f,
             1f,
             0.42f
         );
         tween.TweenMethod(
-            Callable.From<float>(value =>
-                ((ShaderMaterial)sparkLight.Material).SetShaderParameter("progress", value)
-            ),
+            Callable.From<float>(value => SetTalentUnlockEffectProgress(sparkLightMaterial, value)),
             0f,
             1f,
             0.38f
         );
 
         await ToSignal(tween, Tween.SignalName.Finished);
+
+        if (!IsInsideTree())
+            return;
 
         if (GodotObject.IsInstanceValid(shockWave))
             shockWave.QueueFree();
@@ -1148,6 +1142,14 @@ public partial class BattleReady : Control
             nodeControl.Scale = baseScale;
             nodeControl.Modulate = Colors.White;
         }
+    }
+
+    private static void SetTalentUnlockEffectProgress(ShaderMaterial material, float value)
+    {
+        if (material == null || !GodotObject.IsInstanceValid(material))
+            return;
+
+        material.SetShaderParameter("progress", value);
     }
 
     private static ColorRect CreateTalentUnlockEffectRect(
@@ -1257,7 +1259,8 @@ public partial class BattleReady : Control
                 skill.SetPreviewStats(
                     TalentTree.GetEffectivePower(character),
                     TalentTree.GetEffectiveSurvivability(character),
-                    1
+                    1,
+                    playerIndex: i
                 );
                 SkillCard.PrewarmSkillResources(skill, character.CharacterName, characterKey);
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -1942,7 +1945,7 @@ public partial class BattleReady : Control
         var cardsToAnimate = new List<SkillCard>();
         foreach (var entry in _skillDisplayEntries)
         {
-            var card = CreateSkillCard(entry, character);
+            var card = CreateSkillCard(entry, character, characterIndex);
             if (card == null)
                 continue;
 

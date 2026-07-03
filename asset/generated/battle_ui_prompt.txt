@@ -1,0 +1,21 @@
+Use the provided screenshot as the primary layout and UX reference for a turn-based anime deckbuilder battle screen.
+
+Create a polished game UI concept / interface reference illustration for this same battle scene.
+Keep the same overall structure and information hierarchy:
+- top party status bar with character names and HP
+- center battlefield with three player characters on the left and one large enemy on the right
+- central turn indicator and energy/action point display
+- bottom hand of skill cards with cost, artwork, and effect text areas
+- draw pile, discard pile, and end-turn button placement
+
+Visual direction:
+- dark deep-space battlefield background with subtle stars and atmosphere
+- clean modern anime roguelike deckbuilder UI, readable at game resolution
+- semi-transparent dark UI panels with crisp borders and accent colors (cyan, gold, red)
+- anime character sprites in Live2D-like presentation style
+- card frames with colored headers matching skill type (attack/special/survival)
+- high contrast typography areas for Chinese UI text, but do NOT render readable text or numbers in the final image; use placeholder blocks or blurred glyphs only
+- professional game HUD mockup quality, not a photo of a monitor
+
+This is a UI layout reference mockup for game development.
+No watermark, no logo, no browser chrome, no debug overlay, no FPS counter.

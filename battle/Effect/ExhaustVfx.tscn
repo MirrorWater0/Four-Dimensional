@@ -1,0 +1,154 @@
+[gd_scene format=3 uid="uid://dmgksv1icmo5u"]
+
+[ext_resource type="Texture2D" uid="uid://cffuyskdnk5ix" path="res://asset/particle/ash_particle.png" id="1_ash"]
+[ext_resource type="Script" uid="uid://drjmw8cwxqynd" path="res://battle/Effect/ExhaustVfx.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://dnytlevd7y5pt" path="res://asset/particle/smoke_vfx.png" id="2_smoke"]
+[ext_resource type="Shader" uid="uid://yh2nncvioke5" path="res://shader/Particle/ExhaustSmoke.gdshader" id="3_smoke_shader"]
+
+[sub_resource type="Curve" id="Curve_ash_alpha"]
+_data = [Vector2(0, 0), 0.0, 11.7553, 0, 0, Vector2(0.142715, 0.811867), 0.680729, 0.680729, 0, 0, Vector2(0.783433, 0.879595), -0.846369, -0.846369, 0, 0, Vector2(1, 0), -5.23103, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_ash_alpha"]
+width = 128
+curve = SubResource("Curve_ash_alpha")
+
+[sub_resource type="Gradient" id="Gradient_ash_color"]
+offsets = PackedFloat32Array(0.332618, 0.609442)
+colors = PackedColorArray(0.12, 0.12, 0.12, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_ash_color"]
+gradient = SubResource("Gradient_ash_color")
+width = 128
+
+[sub_resource type="Curve" id="Curve_ash_radial"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.99999, 0.253902), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_ash_radial"]
+width = 128
+curve = SubResource("Curve_ash_radial")
+
+[sub_resource type="Curve" id="Curve_ash_scale"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.0733236), -2.94131, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_ash_scale"]
+curve = SubResource("Curve_ash_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_ash"]
+lifetime_randomness = 0.2
+particle_flag_disable_z = true
+emission_shape_scale = Vector3(128, 192, 1)
+emission_shape = 3
+emission_box_extents = Vector3(1, 1, 1)
+angle_min = -180.0
+angle_max = 180.0
+direction = Vector3(1, -1, 0)
+spread = 180.0
+initial_velocity_min = 50.0
+initial_velocity_max = 200.0
+angular_velocity_min = -10.0
+angular_velocity_max = 9.99998
+radial_velocity_min = -200.0
+radial_velocity_max = 200.0
+radial_velocity_curve = SubResource("CurveTexture_ash_radial")
+gravity = Vector3(0, -98, 0)
+scale_min = 0.15
+scale_max = 0.6
+scale_curve = SubResource("CurveTexture_ash_scale")
+color = Color(1, 0.766667, 0, 1)
+color_ramp = SubResource("GradientTexture_ash_color")
+alpha_curve = SubResource("CurveTexture_ash_alpha")
+hue_variation_min = -0.08
+hue_variation_max = 0.08
+turbulence_enabled = true
+turbulence_noise_strength = 10.0
+turbulence_influence_min = 0.0
+turbulence_initial_displacement_min = 0.100001
+turbulence_initial_displacement_max = 0.100001
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_smoke"]
+shader = ExtResource("3_smoke_shader")
+shader_parameter/smoke_tint = Color(0.96396655, 0.8580515, 0.83320785, 1)
+shader_parameter/alpha_gain = 3.2
+shader_parameter/alpha_power = 0.62
+shader_parameter/brightness = 1.35
+shader_parameter/edge_cut = 0.015
+shader_parameter/core_boost = 0.55
+
+[sub_resource type="Gradient" id="Gradient_smoke_color"]
+offsets = PackedFloat32Array(0, 0.0586957, 0.3, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_smoke_color"]
+gradient = SubResource("Gradient_smoke_color")
+width = 64
+
+[sub_resource type="Curve" id="Curve_smoke_scale"]
+_limits = [0.0, 2.0, 0.0, 1.0]
+_data = [Vector2(0, 0), 0.0, 23.0078, 0, 0, Vector2(0.176647, 1.45065), -1.08917, -1.08917, 0, 0, Vector2(0.356287, 1.13459), -0.41891, -0.41891, 0, 0, Vector2(1, 1.7309), 0.421695, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_smoke_scale"]
+width = 128
+curve = SubResource("Curve_smoke_scale")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_smoke"]
+lifetime_randomness = 0.5
+particle_flag_disable_z = true
+emission_shape_scale = Vector3(128, 180, 1)
+emission_shape = 3
+emission_box_extents = Vector3(1, 1, 1)
+angle_min = -180.0
+angle_max = 180.0
+direction = Vector3(0, -1, 0)
+spread = 120.0
+angular_velocity_min = -100.0
+angular_velocity_max = 100.0
+radial_velocity_min = 35.0
+radial_velocity_max = 85.0
+gravity = Vector3(0, -98, 0)
+attractor_interaction_enabled = false
+scale_min = 0.79999995
+scale_curve = SubResource("CurveTexture_smoke_scale")
+color = Color(0.608, 0.64, 0.64, 1)
+color_ramp = SubResource("GradientTexture_smoke_color")
+hue_variation_min = -0.01
+hue_variation_max = 0.00999998
+anim_offset_max = 1.0
+turbulence_noise_strength = 10.0
+turbulence_noise_scale = 3.0
+
+[node name="ExhaustVfx" type="Node2D" unique_id=1904778410]
+scale = Vector2(0.8, 0.8)
+script = ExtResource("1_script")
+
+[node name="Ashes" type="GPUParticles2D" parent="." unique_id=1851535251]
+modulate = Color(1, 1, 1, 0.752941)
+z_index = 1
+emitting = false
+amount = 18
+texture = ExtResource("1_ash")
+lifetime = 1.2
+one_shot = true
+explosiveness = 0.5
+fixed_fps = 60
+visibility_rect = Rect2(-180, -220, 360, 440)
+process_material = SubResource("ParticleProcessMaterial_ash")
+
+[node name="Clouds" type="GPUParticles2D" parent="." unique_id=1988036419]
+modulate = Color(1, 1, 1, 0.501961)
+material = SubResource("ShaderMaterial_smoke")
+scale = Vector2(0.8, 0.8)
+emitting = false
+amount = 6
+texture = ExtResource("2_smoke")
+lifetime = 2.0
+one_shot = true
+speed_scale = 1.5
+explosiveness = 0.75
+randomness = 0.5
+fixed_fps = 60
+visibility_rect = Rect2(-180, -220, 360, 440)
+process_material = SubResource("ParticleProcessMaterial_smoke")

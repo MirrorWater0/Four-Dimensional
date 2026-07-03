@@ -335,6 +335,7 @@ public partial class StartInterface : CanvasLayer
         test();
         GameInfo.InitNewGame();
         GameInfo.ApplyDifficultyStartBonuses();
+        GameInfo.ApplyDifficultyRunStartPenalties();
         SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
     }
 
@@ -363,7 +364,6 @@ public partial class StartInterface : CanvasLayer
             LifeInitialized = true,
             Power = source.Power,
             Survivability = source.Survivability,
-            Speed = source.Speed,
             TalentPoints = source.TalentPoints,
             UnlockedTalents =
                 source.UnlockedTalents != null

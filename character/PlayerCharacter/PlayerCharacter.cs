@@ -7,6 +7,8 @@ using Godot;
 public partial class PlayerCharacter : Character
 {
     public const int MaxBattleHandSize = 10;
+    public const int TeamTurnStartDrawBase = 3;
+    public const int TeamTurnStartDrawPerAlivePlayer = 1;
     public const int TeamTurnStartDrawContribution = 2;
 
     public Frame SelfFrame;
@@ -35,7 +37,6 @@ public partial class PlayerCharacter : Character
         SetCombatStats(
             TalentTree.GetEffectivePower(info),
             TalentTree.GetEffectiveSurvivability(info),
-            0,
             info.LifeMax
         );
         base.Initialize();
@@ -48,6 +49,23 @@ public partial class PlayerCharacter : Character
         }
         SyncLifeBarsToCurrent(syncBufferValue: true);
         SyncPersistentLife();
+        ConfigureFootMarker();
+    }
+
+    private void ConfigureFootMarker()
+    {
+        if (FootMarker == null || !GodotObject.IsInstanceValid(FootMarker))
+            return;
+
+        if (CharacterPlateColors.TryGetColor(CharacterKey, out Color color))
+        {
+            FootMarker.ApplyCharacterColor(color);
+            FootMarker.Visible = true;
+            FootMarker.SetCardHoverHighlight(false, instant: true);
+            return;
+        }
+
+        FootMarker.Visible = false;
     }
 
     public void SyncPersistentLife()
@@ -310,6 +328,7 @@ public partial class PlayerCharacter : Character
             return;
 
         var discardIndexes = new HashSet<int>();
+        var toolboxRetainedCounts = new Dictionary<(int PlayerIndex, SkillID SkillId), int>();
         bool handChanged = false;
         for (int i = 0; i < Skills.Length; i++)
         {
@@ -333,7 +352,7 @@ public partial class PlayerCharacter : Character
                 else
                     await skill.OnTurnEndInHand(skillOwner);
 
-                if (Skills[i] == skill && !skill.RetainsAtTurnEndInHand)
+                if (Skills[i] == skill && !ShouldRetainSkillAtTurnEnd(skill, toolboxRetainedCounts))
                 {
                     BattleNode.DiscardBattleSkill(
                         GetBattlePileOwner(skill),
@@ -350,7 +369,7 @@ public partial class PlayerCharacter : Character
             else
                 await skill.OnTurnEndInHand(GetBattlePileOwner(skill));
 
-            if (Skills[i] != skill || skill.RetainsAtTurnEndInHand)
+            if (Skills[i] != skill || ShouldRetainSkillAtTurnEnd(skill, toolboxRetainedCounts))
                 continue;
 
             discardIndexes.Add(i);
@@ -399,6 +418,33 @@ public partial class PlayerCharacter : Character
             BattleNode.CharacterControl?.RefreshCurrentTurnUi();
         }
         InvalidateSkillTooltipCache();
+    }
+
+    private static bool ShouldRetainSkillAtTurnEnd(
+        Skill skill,
+        Dictionary<(int PlayerIndex, SkillID SkillId), int> toolboxRetainedCounts
+    )
+    {
+        if (skill == null)
+            return false;
+
+        if (skill.IntrinsicRetainsAtTurnEndInHand)
+            return true;
+
+        if (skill.SkillId is not SkillID skillId || skill.OwnerCharater is not PlayerCharacter player)
+            return skill.RetainsAtTurnEndInHand;
+
+        int retainLimit = GameInfo.GetToolboxRetainCount(player.CharacterIndex, skillId);
+        if (retainLimit <= 0)
+            return skill.RetainsAtTurnEndInHand;
+
+        var key = (player.CharacterIndex, skillId);
+        toolboxRetainedCounts.TryGetValue(key, out int retainedCount);
+        if (retainedCount >= retainLimit)
+            return false;
+
+        toolboxRetainedCounts[key] = retainedCount + 1;
+        return true;
     }
 
     public override void OnActionStart()
@@ -482,6 +528,8 @@ public partial class PlayerCharacter : Character
 
         return TalentTree.HasPassiveUpgrade(GameInfo.PlayerCharacters[CharacterIndex]);
     }
+
+    public virtual int GetSkillAttackDamageBonus(Skill skill) => 0;
 
     private void EnsureBattleHandSize()
     {

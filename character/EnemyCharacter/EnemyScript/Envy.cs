@@ -64,7 +64,7 @@ public partial class EnvyEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Envy.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Envy.tscn");
 
-        MaxLife = 230;
+        MaxLife = 206;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -78,14 +78,10 @@ public partial class EnvyEliteRegedit : EnemyRegedit
 
 public partial class EnvyEliteAttack : Skill
 {
-    private const int BaseDamage = 16;
+    private const int BaseDamage = 9;
     private const int SurvivabilityDown = 2;
 
-    public EnvyEliteAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "觊觎刺击";
 
@@ -93,13 +89,13 @@ public partial class EnvyEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
                 HostileTargetReference.AttackKey
             ),
-            AddStatusCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DrawPileCards)
+            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DrawPileCards)
         );
     }
 }
@@ -108,11 +104,7 @@ public partial class EnvyEliteSurvive : Skill
 {
     private const int BaseBlock = 20;
 
-    public EnvyEliteSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "藏锋";
 
@@ -122,23 +114,19 @@ public partial class EnvyEliteSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Power, 2),
-            AddStatusCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
+            ModifyPropertyStep(PropertyType.Power, 1),
+            AddCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSpecial : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 11;
     private const int PowerDown = 2;
     private const int SelfPowerGain = 2;
 
-    public EnvyEliteSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "夺辉";
     public override int EnemySpecialIntentionCooldown => 3;

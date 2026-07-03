@@ -21,7 +21,6 @@ public partial class Equipment
     public string TypeLabel;
     public int Power;
     public int Survivability;
-    public int Speed;
     public int MaxLife;
     public string Description;
 
@@ -34,7 +33,6 @@ public partial class Equipment
             TypeLabel = "输出",
             Power = 3,
             Survivability = -1,
-            Speed = 0,
             MaxLife = 0,
             Description = "高频切割型武装，强化爆发输出。",
         },
@@ -45,7 +43,6 @@ public partial class Equipment
             TypeLabel = "生存",
             Power = 0,
             Survivability = 2,
-            Speed = 0,
             MaxLife = 5,
             Description = "重构受击姿态，显著提升承伤稳定性。",
         },
@@ -56,7 +53,6 @@ public partial class Equipment
             TypeLabel = "均衡",
             Power = 1,
             Survivability = 1,
-            Speed = 0,
             MaxLife = 3,
             Description = "共振回路稳定，提供均衡型攻防提升。",
         },
@@ -67,7 +63,6 @@ public partial class Equipment
             TypeLabel = "均衡",
             Power = 1,
             Survivability = 1,
-            Speed = 0,
             MaxLife = 0,
             Description = "稳定输出姿态，兼顾攻击与防护。",
         },
@@ -78,7 +73,6 @@ public partial class Equipment
             TypeLabel = "生存",
             Power = 0,
             Survivability = 3,
-            Speed = 0,
             MaxLife = -5,
             Description = "轻量防护组件，以生命稳定性换取更高生存。",
         },
@@ -89,7 +83,6 @@ public partial class Equipment
             TypeLabel = "生命",
             Power = 0,
             Survivability = 0,
-            Speed = 0,
             MaxLife = 12,
             Description = "展开后形成缓冲屏障，直接抬升生命上限。",
         },
@@ -100,7 +93,6 @@ public partial class Equipment
             TypeLabel = "控制",
             Power = -1,
             Survivability = -1,
-            Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，如果敌方有与装备者站位相同的角色，令其获得1层晕眩。",
         },
@@ -111,7 +103,6 @@ public partial class Equipment
             TypeLabel = "爆发",
             Power = -4,
             Survivability = 0,
-            Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，获得2层额外力量。",
         },
@@ -122,7 +113,6 @@ public partial class Equipment
             TypeLabel = "控制",
             Power = 0,
             Survivability = 0,
-            Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，获得3层嘲讽。",
         },
@@ -133,7 +123,6 @@ public partial class Equipment
             TypeLabel = "力量",
             Power = 1,
             Survivability = 0,
-            Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，获得1层隐身。",
         },
@@ -144,7 +133,6 @@ public partial class Equipment
             TypeLabel = "生存",
             Power = -4,
             Survivability = 1,
-            Speed = 0,
             MaxLife = 0,
             Description = "战斗开始时，获得1点能量。",
         },
@@ -180,7 +168,6 @@ public partial class Equipment
             TypeLabel = source.TypeLabel,
             Power = source.Power,
             Survivability = source.Survivability,
-            Speed = source.Speed,
             MaxLife = source.MaxLife,
             Description = source.Description,
         };

@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 3;
+    private const int StartAutoArmorStacks = 4;
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -35,13 +35,13 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 35;
+        MaxLife = 93;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive, SkillID.RedHuskSpecial];
-
+        SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive];
+        OpeningIntentionSkillIDs = [SkillID.RedHuskSpecial];
         PassiveName = global::RedHusk.PassiveNameText;
         PassiveDescription = global::RedHusk.PassiveDescriptionText;
     }
@@ -49,13 +49,9 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 8;
 
-    public RedHuskAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "重拳突刺";
 
@@ -72,11 +68,7 @@ public partial class RedHuskSurvive : Skill
 {
     private const int BaseBlock = 20;
 
-    public RedHuskSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "聚合压缩";
 
@@ -84,21 +76,17 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.All)
+            AttackStep(baseDamage: 11),
+            ModifyPropertyStep(PropertyType.Power,3)
         );
     }
 }
 
 public partial class RedHuskSpecial : Skill
 {
-    private const int AutoArmorStacks = 3;
+    private const int AutoArmorStacks = 4;
 
-    public RedHuskSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "护壳重生";
     public override int EnergyCost => 7;
@@ -107,7 +95,6 @@ public partial class RedHuskSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 14),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.AutoArmor,
                 stacks: AutoArmorStacks,

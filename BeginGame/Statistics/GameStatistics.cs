@@ -459,7 +459,25 @@ public partial class GameStatistics : CanvasLayer
         AddSummaryChip(I18n.Format("ui.statistics.nodes_chip", "节点 {value}", ("value", _currentRecord.NodesVisited)), Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.enemies_chip", "敌人 {value}", ("value", _currentRecord.EnemiesDefeated)), Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.elites_chip", "精英 {value}", ("value", _currentRecord.EliteDefeated)), Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
-        AddSummaryChip($"Boss {_currentRecord.BossDefeated}", Colors.White, new Color(0.34f, 0.14f, 0.26f, 0.92f));
+        int bossNodes =
+            _currentRecord.NodeRecords?.Count(record => record?.NodeType == LevelNode.LevelType.Boss)
+            ?? 0;
+        AddSummaryChip(
+            bossNodes > _currentRecord.BossDefeated
+                ? I18n.Format(
+                    "ui.statistics.boss_chip_progress",
+                    "Boss {defeated}/{total}",
+                    ("defeated", _currentRecord.BossDefeated),
+                    ("total", bossNodes)
+                )
+                : I18n.Format(
+                    "ui.statistics.boss_chip",
+                    "Boss {value}",
+                    ("value", _currentRecord.BossDefeated)
+                ),
+            Colors.White,
+            new Color(0.34f, 0.14f, 0.26f, 0.92f)
+        );
         AddSummaryChip(I18n.Format("ui.statistics.coins_chip", "电力币 {value}", ("value", _currentRecord.ElectricityCoinGained)), Colors.White, new Color(0.18f, 0.28f, 0.40f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.relics_chip", "遗物 {value}", ("value", _currentRecord.RelicGained)), Colors.White, new Color(0.32f, 0.24f, 0.12f, 0.92f));
         AddSummaryChip(I18n.Format("ui.statistics.talents_chip", "天赋 {value}", ("value", CountRunTalents(_currentRecord))), Colors.White, new Color(0.26f, 0.18f, 0.36f, 0.92f));
@@ -592,9 +610,18 @@ public partial class GameStatistics : CanvasLayer
         };
 
         Color color = GetNodeTypeColor(record.NodeType);
+        if (IsIncompleteNodeRecord(record))
+            color = color.Lerp(Colors.White, 0.28f);
         panel.AddThemeStyleboxOverride(
             "panel",
-            CreateStyleBox(color, new Color(1f, 1f, 1f, 0.66f), 4, 2)
+            CreateStyleBox(
+                color,
+                IsIncompleteNodeRecord(record)
+                    ? new Color(1f, 0.82f, 0.35f, 0.95f)
+                    : new Color(1f, 1f, 1f, 0.66f),
+                4,
+                IsIncompleteNodeRecord(record) ? 3 : 2
+            )
         );
 
         panel.MouseEntered += () =>
@@ -1302,7 +1329,10 @@ public partial class GameStatistics : CanvasLayer
 
         var sb = new StringBuilder(256);
         string order = record.CompletionOrder > 0 ? record.CompletionOrder.ToString() : "?";
-        sb.Append($"[b]#{order} {GetNodeTypeLabel(record.NodeType)}[/b]");
+        string typeLabel = GetNodeTypeLabel(record.NodeType);
+        if (IsIncompleteNodeRecord(record))
+            typeLabel += I18n.Tr("ui.statistics.node_incomplete_suffix", "（未完成）");
+        sb.Append($"[b]#{order} {typeLabel}[/b]");
         sb.Append(
             I18n.Format(
                 "ui.statistics.node_location",
@@ -1612,6 +1642,8 @@ public partial class GameStatistics : CanvasLayer
             LevelNode.LevelType.Boss => new Color(0.6f, 0f, 0.9f, 1f),
             LevelNode.LevelType.Event => new Color(0f, 0.6f, 1f, 1f),
             LevelNode.LevelType.Shop => new Color(1f, 0.84f, 0.18f, 1f),
+            LevelNode.LevelType.Rest => new Color(0.1f, 0.9f, 0.46f, 1f),
+            LevelNode.LevelType.Treasure => new Color(1f, 0.69f, 0.13f, 1f),
             _ => new Color(0.70f, 0.75f, 0.82f, 1f),
         };
     }
@@ -1625,9 +1657,16 @@ public partial class GameStatistics : CanvasLayer
             LevelNode.LevelType.Boss => I18n.Tr("ui.statistics.node_type.boss", "首领战斗"),
             LevelNode.LevelType.Event => I18n.Tr("ui.statistics.node_type.event", "事件"),
             LevelNode.LevelType.Shop => I18n.Tr("ui.statistics.node_type.shop", "商店"),
+            LevelNode.LevelType.Rest => I18n.Tr("ui.statistics.node_type.rest", "休息"),
+            LevelNode.LevelType.Treasure => I18n.Tr("ui.statistics.node_type.treasure", "宝箱"),
             _ => I18n.Tr("ui.common.unknown_node", "未知节点"),
         };
     }
+
+    private static bool IsIncompleteNodeRecord(LevelNodeCompletionRecord record) =>
+        record?.Notes?.Any(note =>
+            !string.IsNullOrWhiteSpace(note) && note.Contains("本节点未完成", StringComparison.Ordinal)
+        ) == true;
 
     private static Color GetSkillTypeColor(Skill.SkillTypes type)
     {

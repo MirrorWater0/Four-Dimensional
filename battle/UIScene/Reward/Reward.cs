@@ -43,6 +43,9 @@ public partial class Reward : CanvasLayer
     private Button SkipButton => field ??= GetNodeOrNull<Button>("Panel/Decor/SkipButton");
     private Button SkillRewardSkipButton =>
         field ??= GetNodeOrNull<Button>("SkillRewardSkipButton");
+    private Label HeaderTitle =>
+        field ??= GetNodeOrNull<Label>("Panel/Decor/Header/HeaderTitle");
+    private Label HeaderHint => field ??= GetNodeOrNull<Label>("Panel/Decor/HeaderHint");
     private Control TalentOverlay =>
         field ??= GetNodeOrNull<Control>("TalentTreeOverlay");
     private ColorRect TalentOverlayBackdrop =>
@@ -77,12 +80,21 @@ public partial class Reward : CanvasLayer
     private Vector2 _panelBasePosition;
     private bool _panelBaseCached;
     private bool _battleTalentPointRewardGranted;
+    private bool _standaloneTalentTreeMode;
+    private Action _standaloneTalentCloseCallback;
     private int _nextSkillRewardGroupIndex;
     private bool _skillRewardOffersGenerated;
     private bool _isTalentTreeOpen;
     private bool _isTalentTreeClosing;
     private int _activeTalentCharacterIndex = -1;
     private const float RewardReflowDuration = 0.18f;
+    private const float TacticsButtonReserveWidth = 240f;
+    private const float TacticsButtonReserveHeight = 240f;
+    private const float TalentPanelWidth = 840f;
+    private const float TalentPanelHeight = 530f;
+    private const int TacticsButtonRaisedZIndex = 32;
+    private const int TacticsButtonDefaultZIndex = 4;
+    private bool _raisedTacticsButtonZIndex;
     public bool AllowRareSkillRewards { get; set; } = true;
 
     private enum RewardKind
@@ -144,6 +156,59 @@ public partial class Reward : CanvasLayer
         siteUi.AddChild(reward);
         reward.CallDeferred(nameof(Open));
         return reward;
+    }
+
+    public static Reward ShowStandaloneTalentTree(
+        Node caller,
+        string characterName,
+        Action onClosed = null
+    )
+    {
+        var tree = caller?.GetTree();
+        var root = tree?.Root;
+        if (root == null || string.IsNullOrWhiteSpace(characterName))
+            return null;
+
+        var siteUi =
+            root.GetNodeOrNull<CanvasLayer>("Map/SiteUI")
+            ?? root.GetNodeOrNull<CanvasLayer>("/root/Map/SiteUI");
+        if (siteUi == null)
+        {
+            GD.PushError("Reward: SiteUI layer not found, cannot attach talent tree.");
+            return null;
+        }
+
+        var reward = RewardScene.Instantiate<Reward>();
+        reward.Name = "RestTalentTree";
+        reward.Layer = 3;
+        reward._standaloneTalentTreeMode = true;
+        reward._standaloneTalentCloseCallback = onClosed;
+        siteUi.AddChild(reward);
+        reward.CallDeferred(nameof(OpenStandaloneTalentTree), characterName);
+        return reward;
+    }
+
+    public void OpenStandaloneTalentTree(string characterName)
+    {
+        Visible = true;
+        _battleTalentPointRewardGranted = true;
+
+        if (BG != null)
+        {
+            BG.Visible = true;
+            BG.Modulate = new Color(1f, 1f, 1f, 0.72f);
+        }
+
+        if (PanelNode != null)
+            PanelNode.Visible = false;
+        if (DecorNode != null)
+            DecorNode.Visible = false;
+        if (SkillRewardsContainer != null)
+            SkillRewardsContainer.Visible = false;
+        if (SkillMask != null)
+            SkillMask.Visible = false;
+
+        OpenTalentRewardTree(characterName);
     }
 
     public override void _Ready()
@@ -578,20 +643,33 @@ public partial class Reward : CanvasLayer
         if (SkillRewardsContainer == null)
             return;
 
-        _skillRewardSlots.AddRange(SkillRewardsContainer.GetChildren().OfType<SkillCard>());
+        PruneInvalidWiredSkillCards();
 
-        if (_skillRewardSlots.Count < ExpectedSkillSlots)
+        foreach (Node child in SkillRewardsContainer.GetChildren().ToArray())
         {
-            for (int i = _skillRewardSlots.Count; i < ExpectedSkillSlots; i++)
+            if (child is SkillCard skillCard && GodotObject.IsInstanceValid(skillCard))
             {
-                var slot = SkillRewardCardScene.Instantiate<SkillCard>();
-                slot.Name = $"RewardCard{i + 1}";
-                SkillRewardsContainer.AddChild(slot);
-                _skillRewardSlots.Add(slot);
+                _skillRewardSlots.Add(skillCard);
+                continue;
             }
+
+            child.QueueFree();
+        }
+
+        for (int i = _skillRewardSlots.Count; i < ExpectedSkillSlots; i++)
+        {
+            var slot = SkillRewardCardScene.Instantiate<SkillCard>();
+            slot.Name = $"RewardCard{i + 1}";
+            SkillRewardsContainer.AddChild(slot);
+            _skillRewardSlots.Add(slot);
         }
 
         WireSkillCardButtons();
+    }
+
+    private void PruneInvalidWiredSkillCards()
+    {
+        _wiredSkillCards.RemoveWhere(card => !GodotObject.IsInstanceValid(card));
     }
 
     private void WireSkillCardButtons()
@@ -599,13 +677,25 @@ public partial class Reward : CanvasLayer
         for (int i = 0; i < _skillRewardSlots.Count; i++)
         {
             var slot = _skillRewardSlots[i];
-            if (slot == null || _wiredSkillCards.Contains(slot))
+            if (slot == null || !GodotObject.IsInstanceValid(slot) || _wiredSkillCards.Contains(slot))
                 continue;
 
-            int slotIndex = i;
-            slot.Button.Pressed += () => _ = PickSkillRewardAsync(slotIndex);
+            SkillCard boundSlot = slot;
+            slot.Button.Pressed += () => OnSkillRewardSlotPressed(boundSlot);
             _wiredSkillCards.Add(slot);
         }
+    }
+
+    private void OnSkillRewardSlotPressed(SkillCard slot)
+    {
+        if (slot == null || !GodotObject.IsInstanceValid(slot))
+            return;
+
+        int slotIndex = _skillRewardSlots.IndexOf(slot);
+        if (slotIndex < 0)
+            return;
+
+        _ = PickSkillRewardAsync(slotIndex);
     }
 
     /// <summary>Populate each visible slot with its offered skill (one offer per player).</summary>
@@ -715,7 +805,13 @@ public partial class Reward : CanvasLayer
         entry.OfferedSkillIds = new SkillID?[count];
         entry.OfferedPlayerIndexes = new int[count];
 
-        int skillSeed = _completeNodeOnClose?.RandomNum ?? GameInfo.Seed;
+        int skillSeed =
+            _completeNodeOnClose != null
+                ? GameInfo.CreateRunRngSeed(
+                    GameInfo.GetBattleRewardStream(_completeNodeOnClose),
+                    GameInfo.GetNodeContentQueueIndex(_completeNodeOnClose)
+                )
+                : GameInfo.Seed;
         int groupSeed =
             entry.SkillGroupIndex >= 0
                 ? unchecked(skillSeed * 397 ^ (entry.SkillGroupIndex + 1) * 7919)
@@ -992,6 +1088,128 @@ public partial class Reward : CanvasLayer
         return true;
     }
 
+    private bool ShouldReserveTacticsButtonArea()
+    {
+        return _isTalentTreeOpen
+            && (
+                _standaloneTalentTreeMode
+                || (MapNode != null && GodotObject.IsInstanceValid(MapNode))
+            );
+    }
+
+    private ReadyButton ResolveTacticsButton()
+    {
+        if (MapNode != null && GodotObject.IsInstanceValid(MapNode))
+        {
+            var mapButton = MapNode.GetNodeOrNull<ReadyButton>("UI/ReadyButton");
+            if (mapButton != null)
+                return mapButton;
+        }
+
+        return GetTree()?.Root?.GetNodeOrNull<ReadyButton>("Map/UI/ReadyButton");
+    }
+
+    private void ApplyMapTalentOverlayLayout()
+    {
+        if (!ShouldReserveTacticsButtonArea())
+            return;
+
+        Vector2 viewport = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920f, 1080f);
+        if (TalentOverlayBackdrop != null)
+        {
+            TalentOverlayBackdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            TalentOverlayBackdrop.OffsetLeft = 0f;
+            TalentOverlayBackdrop.OffsetTop = 0f;
+            TalentOverlayBackdrop.OffsetRight = -TacticsButtonReserveWidth;
+            TalentOverlayBackdrop.OffsetBottom = -TacticsButtonReserveHeight;
+        }
+
+        if (BG != null && BG.Visible && _standaloneTalentTreeMode)
+        {
+            BG.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+            BG.OffsetLeft = 0f;
+            BG.OffsetTop = 0f;
+            BG.OffsetRight = -TacticsButtonReserveWidth;
+            BG.OffsetBottom = -TacticsButtonReserveHeight;
+        }
+
+        if (TalentPanel != null)
+        {
+            float safeWidth = viewport.X - TacticsButtonReserveWidth;
+            float safeHeight = viewport.Y - TacticsButtonReserveHeight;
+            float posX = Mathf.Clamp(
+                safeWidth * 0.5f - TalentPanelWidth * 0.5f - 72f,
+                28f,
+                safeWidth - TalentPanelWidth - 28f
+            );
+            float posY = Mathf.Clamp(
+                safeHeight * 0.5f - TalentPanelHeight * 0.5f,
+                28f,
+                safeHeight - TalentPanelHeight - 28f
+            );
+
+            TalentPanel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+            TalentPanel.Position = new Vector2(posX, posY);
+            TalentPanel.Size = new Vector2(TalentPanelWidth, TalentPanelHeight);
+        }
+
+        RaiseTacticsButtonAboveTalentOverlay();
+    }
+
+    private void ResetTalentOverlayLayout()
+    {
+        ResetFullScreenOverlayRect(TalentOverlayBackdrop);
+        ResetFullScreenOverlayRect(BG);
+        ResetFullScreenOverlayRect(SkillMask);
+
+        if (TalentPanel != null)
+        {
+            TalentPanel.SetAnchorsPreset(Control.LayoutPreset.Center);
+            TalentPanel.OffsetLeft = -420f;
+            TalentPanel.OffsetTop = -265f;
+            TalentPanel.OffsetRight = 420f;
+            TalentPanel.OffsetBottom = 265f;
+            TalentPanel.GrowHorizontal = Control.GrowDirection.Both;
+            TalentPanel.GrowVertical = Control.GrowDirection.Both;
+        }
+
+        RestoreTacticsButtonZOrder();
+    }
+
+    private static void ResetFullScreenOverlayRect(Control control)
+    {
+        if (control == null)
+            return;
+
+        control.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        control.OffsetLeft = 0f;
+        control.OffsetTop = 0f;
+        control.OffsetRight = 0f;
+        control.OffsetBottom = 0f;
+    }
+
+    private void RaiseTacticsButtonAboveTalentOverlay()
+    {
+        ReadyButton tacticsButton = ResolveTacticsButton();
+        if (tacticsButton == null || _raisedTacticsButtonZIndex)
+            return;
+
+        tacticsButton.ZIndex = TacticsButtonRaisedZIndex;
+        _raisedTacticsButtonZIndex = true;
+    }
+
+    private void RestoreTacticsButtonZOrder()
+    {
+        if (!_raisedTacticsButtonZIndex)
+            return;
+
+        ReadyButton tacticsButton = ResolveTacticsButton();
+        if (tacticsButton != null && GodotObject.IsInstanceValid(tacticsButton))
+            tacticsButton.ZIndex = TacticsButtonDefaultZIndex;
+
+        _raisedTacticsButtonZIndex = false;
+    }
+
     private void OpenTalentRewardTree(string characterName)
     {
         int characterIndex = FindPlayerIndexByCharacterName(characterName);
@@ -1001,7 +1219,11 @@ public partial class Reward : CanvasLayer
         _activeTalentCharacterIndex = characterIndex;
         _isTalentTreeOpen = true;
         InventoryGridNode?.SetInputBlocked(true);
-        ShowSkillMask(true);
+        ApplyMapTalentOverlayLayout();
+        if (_standaloneTalentTreeMode)
+            ShowSkillMask(false);
+        else
+            ShowSkillMask(true);
 
         if (TalentCharacterLabel != null)
             TalentCharacterLabel.Text = I18n.Format(
@@ -1077,7 +1299,15 @@ public partial class Reward : CanvasLayer
         if (TalentCloseButton != null)
             TalentCloseButton.Disabled = false;
 
+        ResetTalentOverlayLayout();
         ClearTalentRewardTree();
+        if (_standaloneTalentTreeMode)
+        {
+            _standaloneTalentCloseCallback?.Invoke();
+            QueueFree();
+            return;
+        }
+
         TryCloseIfDone();
     }
 
@@ -1374,16 +1604,6 @@ public partial class Reward : CanvasLayer
         if (players[characterIndex].TalentPoints <= 0)
             await CloseTalentRewardTreeAsync();
 
-        if (unlocked)
-            await SaveAfterTalentUnlockFeedbackAsync();
-    }
-
-    private async Task SaveAfterTalentUnlockFeedbackAsync()
-    {
-        if (GetTree() != null)
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-        SaveSystem.SaveAllInBackground();
     }
 
     private Control FindTalentRewardNodeControl(string talentId)
@@ -1425,7 +1645,12 @@ public partial class Reward : CanvasLayer
         Vector2 baseScale = nodeControl.Scale;
         nodeControl.PivotOffset = new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
 
+        var shockWaveMaterial = shockWave.Material as ShaderMaterial;
+        var sparkLightMaterial = sparkLight.Material as ShaderMaterial;
+
         var tween = CreateTween();
+        tween.BindNode(this);
+        tween.BindNode(nodeControl);
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.Out);
         tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
@@ -1433,23 +1658,22 @@ public partial class Reward : CanvasLayer
         tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
         tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
         tween.TweenMethod(
-            Callable.From<float>(value =>
-                ((ShaderMaterial)shockWave.Material).SetShaderParameter("progress", value)
-            ),
+            Callable.From<float>(value => SetTalentUnlockEffectProgress(shockWaveMaterial, value)),
             0.24f,
             1f,
             0.42f
         );
         tween.TweenMethod(
-            Callable.From<float>(value =>
-                ((ShaderMaterial)sparkLight.Material).SetShaderParameter("progress", value)
-            ),
+            Callable.From<float>(value => SetTalentUnlockEffectProgress(sparkLightMaterial, value)),
             0f,
             1f,
             0.38f
         );
 
         await ToSignal(tween, Tween.SignalName.Finished);
+
+        if (!IsInsideTree())
+            return;
 
         if (GodotObject.IsInstanceValid(shockWave))
             shockWave.QueueFree();
@@ -1460,6 +1684,14 @@ public partial class Reward : CanvasLayer
             nodeControl.Scale = baseScale;
             nodeControl.Modulate = Colors.White;
         }
+    }
+
+    private static void SetTalentUnlockEffectProgress(ShaderMaterial material, float value)
+    {
+        if (material == null || !GodotObject.IsInstanceValid(material))
+            return;
+
+        material.SetShaderParameter("progress", value);
     }
 
     private static ColorRect CreateTalentUnlockEffectRect(
@@ -1698,6 +1930,8 @@ public partial class Reward : CanvasLayer
         _maskTween?.Kill();
 
         CachePanelTransform();
+        ResetFullScreenOverlayRect(BG);
+        ResetFullScreenOverlayRect(SkillMask);
 
         if (BG != null)
             BG.Modulate = new Color(1, 1, 1, 0);
@@ -1858,14 +2092,7 @@ public partial class Reward : CanvasLayer
         if (talentReward.Granted)
         {
             _battleTalentPointRewardGranted = true;
-            GD.Print(
-                I18n.Format(
-                    "ui.reward.elite_talent_reward_log",
-                    "精英奖励：{name} 获得 {amount} 点天赋点。",
-                    ("name", talentReward.CharacterName),
-                    ("amount", talentReward.Amount)
-                )
-            );
+            PrintTalentPointReward(talentReward);
         }
 
         if (MapNode?.PlayerResourceState != null)
@@ -1878,6 +2105,9 @@ public partial class Reward : CanvasLayer
 
     private static void PrintTalentPointReward(TalentPointRewardResult talentReward)
     {
+        if (!talentReward.Granted)
+            return;
+
         GD.Print(
             I18n.Format(
                 "ui.reward.battle_talent_reward_log",
@@ -1895,7 +2125,9 @@ public partial class Reward : CanvasLayer
             LevelNode.LevelType.Boss => 120,
             _ => 30,
         };
-        int offset = new Random(node.RandomNum).Next(-10, 11);
+        int offset = GameInfo
+            .CreateBattleRewardRng(node, GameInfo.BattleCoinRewardSalt)
+            .Next(-10, 11);
         return Relic.ApplyElectricityCoinBonus(Math.Max(0, baseReward + offset));
     }
 

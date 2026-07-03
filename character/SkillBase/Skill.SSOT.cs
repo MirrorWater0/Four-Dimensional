@@ -21,13 +21,13 @@ using Godot;
 // - ModifyPropertyStep: 调整友方属性（target 支持相对位 / 绝对位 / 已储存目标；value正增负减）。
 // - ApplyBuffFriendly: 对友方施加Buff（target 支持相对位 / 绝对位 / 已储存目标）。
 // - HealStep: 对友方治疗（target 支持相对位 / 绝对位 / 已储存目标；可储存目标）。
-// - HurtFriendly: 对友方造成伤害（damage/index/all）。
+// - HurtFriendly: 对友方造成伤害（damage/index/all；ignoreBlock 时扣除血量且不可被格挡）。
 // - EnergyStep: 改变自身或友方目标能量（target 支持相对位 / 绝对位 / 已储存目标）。
 // - ExhaustCardsStep: 消耗指定数量的手牌、抽牌堆牌、弃牌堆牌。
 // - BlockStep: 相对位友方获得格挡（0自己、-1前一位、+1后一位...；可选对自己不生效）。
 // - CarryStep: 连携指定友方目标释放指定技能（target 支持相对位 / 绝对位 / 已存储目标；index:0攻击/1生存/2特殊）。
 // - SwapPositionFriendlyStep: 交换两个相对位队友的位置（0自己；交换PositionIndex并同步出手顺序）。
-// - AddStatusCardsStep: 向玩家队伍的指定牌堆塞入状态牌。
+// - AddStatusCardsStep: 向全队牌堆塞入卡牌（状态牌无归属；技能牌用 cardOwner 指定归属角色）。
 // - EnergyTimesGateStep: 能量+次数联合门槛（满足则消耗能量并次数-1，并执行生效体；不再阻断后续step）。
 // - EnergyTimesWhileStep: while循环（传times时按次数循环；未传times时按本技能已支付能量循环）。
 // - ConditionStep: 条件执行（condition/steps/conditionDescription）。
@@ -543,22 +543,37 @@ public partial class Skill
         if (
             maxTargets != 1
             || candidates == null
-            || candidates.Length <= 1
+            || candidates.Length == 0
             || OwnerCharater == null
             || OwnerCharater.IsPlayer
             || _avoidRepeatSingleTargetIntentionLock == null
             || !GodotObject.IsInstanceValid(_avoidRepeatSingleTargetIntentionLock)
-            || _avoidRepeatSingleTargetIntentionLock.State == Character.CharacterState.Dying
         )
         {
             return candidates ?? Array.Empty<Character>();
         }
 
+        Character lockTarget = _avoidRepeatSingleTargetIntentionLock;
+        if (lockTarget.State == Character.CharacterState.Dying)
+        {
+            Character[] withoutDyingLock = candidates
+                .Where(candidate =>
+                    candidate != null
+                    && GodotObject.IsInstanceValid(candidate)
+                    && candidate != lockTarget
+                )
+                .ToArray();
+            return withoutDyingLock.Length > 0 ? withoutDyingLock : candidates;
+        }
+
+        if (candidates.Length <= 1)
+            return candidates;
+
         Character[] filtered = candidates
             .Where(candidate =>
                 candidate != null
                 && GodotObject.IsInstanceValid(candidate)
-                && candidate != _avoidRepeatSingleTargetIntentionLock
+                && candidate != lockTarget
             )
             .ToArray();
         return filtered.Length > 0 ? filtered : candidates;
@@ -727,7 +742,8 @@ public partial class Skill
         TargetSelection target,
         int maxTargets,
         bool byBehindRow,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         if (
@@ -735,7 +751,7 @@ public partial class Skill
             && !_capturingLockedHostileTargets
             && target.Kind == TargetSelectionKind.DefaultRule
             && TryGetLockedHostileTargets(
-                BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt),
+                BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt, respectInvisible),
                 out Character[] lockedTargets
             )
         )
@@ -748,7 +764,7 @@ public partial class Skill
             Character[] stored = GetStoredTargetArray(target.StoredKey);
             Character dummy = OwnerCharater?.BattleNode?.dummy;
             return stored
-                .Where(x => x != null && x != dummy && x.State != Character.CharacterState.Dying)
+                .Where(x => x != null && x != dummy && IsAllowedHostileTarget(x))
                 .ToArray();
         }
 
@@ -758,7 +774,7 @@ public partial class Skill
             if (
                 stored == null
                 || stored == OwnerCharater?.BattleNode?.dummy
-                || stored.State == Character.CharacterState.Dying
+                || !IsAllowedHostileTarget(stored)
             )
             {
                 return Array.Empty<Character>();
@@ -770,7 +786,11 @@ public partial class Skill
         if (target.Kind != TargetSelectionKind.DefaultRule)
             return Array.Empty<Character>();
 
-        var targets = ChosetargetByOrder(byBehindRow: byBehindRow, applyTaunt: applyTaunt);
+        var targets = ChosetargetByOrder(
+            byBehindRow: byBehindRow,
+            applyTaunt: applyTaunt,
+            respectInvisible: respectInvisible
+        );
         int count = maxTargets <= 0 ? targets.Length : Math.Min(maxTargets, targets.Length);
         if (count <= 0)
             return Array.Empty<Character>();
@@ -780,7 +800,7 @@ public partial class Skill
 
         Character[] selected = targets.Take(count).Where(x => x != null).ToArray();
         CaptureLockedHostileTargets(
-            BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt),
+            BuildTargetSelectionLockKey(target, maxTargets, byBehindRow, applyTaunt, respectInvisible),
             selected
         );
         return selected;
@@ -789,18 +809,27 @@ public partial class Skill
     private Character ResolveHostileTarget(
         TargetSelection target,
         bool byBehindRow,
-        bool applyTaunt = false
-    ) => ResolveHostileTargets(target, 1, byBehindRow, applyTaunt).FirstOrDefault();
+        bool applyTaunt = false,
+        bool respectInvisible = true
+    ) =>
+        ResolveHostileTargets(target, 1, byBehindRow, applyTaunt, respectInvisible)
+            .FirstOrDefault();
 
     private Character[] ResolveHostileTargets(
         HostileTargetSelection target,
         Func<Character, bool> targetCondition = null,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         HostileTargetSelection value = target;
         value = ResolveDefaultHostileSelection(value);
-        string lockKey = BuildHostileTargetSelectionLockKey(value, targetCondition, applyTaunt);
+        string lockKey = BuildHostileTargetSelectionLockKey(
+            value,
+            targetCondition,
+            applyTaunt,
+            respectInvisible
+        );
         if (
             _useLockedHostileTargetsForExecution
             && !_capturingLockedHostileTargets
@@ -815,10 +844,12 @@ public partial class Skill
         {
             Character[] storedTargets = GetStoredTargetArray(value.StoredKey);
             if (storedTargets.Length > 0)
-                return storedTargets.Where(x => x != null && x.State != Character.CharacterState.Dying).ToArray();
+                return storedTargets
+                    .Where(x => x != null && IsAllowedHostileTarget(x))
+                    .ToArray();
 
             Character storedTarget = GetStoredTarget(value.StoredKey);
-            if (storedTarget == null || storedTarget.State == Character.CharacterState.Dying)
+            if (storedTarget == null || !IsAllowedHostileTarget(storedTarget))
                 return Array.Empty<Character>();
 
             return [storedTarget];
@@ -830,9 +861,15 @@ public partial class Skill
             || value.Kind == HostileTargetSelection._Kind.PreviewableRandom
                 ? ChosetargetByOrder(
                     byBehindRow: value.ByBehindRow,
-                    applyTaunt: applyTaunt
+                    applyTaunt: applyTaunt,
+                    respectInvisible: respectInvisible
                 )
-                : GetAllHostileWithOrder(this, dyingFilter: true, applyTaunt: applyTaunt);
+                : GetAllHostileWithOrder(
+                    this,
+                    dyingFilter: true,
+                    applyTaunt: applyTaunt,
+                    respectInvisible: respectInvisible
+                );
 
         if (ordered.Length == 0)
             return Array.Empty<Character>();
@@ -869,16 +906,18 @@ public partial class Skill
         TargetSelection target,
         int maxTargets,
         bool byBehindRow,
-        bool applyTaunt
+        bool applyTaunt,
+        bool respectInvisible
     ) =>
-        $"target:{target.Kind}:{target.StoredKey}:{target.RelativeIndex}:{target.AbsoluteSelector}:{target.ExcludeSelf}:{maxTargets}:{byBehindRow}:{applyTaunt}";
+        $"target:{target.Kind}:{target.StoredKey}:{target.RelativeIndex}:{target.AbsoluteSelector}:{target.ExcludeSelf}:{maxTargets}:{byBehindRow}:{applyTaunt}:{respectInvisible}";
 
     private static string BuildHostileTargetSelectionLockKey(
         HostileTargetSelection target,
         Func<Character, bool> targetCondition,
-        bool applyTaunt
+        bool applyTaunt,
+        bool respectInvisible
     ) =>
-        $"hostile:{target.Kind}:{target.MaxTargets}:{target.ByBehindRow}:{target.StoredKey}:{target.RandomKey}:{targetCondition?.GetHashCode() ?? 0}:{applyTaunt}";
+        $"hostile:{target.Kind}:{target.MaxTargets}:{target.ByBehindRow}:{target.StoredKey}:{target.RandomKey}:{targetCondition?.GetHashCode() ?? 0}:{applyTaunt}:{respectInvisible}";
 
     private void CaptureLockedHostileTargets(string key, Character[] targets)
     {
@@ -904,21 +943,48 @@ public partial class Skill
         }
 
         targets = FilterLockedHostileTargets(lockedTargets);
-        return true;
+        return targets.Length > 0;
     }
+
+    private bool AllowsLockedDyingHostileTargets => _useLockedHostileTargetsForExecution;
+
+    private bool IsAllowedHostileTarget(Character target) =>
+        AllowsLockedDyingHostileTargets
+            ? IsValidHostileExecutionTarget(OwnerCharater, target)
+            : IsSelectableHostileTarget(OwnerCharater, target);
 
     private Character[] FilterLockedHostileTargets(Character[] targets)
     {
         Character dummy = OwnerCharater?.BattleNode?.dummy;
-        return targets
-            ?.Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target != dummy
-                && target.State == Character.CharacterState.Normal
-            )
-            .Distinct()
-            .ToArray() ?? Array.Empty<Character>();
+        Character[] valid =
+            targets
+                ?.Where(target =>
+                    target != null
+                    && GodotObject.IsInstanceValid(target)
+                    && target != dummy
+                    && IsValidHostileExecutionTarget(OwnerCharater, target)
+                )
+                .Distinct()
+                .ToArray() ?? Array.Empty<Character>();
+        if (valid.Length == 0)
+            return valid;
+
+        HashSet<Character> selectable = GetHostileTargetsInTeamOrder(
+            dyingFilter: true,
+            applyTaunt: true
+        ).ToHashSet();
+        Character[] filtered = valid.Where(selectable.Contains).ToArray();
+        if (filtered.Length > 0)
+            return filtered;
+
+        Character[] selectableOrdered = GetHostileTargetsInTeamOrder(
+            dyingFilter: true,
+            applyTaunt: true
+        );
+        if (selectableOrdered.Length > 0 && valid.Length > 0)
+            return selectableOrdered.Take(valid.Length).ToArray();
+
+        return valid;
     }
 
     private Character[] ResolveFriendlyTargets(
@@ -1000,7 +1066,8 @@ public partial class Skill
         Skill skill,
         int maxTargets,
         bool byBehindRow,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         if (skill?.OwnerCharater?.BattleNode == null)
@@ -1033,10 +1100,12 @@ public partial class Skill
         {
             Character[] storedTargets = skill.GetStoredTargetArray(value.StoredKey);
             if (storedTargets.Length > 0)
-                return storedTargets.Where(x => x != null && x.State != Character.CharacterState.Dying).ToArray();
+                return storedTargets
+                    .Where(x => x != null && IsSelectableHostileTarget(skill.OwnerCharater, x))
+                    .ToArray();
 
             Character storedTarget = skill.GetStoredTarget(value.StoredKey);
-            return storedTarget != null && storedTarget.State != Character.CharacterState.Dying
+            return storedTarget != null && IsSelectableHostileTarget(skill.OwnerCharater, storedTarget)
                 ? [storedTarget]
                 : Array.Empty<Character>();
         }
@@ -1078,7 +1147,7 @@ public partial class Skill
 
         if (
             _previewableRandomHostileTargets.TryGetValue(key, out Character[] cached)
-            && IsCachedPreviewableRandomTargetValid(cached, candidates)
+            && IsCachedPreviewableRandomTargetValid(OwnerCharater, cached, candidates)
         )
         {
             return cached;
@@ -1094,6 +1163,7 @@ public partial class Skill
     }
 
     private static bool IsCachedPreviewableRandomTargetValid(
+        Character owner,
         Character[] cached,
         Character[] candidates
     )
@@ -1105,7 +1175,7 @@ public partial class Skill
         return cached.All(target =>
             target != null
             && GodotObject.IsInstanceValid(target)
-            && target.State == Character.CharacterState.Normal
+            && IsSelectableHostileTarget(owner, target)
             && candidateSet.Contains(target)
         );
     }
@@ -1241,7 +1311,7 @@ public partial class Skill
         );
     }
 
-    protected sealed class SkillPlan
+    protected sealed partial class SkillPlan
     {
         private readonly Skill _skill;
         private readonly SkillStep[] _steps;
@@ -1260,7 +1330,35 @@ public partial class Skill
             {
                 if (ShouldAbortStepExecution(_skill))
                     break;
-                await _steps[i].Execute(_skill);
+
+                if (_steps[i] is AddCardsSkillStep firstStatusStep)
+                {
+                    int batchEnd = i;
+                    while (
+                        batchEnd + 1 < _steps.Length
+                        && _steps[batchEnd + 1] is AddCardsSkillStep
+                    )
+                        batchEnd++;
+
+                    if (batchEnd > i)
+                    {
+                        var batch = new AddCardsSkillStep[batchEnd - i + 1];
+                        for (int j = i; j <= batchEnd; j++)
+                            batch[j - i] = (AddCardsSkillStep)_steps[j];
+
+                        await AddCardsSkillStep.ExecuteBatch(_skill, batch);
+                        i = batchEnd;
+                    }
+                    else
+                    {
+                        await firstStatusStep.Execute(_skill);
+                    }
+                }
+                else
+                {
+                    await _steps[i].Execute(_skill);
+                }
+
                 if (ShouldAbortStepExecution(_skill))
                     break;
             }
@@ -2322,8 +2420,9 @@ public partial class Skill
     protected SkillStep HurtFriendly(
         int damage,
         TargetReference target = TargetReference.Self,
-        bool includeSummonsWhenAll = true
-    ) => new HurtFriendlySkillStep(damage, TargetValue(target), includeSummonsWhenAll);
+        bool includeSummonsWhenAll = true,
+        bool ignoreBlock = false
+    ) => new HurtFriendlySkillStep(damage, TargetValue(target), includeSummonsWhenAll, ignoreBlock);
 
     protected SkillStep EnergyStep(int delta) => new EnergySkillStep(delta);
 
@@ -2363,11 +2462,20 @@ public partial class Skill
         string description = null
     ) => new SelectPileCardsToHandSkillStep(count, fromDiscardPile: true, description);
 
-    protected SkillStep AddStatusCardsStep(
-        SkillID statusSkillId,
+    protected SkillStep AddCardsStep(
+        SkillID SkillId,
         int count,
-        BattleCardPileTarget pileTarget = BattleCardPileTarget.DrawPileCards
-    ) => new AddStatusCardsSkillStep(statusSkillId, count, pileTarget);
+        BattleCardPileTarget pileTarget = BattleCardPileTarget.DrawPileCards,
+        TargetReference cardOwner = TargetReference.Self,
+        bool random = false
+    ) => new AddCardsSkillStep(SkillId, count, pileTarget, TargetValue(cardOwner), random);
+
+    protected SkillStep AddCardsToHandStep(
+        SkillID skillId,
+        int count,
+        TargetReference cardOwner = TargetReference.Self,
+        bool random = false
+    ) => AddCardsStep(skillId, count, BattleCardPileTarget.HandCards, cardOwner, random);
 
     // Friendly property / defense / utility steps
     protected SkillStep ModifyPropertyStep(
@@ -3029,8 +3137,13 @@ public partial class Skill
                 return;
 
             Character[] targets = _useSingleTarget
-                ? skill.ResolveHostileTargets(_singleTarget, 1, _byBehindRow)
-                : skill.ResolveHostileTargets(_multiTarget);
+                ? skill.ResolveHostileTargets(
+                    _singleTarget,
+                    1,
+                    _byBehindRow,
+                    respectInvisible: false
+                )
+                : skill.ResolveHostileTargets(_multiTarget, respectInvisible: false);
             if (targets.Length == 0)
                 return;
 
@@ -3080,8 +3193,13 @@ public partial class Skill
                 return Array.Empty<Character>();
 
             return _useSingleTarget
-                ? skill.ResolveHostileTargets(_singleTarget, 1, _byBehindRow)
-                : skill.ResolveHostileTargets(_multiTarget);
+                ? skill.ResolveHostileTargets(
+                    _singleTarget,
+                    1,
+                    _byBehindRow,
+                    respectInvisible: false
+                )
+                : skill.ResolveHostileTargets(_multiTarget, respectInvisible: false);
         }
 
         public override IEnumerable<Character> PreviewHostileDebuffTargets(Skill skill)
@@ -3135,9 +3253,6 @@ public partial class Skill
             case PropertyType.Survivability:
                 info.Survivability -= loss;
                 break;
-            case PropertyType.Speed:
-                info.Speed -= loss;
-                break;
             case PropertyType.MaxLife:
                 return;
             default:
@@ -3155,7 +3270,6 @@ public partial class Skill
         {
             PropertyType.Power => target.BattlePower,
             PropertyType.Survivability => target.BattleSurvivability,
-            PropertyType.Speed => target.Speed,
             PropertyType.MaxLife => target.BattleMaxLife,
             PropertyType.EnergySources => target.EnergySources,
             _ => 0,
@@ -3216,6 +3330,8 @@ public partial class Skill
             case Buff.BuffName.EnergyStorage:
             case Buff.BuffName.Beacon:
             case Buff.BuffName.WeakeningField:
+            case Buff.BuffName.ExhaustShield:
+            case Buff.BuffName.Foresight:
                 SpecialBuff.BuffAdd(buffName, target, stacks, source);
                 return true;
             default:
@@ -3316,7 +3432,8 @@ public partial class Skill
     private static Character[] GetAllHostileWithOrder(
         Skill skill,
         bool dyingFilter,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         if (skill?.OwnerCharater?.BattleNode == null)
@@ -3325,7 +3442,8 @@ public partial class Skill
         return skill.GetHostileTargetsInTeamOrder(
             dyingFilter,
             returnDummyWhenEmpty: false,
-            applyTaunt: applyTaunt
+            applyTaunt: applyTaunt,
+            respectInvisible: respectInvisible
         );
     }
 
@@ -3857,7 +3975,7 @@ public partial class Skill
                 return skill
                     .GetStoredTargetArray(_targetReference.StoredKey)
                     .Where(x =>
-                        x != null && x != dummy && x.State == Character.CharacterState.Normal
+                        x != null && x != dummy && skill.IsAllowedHostileTarget(x)
                     )
                     .ToArray();
             }
@@ -3868,7 +3986,7 @@ public partial class Skill
                 if (
                     stored == null
                     || stored == skill?.OwnerCharater?.BattleNode?.dummy
-                    || stored.State == Character.CharacterState.Dying
+                    || !skill.IsAllowedHostileTarget(stored)
                 )
                 {
                     return Array.Empty<Character>();
@@ -3877,7 +3995,7 @@ public partial class Skill
                 return [stored];
             }
 
-            return skill.ResolveHostileTargets(_hostileTarget);
+            return skill.ResolveHostileTargets(_hostileTarget, respectInvisible: false);
         }
     }
 
@@ -4087,12 +4205,19 @@ public partial class Skill
         private readonly int _damage;
         private readonly TargetSelection _target;
         private readonly bool _includeSummonsWhenAll;
+        private readonly bool _ignoreBlock;
 
-        public HurtFriendlySkillStep(int damage, TargetSelection target, bool includeSummonsWhenAll)
+        public HurtFriendlySkillStep(
+            int damage,
+            TargetSelection target,
+            bool includeSummonsWhenAll,
+            bool ignoreBlock
+        )
         {
             _damage = Math.Max(0, damage);
             _target = target;
             _includeSummonsWhenAll = includeSummonsWhenAll;
+            _ignoreBlock = ignoreBlock;
         }
 
         public override async Task Execute(Skill skill)
@@ -4110,7 +4235,13 @@ public partial class Skill
                 if (ShouldAbortStepExecution(skill))
                     break;
 
-                tasks.Add(targets[i].GetHurt(_damage, skill?.OwnerCharater));
+                tasks.Add(
+                    targets[i].GetHurt(
+                        _damage,
+                        skill?.OwnerCharater,
+                        ignoreBlock: _ignoreBlock
+                    )
+                );
 
                 if (i < targets.Length - 1)
                     await skill.YieldBatchedCombatFrameAsync();
@@ -4128,14 +4259,14 @@ public partial class Skill
             string targetText = FriendlyTargetTextForDescription(_target);
             if (IsSelfFriendlyTarget(_target))
                 yield return I18n.Format(
-                    "skill.step.hurt.self",
-                    "受到{damage}点伤害。",
+                    _ignoreBlock ? "skill.step.hurt.self.ignore_block" : "skill.step.hurt.self",
+                    _ignoreBlock ? "扣除{damage}点血量。" : "受到{damage}点伤害。",
                     ("damage", _damage)
                 );
             else
                 yield return I18n.Format(
-                    "skill.step.hurt.target",
-                    "对{target}造成{damage}点伤害。",
+                    _ignoreBlock ? "skill.step.hurt.target.ignore_block" : "skill.step.hurt.target",
+                    _ignoreBlock ? "使{target}扣除{damage}点血量。" : "对{target}造成{damage}点伤害。",
                     ("target", targetText),
                     ("damage", _damage)
                 );
@@ -5425,51 +5556,281 @@ public partial class Skill
         }
     }
 
-    private sealed class AddStatusCardsSkillStep : SkillStep
+    private sealed class AddCardsSkillStep : SkillStep
     {
         private readonly SkillID _statusSkillId;
         private readonly int _count;
         private readonly BattleCardPileTarget _pileTarget;
+        private readonly TargetSelection _cardOwner;
+        private readonly bool _random;
 
-        public AddStatusCardsSkillStep(
+        private bool UsesRandomOwnedCard => _random || _statusSkillId == SkillID.None;
+
+        public AddCardsSkillStep(
             SkillID statusSkillId,
             int count,
-            BattleCardPileTarget pileTarget
+            BattleCardPileTarget pileTarget,
+            TargetSelection cardOwner,
+            bool random = false
         )
         {
             _statusSkillId = statusSkillId;
             _count = count;
             _pileTarget = pileTarget;
+            _cardOwner = cardOwner;
+            _random = random;
         }
 
         public override async Task Execute(Skill skill)
         {
+            await ExecuteBatch(skill, new[] { this });
+        }
+
+        internal static async Task ExecuteBatch(
+            Skill skill,
+            IReadOnlyList<AddCardsSkillStep> steps
+        )
+        {
+            if (skill == null || steps == null || steps.Count == 0)
+                return;
+
+            Battle battle = skill.OwnerCharater?.BattleNode;
+            if (battle == null)
+                return;
+
+            CharacterControl characterControl = battle.CharacterControl;
+            foreach (AddCardsSkillStep step in steps)
+            {
+                if (step.NeedsHandDrawEntryAnimation(skill, characterControl))
+                {
+                    foreach (AddCardsSkillStep sequentialStep in steps)
+                        await sequentialStep.ExecuteSingle(skill);
+
+                    NotifyForesightIfFriendlySkillGeneratedCards(skill);
+                    return;
+                }
+            }
+
+            var animationEntries = new List<CharacterControl.StatusCardInsertAnimationEntry>();
+            var resolvedApplies = new List<(AddCardsSkillStep Step, SkillID[] SkillIds)>();
+            foreach (AddCardsSkillStep step in steps)
+            {
+                SkillID[] resolvedSkillIds = step.ResolveSkillIds(skill);
+                resolvedApplies.Add((step, resolvedSkillIds));
+
+                if (resolvedSkillIds.Length == 0)
+                    continue;
+
+                PlayerCharacter cardOwner = step.ResolveCardOwner(skill);
+                PlayerCharacter contextPlayer = battle.ResolveTeamCardContextPlayer(cardOwner);
+                if (contextPlayer == null)
+                    continue;
+
+                if (step.UsesRandomOwnedCard)
+                {
+                    foreach (SkillID skillId in resolvedSkillIds)
+                    {
+                        animationEntries.Add(
+                            new CharacterControl.StatusCardInsertAnimationEntry(
+                                contextPlayer,
+                                skillId,
+                                1,
+                                skill.OwnerCharater,
+                                step._pileTarget
+                            )
+                        );
+                    }
+
+                    continue;
+                }
+
+                if (step._pileTarget == BattleCardPileTarget.HandCards)
+                    continue;
+
+                animationEntries.Add(
+                    new CharacterControl.StatusCardInsertAnimationEntry(
+                        contextPlayer,
+                        step._statusSkillId,
+                        step._count,
+                        skill.OwnerCharater,
+                        step._pileTarget
+                    )
+                );
+            }
+
+            if (
+                animationEntries.Count > 0
+                && characterControl != null
+                && GodotObject.IsInstanceValid(characterControl)
+            )
+            {
+                await characterControl.PlayStatusCardInsertAnimationAsync(animationEntries);
+            }
+
+            foreach ((AddCardsSkillStep step, SkillID[] skillIds) in resolvedApplies)
+                step.ApplyBattleCards(skill, skillIds);
+
+            NotifyForesightIfFriendlySkillGeneratedCards(skill);
+        }
+
+        private static void NotifyForesightIfFriendlySkillGeneratedCards(Skill skill)
+        {
+            if (skill?.OwnerCharater is not PlayerCharacter)
+                return;
+
+            skill.OwnerCharater.BattleNode?.NotifyPlayerTeamBattleCardsGeneratedByFriendlySkill();
+        }
+
+        private async Task ExecuteSingle(Skill skill)
+        {
             if (skill == null || _count <= 0)
                 return;
 
-            PlayerCharacter player = ResolveStatusCardPilePlayer(skill);
-            if (player == null || player.BattleNode == null)
+            PlayerCharacter cardOwner = ResolveCardOwner(skill);
+            Battle battle = skill.OwnerCharater?.BattleNode;
+            if (battle == null)
                 return;
 
-            CharacterControl characterControl = player.BattleNode.CharacterControl;
-            if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
+            PlayerCharacter contextPlayer = battle.ResolveTeamCardContextPlayer(cardOwner);
+            CharacterControl characterControl = battle.CharacterControl;
+            SkillID[] resolvedSkillIds = ResolveSkillIds(skill);
+            if (
+                _pileTarget != BattleCardPileTarget.HandCards
+                && characterControl != null
+                && GodotObject.IsInstanceValid(characterControl)
+                && contextPlayer != null
+                && resolvedSkillIds.Length > 0
+            )
             {
-                await characterControl.PlayStatusCardInsertAnimationAsync(
-                    player,
-                    _statusSkillId,
-                    _count,
+                if (UsesRandomOwnedCard)
+                {
+                    var animationEntries = resolvedSkillIds
+                        .Select(skillId => new CharacterControl.StatusCardInsertAnimationEntry(
+                            contextPlayer,
+                            skillId,
+                            1,
+                            skill.OwnerCharater,
+                            _pileTarget
+                        ))
+                        .ToArray();
+                    await characterControl.PlayStatusCardInsertAnimationAsync(
+                        animationEntries
+                    );
+                }
+                else
+                {
+                    await characterControl.PlayStatusCardInsertAnimationAsync(
+                        new[]
+                        {
+                            new CharacterControl.StatusCardInsertAnimationEntry(
+                                contextPlayer,
+                                _statusSkillId,
+                                _count,
+                                skill.OwnerCharater,
+                                _pileTarget
+                            ),
+                        }
+                    );
+                }
+            }
+
+            ApplyBattleCards(skill, resolvedSkillIds);
+
+            if (
+                _pileTarget == BattleCardPileTarget.HandCards
+                && NeedsHandDrawEntryAnimation(skill, characterControl)
+                && characterControl != null
+                && GodotObject.IsInstanceValid(characterControl)
+            )
+            {
+                await characterControl.WaitForPreparedHandDrawEntryAsync();
+            }
+        }
+
+        private bool NeedsHandDrawEntryAnimation(Skill skill, CharacterControl characterControl)
+        {
+            if (_count <= 0 || _pileTarget != BattleCardPileTarget.HandCards)
+                return false;
+
+            Battle battle = skill?.OwnerCharater?.BattleNode;
+            if (battle == null)
+                return false;
+
+            PlayerCharacter cardOwner = ResolveCardOwner(skill);
+            PlayerCharacter contextPlayer = battle.ResolveTeamCardContextPlayer(cardOwner);
+            if (
+                contextPlayer == null
+                || characterControl == null
+                || !GodotObject.IsInstanceValid(characterControl)
+            )
+                return false;
+
+            return characterControl.CanAnimateAddCardsToHand(contextPlayer, _count);
+        }
+
+        private SkillID[] ResolveSkillIds(Skill skill)
+        {
+            if (_count <= 0)
+                return Array.Empty<SkillID>();
+
+            if (!UsesRandomOwnedCard)
+                return Enumerable.Repeat(_statusSkillId, _count).ToArray();
+
+            Battle battle = skill?.OwnerCharater?.BattleNode;
+            PlayerCharacter cardOwner = ResolveCardOwner(skill);
+            if (battle == null || cardOwner == null)
+                return Array.Empty<SkillID>();
+
+            var resolved = new List<SkillID>(_count);
+            for (int i = 0; i < _count; i++)
+            {
+                SkillID? picked = battle.PickRandomOwnedBattleSkillId(cardOwner);
+                if (!picked.HasValue)
+                    break;
+
+                resolved.Add(picked.Value);
+            }
+
+            return resolved.ToArray();
+        }
+
+        private void ApplyBattleCards(Skill skill, IReadOnlyList<SkillID> skillIds = null)
+        {
+            if (skill == null || _count <= 0)
+                return;
+
+            Battle battle = skill.OwnerCharater?.BattleNode;
+            if (battle == null)
+                return;
+
+            PlayerCharacter cardOwner = ResolveCardOwner(skill);
+            foreach (SkillID skillId in skillIds ?? ResolveSkillIds(skill))
+            {
+                battle.AddPlayerBattleStatusCards(
+                    cardOwner,
+                    skillId,
+                    1,
                     _pileTarget,
                     skill.OwnerCharater
                 );
             }
+        }
 
-            player.BattleNode.AddPlayerBattleStatusCards(
-                player,
-                _statusSkillId,
-                _count,
-                _pileTarget,
-                skill.OwnerCharater
-            );
+        private PlayerCharacter ResolveCardOwner(Skill skill)
+        {
+            Skill cardTemplate = Skill.GetSkill(_statusSkillId);
+            if (cardTemplate?.IsStatusCard == true)
+                return null;
+
+            if (_cardOwner.Kind == TargetSelectionKind.DefaultRule)
+                return ResolveStatusCardPilePlayer(skill);
+
+            Character target = skill.ResolveFriendlyTarget(_cardOwner, dyingFilter: true);
+            PlayerCharacter player = ResolveCardPileOwner(target);
+            if (player != null)
+                return player;
+
+            return ResolveStatusCardPilePlayer(skill);
         }
 
         private static PlayerCharacter ResolveStatusCardPilePlayer(Skill skill)
@@ -5505,12 +5866,62 @@ public partial class Skill
             if (_count <= 0)
                 yield break;
 
+            string pileText = GetBattleCardPileTargetText(_pileTarget);
+            if (UsesRandomOwnedCard)
+            {
+                if (IsSelfFriendlyTarget(_cardOwner))
+                {
+                    yield return I18n.Format(
+                        "skill.step.add_random_cards",
+                        "向{pile}塞入{count}张随机卡牌。",
+                        ("pile", pileText),
+                        ("count", _count)
+                    );
+                    yield break;
+                }
+
+                yield return I18n.Format(
+                    "skill.step.add_random_cards.target",
+                    "向{target}的{pile}塞入{count}张随机卡牌。",
+                    ("target", FriendlyTargetTextForDescription(_cardOwner)),
+                    ("pile", pileText),
+                    ("count", _count)
+                );
+                yield break;
+            }
+
             string statusName =
                 Skill.GetSkill(_statusSkillId)?.SkillName ?? _statusSkillId.ToString();
-            string pileText = GetBattleCardPileTargetText(_pileTarget);
+            bool isTeamStatusCard = Skill.GetSkill(_statusSkillId)?.IsStatusCard == true;
+            if (isTeamStatusCard)
+            {
+                yield return I18n.Format(
+                    "skill.step.add_team_status_cards",
+                    "向全队{pile}塞入{count}张{status}。",
+                    ("pile", pileText),
+                    ("count", _count),
+                    ("status", statusName)
+                );
+                yield break;
+            }
+
+            if (IsSelfFriendlyTarget(_cardOwner))
+            {
+                yield return I18n.Format(
+                    "skill.step.add_status_cards",
+                    "向{pile}塞入{count}张{status}。",
+                    ("pile", pileText),
+                    ("count", _count),
+                    ("status", statusName)
+                );
+                yield break;
+            }
+
+            string targetText = FriendlyTargetTextForDescription(_cardOwner);
             yield return I18n.Format(
-                "skill.step.add_status_cards",
-                "向{pile}塞入{count}张{status}。",
+                "skill.step.add_cards.target",
+                "向{target}的{pile}塞入{count}张{status}。",
+                ("target", targetText),
                 ("pile", pileText),
                 ("count", _count),
                 ("status", statusName)
@@ -5534,7 +5945,11 @@ public partial class Skill
 
         public override IEnumerable<Character> PreviewTargets(Skill skill)
         {
-            return Array.Empty<Character>();
+            if (!UsesRandomOwnedCard && Skill.GetSkill(_statusSkillId)?.IsStatusCard == true)
+                return Array.Empty<Character>();
+
+            PlayerCharacter owner = ResolveCardOwner(skill);
+            return owner != null ? new[] { owner } : Array.Empty<Character>();
         }
     }
 
@@ -5904,6 +6319,7 @@ public partial class Skill
             return;
 
         int totalHits = Math.Max(1, times);
+        skill.OwnerCharater?.BattleNode?.NotifyAllyAttackExecuted(skill.OwnerCharater);
         int clamped = Math.Clamp(
             AttackBuff.ApplyOutgoingDamageModifiers(
                 skill.OwnerCharater,

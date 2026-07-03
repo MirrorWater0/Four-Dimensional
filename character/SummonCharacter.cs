@@ -79,7 +79,6 @@ public partial class SummonCharacter : EnemyCharacter
         int maxLife,
         int power,
         int survivability,
-        int speed,
         params Skill[] skills
     )
     {

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/Effect/BuffTriggerFlashVfx.cs" id="1_script"]
+
+[node name="BuffTriggerFlashVfx" type="Node2D"]
+z_index = 4
+script = ExtResource("1_script")

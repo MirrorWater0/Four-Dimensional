@@ -4,7 +4,7 @@ using Godot;
 public partial class HollowBulwark : EnemyCharacter
 {
     private const int StartBarricadeStacks = 1;
-    private const int StartBlock = 40;
+    private const int StartBlock = 70;
 
     public const string PassiveNameText = "空壳壁障";
     public static string PassiveDescriptionText =>
@@ -38,7 +38,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
-        MaxLife = 5;
+        MaxLife = 9;
         Power = 0;
         Survivability = 0;
         BaseSurvivabilityContribution = 0;
@@ -56,17 +56,13 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
 
 public partial class HollowBulwarkAttack : Skill
 {
-    public HollowBulwarkAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "壁刃冲击";
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(15));
+        return new SkillPlan(this, AttackStep(20));
     }
 }
 
@@ -74,11 +70,7 @@ public partial class HollowBulwarkSurvive : Skill
 {
     private const int BaseBlock = 30;
 
-    public HollowBulwarkSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "空壳";
 
@@ -90,11 +82,7 @@ public partial class HollowBulwarkSurvive : Skill
 
 public partial class HollowBulwarkSpecial : Skill
 {
-    public HollowBulwarkSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "闭合";
     public override int EnemySpecialIntentionCooldown => 2;
@@ -103,7 +91,7 @@ public partial class HollowBulwarkSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(14),
+            AttackStep(16),
             ModifyPropertyStep(PropertyType.Survivability, 10),
             CustomStep(
                 _ =>

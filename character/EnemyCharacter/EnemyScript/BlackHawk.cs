@@ -55,7 +55,7 @@ public partial class BlackHawkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
 
-        MaxLife = 52;
+        MaxLife = 74;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -73,11 +73,7 @@ public partial class BlackHawkAttack : Skill
     private const int PowerMultiplier = 1;
     private const int InvisibleStacks = 1;
 
-    public BlackHawkAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "裂羽连袭";
 
@@ -85,7 +81,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 7, multiplier: PowerMultiplier, times: 3),
+            AttackStep(baseDamage: 5, multiplier: PowerMultiplier, times: 3),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -96,11 +92,7 @@ public partial class BlackHawkSurvive : Skill
     private const int HealAmount = 10;
     private const int InvisibleStacks = 2;
 
-    public BlackHawkSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "夜幕回翔";
 
@@ -119,11 +111,7 @@ public partial class BlackHawkSpecial : Skill
 {
     int rtimes = 2;
 
-    public BlackHawkSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "黑羽风暴";
     public override int EnergyCost => 5;
@@ -136,7 +124,7 @@ public partial class BlackHawkSpecial : Skill
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(baseDamage: 5, multiplier: 1, target: HostileTargetReference.All),
+                    AttackStep(baseDamage: 4, multiplier: 1, target: HostileTargetReference.All),
                 ]
             )
         );

@@ -48,6 +48,8 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<Label>("SettingsTitle");
     private CheckBox DescriptionModeCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("DescriptionModeCheckBox");
+    private CheckBox HideStatXKeywordTooltipsCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("HideStatXKeywordTooltipsCheckBox");
     private CheckBox TurnOrderPreviewCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("TurnOrderPreviewCheckBox");
     private CheckBox IncomingDamagePreviewCheckBox =>
@@ -60,6 +62,8 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<CheckBox>("HideEnemySkillsCheckBox");
     private CheckBox GroupBattlePilesByCharacterCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("GroupBattlePilesByCharacterCheckBox");
+    private CheckBox ShowHandCardIndicesCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("ShowHandCardIndicesCheckBox");
     private CheckBox KeepManualTargetCardVisibleCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("KeepManualTargetCardVisibleCheckBox");
     private CheckBox ArrowManualTargetSelectionCheckBox =>
@@ -130,6 +134,9 @@ public partial class Menu : Control
         if (DescriptionModeCheckBox != null)
             DescriptionModeCheckBox.Pressed += OnDescriptionModePressed;
 
+        if (HideStatXKeywordTooltipsCheckBox != null)
+            HideStatXKeywordTooltipsCheckBox.Pressed += OnHideStatXKeywordTooltipsPressed;
+
         if (TurnOrderPreviewCheckBox != null)
             TurnOrderPreviewCheckBox.Visible = false;
 
@@ -148,6 +155,9 @@ public partial class Menu : Control
 
         if (GroupBattlePilesByCharacterCheckBox != null)
             GroupBattlePilesByCharacterCheckBox.Pressed += OnGroupBattlePilesByCharacterPressed;
+
+        if (ShowHandCardIndicesCheckBox != null)
+            ShowHandCardIndicesCheckBox.Pressed += OnShowHandCardIndicesPressed;
 
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.Pressed += OnKeepManualTargetCardVisiblePressed;
@@ -256,6 +266,7 @@ public partial class Menu : Control
         };
     }
 
+    // 退出仅返回主界面，不写入存档；进度已在地图节点完成、切换区域等检查点保存。
     private void OnSaveQuitPressed()
     {
         AbortActiveBattle();
@@ -271,17 +282,19 @@ public partial class Menu : Control
         if (AbandonGameButton != null)
             AbandonGameButton.Disabled = true;
 
-        var activeBattle = FindActiveBattle(GetTree()?.Root);
+        var tree = GetTree();
+        Node summaryHost = tree?.Root;
+        var activeBattle = FindActiveBattle(tree?.Root);
 
         Close();
         activeBattle?.AbortBattle(unlockMapNodes: false);
         GameInfo.RecordCurrentRunHistory(victory: false, includeCurrentNode: true);
-        GameOverSummary.Show(this);
+        SaveSystem.SaveRunCheckpoint(background: false);
+        if (summaryHost != null)
+            GameOverSummary.Show(summaryHost);
 
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-        SaveSystem.SaveAllInBackground();
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
     }
 
     private void OnReturnPressed()
@@ -312,10 +325,19 @@ public partial class Menu : Control
         if (DescriptionModeCheckBox == null)
             return;
 
-        UserSettings.SetCompactBattleCardDescriptions(DescriptionModeCheckBox.ButtonPressed);
+        UserSettings.SetFormulaCardDescriptions(DescriptionModeCheckBox.ButtonPressed);
 
         var activeBattle = FindActiveBattle(GetTree()?.Root);
         activeBattle?.RefreshBattleCardDescriptionModeFromSettings();
+    }
+
+    private void OnHideStatXKeywordTooltipsPressed()
+    {
+        if (HideStatXKeywordTooltipsCheckBox == null)
+            return;
+
+        UserSettings.SetHideStatXKeywordTooltips(HideStatXKeywordTooltipsCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.RefreshStatXKeywordTooltipsFromSettings();
     }
 
     private void OnTurnOrderPreviewPressed()
@@ -373,6 +395,15 @@ public partial class Menu : Control
         UserSettings.SetGroupBattlePilesByCharacter(
             GroupBattlePilesByCharacterCheckBox.ButtonPressed
         );
+    }
+
+    private void OnShowHandCardIndicesPressed()
+    {
+        if (ShowHandCardIndicesCheckBox == null)
+            return;
+
+        UserSettings.SetShowHandCardIndices(ShowHandCardIndicesCheckBox.ButtonPressed);
+        FindActiveBattle(GetTree()?.Root)?.CharacterControl?.RefreshCurrentTurnUi();
     }
 
     private void OnKeepManualTargetCardVisiblePressed()
@@ -515,7 +546,9 @@ public partial class Menu : Control
         RebuildTextSizeOptionButton();
         RebuildBattleShakeOptionButton();
         if (DescriptionModeCheckBox != null)
-            DescriptionModeCheckBox.ButtonPressed = UserSettings.UseCompactBattleCardDescriptions;
+            DescriptionModeCheckBox.ButtonPressed = UserSettings.UseFormulaCardDescriptions;
+        if (HideStatXKeywordTooltipsCheckBox != null)
+            HideStatXKeywordTooltipsCheckBox.ButtonPressed = UserSettings.HideStatXKeywordTooltips;
         if (TurnOrderPreviewCheckBox != null)
         {
             TurnOrderPreviewCheckBox.Visible = false;
@@ -533,6 +566,8 @@ public partial class Menu : Control
         if (GroupBattlePilesByCharacterCheckBox != null)
             GroupBattlePilesByCharacterCheckBox.ButtonPressed =
                 UserSettings.GroupBattlePilesByCharacter;
+        if (ShowHandCardIndicesCheckBox != null)
+            ShowHandCardIndicesCheckBox.ButtonPressed = UserSettings.ShowHandCardIndices;
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.ButtonPressed =
                 UserSettings.KeepManualTargetCardVisibleWhenHidden;
@@ -731,7 +766,7 @@ public partial class Menu : Control
         if (ReturnButton != null)
             ReturnButton.Text = I18n.Tr("ui.menu.return", "返回");
         if (SaveQuitButton != null)
-            SaveQuitButton.Text = I18n.Tr("ui.menu.save_quit", "保存退出");
+            SaveQuitButton.Text = I18n.Tr("ui.menu.save_quit", "退出");
         if (SettingsButton != null)
             SettingsButton.Text = I18n.Tr("ui.menu.settings", "设置");
         if (EncyclopediaButton != null)
@@ -742,8 +777,13 @@ public partial class Menu : Control
             SettingsTitle.Text = I18n.Tr("ui.settings.title", "设置");
         if (DescriptionModeCheckBox != null)
             DescriptionModeCheckBox.Text = I18n.Tr(
-                "ui.settings.compact_card_description",
-                "战斗卡面显示总数值"
+                "ui.settings.formula_card_description",
+                "数值公式化"
+            );
+        if (HideStatXKeywordTooltipsCheckBox != null)
+            HideStatXKeywordTooltipsCheckBox.Text = I18n.Tr(
+                "ui.settings.hide_stat_x_keyword_tooltips",
+                "隐藏X变量说明"
             );
         if (TurnOrderPreviewCheckBox != null)
             TurnOrderPreviewCheckBox.Text = I18n.Tr(
@@ -774,6 +814,11 @@ public partial class Menu : Control
             GroupBattlePilesByCharacterCheckBox.Text = I18n.Tr(
                 "ui.settings.group_battle_piles_by_character",
                 "牌堆查看按角色分类"
+            );
+        if (ShowHandCardIndicesCheckBox != null)
+            ShowHandCardIndicesCheckBox.Text = I18n.Tr(
+                "ui.settings.show_hand_card_indices",
+                "显示手牌序号（数字键出牌）"
             );
         if (KeepManualTargetCardVisibleCheckBox != null)
             KeepManualTargetCardVisibleCheckBox.Text = I18n.Tr(

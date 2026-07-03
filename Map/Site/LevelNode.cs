@@ -7,17 +7,9 @@ using Godot;
 public partial class LevelNode : ColorRect
 {
     private static readonly Color CompletedInnerColor = Colors.White;
-    private const float DefaultRingSize = 0.804f;
-    private const float DefaultRingThickness = 0.225f;
-    private const float RestRingSize = 0.82f;
-    private const float RestRingThickness = 0.34f;
-    private const int RegionOneStrongBattleStage = 5;
-    private const int RegionTwoStrongBattleStage = 2;
-    private const int MaxAttackVulnerableIntentionEnemies = 1;
     private const float RegionTwoEliteStatMultiplier = 1f;
     private const float RegionTwoEliteMaxLifeMultiplier = 1f;
     internal const float RegionTwoBossStatMultiplier = 1f;
-    private const int EventRandomSalt = unchecked((int)0x16f0b39d);
     private static readonly PackedScene TipScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Tip.tscn"
     );
@@ -42,6 +34,7 @@ public partial class LevelNode : ColorRect
         Elite,
         Boss,
         Rest,
+        Treasure,
     }
 
     // public List<EnemyRegedit> EnemiesRegeditList;
@@ -55,7 +48,10 @@ public partial class LevelNode : ColorRect
 
     // public ProgressBar ProgressBar => field ??= GetNode("ProgressBar") as ProgressBar;
     public ShaderMaterial mat;
-    public Color LockColor = new Color(0.7f, 0.7f, 0.7f, 0.9f);
+    private ShaderMaterial _ghostMat;
+    private const float LockedTintStrength = 0.98f;
+    private const float LockedAmbient = 0.9f;
+    private const float LockedAlpha = 0.95f;
     public List<LevelNode> NextNodes = new List<LevelNode>();
     public List<LevelNode> ParentNodes = new List<LevelNode>();
     public static PackedScene BattleScene = GD.Load<PackedScene>("res://battle/Battle.tscn");
@@ -65,6 +61,12 @@ public partial class LevelNode : ColorRect
     public AnimationPlayer AnimationPlayer =>
         field ??= GetNode("AnimationPlayer") as AnimationPlayer;
     public int RandomNum;
+    public int ContentQueueIndex = -1;
+    public int RegionBattleQueueIndex = -1;
+    public int NormalBattleVisitIndex = -1;
+    public int EliteBattleVisitIndex = -1;
+    public int RelicQueueStart = -1;
+    public int RelicQueueSlot = -1;
     public int BattleEntryCount;
     private bool _isNodeHovered;
     private bool _isButtonHovered;
@@ -80,15 +82,27 @@ public partial class LevelNode : ColorRect
         mat.ResourceLocalToScene = true;
         Material = mat;
         mat.SetShaderParameter("show_inner", false);
+        if (Ghost.Material is ShaderMaterial ghostMaterial)
+        {
+            _ghostMat = ghostMaterial.Duplicate() as ShaderMaterial;
+            _ghostMat.ResourceLocalToScene = true;
+            Ghost.Material = _ghostMat;
+            _ghostMat.SetShaderParameter("show_inner", false);
+        }
 
-        Color = LockColor;
+        ApplyTypeVisualStyle();
+        if (State == LevelState.Locked)
+            ApplyLockedVisuals();
+        else if (State == LevelState.Unlocked)
+            Color = 2 * Colors.White;
+
         Button.Disabled = true;
         Button.Disabled = State == LevelState.Locked;
         StartAnimation();
         Button.MouseEntered += () =>
         {
             _isButtonHovered = true;
-            Ghost.Modulate = new Color(1, 1, 1, 1);
+            Ghost.Modulate = new Color(1, 1, 1, 0.76f);
             Ghost.Scale = new Vector2(1f, 1f);
             TweenHoverScale(new Vector2(1.2f, 1.2f), 0.2f);
         };
@@ -139,7 +153,7 @@ public partial class LevelNode : ColorRect
 
         if (highlighted)
         {
-            Ghost.Modulate = new Color(1f, 1f, 1f, 0.92f);
+            Ghost.Modulate = new Color(1f, 1f, 1f, 0.78f);
             Ghost.Scale = new Vector2(1.1f, 1.1f);
             Modulate = new Color(1.28f, 1.28f, 1.28f, 1f);
             TweenHoverScale(new Vector2(1.1f, 1.1f), 0.16f);
@@ -149,7 +163,7 @@ public partial class LevelNode : ColorRect
         Modulate = Colors.White;
         if (_isButtonHovered)
         {
-            Ghost.Modulate = new Color(1, 1, 1, 1);
+            Ghost.Modulate = new Color(1, 1, 1, 0.76f);
             Ghost.Scale = Vector2.One;
             TweenHoverScale(new Vector2(1.2f, 1.2f), 0.12f);
             return;
@@ -160,15 +174,16 @@ public partial class LevelNode : ColorRect
         TweenHoverScale(Vector2.One, 0.16f);
     }
 
-    public List<EnemyRegedit> ProduceEnemies()
+    public List<EnemyRegedit> ProduceEnemies(bool allocateVisitIndex = true)
     {
         List<EnemyRegedit> list = Type switch
         {
-            LevelType.Normal => GetNormalEnemies(),
-            LevelType.Elite => GetEliteEnemies(),
+            LevelType.Normal => GetNormalEnemies(allocateVisitIndex),
+            LevelType.Elite => GetEliteEnemies(allocateVisitIndex),
             LevelType.Boss => GetBossEnemies(),
-            _ => GetEliteEnemies(),
+            _ => GetEliteEnemies(allocateVisitIndex),
         };
+
         return list;
     }
 
@@ -184,12 +199,10 @@ public partial class LevelNode : ColorRect
 
     public void ApplyLoadedState()
     {
-        // Apply visual state based on the loaded State value
         switch (State)
         {
             case LevelState.Locked:
-                Color = LockColor;
-                Button.Disabled = true;
+                ApplyLockedVisuals();
                 break;
 
             case LevelState.Unlocked:
@@ -199,21 +212,34 @@ public partial class LevelNode : ColorRect
                 break;
 
             case LevelState.Completed:
-                Color = LockColor;
                 Button.Disabled = true;
                 ApplyCompletedVisuals();
                 break;
         }
     }
 
+    public void ApplyLockedVisuals()
+    {
+        ApplyTypeVisualStyle();
+        Color = BuildLockedModulate(GetTypeRingColor());
+        Button.Disabled = true;
+    }
+
+    private static Color BuildLockedModulate(Color typeColor)
+    {
+        return new Color(
+            Mathf.Clamp(typeColor.R * LockedTintStrength + LockedAmbient, 0f, 1f),
+            Mathf.Clamp(typeColor.G * LockedTintStrength + LockedAmbient, 0f, 1f),
+            Mathf.Clamp(typeColor.B * LockedTintStrength + LockedAmbient, 0f, 1f),
+            LockedAlpha
+        );
+    }
+
     public void ApplyCompletedVisuals()
     {
         // Only the visual effects, no state changes
         Color = 2 * new Color(1, 1, 1, 1);
-        mat.SetShaderParameter("ring_size", DefaultRingSize);
-        mat.SetShaderParameter("ring_thickness", DefaultRingThickness);
-        mat.SetShaderParameter("show_inner", true);
-        mat.SetShaderParameter("inner_color", CompletedInnerColor);
+        SetNodeShaderStyle(GetTypeRingColor(), CompletedInnerColor, true, GetTypePolygonSides());
     }
 
     public void Completed()
@@ -251,37 +277,14 @@ public partial class LevelNode : ColorRect
             return;
         }
 
-        _ = SaveAfterNodeCompletionFeedbackAsync(completionTween);
+        SaveSystem.SaveRunCheckpoint();
     }
 
     private void CompleteRunAfterFinalBoss(Tween completionTween)
     {
         GameInfo.RecordCurrentRunHistory(victory: true, includeCurrentNode: false);
+        SaveSystem.SaveRunCheckpoint(background: false);
         GameOverSummary.Show(this);
-        _ = SaveAfterNodeCompletionFeedbackAsync(completionTween);
-    }
-
-    private async Task SaveAfterNodeCompletionFeedbackAsync(
-        Tween feedbackTween = null,
-        double extraDelaySeconds = 0.15
-    )
-    {
-        var tree = GetTree();
-        if (feedbackTween != null && GodotObject.IsInstanceValid(feedbackTween))
-            await ToSignal(feedbackTween, Tween.SignalName.Finished);
-
-        tree = GetTree();
-        if (tree != null && extraDelaySeconds > 0)
-        {
-            var delayTimer = tree.CreateTimer(extraDelaySeconds);
-            await ToSignal(delayTimer, Timer.SignalName.Timeout);
-        }
-
-        tree = GetTree();
-        if (tree != null)
-            await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-
-        SaveSystem.SaveAllInBackground();
     }
 
     private void OnNodeMouseEntered()
@@ -320,40 +323,75 @@ public partial class LevelNode : ColorRect
     public void ColorChose()
     {
         ApplyTypeVisualStyle();
+        if (State == LevelState.Locked)
+            Color = BuildLockedModulate(GetTypeRingColor());
     }
 
     private void ApplyTypeVisualStyle()
     {
-        Color ringColor = new Color(1, 1, 1, 1);
-        float ringSize = DefaultRingSize;
-        float ringThickness = DefaultRingThickness;
+        Color ringColor = GetTypeRingColor();
+        SetNodeShaderStyle(ringColor, ringColor, false, GetTypePolygonSides());
+    }
 
-        switch (Type)
+    private Color GetTypeRingColor()
+    {
+        var levelProgress = GetParent()?.GetParent<LevelProgress>();
+        if (levelProgress != null)
+            return levelProgress.GetNodeTypeRingColor(Type);
+
+        return Type switch
         {
-            case LevelType.Boss:
-                ringColor = new Color(0.6f, 0, 0.9f, 1);
-                break;
-            case LevelType.Elite:
-                ringColor = new Color(1, 0.1f, 0.1f, 1);
-                break;
-            case LevelType.Event:
-                ringColor = new Color(0, 0.6f, 1, 1);
-                break;
-            case LevelType.Shop:
-                ringColor = new Color(1f, 0.84f, 0.18f, 1f);
-                break;
-            case LevelType.Rest:
-                ringColor = new Color(0.1f, 0.9f, 0.46f, 1f);
-                ringSize = RestRingSize;
-                ringThickness = RestRingThickness;
-                break;
-        }
+            LevelType.Boss => new Color("#9900E6"),
+            LevelType.Elite => new Color("#FF1A1A"),
+            LevelType.Event => new Color("#0099FF"),
+            LevelType.Shop => new Color("#FFD62E"),
+            LevelType.Rest => new Color("#1AE675"),
+            LevelType.Treasure => new Color("#FFB020"),
+            _ => new Color("#FFFFFF"),
+        };
+    }
 
-        mat.SetShaderParameter("ring_color", ringColor);
-        mat.SetShaderParameter("ring_size", ringSize);
-        mat.SetShaderParameter("ring_thickness", ringThickness);
-        mat.SetShaderParameter("inner_color", Colors.White);
-        mat.SetShaderParameter("show_inner", false);
+    private float GetTypePolygonSides()
+    {
+        return Type switch
+        {
+            LevelType.Event => 5f,
+            LevelType.Shop => 4f,
+            LevelType.Rest => 3f,
+            LevelType.Treasure => 4f,
+            _ => 6f,
+        };
+    }
+
+    private void SetNodeShaderStyle(
+        Color ringColor,
+        Color innerColor,
+        bool showInner,
+        float polygonSides
+    )
+    {
+        bool showChest = Type == LevelType.Treasure;
+        ApplyNodeShaderStyle(mat, ringColor, innerColor, showInner, polygonSides, showChest);
+        ApplyNodeShaderStyle(_ghostMat, ringColor, innerColor, showInner, polygonSides, showChest);
+    }
+
+    private static void ApplyNodeShaderStyle(
+        ShaderMaterial shader,
+        Color ringColor,
+        Color innerColor,
+        bool showInner,
+        float polygonSides,
+        bool showChestIcon = false
+    )
+    {
+        if (shader == null)
+            return;
+
+        shader.SetShaderParameter("ring_color", ringColor);
+        shader.SetShaderParameter("inner_color", innerColor);
+        shader.SetShaderParameter("show_inner", showInner);
+        shader.SetShaderParameter("polygon_sides", polygonSides);
+        shader.SetShaderParameter("show_chest_icon", showChestIcon);
     }
 
     private bool IsAnimate = false;
@@ -383,6 +421,9 @@ public partial class LevelNode : ColorRect
                 break;
             case LevelType.Rest:
                 GotoRest();
+                break;
+            case LevelType.Treasure:
+                GotoTreasure();
                 break;
         }
     }
@@ -434,14 +475,18 @@ public partial class LevelNode : ColorRect
         foreach (var enemy in EnemiesRegeditList)
         {
             if (enemy != null && enemy.CurrentLife < 0)
-                enemy.CurrentLife = EnemyCharacter.GetEffectiveMaxLife(enemy, Type);
+                enemy.CurrentLife = Math.Max(1, enemy.MaxLife);
         }
     }
 
     private int NextBattleRandomNum()
     {
         BattleEntryCount++;
-        return HashFormationSeed(RandomNum, BattleEntryCount ^ unchecked((int)0x6d2b79f5));
+        return GameInfo.CreateRunRngSeed(
+            GameInfo.GetStreamForNodeType(Type),
+            GameInfo.GetBattleRngQueueIndex(this),
+            BattleEntryCount ^ GameInfo.BattleFormationSalt
+        );
     }
 
     private void RandomizePlayerPreviewPositions(int battleRandomNum)
@@ -462,10 +507,21 @@ public partial class LevelNode : ColorRect
     public void GotoEvent()
     {
         GameInfo.BeginLevelNodeTracking(this);
+        var rng = GameInfo.CreateRunRng(this, GameInfo.EventContentSalt);
+        OpenEventInterface(GameEvent.Catalog[rng.Next(0, GameEvent.Catalog.Length)]);
+    }
+
+    private void OpenEventInterface(GameEvent gameEvent)
+    {
         var gameEventInterface = EventScene.Instantiate() as EventInterface;
+        if (gameEventInterface == null)
+        {
+            Completed();
+            return;
+        }
+
         gameEventInterface.WhichNode = this;
-        var rng = new Random(HashFormationSeed(RandomNum, EventRandomSalt));
-        gameEventInterface.ThisEvent = GameEvent.Catalog[rng.Next(0, GameEvent.Catalog.Length)];
+        gameEventInterface.ThisEvent = gameEvent;
         var tween = ExplodeAnimation();
         tween
             .Chain()
@@ -498,20 +554,14 @@ public partial class LevelNode : ColorRect
     {
         GameInfo.BeginLevelNodeTracking(this);
         GetParent()?.GetParent<LevelProgress>()?.OnNodeSelected(this);
+        OpenEventInterface(GameEvent.BuildRestSite(this));
+    }
 
-        var tween = ExplodeAnimation();
-        tween
-            .Chain()
-            .TweenCallback(
-                Callable.From(() =>
-                {
-                    GameInfo.HealPartyByMaxLifePercent(LevelProgress.RestHealPercent);
-                    var map = GetTree()?.Root.GetNodeOrNull<Map>("Map")
-                        ?? GetTree()?.Root.GetNodeOrNull<Map>("/root/Map");
-                    map?.PlayerResourceState?.RefreshPartyLifeResource();
-                    Completed();
-                })
-            );
+    public void GotoTreasure()
+    {
+        GameInfo.BeginLevelNodeTracking(this);
+        GetParent()?.GetParent<LevelProgress>()?.OnNodeSelected(this);
+        OpenEventInterface(GameEvent.BuildTreasureChest(this));
     }
 
     public Tween ExplodeAnimation()
@@ -576,17 +626,6 @@ public partial class LevelNode : ColorRect
         }
     }
 
-    private static int HashFormationSeed(int baseSeed, int salt)
-    {
-        unchecked
-        {
-            int hash = (int)2166136261;
-            hash = (hash ^ baseSeed) * 16777619;
-            hash = (hash ^ salt) * 16777619;
-            return hash;
-        }
-    }
-
     private static bool IsSameFormationPattern(
         IReadOnlyList<int> playerPositions,
         IReadOnlyList<EnemyRegedit> enemies
@@ -626,124 +665,27 @@ public partial class LevelNode : ColorRect
         }
     }
 
-    public List<EnemyRegedit> GetNormalEnemies()
+    public List<EnemyRegedit> GetNormalEnemies(bool allocateVisitIndex = true)
     {
-        var rng = new Random(RandomNum);
-        EnemyRegedit[] weakEnemyRegedits = BuildWeakEnemyCatalogForCurrentRegion();
-        EnemyRegedit[] strongEnemyRegedits = BuildStrongEnemyCatalogForCurrentRegion();
-        int strongBattleStage = GetStrongBattleStageForCurrentRegion();
-
-        List<EnemyRegedit> list = new();
-        if (SelfCoordinate.X >= strongBattleStage)
-        {
-            int strongFormationRoll = rng.Next(100);
-            if (strongFormationRoll < 20)
-            {
-                list.Add(PickEnemyForFormation(strongEnemyRegedits, rng, list));
-                list.Add(PickEnemyForFormation(weakEnemyRegedits, rng, list));
-            }
-            else if (strongFormationRoll < 60)
-            {
-                list.Add(PickEnemyForFormation(strongEnemyRegedits, rng, list));
-            }
-            else
-            {
-                for (int i = 0; i < 3; i++)
-                {
-                    list.Add(PickEnemyForFormation(weakEnemyRegedits, rng, list));
-                }
-            }
-        }
-        else
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                list.Add(PickEnemyForFormation(weakEnemyRegedits, rng, list));
-            }
-        }
-        RandomPosition(list, RandomNum);
-        // var list = new List<EnemyRegedit>
-        // {
-        //     new WarRegedit(){ PositionIndex = 5 },
-        // };
-        return list;
+        int visitIndex = allocateVisitIndex
+            ? GameInfo.ResolveNormalBattleVisitIndex(this)
+            : GameInfo.PeekNormalBattleVisitIndex(this);
+        int formationIndex = GameInfo.GetNormalEncounterFormationIndex(visitIndex);
+        return NormalBattleEncounter.BuildFormation(GameInfo.CurrentLevel, formationIndex);
     }
 
-    private static EnemyRegedit PickEnemyForFormation(
-        IReadOnlyList<EnemyRegedit> catalog,
-        Random rng,
-        IReadOnlyList<EnemyRegedit> currentFormation
-    )
+    public List<EnemyRegedit> GetEliteEnemies(bool allocateVisitIndex = true)
     {
-        if (catalog == null || catalog.Count == 0)
-            return null;
-
-        bool attackVulnerableLimitReached =
-            currentFormation?.Count(enemy => enemy?.HasAttackVulnerableIntention == true)
-            >= MaxAttackVulnerableIntentionEnemies;
-        EnemyRegedit[] candidates = attackVulnerableLimitReached
-            ? catalog.Where(enemy => enemy?.HasAttackVulnerableIntention != true).ToArray()
-            : catalog.Where(enemy => enemy != null).ToArray();
-        if (candidates.Length == 0)
-            candidates = catalog.Where(enemy => enemy != null).ToArray();
-        if (candidates.Length == 0)
-            return null;
-
-        return candidates[rng.Next(candidates.Length)].GetRegedit();
-    }
-
-    private static int GetStrongBattleStageForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0 ? RegionTwoStrongBattleStage : RegionOneStrongBattleStage;
-    }
-
-    public List<EnemyRegedit> GetEliteEnemies()
-    {
-        EnemyRegedit[] eliteCatalog = BuildEliteCatalogForCurrentRegion();
-        EnemyRegedit[] candidates = FilterConsecutiveEliteCandidate(eliteCatalog);
-        var rng = new Random(RandomNum);
-        List<EnemyRegedit> list = new() { candidates[rng.Next(candidates.Length)].GetRegedit() };
+        int visitIndex = allocateVisitIndex
+            ? GameInfo.ResolveEliteBattleVisitIndex(this)
+            : GameInfo.PeekEliteBattleVisitIndex(this);
+        int catalogIndex = GameInfo.GetEliteEncounterCatalogIndex(visitIndex);
+        EnemyRegedit elite = EliteBattleEncounter.BuildElite(GameInfo.CurrentLevel, catalogIndex);
+        List<EnemyRegedit> list = new() { elite };
         list[0].PositionIndex = Battle.EnemyCenterFormationSlot;
         if (GameInfo.CurrentLevel > 0)
             ApplyEliteRegionTwoMultiplier(list[0]);
         return list;
-    }
-
-    private static EnemyRegedit[] BuildEliteCatalogForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0
-            ? [new FearEliteRegedit(), new EnvyEliteRegedit()]
-            : [new ArroganceRegedit(), new AngerEliteRegedit()];
-    }
-
-    private static EnemyRegedit[] FilterConsecutiveEliteCandidate(EnemyRegedit[] eliteCatalog)
-    {
-        if (eliteCatalog == null || eliteCatalog.Length <= 1)
-            return eliteCatalog;
-
-        string lastEliteIdentity = GetLastCompletedEliteIdentity();
-        if (string.IsNullOrWhiteSpace(lastEliteIdentity))
-            return eliteCatalog;
-
-        EnemyRegedit[] filtered = eliteCatalog
-            .Where(elite => GetEnemyIdentity(elite) != lastEliteIdentity)
-            .ToArray();
-        return filtered.Length > 0 ? filtered : eliteCatalog;
-    }
-
-    private static string GetLastCompletedEliteIdentity()
-    {
-        LevelNodeCompletionRecord record = GameInfo
-            .CompletedLevelNodeRecords?.Values.Where(record =>
-                record != null && record.NodeType == LevelType.Elite
-            )
-            .OrderByDescending(record => record.CompletionOrder)
-            .FirstOrDefault();
-
-        string eliteName = record?.EnemyNames?.FirstOrDefault(name =>
-            !string.IsNullOrWhiteSpace(name)
-        );
-        return GetEnemyIdentity(eliteName);
     }
 
     public List<EnemyRegedit> GetBossEnemies()
@@ -763,7 +705,7 @@ public partial class LevelNode : ColorRect
             GameInfo.CurrentLevel > 0
                 ? [new DeathRegedit()]
                 : [new WarRegedit(), new HavocRegedit()];
-        var rng = new Random(RandomNum);
+        var rng = GameInfo.CreateRunRng(this);
         EnemyRegedit boss = bossCatalog[rng.Next(bossCatalog.Length)];
         return boss.GetRegedit();
     }
@@ -832,46 +774,6 @@ public partial class LevelNode : ColorRect
             return value;
 
         return Math.Max(1, Mathf.CeilToInt(value * multiplier));
-    }
-
-    private static EnemyRegedit[] BuildWeakEnemyCatalogForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0
-            ? BuildRegionTwoWeakEnemyCatalog()
-            : BuildRegionOneWeakEnemyCatalog();
-    }
-
-    private static EnemyRegedit[] BuildStrongEnemyCatalogForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0
-            ? BuildRegionTwoStrongEnemyCatalog()
-            : BuildRegionOneStrongEnemyCatalog();
-    }
-
-    private static EnemyRegedit[] BuildRegionOneWeakEnemyCatalog()
-    {
-        return [new EvilRegedit(), new FearWormRegedit(), new AlienBodyRegedit()];
-    }
-
-    private static EnemyRegedit[] BuildRegionOneStrongEnemyCatalog()
-    {
-        return [new FerociouessRegedit(), new BlackHawkRegedit()];
-    }
-
-    private static EnemyRegedit[] BuildRegionTwoWeakEnemyCatalog()
-    {
-        return
-        [
-            new RedHuskRegedit(),
-            new VoidAcolyteRegedit(),
-            new VoidRotorRegedit(),
-            new HollowBulwarkRegedit(),
-        ];
-    }
-
-    private static EnemyRegedit[] BuildRegionTwoStrongEnemyCatalog()
-    {
-        return [new GraveWraithRegedit(), new MarrowReaverRegedit()];
     }
 
     private void UpdateHoverTipIfVisible()

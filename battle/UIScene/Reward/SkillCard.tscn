@@ -21,24 +21,14 @@ shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_playable_highlight"]
 resource_local_to_scene = true
 shader = ExtResource("5_playable_highlight")
-shader_parameter/highlight_enabled = 5.0
-shader_parameter/highlight_strength = 0.95600004541
-shader_parameter/effect_opacity = 0.1610000076475
-shader_parameter/crystal_color = Color(2.587751, 3.194369, 2.9606783, 1)
-shader_parameter/inner_color = Color(0.92021066, 1, 1, 0.26200002)
-shader_parameter/rim_power = 4.0
-shader_parameter/glow_power = 4.0
-shader_parameter/inner_glow_power = 0.542000025745
-shader_parameter/effect_margin_pixels = 16.0
-shader_parameter/corner_radius = 0.0
-shader_parameter/border_width = 0.0070000003325
-shader_parameter/glow_width = 0.078
-shader_parameter/shimmer_speed = 1.5710000746225
-shader_parameter/facet_flash_contrast = 5.226000224485
-shader_parameter/cell_count = Vector2(5, 8)
-shader_parameter/cell_min_brightness = 0.42
-shader_parameter/cell_edge_thickness = 0.00400000019
-shader_parameter/cell_edge_softness = 0.018
+shader_parameter/ease = 0.005
+shader_parameter/modulo_width = 0.02999999932944
+shader_parameter/width = 0.40000000596048
+shader_parameter/ripple_speed = 0.03
+shader_parameter/card_size = Vector2(240, 370)
+shader_parameter/effect_margin = Vector2(32, 32)
+shader_parameter/corner_radius_px = 0.0
+shader_parameter/glow_radius_px = 20.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -211,11 +201,12 @@ clear_margin = 32.0
 
 [node name="PlayableHighlight" type="ColorRect" parent="SubViewport" unique_id=1878566179]
 visible = false
+modulate = Color(0, 0.957, 0.988, 0.98)
 material = SubResource("ShaderMaterial_playable_highlight")
-offset_left = -24.0
-offset_top = -24.0
-offset_right = 264.0
-offset_bottom = 392.0
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 272.0
+offset_bottom = 400.0
 mouse_filter = 2
 
 [node name="BackShade" type="ColorRect" parent="SubViewport" unique_id=577549818]
@@ -319,10 +310,10 @@ mouse_filter = 2
 
 [node name="TypeLabel" type="Label" parent="SubViewport/TypeBadge" unique_id=1519905069]
 layout_mode = 0
-offset_left = -3.6666667
-offset_top = -2.5000062
-offset_right = 72.333336
-offset_bottom = 21.499994
+offset_left = -3.8333232
+offset_top = -5.1666627
+offset_right = 72.16668
+offset_bottom = 20.833338
 theme_override_colors/font_color = Color(1, 1, 1, 0.95)
 theme_override_font_sizes/font_size = 18
 text = "type"
@@ -373,11 +364,12 @@ theme_override_constants/outline_size = 1
 theme_override_font_sizes/normal_font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_description")
 bbcode_enabled = true
-text = "是这样的"
+text = "防御"
 scroll_active = false
 autowrap_mode = 1
 
 [node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
+visible = false
 offset_left = 14.5
 offset_top = 17.0
 offset_right = 230.5
@@ -417,91 +409,12 @@ offset_right = 204.66666
 offset_bottom = 85.5
 theme_override_colors/font_color = Color(1, 1, 1, 0.92)
 theme_override_font_sizes/font_size = 16
-text = "name回声"
+text = "name"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="NativeFrame" type="Node2D" parent="SubViewport" unique_id=48530284]
 metadata/_edit_lock_ = true
-
-[node name="OuterFrameLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=2109916705]
-points = PackedVector2Array(15, 5, 225, 5, 235, 15, 235, 355, 225, 365, 15, 365, 5, 355, 5, 15, 15, 5)
-width = 1.4
-default_color = Color(0.86, 0.92, 1, 0.82)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="SoftInnerFrameLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=731891712]
-points = PackedVector2Array(10, 10, 230, 10, 230, 360, 10, 360, 10, 10)
-width = 1.0
-default_color = Color(0.86, 0.92, 1, 0.24)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-metadata/_edit_lock_ = true
-
-[node name="SoftTopSeparator" type="Line2D" parent="SubViewport/NativeFrame" unique_id=2024187140]
-points = PackedVector2Array(18, 84, 222, 84)
-width = 1.0
-default_color = Color(0.86, 0.92, 1, 0.24)
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="AccentArtSeparator" type="Line2D" parent="SubViewport/NativeFrame" unique_id=969332473]
-points = PackedVector2Array(14, 230, 226, 230)
-width = 1.2
-default_color = Color(0.42, 0.86, 0.92, 0.48)
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="SoftDescriptionInsetLine" type="Line2D" parent="SubViewport/NativeFrame" unique_id=581895750]
-points = PackedVector2Array(22, 235, 218, 235)
-width = 0.8
-default_color = Color(0.86, 0.92, 1, 0.24)
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="CornerTL" type="Line2D" parent="SubViewport/NativeFrame" unique_id=922231237]
-points = PackedVector2Array(14, 40, 14, 14, 42, 14)
-width = 1.1
-default_color = Color(0.86, 0.92, 1, 0.82)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="CornerTR" type="Line2D" parent="SubViewport/NativeFrame" unique_id=238283750]
-points = PackedVector2Array(226, 40, 226, 14, 198, 14)
-width = 1.1
-default_color = Color(0.86, 0.92, 1, 0.82)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="CornerBL" type="Line2D" parent="SubViewport/NativeFrame" unique_id=1114133019]
-points = PackedVector2Array(14, 330, 14, 356, 42, 356)
-width = 1.1
-default_color = Color(0.86, 0.92, 1, 0.82)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="CornerBR" type="Line2D" parent="SubViewport/NativeFrame" unique_id=1818864175]
-points = PackedVector2Array(226, 330, 226, 356, 198, 356)
-width = 1.1
-default_color = Color(0.86, 0.92, 1, 0.82)
-joint_mode = 2
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
 
 [node name="CornerDiamondTL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=51735338]
 color = Color(0.42, 0.86, 0.92, 0.74)
@@ -514,16 +427,19 @@ antialiased = true
 polygon = PackedVector2Array(211, 25.8, 214.2, 29, 211, 32.2, 207.8, 29)
 
 [node name="CornerDiamondBL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=322484918]
+position = Vector2(0.20000076, 2.2000122)
 color = Color(0.42, 0.86, 0.92, 0.74)
 antialiased = true
 polygon = PackedVector2Array(29, 337.8, 32.2, 341, 29, 344.2, 25.8, 341)
 
 [node name="CornerDiamondBR" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=344071293]
+position = Vector2(0.20000076, 2.2000122)
 color = Color(0.42, 0.86, 0.92, 0.74)
 antialiased = true
 polygon = PackedVector2Array(211, 337.8, 214.2, 341, 211, 344.2, 207.8, 341)
 
 [node name="EnergeIcon" type="ColorRect" parent="SubViewport/NativeFrame" unique_id=1338420480]
+visible = false
 material = SubResource("ShaderMaterial_sitiv")
 offset_left = 110.0
 offset_top = 3.333333

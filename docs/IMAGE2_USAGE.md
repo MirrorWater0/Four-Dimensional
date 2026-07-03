@@ -242,8 +242,21 @@ asset/CardPicture/KasiyaAbsouluteDefense.png
 Use the provided image as the only visual reference.
 Keep the same character identity, outfit, palette, and simple pale anime rendering.
 Raw game skill artwork only, not a finished card template.
-Bright white background, lots of negative space.
+Bright white background, controlled negative space.
 No text, no watermark, no logo.
+```
+
+背景留白：
+
+尽量不要留大块空白背景。画面主体（角色、特效、氛围元素）应占满卡图的可读区域，避免人物过小、四周大面积纯白空档。可以有留白衬托主体，但不要让空白背景成为画面主视觉。
+
+提示词可追加：
+
+```text
+Avoid large empty blank background areas.
+Fill the composition with the character, skill VFX, atmosphere, or other meaningful visual elements.
+Do not leave the subject tiny with excessive white space around it.
+Controlled negative space is fine; blank backgrounds dominating the card are not.
 ```
 
 当前推荐风格提示词：

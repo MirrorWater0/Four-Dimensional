@@ -8,20 +8,24 @@ resource_local_to_scene = true
 shader = ExtResource("1_br0dh")
 shader_parameter/ring_color = Color(1, 1, 1, 1)
 shader_parameter/inner_color = Color(1, 1, 1, 1)
-shader_parameter/ring_size = 0.80400003493012
-shader_parameter/ring_thickness = 0.22500000998898
-shader_parameter/inner_square_size = 0.4
+shader_parameter/ring_size = 0.42200001678512
+shader_parameter/ring_thickness = 0.50000002305148
+shader_parameter/inner_square_size = 0.63600003021
 shader_parameter/show_inner = false
-shader_parameter/smoothness_offset = 1.0
+shader_parameter/polygon_sides = 6.0
+shader_parameter/show_chest_icon = false
+shader_parameter/smoothness_offset = 2.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_pq4kd"]
 shader = ExtResource("1_br0dh")
 shader_parameter/ring_color = Color(1, 1, 1, 1)
 shader_parameter/inner_color = Color(1, 1, 1, 1)
-shader_parameter/ring_size = 0.8
-shader_parameter/ring_thickness = 0.05
-shader_parameter/inner_square_size = 0.4
-shader_parameter/show_inner = true
+shader_parameter/ring_size = 0.35500001360262
+shader_parameter/ring_thickness = 0.49300002271898
+shader_parameter/inner_square_size = 0.150000007125
+shader_parameter/show_inner = false
+shader_parameter/polygon_sides = 6.0
+shader_parameter/show_chest_icon = false
 shader_parameter/smoothness_offset = 1.0
 
 [sub_resource type="Animation" id="Animation_40022"]
@@ -91,7 +95,6 @@ custom_minimum_size = Vector2(70, 70)
 offset_right = 70.0
 offset_bottom = 70.0
 pivot_offset_ratio = Vector2(0.5, 0.5)
-color = Color(0.7, 0.7, 0.7, 0.9)
 script = ExtResource("2_40022")
 
 [node name="ghost" type="ColorRect" parent="." unique_id=543561013]
@@ -112,6 +115,7 @@ offset_right = 70.0
 offset_bottom = 70.0
 mouse_filter = 1
 disabled = true
+metadata/_edit_lock_ = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=173068664]
 libraries/ = SubResource("AnimationLibrary_pq4kd")

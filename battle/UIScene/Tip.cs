@@ -183,9 +183,16 @@ public partial class Tip : Control
     /// <summary>
     /// Set the tooltip text and make it visible
     /// </summary>
-    public void SetText(string text)
+    public void SetText(string text, bool followMouse = true)
     {
-        ShowTooltip(text, followMouse: true, manualAnchorPosition: default);
+        ShowTooltip(text, followMouse, manualAnchorPosition: default);
+    }
+
+    public void SetAnchorPosition(Vector2 globalPosition)
+    {
+        FollowMouse = false;
+        _manualAnchorPosition = globalPosition;
+        _positionDirty = true;
     }
 
     public void PreloadText(string text)

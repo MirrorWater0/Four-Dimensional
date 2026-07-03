@@ -3,5 +3,22 @@
     <TargetFramework>net8.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <LangVersion>preview</LangVersion>
+    <SkillIdGeneratorProject>$(MSBuildProjectDirectory)/tools/SkillIdGenerator/SkillIdGenerator.csproj</SkillIdGeneratorProject>
+    <RunSkillIdGenerator Condition="'$(RunSkillIdGenerator)' == ''">true</RunSkillIdGenerator>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tools/**" />
+  </ItemGroup>
+  <Target
+    Name="GenerateSkillIds"
+    BeforeTargets="CoreCompile"
+    Condition="'$(DesignTimeBuild)' != 'true' AND '$(RunSkillIdGenerator)' == 'true'"
+  >
+    <Message Importance="High" Text="Running SkillIdGenerator (generate)..." />
+    <Exec
+      Command="dotnet run --project &quot;$(SkillIdGeneratorProject)&quot; -- generate"
+      WorkingDirectory="$(MSBuildProjectDirectory)"
+      StandardOutputImportance="High"
+    />
+  </Target>
 </Project>

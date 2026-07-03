@@ -53,7 +53,7 @@ public partial class VoidRotorRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidRotor.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidRotor.tscn");
 
-        MaxLife = 43;
+        MaxLife = 110;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -67,14 +67,10 @@ public partial class VoidRotorRegedit : EnemyRegedit
 
 public partial class VoidRotorAttack : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 6;
     private const int PowerMultiplier = 1;
 
-    public VoidRotorAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "裂刃斩击";
 
@@ -92,11 +88,7 @@ public partial class VoidRotorSurvive : Skill
 {
     private const int BaseBlock = 19;
 
-    public VoidRotorSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "蚀甲压制";
 
@@ -105,21 +97,17 @@ public partial class VoidRotorSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddStatusCardsStep(SkillID.DazeStatus, 2)
+            AddCardsStep(SkillID.DazeStatus, 2)
         );
     }
 }
 
 public partial class VoidRotorSpecial : Skill
 {
-    private const int BaseDamage = 5;
-    private const int DazeCardsPerTarget = 2;
+    private const int BaseDamage = 6;
+    private const int DazeCardsPerTarget = 3;
 
-    public VoidRotorSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚界灌注";
     public override int EnergyCost => 5;
@@ -129,7 +117,7 @@ public partial class VoidRotorSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 2),
-            AddStatusCardsStep(
+            AddCardsStep(
                 SkillID.DazeStatus,
                 DazeCardsPerTarget,
                 BattleCardPileTarget.DiscardPileCards

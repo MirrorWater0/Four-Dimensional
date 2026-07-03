@@ -2,7 +2,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 5;
+    private const int DisasterStacks = 3;
 
     public const string PassiveNameText = "终末游行";
     public static string PassiveDescriptionText =>
@@ -55,7 +55,7 @@ public partial class DeathRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Death.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
 
-        MaxLife = 405;
+        MaxLife = 415;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -69,14 +69,10 @@ public partial class DeathRegedit : EnemyRegedit
 
 public partial class DeathAttack : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 7;
     private const int HitCount = 2;
 
-    public DeathAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "双魂裁决";
 
@@ -92,14 +88,10 @@ public partial class DeathAttack : Skill
 
 public partial class DeathSurvive : Skill
 {
-    private const int BaseBlock = 43;
-    private const int Heal = 8;
+    private const int BaseBlock = 33;
+    private const int Heal = 15;
 
-    public DeathSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "死寂";
 
@@ -108,7 +100,8 @@ public partial class DeathSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            HealStep(Heal, target: TargetReference.Self)
+            HealStep(Heal, target: TargetReference.Self),
+            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
@@ -118,11 +111,7 @@ public partial class DeathSpecial : Skill
     private const int SelfPowerGain = 2;
     private const int DisasterStacks = 4;
 
-    public DeathSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "终焉宣告";
     public override int EnemySpecialIntentionCooldown => 3;
@@ -134,7 +123,7 @@ public partial class DeathSpecial : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
-            AddStatusCardsStep(SkillID.PlagueStatus, 2)
+            AddCardsStep(SkillID.PlagueStatus, 2)
         );
     }
 }

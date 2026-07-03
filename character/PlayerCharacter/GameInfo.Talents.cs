@@ -185,8 +185,6 @@ public static class TalentTree
     public static int GetEffectiveSurvivability(PlayerInfoStructure info) =>
         info.Survivability + GetSurvivabilityBonus(info);
 
-    public static int GetEffectiveSpeed(PlayerInfoStructure info) => info.Speed;
-
     public static bool HasPassiveUpgrade(PlayerInfoStructure info) =>
         HasUnlocked(info, GetPassiveUpgradeTalentId(ResolveCharacterKey(info)));
 
@@ -325,9 +323,18 @@ public static class TalentTree
         return characterName switch
         {
             "Echo" => "被动强化：前2次回合开始时额外获得1点能量。",
-            "Nightingale" => "被动强化：追击前若目标有易伤，则给予1层易伤。",
-            "Mariya" => string.Empty,
-            "Kasiya" => "被动强化：其他角色打出特殊技能时获得1点力量。",
+            "Nightingale" => I18n.Tr(
+                "character.nightingale.passive.upgrade",
+                "被动强化：所有0费牌增加3点伤害。"
+            ),
+            "Mariya" => I18n.Tr(
+                "character.mariya.passive.upgrade",
+                "被动强化：战斗结束恢复量由3点提升至5点。"
+            ),
+            "Kasiya" => I18n.Tr(
+                "character.kasiya.passive.upgrade",
+                "被动强化：自己打出攻击牌时，其他角色获得1点格挡。"
+            ),
             _ => "被动强化。",
         };
     }

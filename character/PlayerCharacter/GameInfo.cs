@@ -20,6 +20,8 @@ public static partial class GameInfo
     public static long RunStartedAtUtcTicks;
     public static bool RunFinished;
     public static bool PendingBossRelicChoice;
+    public static bool PendingStarterBonusChoice;
+    public static StarterBonusOption SelectedStarterBonus;
     public static List<RunHistoryRecord> RunHistoryRecords = new();
     public static bool HasSeenBattleTutorial;
     public static int IntentionRandomNum { get; private set; }
@@ -40,14 +42,20 @@ public static partial class GameInfo
         RunStartedAtUtcTicks = DateTime.UtcNow.Ticks;
         RunFinished = false;
         PendingBossRelicChoice = false;
+        PendingStarterBonusChoice = true;
+        SelectedStarterBonus = StarterBonusOption.None;
         RunHistoryRecords ??= new List<RunHistoryRecord>();
         FirstLevelState.Clear();
         ResetLevelNodeCompletionRecords();
+        ResetRunRngState();
+        ResetNormalBattleVisitState();
+        ResetEliteBattleVisitState();
+        ResetRelicQueueState();
         ResetBattleRewardDropState();
+        InitializeRelicQueue();
         Items.Clear();
         GameInfo.Items.Add(ItemID.Explosion);
         Relics.Clear();
-        SetRelicCount(RelicID.Blessing, 3);
 
     }
 
@@ -116,6 +124,61 @@ public static partial class GameInfo
         }
 
         return totalHealed;
+    }
+
+    public static int HealPlayerByMaxLifePercent(int playerIndex, float percent)
+    {
+        NormalizePlayerCharacters();
+        if (
+            PlayerCharacters == null
+            || playerIndex < 0
+            || playerIndex >= PlayerCharacters.Length
+            || percent <= 0f
+        )
+        {
+            return 0;
+        }
+
+        var info = PlayerCharacters[playerIndex];
+        int maxLife = Math.Max(info.LifeMax, 1);
+        int recoverAmount = (int)MathF.Ceiling(maxLife * percent);
+        if (recoverAmount <= 0)
+            return 0;
+
+        int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+        int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
+        if (afterLife == beforeLife)
+            return 0;
+
+        info.Life = afterLife;
+        info.LifeInitialized = true;
+        PlayerCharacters[playerIndex] = info;
+        return afterLife - beforeLife;
+    }
+
+    public static int SetPartyLifeToMaxLifePercent(float percent)
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0 || percent <= 0f)
+            return 0;
+
+        int totalAdjusted = 0;
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 1);
+            int targetLife = Math.Clamp((int)MathF.Ceiling(maxLife * percent), 1, maxLife);
+            int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+            if (beforeLife == targetLife)
+                continue;
+
+            info.Life = targetLife;
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+            totalAdjusted += Math.Abs(targetLife - beforeLife);
+        }
+
+        return totalAdjusted;
     }
 
     public static int RefillPartyLife()
@@ -192,6 +255,25 @@ public static partial class GameInfo
         return stack.ID == relicID ? stack.Count : defaultValue;
     }
 
+    public static int GetRelicStackIndex(RelicID relicID)
+    {
+        NormalizeRelics();
+        return Relics.FindIndex(stack => stack.ID == relicID);
+    }
+
+    public static bool TryGetRelicStack(RelicID relicID, out RelicStack stack)
+    {
+        int index = GetRelicStackIndex(relicID);
+        if (index >= 0)
+        {
+            stack = Relics[index];
+            return true;
+        }
+
+        stack = default;
+        return false;
+    }
+
     public static void SetRelicCount(RelicID relicID, int count)
     {
         Relics ??= new List<RelicStack>();
@@ -200,11 +282,171 @@ public static partial class GameInfo
             if (Relics[i].ID != relicID)
                 continue;
 
-            Relics[i] = new RelicStack(relicID, count);
+            RelicStack stack = Relics[i];
+            stack.ID = relicID;
+            stack.Count = count;
+            stack.NormalizeFeatureLists();
+            Relics[i] = stack;
             return;
         }
 
         Relics.Add(new RelicStack(relicID, count));
+    }
+
+    public static void AddToolboxRetainCard(int playerIndex, SkillID skillId)
+    {
+        if (playerIndex < 0)
+            return;
+
+        Relics ??= new List<RelicStack>();
+        int stackIndex = GetRelicStackIndex(RelicID.Toolbox);
+        if (stackIndex < 0)
+        {
+            Relics.Add(new RelicStack(RelicID.Toolbox, Relic.GetAcquireAmount(RelicID.Toolbox)));
+            stackIndex = Relics.Count - 1;
+        }
+
+        RelicStack stack = Relics[stackIndex];
+        stack.NormalizeFeatureLists();
+        int recordIndex = stack.SkillFeatureRecords.FindIndex(record =>
+            record.PlayerIndex == playerIndex && record.SkillId == skillId
+        );
+        if (recordIndex >= 0)
+        {
+            RelicSkillFeatureRecord record = stack.SkillFeatureRecords[recordIndex];
+            record.RetainCount = Math.Max(0, record.RetainCount) + 1;
+            stack.SkillFeatureRecords[recordIndex] = record;
+        }
+        else
+        {
+            stack.SkillFeatureRecords.Add(new RelicSkillFeatureRecord(playerIndex, skillId, 1));
+        }
+
+        Relics[stackIndex] = stack;
+    }
+
+    public static int GetToolboxRetainCount(int playerIndex, SkillID skillId)
+    {
+        if (playerIndex < 0)
+            return 0;
+
+        if (!TryGetRelicStack(RelicID.Toolbox, out RelicStack stack))
+            return 0;
+
+        stack.NormalizeFeatureLists();
+        return stack.SkillFeatureRecords
+            .Where(record => record.PlayerIndex == playerIndex && record.SkillId == skillId)
+            .Sum(record => Math.Max(0, record.RetainCount));
+    }
+
+    public static bool HasToolboxRetain(Skill skill)
+    {
+        if (skill?.SkillId is not SkillID skillId)
+            return false;
+
+        if (skill.OwnerCharater is not PlayerCharacter player)
+            return false;
+
+        return GetToolboxRetainCount(player.CharacterIndex, skillId) > 0;
+    }
+
+    public static List<EventCardSelectionEntry> BuildSelectableDeckCardEntries(
+        Func<SkillID, bool> extraFilter = null
+    )
+    {
+        NormalizePlayerCharacters();
+        var players = PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
+        var result = new List<EventCardSelectionEntry>();
+
+        for (int playerIndex = 0; playerIndex < players.Length; playerIndex++)
+        {
+            var info = players[playerIndex];
+            var grouped = (info.GainedSkills ?? new List<SkillID>())
+                .Where(IsSelectableDeckCard)
+                .Where(skillId => extraFilter?.Invoke(skillId) ?? true)
+                .GroupBy(skillId => skillId)
+                .OrderBy(group => GetDeckSelectionSkillSortIndex(group.Key))
+                .ThenBy(group => GetDeckSelectionSkillDisplayName(group.Key));
+
+            string characterName = string.IsNullOrWhiteSpace(info.CharacterName)
+                ? $"角色{playerIndex + 1}"
+                : info.CharacterName;
+            string characterKey = ExtractCharacterKeyFromScenePath(info.CharacterScenePath);
+            foreach (var group in grouped)
+            {
+                result.Add(
+                    new EventCardSelectionEntry(
+                        playerIndex,
+                        group.Key,
+                        group.Count(),
+                        characterName,
+                        characterKey,
+                        TalentTree.GetEffectivePower(info),
+                        TalentTree.GetEffectiveSurvivability(info)
+                    )
+                );
+            }
+        }
+
+        return result;
+    }
+
+    private static bool IsSelectableDeckCard(SkillID skillId)
+    {
+        var skill = Skill.GetSkill(skillId);
+        return skill != null && skill.SkillType != Skill.SkillTypes.none && !skill.IsStatusCard;
+    }
+
+    public static SkillID[] GetOwnedBattleCardPool(PlayerCharacter player)
+    {
+        if (
+            player == null
+            || PlayerCharacters == null
+            || player.CharacterIndex < 0
+            || player.CharacterIndex >= PlayerCharacters.Length
+        )
+        {
+            return Array.Empty<SkillID>();
+        }
+
+        return (PlayerCharacters[player.CharacterIndex].GainedSkills ?? new List<SkillID>())
+            .Where(IsSelectableDeckCard)
+            .Distinct()
+            .ToArray();
+    }
+
+    public static SkillID? PickRandomOwnedBattleSkillId(PlayerCharacter player, Random rng)
+    {
+        SkillID[] pool = GetOwnedBattleCardPool(player);
+        if (pool.Length == 0)
+            return null;
+
+        rng ??= new Random();
+        return pool[rng.Next(pool.Length)];
+    }
+
+    private static int GetDeckSelectionSkillSortIndex(SkillID skillId)
+    {
+        var skill = Skill.GetSkill(skillId);
+        return skill?.SkillType switch
+        {
+            Skill.SkillTypes.Attack => 0,
+            Skill.SkillTypes.Survive => 1,
+            Skill.SkillTypes.Special => 2,
+            _ => 3,
+        };
+    }
+
+    private static string GetDeckSelectionSkillDisplayName(SkillID skillId) =>
+        Skill.GetSkill(skillId)?.SkillName ?? skillId.ToString();
+
+    private static string ExtractCharacterKeyFromScenePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return string.Empty;
+
+        string[] parts = path.Split('/');
+        return parts.Length >= 2 ? parts[^2] : string.Empty;
     }
 
     public static int AddRelicCount(RelicID relicID, int amount)
@@ -220,8 +462,10 @@ public static partial class GameInfo
 
         var seen = new HashSet<RelicID>();
         var normalized = new List<RelicStack>();
-        foreach (RelicStack stack in Relics)
+        foreach (RelicStack originalStack in Relics)
         {
+            RelicStack stack = originalStack;
+            stack.NormalizeFeatureLists();
             if (!seen.Add(stack.ID))
             {
                 int existingIndex = normalized.FindIndex(existing => existing.ID == stack.ID);
@@ -249,6 +493,22 @@ public static partial class GameInfo
 
 }
 
+public struct RelicSkillFeatureRecord
+{
+    public RelicSkillFeatureRecord() { }
+
+    public RelicSkillFeatureRecord(int playerIndex, SkillID skillId, int retainCount)
+    {
+        PlayerIndex = playerIndex;
+        SkillId = skillId;
+        RetainCount = retainCount;
+    }
+
+    public int PlayerIndex;
+    public SkillID SkillId;
+    public int RetainCount;
+}
+
 public struct RelicStack
 {
     public RelicStack() { }
@@ -257,10 +517,17 @@ public struct RelicStack
     {
         ID = id;
         Count = count;
+        SkillFeatureRecords = new List<RelicSkillFeatureRecord>();
     }
 
     public RelicID ID;
     public int Count;
+    public List<RelicSkillFeatureRecord> SkillFeatureRecords = new();
+
+    public void NormalizeFeatureLists()
+    {
+        SkillFeatureRecords ??= new List<RelicSkillFeatureRecord>();
+    }
 }
 
 public struct PlayerInfoStructure
@@ -273,7 +540,6 @@ public struct PlayerInfoStructure
     public bool LifeInitialized;
     public int Power;
     public int Survivability;
-    public int Speed;
     public int TalentPoints;
     public List<string> UnlockedTalents = new();
     public List<SkillID> GainedSkills = new();
@@ -515,6 +781,7 @@ public static class GlobalFunction
         AddKeywordVariants(entries, "keyword.block", "格挡", cambridgeBlue);
         AddKeywordVariants(entries, "keyword.energy", "能量", "#c9cdff");
         AddKeywordVariants(entries, "keyword.exhaust", "消耗", "#ffb86b");
+        AddKeywordVariants(entries, "keyword.colorless", "无色", "#b8bcc6");
         AddKeywordVariants(entries, "keyword.retain", "保留", "#ffd98f");
         AddKeywordVariants(entries, "keyword.voidness", "虚无", "#b9a6ff");
         AddKeywordVariants(

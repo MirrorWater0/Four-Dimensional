@@ -5,19 +5,15 @@ using Godot;
 public partial class Evil : EnemyCharacter
 {
     private const int StartEnergyGain = 2;
-    private const int StartRebirthStacks = 1;
-    private const int TriggerCount = 4;
+    private const int RebirthStacks = 1;
 
     public const string PassiveNameText = "重生律动";
     public static string PassiveBaseDescriptionText =>
-        $"初始：获得{StartEnergyGain}点能量。获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。\n"
-        + $"每行动{TriggerCount}次：获得{StartRebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
+        $"第1次与第3次回合开始时：获得{RebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
 
-    private int Count = 0;
-    private string _basePassiveDescription;
+    private int _turnCount;
     public override string CharacterName { get; set; } = "Evil";
 
-    // Called when the node enters the scene tree for the first time.
     public override void _Ready()
     {
         base._Ready();
@@ -28,37 +24,22 @@ public partial class Evil : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveBaseDescriptionText;
-        _basePassiveDescription = PassiveBaseDescriptionText;
-        UpdatePassiveDescription();
         using var _ = BeginEffectSource("被动");
         BattleNode?.UpdataEnergy(this, StartEnergyGain, this);
-        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
     }
 
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-        Count++;
-        TriggerPassive(null);
-        UpdatePassiveDescription();
+        _turnCount++;
+        if (_turnCount == 1 || _turnCount == 3)
+            TriggerPassive(null);
     }
 
     public override void Passive(Skill skill)
     {
         using var _ = BeginEffectSource("被动");
-        if (Count >= TriggerCount)
-        {
-            Count = 0;
-            DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, StartRebirthStacks, this);
-        }
-    }
-
-    private void UpdatePassiveDescription()
-    {
-        if (string.IsNullOrWhiteSpace(_basePassiveDescription))
-            _basePassiveDescription = PassiveDescription ?? string.Empty;
-
-        PassiveDescription = $"{_basePassiveDescription}\n当前计数：{Count}/{TriggerCount}";
+        DyingBuff.BuffAdd(Buff.BuffName.RebirthI, this, RebirthStacks, this);
     }
 }
 
@@ -71,7 +52,7 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 18;
+        MaxLife = 53;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -85,13 +66,9 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 6;
+    private const int HitDamage = 7;
 
-    public EvilAttack()
-        : base(Skill.SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { set; get; } = "流影二段";
 
@@ -103,14 +80,10 @@ public partial class EvilAttack : Skill
 
 public partial class EvilSurvive : Skill
 {
-    private const int PowerGain = 2;
-    private const int BaseBlock = 4;
+    private const int PowerGain = 3;
+    private const int BaseBlock = 11;
 
-    public EvilSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "扭曲";
 
@@ -128,11 +101,7 @@ public partial class EvilTermin : Skill
 {
     private const int AttackTimes = 5;
 
-    public EvilTermin()
-        : base(Skill.SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { set; get; } = "虚空终结";
     public override int EnergyCost => 0;

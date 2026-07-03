@@ -1,7 +1,10 @@
 [gd_scene format=3 uid="uid://do4kqopiopxg0"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qox0s"]
-border_color = Color(1, 1, 1, 1)
+bg_color = Color(0.2, 0.56, 0.95, 0.16)
+border_width_top = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.86, 1, 0.18)
 corner_radius_top_left = 2
 corner_radius_top_right = 2
 corner_radius_bottom_right = 2
@@ -10,9 +13,7 @@ anti_aliasing_size = 2.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8oxmn"]
 bg_color = Color(1, 1, 1, 1)
-border_width_top = 1
-border_width_bottom = 1
-border_color = Color(0.8, 0.8, 0.8, 0)
+border_color = Color(1, 1, 1, 0.35)
 corner_radius_top_left = 2
 corner_radius_top_right = 2
 corner_radius_bottom_right = 2
@@ -24,12 +25,11 @@ ProgressBar/styles/background = SubResource("StyleBoxFlat_qox0s")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_8oxmn")
 
 [node name="ProgressBar" type="ProgressBar" unique_id=1396186681]
-modulate = Color(1, 1, 1, 0.78431374)
+self_modulate = Color(1, 1, 1, 0.7882353)
 show_behind_parent = true
 offset_left = 65.0
-offset_top = 34.0
+offset_top = 32.0
 offset_right = 195.0
-offset_bottom = 39.0
+offset_bottom = 34.0
 theme = SubResource("Theme_8oxmn")
-value = 10.0
 show_percentage = false

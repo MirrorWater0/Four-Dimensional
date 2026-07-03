@@ -7,14 +7,10 @@ public partial class MariyaAttackSkill { }
 public partial class MendSlash : Skill
 {
     private const int BaseDamage = 7;
-    private const int BaseHeal = 3;
+    private const int BaseHeal = 2;
     public override bool ExhaustsAfterUse => true;
 
-    public MendSlash()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "愈合之刃";
 
@@ -37,11 +33,7 @@ public partial class SwapSlash : Skill
 {
     private const int BaseDamage = 12;
 
-    public SwapSlash()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "斩断裂隙";
 
@@ -59,11 +51,7 @@ public partial class SiphonSlash : Skill
 {
     private const int BaseDamage = 5;
 
-    public SiphonSlash()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "汲生之刃";
 
@@ -96,18 +84,8 @@ public partial class SiphonSlash : Skill
 
 public partial class ShatterSlash : Skill
 {
-    private const int BaseDamage = 9;
-    private const int RequiredHitCount = 4;
-    private const int RebirthStacks = 1;
-    private const int NextAllySelfDamage = 23;
 
-    private int _recordedHitCount;
-
-    public ShatterSlash()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "斩破";
 
@@ -119,15 +97,11 @@ public partial class ShatterSlash : Skill
 
 public partial class ChargedBlade : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 6;
+    public override SkillRarity Rarity => SkillRarity.Common;
+    private const int BaseDamage = 4;
     private const int SurvivabilityLoss = 3;
 
-    public ChargedBlade()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "聚能之刃";
 
@@ -148,11 +122,7 @@ public partial class CrescentWind : Skill
     private const int BaseDamage = 4;
     private const int WeakenStacks = 1;
 
-    public CrescentWind()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "新月之风";
 
@@ -164,7 +134,7 @@ public partial class CrescentWind : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
-                target: HostileTargetReference.All
+                target: HostileTargetReference.AttackKey
             )
         );
     }
@@ -173,13 +143,9 @@ public partial class CrescentWind : Skill
 public partial class ArcTrack : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 2;
+    private const int BaseDamage = 7;
 
-    public ArcTrack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "弧形轨迹";
     public override int EnergyCost => 1;
@@ -189,24 +155,21 @@ public partial class ArcTrack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(Buff.BuffName.ExtraDraw, 1, TargetReference.Others)
+            AddCardsStep(SkillID.Calmness, 1),
+            AddCardsStep(SkillID.Calmness, 1, BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 5;
-    int allyHurt = 10;
+    int basisDamage = 12;
+    int allyHurt = 4;
     int DeMax = 10;
     public override string SkillName { get; set; } = "献祭";
     public override int EnergyCost => 2;
 
-    public Sacrifice()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     protected override SkillPlan BuildPlan()
     {

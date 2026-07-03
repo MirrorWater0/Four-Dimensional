@@ -18,7 +18,9 @@ public partial class Map : Control
     public Label SeedLabel => field ??= GetNode("UI/SeedLabel") as Label;
     public Label RegionLabel =>
         field ??=
-            GetNodeOrNull<Label>("MapLabel/RegionLabel") ?? GetNodeOrNull<Label>("UI/RegionLabel");
+            GetNodeOrNull<Label>("PlayerResourceState/RegionLabel")
+            ?? GetNodeOrNull<Label>("MapLabel/RegionLabel")
+            ?? GetNodeOrNull<Label>("UI/RegionLabel");
     public Label DifficultyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
     private Label TransitionEnergyLabel =>
@@ -36,6 +38,10 @@ public partial class Map : Control
         field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row/Label");
     private Label NodeLegendShopLabel =>
         field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row/Label");
+    private Label NodeLegendTreasureLabel =>
+        field ??= GetNodeOrNull<Label>(
+            "MapLabel/NodeTypeLegend/Margin/LegendList/Treasure/Row/Label"
+        );
     private Label NodeLegendRestLabel =>
         field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Rest/Row/Label");
     private Label NodeLegendEliteLabel =>
@@ -309,12 +315,21 @@ public partial class Map : Control
             }
         };
 
+        CallDeferred(nameof(ShowPendingStarterBonusChoiceIfNeeded));
         CallDeferred(nameof(ShowPendingBossRelicChoiceIfNeeded));
     }
 
     public override void _ExitTree()
     {
         ExitMapPeekMode();
+    }
+
+    private void ShowPendingStarterBonusChoiceIfNeeded()
+    {
+        if (WarmupMode || !StarterBonusChoice.ShouldShowPendingChoice())
+            return;
+
+        StarterBonusChoice.Show(this);
     }
 
     private void ShowPendingBossRelicChoiceIfNeeded()
@@ -755,6 +770,9 @@ public partial class Map : Control
 
         if (NodeLegendShopLabel != null)
             NodeLegendShopLabel.Text = I18n.Tr("ui.map.node_type.shop", "商店");
+
+        if (NodeLegendTreasureLabel != null)
+            NodeLegendTreasureLabel.Text = I18n.Tr("ui.map.node_type.treasure", "宝箱");
 
         if (NodeLegendRestLabel != null)
             NodeLegendRestLabel.Text = I18n.Tr("ui.map.node_type.rest", "休息");

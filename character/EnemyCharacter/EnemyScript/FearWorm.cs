@@ -40,14 +40,14 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 28;
+        MaxLife = 71;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
-        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin,SkillID.FearWormSurvive];
-
+        SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin];
+        OpeningIntentionSkillIDs = [SkillID.FearWormTermin];
         PassiveName = global::FearWorm.PassiveNameText;
         PassiveDescription = global::FearWorm.PassiveDescriptionText;
     }
@@ -55,16 +55,12 @@ public partial class FearWormRegedit : EnemyRegedit
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 5;
     private const int VulnerableStacks = 2;
     private const int MaxTargets = 3;
     private const int EnergyGain = 1;
 
-    public FearWormAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "恐惧咬噬";
 
@@ -92,11 +88,7 @@ public partial class FearWormSurvive : Skill
 {
     private const int BaseBlock = 12;
 
-    public FearWormSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "潜伏";
 
@@ -112,14 +104,10 @@ public partial class FearWormSurvive : Skill
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 13;
     private const int StunStacks = 2;
 
-    public FearWormTermin()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "梦魇缠绕";
     public override int EnergyCost => 4;

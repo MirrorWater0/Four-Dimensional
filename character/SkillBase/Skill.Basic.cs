@@ -3,11 +3,7 @@ public partial class BasicAttack : Skill
     private const int BaseDamage = 4;
     private const int PowerMultiplier = 1;
 
-    public BasicAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_attack.name", "基础攻击");
 
@@ -22,11 +18,7 @@ public partial class BasicDefense : Skill
     private const int BaseBlock = 4;
     private const int SurvivabilityMultiplier = 1;
 
-    public BasicDefense()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.basic_defense.name", "基础防御");
@@ -45,11 +37,7 @@ public partial class BasicGuard : Skill
     private const int BaseBlock = 2;
     private const int SurvivabilityMultiplier = 1;
 
-    public BasicGuard()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_guard.name", "护卫");
 
@@ -70,11 +58,7 @@ public partial class BasicSpecial : Skill
 {
     private const int PowerGain = 1;
 
-    public BasicSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.basic_special.name", "基础特殊");
@@ -94,11 +78,7 @@ public partial class KasiyaBasicSpecial : Skill
 {
     private const int PowerGain = 1;
 
-    public KasiyaBasicSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.kasiya_basic_special.name", "侵袭");
@@ -116,11 +96,7 @@ public partial class KasiyaBasicSpecial : Skill
 
 public partial class EchoBasicSpecial : Skill
 {
-    public EchoBasicSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.echo_basic_special.name", "解离");
@@ -137,30 +113,22 @@ public partial class EchoBasicSpecial : Skill
 
 public partial class MariyaBasicSpecial : Skill
 {
-    public MariyaBasicSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.mariya_basic_special.name", "治愈");
-    public override int EnergyCost => 2;
+    public override int EnergyCost => 1;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, HealStep(8, TargetReference.ManualFriendly));
+        return new SkillPlan(this, HealStep(6, TargetReference.ManualFriendly));
     }
 }
 
 public partial class NightingaleBasicSpecial : Skill
 {
-    public NightingaleBasicSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.nightingale_basic_special.name", "隐藏");

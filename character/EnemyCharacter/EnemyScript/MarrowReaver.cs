@@ -66,7 +66,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/MarrowReaver.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
 
-        MaxLife = 69;
+        MaxLife = 161;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -82,11 +82,7 @@ public partial class MarrowReaverAttack : Skill
 {
     private const int BaseDamage = 9;
 
-    public MarrowReaverAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "裂髓斩";
 
@@ -105,11 +101,7 @@ public partial class MarrowReaverSurvive : Skill
     private const int BaseBlock = 32;
     private const int PowerGain = 2;
 
-    public MarrowReaverSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "骨壳蓄力";
 
@@ -128,11 +120,7 @@ public partial class MarrowReaverSpecial : Skill
     private const int BaseDamage = 10;
     private const int HitCount = 2;
 
-    public MarrowReaverSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "双刃蚀髓";
 

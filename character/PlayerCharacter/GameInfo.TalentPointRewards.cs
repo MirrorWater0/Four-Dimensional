@@ -25,11 +25,7 @@ public static partial class GameInfo
         if (!CanGrantBattleTalentPointReward(node))
             return default;
 
-        return BuildRandomTalentPointReward(
-            node.RandomNum,
-            BattleTalentPointRewardAmount,
-            grant: false
-        );
+        return BuildRandomTalentPointReward(node, BattleTalentPointRewardAmount, grant: false);
     }
 
     public static TalentPointRewardResult TryGrantBattleTalentPointReward(LevelNode node)
@@ -37,28 +33,37 @@ public static partial class GameInfo
         if (!CanGrantBattleTalentPointReward(node))
             return default;
 
-        return BuildRandomTalentPointReward(
-            node.RandomNum,
-            BattleTalentPointRewardAmount,
-            grant: true
-        );
+        return BuildRandomTalentPointReward(node, BattleTalentPointRewardAmount, grant: true);
     }
 
-    public static TalentPointRewardResult TryGrantEliteTalentPointReward(LevelNode node)
+    public static TalentPointRewardResult PreviewRestTalentPointReward(LevelNode node)
     {
-        if (node == null || node.Type != LevelNode.LevelType.Elite)
+        if (!CanGrantRestTalentPointReward(node))
             return default;
 
-        return TryGrantBattleTalentPointReward(node);
+        return BuildRandomTalentPointReward(node, BattleTalentPointRewardAmount, grant: false);
+    }
+
+    public static TalentPointRewardResult TryGrantRestTalentPointReward(LevelNode node)
+    {
+        if (!CanGrantRestTalentPointReward(node))
+            return default;
+
+        return BuildRandomTalentPointReward(node, BattleTalentPointRewardAmount, grant: true);
     }
 
     private static bool CanGrantBattleTalentPointReward(LevelNode node)
     {
-        return node?.Type is LevelNode.LevelType.Elite or LevelNode.LevelType.Boss;
+        return node?.Type == LevelNode.LevelType.Boss;
+    }
+
+    private static bool CanGrantRestTalentPointReward(LevelNode node)
+    {
+        return node?.Type == LevelNode.LevelType.Rest;
     }
 
     private static TalentPointRewardResult BuildRandomTalentPointReward(
-        int seed,
+        LevelNode node,
         int amount,
         bool grant
     )
@@ -66,19 +71,11 @@ public static partial class GameInfo
         if (amount <= 0 || PlayerCharacters == null || PlayerCharacters.Length == 0)
             return default;
 
-        List<int> candidateIndices = PlayerCharacters
-            .Select((player, index) => new { player, index })
-            .Where(entry =>
-                !string.IsNullOrWhiteSpace(entry.player.CharacterName)
-                && !HasReachedTalentPointRewardLimit(entry.player)
-            )
-            .Select(entry => entry.index)
-            .ToList();
-
+        List<int> candidateIndices = GetTalentPointRewardCandidateIndices();
         if (candidateIndices.Count == 0)
             return default;
 
-        var rng = new Random(seed ^ BattleTalentPointRewardSeedSalt);
+        var rng = GameInfo.CreateRunRng(node, BattleTalentPointRewardSeedSalt);
         int characterIndex = candidateIndices[rng.Next(candidateIndices.Count)];
         var info = PlayerCharacters[characterIndex];
         if (grant)
@@ -93,6 +90,22 @@ public static partial class GameInfo
             info.CharacterName,
             amount
         );
+    }
+
+    public static List<int> GetTalentPointRewardCandidateIndices()
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0)
+            return new List<int>();
+
+        return PlayerCharacters
+            .Select((player, index) => new { player, index })
+            .Where(entry =>
+                !string.IsNullOrWhiteSpace(entry.player.CharacterName)
+                && !HasReachedTalentPointRewardLimit(entry.player)
+            )
+            .Select(entry => entry.index)
+            .ToList();
     }
 
     private static bool HasReachedTalentPointRewardLimit(PlayerInfoStructure info)

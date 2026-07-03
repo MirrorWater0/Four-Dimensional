@@ -14,8 +14,9 @@
 [ext_resource type="Shader" uid="uid://bmp8mhtmpwx70" path="res://shader/Icon/TerminateSkill.gdshader" id="16_yic7g"]
 [ext_resource type="Shader" uid="uid://kjsfn7cmaayt" path="res://shader/UI/CharacterHoverFrame.gdshader" id="17_hover"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
-[ext_resource type="Shader" uid="uid://ccgv8gar52eiq" path="res://shader/Icon/wing.gdshader" id="21_gvqk1"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
+[ext_resource type="Shader" uid="uid://c071jeypirae5" path="res://shader/UI/CharacterFootMarker.gdshader" id="22_foot_shader"]
+[ext_resource type="Script" uid="uid://bxo3ef6s111bm" path="res://character/CharacterFootMarker.cs" id="23_foot_script"]
 
 [sub_resource type="Shader" id="Shader_n42br"]
 code = "shader_type canvas_item;
@@ -219,18 +220,6 @@ shader_parameter/angle = 0.0
 Label/constants/outline_size = 4
 Label/font_sizes/font_size = 25
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_oexsw"]
-shader = ExtResource("21_gvqk1")
-shader_parameter/wing_color = Color(1, 1, 1, 1)
-shader_parameter/flip_vertical = false
-shader_parameter/wing_size = 0.63300002680762
-shader_parameter/pivot = Vector2(0.7, 0.7)
-shader_parameter/rotation = 0.8660001296266504
-shader_parameter/edge_smoothness = 0.02400000114
-shader_parameter/blade_count = 5
-shader_parameter/wing_span = 1.3280000598201198
-shader_parameter/spine_thickness = 0.11900000495398
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_5ewuv"]
 shader = ExtResource("16_faub5")
 shader_parameter/color_start = Color(0.6, 0.9, 1, 1)
@@ -366,6 +355,17 @@ _data = {
 &"RESET": SubResource("Animation_faub5"),
 &"intention": SubResource("Animation_yic7g")
 }
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_foot_marker"]
+shader = ExtResource("22_foot_shader")
+shader_parameter/fill_color = Color(0.96, 0.36, 0.32, 0.92)
+shader_parameter/frame_color = Color(0.94, 0.88, 0.72, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/body_top = 0.3
+shader_parameter/body_bottom = 0.7
+shader_parameter/end_cap_width = 0.09
+shader_parameter/rail_thickness = 0.026
+shader_parameter/step_height = 0.05
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_n13y5"]
 shader = ExtResource("15_3q742")
@@ -612,32 +612,6 @@ text = "10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="SpeedIcon" type="ColorRect" parent="State" unique_id=1205133209]
-material = SubResource("ShaderMaterial_oexsw")
-custom_minimum_size = Vector2(40, 40)
-layout_mode = 2
-metadata/_edit_use_anchors_ = true
-
-[node name="Label" type="Label" parent="State/SpeedIcon" unique_id=1048405910]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -6.0
-offset_top = -9.0
-offset_right = 24.0
-offset_bottom = 26.0
-grow_horizontal = 2
-grow_vertical = 2
-pivot_offset_ratio = Vector2(0.5, 0.5)
-theme = SubResource("Theme_lucsw")
-theme_override_colors/font_color = Color(0.8, 1, 1, 1)
-text = "10"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="EnergeIcon" type="ColorRect" parent="State" unique_id=80950031]
 material = SubResource("ShaderMaterial_5ewuv")
 custom_minimum_size = Vector2(40, 40)
@@ -727,6 +701,18 @@ offset_bottom = 30.000004
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=605015123]
 libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
+
+[node name="FootMarker" type="ColorRect" parent="." unique_id=1983746502]
+visible = false
+z_index = 1
+material = SubResource("ShaderMaterial_foot_marker")
+offset_left = -117.5
+offset_top = 208.75
+offset_right = 123.74997
+offset_bottom = 232.75
+pivot_offset_ratio = Vector2(0.5, 0.5)
+mouse_filter = 2
+script = ExtResource("23_foot_script")
 
 [node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]
 normal_material = SubResource("ShaderMaterial_n13y5")

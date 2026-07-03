@@ -5,7 +5,9 @@ public static class UserSettings
 {
     private const string SettingsPath = "user://settings.cfg";
     private const string SectionName = "Preferences";
-    private const string CompactBattleCardDescriptionsKey = "CompactBattleCardDescriptions";
+    private const string FormulaCardDescriptionsKey = "FormulaCardDescriptions";
+    private const string HideStatXKeywordTooltipsKey = "HideStatXKeywordTooltips";
+    private const string LegacyCompactBattleCardDescriptionsKey = "CompactBattleCardDescriptions";
     private const string BattleTurnOrderPreviewKey = "BattleTurnOrderPreview";
     private const string IncomingDamagePreviewKey = "IncomingDamagePreview";
     private const string ShowIntentionTargetNamesKey = "ShowIntentionTargetNames";
@@ -13,6 +15,7 @@ public static class UserSettings
         "ShowSingleTargetDamageIntentionArrows";
     private const string HideEnemySkillsKey = "HideEnemySkills";
     private const string GroupBattlePilesByCharacterKey = "GroupBattlePilesByCharacter";
+    private const string ShowHandCardIndicesKey = "ShowHandCardIndices";
     private const string KeepManualTargetCardVisibleWhenHiddenKey =
         "KeepManualTargetCardVisibleWhenHidden";
     private const string UseArrowManualTargetSelectionKey = "UseArrowManualTargetSelection";
@@ -37,13 +40,15 @@ public static class UserSettings
 
     private static bool _loaded;
 
-    public static bool UseCompactBattleCardDescriptions { get; private set; }
+    public static bool UseFormulaCardDescriptions { get; private set; }
+    public static bool HideStatXKeywordTooltips { get; private set; }
     public static bool ShowBattleTurnOrderPreview { get; private set; } = true;
     public static bool ShowIncomingDamagePreview { get; private set; }
     public static bool ShowIntentionTargetNames { get; private set; }
     public static bool ShowSingleTargetDamageIntentionArrows { get; private set; } = true;
     public static bool HideEnemySkills { get; private set; } = true;
     public static bool GroupBattlePilesByCharacter { get; private set; }
+    public static bool ShowHandCardIndices { get; private set; }
     public static bool KeepManualTargetCardVisibleWhenHidden { get; private set; } = true;
     public static bool UseArrowManualTargetSelection { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
@@ -67,12 +72,24 @@ public static class UserSettings
         var config = new ConfigFile();
         if (config.Load(SettingsPath) == Error.Ok)
         {
-            UseCompactBattleCardDescriptions = config
-                .GetValue(
-                    SectionName,
-                    CompactBattleCardDescriptionsKey,
-                    UseCompactBattleCardDescriptions
-                )
+            if (config.HasSectionKey(SectionName, FormulaCardDescriptionsKey))
+            {
+                UseFormulaCardDescriptions = config
+                    .GetValue(
+                        SectionName,
+                        FormulaCardDescriptionsKey,
+                        UseFormulaCardDescriptions
+                    )
+                    .AsBool();
+            }
+            else if (config.HasSectionKey(SectionName, LegacyCompactBattleCardDescriptionsKey))
+            {
+                UseFormulaCardDescriptions = !config
+                    .GetValue(SectionName, LegacyCompactBattleCardDescriptionsKey, false)
+                    .AsBool();
+            }
+            HideStatXKeywordTooltips = config
+                .GetValue(SectionName, HideStatXKeywordTooltipsKey, HideStatXKeywordTooltips)
                 .AsBool();
             ShowBattleTurnOrderPreview = config
                 .GetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview)
@@ -99,6 +116,9 @@ public static class UserSettings
                     GroupBattlePilesByCharacterKey,
                     GroupBattlePilesByCharacter
                 )
+                .AsBool();
+            ShowHandCardIndices = config
+                .GetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices)
                 .AsBool();
             KeepManualTargetCardVisibleWhenHidden = config
                 .GetValue(
@@ -145,10 +165,17 @@ public static class UserSettings
         _loaded = true;
     }
 
-    public static void SetCompactBattleCardDescriptions(bool value)
+    public static void SetFormulaCardDescriptions(bool value)
     {
         EnsureLoaded();
-        UseCompactBattleCardDescriptions = value;
+        UseFormulaCardDescriptions = value;
+        Save();
+    }
+
+    public static void SetHideStatXKeywordTooltips(bool value)
+    {
+        EnsureLoaded();
+        HideStatXKeywordTooltips = value;
         Save();
     }
 
@@ -191,6 +218,13 @@ public static class UserSettings
     {
         EnsureLoaded();
         GroupBattlePilesByCharacter = value;
+        Save();
+    }
+
+    public static void SetShowHandCardIndices(bool value)
+    {
+        EnsureLoaded();
+        ShowHandCardIndices = value;
         Save();
     }
 
@@ -363,9 +397,10 @@ public static class UserSettings
         var config = new ConfigFile();
         config.SetValue(
             SectionName,
-            CompactBattleCardDescriptionsKey,
-            UseCompactBattleCardDescriptions
+            FormulaCardDescriptionsKey,
+            UseFormulaCardDescriptions
         );
+        config.SetValue(SectionName, HideStatXKeywordTooltipsKey, HideStatXKeywordTooltips);
         config.SetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview);
         config.SetValue(SectionName, IncomingDamagePreviewKey, ShowIncomingDamagePreview);
         config.SetValue(SectionName, ShowIntentionTargetNamesKey, ShowIntentionTargetNames);
@@ -380,6 +415,7 @@ public static class UserSettings
             GroupBattlePilesByCharacterKey,
             GroupBattlePilesByCharacter
         );
+        config.SetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices);
         config.SetValue(
             SectionName,
             KeepManualTargetCardVisibleWhenHiddenKey,

@@ -14,9 +14,6 @@ public enum PropertyType
     [Description("生存")]
     Survivability,
 
-    [Description("速度")]
-    Speed,
-
     [Description("生命上限")]
     MaxLife,
 
@@ -34,6 +31,7 @@ public partial class Skill
     private int _previewBasePowerContribution;
     private int _previewBaseSurvivabilityContribution;
     private int _previewEnergy = 1;
+    private int _previewPlayerIndex = -1;
     private bool _previewIsPlayer = true;
     private bool _previewUsesEnemySkillDamageScaling = true;
 
@@ -78,17 +76,19 @@ public partial class Skill
         }
         set => _skillName = value;
     }
-    public SkillTypes SkillType;
+    public virtual SkillTypes SkillType => SkillTypes.none;
     public Character OwnerCharater;
     public SkillID? SkillId { get; internal set; }
     public virtual int EnergyCost => GetDefaultEnergyCost();
-    public virtual int EnemySpecialIntentionCooldown =>
-        SkillType == SkillTypes.Special ? 1 : 0;
+    public virtual int EnemySpecialIntentionCooldown => SkillType == SkillTypes.Special ? 1 : 0;
     public virtual bool ExhaustsAfterUse => false;
     public virtual bool ExhaustsAtTurnEndInHand => false;
-    public virtual bool RetainsAtTurnEndInHand => false;
+    public virtual bool IntrinsicRetainsAtTurnEndInHand => false;
+    public virtual bool RetainsAtTurnEndInHand =>
+        IntrinsicRetainsAtTurnEndInHand || HasToolboxRetainFeature();
     public virtual bool TriggersAtTurnEndInHand => false;
-    public virtual bool CanBePlayed => SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
+    public virtual bool CanBePlayed =>
+        SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
     public bool IsStatusCard => SkillType == SkillTypes.Status;
     public bool Enable;
     public string Description;
@@ -98,9 +98,22 @@ public partial class Skill
     private int _paidEnergyForCurrentEffect;
     private int _energyCostWaiverDepth;
 
-    public Skill(SkillTypes skillType)
+    protected Skill()
     {
-        SkillType = skillType;
+        UpdateDescription();
+    }
+
+    internal static Skill CreatePlaceholder(SkillTypes skillType) => new PlaceholderSkill(skillType);
+
+    private sealed class PlaceholderSkill : Skill
+    {
+        private readonly SkillTypes _skillType;
+
+        internal PlaceholderSkill(SkillTypes skillType) => _skillType = skillType;
+
+        public override SkillTypes SkillType => _skillType;
+
+        protected override SkillPlan BuildPlan() => null;
     }
 
     private string GetSkillNameToken()
@@ -215,6 +228,17 @@ public partial class Skill
         _queuedExtraSkillExecutions += count;
     }
 
+    protected bool HasToolboxRetainFeature()
+    {
+        if (GameInfo.HasToolboxRetain(this))
+            return true;
+
+        return OwnerCharater == null
+            && _previewPlayerIndex >= 0
+            && SkillId is SkillID skillId
+            && GameInfo.GetToolboxRetainCount(_previewPlayerIndex, skillId) > 0;
+    }
+
     private int ConsumeQueuedExtraSkillExecutions()
     {
         int queuedCount = _queuedExtraSkillExecutions;
@@ -241,7 +265,8 @@ public partial class Skill
         bool isPlayer = true,
         bool? useEnemySkillDamageScaling = null,
         int basePowerContribution = 0,
-        int baseSurvivabilityContribution = 0
+        int baseSurvivabilityContribution = 0,
+        int playerIndex = -1
     )
     {
         _previewPower = power;
@@ -249,6 +274,7 @@ public partial class Skill
         _previewBasePowerContribution = basePowerContribution;
         _previewBaseSurvivabilityContribution = baseSurvivabilityContribution;
         _previewEnergy = energy;
+        _previewPlayerIndex = playerIndex;
         _previewIsPlayer = isPlayer;
         _previewUsesEnemySkillDamageScaling = useEnemySkillDamageScaling ?? !isPlayer;
     }
@@ -273,7 +299,14 @@ public partial class Skill
     protected int DamageFromPower(int baseDamage = 0, int multiplier = 1, int clampMax = 9999)
     {
         int damage = baseDamage + OwnerPower * multiplier;
-        return ApplyOwnerSkillDamageScaling(Math.Clamp(damage, 0, clampMax));
+        damage = ApplyOwnerSkillDamageScaling(Math.Clamp(damage, 0, clampMax));
+        damage += GetOwnerSkillAttackDamageBonus();
+        return damage;
+    }
+
+    private int GetOwnerSkillAttackDamageBonus()
+    {
+        return OwnerCharater is PlayerCharacter player ? player.GetSkillAttackDamageBonus(this) : 0;
     }
 
     private bool UsesEnemySkillDamageScaling()
@@ -299,11 +332,7 @@ public partial class Skill
         return Math.Max(1, (int)MathF.Ceiling(damage * EnemySkillDamageMultiplier));
     }
 
-    protected int BlockFromSurvivability(
-        int baseBlock = 0,
-        int multiplier = 1,
-        int clampMax = 999
-    )
+    protected int BlockFromSurvivability(int baseBlock = 0, int multiplier = 1, int clampMax = 999)
     {
         int block = baseBlock + OwnerSurvivability * multiplier;
         return Math.Clamp(block, 0, clampMax);
@@ -366,6 +395,9 @@ public partial class Skill
         if (!CanBePlayed)
             return false;
 
+        if (UsesXEnergyCost)
+            return availableEnergy >= 0;
+
         return availableEnergy >= CardEnergyCost;
     }
 
@@ -375,16 +407,37 @@ public partial class Skill
 
     public bool TrySpendDisplayedEnergy()
     {
+        if (OwnerCharater == null)
+            return UsesXEnergyCost || CardEnergyCost <= 0;
+
+        int availableEnergy = OwnerCharater.CurrentEnergy;
+
+        if (UsesXEnergyCost)
+        {
+            int xPaymentCost = Math.Max(0, availableEnergy);
+            if (xPaymentCost > 0)
+            {
+                if (
+                    OwnerCharater.BattleNode?.UpdataEnergy(
+                        OwnerCharater,
+                        -xPaymentCost,
+                        OwnerCharater
+                    ) != -xPaymentCost
+                )
+                    return false;
+            }
+
+            _prepaidDisplayedEnergy = xPaymentCost;
+            _paidEnergyForCurrentEffect = xPaymentCost;
+            return true;
+        }
+
         if (CardEnergyCost <= 0)
             return true;
 
-        int availableEnergy = OwnerCharater?.CurrentEnergy ?? 0;
-        int paymentCost = UsesXEnergyCost ? availableEnergy : CardEnergyCost;
-        if (OwnerCharater == null || availableEnergy < CardEnergyCost)
+        int paymentCost = CardEnergyCost;
+        if (availableEnergy < paymentCost)
             return false;
-
-        if (paymentCost <= 0)
-            return true;
 
         if (
             OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, -paymentCost, OwnerCharater)
@@ -418,24 +471,24 @@ public partial class Skill
 
         if (UsesXEnergyCost)
         {
-            if (_prepaidDisplayedEnergy > 0)
-            {
-                _paidEnergyForCurrentEffect = _prepaidDisplayedEnergy;
-                return true;
-            }
-
-            int paymentCost = OwnerCharater.CurrentEnergy;
-            if (paymentCost <= 0)
-                return false;
-
             if (
-                OwnerCharater.BattleNode?.UpdataEnergy(
-                    OwnerCharater,
-                    -paymentCost,
-                    OwnerCharater
-                ) != -paymentCost
+                _prepaidDisplayedEnergy == _paidEnergyForCurrentEffect
+                && (_prepaidDisplayedEnergy > 0 || OwnerCharater.CurrentEnergy == 0)
             )
-                return false;
+                return true;
+
+            int paymentCost = Math.Max(0, OwnerCharater.CurrentEnergy);
+            if (paymentCost > 0)
+            {
+                if (
+                    OwnerCharater.BattleNode?.UpdataEnergy(
+                        OwnerCharater,
+                        -paymentCost,
+                        OwnerCharater
+                    ) != -paymentCost
+                )
+                    return false;
+            }
 
             _paidEnergyForCurrentEffect = paymentCost;
             return true;
@@ -454,10 +507,7 @@ public partial class Skill
         if (OwnerCharater.CurrentEnergy < cost)
             return false;
 
-        if (
-            OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, -cost, OwnerCharater)
-            != -cost
-        )
+        if (OwnerCharater.BattleNode?.UpdataEnergy(OwnerCharater, -cost, OwnerCharater) != -cost)
             return false;
 
         _paidEnergyForCurrentEffect = cost;
@@ -482,26 +532,65 @@ public partial class Skill
         };
     }
 
+    public static bool HasTauntBuff(Character target) =>
+        target?.HurtBuffs?.Any(buff =>
+            buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
+        ) == true;
+
     private static bool HasInvisibleBuff(Character target) =>
         target?.StartActionBuffs?.Any(buff =>
             buff != null && buff.ThisBuffName == Buff.BuffName.Invisible && buff.Stack > 0
         ) == true;
 
-    private static bool HasTauntBuff(Character target) =>
-        target?.HurtBuffs?.Any(buff =>
-            buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
-        ) == true;
+    public static bool IsSelectableHostileTarget(Character target) =>
+        IsSelectableHostileTarget(null, target);
+
+    public static bool IsSelectableHostileTarget(Character owner, Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return false;
+
+        return target.State == Character.CharacterState.Normal;
+    }
+
+    public static bool IsCurrentlyHostileTargetable(
+        Character owner,
+        Character target,
+        bool applyTaunt = true
+    )
+    {
+        if (!IsSelectableHostileTarget(owner, target))
+            return false;
+
+        return ChooseHostileTargetsByOrder(
+            owner,
+            applyTaunt: applyTaunt
+        ).Contains(target);
+    }
+
+    public static bool IsValidHostileExecutionTarget(Character owner, Character target)
+    {
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return false;
+
+        return target.State
+            is Character.CharacterState.Normal
+                or Character.CharacterState.Dying;
+    }
 
     public static Character[] FilterHostileTargetSequence(
         IEnumerable<Character> orderedTargets,
         bool returnDummyWhenEmpty = false,
         Character dummyTarget = null,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         Character[] ordered =
             orderedTargets?.Where(target => target != null).ToArray() ?? Array.Empty<Character>();
-        Character[] visibleTargets = ordered.Where(target => !HasInvisibleBuff(target)).ToArray();
+        Character[] visibleTargets = respectInvisible
+            ? ordered.Where(target => !HasInvisibleBuff(target)).ToArray()
+            : ordered;
 
         // If everyone is invisible, fall back to the original ordered sequence and
         // continue target selection normally to avoid clearing the target list.
@@ -509,7 +598,8 @@ public partial class Skill
         Character[] tauntTargets = applyTaunt
             ? selectableTargets.Where(HasTauntBuff).ToArray()
             : Array.Empty<Character>();
-        Character[] targets = applyTaunt && tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
+        Character[] targets =
+            applyTaunt && tauntTargets.Length > 0 ? tauntTargets : selectableTargets;
 
         if (targets.Length > 0 || !returnDummyWhenEmpty)
             return targets;
@@ -523,7 +613,8 @@ public partial class Skill
         bool returnDummyWhenEmpty = true,
         bool normalOnly = true,
         bool dyingFilter = false,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         if (owner?.BattleNode == null)
@@ -538,7 +629,7 @@ public partial class Skill
             .Where(target => target != null);
 
         if (normalOnly)
-            source = source.Where(target => target.State == Character.CharacterState.Normal);
+            source = source.Where(target => IsSelectableHostileTarget(owner, target));
 
         IEnumerable<Character> ordered = byBehindRow
             ? source.OrderByDescending(target => target.PositionIndex)
@@ -548,14 +639,16 @@ public partial class Skill
             ordered,
             returnDummyWhenEmpty,
             owner.BattleNode?.dummy,
-            applyTaunt
+            applyTaunt,
+            respectInvisible
         );
     }
 
     private Character[] GetHostileTargetsInTeamOrder(
         bool dyingFilter,
         bool returnDummyWhenEmpty = false,
-        bool applyTaunt = false
+        bool applyTaunt = false,
+        bool respectInvisible = true
     )
     {
         if (OwnerCharater?.BattleNode == null)
@@ -570,16 +663,22 @@ public partial class Skill
             orderedTargets,
             returnDummyWhenEmpty,
             OwnerCharater.BattleNode?.dummy,
-            applyTaunt
+            applyTaunt,
+            respectInvisible
         );
     }
 
-    public Character[] ChosetargetByOrder(bool byBehindRow = false, bool applyTaunt = false) =>
+    public Character[] ChosetargetByOrder(
+        bool byBehindRow = false,
+        bool applyTaunt = false,
+        bool respectInvisible = true
+    ) =>
         ChooseHostileTargetsByOrder(
             OwnerCharater,
             byBehindRow,
             returnDummyWhenEmpty: true,
-            applyTaunt: applyTaunt
+            applyTaunt: applyTaunt,
+            respectInvisible: respectInvisible
         );
 
     private static bool IsDummyTarget(Skill skill, Character target)
@@ -872,8 +971,7 @@ public partial class Skill
     {
         return owner != null
             && owner.State != Character.CharacterState.Dying
-            && target != null
-            && target.State == Character.CharacterState.Normal;
+            && IsValidHostileExecutionTarget(owner, target);
     }
 
     private Character ResolvePrimaryTarget(bool byBehindRow)
@@ -908,6 +1006,8 @@ public partial class Skill
         times = Math.Max(0, times);
         if (times <= 0)
             return;
+
+        OwnerCharater?.BattleNode?.NotifyAllyAttackExecuted(OwnerCharater);
 
         await AttackAnimation(target);
 
@@ -1041,7 +1141,7 @@ public partial class Skill
         var effect = OwnerCharater.CharacterEffectScene.Instantiate() as CharacterEffect;
         OwnerCharater.AddChild(effect);
         effect.Animation.Play("explode");
-        await effect.ToSignal(effect.Animation, "animation_finished");
+        await Task.Delay(300);
         attack.AnimationPlayer0.Play("Attack1");
         attack.GlobalPosition = target.GlobalPosition;
     }
@@ -1098,625 +1198,5 @@ public partial class Skill
 
         return skillIndex is >= 0 and <= 3;
     }
-
-    public static Skill GetSkill(SkillID skillID)
-    {
-        Skill skill = skillID switch
-        {
-            SkillID.Determination => new Determination(),
-            SkillID.ReNewedSpirit => new ReNewedSpirit(),
-            SkillID.TerminateLight => new TerminateLight(),
-            SkillID.Smite => new Smite(),
-            SkillID.Charge => new Charge(),
-            SkillID.VulnerablePurge => new VulnerablePurge(),
-            SkillID.VulnerabilityStrike => new VulnerabilityStrike(),
-            SkillID.DeSurviveSkill => new ShockWave(),
-            SkillID.SacredOnslaught => new SacredOnslaught(),
-            SkillID.ResonantSlash => new ResonantSlash(),
-            SkillID.EchoPuncture => new EchoPuncture(),
-            SkillID.Extract => new Extract(),
-            SkillID.BladeOfSlaughter => new BladeOfSlaughter(),
-            SkillID.DisasterImpact => new DisasterImpact(),
-            SkillID.BreakStrike => new BreakStrike(),
-            SkillID.EchonicResonance => new EchonicResonance(),
-            SkillID.SonicBoom => new SonicBoom(),
-            SkillID.PhaseEcho => new PhaseEcho(),
-            SkillID.SoundBarrier => new SoundBarrier(),
-            SkillID.SonicDeflection => new SonicDeflection(),
-            SkillID.DeflectionShield => new DeflectionShield(),
-            SkillID.TuningStance => new TuningStance(),
-            SkillID.ResonantWard => new ResonantWard(),
-            SkillID.DissonantField => new DissonantField(),
-            SkillID.ReverbChain => new ReverbChain(),
-            SkillID.RelayShift => new RelayShift(),
-            SkillID.ResonanceShelter => new Shelter(),
-            SkillID.VoidForm => new VoidForm(),
-            SkillID.EchoForm => new EchoForm(),
-            SkillID.Purity => new Purity(),
-            SkillID.CursePower => new CursePower(),
-            SkillID.WeakeningField => new WeakeningField(),
-            SkillID.EternalCore => new EternalCore(),
-            SkillID.EvilAttack => new EvilAttack(),
-            SkillID.EvilSurvive => new EvilSurvive(),
-            SkillID.EvilTermin => new EvilTermin(),
-            SkillID.ShockWave => new ShockWave(),
-            SkillID.AbsouluteDefense => new AbsouluteDefense(),
-            SkillID.TauntingGuard => new TauntingGuard(),
-            SkillID.WeakpointBulwark => new WeakpointBulwark(),
-            SkillID.Purification => new Purification(),
-            SkillID.ReadyStance => new ReadyStance(),
-            SkillID.BarrierDuplication => new BarrierDuplication(),
-            SkillID.HolySeal => new HolySeal(),
-            SkillID.AegisPledge => new AegisPledge(),
-            SkillID.HopeBeacon => new HopeBeacon(),
-            SkillID.WarGodWill => new WarGodWill(),
-            SkillID.TacticalPreparation => new TacticalPreparation(),
-            SkillID.RadiantOverload => new RadiantOverload(),
-            SkillID.VulnerabilityConversion => new VulnerabilityConversion(),
-            SkillID.DemonForm => new DemonForm(),
-            SkillID.FearWormAttack => new FearWormAttack(),
-            SkillID.FearWormSurvive => new FearWormSurvive(),
-            SkillID.FearWormTermin => new FearWormTermin(),
-            SkillID.MendSlash => new MendSlash(),
-            SkillID.ChargedBlade => new ChargedBlade(),
-            SkillID.CrescentWind => new CrescentWind(),
-            SkillID.ConcordSlash => new ArcTrack(),
-            SkillID.SiphonSlash => new SiphonSlash(),
-            SkillID.SwapSlash => new SwapSlash(),
-            SkillID.ShatterSlash => new ShatterSlash(),
-            SkillID.FinalGuard => new FinalGuard(),
-            SkillID.RebirthPrayer => new RebirthPrayer(),
-            SkillID.Sacrifice => new Sacrifice(),
-            SkillID.RearlineRevival => new RearlineRevival(),
-            SkillID.GroupHealing => new GroupHealing(),
-            SkillID.StillWaterMirror => new StillWaterMirror(),
-            SkillID.ShadowAmbush => new ShadowAmbush(),
-            SkillID.ShadowExecution => new ShadowExecution(),
-            SkillID.StasisBlade => new StasisBlade(),
-            SkillID.ContinuousPierce => new ContinuousPierce(),
-            SkillID.RuinBlade => new RuinBlade(),
-            SkillID.NightfallFlurry => new NightfallFlurry(),
-            SkillID.VeilStep => new VeilStep(),
-            SkillID.NightingaleEnergy => new NightingaleEnergy(),
-            SkillID.TempoSurge => new TempoSurge(),
-            SkillID.LongNight => new LongNight(),
-            SkillID.RequiemBloom => new RequiemBloom(),
-            SkillID.CurtainCallMoment => new CurtainCallMoment(),
-            SkillID.SunMoonCycle => new SunMoonCycle(),
-            SkillID.ShadowForm => new ShadowForm(),
-            SkillID.BrightestMoment => new BrightestMoment(),
-            SkillID.EternalDark => new EternalDarkSkill(),
-            SkillID.Vower => new Vower(),
-            SkillID.FlashOfLight => new FlashOfLight(),
-            SkillID.CrystalGuard => new CrystalGuard(),
-            SkillID.QuietVeil => new QuietVeil(),
-            SkillID.EnergyTransfer => new EnergyTransfer(),
-            SkillID.EnergyRelay => new EnergyRelay(),
-            SkillID.TouchOfGod => new TouchOfGod(),
-            SkillID.Ragnarok => new Ragnarok(),
-            SkillID.HolyOfHolies => new HolyOfHolies(),
-            SkillID.SanctuaryForm => new SanctuaryForm(),
-            SkillID.Swift => new Swift(),
-            SkillID.AfterimageWard => new AfterimageWard(),
-            SkillID.StarWard => new StarWard(),
-            SkillID.TwilightParadox => new TwilightParadox(),
-            SkillID.ArmonAttack => new ArmonAttack(),
-            SkillID.ArmonSurvive => new ArmonSurvive(),
-            SkillID.ArmonSpecial => new ArmonSpecial(),
-            SkillID.ArroganceAttack => new ArroganceAttack(),
-            SkillID.ArroganceSurvive => new ArroganceSurvive(),
-            SkillID.ArroganceSpecial => new ArroganceSpecial(),
-            SkillID.AlienBodyAttack => new AlienBodyAttack(),
-            SkillID.AlienBodySurvive => new AlienBodySurvive(),
-            SkillID.AlienBodySpecial => new AlienBodySpecial(),
-            SkillID.RedHuskAttack => new RedHuskAttack(),
-            SkillID.RedHuskSurvive => new RedHuskSurvive(),
-            SkillID.RedHuskSpecial => new RedHuskSpecial(),
-            SkillID.WarAttack => new WarAttack(),
-            SkillID.WarSurvive => new WarSurvive(),
-            SkillID.WarSpecial => new WarSpecial(),
-            SkillID.WarThrallAttack => new WarThrallAttack(),
-            SkillID.FerociouessAttack => new FerociouessAttack(),
-            SkillID.FerociouessSurvive => new FerociouessSurvive(),
-            SkillID.FerociouessSpecial => new FerociouessSpecial(),
-            SkillID.TurbineAttack => new TurbineAttack(),
-            SkillID.TurbineSurvive => new TurbineSurvive(),
-            SkillID.TurbineSpecial => new TurbineSpecial(),
-            SkillID.BlackHawkAttack => new BlackHawkAttack(),
-            SkillID.BlackHawkSurvive => new BlackHawkSurvive(),
-            SkillID.BlackHawkSpecial => new BlackHawkSpecial(),
-            SkillID.InexorabilityAttack => new InexorabilityAttack(),
-            SkillID.InexorabilitySurvive => new InexorabilitySurvive(),
-            SkillID.InexorabilitySpecial => new InexorabilitySpecial(),
-            SkillID.GraveWraithAttack => new GraveWraithAttack(),
-            SkillID.GraveWraithSurvive => new GraveWraithSurvive(),
-            SkillID.GraveWraithSpecial => new GraveWraithSpecial(),
-            SkillID.DeathAttack => new DeathAttack(),
-            SkillID.DeathSurvive => new DeathSurvive(),
-            SkillID.DeathSpecial => new DeathSpecial(),
-            SkillID.VoidAcolyteAttack => new VoidAcolyteAttack(),
-            SkillID.VoidAcolyteSurvive => new VoidAcolyteSurvive(),
-            SkillID.VoidAcolyteSpecial => new VoidAcolyteSpecial(),
-            SkillID.VoidRotorAttack => new VoidRotorAttack(),
-            SkillID.VoidRotorSurvive => new VoidRotorSurvive(),
-            SkillID.VoidRotorSpecial => new VoidRotorSpecial(),
-            SkillID.VoidStatus => new VoidStatus(),
-            SkillID.WoundStatus => new WoundStatus(),
-            SkillID.DazeStatus => new DazeStatus(),
-            SkillID.PlagueStatus => new PlagueStatus(),
-            SkillID.HollowBulwarkAttack => new HollowBulwarkAttack(),
-            SkillID.HollowBulwarkSurvive => new HollowBulwarkSurvive(),
-            SkillID.HollowBulwarkSpecial => new HollowBulwarkSpecial(),
-            SkillID.MarrowReaverAttack => new MarrowReaverAttack(),
-            SkillID.MarrowReaverSurvive => new MarrowReaverSurvive(),
-            SkillID.MarrowReaverSpecial => new MarrowReaverSpecial(),
-            SkillID.AngerEliteAttack => new AngerEliteAttack(),
-            SkillID.AngerEliteSurvive => new AngerEliteSurvive(),
-            SkillID.AngerEliteSpecial => new AngerEliteSpecial(),
-            SkillID.FearEliteAttack => new FearEliteAttack(),
-            SkillID.FearEliteSurvive => new FearEliteSurvive(),
-            SkillID.FearEliteSpecial => new FearEliteSpecial(),
-            SkillID.EnvyEliteAttack => new EnvyEliteAttack(),
-            SkillID.EnvyEliteSurvive => new EnvyEliteSurvive(),
-            SkillID.EnvyEliteSpecial => new EnvyEliteSpecial(),
-            SkillID.HavocAttack => new HavocAttack(),
-            SkillID.HavocSurvive => new HavocSurvive(),
-            SkillID.HavocSpecial => new HavocSpecial(),
-            SkillID.BasicAttack => new BasicAttack(),
-            SkillID.BasicDefense => new BasicDefense(),
-            SkillID.BasicGuard => new BasicGuard(),
-            SkillID.BasicSpecial => new BasicSpecial(),
-            SkillID.KasiyaBasicSpecial => new KasiyaBasicSpecial(),
-            SkillID.EchoBasicSpecial => new EchoBasicSpecial(),
-            SkillID.MariyaBasicSpecial => new MariyaBasicSpecial(),
-            SkillID.NightingaleBasicSpecial => new NightingaleBasicSpecial(),
-            _ => null,
-        };
-
-        if (skill != null)
-            skill.SkillId = skillID;
-
-        return skill;
-    }
 }
 
-public enum SkillID
-{
-    #region Player Characters
-
-    #region Echo
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    SacredOnslaught = 5,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    ResonantSlash = 6,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    EchoPuncture = 7,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    Extract = 98,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    BladeOfSlaughter = 97,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    DisasterImpact = 94,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    BreakStrike = 8,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    EchonicResonance = 9,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    SonicBoom = 10,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    PhaseEcho = 11,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    SoundBarrier = 12,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    SonicDeflection = 13,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    DeflectionShield = 143,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    TuningStance = 14,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    ResonantWard = 15,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    DissonantField = 74,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    ReverbChain = 75,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    RelayShift = 86,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    ResonanceShelter = 108,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    VoidForm = 101,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    EchoForm = 102,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    CursePower = 140,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    WeakeningField = 141,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    EternalCore = 155,
-    #endregion
-
-    #region Kasiya
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    Determination = 0,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    ReNewedSpirit = 1,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    TerminateLight = 2,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    Smite = 3,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    Charge = 4,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    VulnerablePurge = 76,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    VulnerabilityStrike = 77,
-
-    DeSurviveSkill = 19,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    ShockWave = 20,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    AbsouluteDefense = 21,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    TauntingGuard = 22,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    WeakpointBulwark = 82,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    Purification = 144,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    ReadyStance = 114,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    BarrierDuplication = 85,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    HolySeal = 23,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    Vower = 36,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    AegisPledge = 70,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    HopeBeacon = 139,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    WarGodWill = 109,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    TacticalPreparation = 149,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    RadiantOverload = 150,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    VulnerabilityConversion = 78,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    DemonForm = 100,
-    #endregion
-
-    #region Mariya
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    MendSlash = 27,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    ChargedBlade = 104,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    CrescentWind = 107,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    ConcordSlash = 111,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    SiphonSlash = 59,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    ShatterSlash = 60,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    FinalGuard = 28,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    RebirthPrayer = 29,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    Sacrifice = 34,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    CrystalGuard = 38,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    SwapSlash = 53,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    QuietVeil = 58,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    EnergyTransfer = 61,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    RearlineRevival = 80,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    EnergyRelay = 81,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    GroupHealing = 83,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    StillWaterMirror = 142,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    TouchOfGod = 95,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    Ragnarok = 96,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    HolyOfHolies = 148,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    SanctuaryForm = 103,
-    #endregion
-
-    #region Nightingale
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    ShadowAmbush = 30,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    ShadowExecution = 31,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    StasisBlade = 65,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    ContinuousPierce = 87,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    RuinBlade = 105,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    NightfallFlurry = 156,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    VeilStep = 32,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    NightingaleEnergy = 113,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    TempoSurge = 33,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    LongNight = 35,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    RequiemBloom = 66,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    CurtainCallMoment = 106,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    SunMoonCycle = 110,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    FlashOfLight = 37,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    Swift = 39,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    AfterimageWard = 84,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    StarWard = 40,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    TwilightParadox = 79,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    ShadowForm = 99,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    BrightestMoment = 137,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    EternalDark = 138,
-    #endregion
-
-    #endregion
-
-    #region Enemies
-
-    #region Evil
-    EvilAttack = 16,
-    EvilSurvive = 17,
-    EvilTermin = 18,
-    #endregion
-
-    #region FearWorm
-    FearWormAttack = 24,
-    FearWormSurvive = 25,
-    FearWormTermin = 26,
-    #endregion
-
-    #region Armon
-    ArmonAttack = 41,
-    ArmonSurvive = 42,
-    ArmonSpecial = 43,
-    #endregion
-
-    #region Arrogance
-    ArroganceAttack = 44,
-    ArroganceSurvive = 45,
-    ArroganceSpecial = 46,
-    #endregion
-
-    #region AlienBody
-    AlienBodyAttack = 47,
-    AlienBodySurvive = 48,
-    AlienBodySpecial = 49,
-    #endregion
-
-    #region RedHusk
-    RedHuskAttack = 50,
-    RedHuskSurvive = 51,
-    RedHuskSpecial = 52,
-    #endregion
-
-    #region War
-    WarAttack = 54,
-    WarSurvive = 55,
-    WarSpecial = 56,
-    WarThrallAttack = 57,
-    #endregion
-
-    #region Ferociouess
-    FerociouessAttack = 62,
-    FerociouessSurvive = 63,
-    FerociouessSpecial = 64,
-    #endregion
-
-    #region Turbine
-    TurbineAttack = 67,
-    TurbineSurvive = 68,
-    TurbineSpecial = 69,
-    #endregion
-
-    #region BlackHawk
-    BlackHawkAttack = 88,
-    BlackHawkSurvive = 89,
-    BlackHawkSpecial = 90,
-    #endregion
-
-    #region Inexorability
-    InexorabilityAttack = 91,
-    InexorabilitySurvive = 92,
-    InexorabilitySpecial = 93,
-    #endregion
-
-    #region GraveWraith
-    GraveWraithAttack = 115,
-    GraveWraithSurvive = 116,
-    GraveWraithSpecial = 117,
-    #endregion
-
-    #region Death
-    DeathAttack = 118,
-    DeathSurvive = 119,
-    DeathSpecial = 120,
-    #endregion
-
-    #region VoidAcolyte
-    VoidAcolyteAttack = 121,
-    VoidAcolyteSurvive = 122,
-    VoidAcolyteSpecial = 123,
-    VoidStatus = 124,
-    VoidRotorAttack = 134,
-    VoidRotorSurvive = 135,
-    VoidRotorSpecial = 136,
-    #endregion
-
-    WoundStatus = 131,
-    DazeStatus = 133,
-    PlagueStatus = 154,
-
-    #region HollowBulwark
-    HollowBulwarkAttack = 125,
-    HollowBulwarkSurvive = 126,
-    HollowBulwarkSpecial = 127,
-    #endregion
-
-    #region MarrowReaver
-    MarrowReaverAttack = 128,
-    MarrowReaverSurvive = 129,
-    MarrowReaverSpecial = 130,
-    #endregion
-
-    #region AngerElite
-    AngerEliteAttack = 145,
-    AngerEliteSurvive = 146,
-    AngerEliteSpecial = 147,
-    #endregion
-
-    #region FearElite
-    FearEliteAttack = 151,
-    FearEliteSurvive = 152,
-    FearEliteSpecial = 153,
-    #endregion
-
-    #region EnvyElite
-    EnvyEliteAttack = 157,
-    EnvyEliteSurvive = 158,
-    EnvyEliteSpecial = 159,
-    #endregion
-
-    #region Havoc
-    HavocAttack = 160,
-    HavocSurvive = 161,
-    HavocSpecial = 162,
-    #endregion
-
-    #region Echo
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    Purity = 132,
-    #endregion
-
-    #region Basis
-    BasicAttack = 71,
-    BasicDefense = 72,
-    BasicSpecial = 73,
-    BasicGuard = 112,
-
-    [PlayerSkill(PlayerCharacterKey.Kasiya)]
-    KasiyaBasicSpecial = 163,
-
-    [PlayerSkill(PlayerCharacterKey.Echo)]
-    EchoBasicSpecial = 164,
-
-    [PlayerSkill(PlayerCharacterKey.Mariya)]
-    MariyaBasicSpecial = 165,
-
-    [PlayerSkill(PlayerCharacterKey.Nightingale)]
-    NightingaleBasicSpecial = 166,
-    #endregion
-
-    #endregion
-}

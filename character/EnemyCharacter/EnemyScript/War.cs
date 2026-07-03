@@ -80,7 +80,7 @@ public partial class WarRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
 
-        MaxLife = 326;
+        MaxLife = 256;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -97,35 +97,23 @@ public partial class WarAttack : Skill
     private const int BaseDamage = 9;
     private const int ThrallPowerGain = 2;
 
-    public WarAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "全军出击";
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(
-            this,
-            AttackStep(baseDamage: BaseDamage, times: 2),
-            ModifySummonPropertyStep(PropertyType.Power, ThrallPowerGain)
-        );
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2));
     }
 }
 
 public partial class WarSurvive : Skill
 {
     private const int BaseBlock = 13;
-    private const int SelfSurvivabilityGain = 4;
+    private const int SelfSurvivabilityGain = 2;
     private const int ThrallBlock = 0;
 
-    public WarSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "逝者军势";
 
@@ -135,7 +123,6 @@ public partial class WarSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             BlockSummonsStep(baseBlock: ThrallBlock),
-            HealStep(15),
             ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
         );
     }
@@ -143,20 +130,16 @@ public partial class WarSurvive : Skill
 
 public partial class WarSpecial : Skill
 {
-    public WarSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "死亡行军";
-    public override int EnergyCost => 7;
+    public override int EnemySpecialIntentionCooldown => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 9),
+            AttackStep(baseDamage: 11),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             ModifyPropertyStep(PropertyType.Power, 2)

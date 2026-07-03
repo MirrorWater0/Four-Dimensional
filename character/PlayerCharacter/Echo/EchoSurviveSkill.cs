@@ -7,20 +7,14 @@ public partial class EchoDefenceSkill { }
 public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
-    private const int BaseBlock = 6;
 
-    public SoundBarrier()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            CarryStep(target: TargetReference.Next, skillIndex: 1)
+            AddCardsToHandStep(SkillID.DefenceFocus, 3, TargetReference.ManualFriendly)
         );
     }
 }
@@ -30,14 +24,10 @@ public partial class SonicDeflection : Skill
     private const int DamageImmuneStacks = 2;
     private const int BaseBlock = 0;
 
-    public SonicDeflection()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "声波偏转";
-
+    public override int EnergyCost => 2;
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -58,11 +48,7 @@ public partial class DeflectionShield : Skill
     private const int BaseBlock = 6;
     private const int DamageImmuneStacks = 1;
 
-    public DeflectionShield()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "偏折之盾";
     public override int EnergyCost => 1;
@@ -87,11 +73,7 @@ public partial class ResonantWard : Skill
     private const int BaseBlock = 6;
     public override int EnergyCost => 2;
 
-    public ResonantWard()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "电磁排斥";
 
@@ -112,15 +94,11 @@ public partial class ResonantWard : Skill
 public partial class DissonantField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 6;
     private const int WeakenStacks = 2;
     public override int EnergyCost => 2;
 
-    public DissonantField()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "失谐力场";
 
@@ -143,11 +121,7 @@ public partial class Shelter : Skill
     private const int BaseBlock = 4;
     private const int CardRefreshStacks = 1;
 
-    public Shelter()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "护幕";
     public override int EnergyCost => 1;

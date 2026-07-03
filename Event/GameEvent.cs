@@ -1,11 +1,19 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public partial class GameEvent
 {
     public string EventName { get; private set; }
     public string Text { get; private set; }
     public EventOption[] Options { get; private set; }
+    public bool IsRestSite { get; private set; }
+    public bool IsTreasureChest { get; private set; }
+    public bool IsStarterBonus { get; private set; }
+    public bool IsBossRelicChoice { get; private set; }
+
+    private const int BossRelicOfferCount = 3;
+    private const int BossRelicOfferSeedSalt = unchecked((int)0xB05571C);
 
     public static readonly GameEvent[] Catalog =
     [
@@ -16,13 +24,10 @@ public partial class GameEvent
                 + "你可以让系统随机校准一名队员，也可以手动指定目标。",
             Option(
                 "启动随机校准",
-                propertyChange: Stats((PropertyType.Power, 5), (PropertyType.Survivability, -1)),
+                propertyChange: Stats((PropertyType.Power, 3)),
                 randomChange: true
             ),
-            Option(
-                "手动指定校准对象",
-                propertyChange: Stats((PropertyType.Survivability, 2))
-            ),
+            Option("手动指定校准对象", propertyChange: Stats((PropertyType.Survivability, 2))),
             Option("稳定场核并回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
         ),
         Event(
@@ -111,6 +116,167 @@ public partial class GameEvent
         ),
     ];
 
+    public static GameEvent BuildStarterBonus()
+    {
+        return new GameEvent
+        {
+            EventName = I18n.Tr("ui.starter_bonus.title", "选择开局增益"),
+            Text = I18n.Tr(
+                "ui.starter_bonus.story",
+                "启程之前，终端列出了三项可携带的初始增益。\n规则很简单：本次冒险只能保留其中一项。"
+            ),
+            IsStarterBonus = true,
+            Options = GameInfo.RollStarterBonusOptions().Select(CreateStarterBonusOption).ToArray(),
+        };
+    }
+
+    public static GameEvent BuildBossRelicChoice()
+    {
+        RelicID[] offers = RollBossRelicOffers();
+        if (offers.Length == 0)
+            return null;
+
+        return new GameEvent
+        {
+            EventName = I18n.Tr("ui.boss_relic.title", "选择一件Boss遗物"),
+            Text = I18n.Tr(
+                "ui.boss_relic.story",
+                "第一区域的威胁已被清除，更深层的航道正在解锁。\n终端列出了三件可携带的高阶遗物，你只能保留其中一件。"
+            ),
+            IsBossRelicChoice = true,
+            Options = offers.Select(CreateBossRelicOption).ToArray(),
+        };
+    }
+
+    private static RelicID[] RollBossRelicOffers()
+    {
+        var rng = new Random(GameInfo.Seed ^ (GameInfo.CurrentLevel * 7919) ^ BossRelicOfferSeedSalt);
+        return Relic
+            .GetBossRelicOfferPool()
+            .Where(id => !GameInfo.HasRelic(id))
+            .OrderBy(_ => rng.Next())
+            .Take(BossRelicOfferCount)
+            .ToArray();
+    }
+
+    private static EventOption CreateBossRelicOption(RelicID relicId)
+    {
+        return new EventOption
+        {
+            Text = Relic.Create(relicId).RelicName,
+            ActionType = EventOptionActionType.GainRelic,
+            RelicReward = relicId,
+            Exit = true,
+        };
+    }
+
+    private static EventOption CreateStarterBonusOption(StarterBonusOption option)
+    {
+        string title = option switch
+        {
+            StarterBonusOption.Blessing => Relic.Create(RelicID.Blessing).RelicName,
+            StarterBonusOption.ExtraBattleSkillRewards => I18n.Tr(
+                "starter_bonus.extra_rewards.title",
+                "额外战利"
+            ),
+            StarterBonusOption.RandomRareSkill => I18n.Tr(
+                "starter_bonus.rare_skill.title",
+                "稀有卡牌"
+            ),
+            StarterBonusOption.RandomRelic => I18n.Tr(
+                "starter_bonus.random_relic.title",
+                "随机遗物"
+            ),
+            StarterBonusOption.RandomTalentPoints => I18n.Tr(
+                "starter_bonus.random_talent.title",
+                "天赋点"
+            ),
+            StarterBonusOption.TransformTwoCards => I18n.Tr(
+                "starter_bonus.transform_two_cards.title",
+                "变化卡牌"
+            ),
+            _ => string.Empty,
+        };
+
+        int electricityCost = GameInfo.GetStarterBonusElectricityCost(option);
+        return new EventOption
+        {
+            Text = title,
+            ActionType = EventOptionActionType.StarterBonus,
+            StarterBonusOption = option,
+            PropertyChangeElectricityCostMin = electricityCost,
+            PropertyChangeElectricityCostMax = electricityCost,
+            Exit = true,
+        };
+    }
+
+    public static GameEvent BuildRestSite(LevelNode node)
+    {
+        int singleHealPercent = (int)Math.Round(LevelProgress.RestSingleHealPercent * 100f);
+        var options = new List<EventOption>(3)
+        {
+            new EventOption
+            {
+                Text = I18n.Tr("ui.rest.heal", "休息"),
+                ActionType = EventOptionActionType.RestHeal,
+                Exit = true,
+            },
+            new EventOption
+            {
+                Text = I18n.Format(
+                    "ui.rest.single_heal",
+                    "定向治疗（{percent}%）",
+                    ("percent", singleHealPercent)
+                ),
+                ActionType = EventOptionActionType.RestSingleHeal,
+                Exit = true,
+            },
+        };
+
+        if (GameInfo.PreviewRestTalentPointReward(node).Granted)
+        {
+            options.Add(
+                new EventOption
+                {
+                    Text = I18n.Tr("ui.reward.talent_points", "天赋点"),
+                    ActionType = EventOptionActionType.RestTalentPoint,
+                    Exit = true,
+                }
+            );
+        }
+
+        return new GameEvent
+        {
+            EventName = I18n.Tr("ui.rest.title", "休息"),
+            Text = I18n.Tr("ui.rest.subtitle", "选择一项奖励，然后继续冒险。"),
+            Options = options.ToArray(),
+            IsRestSite = true,
+        };
+    }
+
+    public static GameEvent BuildTreasureChest(LevelNode node)
+    {
+        return new GameEvent
+        {
+            EventName = I18n.Tr("ui.treasure.title", "宝箱"),
+            Text = I18n.Tr(
+                "ui.treasure.story",
+                "航道中央静静躺着一只补给箱，封条仍完好。\n"
+                    + "终端识别到内部封存着一件未登记的遗物。"
+            ),
+            Options =
+            [
+                new EventOption
+                {
+                    Text = I18n.Tr("ui.treasure.open", "打开宝箱"),
+                    ActionType = EventOptionActionType.GainRelic,
+                    Exit = true,
+                },
+            ],
+            IsTreasureChest = true,
+        };
+    }
+
     private static GameEvent Event(string name, string text, params EventOption[] options)
     {
         return new GameEvent
@@ -181,6 +347,10 @@ public enum EventOptionActionType
     RemoveCard,
     GainRelic,
     GainTalentPoint,
+    RestHeal,
+    RestSingleHeal,
+    RestTalentPoint,
+    StarterBonus,
 }
 
 public class EventOption
@@ -203,6 +373,7 @@ public class EventOption
     public EventOptionActionType ActionType;
     public RelicID? RelicReward;
     public int TalentPointAmount;
+    public StarterBonusOption StarterBonusOption;
     public string Text;
 
     public bool RequiresCardSelection =>

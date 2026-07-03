@@ -21,10 +21,11 @@ public partial class Inexorability : EnemyCharacter
     public override async Task GetHurt(
         float damage,
         Character source = null,
-        DamageKind damageKind = DamageKind.Other
+        DamageKind damageKind = DamageKind.Other,
+        bool ignoreBlock = false
     )
     {
-        await base.GetHurt(damage, source, damageKind);
+        await base.GetHurt(damage, source, damageKind, ignoreBlock);
 
         if (
             damageKind != DamageKind.Attack
@@ -51,7 +52,7 @@ public partial class InexorabilityRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
 
-        MaxLife = 65;
+        MaxLife = 117;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -73,11 +74,7 @@ public partial class InexorabilityAttack : Skill
     private const int BaseDamage = 18;
     private const int SelfEnergyGain = 1;
 
-    public InexorabilityAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "命定压制";
 
@@ -96,11 +93,7 @@ public partial class InexorabilitySurvive : Skill
     private const int BaseBlock = 10;
     private const int PowerGain = 3;
 
-    public InexorabilitySurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "存续封缄";
 
@@ -119,11 +112,7 @@ public partial class InexorabilitySpecial : Skill
     private const int BaseDamage = 10;
     private const int PowerMultiplier = 1;
 
-    public InexorabilitySpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "终局律令";
     public override int EnergyCost => 5;

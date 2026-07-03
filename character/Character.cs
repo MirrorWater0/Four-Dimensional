@@ -79,7 +79,6 @@ public partial class Character : Node2D
 
     public int BaseSurvivabilityContribution { get; private set; }
 
-    public int Speed { get; private set; }
     public int Block { get; protected set; }
     public int EnergySources { get; internal set; } = 1;
     public int CurrentEnergy => IsPlayer ? BattleNode?.PlayerEnergy ?? 0 : EnergySources;
@@ -98,7 +97,6 @@ public partial class Character : Node2D
     public Label LifeLabel => field ??= GetNode("LifeBar/Life") as Label;
     public Label PowerLabel;
     public Label DefenseLabel;
-    public Label SpeedLabel;
     public Label BlockLabel => field ??= GetNode<Label>("LifeBar/Block");
     private Control BlockIcon =>
         field ??= GetNodeOrNull<Control>("LifeBar/Block/SurvivabilityIcon");
@@ -107,7 +105,6 @@ public partial class Character : Node2D
     public Label PowerIconLabel => field ??= GetNode<Label>("State/PowerIcon/Label");
     public Label SurvivabilityIconLabel =>
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
-    public Label SpeedIconLabel => field ??= GetNode<Label>("State/SpeedIcon/Label");
     public Label EnergeIconLabel => field ??= GetNode<Label>("State/EnergeIcon/Label");
     private Control EnergeIcon => field ??= GetNodeOrNull<Control>("State/EnergeIcon");
     private Control TurnOrderPreviewRoot => field ??= GetNodeOrNull<Control>("TurnOrderPreview");
@@ -115,6 +112,7 @@ public partial class Character : Node2D
         field ??= GetNodeOrNull<ColorRect>("TurnOrderPreview/Circle");
     public Label TurnOrderPreviewLabel => field ??= GetNodeOrNull<Label>("TurnOrderPreview/Value");
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
+    public CharacterFootMarker FootMarker => field ??= GetNodeOrNull<CharacterFootMarker>("FootMarker");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
 
@@ -218,12 +216,11 @@ public partial class Character : Node2D
     private bool _hasDefaultTrailLinePosition;
     private bool _trailUsesCustomCurve;
 
-    protected void SetCombatStats(int power, int survivability, int speed, int MaxLife)
+    protected void SetCombatStats(int power, int survivability, int maxLife)
     {
         BattlePower = power;
         BattleSurvivability = survivability;
-        Speed = speed;
-        BattleMaxLife = MaxLife;
+        BattleMaxLife = maxLife;
     }
 
     protected void SetBaseCombatStatContributions(int power, int survivability)
@@ -237,9 +234,9 @@ public partial class Character : Node2D
     public int GetEffectiveSurvivabilityForSkillScaling() =>
         BattleSurvivability + BaseSurvivabilityContribution;
 
-    public void ConfigureCombatStats(int power, int survivability, int speed, int maxLife)
+    public void ConfigureCombatStats(int power, int survivability, int maxLife)
     {
-        SetCombatStats(power, survivability, speed, maxLife);
+        SetCombatStats(power, survivability, maxLife);
     }
 
     public void ApplyCombatStatMultiplier(float multiplier, bool refillLife = false)
@@ -250,7 +247,6 @@ public partial class Character : Node2D
         SetCombatStats(
             ScaleCombatStat(BattlePower, multiplier),
             ScaleCombatStat(BattleSurvivability, multiplier),
-            ScaleCombatStat(Speed, multiplier),
             ScaleCombatStat(BattleMaxLife, multiplier)
         );
         SetBaseCombatStatContributions(
@@ -262,7 +258,6 @@ public partial class Character : Node2D
         SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-        SpeedIconLabel.Text = Speed.ToString();
         EnergeIconLabel.Text = EnergySources.ToString();
         RefreshCombatStatIconVisibility();
         RefreshEnergyIconVisibility();
@@ -1272,7 +1267,8 @@ public partial class Character : Node2D
     public virtual async Task GetHurt(
         float damage,
         Character source = null,
-        DamageKind damageKind = DamageKind.Other
+        DamageKind damageKind = DamageKind.Other,
+        bool ignoreBlock = false
     )
     {
         Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
@@ -1294,19 +1290,34 @@ public partial class Character : Node2D
         BattleNode?.PlayHitEffect();
 
         int incomingDamage = Math.Max((int)damage, 0);
-        int previousBlock = Block;
         int previousLife = Life;
-        int blockedDamage = Math.Clamp(Math.Min(incomingDamage, previousBlock), 0, incomingDamage);
-        int actualDamage = Math.Clamp(incomingDamage - previousBlock, 0, previousLife);
+        int blockedDamage;
+        int actualDamage;
+
+        if (ignoreBlock)
+        {
+            blockedDamage = 0;
+            actualDamage = Math.Clamp(incomingDamage, 0, previousLife);
+            Life -= actualDamage;
+        }
+        else
+        {
+            int previousBlock = Block;
+            blockedDamage = Math.Clamp(
+                Math.Min(incomingDamage, previousBlock),
+                0,
+                incomingDamage
+            );
+            actualDamage = Math.Clamp(incomingDamage - previousBlock, 0, previousLife);
+            Life -= Math.Clamp(incomingDamage - previousBlock, 0, Life);
+            Block = Math.Clamp(Block - incomingDamage, 0, 99999);
+            UpdataBlock(0);
+        }
 
         if (actualDamage > 0)
             AudioManager.PlayHurt(this);
         else if (blockedDamage > 0)
             AudioManager.PlayBlockImpact(this);
-
-        Life -= Math.Clamp((int)damage - Block, 0, Life);
-        Block = Math.Clamp(Block - (int)damage, 0, 99999);
-        UpdataBlock(0);
         AnimateLifeBarsAfterDamage();
         BattleNode?.SyncPlayerLifeToGameInfo();
         BattleNode?.RecordDamage(this, actualDamage, blockedDamage, source);
@@ -1364,15 +1375,33 @@ public partial class Character : Node2D
         ApplyRecover(heal, rebirth, source, canRevive: num > 0);
     }
 
-    private void ApplyRecover(int heal, bool rebirth, Character source, bool canRevive)
+    public virtual async Task RecoverAsync(int num, bool rebirth = false, Character source = null)
+    {
+        int heal = Math.Clamp(num, 0, 999);
+        bool wasDying = State == CharacterState.Dying;
+        CharacterEffect effect = ApplyRecover(heal, rebirth, source, canRevive: num > 0);
+        if (effect == null || !GodotObject.IsInstanceValid(effect))
+            return;
+
+        if (!effect.IsNodeReady())
+            await effect.ToSignal(effect, Node.SignalName.Ready);
+
+        if (GodotObject.IsInstanceValid(effect.Animation))
+            await effect.ToSignal(effect.Animation, AnimationPlayer.SignalName.AnimationFinished);
+
+        if (wasDying && State == CharacterState.Normal)
+            await ToSignal(GetTree().CreateTimer(0.4f), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    private CharacterEffect ApplyRecover(int heal, bool rebirth, Character source, bool canRevive)
     {
         if (State == CharacterState.Dying)
         {
             if (!rebirth)
-                return;
+                return null;
 
             if (IsPlayer && BattleNode != null && !BattleNode.CanReviveDyingPlayerNow())
-                return;
+                return null;
         }
 
         int previousLife = Life;
@@ -1392,6 +1421,7 @@ public partial class Character : Node2D
         }
 
         BattleNode?.RecordHeal(this, actualHeal, source);
+        return effect;
     }
 
     public virtual async Task Dying(Character source = null)
@@ -1510,8 +1540,6 @@ public partial class Character : Node2D
     {
         SetCombatStatIconVisibility(PowerIconLabel, BattlePower);
         SetCombatStatIconVisibility(SurvivabilityIconLabel, BattleSurvivability);
-        if (SpeedIconLabel?.GetParent() is CanvasItem speedIcon)
-            speedIcon.Visible = false;
     }
 
     private static void SetCombatStatIconVisibility(Label label, int value)
@@ -1563,8 +1591,6 @@ public partial class Character : Node2D
                 BattleSurvivability -= value;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
-            case PropertyType.Speed:
-                return;
             case PropertyType.MaxLife:
                 return;
             case PropertyType.EnergySources:
@@ -1657,8 +1683,6 @@ public partial class Character : Node2D
                 BattleSurvivability += appliedValue;
                 icon = SurvivabilityIconLabel.GetParent() as ColorRect;
                 break;
-            case PropertyType.Speed:
-                return;
             case PropertyType.MaxLife:
                 return;
             case PropertyType.EnergySources:
@@ -2025,6 +2049,14 @@ public partial class Character : Node2D
     {
         _isFramePreviewVisible = false;
         RefreshHoverframeVisual();
+    }
+
+    public void SetFootMarkerCardHover(bool hovered, bool instant = false)
+    {
+        if (!IsPlayer || FootMarker == null || !GodotObject.IsInstanceValid(FootMarker))
+            return;
+
+        FootMarker.SetCardHoverHighlight(hovered, instant);
     }
 
     private void RefreshHoverframeVisual()

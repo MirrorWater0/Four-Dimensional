@@ -29,6 +29,7 @@ public partial class LevelProgress : Control
     private const float NodeSpacingY = 290f; // Vertical distance between slots
     private const float MapLeftMargin = 200f;
     public const float RestHealPercent = 0.3f;
+    public const float RestSingleHealPercent = 0.6f;
 
     [Export]
     public float JitterAmount = 90f;
@@ -40,6 +41,42 @@ public partial class LevelProgress : Control
 
     [Export]
     public int ThreeBranchPercentage = 10; // % of nodes with 3 branches
+
+    [ExportGroup("Node Colors")]
+    [Export]
+    public Color NormalNodeColor = new("#FFFFFF");
+
+    [Export]
+    public Color EventNodeColor = new("#0099FF");
+
+    [Export]
+    public Color ShopNodeColor = new("#FFD62E");
+
+    [Export]
+    public Color RestNodeColor = new("#1AE675");
+
+    [Export]
+    public Color EliteNodeColor = new("#FF1A1A");
+
+    [Export]
+    public Color BossNodeColor = new("#9900E6");
+
+    [Export]
+    public Color TreasureNodeColor = new("#FFB020");
+
+    public Color GetNodeTypeRingColor(LevelNode.LevelType type)
+    {
+        return type switch
+        {
+            LevelNode.LevelType.Boss => BossNodeColor,
+            LevelNode.LevelType.Elite => EliteNodeColor,
+            LevelNode.LevelType.Event => EventNodeColor,
+            LevelNode.LevelType.Shop => ShopNodeColor,
+            LevelNode.LevelType.Rest => RestNodeColor,
+            LevelNode.LevelType.Treasure => TreasureNodeColor,
+            _ => NormalNodeColor,
+        };
+    }
 
     // Remaining nodes will have 1 branch
     private PackedScene _nodeScene => GD.Load<PackedScene>("res://Map/Site/LevelNode.tscn");
@@ -426,6 +463,7 @@ public partial class LevelProgress : Control
 
         _map = GetParent() as Map;
         _siteUiLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("Map/SiteUI");
+        EnsureRegionAdvancedFromCompletedBoss();
         GenerateMap();
         RefreshNodeInteractivity();
         // CallDeferred("StartAnimation");
@@ -611,6 +649,7 @@ public partial class LevelProgress : Control
 
         // 3. Assign Types
         AssignNodeTypes(rng);
+        AssignContentQueueIndices();
 
         // 4. Unlock Start (only if this is a new game, not loading from save)
         bool isNewGame =
@@ -653,15 +692,7 @@ public partial class LevelProgress : Control
         if (transition != null)
             await transition.FadeToBlackAsync(0.36f);
 
-        GameInfo.CurrentLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
-        GameInfo.RefillPartyLife();
-        bool showBossRelicChoice = GameInfo.CurrentLevel == 1;
-        if (showBossRelicChoice)
-            GameInfo.PendingBossRelicChoice = true;
-        GameInfo.FirstLevelState.Clear();
-        _manualLock = false;
-        _manualLockSawBlockingUi = false;
-        _interactionBlocked = false;
+        bool showBossRelicChoice = CommitRegionAdvance();
 
         GenerateMap();
         RefreshNodeInteractivity();
@@ -671,16 +702,71 @@ public partial class LevelProgress : Control
             _map.PlayerResourceState.RefreshPartyLifeResource();
         _map?.ForceUpdateRegionLabel();
         _map?.ResetCameraToStart();
-        SaveSystem.SaveAll();
 
         if (GetTree() != null)
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        // 切换区域时同步存档，确保新地图与区域进度可被继续游戏读取。
+        SaveSystem.SaveRunCheckpoint(background: false);
 
         if (transition != null)
             await transition.FadeFromBlackAsync(0.36f);
 
         if (showBossRelicChoice)
             BossRelicChoice.Show(this);
+    }
+
+    private void EnsureRegionAdvancedFromCompletedBoss()
+    {
+        if (!GameInfo.NeedsRegionTransitionRecovery())
+            return;
+
+        bool showBossRelicChoice = PrepareRegionMapState(
+            targetLevel: 1,
+            offerBossRelicChoice: BossRelicChoice.ShouldShowPendingChoice()
+        );
+        SaveSystem.SaveRunCheckpoint(background: false);
+
+        _map ??= GetParent() as Map;
+        _map?.PlayerResourceState?.RefreshPartyLifeResource();
+        _map?.ForceUpdateRegionLabel();
+
+        if (showBossRelicChoice)
+            CallDeferred(nameof(ShowPendingBossRelicChoiceIfNeeded));
+    }
+
+    private bool CommitRegionAdvance()
+    {
+        int nextLevel = Math.Max(0, GameInfo.CurrentLevel) + 1;
+        return PrepareRegionMapState(nextLevel, offerBossRelicChoice: nextLevel == 1);
+    }
+
+    private bool PrepareRegionMapState(int targetLevel, bool offerBossRelicChoice)
+    {
+        GameInfo.CurrentLevel = Math.Max(0, targetLevel);
+        GameInfo.ApplyDifficultyRegionEntryLife(targetLevel);
+        GameInfo.ResetNormalBattleVisitState();
+        GameInfo.ResetEliteBattleVisitState();
+        if (offerBossRelicChoice)
+            GameInfo.PendingBossRelicChoice = true;
+        GameInfo.FirstLevelState.Clear();
+        ResetMapInteractionLocks();
+        return offerBossRelicChoice;
+    }
+
+    private void ResetMapInteractionLocks()
+    {
+        _manualLock = false;
+        _manualLockSawBlockingUi = false;
+        _interactionBlocked = false;
+    }
+
+    private void ShowPendingBossRelicChoiceIfNeeded()
+    {
+        if (!BossRelicChoice.ShouldShowPendingChoice())
+            return;
+
+        BossRelicChoice.Show(this);
     }
 
     private static int BuildMapSeed()
@@ -734,15 +820,8 @@ public partial class LevelProgress : Control
         Vector2 nodeCenterOffset = from.Size * 0.5f;
         Vector2 fromCenter = from.Position + nodeCenterOffset;
         Vector2 toCenter = to.Position + nodeCenterOffset;
-        Vector2 direction = (toCenter - fromCenter).Normalized();
-
-        float halfSize = Mathf.Max(nodeCenterOffset.X, nodeCenterOffset.Y);
-        float maxComponent = Mathf.Max(Mathf.Abs(direction.X), Mathf.Abs(direction.Y));
-        float distToEdge = (maxComponent > 0.001f) ? (halfSize / maxComponent) : halfSize;
-        float margin = 5f;
-
-        Vector2 startPos = fromCenter + direction * (distToEdge + margin);
-        Vector2 endPos = toCenter - direction * (distToEdge + margin);
+        Vector2 startPos = fromCenter;
+        Vector2 endPos = toCenter;
 
         float distance = startPos.DistanceTo(endPos);
         float angle = startPos.AngleToPoint(endPos);
@@ -809,8 +888,7 @@ public partial class LevelProgress : Control
             if (node != null && node != selectedNode && node.State == LevelNode.LevelState.Unlocked)
             {
                 node.State = LevelNode.LevelState.Locked;
-                node.Button.Disabled = true;
-                node.Color = node.LockColor;
+                node.ApplyLockedVisuals();
                 GameInfo.FirstLevelState[node.SelfCoordinate] = LevelNode.LevelState.Locked;
             }
         }
@@ -901,6 +979,7 @@ public partial class LevelProgress : Control
             lastRandomSpecialStage,
             rng
         );
+        AssignTreasureStage();
 
         for (int x = 0; x < MapLength; x++)
         {
@@ -913,6 +992,99 @@ public partial class LevelProgress : Control
                 node.ColorChose();
             }
         }
+    }
+
+    private static int GetTreasureStage()
+    {
+        return Mathf.Clamp(MapLength - 7, 2, PreBossRestStage - 1);
+    }
+
+    private void AssignTreasureStage()
+    {
+        int stage = GetTreasureStage();
+        if (stage <= 0 || stage >= _mapNodes.Count)
+            return;
+
+        foreach (var node in _mapNodes[stage])
+        {
+            if (node == null)
+                continue;
+
+            if (node.Type == LevelNode.LevelType.Boss)
+                continue;
+
+            node.Type = LevelNode.LevelType.Treasure;
+        }
+    }
+
+    private void AssignContentQueueIndices()
+    {
+        GameInfo.ResetRunRngState();
+        int normalIndex = 0;
+        int eliteIndex = 0;
+        int bossIndex = 0;
+        int eventIndex = 0;
+        int shopIndex = 0;
+        int restIndex = 0;
+        int treasureIndex = 0;
+        int regionBattleIndex = 0;
+
+        for (int x = 0; x < _mapNodes.Count; x++)
+        {
+            var layer = _mapNodes[x];
+            for (int y = 0; y < layer.Count; y++)
+            {
+                LevelNode node = layer[y];
+                if (node == null)
+                    continue;
+
+                int queueIndex = node.Type switch
+                {
+                    LevelNode.LevelType.Normal => normalIndex++,
+                    LevelNode.LevelType.Elite => eliteIndex++,
+                    LevelNode.LevelType.Boss => bossIndex++,
+                    LevelNode.LevelType.Event => eventIndex++,
+                    LevelNode.LevelType.Shop => shopIndex++,
+                    LevelNode.LevelType.Rest => restIndex++,
+                    LevelNode.LevelType.Treasure => treasureIndex++,
+                    _ => -1,
+                };
+
+                if (queueIndex >= 0)
+                {
+                    node.ContentQueueIndex = queueIndex;
+                    GameInfo.RegisterNodeContentQueueIndex(node.SelfCoordinate, queueIndex);
+                }
+
+                if (GameInfo.NodeNormalBattleVisitIndices.TryGetValue(
+                        node.SelfCoordinate,
+                        out int normalBattleVisitIndex
+                    ))
+                {
+                    node.NormalBattleVisitIndex = normalBattleVisitIndex;
+                }
+
+                if (GameInfo.NodeEliteBattleVisitIndices.TryGetValue(
+                        node.SelfCoordinate,
+                        out int eliteBattleVisitIndex
+                    ))
+                {
+                    node.EliteBattleVisitIndex = eliteBattleVisitIndex;
+                }
+
+                if (GameInfo.IsBattleNodeType(node.Type))
+                {
+                    node.RegionBattleQueueIndex = regionBattleIndex;
+                    GameInfo.RegisterNodeRegionBattleQueueIndex(
+                        node.SelfCoordinate,
+                        regionBattleIndex
+                    );
+                    regionBattleIndex++;
+                }
+            }
+        }
+
+        GameInfo.RefreshBattleItemDropChancePreview();
     }
 
     private static int GetMaxEliteNodesForCurrentRegion()
@@ -1027,6 +1199,7 @@ public partial class LevelProgress : Control
                     || node.Type == LevelNode.LevelType.Elite
                     || node.Type == LevelNode.LevelType.Shop
                     || node.Type == LevelNode.LevelType.Rest
+                    || node.Type == LevelNode.LevelType.Treasure
                 )
                     continue;
 

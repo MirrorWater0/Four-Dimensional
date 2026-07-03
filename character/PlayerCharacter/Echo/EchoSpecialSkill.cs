@@ -5,16 +5,12 @@ public partial class EchoSpecialSkill : Node { }
 public partial class TuningStance : Skill
 {
     public override int EnergyCost => 1;
-    public override bool RetainsAtTurnEndInHand => true;
+    public override bool IntrinsicRetainsAtTurnEndInHand => true;
 
-    public TuningStance()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "韵律";
-
+    public override bool ExhaustsAfterUse => true;
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(this, SelectDiscardPileCardsToHandStep(2));
@@ -26,11 +22,7 @@ public partial class RelayShift : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override int EnergyCost => 2;
 
-    public RelayShift()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "后撤步";
 
@@ -49,15 +41,10 @@ public class VoidForm : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int VoidStacks = 2;
 
-    public VoidForm()
-        : base(SkillTypes.Special)
-    {
-        SkillName = "虚空形态";
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -77,11 +64,7 @@ public partial class Purity : Skill
 {
     private const int EnergyGain = 2;
 
-    public Purity()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "纯净";
     public override int EnergyCost => 0;
@@ -97,14 +80,10 @@ public partial class CursePower : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int CursePowerStacks = 1;
 
-    public CursePower()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "咒力";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => 2;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -123,13 +102,9 @@ public partial class CursePower : Skill
 public partial class WeakeningField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int WeakeningFieldStacks = 1;
+    private const int WeakeningFieldStacks = 3;
 
-    public WeakeningField()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚弱立场";
     public override int EnergyCost => 1;
@@ -153,11 +128,7 @@ public partial class EternalCore : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int EnergyStorageStacks = 3;
 
-    public EternalCore()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "永恒核心";
     public override int EnergyCost => 1;
@@ -182,14 +153,10 @@ public class EchoForm : Skill
     private const int EchoStacks = 1;
     public override bool ExhaustsAfterUse => true;
 
-    public EchoForm()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

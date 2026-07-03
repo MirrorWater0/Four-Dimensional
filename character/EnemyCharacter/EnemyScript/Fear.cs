@@ -47,7 +47,7 @@ public partial class FearEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
 
-        MaxLife = 204;
+        MaxLife = 245;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -63,11 +63,7 @@ public partial class FearEliteAttack : Skill
 {
     private const int BaseDamage = 10;
 
-    public FearEliteAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "惊惧凝视";
 
@@ -84,11 +80,7 @@ public partial class FearEliteSurvive : Skill
 {
     private const int BaseBlock = 21;
 
-    public FearEliteSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "蜷缩异相";
 
@@ -107,11 +99,7 @@ public partial class FearEliteSpecial : Skill
     private const int BaseDamage = 10;
     private const int FearStacks = 2;
 
-    public FearEliteSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "梦魇扩散";
     public override int EnemySpecialIntentionCooldown => 2;

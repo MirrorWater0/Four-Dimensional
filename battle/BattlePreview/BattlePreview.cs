@@ -27,9 +27,6 @@ public partial class BattlePreview : Control
     private Control PlayerFrame => field ??= GetNode<Control>("PlayerFrame");
     private Control EnemyFrame => field ??= GetNode<Control>("EnemyFrame");
     private Control VsLabel => field ??= GetNode<Control>("VSLabel");
-    private Control PlayerSpeedPanel => field ??= GetNode<Control>("PlayerSpeedPanel");
-    private RichTextLabel PlayerSpeedLabel =>
-        field ??= GetNode<RichTextLabel>("PlayerSpeedPanel/PlayerSpeedLabel");
     ColorRect tex => field ??= StartBattleButton.GetNode<ColorRect>("BG");
     ExitButton exitButton => field ??= GetNode<ExitButton>("ExitButton");
     Map MapNode => field ??= GetNode<Map>("/root/Map");
@@ -91,8 +88,6 @@ public partial class BattlePreview : Control
         }
 
         EnsureTipLayer();
-        if (PlayerSpeedPanel != null)
-            PlayerSpeedPanel.Visible = false;
         exitButton.PressedActions.Add(Close);
         Modulate = Modulate with { A = 0.0f };
         SetControlAlpha(BackgroundPanel, 0.0f);
@@ -568,8 +563,6 @@ public partial class BattlePreview : Control
 
             GameInfo.PlayerCharacters[portrait.PortaitIndex].PositionIndex = positionIndex;
         }
-
-        SaveSystem.SaveAll();
     }
 
     private (string skillText, string propertyText, string equipmentText)? BuildPlayerPortraitTips(

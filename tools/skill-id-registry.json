@@ -1,0 +1,1333 @@
+{
+  "ClassToEnum": {
+    "Shelter": "ResonanceShelter",
+    "ArcTrack": "ConcordSlash",
+    "EternalDarkSkill": "EternalDark"
+  },
+  "Entries": [
+    {
+      "EnumName": "Determination",
+      "Id": 0,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Determination"
+    },
+    {
+      "EnumName": "ReNewedSpirit",
+      "Id": 1,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ReNewedSpirit"
+    },
+    {
+      "EnumName": "TerminateLight",
+      "Id": 2,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TerminateLight"
+    },
+    {
+      "EnumName": "Smite",
+      "Id": 3,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Smite"
+    },
+    {
+      "EnumName": "Charge",
+      "Id": 4,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Charge"
+    },
+    {
+      "EnumName": "SacredOnslaught",
+      "Id": 5,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SacredOnslaught"
+    },
+    {
+      "EnumName": "ResonantSlash",
+      "Id": 6,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ResonantSlash"
+    },
+    {
+      "EnumName": "EchoPuncture",
+      "Id": 7,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EchoPuncture"
+    },
+    {
+      "EnumName": "BreakStrike",
+      "Id": 8,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BreakStrike"
+    },
+    {
+      "EnumName": "EchonicResonance",
+      "Id": 9,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EchonicResonance"
+    },
+    {
+      "EnumName": "SonicBoom",
+      "Id": 10,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SonicBoom"
+    },
+    {
+      "EnumName": "PhaseEcho",
+      "Id": 11,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "PhaseEcho"
+    },
+    {
+      "EnumName": "SoundBarrier",
+      "Id": 12,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SoundBarrier"
+    },
+    {
+      "EnumName": "SonicDeflection",
+      "Id": 13,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SonicDeflection"
+    },
+    {
+      "EnumName": "TuningStance",
+      "Id": 14,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TuningStance"
+    },
+    {
+      "EnumName": "ResonantWard",
+      "Id": 15,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ResonantWard"
+    },
+    {
+      "EnumName": "EvilAttack",
+      "Id": 16,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EvilAttack"
+    },
+    {
+      "EnumName": "EvilSurvive",
+      "Id": 17,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EvilSurvive"
+    },
+    {
+      "EnumName": "EvilTermin",
+      "Id": 18,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EvilTermin"
+    },
+    {
+      "EnumName": "DeSurviveSkill",
+      "Id": 19,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DeSurviveSkill"
+    },
+    {
+      "EnumName": "ShockWave",
+      "Id": 20,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ShockWave"
+    },
+    {
+      "EnumName": "AbsouluteDefense",
+      "Id": 21,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AbsouluteDefense"
+    },
+    {
+      "EnumName": "TauntingGuard",
+      "Id": 22,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TauntingGuard"
+    },
+    {
+      "EnumName": "HolySeal",
+      "Id": 23,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HolySeal"
+    },
+    {
+      "EnumName": "FearWormAttack",
+      "Id": 24,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearWormAttack"
+    },
+    {
+      "EnumName": "FearWormSurvive",
+      "Id": 25,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearWormSurvive"
+    },
+    {
+      "EnumName": "FearWormTermin",
+      "Id": 26,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearWormTermin"
+    },
+    {
+      "EnumName": "MendSlash",
+      "Id": 27,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "MendSlash"
+    },
+    {
+      "EnumName": "FinalGuard",
+      "Id": 28,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FinalGuard"
+    },
+    {
+      "EnumName": "RebirthPrayer",
+      "Id": 29,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RebirthPrayer"
+    },
+    {
+      "EnumName": "ShadowAmbush",
+      "Id": 30,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ShadowAmbush"
+    },
+    {
+      "EnumName": "ShadowExecution",
+      "Id": 31,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ShadowExecution"
+    },
+    {
+      "EnumName": "VeilStep",
+      "Id": 32,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VeilStep"
+    },
+    {
+      "EnumName": "TempoSurge",
+      "Id": 33,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TempoSurge"
+    },
+    {
+      "EnumName": "Sacrifice",
+      "Id": 34,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Sacrifice"
+    },
+    {
+      "EnumName": "LongNight",
+      "Id": 35,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "LongNight"
+    },
+    {
+      "EnumName": "Vower",
+      "Id": 36,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Vower"
+    },
+    {
+      "EnumName": "FlashOfLight",
+      "Id": 37,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FlashOfLight"
+    },
+    {
+      "EnumName": "CrystalGuard",
+      "Id": 38,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "CrystalGuard"
+    },
+    {
+      "EnumName": "Swift",
+      "Id": 39,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Swift"
+    },
+    {
+      "EnumName": "StarWard",
+      "Id": 40,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "StarWard"
+    },
+    {
+      "EnumName": "ArmonAttack",
+      "Id": 41,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArmonAttack"
+    },
+    {
+      "EnumName": "ArmonSurvive",
+      "Id": 42,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArmonSurvive"
+    },
+    {
+      "EnumName": "ArmonSpecial",
+      "Id": 43,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArmonSpecial"
+    },
+    {
+      "EnumName": "ArroganceAttack",
+      "Id": 44,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArroganceAttack"
+    },
+    {
+      "EnumName": "ArroganceSurvive",
+      "Id": 45,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArroganceSurvive"
+    },
+    {
+      "EnumName": "ArroganceSpecial",
+      "Id": 46,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArroganceSpecial"
+    },
+    {
+      "EnumName": "AlienBodyAttack",
+      "Id": 47,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AlienBodyAttack"
+    },
+    {
+      "EnumName": "AlienBodySurvive",
+      "Id": 48,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AlienBodySurvive"
+    },
+    {
+      "EnumName": "AlienBodySpecial",
+      "Id": 49,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AlienBodySpecial"
+    },
+    {
+      "EnumName": "RedHuskAttack",
+      "Id": 50,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RedHuskAttack"
+    },
+    {
+      "EnumName": "RedHuskSurvive",
+      "Id": 51,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RedHuskSurvive"
+    },
+    {
+      "EnumName": "RedHuskSpecial",
+      "Id": 52,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RedHuskSpecial"
+    },
+    {
+      "EnumName": "SwapSlash",
+      "Id": 53,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SwapSlash"
+    },
+    {
+      "EnumName": "WarAttack",
+      "Id": 54,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WarAttack"
+    },
+    {
+      "EnumName": "WarSurvive",
+      "Id": 55,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WarSurvive"
+    },
+    {
+      "EnumName": "WarSpecial",
+      "Id": 56,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WarSpecial"
+    },
+    {
+      "EnumName": "WarThrallAttack",
+      "Id": 57,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WarThrallAttack"
+    },
+    {
+      "EnumName": "QuietVeil",
+      "Id": 58,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "QuietVeil"
+    },
+    {
+      "EnumName": "SiphonSlash",
+      "Id": 59,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SiphonSlash"
+    },
+    {
+      "EnumName": "ShatterSlash",
+      "Id": 60,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ShatterSlash"
+    },
+    {
+      "EnumName": "EnergyTransfer",
+      "Id": 61,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EnergyTransfer"
+    },
+    {
+      "EnumName": "FerociouessAttack",
+      "Id": 62,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FerociouessAttack"
+    },
+    {
+      "EnumName": "FerociouessSurvive",
+      "Id": 63,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FerociouessSurvive"
+    },
+    {
+      "EnumName": "FerociouessSpecial",
+      "Id": 64,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FerociouessSpecial"
+    },
+    {
+      "EnumName": "StasisBlade",
+      "Id": 65,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "StasisBlade"
+    },
+    {
+      "EnumName": "RequiemBloom",
+      "Id": 66,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RequiemBloom"
+    },
+    {
+      "EnumName": "TurbineAttack",
+      "Id": 67,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TurbineAttack"
+    },
+    {
+      "EnumName": "TurbineSurvive",
+      "Id": 68,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TurbineSurvive"
+    },
+    {
+      "EnumName": "TurbineSpecial",
+      "Id": 69,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TurbineSpecial"
+    },
+    {
+      "EnumName": "AegisPledge",
+      "Id": 70,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AegisPledge"
+    },
+    {
+      "EnumName": "BasicAttack",
+      "Id": 71,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BasicAttack"
+    },
+    {
+      "EnumName": "BasicDefense",
+      "Id": 72,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BasicDefense"
+    },
+    {
+      "EnumName": "BasicSpecial",
+      "Id": 73,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BasicSpecial"
+    },
+    {
+      "EnumName": "DissonantField",
+      "Id": 74,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DissonantField"
+    },
+    {
+      "EnumName": "ReverbChain",
+      "Id": 75,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ReverbChain"
+    },
+    {
+      "EnumName": "VulnerablePurge",
+      "Id": 76,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VulnerablePurge"
+    },
+    {
+      "EnumName": "VulnerabilityStrike",
+      "Id": 77,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VulnerabilityStrike"
+    },
+    {
+      "EnumName": "VulnerabilityConversion",
+      "Id": 78,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VulnerabilityConversion"
+    },
+    {
+      "EnumName": "TwilightParadox",
+      "Id": 79,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TwilightParadox"
+    },
+    {
+      "EnumName": "RearlineRevival",
+      "Id": 80,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RearlineRevival"
+    },
+    {
+      "EnumName": "EnergyRelay",
+      "Id": 81,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EnergyRelay"
+    },
+    {
+      "EnumName": "WeakpointBulwark",
+      "Id": 82,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WeakpointBulwark"
+    },
+    {
+      "EnumName": "GroupHealing",
+      "Id": 83,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "GroupHealing"
+    },
+    {
+      "EnumName": "AfterimageWard",
+      "Id": 84,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AfterimageWard"
+    },
+    {
+      "EnumName": "BarrierDuplication",
+      "Id": 85,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BarrierDuplication"
+    },
+    {
+      "EnumName": "RelayShift",
+      "Id": 86,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RelayShift"
+    },
+    {
+      "EnumName": "ContinuousPierce",
+      "Id": 87,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ContinuousPierce"
+    },
+    {
+      "EnumName": "BlackHawkAttack",
+      "Id": 88,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BlackHawkAttack"
+    },
+    {
+      "EnumName": "BlackHawkSurvive",
+      "Id": 89,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BlackHawkSurvive"
+    },
+    {
+      "EnumName": "BlackHawkSpecial",
+      "Id": 90,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BlackHawkSpecial"
+    },
+    {
+      "EnumName": "InexorabilityAttack",
+      "Id": 91,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "InexorabilityAttack"
+    },
+    {
+      "EnumName": "InexorabilitySurvive",
+      "Id": 92,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "InexorabilitySurvive"
+    },
+    {
+      "EnumName": "InexorabilitySpecial",
+      "Id": 93,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "InexorabilitySpecial"
+    },
+    {
+      "EnumName": "DisasterImpact",
+      "Id": 94,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DisasterImpact"
+    },
+    {
+      "EnumName": "TouchOfGod",
+      "Id": 95,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TouchOfGod"
+    },
+    {
+      "EnumName": "Ragnarok",
+      "Id": 96,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Ragnarok"
+    },
+    {
+      "EnumName": "BladeOfSlaughter",
+      "Id": 97,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BladeOfSlaughter"
+    },
+    {
+      "EnumName": "Extract",
+      "Id": 98,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Extract"
+    },
+    {
+      "EnumName": "ShadowForm",
+      "Id": 99,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ShadowForm"
+    },
+    {
+      "EnumName": "DemonForm",
+      "Id": 100,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DemonForm"
+    },
+    {
+      "EnumName": "VoidForm",
+      "Id": 101,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidForm"
+    },
+    {
+      "EnumName": "EchoForm",
+      "Id": 102,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EchoForm"
+    },
+    {
+      "EnumName": "SanctuaryForm",
+      "Id": 103,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SanctuaryForm"
+    },
+    {
+      "EnumName": "ChargedBlade",
+      "Id": 104,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ChargedBlade"
+    },
+    {
+      "EnumName": "RuinBlade",
+      "Id": 105,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RuinBlade"
+    },
+    {
+      "EnumName": "CurtainCallMoment",
+      "Id": 106,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "CurtainCallMoment"
+    },
+    {
+      "EnumName": "CrescentWind",
+      "Id": 107,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "CrescentWind"
+    },
+    {
+      "EnumName": "ResonanceShelter",
+      "Id": 108,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Shelter"
+    },
+    {
+      "EnumName": "WarGodWill",
+      "Id": 109,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WarGodWill"
+    },
+    {
+      "EnumName": "SunMoonCycle",
+      "Id": 110,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "SunMoonCycle"
+    },
+    {
+      "EnumName": "ConcordSlash",
+      "Id": 111,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ArcTrack"
+    },
+    {
+      "EnumName": "BasicGuard",
+      "Id": 112,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BasicGuard"
+    },
+    {
+      "EnumName": "NightingaleEnergy",
+      "Id": 113,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "NightingaleEnergy"
+    },
+    {
+      "EnumName": "ReadyStance",
+      "Id": 114,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ReadyStance"
+    },
+    {
+      "EnumName": "GraveWraithAttack",
+      "Id": 115,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "GraveWraithAttack"
+    },
+    {
+      "EnumName": "GraveWraithSurvive",
+      "Id": 116,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "GraveWraithSurvive"
+    },
+    {
+      "EnumName": "GraveWraithSpecial",
+      "Id": 117,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "GraveWraithSpecial"
+    },
+    {
+      "EnumName": "DeathAttack",
+      "Id": 118,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DeathAttack"
+    },
+    {
+      "EnumName": "DeathSurvive",
+      "Id": 119,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DeathSurvive"
+    },
+    {
+      "EnumName": "DeathSpecial",
+      "Id": 120,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DeathSpecial"
+    },
+    {
+      "EnumName": "VoidAcolyteAttack",
+      "Id": 121,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidAcolyteAttack"
+    },
+    {
+      "EnumName": "VoidAcolyteSurvive",
+      "Id": 122,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidAcolyteSurvive"
+    },
+    {
+      "EnumName": "VoidAcolyteSpecial",
+      "Id": 123,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidAcolyteSpecial"
+    },
+    {
+      "EnumName": "VoidStatus",
+      "Id": 124,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidStatus"
+    },
+    {
+      "EnumName": "HollowBulwarkAttack",
+      "Id": 125,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HollowBulwarkAttack"
+    },
+    {
+      "EnumName": "HollowBulwarkSurvive",
+      "Id": 126,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HollowBulwarkSurvive"
+    },
+    {
+      "EnumName": "HollowBulwarkSpecial",
+      "Id": 127,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HollowBulwarkSpecial"
+    },
+    {
+      "EnumName": "MarrowReaverAttack",
+      "Id": 128,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "MarrowReaverAttack"
+    },
+    {
+      "EnumName": "MarrowReaverSurvive",
+      "Id": 129,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "MarrowReaverSurvive"
+    },
+    {
+      "EnumName": "MarrowReaverSpecial",
+      "Id": 130,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "MarrowReaverSpecial"
+    },
+    {
+      "EnumName": "WoundStatus",
+      "Id": 131,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WoundStatus"
+    },
+    {
+      "EnumName": "Purity",
+      "Id": 132,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Purity"
+    },
+    {
+      "EnumName": "DazeStatus",
+      "Id": 133,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DazeStatus"
+    },
+    {
+      "EnumName": "VoidRotorAttack",
+      "Id": 134,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidRotorAttack"
+    },
+    {
+      "EnumName": "VoidRotorSurvive",
+      "Id": 135,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidRotorSurvive"
+    },
+    {
+      "EnumName": "VoidRotorSpecial",
+      "Id": 136,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "VoidRotorSpecial"
+    },
+    {
+      "EnumName": "BrightestMoment",
+      "Id": 137,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BrightestMoment"
+    },
+    {
+      "EnumName": "EternalDark",
+      "Id": 138,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EternalDarkSkill"
+    },
+    {
+      "EnumName": "HopeBeacon",
+      "Id": 139,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HopeBeacon"
+    },
+    {
+      "EnumName": "CursePower",
+      "Id": 140,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "CursePower"
+    },
+    {
+      "EnumName": "WeakeningField",
+      "Id": 141,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "WeakeningField"
+    },
+    {
+      "EnumName": "StillWaterMirror",
+      "Id": 142,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "StillWaterMirror"
+    },
+    {
+      "EnumName": "DeflectionShield",
+      "Id": 143,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "DeflectionShield"
+    },
+    {
+      "EnumName": "Purification",
+      "Id": 144,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Purification"
+    },
+    {
+      "EnumName": "AngerEliteAttack",
+      "Id": 145,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AngerEliteAttack"
+    },
+    {
+      "EnumName": "AngerEliteSurvive",
+      "Id": 146,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AngerEliteSurvive"
+    },
+    {
+      "EnumName": "AngerEliteSpecial",
+      "Id": 147,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "AngerEliteSpecial"
+    },
+    {
+      "EnumName": "HolyOfHolies",
+      "Id": 148,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HolyOfHolies"
+    },
+    {
+      "EnumName": "TacticalPreparation",
+      "Id": 149,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "TacticalPreparation"
+    },
+    {
+      "EnumName": "RadiantOverload",
+      "Id": 150,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "RadiantOverload"
+    },
+    {
+      "EnumName": "FearEliteAttack",
+      "Id": 151,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearEliteAttack"
+    },
+    {
+      "EnumName": "FearEliteSurvive",
+      "Id": 152,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearEliteSurvive"
+    },
+    {
+      "EnumName": "FearEliteSpecial",
+      "Id": 153,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "FearEliteSpecial"
+    },
+    {
+      "EnumName": "PlagueStatus",
+      "Id": 154,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "PlagueStatus"
+    },
+    {
+      "EnumName": "EternalCore",
+      "Id": 155,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EternalCore"
+    },
+    {
+      "EnumName": "NightfallFlurry",
+      "Id": 156,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "NightfallFlurry"
+    },
+    {
+      "EnumName": "EnvyEliteAttack",
+      "Id": 157,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EnvyEliteAttack"
+    },
+    {
+      "EnumName": "EnvyEliteSurvive",
+      "Id": 158,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EnvyEliteSurvive"
+    },
+    {
+      "EnumName": "EnvyEliteSpecial",
+      "Id": 159,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EnvyEliteSpecial"
+    },
+    {
+      "EnumName": "HavocAttack",
+      "Id": 160,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HavocAttack"
+    },
+    {
+      "EnumName": "HavocSurvive",
+      "Id": 161,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HavocSurvive"
+    },
+    {
+      "EnumName": "HavocSpecial",
+      "Id": 162,
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "HavocSpecial"
+    },
+    {
+      "EnumName": "KasiyaBasicSpecial",
+      "Id": 163,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "KasiyaBasicSpecial"
+    },
+    {
+      "EnumName": "EchoBasicSpecial",
+      "Id": 164,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "EchoBasicSpecial"
+    },
+    {
+      "EnumName": "MariyaBasicSpecial",
+      "Id": 165,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "MariyaBasicSpecial"
+    },
+    {
+      "EnumName": "NightingaleBasicSpecial",
+      "Id": 166,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "NightingaleBasicSpecial"
+    },
+    {
+      "EnumName": "Blade",
+      "Id": 167,
+      "Colorless": true,
+      "Managed": "legacy",
+      "ImplementationClass": "Blade"
+    },
+    {
+      "EnumName": "BladeSalvo",
+      "Id": 168,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "BladeSalvo"
+    },
+    {
+      "EnumName": "ExhaustBulwark",
+      "Id": 169,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "ExhaustBulwark"
+    },
+    {
+      "EnumName": "Resistance",
+      "Id": 170,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Resistance"
+    },
+    {
+      "EnumName": "Foresight",
+      "Id": 171,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "legacy",
+      "ImplementationClass": "Foresight"
+    },
+    {
+      "EnumName": "BladeDance",
+      "Id": 172,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "BladeDance"
+    },
+    {
+      "EnumName": "Calmness",
+      "Id": 173,
+      "Colorless": true,
+      "Managed": "legacy",
+      "ImplementationClass": "Calmness"
+    },
+    {
+      "EnumName": "DefenceFocus",
+      "Id": 174,
+      "Colorless": true,
+      "Managed": "generated",
+      "ImplementationClass": "DefenceFocus"
+    }
+  ]
+}

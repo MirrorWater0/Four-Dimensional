@@ -36,7 +36,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidAcolyte.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
 
-        MaxLife = 15;
+        MaxLife = 27;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -56,11 +56,7 @@ public partial class VoidAcolyteAttack : Skill
 {
     private const int BaseDamage = 8;
 
-    public VoidAcolyteAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "空洞刺击";
 
@@ -75,11 +71,7 @@ public partial class VoidAcolyteSurvive : Skill
     private const int BaseBlock = 10;
     private const int PowerGain = 2;
 
-    public VoidAcolyteSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "空壳蓄势";
 
@@ -98,11 +90,7 @@ public partial class VoidAcolyteSpecial : Skill
 {
     private const int VoidCardsInserted = 2;
 
-    public VoidAcolyteSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚空灌注";
     public override int EnemySpecialIntentionCooldown => 2;
@@ -111,8 +99,8 @@ public partial class VoidAcolyteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(6, multiplier: 1, target: HostileTargetReference.All),
-            AddStatusCardsStep(
+            AttackStep(7, multiplier: 1, target: HostileTargetReference.All),
+            AddCardsStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,
                 pileTarget: BattleCardPileTarget.DiscardPileCards

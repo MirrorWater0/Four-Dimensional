@@ -16,7 +16,6 @@ public static class PreviewEffectDisplay
     private const float BuffIconVisualScale = 1.0f;
     private const string SwordShaderPath = "res://shader/Icon/sword.gdshader";
     private const string RhomboidShaderPath = "res://shader/Icon/Rhomboid.gdshader";
-    private const string WingShaderPath = "res://shader/Icon/wing.gdshader";
     private const string EnergySourceShaderPath = "res://shader/Icon/EnergeStartIcon.gdshader";
     private const string DamagePreviewIconPath = "res://asset/svg/SkillIcon/attack.svg";
     private const string HealPreviewIconPath = "res://asset/svg/SkillIcon/HealPreview.svg";
@@ -29,7 +28,6 @@ public static class PreviewEffectDisplay
     private static readonly Color BlockColor = new(0.56f, 0.92f, 1f, 1f);
     private static readonly Color PowerColor = new(1f, 0.23f, 0.2f, 1f);
     private static readonly Color SurvivabilityColor = new(0.52f, 0.95f, 1f, 1f);
-    private static readonly Color SpeedColor = Colors.White;
     private static readonly Color MaxLifeColor = new(1f, 0.9f, 0.58f, 1f);
     private static readonly Color EnergySourcesColor = new(0.53f, 0.81f, 0.92f, 1f);
     private static readonly Color BuffColor = new(0.9f, 0.96f, 1f, 1f);
@@ -186,9 +184,8 @@ public static class PreviewEffectDisplay
         {
             PropertyType.Power => 0,
             PropertyType.Survivability => 1,
-            PropertyType.Speed => 2,
-            PropertyType.MaxLife => 3,
-            PropertyType.EnergySources => 4,
+            PropertyType.MaxLife => 2,
+            PropertyType.EnergySources => 3,
             _ => 99,
         };
     }
@@ -306,7 +303,6 @@ public static class PreviewEffectDisplay
         {
             PropertyType.Power => SwordShaderPath,
             PropertyType.Survivability => RhomboidShaderPath,
-            PropertyType.Speed => WingShaderPath,
             PropertyType.EnergySources => EnergySourceShaderPath,
             _ => null,
         };
@@ -345,15 +341,6 @@ public static class PreviewEffectDisplay
                 break;
             case PropertyType.Survivability:
                 material.SetShaderParameter("color", SurvivabilityColor);
-                break;
-            case PropertyType.Speed:
-                material.SetShaderParameter("wing_color", new Color(0.92f, 0.97f, 1f, 1f));
-                material.SetShaderParameter("flip_vertical", false);
-                material.SetShaderParameter("wing_size", 0.82f);
-                material.SetShaderParameter("pivot", new Vector2(0.56f, 0.58f));
-                material.SetShaderParameter("rotation", 0.72f);
-                material.SetShaderParameter("edge_smoothness", 0.024f);
-                material.SetShaderParameter("blade_count", 5);
                 break;
         }
     }
@@ -500,7 +487,6 @@ public static class PreviewEffectDisplay
         {
             PropertyType.Power => PowerColor,
             PropertyType.Survivability => SurvivabilityColor,
-            PropertyType.Speed => SpeedColor,
             PropertyType.MaxLife => MaxLifeColor,
             PropertyType.EnergySources => EnergySourcesColor,
             _ => Colors.White,

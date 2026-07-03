@@ -37,7 +37,7 @@ public partial class ConsumeItem
             4,
             PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 45),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 40),
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,

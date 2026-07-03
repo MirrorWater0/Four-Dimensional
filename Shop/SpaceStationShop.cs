@@ -736,8 +736,6 @@ public partial class SpaceStationShop : Control
                     1,
                     ComputeShopPrice(priceRng, StatOfferBasePrice, StatOfferPriceVariance)
                 );
-                if (optionGrid.GetNodeOrNull<PanelContainer>("Speed") is PanelContainer speedPanel)
-                    speedPanel.Visible = false;
                 AddStatOffer(
                     optionGrid.GetNode<PanelContainer>("MaxLife"),
                     i,
@@ -785,8 +783,8 @@ public partial class SpaceStationShop : Control
 
     private async Task BuildRelicOffersAsync()
     {
+        RelicID[] relicPool = GameInfo.GetShopRelicOffers(WhichNode);
         var rng = CreateShopRandom(0x6E11);
-        var relicPool = Relic.GetUnownedOfferPool().OrderBy(_ => rng.Next()).Take(RelicOfferCount).ToArray();
         for (int i = 0; i < relicPool.Length; i++)
         {
             AddRelicOffer(
@@ -1442,7 +1440,8 @@ public partial class SpaceStationShop : Control
             RefreshShopState();
             return;
         }
-        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
+        int price = GetShopOfferPrice(offer.Price);
+        if (!TrySpendCurrency(price, offer.PriceLabel))
             return;
         if (!ApplyPropertyToPlayer(offer.PlayerIndex, offer.PropertyType, offer.PropertyValue))
             return;
@@ -1459,14 +1458,15 @@ public partial class SpaceStationShop : Control
     {
         if (offer == null || offer.Sold)
             return;
-        if (GetCurrentCurrency() < offer.Price)
+        int price = GetShopOfferPrice(offer.Price);
+        if (GetCurrentCurrency() < price)
         {
-            TrySpendCurrency(offer.Price, offer.PriceLabel);
+            TrySpendCurrency(price, offer.PriceLabel);
             return;
         }
         if (!CanPurchaseCatalogOffer(offer))
             return;
-        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
+        if (!TrySpendCurrency(price, offer.PriceLabel))
             return;
         if (!ApplyCatalogOffer(offer))
             return;
@@ -1485,7 +1485,8 @@ public partial class SpaceStationShop : Control
         var players = GameInfo.PlayerCharacters;
         if (players == null || offer.PlayerIndex < 0 || offer.PlayerIndex >= players.Length)
             return;
-        if (!TrySpendCurrency(offer.Price, offer.PriceLabel))
+        int price = GetShopOfferPrice(offer.Price);
+        if (!TrySpendCurrency(price, offer.PriceLabel))
             return;
 
         SkillID skillId = offer.SkillId.Value;
@@ -1500,7 +1501,7 @@ public partial class SpaceStationShop : Control
         );
         if (!result.Changed)
         {
-            SetCurrentCurrency(GetCurrentCurrency() + offer.Price);
+            SetCurrentCurrency(GetCurrentCurrency() + price);
             offer.Sold = false;
             SetStatus("购入技能卡失败。");
             RefreshShopState();
@@ -1548,8 +1549,6 @@ public partial class SpaceStationShop : Control
             case PropertyType.Survivability:
                 info.Survivability += value;
                 break;
-            case PropertyType.Speed:
-                return false;
             case PropertyType.MaxLife:
                 info.LifeMax += value;
                 info.LifeMax = Math.Max(1, info.LifeMax);
@@ -1622,6 +1621,8 @@ public partial class SpaceStationShop : Control
         GameInfo.Items.Add(itemId);
         return true;
     }
+
+    private static int GetShopOfferPrice(int basePrice) => Relic.CalculateShopPrice(basePrice);
 
     private bool TrySpendCurrency(int price, Label priceLabel = null)
     {
@@ -1748,8 +1749,8 @@ public partial class SpaceStationShop : Control
         if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
             return;
 
-        bool canBuy =
-            !offer.Sold && CanApplyStatOffer(offer) && GetCurrentCurrency() >= offer.Price;
+        int price = GetShopOfferPrice(offer.Price);
+        bool canBuy = !offer.Sold && CanApplyStatOffer(offer) && GetCurrentCurrency() >= price;
         offer.View.MouseFilter = offer.Sold ? MouseFilterEnum.Ignore : MouseFilterEnum.Stop;
         offer.View.Modulate = offer.Sold
             ? new Color(0.66f, 0.72f, 0.82f, 0.52f)
@@ -1759,8 +1760,8 @@ public partial class SpaceStationShop : Control
         {
             offer.PriceLabel.Text =
                 offer.Sold ? "已购"
-                : canBuy ? $"{offer.Price} 电力币"
-                : $"需 {offer.Price}";
+                : canBuy ? $"{price} 电力币"
+                : $"需 {price}";
             offer.PriceLabel.AddThemeColorOverride(
                 "font_color",
                 offer.Sold
@@ -1782,7 +1783,8 @@ public partial class SpaceStationShop : Control
             return;
         }
 
-        bool hasCurrency = GetCurrentCurrency() >= offer.Price;
+        int price = GetShopOfferPrice(offer.Price);
+        bool hasCurrency = GetCurrentCurrency() >= price;
         if (offer.Kind == OfferKind.Relic)
         {
             offer.View.Modulate = hasCurrency ? Colors.White : new Color(0.9f, 0.9f, 0.96f, 0.7f);
@@ -1808,7 +1810,7 @@ public partial class SpaceStationShop : Control
             : hasCurrency ? "点击购买"
             : "余额不足";
         offer.Card.label.Text =
-            $"{offer.Title}\n{offer.Detail}\n价格 {offer.Price} 电力币\n{stateLine}";
+            $"{offer.Title}\n{offer.Detail}\n价格 {price} 电力币\n{stateLine}";
     }
 
     private void ApplyCatalogOfferSoldPlaceholder(CatalogOffer offer)
@@ -1828,7 +1830,8 @@ public partial class SpaceStationShop : Control
         if (offer?.PriceLabel == null || !GodotObject.IsInstanceValid(offer.PriceLabel))
             return;
 
-        offer.PriceLabel.Text = hasCurrency ? $"{offer.Price} 电力币" : $"需 {offer.Price} 电力币";
+        int price = GetShopOfferPrice(offer.Price);
+        offer.PriceLabel.Text = hasCurrency ? $"{price} 电力币" : $"需 {price} 电力币";
         offer.PriceLabel.AddThemeColorOverride(
             "font_color",
             hasCurrency ? CatalogPriceAvailableColor : CatalogPriceUnavailableColor
@@ -1889,7 +1892,8 @@ public partial class SpaceStationShop : Control
         }
         card.SetSkill(skill);
 
-        bool hasCurrency = GetCurrentCurrency() >= offer.Price;
+        int price = GetShopOfferPrice(offer.Price);
+        bool hasCurrency = GetCurrentCurrency() >= price;
         bool canBuy = !offer.Sold && hasCurrency;
         card.Button.Disabled = !canBuy;
         card.Modulate = offer.Sold ? new Color(0.72f, 0.76f, 0.84f, 0.65f) : Colors.White;
@@ -1903,8 +1907,8 @@ public partial class SpaceStationShop : Control
         SetSkillOfferPriceLabel(
             offer,
             offer.Sold ? "已售"
-                : hasCurrency ? $"{offer.Price} 电力币"
-                : $"需 {offer.Price} 电力币",
+                : hasCurrency ? $"{price} 电力币"
+                : $"需 {price} 电力币",
             offer.Sold ? new Color(0.7f, 0.76f, 0.84f, 0.76f)
                 : hasCurrency ? new Color(1f, 0.84f, 0.33f, 0.98f)
                 : new Color(0.55f, 0.56f, 0.62f, 0.82f)
@@ -3221,8 +3225,7 @@ public partial class SpaceStationShop : Control
 
     private Random CreateShopRandom(int salt)
     {
-        int seed = WhichNode?.RandomNum ?? GameInfo.Seed;
-        return new Random(seed ^ salt);
+        return GameInfo.CreateRunRng(WhichNode, salt);
     }
 
     private static string BuildEquipmentBonusInline(Equipment equipment)

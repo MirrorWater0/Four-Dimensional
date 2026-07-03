@@ -233,7 +233,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
-text = "保存退出"
+text = "退出"
 
 [node name="SettingsButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=173383107]
 custom_minimum_size = Vector2(0, 66)
@@ -308,7 +308,14 @@ custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
 theme_override_font_sizes/font_size = 22
-text = "战斗卡面显示总数值"
+text = "数值公式化"
+
+[node name="HideStatXKeywordTooltipsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "隐藏X变量说明"
 
 [node name="TurnOrderPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=865591210]
 custom_minimum_size = Vector2(0, 50)
@@ -489,6 +496,13 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 script = ExtResource("3_settings_dropdown")
+
+[node name="ShowHandCardIndicesCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "显示手牌序号（数字键出牌）"
 
 [node name="MasterVolumeRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)

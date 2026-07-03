@@ -3,22 +3,38 @@
 [ext_resource type="Script" uid="uid://bjxr7y4jjo7re" path="res://Map/Site/LevelProgress.cs" id="1_pkhks"]
 [ext_resource type="Shader" uid="uid://c4yqg7hvqt0v7" path="res://shader/LevelBG.gdshader" id="2_pkhks"]
 
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_level_bg"]
+seed = 564076116
+frequency = 0.0026
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_level_bg"]
+width = 1024
+height = 1024
+noise = SubResource("FastNoiseLite_level_bg")
+seamless = true
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w4thg"]
 shader = ExtResource("2_pkhks")
 shader_parameter/size = Vector2(3500, 1080)
-shader_parameter/base_color = Color(0.05, 0.06, 0.08, 1)
-shader_parameter/accent_color = Color(0.1925, 0.21166667, 0.25, 1)
-shader_parameter/grid_color = Color(0.3, 0.40000007, 0.6, 0.56078434)
-shader_parameter/grid_spacing = 118.2770051431575
-shader_parameter/line_thickness = 0.5290000218676201
-shader_parameter/star_speed = 0.76400003629
-shader_parameter/star_density = 0.8990000427025
-shader_parameter/star_size = 2.0130000718675
+shader_parameter/base_color = Color(0.33600003, 0.3488, 0.4, 1)
+shader_parameter/accent_color = Color(0.1936, 0.20284, 0.22, 1)
+shader_parameter/grid_color = Color(0.44099998, 0.6399, 0.9, 0.4627451)
+shader_parameter/grid_spacing = 88.5130037293675
+shader_parameter/line_thickness = 1.57000007131512
+shader_parameter/star_speed = 1.00400004769
+shader_parameter/star_density = 0.9310000442225
+shader_parameter/star_size = 1.42
+shader_parameter/noise_tex = SubResource("NoiseTexture2D_level_bg")
 
 [node name="LevelProgress" type="Control" unique_id=102309754]
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_pkhks")
+EventNodeColor = Color(0.396, 0.69839996, 0.9, 1)
+ShopNodeColor = Color(1, 0.86200005, 0.31, 1)
+RestNodeColor = Color(0.61437994, 0.78, 0.39779997, 1)
+EliteNodeColor = Color(0.93, 0.1674, 0.1674, 1)
+BossNodeColor = Color(0.666667, 0, 1, 1)
 
 [node name="Panel" type="ColorRect" parent="." unique_id=1260732866]
 material = SubResource("ShaderMaterial_w4thg")

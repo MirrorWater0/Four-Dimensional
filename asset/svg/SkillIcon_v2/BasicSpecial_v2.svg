@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" shape-rendering="geometricPrecision">
+  <rect width="128" height="128" fill="none"/>
+  <path d="M64 14L72 49L105 33L89 66L116 85L80 88L64 116L48 88L12 85L39 66L23 33L56 49L64 14Z" fill="#F2EBD8"/>
+  <path d="M64 39L69 61L90 51L79 71L96 83L74 84L64 101L54 84L32 83L49 71L38 51L59 61L64 39Z" fill="#090A0D"/>
+  <path d="M64 45L69 66L88 60L75 75L86 94L64 84L42 94L53 75L40 60L59 66L64 45Z" fill="#F3C45F"/>
+  <path d="M18 86H38" fill="none" stroke="#7FD7EA" stroke-width="7" stroke-linecap="round"/>
+</svg>

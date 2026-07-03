@@ -9,11 +9,7 @@ public partial class Determination : Skill
     private const int BaseDamage = 7;
     public override int EnergyCost => 2;
 
-    public Determination()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "剑意已决";
 
@@ -22,7 +18,7 @@ public partial class Determination : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.AttackKey)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -32,11 +28,7 @@ public partial class Smite : Skill
     private const int BaseDamage = 7;
     private const int SurvivalDown = 5;
 
-    public Smite()
-        : base(Skill.SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "绝域剑杀";
 
@@ -45,7 +37,7 @@ public partial class Smite : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ExhaustCardsStep(BattleCardPileTarget.HandCards, 1, false)
+            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, 1, false)
         );
     }
 }
@@ -54,11 +46,7 @@ public partial class Charge : Skill
 {
     private const int BaseDamage = 4;
 
-    public Charge()
-        : base(Skill.SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "冲锋";
 
@@ -92,11 +80,7 @@ public partial class Vower : Skill
 {
     private const int BaseDamage = 7;
 
-    public Vower()
-        : base(Skill.SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "誓约者";
 
@@ -104,7 +88,7 @@ public partial class Vower : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
             CarryStep(target: TargetReference.ManualFriendly, skillIndex: 2)
         );
     }
@@ -113,13 +97,9 @@ public partial class Vower : Skill
 public partial class VulnerablePurge : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 10;
 
-    public VulnerablePurge()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "弱点突破";
 
@@ -147,13 +127,9 @@ public partial class VulnerablePurge : Skill
 public partial class VulnerabilityStrike : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 7;
 
-    public VulnerabilityStrike()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "易伤追击";
 
@@ -183,13 +159,9 @@ public partial class VulnerabilityStrike : Skill
 public class TerminateLight : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 4;
 
-    public TerminateLight()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "终末之光";
     public override int EnergyCost => 2;
@@ -199,7 +171,7 @@ public class TerminateLight : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, multiplier: 4),
-            HurtFriendly(6)
+            HurtFriendly(4, ignoreBlock: true)
         );
     }
 }
@@ -208,11 +180,7 @@ public class VulnerabilityConversion : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
-    public VulnerabilityConversion()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "万军取敌";
     public override int EnergyCost => 2;

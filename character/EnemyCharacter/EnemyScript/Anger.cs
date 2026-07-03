@@ -62,14 +62,14 @@ public partial class AngerEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
 
-        MaxLife = 138;
+        MaxLife = 134;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
         SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSpecial];
-        OpeningIntentionSkillIDs = [SkillID.AngerEliteSurvive];
+        OpeningIntentionSkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive];
         PassiveName = global::Anger.PassiveNameText;
         PassiveDescription = global::Anger.PassiveDescriptionText;
     }
@@ -77,13 +77,9 @@ public partial class AngerEliteRegedit : EnemyRegedit
 
 public partial class AngerEliteAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 15;
 
-    public AngerEliteAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "裂镰";
 
@@ -100,35 +96,29 @@ public partial class AngerEliteAttack : Skill
 public partial class AngerEliteSurvive : Skill
 {
     private const int BaseBlock = 15;
-    private const int SelfSurvivabilityGain = 4;
 
-    public AngerEliteSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "伏身";
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock));
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.All)
+        );
     }
 }
 
 public partial class AngerEliteSpecial : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 6;
     private const int HitCount = 2;
 
-    public AngerEliteSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "狂怒弧刃";
-    public override int EnergyCost => 4;
 
     protected override SkillPlan BuildPlan()
     {

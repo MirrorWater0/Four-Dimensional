@@ -9,26 +9,32 @@ public partial class KasiyaSurviveSkill { }
 public partial class ShockWave : Skill
 {
     private const int VulnerableStacks = 1;
-    private const int BaseBlock = 6;
-
+    private const int BaseBlock = 0;
+    public override int EnergyCost => XEnergyCost;
     public override string SkillName { get; set; } = "冲击波";
 
-    public ShockWave()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(
-                buffName: Buff.BuffName.Vulnerable,
-                stacks: VulnerableStacks,
-                target: HostileTargetReference.All
-            ),
-            BlockStep(baseBlock: BaseBlock)
+            WhileStep(
+                loopSteps:
+                [
+                    BlockStep(baseBlock: BaseBlock),
+                    ApplyBuffHostile(
+                        buffName: Buff.BuffName.Vulnerable,
+                        stacks: VulnerableStacks,
+                        target: HostileTargetReference.All
+                    ),
+                    ApplyBuffHostile(
+                        buffName: Buff.BuffName.Weaken,
+                        stacks: VulnerableStacks,
+                        target: HostileTargetReference.All
+                    ),
+                ]
+            )
         );
     }
 }
@@ -37,15 +43,10 @@ public partial class ReNewedSpirit : Skill
 {
     private const int PowerGain = 2;
     private const int SurvivabilityGain = 2;
-    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "重振精神";
 
-    public ReNewedSpirit()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
@@ -64,11 +65,7 @@ public partial class AbsouluteDefense : Skill
     public override int EnergyCost => XEnergyCost;
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
-    public AbsouluteDefense()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
@@ -87,11 +84,7 @@ public partial class TauntingGuard : Skill
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
-    public TauntingGuard()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
@@ -114,11 +107,7 @@ public partial class WeakpointBulwark : Skill
 
     public override string SkillName { get; set; } = "蓄势待发";
 
-    public WeakpointBulwark()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
@@ -230,16 +219,13 @@ public partial class Purification : Skill
 {
     public override string SkillName { get; set; } = "净化";
 
-    public Purification()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
+            BlockStep(0),
             CustomStep(
                 skill =>
                     skill?.OwnerCharater?.BattleNode?.ExhaustAllPlayerBattleStatusCardsAsync(
@@ -256,11 +242,7 @@ public partial class BarrierDuplication : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "固守";
 
-    public BarrierDuplication()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     protected override SkillPlan BuildPlan()
     {
@@ -297,5 +279,21 @@ public partial class BarrierDuplication : Skill
             Character target = skill?.OwnerCharater;
             return target != null ? [target] : Array.Empty<Character>();
         }
+    }
+}
+
+public partial class Resistance : Skill
+{
+    public override string SkillName { get; set; } = "抵御";
+    public override int EnergyCost => 2;
+    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(4),
+            ExhaustCardsStep(BattleCardPileTarget.HandCards, 2, false)
+        );
     }
 }

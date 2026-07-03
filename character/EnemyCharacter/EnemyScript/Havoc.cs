@@ -4,12 +4,12 @@ using Godot;
 public partial class Havoc : EnemyCharacter
 {
     private const int PassiveTriggerInterval = 3;
-    private const int PassivePlagueCount = 3;
-    private int _turnEndCount;
+    private const int PassiveDisasterStacks = 6;
+    private int _turnStartCount;
 
     public const string PassiveNameText = "灾厄脉冲";
     public static string PassiveDescriptionText =>
-        $"每{PassiveTriggerInterval}回合结束时：向弃牌堆加入{PassivePlagueCount}张{Skill.GetSkill(SkillID.PlagueStatus)?.SkillName ?? "瘟疫"}。";
+        $"每{PassiveTriggerInterval}回合开始时：血量最高的敌人获得{PassiveDisasterStacks}层{Buff.BuffName.Disaster.GetDescription()}。";
 
     public override string CharacterName { get; set; } = "Havoc";
 
@@ -20,47 +20,29 @@ public partial class Havoc : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override void OnTurnEnd()
+    public override void OnTurnStart()
     {
-        _turnEndCount++;
-        if (_turnEndCount % PassiveTriggerInterval == 0)
+        base.OnTurnStart();
+        _turnStartCount++;
+        if (_turnStartCount % PassiveTriggerInterval == 0)
             TriggerPassive(null);
-        base.OnTurnEnd();
     }
 
-    public override async void Passive(Skill skill)
+    public override void Passive(Skill skill)
     {
         using var _ = BeginEffectSource("被动");
-        if (BattleNode == null)
-            return;
-
-        PlayerCharacter target = BattleNode
-            .GetOrderedTeamCharacters(!IsPlayer, includeSummons: false, dyingFilter: true)
-            .OfType<PlayerCharacter>()
-            .Where(target => target.State == CharacterState.Normal)
+        Character target = ChooseHostileTargetsByOrder(
+            returnDummyWhenEmpty: false,
+            normalOnly: true,
+            dyingFilter: true
+        )
+            .OrderByDescending(character => character.Life)
+            .ThenBy(character => character.PositionIndex)
             .FirstOrDefault();
         if (target == null)
             return;
 
-        CharacterControl characterControl = BattleNode.CharacterControl;
-        if (characterControl != null && GodotObject.IsInstanceValid(characterControl))
-        {
-            await characterControl.PlayStatusCardInsertAnimationAsync(
-                target,
-                SkillID.PlagueStatus,
-                PassivePlagueCount,
-                BattleCardPileTarget.DiscardPileCards,
-                this
-            );
-        }
-
-        BattleNode.AddPlayerBattleStatusCards(
-            target,
-            SkillID.PlagueStatus,
-            PassivePlagueCount,
-            BattleCardPileTarget.DiscardPileCards,
-            this
-        );
+        EndActionBuff.BuffAdd(Buff.BuffName.Disaster, target, PassiveDisasterStacks, this);
     }
 }
 
@@ -73,7 +55,7 @@ public partial class HavocRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Havoc_v4.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Havoc.tscn");
 
-        MaxLife = 445;
+        MaxLife = 375;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -90,11 +72,7 @@ public partial class HavocAttack : Skill
     private const int BaseDamage = 8;
     private const int WeakenStacks = 1;
 
-    public HavocAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "裂壳横扫";
 
@@ -106,14 +84,10 @@ public partial class HavocAttack : Skill
 
 public partial class HavocSurvive : Skill
 {
-    private const int BaseBlock = 32;
+    private const int BaseBlock = 22;
     private const int SurvivabilityGain = 2;
 
-    public HavocSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "天灾之证";
 
@@ -122,8 +96,7 @@ public partial class HavocSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain),
-            ModifyPropertyStep(PropertyType.Power, 1)
+            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }
 }
@@ -133,21 +106,18 @@ public partial class HavocSpecial : Skill
     private const int DisasterStacks = 7;
     private const int SelfPowerGain = 2;
 
-    public HavocSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "崩坏回响";
-    public override int EnergyCost => 7;
+    public override int EnemySpecialIntentionCooldown => 3;
+
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackStep(baseDamage: 13, multiplier: 1, target: HostileTargetReference.All),
-            ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.Random),
+            AddCardsStep(SkillID.PlagueStatus, 3, BattleCardPileTarget.DiscardPileCards),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

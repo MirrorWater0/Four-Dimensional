@@ -18,22 +18,17 @@ public partial class Skill
     public const string VoidnessKeyword = "虚无";
     public const string VoidnessKeywordEffectText =
         "回合结束时若在手牌中则消耗。";
+    public const string ColorlessKeyword = "无色";
+    public const string ColorlessKeywordEffectText =
+        "不属于任何角色的牌。";
     public const string RebirthKeyword = "复生";
     public const string RebirthKeywordEffectText =
         "可对濒死目标生效。";
-    private static readonly SkillID[] StatusKeywordSkillIds =
-    {
-        SkillID.VoidStatus,
-        SkillID.WoundStatus,
-        SkillID.DazeStatus,
-        SkillID.PlagueStatus,
-    };
 
-    protected enum StatX
+    public enum StatX
     {
         Power,
         Survivability,
-        Speed,
         Energy,
         Life,
         MaxLife,
@@ -52,7 +47,6 @@ public partial class Skill
         {
             PropertyType.Power => "#ff0000",
             PropertyType.Survivability => "#89fffd",
-            PropertyType.Speed => "#b56bff",
             PropertyType.EnergySources => "#87CEEB",
             _ => "white",
         };
@@ -64,7 +58,6 @@ public partial class Skill
         {
             StatX.Power => GetPropertyLabel(PropertyType.Power),
             StatX.Survivability => GetPropertyLabel(PropertyType.Survivability),
-            StatX.Speed => I18n.Tr("property.speed", "速度"),
             StatX.Energy => I18n.Tr("keyword.energy", "能量"),
             StatX.Life => I18n.Tr("ui.common.life", "生命"),
             StatX.MaxLife => I18n.Tr("property.max_life", "最大生命"),
@@ -78,7 +71,6 @@ public partial class Skill
         {
             StatX.Power => GetPropertyColor(PropertyType.Power),
             StatX.Survivability => GetPropertyColor(PropertyType.Survivability),
-            StatX.Speed => "#b56bff",
             StatX.Energy => "#5353ff",
             StatX.Life => "#6bff6b",
             StatX.MaxLife => "#6bff6b",
@@ -126,11 +118,16 @@ public partial class Skill
 
     protected string WithBattleTotal(string basisText, int total, int clampMax = TooltipTotalMax)
     {
-        if (!IsInBattle)
-            return basisText;
-
         int clamped = Math.Clamp(total, 0, clampMax);
-        if (UseCompactBattleCardDescription)
+        if (!IsInBattle)
+        {
+            if (UseFormulaCardDescription)
+                return basisText;
+
+            return clamped.ToString();
+        }
+
+        if (!UseFormulaCardDescription)
             return clamped.ToString();
 
         return $"{basisText}(总计：{clamped})";
@@ -139,22 +136,39 @@ public partial class Skill
     protected string WithBattleTotal(string basisText, string totalText)
     {
         if (!IsInBattle)
-            return basisText;
+        {
+            if (UseFormulaCardDescription)
+                return basisText;
 
-        if (UseCompactBattleCardDescription)
+            return totalText;
+        }
+
+        if (!UseFormulaCardDescription)
             return totalText;
 
         return $"{basisText}(总计：{totalText})";
     }
 
-    private bool UseCompactBattleCardDescription
+    private bool UseFormulaCardDescription
     {
         get
         {
             UserSettings.EnsureLoaded();
-            return IsInBattle && UserSettings.UseCompactBattleCardDescriptions;
+            return UserSettings.UseFormulaCardDescriptions;
         }
     }
+
+    private bool UseZeroScalingStatsForDescription =>
+        !IsInBattle && !UseFormulaCardDescription;
+
+    protected int DescriptionPower =>
+        UseZeroScalingStatsForDescription ? 0 : OwnerPower;
+
+    protected int DescriptionSurvivability =>
+        UseZeroScalingStatsForDescription ? 0 : OwnerSurvivability;
+
+    protected int DescriptionEnergy =>
+        UseZeroScalingStatsForDescription ? 0 : OwnerEnergy;
 
     protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>
         WithBattleTotal(X(stat), total, clampMax);
@@ -173,6 +187,8 @@ public partial class Skill
         IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
         if (RetainsAtTurnEndInHand)
             lines = new[] { GetRetainKeywordLine() }.Concat(lines);
+        if (IsColorless)
+            lines = new[] { GetColorlessKeywordLine() }.Concat(lines);
         if (ExhaustsAfterUse)
             lines = new[] { GetExhaustKeywordLine() }.Concat(lines);
 
@@ -186,7 +202,7 @@ public partial class Skill
 
     protected int BonusCastsFromEnergy(int costPerCast)
     {
-        int energy = OwnerEnergy;
+        int energy = DescriptionEnergy;
         return Math.Max(0, (int)Math.Ceiling((double)energy / costPerCast));
     }
 
@@ -201,15 +217,34 @@ public partial class Skill
     )
     {
         times = Math.Max(1, times);
-        int rawDamage = baseDamage + OwnerPower * multiplier;
+        int rawDamage = baseDamage + DescriptionPower * multiplier;
         string basisText = FormatBasePlusX(baseDamage, StatX.Power, multiplier);
         if (times > 1)
             basisText = $"({basisText})*{times}";
 
         if (!IsInBattle)
-            return basisText;
+        {
+            if (UseFormulaCardDescription)
+                return basisText;
 
-        int scaledDamage = ApplyOwnerSkillDamageScaling(Math.Clamp(rawDamage, 0, clampMax));
+            int previewDamage =
+                (
+                    ApplyOwnerSkillDamageScaling(Math.Clamp(rawDamage, 0, clampMax))
+                    + GetOwnerSkillAttackDamageBonus()
+                ) * times;
+            return BuildCompactBattleValueText(
+                previewDamage,
+                PropertyType.Power,
+                multiplier,
+                times
+            );
+        }
+
+        rawDamage = baseDamage + OwnerPower * multiplier;
+
+        int scaledDamage =
+            ApplyOwnerSkillDamageScaling(Math.Clamp(rawDamage, 0, clampMax))
+            + GetOwnerSkillAttackDamageBonus();
         int rawClampedDamage = scaledDamage * times;
         var previewState = new AttackBuff.PreviewState();
         int modifiedDamage = Math.Clamp(
@@ -222,7 +257,7 @@ public partial class Skill
             clampMax
         ) * times;
 
-        if (UseCompactBattleCardDescription)
+        if (!UseFormulaCardDescription)
         {
             int totalDamage = modifiedDamage == rawClampedDamage ? rawClampedDamage : modifiedDamage;
             return BuildCompactBattleValueText(
@@ -245,8 +280,20 @@ public partial class Skill
         int clampMax = 999
     )
     {
-        int totalBlock = baseBlock + OwnerSurvivability * multiplier;
-        if (UseCompactBattleCardDescription)
+        int totalBlock = baseBlock + DescriptionSurvivability * multiplier;
+        if (!IsInBattle)
+        {
+            return BasePlusXWithBattleTotal(
+                baseBlock,
+                totalBlock,
+                StatX.Survivability,
+                xMultiplier: multiplier,
+                clampMax: clampMax
+            );
+        }
+
+        totalBlock = baseBlock + OwnerSurvivability * multiplier;
+        if (!UseFormulaCardDescription)
         {
             return BuildCompactBattleValueText(
                 Math.Clamp(totalBlock, 0, clampMax),
@@ -334,85 +381,81 @@ public partial class Skill
         if (skill == null)
             return string.Empty;
 
-        var entries = new List<(int Index, string Text)>();
+        skill.UpdateDescription();
+        SkillTooltipHints hints = skill.CollectTooltipHints();
+        return BuildKeywordTooltipText(skill, hints);
+    }
+
+    public static string BuildKeywordTooltipText(Skill skill, SkillTooltipHints hints)
+    {
+        if (skill == null)
+            return string.Empty;
+
+        hints ??= skill.CollectTooltipHints();
+        var entries = new List<string>();
+
         if (skill.ExhaustsAfterUse)
         {
             entries.Add(
-                (-1, BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText()))
+                BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText())
             );
         }
         if (skill.RetainsAtTurnEndInHand)
         {
             entries.Add(
-                (-1, BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText()))
+                BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText())
             );
         }
-
-        string description = skill.Description ?? string.Empty;
-        string plainDescription = StripBbCodeTags(description);
-
-        int retainIndex = FindKeywordIndex(plainDescription, GetRetainKeyword(), RetainKeyword);
-        if (retainIndex >= 0)
+        if (skill.IsColorless)
         {
             entries.Add(
-                (retainIndex, BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText()))
+                BuildKeywordTooltipEntry(GetColorlessKeyword(), GetColorlessKeywordEffectText())
             );
         }
 
-        int carryIndex = FindKeywordIndex(plainDescription, GetCarryKeyword(), CarryKeyword);
-        if (carryIndex >= 0)
+        if (hints.Keywords.Contains(SkillTooltipKeyword.Carry))
         {
             entries.Add(
-                (carryIndex, BuildKeywordTooltipEntry(GetCarryKeyword(), GetCarryKeywordEffectText()))
+                BuildKeywordTooltipEntry(GetCarryKeyword(), GetCarryKeywordEffectText())
+            );
+        }
+        if (hints.Keywords.Contains(SkillTooltipKeyword.Voidness))
+        {
+            entries.Add(
+                BuildKeywordTooltipEntry(
+                    GetVoidnessKeyword(),
+                    GetVoidnessKeywordEffectText()
+                )
+            );
+        }
+        if (hints.Keywords.Contains(SkillTooltipKeyword.Rebirth))
+        {
+            entries.Add(
+                BuildKeywordTooltipEntry(GetRebirthKeyword(), GetRebirthKeywordEffectText())
             );
         }
 
-        int voidnessIndex = FindKeywordIndex(plainDescription, GetVoidnessKeyword(), VoidnessKeyword);
-        if (voidnessIndex >= 0)
-            entries.Add(
-                (
-                    voidnessIndex,
-                    BuildKeywordTooltipEntry(
-                        GetVoidnessKeyword(),
-                        GetVoidnessKeywordEffectText()
-                    )
-                )
-            );
+        UserSettings.EnsureLoaded();
+        if (!UserSettings.HideStatXKeywordTooltips)
+        {
+            foreach (StatX stat in OrderStatVariables(hints.StatVariables))
+            {
+                string effectText = BuildStatXTooltipEffectText(stat);
+                if (!string.IsNullOrWhiteSpace(effectText))
+                {
+                    entries.Add(BuildKeywordTooltipEntry(UnfixedPlaceholder, effectText));
+                }
+            }
+        }
 
-        int rebirthIndex = FindValidRebirthKeywordIndex(
-            plainDescription,
-            GetRebirthKeyword(),
-            RebirthKeyword
-        );
-        if (rebirthIndex >= 0)
-            entries.Add(
-                (
-                    rebirthIndex,
-                    BuildKeywordTooltipEntry(GetRebirthKeyword(), GetRebirthKeywordEffectText())
-                )
-            );
-
-        AddStatXTooltipEntries(entries, description, plainDescription);
-        AddStatusCardTooltipEntries(entries, plainDescription);
-
-        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
+        foreach (Buff.BuffName buffName in hints.Buffs)
         {
             string displayName = Buff.GetBuffDisplayName(buffName);
-            string fallbackName = buffName.GetDescription();
-            if (string.IsNullOrWhiteSpace(displayName) && string.IsNullOrWhiteSpace(fallbackName))
-                continue;
-
-            int matchIndex = FindKeywordIndex(plainDescription, displayName, fallbackName);
-            if (matchIndex < 0)
-                continue;
-            if (IsIndexInsideStatusCardName(plainDescription, matchIndex))
-                continue;
-
             string effectText = Buff.GetBuffEffectText(buffName);
-            if (string.IsNullOrWhiteSpace(effectText))
+            if (string.IsNullOrWhiteSpace(displayName) || string.IsNullOrWhiteSpace(effectText))
                 continue;
 
-            entries.Add((matchIndex, BuildKeywordTooltipEntry(displayName, effectText)));
+            entries.Add(BuildKeywordTooltipEntry(displayName, effectText));
         }
 
         if (entries.Count == 0)
@@ -420,181 +463,64 @@ public partial class Skill
 
         return string.Join(
             "\n\n",
-            entries
-                .OrderBy(entry => entry.Index)
-                .DistinctBy(entry => entry.Text)
-                .Select(entry => entry.Text)
-                .Where(entry => !string.IsNullOrWhiteSpace(entry))
+            entries.Where(entry => !string.IsNullOrWhiteSpace(entry)).Distinct()
         );
     }
 
-    private static void AddStatusCardTooltipEntries(
-        List<(int Index, string Text)> entries,
-        string plainDescription
-    )
+    private static IEnumerable<StatX> OrderStatVariables(IEnumerable<StatX> stats)
     {
-        if (string.IsNullOrWhiteSpace(plainDescription))
-            return;
-
-        foreach (SkillID skillId in StatusKeywordSkillIds)
+        StatX[] order =
         {
-            Skill statusSkill = GetSkill(skillId);
-            if (statusSkill == null)
-                continue;
-
-            string statusName = statusSkill.SkillName;
-            int matchIndex = FindTokenIndex(plainDescription, statusName);
-            if (matchIndex < 0)
-                continue;
-
-            string effectText = BuildStatusCardTooltipEffectText(statusSkill);
-            if (string.IsNullOrWhiteSpace(effectText))
-                continue;
-
-            entries.Add((matchIndex, BuildKeywordTooltipEntry(statusName, effectText)));
-        }
-    }
-
-    private static string BuildStatusCardTooltipEffectText(Skill statusSkill)
-    {
-        string effectText = StripBbCodeTags(statusSkill.Description ?? string.Empty).Trim();
-        string statusCardText = I18n.Tr("skill.status.desc.status_card", "状态牌。");
-        string plainStatusCardText = StripBbCodeTags(statusCardText);
-        if (!effectText.Contains(plainStatusCardText, StringComparison.Ordinal))
-        {
-            effectText = string.IsNullOrWhiteSpace(effectText)
-                ? statusCardText
-                : $"{statusCardText}\n{effectText}";
-        }
-
-        return effectText;
-    }
-
-    private static bool IsIndexInsideStatusCardName(string plainDescription, int index)
-    {
-        if (string.IsNullOrWhiteSpace(plainDescription) || index < 0)
-            return false;
-
-        foreach (SkillID skillId in StatusKeywordSkillIds)
-        {
-            string statusName = GetSkill(skillId)?.SkillName;
-            if (string.IsNullOrWhiteSpace(statusName))
-                continue;
-
-            int searchStart = 0;
-            while (searchStart <= plainDescription.Length - statusName.Length)
-            {
-                int statusIndex = plainDescription.IndexOf(
-                    statusName,
-                    searchStart,
-                    StringComparison.OrdinalIgnoreCase
-                );
-                if (statusIndex < 0)
-                    break;
-
-                if (index >= statusIndex && index < statusIndex + statusName.Length)
-                    return true;
-
-                searchStart = statusIndex + 1;
-            }
-        }
-
-        return false;
-    }
-
-    private static void AddStatXTooltipEntries(
-        List<(int Index, string Text)> entries,
-        string description,
-        string plainDescription
-    )
-    {
-        if (string.IsNullOrWhiteSpace(plainDescription))
-            return;
-
-        int xIndex = FindUnfixedPlaceholderIndex(plainDescription);
-        if (xIndex < 0)
-            return;
-
-        string effectText = BuildStatXTooltipEffectText(description);
-        if (string.IsNullOrWhiteSpace(effectText))
-            return;
-
-        entries.Add((xIndex, BuildKeywordTooltipEntry(UnfixedPlaceholder, effectText)));
-    }
-
-    private static string BuildStatXTooltipEffectText(string description)
-    {
-        var lines = new List<string>();
-        AddStatXTooltipLine(lines, description, StatX.Power, PropertyType.Power);
-        AddStatXTooltipLine(lines, description, StatX.Survivability, PropertyType.Survivability);
-        AddStatXTooltipLine(
-            lines,
-            description,
+            StatX.Power,
+            StatX.Survivability,
             StatX.Energy,
-            I18n.Tr("keyword.energy", "能量")
-        );
+            StatX.Life,
+            StatX.MaxLife,
+        };
 
-        return string.Join("\n", lines);
-    }
-
-    private static void AddStatXTooltipLine(
-        List<string> lines,
-        string description,
-        StatX stat,
-        PropertyType propertyType
-    ) => AddStatXTooltipLine(lines, description, stat, GetPropertyLabel(propertyType));
-
-    private static void AddStatXTooltipLine(
-        List<string> lines,
-        string description,
-        StatX stat,
-        string label
-    )
-    {
-        if (string.IsNullOrWhiteSpace(description) || !description.Contains(X(stat), StringComparison.Ordinal))
-            return;
-
-        lines.Add(I18n.Format(
-            "keyword.x.stat_line",
-            "{x}为{stat}。",
-            ("x", X(stat)),
-            ("stat", label)
-        ));
-    }
-
-    private static int FindValidRebirthKeywordIndex(
-        string plainDescription,
-        string localizedKeyword,
-        string fallbackKeyword
-    )
-    {
-        if (string.IsNullOrEmpty(plainDescription))
-            return -1;
-
-        int localizedIndex = FindKeywordIndex(plainDescription, localizedKeyword, fallbackKeyword);
-        if (localizedIndex < 0)
-            return -1;
-
-        string matchedKeyword = MatchKeyword(plainDescription, localizedIndex, localizedKeyword)
-            ? localizedKeyword
-            : fallbackKeyword;
-        if (!string.Equals(matchedKeyword, RebirthKeyword, StringComparison.Ordinal))
-            return localizedIndex;
-
-        int searchStart = 0;
-        while (searchStart < plainDescription.Length)
+        foreach (StatX stat in order)
         {
-            int index = plainDescription.IndexOf(RebirthKeyword, searchStart, StringComparison.Ordinal);
-            if (index < 0)
-                return -1;
-
-            if (GlobalFunction.IsValidRebirthKeywordMatch(plainDescription, index))
-                return index;
-
-            searchStart = index + 1;
+            if (stats.Contains(stat))
+                yield return stat;
         }
+    }
 
-        return -1;
+    private static string BuildStatXTooltipEffectText(StatX stat)
+    {
+        return stat switch
+        {
+            StatX.Power => I18n.Format(
+                "keyword.x.stat_line",
+                "{x}为{stat}。",
+                ("x", X(stat)),
+                ("stat", GetPropertyLabel(PropertyType.Power))
+            ),
+            StatX.Survivability => I18n.Format(
+                "keyword.x.stat_line",
+                "{x}为{stat}。",
+                ("x", X(stat)),
+                ("stat", GetPropertyLabel(PropertyType.Survivability))
+            ),
+            StatX.Energy => I18n.Format(
+                "keyword.x.stat_line",
+                "{x}为{stat}。",
+                ("x", X(stat)),
+                ("stat", I18n.Tr("keyword.energy", "能量"))
+            ),
+            StatX.Life => I18n.Format(
+                "keyword.x.stat_line",
+                "{x}为{stat}。",
+                ("x", X(stat)),
+                ("stat", I18n.Tr("ui.common.life", "生命"))
+            ),
+            StatX.MaxLife => I18n.Format(
+                "keyword.x.stat_line",
+                "{x}为{stat}。",
+                ("x", X(stat)),
+                ("stat", I18n.Tr("property.max_life", "最大生命"))
+            ),
+            _ => string.Empty,
+        };
     }
 
     private static string BuildKeywordTooltipEntry(string title, string effectText)
@@ -658,6 +584,11 @@ public partial class Skill
     private static string GetVoidnessKeywordEffectText() =>
         I18n.Tr("keyword.voidness.effect", VoidnessKeywordEffectText);
 
+    private static string GetColorlessKeyword() => I18n.Tr("keyword.colorless", ColorlessKeyword);
+
+    private static string GetColorlessKeywordEffectText() =>
+        I18n.Tr("keyword.colorless.effect", ColorlessKeywordEffectText);
+
     private static string GetRebirthKeyword() => I18n.Tr("keyword.rebirth", RebirthKeyword);
 
     private static string GetRebirthKeywordEffectText() =>
@@ -665,92 +596,5 @@ public partial class Skill
 
     private static string GetExhaustKeywordLine() => $"{GetExhaustKeyword()}。";
     private static string GetRetainKeywordLine() => $"{GetRetainKeyword()}。";
-
-    private static int FindKeywordIndex(
-        string text,
-        string localizedKeyword,
-        string fallbackKeyword
-    )
-    {
-        int localizedIndex = FindTokenIndex(text, localizedKeyword);
-        int fallbackIndex = FindTokenIndex(text, fallbackKeyword);
-
-        if (localizedIndex < 0)
-            return fallbackIndex;
-        if (fallbackIndex < 0)
-            return localizedIndex;
-        return Math.Min(localizedIndex, fallbackIndex);
-    }
-
-    private static int FindTokenIndex(string text, string token)
-    {
-        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(token))
-            return -1;
-
-        int searchStart = 0;
-        while (searchStart <= text.Length - token.Length)
-        {
-            int index = text.IndexOf(token, searchStart, StringComparison.OrdinalIgnoreCase);
-            if (index < 0)
-                return -1;
-
-            if (!ContainsLatinOrDigit(token) || HasWordBoundaryAround(text, index, token.Length))
-                return index;
-
-            searchStart = index + 1;
-        }
-
-        return -1;
-    }
-
-    private static int FindUnfixedPlaceholderIndex(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return -1;
-
-        int searchStart = 0;
-        while (searchStart < text.Length)
-        {
-            int index = text.IndexOf(UnfixedPlaceholder, searchStart, StringComparison.OrdinalIgnoreCase);
-            if (index < 0)
-                return -1;
-
-            int endIndex = index + UnfixedPlaceholder.Length;
-            bool rightOk = endIndex >= text.Length || !IsWordChar(text[endIndex]);
-            if (rightOk)
-                return index;
-
-            searchStart = index + 1;
-        }
-
-        return -1;
-    }
-
-    private static bool MatchKeyword(string text, int index, string token)
-    {
-        return !string.IsNullOrWhiteSpace(token)
-            && index >= 0
-            && index + token.Length <= text.Length
-            && string.Equals(
-                text.Substring(index, token.Length),
-                token,
-                StringComparison.OrdinalIgnoreCase
-            );
-    }
-
-    private static bool HasWordBoundaryAround(string input, int index, int length)
-    {
-        bool leftOk = index == 0 || !IsWordChar(input[index - 1]);
-        int endIndex = index + length;
-        bool rightOk = endIndex >= input.Length || !IsWordChar(input[endIndex]);
-        return leftOk && rightOk;
-    }
-
-    private static bool ContainsLatinOrDigit(string text) => text.Any(IsWordChar);
-
-    private static bool IsWordChar(char ch) =>
-        (ch >= 'a' && ch <= 'z')
-        || (ch >= 'A' && ch <= 'Z')
-        || char.IsDigit(ch)
-        || ch == '_';
+    private static string GetColorlessKeywordLine() => $"{GetColorlessKeyword()}。";
 }

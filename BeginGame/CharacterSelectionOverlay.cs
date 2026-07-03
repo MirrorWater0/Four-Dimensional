@@ -1334,7 +1334,6 @@ public partial class CharacterSelectionOverlay : Control
             LifeInitialized = true,
             Power = source.Power,
             Survivability = source.Survivability,
-            Speed = source.Speed,
             TalentPoints = source.TalentPoints,
             UnlockedTalents = source.UnlockedTalents != null
                 ? new List<string>(source.UnlockedTalents)

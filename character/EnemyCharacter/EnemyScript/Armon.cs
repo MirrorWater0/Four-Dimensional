@@ -65,7 +65,7 @@ public partial class ArmonRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
 
-        MaxLife = 66;
+        MaxLife = 119;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -82,11 +82,7 @@ public partial class ArmonAttack : Skill
     private const int BaseDamage = 19;
     private const int AllyBaseBlock = 9;
 
-    public ArmonAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "矩阵斩击";
 
@@ -106,11 +102,7 @@ public partial class ArmonSurvive : Skill
     private const int BaseBlock = 18;
     private const int EnergyGain = 2;
 
-    public ArmonSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "矩阵护盾";
 
@@ -119,7 +111,7 @@ public partial class ArmonSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            AddStatusCardsStep(SkillID.DazeStatus, 1),
+            AddCardsStep(SkillID.DazeStatus, 1),
             EnergyStep(EnergyGain)
         );
     }
@@ -131,11 +123,7 @@ public partial class ArmonSpecial : Skill
     private const int PowerGainPerLoop = 2;
     private const int SurvivabilityGainPerLoop = 2;
 
-    public ArmonSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "矩阵过载";
     public override int EnergyCost => 0;

@@ -6,8 +6,8 @@ using Godot;
 
 public partial class Relic
 {
-    private const int BlessingDamage = 25;
-    private const int MatrixShieldBlock = 6;
+    private const int BlessingDamage = 35;
+    private const int MatrixShieldBlock = 7;
     private const int BackpackFirstTurnDrawBonus = 2;
     private const int EnergyTankEnergy = 1;
     private const int EnergyStorageTankStacks = 1;
@@ -22,18 +22,19 @@ public partial class Relic
     private const int TrianglePartyPower = 1;
     private const int SquarePartySurvivability = 1;
     private const int PentagonPartyMaxLife = 5;
-    private const int KingsSwordPartyPower = 4;
+    private const int KingsSwordPartyPower = 3;
     private const int RefractometerDamageImmuneStacks = 1;
     private const int PurifierDebuffImmunityStacks = 1;
     private const int PulseControllerStunStacks = 1;
-    private const int PulseControllerVulnerableStacks = 3;
-    private const int PulseControllerWeakenStacks = 3;
     private const int KnightHelmetMinimumCost = 2;
-    private const int KnightHelmetBlock = 6;
-    private const int IonizedVoiceExtraDrawStacks = 1;
-    private const int HexagonBattleEndHeal = 4;
-    private const float TriggerPopupIconSize = 44f;
-    private const float TriggerPopupHeadOffset = -168f;
+    private const int KnightHelmetBlock = 5;
+    private const int IonizedVoiceSpecialSkillInterval = 3;
+    private const int IonizedVoiceDrawCount = 1;
+    private const int HexagonBattleEndHeal = 5;
+    private const float MembershipCardShopPriceMultiplier = 0.5f;
+    private const int ToolboxSelectionCount = 2;
+    private const float TriggerPopupIconSize = 60f;
+    private const float TriggerPopupHeadOffset = -208f;
     private const float TriggerPopupRise = -82f;
 
     public RelicID ID;
@@ -50,12 +51,13 @@ public partial class Relic
         RelicDescription = GetRelicDescription(relicID);
     }
 
-    public static RelicID[] GetUnownedOfferPool()
+    /// <summary>仅开局三选一可获得的遗物，不参与战斗/商店/事件等常规掉落。</summary>
+    public static RelicID[] GetStarterBonusRelicPool() => [RelicID.Blessing];
+
+    public static RelicID[] GetStandardOfferPool()
     {
-        List<RelicID> result = new();
-        RelicID[] pool =
-        {
-            RelicID.Blessing,
+        return
+        [
             RelicID.Triangle,
             RelicID.Square,
             RelicID.Pentagon,
@@ -63,6 +65,8 @@ public partial class Relic
             RelicID.Heptagon,
             RelicID.Octagon,
             RelicID.CompressionCore,
+            RelicID.MembershipCard,
+            RelicID.Toolbox,
             RelicID.MatrixShield,
             RelicID.Backpack,
             RelicID.EnergyTank,
@@ -74,7 +78,13 @@ public partial class Relic
             RelicID.Purifier,
             RelicID.KnightHelmet,
             RelicID.IonizedVoice,
-        };
+        ];
+    }
+
+    public static RelicID[] GetUnownedOfferPool()
+    {
+        List<RelicID> result = new();
+        RelicID[] pool = GetStandardOfferPool();
 
         for (int i = 0; i < pool.Length; i++)
         {
@@ -98,6 +108,8 @@ public partial class Relic
             RelicID.Heptagon => new Relic(RelicID.Heptagon),
             RelicID.Octagon => new Relic(RelicID.Octagon),
             RelicID.CompressionCore => new Relic(RelicID.CompressionCore),
+            RelicID.MembershipCard => new Relic(RelicID.MembershipCard),
+            RelicID.Toolbox => new Relic(RelicID.Toolbox),
             RelicID.MatrixShield => new Relic(RelicID.MatrixShield),
             RelicID.Backpack => new Relic(RelicID.Backpack),
             RelicID.EnergyTank => new Relic(RelicID.EnergyTank),
@@ -134,6 +146,7 @@ public partial class Relic
             RelicID.Blessing => 3,
             RelicID.FusionCore => 0,
             RelicID.SpiralAccelerator => 0,
+            RelicID.IonizedVoice => 0,
             _ => -1,
         };
     }
@@ -161,6 +174,8 @@ public partial class Relic
     {
         return relicID switch
         {
+            RelicID.MembershipCard => "res://asset/svg/RelicIcon/MembershipCard.svg",
+            RelicID.Toolbox => "res://asset/svg/RelicIcon/Toolbox.svg",
             RelicID.MatrixShield => "res://asset/svg/RelicIcon/MatrixShield.svg",
             RelicID.Backpack => "res://asset/svg/RelicIcon/Backpack.svg",
             RelicID.EnergyTank => "res://asset/svg/RelicIcon/EnergyTank.svg",
@@ -241,6 +256,8 @@ public partial class Relic
         playerResourceState.RelicList.Add(relic);
         GameInfo.SetRelicCount(relicID, num);
         ApplyAcquireEffect(relicID);
+        if (relicID == RelicID.Toolbox)
+            _ = RunToolboxSelectionAsync(playerResourceState);
     }
 
     public static int ApplyElectricityCoinBonus(int baseAmount)
@@ -252,6 +269,17 @@ public partial class Relic
             return baseAmount;
 
         return Mathf.CeilToInt(baseAmount * 1.2f);
+    }
+
+    public static int CalculateShopPrice(int basePrice)
+    {
+        if (basePrice <= 0)
+            return 0;
+
+        if (!GameInfo.HasRelic(RelicID.MembershipCard))
+            return basePrice;
+
+        return Math.Max(1, Mathf.CeilToInt(basePrice * MembershipCardShopPriceMultiplier));
     }
 
     public static void ApplyPlayerActionStartRelicEffects(
@@ -415,14 +443,24 @@ public partial class Relic
         if (skill.SkillType != Skill.SkillTypes.Special || !HasRelic(RelicID.IonizedVoice))
             return;
 
-        using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.IonizedVoice));
-        ShowRelicTriggerPopup(skill.OwnerCharater, RelicID.IonizedVoice);
-        SpecialBuff.BuffAdd(
-            Buff.BuffName.ExtraDraw,
-            skill.OwnerCharater,
-            IonizedVoiceExtraDrawStacks,
-            skill.OwnerCharater
-        );
+        Battle battle = skill.OwnerCharater?.BattleNode;
+        Relic relic = battle
+            ?.MapNode?.PlayerResourceState?.RelicList?.FirstOrDefault(r =>
+                r != null && r.ID == RelicID.IonizedVoice
+            );
+        if (relic == null)
+            return;
+
+        relic.Num = Math.Max(0, relic.Num) + 1;
+        if (relic.Num >= IonizedVoiceSpecialSkillInterval)
+        {
+            using var _ = skill.OwnerCharater.BeginEffectSource(GetRelicName(RelicID.IonizedVoice));
+            ShowRelicTriggerPopup(skill.OwnerCharater, RelicID.IonizedVoice);
+            battle.TryDrawPlayerTeamBattleCards(IonizedVoiceDrawCount);
+            relic.Num = 0;
+        }
+
+        relic.UpdateIconLabel();
     }
 
     private static bool HasRelic(RelicID relicId) => GameInfo.HasRelic(relicId);
@@ -466,6 +504,7 @@ public partial class Relic
                 ApplyDebuffToEnemies(battle, Buff.BuffName.Weaken, 1, ID);
                 break;
             case RelicID.CompressionCore:
+            case RelicID.Toolbox:
                 break;
             case RelicID.Backpack:
                 break;
@@ -533,6 +572,8 @@ public partial class Relic
             RelicID.Heptagon => "七边形",
             RelicID.Octagon => "八边形",
             RelicID.CompressionCore => "压缩核心",
+            RelicID.MembershipCard => "会员卡",
+            RelicID.Toolbox => "工具箱",
             RelicID.MatrixShield => "矩阵护盾",
             RelicID.Backpack => "背包",
             RelicID.EnergyTank => "自动电池",
@@ -564,6 +605,8 @@ public partial class Relic
             RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
+            RelicID.MembershipCard => "商店中的所有商品价格降低50%。",
+            RelicID.Toolbox => $"拾起时选择{ToolboxSelectionCount}张卡牌，为其添加保留。",
             RelicID.MatrixShield => $"第一次己方阵营回合开始时全阵获得{MatrixShieldBlock}点格挡。",
             RelicID.Backpack => $"第一次己方阵营回合开始时，额外抽{BackpackFirstTurnDrawBonus}张牌。",
             RelicID.EnergyTank => $"战斗开始时获得{EnergyTankEnergy}点能量。",
@@ -574,13 +617,83 @@ public partial class Relic
             RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
             RelicID.KnightHelmet => $"每当角色打出{KnightHelmetMinimumCost}费及以上的卡牌时，获得{KnightHelmetBlock}点格挡。",
-            RelicID.IonizedVoice => $"使用特殊技能时，获得{IonizedVoiceExtraDrawStacks}层{Buff.GetBuffDisplayName(Buff.BuffName.ExtraDraw)}。",
+            RelicID.IonizedVoice => $"每使用{IonizedVoiceSpecialSkillInterval}张特殊卡牌，抽{IonizedVoiceDrawCount}张牌。",
             RelicID.PhilosophersStone => $"回合开始时获得的能量+{PhilosophersStoneEnergyBonus}。战斗开始时所有敌人获得{PhilosophersStoneEnemyPower}点力量。",
             RelicID.EternalGlass => $"回合开始时抽牌数+{EternalGlassDrawBonus}。",
             RelicID.KingsSword => $"拾起时全体角色增加{KingsSwordPartyPower}点力量。",
-            RelicID.PulseController => $"战斗开始时随机一名敌人获得{PulseControllerStunStacks}层{Buff.BuffName.Stun.GetDescription()}、{PulseControllerVulnerableStacks}层{Buff.BuffName.Vulnerable.GetDescription()}和{PulseControllerWeakenStacks}层{Buff.BuffName.Weaken.GetDescription()}。",
+            RelicID.PulseController => $"战斗开始时随机一名敌人获得{PulseControllerStunStacks}层{Buff.BuffName.Stun.GetDescription()}。",
             _ => "暂无效果。",
         };
+    }
+
+    private static async Task RunToolboxSelectionAsync(PlayerResourceState playerResourceState)
+    {
+        try
+        {
+            if (playerResourceState == null || !GodotObject.IsInstanceValid(playerResourceState))
+                return;
+
+            EventCardSelectOverlay overlay = GetOrCreateToolboxCardSelectOverlay(playerResourceState);
+            if (overlay == null)
+                return;
+
+            var entries = GameInfo.BuildSelectableDeckCardEntries();
+            if (entries.Count == 0)
+                return;
+
+            string hint = "请选择要添加保留的卡牌";
+            IReadOnlyList<EventCardSelection> selections = await overlay.SelectManyAsync(
+                entries,
+                hint,
+                ToolboxSelectionCount
+            );
+            if (selections == null || selections.Count == 0)
+                return;
+
+            overlay.HideSelection();
+
+            foreach (EventCardSelection selection in selections)
+                GameInfo.AddToolboxRetainCard(selection.PlayerIndex, selection.SkillId);
+
+            SaveSystem.SaveRunCheckpoint();
+        }
+        catch (Exception ex)
+        {
+            GD.PrintErr($"工具箱选牌失败：{ex.Message}");
+        }
+    }
+
+    private const int ToolboxCardSelectLayer = 10;
+
+    private static EventCardSelectOverlay GetOrCreateToolboxCardSelectOverlay(
+        PlayerResourceState playerResourceState
+    )
+    {
+        var tree = playerResourceState?.GetTree();
+        Node map =
+            tree?.Root?.GetNodeOrNull<Node>("Map")
+            ?? tree?.Root?.GetNodeOrNull<Node>("/root/Map");
+        if (map == null)
+            return null;
+
+        var overlayLayer = map.GetNodeOrNull<CanvasLayer>("ToolboxCardSelectLayer");
+        if (overlayLayer == null)
+        {
+            overlayLayer = new CanvasLayer
+            {
+                Name = "ToolboxCardSelectLayer",
+                Layer = ToolboxCardSelectLayer,
+            };
+            map.AddChild(overlayLayer);
+        }
+
+        var overlay = overlayLayer.GetNodeOrNull<EventCardSelectOverlay>("ToolboxCardSelectOverlay");
+        if (overlay != null && GodotObject.IsInstanceValid(overlay))
+            return overlay;
+
+        overlay = new EventCardSelectOverlay { Name = "ToolboxCardSelectOverlay" };
+        overlayLayer.AddChild(overlay);
+        return overlay;
     }
 
     private static async Task ApplyEffectToFrontPlayers(
@@ -727,7 +840,14 @@ public partial class Relic
         if (candidates.Length == 0)
             return;
 
-        int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x4EF1AC70);
+        int seed =
+            battle.CurrentLevelNode != null
+                ? GameInfo.CreateRunRngSeed(
+                    GameInfo.GetStreamForNodeType(battle.CurrentLevelNode.Type),
+                    GameInfo.GetNodeContentQueueIndex(battle.CurrentLevelNode),
+                    unchecked((int)0x4EF1AC70)
+                )
+                : GameInfo.Seed ^ unchecked((int)0x4EF1AC70);
         var rng = new Random(seed);
         Character target = candidates[rng.Next(candidates.Length)];
         ShowRelicTriggerPopup(target, RelicID.Refractometer);
@@ -777,13 +897,18 @@ public partial class Relic
         if (candidates.Length == 0)
             return;
 
-        int seed = (battle.CurrentLevelNode?.RandomNum ?? GameInfo.Seed) ^ unchecked((int)0x51A7C011);
+        int seed =
+            battle.CurrentLevelNode != null
+                ? GameInfo.CreateRunRngSeed(
+                    GameInfo.GetStreamForNodeType(battle.CurrentLevelNode.Type),
+                    GameInfo.GetNodeContentQueueIndex(battle.CurrentLevelNode),
+                    unchecked((int)0x51A7C011)
+                )
+                : GameInfo.Seed ^ unchecked((int)0x51A7C011);
         var rng = new Random(seed);
         Character target = candidates[rng.Next(candidates.Length)];
         ShowRelicTriggerPopup(target, RelicID.PulseController);
         SkillBuff.BuffAdd(Buff.BuffName.Stun, target, PulseControllerStunStacks, target);
-        HurtBuff.BuffAdd(Buff.BuffName.Vulnerable, target, PulseControllerVulnerableStacks, target);
-        AttackBuff.BuffAdd(Buff.BuffName.Weaken, target, PulseControllerWeakenStacks, target);
     }
 
     private static async Task ApplyPowerToEnemies(Battle battle, int power, RelicID relicID)
@@ -1084,6 +1209,8 @@ public enum RelicID
     Heptagon,
     Octagon,
     CompressionCore,
+    MembershipCard,
+    Toolbox,
     MatrixShield,
     Backpack,
     EnergyTank,

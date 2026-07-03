@@ -40,7 +40,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 63;
+        MaxLife = 137;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -61,11 +61,7 @@ public partial class GraveWraithAttack : Skill
 {
     private const int BaseDamage = 20;
 
-    public GraveWraithAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "蚀骨噬咬";
 
@@ -87,11 +83,7 @@ public partial class GraveWraithSurvive : Skill
 {
     private const int BaseBlock = 28;
 
-    public GraveWraithSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "骨壳蜷护";
 
@@ -108,11 +100,7 @@ public partial class GraveWraithSurvive : Skill
 
 public partial class GraveWraithSpecial : Skill
 {
-    public GraveWraithSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "冥骸觉醒";
     public override int EnemySpecialIntentionCooldown => 2;
@@ -121,7 +109,7 @@ public partial class GraveWraithSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 10, multiplier: 1, target: HostileTargetReference.All),
+            AttackStep(baseDamage: 11, multiplier: 1, target: HostileTargetReference.All),
             ModifyPropertyStep(PropertyType.Power, 5)
         );
     }

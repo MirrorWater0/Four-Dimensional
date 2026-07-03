@@ -1,0 +1,16 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://dmi0svevasppy" path="res://battle/buff/IconTemplate.tscn" id="1_tpl"]
+[ext_resource type="Shader" path="res://shader/Icon/BuffIcon/ExhaustShield.gdshader" id="2_shd"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_exhaust_shield"]
+shader = ExtResource("2_shd")
+shader_parameter/shield_color = Color(0.42, 0.78, 0.95, 1)
+shader_parameter/shield_edge = Color(0.78, 0.95, 1, 1)
+shader_parameter/card_color = Color(0.92, 0.9, 0.84, 1)
+shader_parameter/ash_color = Color(0.55, 0.58, 0.62, 1)
+shader_parameter/bg_color = Color(0, 0, 0, 0)
+shader_parameter/animation_speed = 1.1
+
+[node name="ExhaustShield" instance=ExtResource("1_tpl")]
+material = SubResource("ShaderMaterial_exhaust_shield")

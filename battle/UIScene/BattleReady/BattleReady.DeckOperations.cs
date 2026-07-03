@@ -19,10 +19,49 @@ public readonly struct BattleReadyDeckOperationResult(
     public string Message { get; } = message;
 }
 
+public readonly struct TransformDeckCardRequest(
+    int playerIndex,
+    SkillID sourceSkillId,
+    SkillCard sourceCard = null,
+    CardDeckOperationSnapshot? snapshot = null
+)
+{
+    public int PlayerIndex { get; } = playerIndex;
+    public SkillID SourceSkillId { get; } = sourceSkillId;
+    public SkillCard SourceCard { get; } = sourceCard;
+    public CardDeckOperationSnapshot? Snapshot { get; } =
+        snapshot ?? CardDeckOperationSnapshot.FromCard(sourceCard);
+}
+
+public readonly struct CardDeckOperationSnapshot(
+    Vector2 globalPosition,
+    Vector2 scale,
+    float rotation,
+    Vector2 pivotOffset
+)
+{
+    public Vector2 GlobalPosition { get; } = globalPosition;
+    public Vector2 Scale { get; } = scale;
+    public float Rotation { get; } = rotation;
+    public Vector2 PivotOffset { get; } = pivotOffset;
+
+    public static CardDeckOperationSnapshot? FromCard(SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card) || !card.IsInsideTree())
+            return null;
+
+        return new CardDeckOperationSnapshot(
+            card.GlobalPosition,
+            card.Scale,
+            card.Rotation,
+            card.PivotOffset
+        );
+    }
+}
+
 public partial class BattleReady
 {
     private const float DeckOperationExhaustDuration = 0.5f;
-    private const float DeckOperationVanishDuration = 0.32f;
     private static readonly Vector2 DeckOperationCardDisplayScale = new(0.66f, 0.66f);
 
     public static async Task<BattleReadyDeckOperationResult> AcquireDeckCardAsync(
@@ -115,62 +154,228 @@ public partial class BattleReady
         int playerIndex,
         SkillID sourceSkillId,
         SkillCard sourceCard = null,
+        Random rng = null,
+        CardDeckOperationSnapshot? snapshot = null
+    )
+    {
+        IReadOnlyList<BattleReadyDeckOperationResult> results = await TransformDeckCardsAsync(
+            caller,
+            new[]
+            {
+                new TransformDeckCardRequest(
+                    playerIndex,
+                    sourceSkillId,
+                    sourceCard,
+                    snapshot
+                ),
+            },
+            rng
+        );
+        return results.Count > 0 ? results[0] : default;
+    }
+
+    public static async Task<IReadOnlyList<BattleReadyDeckOperationResult>> TransformDeckCardsAsync(
+        Node caller,
+        IReadOnlyList<TransformDeckCardRequest> requests,
         Random rng = null
     )
     {
-        if (!TryGetDeckOperationPlayer(playerIndex, out var players, out var info))
-            return default;
+        if (requests == null || requests.Count == 0)
+            return Array.Empty<BattleReadyDeckOperationResult>();
 
-        SkillID? replacement = PickTransformDeckCard(info, sourceSkillId, rng);
-        if (!replacement.HasValue)
+        rng ??= new Random();
+        var pending = new List<TransformDeckCardJob>();
+        var results = new List<BattleReadyDeckOperationResult>();
+
+        foreach (TransformDeckCardRequest request in requests)
         {
-            return new BattleReadyDeckOperationResult(
-                false,
-                playerIndex,
-                sourceSkillId,
-                null,
-                "没有可变化的目标卡牌"
+            if (!TryGetDeckOperationPlayer(request.PlayerIndex, out var players, out var info))
+                continue;
+
+            SkillID? replacement = PickTransformDeckCard(info, request.SourceSkillId, rng);
+            if (!replacement.HasValue)
+            {
+                results.Add(
+                    new BattleReadyDeckOperationResult(
+                        false,
+                        request.PlayerIndex,
+                        request.SourceSkillId,
+                        null,
+                        "没有可变化的目标卡牌"
+                    )
+                );
+                continue;
+            }
+
+            pending.Add(
+                new TransformDeckCardJob(
+                    request,
+                    players,
+                    info,
+                    replacement.Value,
+                    BuildDeckOperationPreviewSkill(replacement.Value, info, request.PlayerIndex)
+                )
             );
         }
 
+        if (pending.Count == 0)
+            return results;
+
+        foreach (TransformDeckCardJob job in pending)
+        {
+            if (!ApplyTransformDeckCardData(job))
+                continue;
+
+            results.Add(
+                new BattleReadyDeckOperationResult(
+                    true,
+                    job.Request.PlayerIndex,
+                    job.Request.SourceSkillId,
+                    job.ReplacementSkillId,
+                    $"变化卡牌：[b]{GetDeckOperationSkillName(job.Request.SourceSkillId)}[/b] → [b]{GetDeckOperationSkillName(job.ReplacementSkillId)}[/b]"
+                )
+            );
+        }
+
+        if (results.Count == 0)
+            return results;
+
+        var usedSourceCards = new HashSet<SkillCard>();
+        var animationCards = new List<SkillCard>(pending.Count);
+        var revealSkills = new List<Skill>(pending.Count);
+
+        foreach (TransformDeckCardJob job in pending)
+        {
+            if (!job.DataSwapped)
+                continue;
+
+            SkillCard card = await ResolveTransformDeckOperationCardAsync(
+                caller,
+                job,
+                usedSourceCards
+            );
+            animationCards.Add(card);
+            revealSkills.Add(job.ReplacementSkill);
+        }
+
+        var transformTasks = new List<Task>(animationCards.Count);
+        for (int i = 0; i < animationCards.Count; i++)
+        {
+            SkillCard card = animationCards[i];
+            Skill replacementSkill = revealSkills[i];
+            if (IsUsableAnimationCard(card))
+            {
+                transformTasks.Add(
+                    CardTransformShineVfx.PlayOnCardAsync(
+                        card,
+                        () =>
+                        {
+                            if (replacementSkill != null)
+                                card.SetSkill(replacementSkill);
+                        }
+                    )
+                );
+            }
+            else if (replacementSkill != null)
+            {
+                card?.SetSkill(replacementSkill);
+            }
+        }
+
+        if (transformTasks.Count > 0)
+            await Task.WhenAll(transformTasks);
+
+        var flyTasks = new List<Task>(animationCards.Count);
+        foreach (SkillCard card in animationCards)
+        {
+            if (IsUsableAnimationCard(card))
+                flyTasks.Add(FlyDeckOperationCardToTacticsAsync(caller, card));
+        }
+
+        if (flyTasks.Count > 0)
+            await Task.WhenAll(flyTasks);
+
+        return results;
+    }
+
+    private static bool ApplyTransformDeckCardData(TransformDeckCardJob job)
+    {
+        PlayerInfoStructure[] players = GameInfo.PlayerCharacters;
+        if (
+            players == null
+            || (uint)job.Request.PlayerIndex >= (uint)players.Length
+        )
+        {
+            return false;
+        }
+
+        PlayerInfoStructure info = players[job.Request.PlayerIndex];
         info.GainedSkills ??= new List<SkillID>();
-        if (!info.GainedSkills.Remove(sourceSkillId))
-            return default;
+        if (!info.GainedSkills.Remove(job.Request.SourceSkillId))
+            return false;
 
-        info.GainedSkills.Add(replacement.Value);
-        EnsureTakenSkillsStillOwned(ref info, replacement.Value);
-        players[playerIndex] = info;
+        info.GainedSkills.Add(job.ReplacementSkillId);
+        EnsureTakenSkillsStillOwned(ref info, job.ReplacementSkillId);
+        players[job.Request.PlayerIndex] = info;
         GameInfo.PlayerCharacters = players;
-
-        Vector2 spawnPosition = GetCardSpawnGlobalPosition(sourceCard, caller);
-        if (IsUsableAnimationCard(sourceCard))
-        {
-            sourceCard.Vanish();
-            await WaitSecondsAsync(caller, DeckOperationVanishDuration);
-            if (GodotObject.IsInstanceValid(sourceCard))
-                sourceCard.QueueFree();
-        }
-
-        SkillCard flyCard = await CreateFloatingDeckOperationCardAsync(
-            caller,
-            playerIndex,
-            replacement.Value,
-            null,
-            spawnPosition
+        job.Players = players;
+        job.Info = info;
+        job.DataSwapped = true;
+        job.ReplacementSkill = BuildDeckOperationPreviewSkill(
+            job.ReplacementSkillId,
+            info,
+            job.Request.PlayerIndex
         );
-        if (flyCard != null && GodotObject.IsInstanceValid(flyCard))
-        {
-            flyCard.StartAnimationWithDuration(0f, 0.2f);
-            await WaitSecondsAsync(caller, 0.14f);
-        }
-        await FlyDeckOperationCardToTacticsAsync(caller, flyCard);
+        return true;
+    }
 
-        return new BattleReadyDeckOperationResult(
-            true,
-            playerIndex,
-            sourceSkillId,
-            replacement.Value,
-            $"变化卡牌：[b]{GetDeckOperationSkillName(sourceSkillId)}[/b] → [b]{GetDeckOperationSkillName(replacement.Value)}[/b]"
+    private sealed class TransformDeckCardJob
+    {
+        public TransformDeckCardJob(
+            TransformDeckCardRequest request,
+            PlayerInfoStructure[] players,
+            PlayerInfoStructure info,
+            SkillID replacementSkillId,
+            Skill replacementSkill
+        )
+        {
+            Request = request;
+            Players = players;
+            Info = info;
+            ReplacementSkillId = replacementSkillId;
+            ReplacementSkill = replacementSkill;
+        }
+
+        public TransformDeckCardRequest Request { get; }
+        public PlayerInfoStructure[] Players { get; set; }
+        public PlayerInfoStructure Info { get; set; }
+        public SkillID ReplacementSkillId { get; }
+        public Skill ReplacementSkill { get; set; }
+        public bool DataSwapped { get; set; }
+    }
+
+    private static async Task<SkillCard> ResolveTransformDeckOperationCardAsync(
+        Node caller,
+        TransformDeckCardJob job,
+        HashSet<SkillCard> usedSourceCards
+    )
+    {
+        SkillCard sourceCard = job.Request.SourceCard;
+        if (
+            IsUsableAnimationCard(sourceCard)
+            && usedSourceCards.Add(sourceCard)
+            && TryDetachDeckOperationCard(caller, sourceCard)
+        )
+        {
+            return sourceCard;
+        }
+
+        return await CreateFloatingDeckOperationCardAsync(
+            caller,
+            job.Request.PlayerIndex,
+            job.Request.SourceSkillId,
+            sourceCard,
+            job.Request.Snapshot
         );
     }
 
@@ -238,9 +443,18 @@ public partial class BattleReady
         if (!IsUsableAnimationCard(sourceCard))
             return Task.FromResult<SkillCard>(null);
 
+        TryDetachDeckOperationCard(caller, sourceCard);
+        return Task.FromResult(sourceCard);
+    }
+
+    public static bool TryDetachDeckOperationCard(Node caller, SkillCard sourceCard)
+    {
+        if (!IsUsableAnimationCard(sourceCard))
+            return false;
+
         Node parent = ResolveDeckOperationAnimationParent(caller, sourceCard);
         if (parent == null)
-            return Task.FromResult(sourceCard);
+            return false;
 
         Vector2 globalPosition = sourceCard.GlobalPosition;
         Vector2 scale = sourceCard.Scale;
@@ -258,6 +472,8 @@ public partial class BattleReady
         sourceCard.Scale = scale;
         sourceCard.Rotation = rotation;
         sourceCard.PivotOffset = pivotOffset;
+        sourceCard.TopLevel = true;
+        sourceCard.GlobalPosition = globalPosition;
         sourceCard.AutoPressEffect = false;
         sourceCard.UseDefaultHoverEffect = false;
         sourceCard.HoverUiEnabled = false;
@@ -268,7 +484,7 @@ public partial class BattleReady
         sourceCard.ZIndex = 2000;
         sourceCard.MoveToFront();
         sourceCard.HideMoveTrail();
-        return Task.FromResult(sourceCard);
+        return true;
     }
 
     private static async Task<SkillCard> CreateFloatingDeckOperationCardAsync(
@@ -276,7 +492,7 @@ public partial class BattleReady
         int playerIndex,
         SkillID skillId,
         SkillCard sourceCard = null,
-        Vector2? globalPosition = null
+        CardDeckOperationSnapshot? snapshot = null
     )
     {
         Node parent = ResolveDeckOperationAnimationParent(caller, sourceCard);
@@ -296,7 +512,8 @@ public partial class BattleReady
             skill.SetPreviewStats(
                 TalentTree.GetEffectivePower(info),
                 TalentTree.GetEffectiveSurvivability(info),
-                1
+                1,
+                playerIndex: playerIndex
             );
         }
 
@@ -314,11 +531,20 @@ public partial class BattleReady
         card.MoveToFront();
         card.HideMoveTrail();
 
-        Vector2 position = globalPosition ?? GetCardSpawnGlobalPosition(sourceCard, caller);
+        Vector2 position =
+            snapshot?.GlobalPosition
+            ?? GetCardSpawnGlobalPosition(sourceCard, caller);
+        Vector2 scale =
+            snapshot?.Scale
+            ?? (IsUsableAnimationCard(sourceCard) ? sourceCard.Scale : Vector2.One);
+        float rotation = snapshot?.Rotation ?? 0f;
+        Vector2 pivotOffset = snapshot?.PivotOffset ?? card.PivotOffset;
+
+        card.PivotOffset = pivotOffset;
+        card.TopLevel = true;
         card.GlobalPosition = position;
-        card.Scale = IsUsableAnimationCard(sourceCard)
-            ? sourceCard.Scale
-            : Vector2.One;
+        card.Scale = scale;
+        card.Rotation = rotation;
         return card;
     }
 
@@ -487,6 +713,22 @@ public partial class BattleReady
 
     private static bool IsUsableAnimationCard(SkillCard card) =>
         card != null && GodotObject.IsInstanceValid(card) && card.IsInsideTree();
+
+    private static Skill BuildDeckOperationPreviewSkill(
+        SkillID skillId,
+        PlayerInfoStructure info,
+        int playerIndex
+    )
+    {
+        Skill skill = Skill.GetSkill(skillId);
+        skill?.SetPreviewStats(
+            TalentTree.GetEffectivePower(info),
+            TalentTree.GetEffectiveSurvivability(info),
+            1,
+            playerIndex: playerIndex
+        );
+        return skill;
+    }
 
     private static string GetDeckOperationSkillName(SkillID skillId) =>
         Skill.GetSkill(skillId)?.SkillName ?? skillId.ToString();

@@ -42,10 +42,15 @@ public partial class ManualTargetArrowView : Control
     [Export(PropertyHint.Range, "0,0.08,0.001")]
     public float TipEdgeSoftness { get; set; } = 0.01f;
 
+    public float HeadDefaultScale { get; set; } = 0.95f;
+    public float HeadHoverScale { get; set; } = 1.05f;
+
     private ColorRect HeadTip => field ??= GetNodeOrNull<ColorRect>("HeadTip");
     private ColorRect TailTip => field ??= GetNodeOrNull<ColorRect>("TailTip");
     private ShaderMaterial _headTipMaterial;
     private ShaderMaterial _tailTipMaterial;
+    private Tween _headTipScaleTween;
+    private float _headTipScale = 0.95f;
     private Vector2[] _lastPoints = System.Array.Empty<Vector2>();
 
     public Vector2 StartPosition { get; private set; }
@@ -57,6 +62,25 @@ public partial class ManualTargetArrowView : Control
         ConfigureTipNode(HeadTip, ref _headTipMaterial);
         ConfigureTipNode(TailTip, ref _tailTipMaterial);
         SetTipsVisible(false);
+    }
+
+    public void SetHeadHighlighted(bool highlighted)
+    {
+        float targetScale = highlighted ? HeadHoverScale : HeadDefaultScale;
+        _headTipScaleTween?.Kill();
+        _headTipScaleTween = null;
+
+        if (!highlighted || !IsInsideTree())
+        {
+            SetHeadTipScale(targetScale);
+            return;
+        }
+
+        _headTipScaleTween = CreateTween();
+        _headTipScaleTween
+            .TweenMethod(Callable.From<float>(SetHeadTipScale), _headTipScale, targetScale, 1.0f)
+            .SetEase(Tween.EaseType.Out)
+            .SetTrans(Tween.TransitionType.Elastic);
     }
 
     public void SetEndpoints(
@@ -168,28 +192,42 @@ public partial class ManualTargetArrowView : Control
 
         ApplyTipShaderParameters(_headTipMaterial);
         ApplyTipShaderParameters(_tailTipMaterial);
-        PositionTip(HeadTip, _lastPoints[^2], _lastPoints[^1], HeadSize);
-        PositionTip(TailTip, _lastPoints[1], _lastPoints[0], TailSize);
+        PositionTip(HeadTip, _lastPoints[^2], _lastPoints[^1], HeadSize, _headTipScale);
+        PositionTip(TailTip, _lastPoints[1], _lastPoints[0], TailSize, 1f);
     }
 
-    private void PositionTip(ColorRect tip, Vector2 beforeEnd, Vector2 end, Vector2 size)
+    private void PositionTip(
+        ColorRect tip,
+        Vector2 beforeEnd,
+        Vector2 end,
+        Vector2 size,
+        float scaleMultiplier
+    )
     {
         if (tip == null)
             return;
 
+        Vector2 scaledSize = size * Mathf.Max(0.01f, scaleMultiplier);
         Vector2 direction = end - beforeEnd;
-        if (direction.LengthSquared() < 0.01f || size.X <= 0f || size.Y <= 0f)
+        if (direction.LengthSquared() < 0.01f || scaledSize.X <= 0f || scaledSize.Y <= 0f)
         {
             tip.Visible = false;
             return;
         }
 
         tip.Visible = Visible;
-        tip.Size = size;
-        tip.PivotOffset = size * 0.5f;
+        tip.Size = scaledSize;
+        tip.PivotOffset = scaledSize * 0.5f;
         direction = direction.Normalized();
-        tip.Position = end - size * 0.5f - direction * size.X * 0.5f;
+        tip.Position = end - scaledSize * 0.5f - direction * scaledSize.X * 0.5f;
         tip.Rotation = direction.Angle();
+    }
+
+    private void SetHeadTipScale(float scale)
+    {
+        _headTipScale = scale;
+        UpdateTipNodes();
+        QueueRedraw();
     }
 
     private void SetTipsVisible(bool visible)

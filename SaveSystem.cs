@@ -21,6 +21,25 @@ public static class SaveSystem
     private static int _latestSaveRequestId;
 
     // --- 自动保存 ---
+    public static void SyncDerivedRunState()
+    {
+        GameInfo.NormalizePlayerCharacters();
+        GameInfo.TransitionEnergy = GameInfo.GetPartyLife();
+        GameInfo.TransitionEnergyMax = Math.Max(1, GameInfo.GetPartyMaxLife());
+    }
+
+    /// <summary>
+    /// 在检查点写入整局进度，确保地图节点与血量/道具等同一份快照。
+    /// 检查点包括：节点完成、切换区域等；菜单「退出」不调用此方法。
+    /// </summary>
+    public static void SaveRunCheckpoint(bool background = true)
+    {
+        if (background)
+            SaveAllInBackground();
+        else
+            SaveAll();
+    }
+
     public static void SaveAll()
     {
         Interlocked.Increment(ref _latestSaveRequestId);
@@ -32,7 +51,6 @@ public static class SaveSystem
     public static void SaveAllInBackground()
     {
         int requestId = Interlocked.Increment(ref _latestSaveRequestId);
-        GameInfo.NormalizeRelics();
         string savePath = ProjectSettings.GlobalizePath(SavePath);
 
         _ = Task.Run(() =>
@@ -57,6 +75,7 @@ public static class SaveSystem
 
     private static string BuildSaveText(bool normalizeRelics = true)
     {
+        SyncDerivedRunState();
         if (normalizeRelics)
             GameInfo.NormalizeRelics();
 
@@ -140,6 +159,9 @@ public static class SaveSystem
         }
         GameInfo.NormalizePlayerCharacters();
         GameInfo.NormalizeRelics();
+        GameInfo.EnsureRelicQueueCapacity();
+        GameInfo.EnsureNormalEncounterQueue();
+        GameInfo.EnsureEliteEncounterQueue();
         GD.Print("存档已自动加载。");
     }
 

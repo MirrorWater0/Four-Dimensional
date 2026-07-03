@@ -38,10 +38,6 @@ public partial class SkillCard : Control
         0.10980392f,
         0.98f
     );
-    private static readonly Color EchoPlateColor = new(0.86f, 0.42f, 1.0f, 1f);
-    private static readonly Color KasiyaPlateColor = new(0.96f, 0.36f, 0.32f, 1f);
-    private static readonly Color MariyaPlateColor = new(0.36f, 0.80f, 0.52f, 1f);
-    private static readonly Color NightingalePlateColor = new(0.10f, 0.28f, 0.72f, 1f);
 
     public Panel BG => field ??= GetNode<Panel>("SubViewport/BG");
     public Panel InnerFrame => field ??= GetNode<Panel>("SubViewport/InnerFrame");
@@ -91,7 +87,10 @@ public partial class SkillCard : Control
     public bool AutoPressEffect { get; set; } = true;
     public bool UseDefaultHoverEffect { get; set; } = true;
     public bool HoverUiEnabled { get; set; } = true;
+    public bool SuppressRelatedCardPreview { get; private set; }
     public bool AutoAdjustDescriptionTextSize { get; set; } = true;
+    public bool IsPlayableHighlightEnabled => _playableHighlightEnabled;
+    public Vector2 ConfiguredDisplayScale => _configuredDisplayScale;
 
     private Tween _progressTween;
     private Tween _pressTween;
@@ -99,10 +98,18 @@ public partial class SkillCard : Control
     private Tween _motionTween;
     private Tween _drawSettleTween;
     private Tween _playableHighlightTween;
+    private bool _transientPointerInputDisabled;
+    private bool _transientPointerInputPreviousButtonDisabled;
+    private bool _transientPointerInputPreviousHoverUiEnabled = true;
+    private Vector2? _battleMotionTargetPosition;
+    private Vector2? _battleMotionTargetScale;
     private int _baseDescriptionFontSize;
     private int _textAdjustVersion;
     private Vector2 _baseScale = Vector2.One;
     private Vector2 _configuredDisplayScale = Vector2.One;
+    private bool _pilePreviewVisualsActive;
+    private const int PilePreviewHoverZIndex = 12;
+    private const float DefaultCanvasFitMargin = 32f;
     private StyleBoxFlat _bgStyle;
     private StyleBoxFlat _innerFrameStyle;
     private StyleBoxFlat _descriptionStyle;
@@ -111,14 +118,18 @@ public partial class SkillCard : Control
     private ShaderMaterial _defaultCardMaterial;
     private ShaderMaterial _playableHighlightMaterial;
     private ColorRect _playableHighlight;
-    private float _playableHighlightEnabledValue = 1f;
+    private float _playableHighlightWidth = 0.075f;
+    private bool _playableHighlightEnabled;
+    private static readonly Color PlayableHighlightColor = new(0f, 0.957f, 0.988f, 0.98f);
     private CanvasItem _cardEffectMaterialTarget;
     private Character[] _previewHostileTargets = Array.Empty<Character>();
     private Character[] _previewFriendlyTargets = Array.Empty<Character>();
     private bool _energyCostAffordable = true;
+    private Label _handIndexLabel;
     private readonly List<VBoxContainer> _previewDamagePanels = new();
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
+    private static readonly Color ExhaustFadeModulate = new(0.1f, 0.1f, 0.1f, 0f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -115f);
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
@@ -150,44 +161,30 @@ public partial class SkillCard : Control
     private static ShaderMaterial _cardExhaustMaterialTemplate;
     private static Texture2D _defaultSkillIcon;
     private Tip _keywordTooltip;
+    private SkillRelatedCardPreview _relatedCardPreview;
+    private Skill _cachedHoverSkill;
+    private string _cachedKeywordTooltipText = string.Empty;
+    private IReadOnlyList<SkillID> _cachedRelatedSkillIds = Array.Empty<SkillID>();
     private Skill.SkillRarity _lastAppliedRarity = Skill.SkillRarity.Common;
     private bool _lastAppliedStatusCard;
+    private bool _lastAppliedColorlessCard;
     private string _lastAppliedStyleCharacterKey = string.Empty;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
+    private SkillRelatedCardPreview RelatedCardPreview =>
+        _relatedCardPreview ??= EnsureRelatedCardPreview();
 
     public override void _Ready()
     {
         CacheDefaultCardMaterial();
         CacheBaseFontSizes();
         EnsurePlayableHighlight();
+        SetPlayableHighlight(false, instant: true);
         ApplySkillToUi();
         HoverHint.Visible = false;
         ApplyConfiguredDisplayScale();
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
-        Button.MouseEntered += () =>
-        {
-            if (!HoverUiEnabled)
-                return;
-
-            HoverHint.Visible = true;
-            ShowKeywordTooltip();
-            if (!UseDefaultHoverEffect)
-                return;
-
-            _hoverTween?.Kill();
-            _hoverTween = CreateTween();
-            _hoverTween.TweenProperty(this, "scale", _baseScale * 1.08f, 0.15f);
-        };
-        Button.MouseExited += () =>
-        {
-            HideHoverUi();
-            if (!UseDefaultHoverEffect)
-                return;
-
-            _hoverTween?.Kill();
-            _hoverTween = CreateTween();
-            _hoverTween.TweenProperty(this, "scale", _baseScale, 0.15f);
-        };
+        Button.MouseEntered += () => ApplyPointerHoverState(true);
+        Button.MouseExited += () => ApplyPointerHoverState(false);
         RestoreDefaultCardMaterial()?.SetShaderParameter("progress", 0f);
         Button.Pressed += () =>
         {
@@ -202,6 +199,30 @@ public partial class SkillCard : Control
         ApplyConfiguredDisplayScale();
     }
 
+    public void ConfigurePilePreviewVisuals()
+    {
+        _pilePreviewVisualsActive = true;
+        ClipContents = false;
+        if (CardVisualRoot != null)
+        {
+            CardVisualRoot.FitMargin = 0f;
+            CardVisualRoot.ClearMargin = 0f;
+        }
+    }
+
+    private void RestoreDefaultPilePreviewVisuals()
+    {
+        if (!_pilePreviewVisualsActive)
+            return;
+
+        _pilePreviewVisualsActive = false;
+        if (CardVisualRoot != null)
+        {
+            CardVisualRoot.FitMargin = DefaultCanvasFitMargin;
+            CardVisualRoot.ClearMargin = DefaultCanvasFitMargin;
+        }
+    }
+
     public void ResetState()
     {
         _progressTween?.Kill();
@@ -212,6 +233,7 @@ public partial class SkillCard : Control
         _playableHighlightTween?.Kill();
         SetPlayableHighlight(false, instant: true);
 
+        RestoreDefaultPilePreviewVisuals();
         SetCardVisualVisible(true);
         HoverHint.Visible = false;
         PivotOffset = CardBaseSize * 0.5f;
@@ -234,14 +256,23 @@ public partial class SkillCard : Control
 
     public void RestoreDisplayState()
     {
+        RestoreDisplayState(true);
+    }
+
+    public void RestoreDisplayState(bool resetPlayableHighlight)
+    {
         _progressTween?.Kill();
         _pressTween?.Kill();
         _hoverTween?.Kill();
         _motionTween?.Kill();
         _drawSettleTween?.Kill();
-        _playableHighlightTween?.Kill();
-        SetPlayableHighlight(false, instant: true);
+        if (resetPlayableHighlight)
+        {
+            _playableHighlightTween?.Kill();
+            SetPlayableHighlight(false, instant: true);
+        }
 
+        RestoreDefaultPilePreviewVisuals();
         SetCardVisualVisible(true);
         HoverHint.Visible = false;
         PivotOffset = CardBaseSize * 0.5f;
@@ -259,6 +290,43 @@ public partial class SkillCard : Control
         }
 
         ResetDiscardTrailEffects();
+    }
+
+    public void SetHandIndexBadge(int index, bool visible)
+    {
+        Label label = EnsureHandIndexLabel();
+        if (label == null)
+            return;
+
+        label.Text = index.ToString();
+        label.Visible = visible && index > 0;
+    }
+
+    private Label EnsureHandIndexLabel()
+    {
+        if (_handIndexLabel != null && GodotObject.IsInstanceValid(_handIndexLabel))
+            return _handIndexLabel;
+
+        _handIndexLabel = new Label
+        {
+            Name = "HandIndexLabel",
+            Text = "1",
+            Position = new Vector2(0f, -48f),
+            Size = new Vector2(CardBaseSize.X, 38f),
+            CustomMinimumSize = new Vector2(CardBaseSize.X, 38f),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 500,
+            Visible = false,
+        };
+        _handIndexLabel.AddThemeFontSizeOverride("font_size", 30);
+        _handIndexLabel.AddThemeColorOverride("font_color", new Color(1f, 0.96f, 0.72f, 1f));
+        _handIndexLabel.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.96f));
+        _handIndexLabel.AddThemeConstantOverride("outline_size", 5);
+        AddChild(_handIndexLabel);
+        MoveChild(_handIndexLabel, GetChildCount() - 1);
+        return _handIndexLabel;
     }
 
     private void ResetDiscardTrailEffects()
@@ -358,8 +426,56 @@ public partial class SkillCard : Control
 
     public void SetSkill(Skill skill)
     {
+        if (skill == null && CurrentSkill == null)
+        {
+            ApplySkillToUi();
+            return;
+        }
+
+        if (ReferenceEquals(CurrentSkill, skill))
+        {
+            RefreshCurrentSkillDynamicText();
+            return;
+        }
+
         CurrentSkill = skill;
+        InvalidateHoverPreviewCache();
         ApplySkillToUi();
+    }
+
+    public void InvalidateHoverPreviewCache()
+    {
+        _cachedHoverSkill = null;
+        _cachedKeywordTooltipText = string.Empty;
+        _cachedRelatedSkillIds = Array.Empty<SkillID>();
+        _keywordTooltip?.HideTooltip();
+    }
+
+    private void RefreshCurrentSkillDynamicText()
+    {
+        if (!IsInsideTree() || CurrentSkill == null)
+            return;
+
+        CurrentSkill.UpdateDescription();
+        string displayName = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
+        string descriptionText = CurrentSkill.Description ?? string.Empty;
+        string centeredEnergyText = BuildEnergyCostText(CurrentSkill, _energyCostAffordable);
+        bool textChanged = false;
+        if (NameLabel.Text != displayName)
+        {
+            NameLabel.Text = displayName;
+            textChanged = true;
+        }
+        if (Description.Text != descriptionText)
+        {
+            Description.Text = descriptionText;
+            textChanged = true;
+        }
+        if (EnergyCost.Text != centeredEnergyText)
+            EnergyCost.Text = centeredEnergyText;
+
+        if (textChanged)
+            ApplyDescriptionFontSizing();
     }
 
     private void ApplySkillToUi()
@@ -395,6 +511,7 @@ public partial class SkillCard : Control
             ApplyRarityStyles(Skill.SkillRarity.Common);
             _lastAppliedRarity = Skill.SkillRarity.Common;
             _lastAppliedStatusCard = false;
+            _lastAppliedColorlessCard = false;
             _lastAppliedStyleCharacterKey = string.Empty;
             ApplyPreferredDescriptionFontSize();
             return;
@@ -403,9 +520,12 @@ public partial class SkillCard : Control
         CurrentSkill.UpdateDescription();
         _energyCostAffordable = true;
         bool isStatusCard = IsStatusCard(CurrentSkill);
+        bool isColorlessCard = CurrentSkill.IsColorless;
         string displayName = DisplayNameOverride ?? CurrentSkill.SkillName ?? string.Empty;
         string characterName = isStatusCard
             ? string.Empty
+            : isColorlessCard
+                ? I18n.Tr("keyword.colorless", "无色")
             : PreviewCharacterName ?? CurrentSkill.OwnerCharater?.CharacterName ?? string.Empty;
         string skillTypeText = isStatusCard
             ? I18n.Tr("ui.encyclopedia.skill_type.status", "状态")
@@ -442,6 +562,7 @@ public partial class SkillCard : Control
         bool shouldRefreshStyle =
             _lastAppliedRarity != CurrentSkill.Rarity
             || _lastAppliedStatusCard != isStatusCard
+            || _lastAppliedColorlessCard != isColorlessCard
             || !string.Equals(
                 _lastAppliedStyleCharacterKey,
                 styleCharacterKey,
@@ -452,10 +573,13 @@ public partial class SkillCard : Control
             ApplyRarityStyles(CurrentSkill.Rarity);
             if (isStatusCard)
                 ApplyStatusCardStyle();
+            else if (isColorlessCard && !TryGetCharacterPlateColor(CurrentSkill, out _))
+                ApplyColorlessPlateStyle();
             else
                 ApplyCharacterPlateStyle(CurrentSkill);
             _lastAppliedRarity = CurrentSkill.Rarity;
             _lastAppliedStatusCard = isStatusCard;
+            _lastAppliedColorlessCard = isColorlessCard;
             _lastAppliedStyleCharacterKey = styleCharacterKey;
         }
 
@@ -561,38 +685,43 @@ public partial class SkillCard : Control
         if (highlight == null || _playableHighlightMaterial == null)
             return;
 
-        float target = enabled ? _playableHighlightEnabledValue : 0f;
+        float target = enabled ? _playableHighlightWidth : 0f;
+        if (_playableHighlightEnabled == enabled && !instant)
+        {
+            if (highlight.Visible != enabled)
+                highlight.Visible = enabled;
+            return;
+        }
+
+        _playableHighlightEnabled = enabled;
         _playableHighlightTween?.Kill();
         if (!enabled && !highlight.Visible)
         {
-            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", 0f);
+            _playableHighlightMaterial.SetShaderParameter("width", 0f);
             return;
         }
 
         if (enabled && !highlight.Visible && !instant && IsInsideTree())
-            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", 0f);
+            _playableHighlightMaterial.SetShaderParameter("width", 0f);
 
         if (instant || !IsInsideTree())
         {
-            _playableHighlightMaterial.SetShaderParameter("highlight_enabled", target);
+            _playableHighlightMaterial.SetShaderParameter("width", target);
             highlight.Visible = enabled;
             return;
         }
 
         highlight.Visible = true;
-        float current = GetShaderParameterFloat(_playableHighlightMaterial, "highlight_enabled");
+        float current = GetShaderParameterFloat(_playableHighlightMaterial, "width");
         _playableHighlightTween = CreateTween();
         _playableHighlightTween
             .TweenMethod(
                 Callable.From<float>(
-                    value => _playableHighlightMaterial.SetShaderParameter(
-                        "highlight_enabled",
-                        value
-                    )
+                    value => _playableHighlightMaterial.SetShaderParameter("width", value)
                 ),
                 current,
                 target,
-                enabled ? 0.18f : 0.14f
+                enabled ? 0.5f : 0.5f
             )
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
@@ -600,34 +729,197 @@ public partial class SkillCard : Control
             _playableHighlightTween.TweenCallback(Callable.From(() => highlight.Visible = false));
     }
 
+    public void CopyPlayableHighlightFrom(SkillCard source)
+    {
+        if (source == null || !GodotObject.IsInstanceValid(source))
+            return;
+
+        ColorRect sourceHighlight = source.EnsurePlayableHighlight();
+        ColorRect highlight = EnsurePlayableHighlight();
+        if (
+            sourceHighlight == null
+            || highlight == null
+            || source._playableHighlightMaterial == null
+            || _playableHighlightMaterial == null
+        )
+        {
+            return;
+        }
+
+        _playableHighlightTween?.Kill();
+        _playableHighlightEnabled = source._playableHighlightEnabled;
+        highlight.Visible = sourceHighlight.Visible;
+        _playableHighlightMaterial.SetShaderParameter(
+            "width",
+            GetShaderParameterFloat(source._playableHighlightMaterial, "width")
+        );
+    }
+
     public void SetHoverUiEnabled(bool enabled)
     {
         HoverUiEnabled = enabled;
         if (!enabled)
-            HideHoverUi();
+            ApplyPointerHoverState(false, instant: true);
+    }
+
+    public void SetTransientPointerInputDisabled(
+        bool disabled,
+        bool refreshHoverWhenEnabled = false
+    )
+    {
+        if (disabled)
+        {
+            if (!_transientPointerInputDisabled)
+            {
+                _transientPointerInputPreviousButtonDisabled = Button.Disabled;
+                _transientPointerInputPreviousHoverUiEnabled = HoverUiEnabled;
+            }
+
+            _transientPointerInputDisabled = true;
+            Button.Disabled = true;
+            HoverUiEnabled = false;
+            ApplyPointerHoverState(false, instant: true);
+            return;
+        }
+
+        if (_transientPointerInputDisabled)
+        {
+            Button.Disabled = _transientPointerInputPreviousButtonDisabled;
+            HoverUiEnabled = _transientPointerInputPreviousHoverUiEnabled;
+            _transientPointerInputDisabled = false;
+        }
+
+        if (refreshHoverWhenEnabled)
+            RefreshPointerHoverStateFromMouse();
+    }
+
+    public void RefreshPointerHoverStateFromMouse()
+    {
+        if (
+            !HoverUiEnabled
+            || Button.Disabled
+            || Input.IsMouseButtonPressed(MouseButton.Left)
+            || !IsInsideTree()
+            || !Button.GetGlobalRect().HasPoint(GetGlobalMousePosition())
+        )
+        {
+            return;
+        }
+
+        ApplyPointerHoverState(true);
+    }
+
+    public void SetRelatedCardPreviewSuppressed(bool suppressed)
+    {
+        SuppressRelatedCardPreview = suppressed;
+        if (suppressed)
+            _relatedCardPreview?.HidePreviews();
     }
 
     public void HideHoverUi()
     {
         HoverHint.Visible = false;
         _keywordTooltip?.HideTooltip();
+        _relatedCardPreview?.HidePreviews();
+    }
+
+    private void ApplyPointerHoverState(bool hovered, bool instant = false)
+    {
+        if (hovered)
+        {
+            if (
+                !HoverUiEnabled
+                || Button.Disabled
+                || Input.IsMouseButtonPressed(MouseButton.Left)
+            )
+            {
+                return;
+            }
+
+            HoverHint.Visible = true;
+            ShowKeywordTooltip();
+            TweenPointerHoverScale(_baseScale * 1.08f, instant);
+            if (_pilePreviewVisualsActive)
+                ZIndex = PilePreviewHoverZIndex;
+            return;
+        }
+
+        HideHoverUi();
+        TweenPointerHoverScale(_baseScale, instant);
+        if (_pilePreviewVisualsActive)
+            ZIndex = 0;
+    }
+
+    private void TweenPointerHoverScale(Vector2 targetScale, bool instant)
+    {
+        if (!UseDefaultHoverEffect)
+            return;
+
+        _hoverTween?.Kill();
+        if (instant || !IsInsideTree())
+        {
+            Scale = targetScale;
+            return;
+        }
+
+        _hoverTween = CreateTween();
+        _hoverTween.TweenProperty(this, "scale", targetScale, 0.15f);
     }
 
     private void ShowKeywordTooltip()
     {
-        if (CurrentSkill == null || KeywordTooltip == null)
+        if (CurrentSkill == null || !HoverUiEnabled || Input.IsMouseButtonPressed(MouseButton.Left))
             return;
 
-        CurrentSkill.UpdateDescription();
-        string tooltipText = Skill.BuildKeywordTooltipText(CurrentSkill);
-        if (string.IsNullOrWhiteSpace(tooltipText))
+        EnsureHoverPreviewCache();
+        string tooltipText = _cachedKeywordTooltipText;
+        IReadOnlyList<SkillID> relatedSkillIds = _cachedRelatedSkillIds;
+        bool hasText = !string.IsNullOrWhiteSpace(tooltipText);
+        bool hasCardPreviews = relatedSkillIds.Count > 0;
+
+        if (!hasText && !hasCardPreviews)
         {
-            KeywordTooltip.HideTooltip();
+            HideHoverUi();
             return;
         }
 
-        KeywordTooltip.FollowMouse = true;
-        KeywordTooltip.SetText(tooltipText);
+        Tip tip = KeywordTooltip;
+        if (tip != null)
+        {
+            if (hasText)
+            {
+                tip.FollowMouse = true;
+                tip.SetText(tooltipText);
+            }
+            else
+            {
+                tip.HideTooltip();
+            }
+        }
+
+        if (hasCardPreviews && !SuppressRelatedCardPreview)
+            RelatedCardPreview?.ShowPreviews(relatedSkillIds, CurrentSkill, this);
+        else
+            _relatedCardPreview?.HidePreviews();
+    }
+
+    private void EnsureHoverPreviewCache()
+    {
+        if (ReferenceEquals(_cachedHoverSkill, CurrentSkill))
+            return;
+
+        _cachedHoverSkill = CurrentSkill;
+        if (CurrentSkill == null)
+        {
+            _cachedKeywordTooltipText = string.Empty;
+            _cachedRelatedSkillIds = Array.Empty<SkillID>();
+            return;
+        }
+
+        CurrentSkill.UpdateDescription();
+        Skill.SkillTooltipHints hints = CurrentSkill.CollectTooltipHints();
+        _cachedRelatedSkillIds = hints.RelatedSkillIds.ToArray();
+        _cachedKeywordTooltipText = Skill.BuildKeywordTooltipText(CurrentSkill, hints);
     }
 
     public void RefreshTextSizeFromSettings()
@@ -663,6 +955,8 @@ public partial class SkillCard : Control
         _motionTween = null;
         _drawSettleTween?.Kill();
         _drawSettleTween = null;
+        _battleMotionTargetPosition = null;
+        _battleMotionTargetScale = null;
     }
 
     public void TweenBattleMotion(
@@ -672,12 +966,29 @@ public partial class SkillCard : Control
         bool instant = false
     )
     {
+        if (
+            !instant
+            && _battleMotionTargetPosition.HasValue
+            && _battleMotionTargetScale.HasValue
+            && _battleMotionTargetPosition.Value.DistanceSquaredTo(targetPosition) < 0.25f
+            && _battleMotionTargetScale.Value.DistanceSquaredTo(targetScale) < 0.0001f
+            && _motionTween != null
+            && _motionTween.IsValid()
+        )
+        {
+            return;
+        }
+
         StopBattleMotion();
+        _battleMotionTargetPosition = targetPosition;
+        _battleMotionTargetScale = targetScale;
 
         if (instant || duration <= 0f || !IsInsideTree())
         {
             Position = targetPosition;
             Scale = targetScale;
+            _battleMotionTargetPosition = null;
+            _battleMotionTargetScale = null;
             return;
         }
 
@@ -691,6 +1002,11 @@ public partial class SkillCard : Control
             .TweenProperty(this, "scale", targetScale, duration)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
+        _motionTween.Finished += () =>
+        {
+            _battleMotionTargetPosition = null;
+            _battleMotionTargetScale = null;
+        };
     }
 
     public async Task<bool> FlyWithTrailToControlAsync(
@@ -1096,16 +1412,29 @@ public partial class SkillCard : Control
 
     public void PlayExhaustEffect(float duration = 0.8f)
     {
-        if (GetCardExhaustShader() == null)
-        {
-            PressEffect();
-            return;
-        }
+        ExhaustVfx.SpawnAt(this, GetExhaustVfxScale(), duration);
 
         _progressTween?.Kill();
         _pressTween?.Kill();
         _hoverTween?.Kill();
         _motionTween?.Kill();
+
+        if (GetCardExhaustShader() == null)
+        {
+            if (Modulate.A <= 0f)
+                Modulate = Colors.White;
+            _pressTween = CreateTween();
+            _pressTween.SetParallel(true);
+            _pressTween
+                .TweenProperty(this, "modulate", ExhaustFadeModulate, duration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.In);
+            _pressTween
+                .TweenProperty(this, "scale", Scale * 1.035f, duration)
+                .SetTrans(Tween.TransitionType.Sine)
+                .SetEase(Tween.EaseType.Out);
+            return;
+        }
 
         var shader = CreateCardExhaustMaterial();
         shader.SetShaderParameter("noise_offset", CreateCardExhaustNoiseOffset());
@@ -1125,9 +1454,20 @@ public partial class SkillCard : Control
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.In);
         _pressTween
+            .TweenProperty(this, "modulate", ExhaustFadeModulate, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.In);
+        _pressTween
             .TweenProperty(this, "scale", Scale * 1.035f, duration)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
+    }
+
+    private float GetExhaustVfxScale()
+    {
+        Vector2 size = GetGlobalRect().Size;
+        float areaRatio = size.X * size.Y / (CardBaseSize.X * CardBaseSize.Y);
+        return Mathf.Clamp(Mathf.Sqrt(areaRatio) * 0.78f, 0.55f, 1.15f);
     }
 
     private void CacheDefaultCardMaterial()
@@ -1185,12 +1525,11 @@ public partial class SkillCard : Control
                 ?? CreatePlayableHighlightMaterial(shader);
             _playableHighlight.Material = _playableHighlightMaterial;
             _playableHighlight.MouseFilter = MouseFilterEnum.Ignore;
-            _playableHighlightEnabledValue = Math.Max(
-                0.001f,
-                GetShaderParameterFloat(_playableHighlightMaterial, "highlight_enabled")
-            );
-            if (_playableHighlight.GetIndex() != 0)
-                root.MoveChild(_playableHighlight, 0);
+            _playableHighlight.Modulate = PlayableHighlightColor;
+            _playableHighlightWidth = 0.075f;
+            int topIndex = Math.Max(0, root.GetChildCount() - 1);
+            if (_playableHighlight.GetIndex() != topIndex)
+                root.MoveChild(_playableHighlight, topIndex);
             return _playableHighlight;
         }
 
@@ -1203,11 +1542,11 @@ public partial class SkillCard : Control
             CustomMinimumSize = CardBaseSize,
             MouseFilter = MouseFilterEnum.Ignore,
             Color = Colors.White,
+            Modulate = PlayableHighlightColor,
             Material = _playableHighlightMaterial,
             Visible = false,
         };
         root.AddChild(_playableHighlight);
-        root.MoveChild(_playableHighlight, 0);
         return _playableHighlight;
     }
 
@@ -1218,7 +1557,10 @@ public partial class SkillCard : Control
             Shader = shader,
             ResourceLocalToScene = true,
         };
-        material.SetShaderParameter("highlight_enabled", 0f);
+        material.SetShaderParameter("ease", 0.005f);
+        material.SetShaderParameter("modulo_width", 0.02f);
+        material.SetShaderParameter("width", 0f);
+        material.SetShaderParameter("ripple_speed", 0.03f);
         return material;
     }
 
@@ -1303,6 +1645,7 @@ public partial class SkillCard : Control
 
     public static void PrewarmExhaustEffect()
     {
+        ExhaustVfx.Prewarm();
         if (CardExhaustShader == null)
             return;
 
@@ -1495,6 +1838,18 @@ public partial class SkillCard : Control
         string previewCharacterKey = null
     )
     {
+        if (skill?.IsColorless == true)
+        {
+            yield return "Colorless";
+            yield break;
+        }
+
+        if (skill?.IsStatusCard == true)
+        {
+            yield return "Status";
+            yield break;
+        }
+
         if (!string.IsNullOrWhiteSpace(previewCharacterKey))
             yield return previewCharacterKey;
 
@@ -1724,6 +2079,23 @@ public partial class SkillCard : Control
         return tip;
     }
 
+    private SkillRelatedCardPreview EnsureRelatedCardPreview()
+    {
+        CanvasLayer layer = EnsureTipLayer();
+        if (layer == null)
+            return null;
+
+        SkillRelatedCardPreview preview = layer.GetNodeOrNull<SkillRelatedCardPreview>(
+            "RelatedCardPreview"
+        );
+        if (preview != null)
+            return preview;
+
+        preview = new SkillRelatedCardPreview { Name = "RelatedCardPreview" };
+        layer.AddChild(preview);
+        return preview;
+    }
+
     private static Vector2 GetTargetScreenPosition(Character target)
     {
         if (target == null || !GodotObject.IsInstanceValid(target))
@@ -1929,11 +2301,7 @@ public partial class SkillCard : Control
             NamePlate.Color = accentGlow;
         if (CharacterPlate != null)
             CharacterPlate.Color = footerFill;
-        if (CharacterName != null)
-        {
-            CharacterName.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f, 0.92f));
-            CharacterName.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 1f));
-        }
+        ApplyCardTitleLabelColors(Colors.White, nameAlpha: 1f, characterNameAlpha: 0.92f);
         if (ArtDiamondOuter != null)
             ArtDiamondOuter.Color = accentColor;
         if (ArtDiamondInner != null)
@@ -1951,72 +2319,60 @@ public partial class SkillCard : Control
         if (skill == null)
             return;
 
-        if (!TryGetCharacterPlateColor(skill, out Color color))
-            return;
+        Color color = TryGetCharacterPlateColor(skill, out Color plateColor)
+            ? plateColor
+            : Skill.GetRarityBorderColor(skill.Rarity);
 
         if (CharacterPlate != null)
             CharacterPlate.Color = WithAlpha(color, 0.42f);
         if (NamePlate != null)
             NamePlate.Color = WithAlpha(color, 0.18f);
-        if (CharacterName != null)
-        {
-            CharacterName.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f, 0.96f));
-            CharacterName.AddThemeColorOverride(
-                "font_outline_color",
-                WithAlpha(new Color(color.R * 0.18f, color.G * 0.18f, color.B * 0.18f, 1f), 0.95f)
-            );
-        }
+        ApplyCardTitleLabelColors(color);
 
         SetNativeFramePalette(Skill.GetRarityBorderColor(skill.Rarity), color);
+    }
+
+    private void ApplyColorlessPlateStyle()
+    {
+        Color color = CharacterPlateColors.ColorlessColor;
+
+        if (CharacterPlate != null)
+            CharacterPlate.Color = WithAlpha(color, 0.42f);
+        if (NamePlate != null)
+            NamePlate.Color = WithAlpha(color, 0.18f);
+        ApplyCardTitleLabelColors(color);
+
+        SetNativeFramePalette(Skill.GetRarityBorderColor(Skill.SkillRarity.Common), color);
     }
 
     private bool TryGetCharacterPlateColor(Skill skill, out Color color)
     {
         string key = ResolveCharacterColorKey(skill);
-        color = key switch
-        {
-            "Echo" => EchoPlateColor,
-            "Kasiya" => KasiyaPlateColor,
-            "Mariya" => MariyaPlateColor,
-            "Nightingale" => NightingalePlateColor,
-            _ => default,
-        };
+        if (CharacterPlateColors.TryGetColor(key, out color))
+            return true;
 
-        return !string.IsNullOrWhiteSpace(key)
-            && key is "Echo" or "Kasiya" or "Mariya" or "Nightingale";
+        color = default;
+        return false;
     }
 
     private string ResolveCharacterColorKey(Skill skill)
     {
         if (!string.IsNullOrWhiteSpace(PreviewCharacterKey))
-            return NormalizeCharacterColorKey(PreviewCharacterKey);
+            return CharacterPlateColors.NormalizeKey(PreviewCharacterKey);
 
         if (skill?.OwnerCharater is PlayerCharacter player && !string.IsNullOrWhiteSpace(player.CharacterKey))
-            return NormalizeCharacterColorKey(player.CharacterKey);
+            return CharacterPlateColors.NormalizeKey(player.CharacterKey);
 
         if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
-            return NormalizeCharacterColorKey(skill.OwnerCharater.CharacterName);
+            return CharacterPlateColors.NormalizeKey(skill.OwnerCharater.CharacterName);
 
         if (skill?.SkillId.HasValue == true && Skill.TryGetPlayerCharacterKey(skill.SkillId.Value, out var characterKey))
             return characterKey.ToString();
 
         if (!string.IsNullOrWhiteSpace(PreviewCharacterName))
-            return NormalizeCharacterColorKey(PreviewCharacterName);
+            return CharacterPlateColors.NormalizeKey(PreviewCharacterName);
 
         return string.Empty;
-    }
-
-    private static string NormalizeCharacterColorKey(string value)
-    {
-        string normalized = value?.Trim() ?? string.Empty;
-        return normalized switch
-        {
-            "Echo" or "回声" => "Echo",
-            "Kasiya" or "卡西亚" => "Kasiya",
-            "Mariya" or "玛瑞娅" => "Mariya",
-            "Nightingale" or "夜莺" => "Nightingale",
-            _ => normalized,
-        };
     }
 
     private void ApplyStatusCardStyle()
@@ -2064,8 +2420,41 @@ public partial class SkillCard : Control
         if (TopAccent != null)
             TopAccent.Color = new Color(0.86f, 0.72f, 1f, 0.72f);
 
+        ApplyCardTitleLabelColors(
+            Colors.White,
+            nameAlpha: 1f,
+            characterNameAlpha: 0.92f,
+            outlineColorOverride: new Color(0f, 0f, 0f, 1f)
+        );
         SetCardBeamColor(borderColor);
         SetNativeFramePalette(borderColor, accentColor);
+    }
+
+    private void ApplyCardTitleLabelColors(
+        Color accentColor,
+        float nameAlpha = 1f,
+        float characterNameAlpha = 0.96f,
+        Color? outlineColorOverride = null
+    )
+    {
+        Color textColor = accentColor.Lightened(0.14f);
+        Color outlineColor = outlineColorOverride
+            ?? WithAlpha(
+                new Color(accentColor.R * 0.18f, accentColor.G * 0.18f, accentColor.B * 0.18f, 1f),
+                0.95f
+            );
+
+        if (NameLabel != null)
+        {
+            NameLabel.AddThemeColorOverride("font_color", WithAlpha(textColor, nameAlpha));
+            NameLabel.AddThemeColorOverride("font_outline_color", outlineColor);
+        }
+
+        if (CharacterName != null)
+        {
+            CharacterName.AddThemeColorOverride("font_color", WithAlpha(textColor, characterNameAlpha));
+            CharacterName.AddThemeColorOverride("font_outline_color", outlineColor);
+        }
     }
 
     private static bool IsStatusCard(Skill skill) => skill?.IsStatusCard == true;

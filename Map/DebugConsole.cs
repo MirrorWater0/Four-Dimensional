@@ -105,6 +105,14 @@ public partial class DebugConsole : CanvasLayer
             "抽牌"
         ),
         new(
+            "heal",
+            "heal [full|数量|角色] [数量]",
+            "恢复队伍或指定角色的生命。",
+            ["省略参数/full=全队满血", "或填写回血量", "或角色名/序号，可选第二位填回血量"],
+            "回血",
+            "治疗"
+        ),
+        new(
             "addequipment",
             "addequipment <装备ID/装备名> [数量]",
             "向装备库存添加装备。",
@@ -1206,6 +1214,7 @@ public partial class DebugConsole : CanvasLayer
             "catalog" => BuildCatalogCompletions(context),
             "addskill" => BuildAddSkillCompletions(context),
             "drawcards" => BuildDrawCardsCompletions(context),
+            "heal" => BuildHealCompletions(context),
             "addequipment" => FilterCompletionItems(BuildEquipmentCompletions(), prefix),
             "addrelic" => FilterCompletionItems(BuildRelicCompletions(), prefix),
             "additem" => FilterCompletionItems(BuildItemCompletions(), prefix),
@@ -1278,6 +1287,26 @@ public partial class DebugConsole : CanvasLayer
             return FilterCompletionItems(BuildNumberCompletions(), prefix);
 
         return FilterCompletionItems(BuildNumberCompletions(), prefix);
+    }
+
+    private IEnumerable<CompletionItem> BuildHealCompletions(InputContext context)
+    {
+        string prefix = context.CurrentToken;
+        if (context.TargetTokenIndex == 1)
+        {
+            var items = new List<CompletionItem>
+            {
+                new("full", "full  ·  全队满血", "full", "满", "全部"),
+            };
+            items.AddRange(BuildPlayerCompletions(includeIndices: true));
+            items.AddRange(BuildNumberCompletions());
+            return FilterCompletionItems(items, prefix);
+        }
+
+        if (context.TargetTokenIndex == 2)
+            return FilterCompletionItems(BuildNumberCompletions(), prefix);
+
+        return Enumerable.Empty<CompletionItem>();
     }
 
     private IEnumerable<CompletionItem> BuildStatCompletions(InputContext context)
@@ -1560,6 +1589,12 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
+        if (Matches(command, "heal", "回血", "治疗"))
+        {
+            await ExecuteHealAsync(args);
+            return;
+        }
+
         if (Matches(command, "addequipment", "加装备"))
         {
             ExecuteAddEquipment(args);
@@ -1761,6 +1796,131 @@ public partial class DebugConsole : CanvasLayer
         }
 
         AppendSuccess($"已按普通规则抽牌 {drawnCount} 张。");
+    }
+
+    private async Task ExecuteHealAsync(string[] args)
+    {
+        int healed;
+        string message;
+
+        if (args.Length == 1 || (args.Length == 2 && Matches(args[1], "full", "满", "全部")))
+        {
+            healed = GameInfo.RefillPartyLife();
+            await SyncBattleLifeFromGameInfoAsync();
+            message =
+                healed > 0
+                    ? $"已恢复全队生命 {healed} 点（{GameInfo.GetPartyLife()}/{GameInfo.GetPartyMaxLife()}）。"
+                    : "队伍已满血。";
+        }
+        else if (args.Length == 2)
+        {
+            if (int.TryParse(args[1], out int amount))
+            {
+                if (amount <= 0)
+                {
+                    AppendError("回血量须为正整数。");
+                    return;
+                }
+
+                int before = GameInfo.GetPartyLife();
+                GameInfo.AdjustPartyLife(amount);
+                healed = GameInfo.GetPartyLife() - before;
+                await SyncBattleLifeFromGameInfoAsync();
+                message =
+                    healed > 0
+                        ? $"已恢复队伍生命 {healed} 点（{GameInfo.GetPartyLife()}/{GameInfo.GetPartyMaxLife()}）。"
+                        : "队伍已满血，未能恢复。";
+            }
+            else if (TryResolvePlayer(args[1], out int playerIndex))
+            {
+                var info = GameInfo.PlayerCharacters[playerIndex];
+                healed = HealPlayerAt(playerIndex, amount: null);
+                await SyncBattleLifeFromGameInfoAsync(playerIndex);
+                message =
+                    healed > 0
+                        ? $"已恢复 {info.CharacterName} 生命 {healed} 点。"
+                        : $"{info.CharacterName} 已满血。";
+            }
+            else
+            {
+                AppendError("用法：heal [full|数量|角色] [数量]");
+                return;
+            }
+        }
+        else if (args.Length == 3)
+        {
+            if (!TryResolvePlayer(args[1], out int playerIndex))
+                return;
+            if (!int.TryParse(args[2], out int amount) || amount <= 0)
+            {
+                AppendError($"不是有效回血量：{args[2]}");
+                return;
+            }
+
+            var info = GameInfo.PlayerCharacters[playerIndex];
+            healed = HealPlayerAt(playerIndex, amount);
+            await SyncBattleLifeFromGameInfoAsync(playerIndex);
+            message =
+                healed > 0
+                    ? $"已恢复 {info.CharacterName} 生命 {healed} 点。"
+                    : $"{info.CharacterName} 已满血，未能恢复。";
+        }
+        else
+        {
+            AppendError("用法：heal [full|数量|角色] [数量]");
+            return;
+        }
+
+        GameInfo.NormalizePlayerCharacters();
+        RefreshOpenUi();
+        SaveSystem.SaveAll();
+        AppendSuccess(message);
+    }
+
+    private static int HealPlayerAt(int playerIndex, int? amount)
+    {
+        var info = GameInfo.PlayerCharacters[playerIndex];
+        int maxLife = Math.Max(info.LifeMax, 1);
+        int before = Math.Clamp(info.Life, 0, maxLife);
+        int after = amount.HasValue
+            ? Math.Clamp(before + Math.Max(amount.Value, 0), 0, maxLife)
+            : maxLife;
+        if (after == before)
+            return 0;
+
+        info.Life = after;
+        info.LifeInitialized = true;
+        GameInfo.PlayerCharacters[playerIndex] = info;
+        return after - before;
+    }
+
+    private async Task SyncBattleLifeFromGameInfoAsync(int? playerIndex = null)
+    {
+        var battle = FindBattle();
+        if (battle?.PlayersList == null)
+            return;
+
+        foreach (var player in battle.PlayersList)
+        {
+            if (player == null || !GodotObject.IsInstanceValid(player))
+                continue;
+            if (playerIndex.HasValue && player.CharacterIndex != playerIndex.Value)
+                continue;
+
+            var info = GameInfo.PlayerCharacters[player.CharacterIndex];
+            int targetLife = Math.Clamp(info.Life, 0, player.BattleMaxLife);
+            if (targetLife <= player.Life && player.State != Character.CharacterState.Dying)
+                continue;
+
+            if (player.State == Character.CharacterState.Dying && targetLife > 0)
+                await player.RecoverAsync(targetLife, rebirth: true);
+            else
+            {
+                int delta = targetLife - player.Life;
+                if (delta > 0)
+                    await player.RecoverAsync(delta);
+            }
+        }
     }
 
     private void ExecuteAddEquipment(string[] args)
@@ -2301,6 +2461,7 @@ public partial class DebugConsole : CanvasLayer
             + "addequipment <装备ID/装备名> [数量]\n"
             + "addrelic <遗物ID/遗物名> [数量]\n"
             + "additem <道具ID/道具名> [数量]\n"
+            + "heal [full|数量|角色] [数量]\n"
             + "setstat <角色> <power|survivability|maxlife> <值>\n"
             + "addstat <角色> <power|survivability|maxlife> <增量>\n"
             + "setresource <coin|energy|maxenergy> <值>\n"
@@ -2311,6 +2472,9 @@ public partial class DebugConsole : CanvasLayer
             + "addequipment 裂隙短刃 2\n"
             + "addrelic Blessing 5\n"
             + "additem Fury 1\n"
+            + "heal\n"
+            + "heal 30\n"
+            + "heal Nightingale\n"
             + "setstat Kasiya power 20\n"
             + "addstat Mariya survivability 3\n"
             + "setresource coin 999\n\n"

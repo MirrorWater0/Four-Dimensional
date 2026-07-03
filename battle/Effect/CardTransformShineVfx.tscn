@@ -1,0 +1,181 @@
+[gd_scene format=3 uid="uid://csdqmwwah50e"]
+
+[ext_resource type="Script" path="res://battle/Effect/CardTransformShineVfx.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="2_particle"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_glow"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(1, 0.98, 0.92, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(1, 0.95, 0.75, 0.45)
+shadow_size = 18
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_additive"]
+blend_mode = 1
+
+[sub_resource type="Gradient" id="Gradient_reveal"]
+offsets = PackedFloat32Array(0, 0.35, 0.72, 1)
+colors = PackedColorArray(1, 1, 1, 0.95, 0.75, 0.92, 1, 0.82, 0.45, 0.78, 1, 0.5, 0.2, 0.55, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_reveal"]
+gradient = SubResource("Gradient_reveal")
+
+[sub_resource type="Curve" id="Curve_reveal_alpha"]
+_data = [Vector2(0, 0), 0.0, 8.0, 0, 0, Vector2(0.12, 1), 0.0, 0.0, 0, 0, Vector2(0.7, 0.55), -1.2, -1.2, 0, 0, Vector2(1, 0), -2.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_reveal_alpha"]
+curve = SubResource("Curve_reveal_alpha")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_reveal"]
+lifetime_randomness = 0.35
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(110, 170, 1)
+direction = Vector3(0, -1, 0)
+spread = 180.0
+initial_velocity_min = 40.0
+initial_velocity_max = 160.0
+angular_velocity_min = -240.0
+angular_velocity_max = 240.0
+gravity = Vector3(0, 60, 0)
+scale_min = 0.05
+scale_max = 0.16
+color_ramp = SubResource("GradientTexture_reveal")
+alpha_curve = SubResource("CurveTexture_reveal_alpha")
+
+[sub_resource type="Gradient" id="Gradient_shine"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 0.95, 1, 0.95, 0.8, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_shine"]
+gradient = SubResource("Gradient_shine")
+
+[sub_resource type="Curve" id="Curve_shine_alpha"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.2, 1), 0.0, 0.0, 0, 0, Vector2(0.8, 0.8), -2.0, -2.0, 0, 0, Vector2(1, 0), -3.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_shine_alpha"]
+curve = SubResource("Curve_shine_alpha")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_shine"]
+lifetime_randomness = 0.1
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(8, 170, 1)
+direction = Vector3(1, 0, 0)
+spread = 6.0
+initial_velocity_min = 420.0
+initial_velocity_max = 620.0
+angular_velocity_min = -30.0
+angular_velocity_max = 30.0
+gravity = Vector3(0, 0, 0)
+scale_min = 0.12
+scale_max = 0.28
+color_ramp = SubResource("GradientTexture_shine")
+alpha_curve = SubResource("CurveTexture_shine_alpha")
+
+[sub_resource type="Gradient" id="Gradient_end"]
+offsets = PackedFloat32Array(0, 0.4, 1)
+colors = PackedColorArray(1, 0.98, 0.82, 1, 0.7, 0.9, 1, 0.75, 0.25, 0.55, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_end"]
+gradient = SubResource("Gradient_end")
+
+[sub_resource type="Curve" id="Curve_end_alpha"]
+_data = [Vector2(0, 0.8), 0.0, 0.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), -2.5, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="CurveTexture" id="CurveTexture_end_alpha"]
+curve = SubResource("Curve_end_alpha")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_end"]
+lifetime_randomness = 0.25
+particle_flag_disable_z = true
+emission_shape = 1
+emission_sphere_radius = 36.0
+direction = Vector3(0, -1, 0)
+spread = 180.0
+initial_velocity_min = 80.0
+initial_velocity_max = 220.0
+angular_velocity_min = -180.0
+angular_velocity_max = 180.0
+gravity = Vector3(0, 40, 0)
+scale_min = 0.08
+scale_max = 0.22
+color_ramp = SubResource("GradientTexture_end")
+alpha_curve = SubResource("CurveTexture_end_alpha")
+
+[node name="CardTransformShineVfx" type="Control"]
+custom_minimum_size = Vector2(240, 370)
+layout_mode = 0
+offset_right = 240.0
+offset_bottom = 370.0
+mouse_filter = 2
+clip_contents = true
+script = ExtResource("1_script")
+
+[node name="WhiteOverlay" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+modulate = Color(1, 1, 1, 0)
+
+[node name="BorderGlow" type="Panel" parent="."]
+modulate = Color(1, 1, 1, 0)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_glow")
+
+[node name="RevealParticles" type="GPUParticles2D" parent="."]
+material = SubResource("CanvasItemMaterial_additive")
+position = Vector2(120, 185)
+amount = 28
+lifetime = 0.55
+one_shot = true
+explosiveness = 0.92
+randomness = 0.35
+process_material = SubResource("ParticleProcessMaterial_reveal")
+texture = ExtResource("2_particle")
+
+[node name="ShineParticles" type="GPUParticles2D" parent="."]
+material = SubResource("CanvasItemMaterial_additive")
+position = Vector2(24, 185)
+amount = 16
+lifetime = 0.42
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("ParticleProcessMaterial_shine")
+texture = ExtResource("2_particle")
+
+[node name="EndParticles" type="GPUParticles2D" parent="."]
+material = SubResource("CanvasItemMaterial_additive")
+position = Vector2(120, 185)
+amount = 22
+lifetime = 0.65
+one_shot = true
+explosiveness = 0.88
+randomness = 0.2
+process_material = SubResource("ParticleProcessMaterial_end")
+texture = ExtResource("2_particle")

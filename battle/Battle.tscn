@@ -3,13 +3,12 @@
 [ext_resource type="Script" uid="uid://frdei83p7q80" path="res://battle/Battle.cs" id="1_n3ui2"]
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_f4e3u"]
 [ext_resource type="Script" uid="uid://bqhly2pb8u0fx" path="res://battle/CharacterControl.cs" id="3_3vtlu"]
-[ext_resource type="Shader" uid="uid://2jepl1o0xuu4" path="res://shader/UI/TurnOrderCircle.gdshader" id="10_t871k"]
-[ext_resource type="Script" uid="uid://d087u8ucrrhd2" path="res://battle/Effect/GlowLabel.cs" id="11_d0b6a"]
+[ext_resource type="Shader" uid="uid://2jepl1o0xuu4" path="res://shader/UI/EnergyBG.gdshader" id="10_t871k"]
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
-[ext_resource type="Shader" uid="uid://cbu3v2iauiawe" path="res://shader/BG1.gdshader" id="14_bg1"]
 [ext_resource type="Shader" uid="uid://dfyb0vpf1xs5t" path="res://shader/UI/BattlePileIcon.gdshader" id="15_pileicon"]
+[ext_resource type="Shader" uid="uid://cfs7u53irvree" path="res://shader/BattlePleiades.gdshader" id="16_pleiades_bg"]
 
 [sub_resource type="Environment" id="Environment_ttuon"]
 background_mode = 3
@@ -21,9 +20,30 @@ glow_hdr_threshold = 0.9
 glow_hdr_scale = 1.8
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ts8fe"]
-shader = ExtResource("14_bg1")
-shader_parameter/moduate = Color(0.0564, 0.21494661, 0.47, 1)
-shader_parameter/star_color_shift = 1.0
+shader = ExtResource("16_pleiades_bg")
+shader_parameter/i_mouse = Vector4(0, 0, 0, 0)
+shader_parameter/camera_mode = 4
+shader_parameter/time_scale = 1.0
+shader_parameter/time_offset = -4.0
+shader_parameter/orbit_radius = 30.0
+shader_parameter/orbit_speed = 0.48
+shader_parameter/camera_zoom = 0.81300003209773
+shader_parameter/camera_height = 0.2
+shader_parameter/look_lead = 0.35
+shader_parameter/drift_amount = 0.18
+shader_parameter/wander_amount = 0.42
+shader_parameter/wander_speed = 0.65
+shader_parameter/cluster_center = Vector3(0, 0.8, 0)
+shader_parameter/cluster_spread_min = 1.25
+shader_parameter/cluster_spread_max = 1.75
+shader_parameter/cluster_spread_speed = 0.35
+shader_parameter/exposure = 0.42800001381023
+shader_parameter/blue_factor = 1.5
+shader_parameter/core_gain = 0.22
+shader_parameter/halo_gain = 0.06
+shader_parameter/spike_gain = 0.012
+shader_parameter/nebula_strength = 0.85
+shader_parameter/dust_cloud_radius = 28.0
 
 [sub_resource type="Animation" id="Animation_4km6a"]
 resource_name = "Incapacitate"
@@ -272,6 +292,9 @@ shader = ExtResource("10_t871k")
 shader_parameter/fill_color = Color(0, 0, 0, 0)
 shader_parameter/rim_color = Color(1, 1, 1, 1)
 shader_parameter/glow_color = Color(1, 1, 1, 0.12)
+shader_parameter/accent_color = Color(0.2, 0.88, 1, 1)
+shader_parameter/core_color = Color(0.05, 0.32, 0.92, 0.5)
+shader_parameter/spark_color = Color(0.863559, 0.8897274, 1.540184e-06, 1)
 shader_parameter/ring_width = 0.032
 shader_parameter/glow_size = 0.012
 shader_parameter/soft_edge = 0.01
@@ -279,9 +302,15 @@ shader_parameter/aa_strength = 1.25
 shader_parameter/center_brightness = 0.0
 shader_parameter/ring_radius = 0.32
 shader_parameter/arrow_radius = 0.43
-shader_parameter/arrow_size = 0.105
+shader_parameter/arrow_size = 0.03999999910593
 shader_parameter/ring_rotation_speed = 0.85
 shader_parameter/arrow_rotation_speed = 1.18
+shader_parameter/inner_ring_radius = 0.22
+shader_parameter/outer_ring_radius = 0.47
+shader_parameter/pulse_speed = 2.2
+shader_parameter/scan_strength = 0.35
+shader_parameter/spark_strength = 0.75
+shader_parameter/tick_count = 28.0
 
 [sub_resource type="Gradient" id="Gradient_4km6a"]
 offsets = PackedFloat32Array(0.91972476, 1)
@@ -302,39 +331,6 @@ gradient = SubResource("Gradient_c6e3k")
 fill = 2
 fill_from = Vector2(0.490826, 0.5)
 fill_to = Vector2(0, 0.00458716)
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_bim3i"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_d0b6a"]
-bg_color = Color(0.025, 0.045, 0.06, 0.78)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.56, 0.76, 0.9, 0.62)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-shadow_color = Color(0, 0.42, 0.76, 0.18)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4km6a"]
-bg_color = Color(0.6373334, 0.36, 1, 0.9490196)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.84, 0.98, 1, 0.72)
-corner_radius_top_left = 7
-corner_radius_top_right = 7
-corner_radius_bottom_right = 7
-corner_radius_bottom_left = 7
-
-[sub_resource type="Theme" id="Theme_boaws"]
-ProgressBar/colors/font_color = Color(1, 1, 1, 1)
-ProgressBar/styles/background = SubResource("StyleBoxFlat_d0b6a")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_4km6a")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2bopn"]
 shader = ExtResource("11_ttuon")
@@ -412,15 +408,16 @@ layer = 14
 [node name="CharacterControl" type="HBoxContainer" parent="CharacterControlLayer" unique_id=1407403704]
 z_index = 2
 material = SubResource("ShaderMaterial_uifq5")
-offset_left = 4.0
-offset_top = 725.0
-offset_right = 1915.0
-offset_bottom = 1060.0
+offset_left = -1.0
+offset_top = 743.0
+offset_right = 1910.0
+offset_bottom = 1078.0
 mouse_filter = 2
 theme_override_constants/separation = 120
 script = ExtResource("3_3vtlu")
 BattleCardScaleFactor = 0.9
 HandCardYOffset = 27.0
+HandDroppedCardReturnPixelsPerSecond = 3000.0
 
 [node name="ActionAreaRoot" type="VBoxContainer" parent="CharacterControlLayer/CharacterControl" unique_id=636477589]
 layout_mode = 2
@@ -554,6 +551,7 @@ metadata/_edit_lock_ = true
 layer = 8
 
 [node name="start" type="Label" parent="CanvasLayer" unique_id=315968776]
+visible = false
 offset_left = 609.0
 offset_top = 478.0
 offset_right = 1302.0
@@ -598,47 +596,6 @@ metadata/_edit_lock_ = true
 
 [node name="CardPlayOverlay" type="CanvasLayer" parent="." unique_id=445357189]
 layer = 9
-
-[node name="ActionPoinBox" type="HBoxContainer" parent="." unique_id=209606245]
-offset_left = 790.0
-offset_top = 24.0
-offset_right = 1130.0
-offset_bottom = 38.0
-theme_override_constants/separation = 0
-
-[node name="PlayerActionPoin" type="ProgressBar" parent="ActionPoinBox" unique_id=1651593436]
-material = SubResource("ShaderMaterial_bim3i")
-custom_minimum_size = Vector2(400, 18)
-layout_mode = 2
-theme = SubResource("Theme_boaws")
-show_percentage = false
-
-[node name="Label" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=803391610]
-layout_direction = 3
-layout_mode = 0
-offset_left = 241.0
-offset_top = -6.0
-offset_right = 291.0
-offset_bottom = 22.0
-theme_override_colors/font_color = Color(1, 0.86, 0.86, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.05, 0.08, 0.92)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 20
-text = "100"
-script = ExtResource("11_d0b6a")
-
-[node name="TotalLabel" type="Label" parent="ActionPoinBox/PlayerActionPoin" unique_id=861137895]
-layout_direction = 3
-layout_mode = 0
-offset_left = 293.0
-offset_top = -3.0
-offset_right = 353.0
-offset_bottom = 20.0
-theme_override_colors/font_color = Color(0.9741052, 0.7722918, 0.63670856, 0.92156863)
-theme_override_colors/font_outline_color = Color(0.01, 0.025, 0.04, 0.9)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 15
-text = "速 0"
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=907012189]
 visible = false

@@ -8,12 +8,8 @@ public partial class SacredOnslaught : Skill
     private const int BaseDamage = 7;
     private const int MaxTargets = 4;
 
-    public SacredOnslaught()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
-
+    public override SkillTypes SkillType => SkillTypes.Attack;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "圣域冲击";
 
     protected override SkillPlan BuildPlan()
@@ -70,13 +66,8 @@ public partial class SacredOnslaught : Skill
 public partial class ResonantSlash : Skill
 {
     private const int BaseDamage = 7;
-    private const int UpgradeDamageBonus = 2;
 
-    public ResonantSlash()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "共振斩击";
 
@@ -84,7 +75,7 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: UpAdd(BaseDamage, UpgradeDamageBonus), times: 1),
+            AttackStep(baseDamage: BaseDamage, times: 1),
             ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.AttackKey)
         );
     }
@@ -92,14 +83,10 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 0;
+    private const int BaseDamage = 1;
     private const int VulnerableStacks = 1;
 
-    public EchoPuncture()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回声穿刺";
 
@@ -107,11 +94,11 @@ public partial class EchoPuncture : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: 2),
+            AttackStep(baseDamage: BaseDamage, times: 2, target: HostileTargetReference.All),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargetReference.One
+                target: HostileTargetReference.AttackKey
             )
         );
     }
@@ -119,14 +106,10 @@ public partial class EchoPuncture : Skill
 
 public partial class Extract : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override SkillRarity Rarity => SkillRarity.Common;
     private const int BaseDamage = 7;
 
-    public Extract()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "萃取";
     public override int EnergyCost => 1;
@@ -139,14 +122,10 @@ public partial class Extract : Skill
 
 public partial class BladeOfSlaughter : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override SkillRarity Rarity => SkillRarity.Common;
     private const int BaseDamage = 7;
 
-    public BladeOfSlaughter()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "弑杀之刃";
 
@@ -165,12 +144,9 @@ public partial class DisasterImpact : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BaseDamage = 7;
     private const int WeakenStacksPerExtraDraw = 2;
+    public override int EnergyCost => 0;
 
-    public DisasterImpact()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "灵魂汲取";
 
@@ -210,11 +186,9 @@ public class EchonicResonance : Skill
 {
     private const int PowerGainPerCast = 1;
 
-    public EchonicResonance()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override SkillTypes SkillType => SkillTypes.Attack;
+    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "回响共鸣";
     public override int EnergyCost => XEnergyCost;
@@ -236,15 +210,10 @@ public class EchonicResonance : Skill
 
 public class SonicBoom : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 0;
-    private const int ExtraTimes = 2;
+    public override SkillRarity Rarity => SkillRarity.Common;
+    private const int BaseDamage = 1;
 
-    public SonicBoom()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "音爆";
     public override int EnergyCost => 3;
@@ -266,15 +235,11 @@ public class PhaseEcho : Skill
     int damage = 12;
     int PowerGain = -2;
 
-    public PhaseEcho()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "相位回声";
     public override int EnergyCost => 1;
-
+    
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -290,11 +255,7 @@ public class ReverbChain : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int BaseDamage = 0;
 
-    public ReverbChain()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回声连奏";
     public override int EnergyCost => 2;

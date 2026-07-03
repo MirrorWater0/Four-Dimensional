@@ -6,11 +6,7 @@ public partial class EnergyTransfer : Skill
     private const int AllyEnergyGain = 3;
     public override int EnergyCost => 1;
 
-    public EnergyTransfer()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "能量传输";
 
@@ -25,11 +21,7 @@ public partial class RearlineRevival : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BaseRebirthHeal = 4;
 
-    public RearlineRevival()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "死者苏生";
     public override int EnergyCost => 3;
@@ -56,11 +48,7 @@ public partial class GroupHealing : Skill
 
     private const int BaseHeal = 8;
 
-    public GroupHealing()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "圣光沐浴";
     public override int EnergyCost => 3;
@@ -83,14 +71,10 @@ public partial class Ragnarok : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int PowerGain = 4;
-    private const int DivinityStacks = 2;
+    private const int DivinityStacks = 3;
     public override bool ExhaustsAfterUse => true;
 
-    public Ragnarok()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "诸神黄昏";
     public override int EnergyCost => 3;
@@ -114,11 +98,7 @@ public partial class HolyOfHolies : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int EnergySourcesGain = 1;
 
-    public HolyOfHolies()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "至圣";
     public override int EnergyCost => 2;
@@ -138,25 +118,36 @@ public partial class SanctuaryForm : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int SanctuaryStacks = 1;
 
-    public SanctuaryForm()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => 4;
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Sanctuary,
-                stacks: SanctuaryStacks,
-                target: TargetReference.All
-            )
+            ApplyBuffFriendly(buffName: Buff.BuffName.Sanctuary, stacks: SanctuaryStacks)
+        );
+    }
+}
+
+public partial class Foresight : Skill
+{
+    public override SkillRarity Rarity => SkillRarity.Rare;
+    private const int ForesightStacks = 1;
+
+    public override SkillTypes SkillType => SkillTypes.Special;
+    public override bool ExhaustsAfterUse => true;
+    public override string SkillName { get; set; } = "预见";
+    public override int EnergyCost => 1;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(buffName: Buff.BuffName.Foresight, stacks: ForesightStacks)
         );
     }
 }

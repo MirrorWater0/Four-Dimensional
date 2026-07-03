@@ -36,7 +36,7 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 173;
+        MaxLife = 166;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -56,13 +56,9 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 12;
+    private const int BaseDamage = 5;
 
-    public ArroganceAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "双重压制";
 
@@ -81,11 +77,7 @@ public partial class ArroganceSurvive : Skill
     private const int BaseBlock = 20;
     private const int VulnerableStacks = 2;
 
-    public ArroganceSurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "暗黑吞噬";
 
@@ -107,11 +99,7 @@ public partial class ArroganceSpecial : Skill
 {
     private const int PursuitStacks = 3;
 
-    public ArroganceSpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚无追击";
     public override int EnergyCost => 0;
@@ -120,8 +108,8 @@ public partial class ArroganceSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: 10, target: TargetReference.Self),
-            ModifyPropertyStep(PropertyType.Power, 4),
+            HealStep(baseHeal: 30, target: TargetReference.Self),
+            ModifyPropertyStep(PropertyType.Power, 10),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

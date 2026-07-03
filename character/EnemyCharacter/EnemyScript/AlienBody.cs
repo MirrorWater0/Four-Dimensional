@@ -36,7 +36,7 @@ public partial class AlienBodyRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/AlienBody.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
 
-        MaxLife = 27;
+        MaxLife = 32;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -51,13 +51,8 @@ public partial class AlienBodyRegedit : EnemyRegedit
 public partial class AlienBodyAttack : Skill
 {
     private const int BaseDamage = 11;
-    private const int PowerDown = 2;
 
-    public AlienBodyAttack()
-        : base(SkillTypes.Attack)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "异体冲击";
 
@@ -66,11 +61,7 @@ public partial class AlienBodyAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            LowerTargetPropertyStep(
-                PropertyType.Survivability,
-                PowerDown,
-                HostileTargetReference.AttackKey
-            )
+            LowerTargetPropertyStep(PropertyType.Survivability, 2, HostileTargetReference.AttackKey)
         );
     }
 }
@@ -80,11 +71,7 @@ public partial class AlienBodySurvive : Skill
     private const int BaseBlock = 8;
     private const int SurvivabilityDown = 4;
 
-    public AlienBodySurvive()
-        : base(SkillTypes.Survive)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "异体护壳";
 
@@ -93,8 +80,7 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddStatusCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards),
-            ModifyPropertyStep(PropertyType.Power, 1, TargetReference.All)
+            AddCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
@@ -104,11 +90,7 @@ public partial class AlienBodySpecial : Skill
     private const int PowerDown = 1;
     private const int SurvivabilityDown = 1;
 
-    public AlienBodySpecial()
-        : base(SkillTypes.Special)
-    {
-        UpdateDescription();
-    }
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "共生连携";
     public override int EnergyCost => 4;
@@ -118,7 +100,7 @@ public partial class AlienBodySpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(13, target: HostileTargetReference.RandomPreview),
-            AddStatusCardsStep(SkillID.DazeStatus, 1),
+            AddCardsStep(SkillID.DazeStatus, 1),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,

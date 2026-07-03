@@ -187,6 +187,11 @@ public partial class CardSlot : Control
         ApplyBorderState();
     }
 
+    public void ConfigureRestHealRewardStyle()
+    {
+        ConfigureItemRewardStyle(ItemID.Health);
+    }
+
     public void ConfigureSkillRewardStyle()
     {
         var icon = new ColorRect

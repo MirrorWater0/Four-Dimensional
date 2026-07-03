@@ -6,15 +6,32 @@ public partial class PlayerResourceState : CanvasLayer
 {
     private static readonly PackedScene MenuScene = GD.Load<PackedScene>("res://Menu/Menu.tscn");
     private const long MaxDisplayHours = 99;
+    private static readonly Dictionary<string, Texture2D> PortraitCache = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> MapPortraitPaths = new(
+        StringComparer.OrdinalIgnoreCase
+    )
+    {
+        ["res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png"] =
+            "res://asset/PlayerCharater/Kasiya/KasiyaMapPortrait_v1.png",
+        ["res://asset/PlayerCharater/Mariya/MariyaPortrait.png"] =
+            "res://asset/PlayerCharater/Mariya/MariyaMapPortrait_v1.png",
+        ["res://asset/PlayerCharater/Nightingale/NightingalePortrait.png"] =
+            "res://asset/PlayerCharater/Nightingale/NightingaleMapPortrait_v1.png",
+        ["res://asset/PlayerCharater/Echo/EchoPortrait.png"] =
+            "res://asset/PlayerCharater/Echo/EchoMapPortrait_v1.png",
+    };
 
     private readonly List<PartyLifeSlot> _partyLifeSlots = new();
     private readonly List<ResourceVisibilitySnapshot> _mapPeekHiddenResources = new();
     private Tip _mapPeekTip;
     private bool _mapPeekButtonHovered;
+    private Tween _mapPeekHoverTween;
 
     private sealed class PartyLifeSlot
     {
-        public HBoxContainer Root;
+        public Control Root;
+        public TextureRect Portrait;
+        public ProgressBar LifeBar;
         public Label NameLabel;
         public Label ValueLabel;
     }
@@ -83,10 +100,10 @@ public partial class PlayerResourceState : CanvasLayer
         : field = GetNodeOrNull<ColorRect>("ElectricityCoin");
 
     public List<Relic> RelicList = new();
-    public VBoxContainer RelicContainer => field is not null
+    public GridContainer RelicContainer => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
-        : field = GetNodeOrNull<VBoxContainer>("RelicContainer");
+        : field = GetNodeOrNull<GridContainer>("RelicContainer");
     public List<ConsumeItem> Items = new();
     public HBoxContainer ItemContainer => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -123,6 +140,14 @@ public partial class PlayerResourceState : CanvasLayer
         && GodotObject.IsInstanceValid(field)
         ? field
         : field = GetNodeOrNull<CanvasLayer>("/root/Map/BattleReadyLayer");
+    public Node FrontUiRoot
+    {
+        get
+        {
+            CanvasLayer frontLayer = FrontUiLayer;
+            return frontLayer != null ? frontLayer : GetTree()?.Root;
+        }
+    }
     private Menu MenuOverlay => field is not null && GodotObject.IsInstanceValid(field)
         ? field
         : field = MenuLayer?.GetNodeOrNull<Menu>("Menu");
@@ -259,6 +284,10 @@ public partial class PlayerResourceState : CanvasLayer
             int life = Math.Clamp(info.Life, 0, lifeMax);
             slot.NameLabel.Text = BuildPartyLifeSlotName(info, i);
             slot.ValueLabel.Text = $"{life}/{lifeMax}";
+            slot.LifeBar.MaxValue = lifeMax;
+            slot.LifeBar.Value = life;
+            slot.Portrait.Texture = LoadPortraitTexture(GetMapPortraitPath(info));
+            slot.Root.TooltipText = $"{slot.NameLabel.Text}  {life}/{lifeMax}";
         }
     }
 
@@ -302,9 +331,10 @@ public partial class PlayerResourceState : CanvasLayer
 
     private void BindPartyLifeSlots()
     {
+        _partyLifeSlots.Clear();
         for (int i = 1; i <= GameInfo.DefaultPlayerPartySize; i++)
         {
-            var root = TransitionEnergyControl.GetNodeOrNull<HBoxContainer>($"PartyLifeSlot{i}");
+            var root = TransitionEnergyControl.GetNodeOrNull<Control>($"PartyLifeSlot{i}");
             if (root == null)
                 continue;
 
@@ -312,8 +342,18 @@ public partial class PlayerResourceState : CanvasLayer
                 new PartyLifeSlot
                 {
                     Root = root,
-                    NameLabel = root.GetNodeOrNull<Label>("Name"),
-                    ValueLabel = root.GetNodeOrNull<Label>("Value"),
+                    Portrait = root.GetNodeOrNull<TextureRect>(
+                        "Panel/Margin/Content/Portrait"
+                    ),
+                    LifeBar = root.GetNodeOrNull<ProgressBar>(
+                        "Panel/Margin/Content/Body/LifeBar"
+                    ),
+                    NameLabel = root.GetNodeOrNull<Label>(
+                        "Panel/Margin/Content/Body/BottomRow/Name"
+                    ),
+                    ValueLabel = root.GetNodeOrNull<Label>(
+                        "Panel/Margin/Content/Body/BottomRow/Value"
+                    ),
                 }
             );
         }
@@ -325,6 +365,39 @@ public partial class PlayerResourceState : CanvasLayer
             return info.CharacterName;
 
         return $"P{index + 1}";
+    }
+
+    private static Texture2D LoadPortraitTexture(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        if (PortraitCache.TryGetValue(path, out Texture2D cached))
+            return cached;
+
+        Texture2D texture = null;
+        if (PreloadeScene.PreloadedTextures.TryGetValue(path, out Texture2D preloaded))
+            texture = preloaded;
+        else if (ResourceLoader.Exists(path))
+            texture = GD.Load<Texture2D>(path);
+
+        PortraitCache[path] = texture;
+        return texture;
+    }
+
+    private static string GetMapPortraitPath(PlayerInfoStructure info)
+    {
+        string portraitPath = info.PortaitPath;
+        if (
+            !string.IsNullOrWhiteSpace(portraitPath)
+            && MapPortraitPaths.TryGetValue(portraitPath, out string mapPortraitPath)
+            && ResourceLoader.Exists(mapPortraitPath)
+        )
+        {
+            return mapPortraitPath;
+        }
+
+        return portraitPath;
     }
 
     private void OnMenuButtonPressed()
@@ -368,7 +441,10 @@ public partial class PlayerResourceState : CanvasLayer
         MapPeekButton.TooltipText = string.Empty;
 
         if (MapPeekIcon?.Material is ShaderMaterial material)
+        {
             material.SetShaderParameter("active", active ? 1.0f : 0.0f);
+            material.SetShaderParameter("hover_amount", _mapPeekButtonHovered ? 1.0f : 0.0f);
+        }
 
         if (_mapPeekButtonHovered)
             ShowMapPeekTip();
@@ -385,6 +461,7 @@ public partial class PlayerResourceState : CanvasLayer
     private void ShowMapPeekTip()
     {
         _mapPeekButtonHovered = true;
+        SetMapPeekHoverVisual(true);
         if (MapPeekButton == null || !MapPeekButton.Visible)
             return;
 
@@ -399,8 +476,37 @@ public partial class PlayerResourceState : CanvasLayer
     private void HideMapPeekTip()
     {
         _mapPeekButtonHovered = false;
+        SetMapPeekHoverVisual(false);
         if (_mapPeekTip != null && GodotObject.IsInstanceValid(_mapPeekTip))
             _mapPeekTip.HideTooltip();
+    }
+
+    private void SetMapPeekHoverVisual(bool hovered)
+    {
+        if (MapPeekIcon?.Material is not ShaderMaterial material)
+            return;
+
+        _mapPeekHoverTween?.Kill();
+        _mapPeekHoverTween = CreateTween();
+        float target = hovered ? 1.0f : 0.0f;
+        _mapPeekHoverTween
+            .TweenMethod(
+                Callable.From<float>(value => material.SetShaderParameter("hover_amount", value)),
+                GetShaderFloat(material, "hover_amount"),
+                target,
+                hovered ? 0.18f : 0.14f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+    }
+
+    private static float GetShaderFloat(ShaderMaterial material, string parameterName)
+    {
+        if (material == null)
+            return 0.0f;
+
+        Variant value = material.GetShaderParameter(parameterName);
+        return value.VariantType == Variant.Type.Float ? value.AsSingle() : 0.0f;
     }
 
     private Tip EnsureMapPeekTip()
@@ -447,6 +553,8 @@ public partial class PlayerResourceState : CanvasLayer
             return;
         }
 
+        HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("TopPartyBackplate"));
+        HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("RegionLabel"));
         HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("StatusPanel"));
         HideResourceForMapPeek(TransitionEnergyControl);
         HideResourceForMapPeek(ElectricityCoinIcon);

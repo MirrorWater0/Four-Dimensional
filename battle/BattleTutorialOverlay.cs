@@ -220,7 +220,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private static HBoxContainer GetItemContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.ItemContainer;
 
-    private static VBoxContainer GetRelicContainer(Battle battle) =>
+    private static GridContainer GetRelicContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.RelicContainer;
 
     private static Control GetCoreEnergyControl(Battle battle) =>
