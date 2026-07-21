@@ -4,6 +4,7 @@
 .aider*
 godot-docs-4.6/
 /tmp/
+/asset/generated/
 
 # C# / .NET
 bin/

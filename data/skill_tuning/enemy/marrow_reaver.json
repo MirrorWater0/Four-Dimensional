@@ -1,0 +1,20 @@
+﻿{
+    "skills":  {
+                   "MarrowReaverAttack":  {
+                                              "Name":  "裂髓斩",
+                                              "BaseDamage":  11,
+                                              "SurvivabilityGain":  5
+                                          },
+                   "MarrowReaverSpecial":  {
+                                               "Name":  "双刃蚀髓",
+                                               "BaseDamage":  10,
+                                               "HitCount":  2
+                                           },
+                   "MarrowReaverSurvive":  {
+                                               "Name":  "骨壳蓄力",
+                                               "BaseBlock":  22,
+                                               "PowerGain":  3,
+                                               "Multiplier":  2
+                                           }
+               }
+}

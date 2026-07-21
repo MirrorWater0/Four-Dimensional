@@ -10,6 +10,8 @@ public partial class PlayerCharacter : Character
     public const int TeamTurnStartDrawBase = 3;
     public const int TeamTurnStartDrawPerAlivePlayer = 1;
     public const int TeamTurnStartDrawContribution = 2;
+    public const int TeamTurnStartEnergyBase = 1;
+    public const int TeamTurnStartEnergyPerAlivePlayer = 1;
 
     public Frame SelfFrame;
     public Control SkillButtonControl;
@@ -24,6 +26,7 @@ public partial class PlayerCharacter : Character
     {
         var info = GameInfo.PlayerCharacters[CharacterIndex];
 
+        IsPlayer = true;
         PositionIndex = info.PositionIndex;
         CharacterName = info.CharacterName;
         CharacterKey = ExtractCharacterKeyFromScenePath(info.CharacterScenePath);
@@ -40,7 +43,6 @@ public partial class PlayerCharacter : Character
             info.LifeMax
         );
         base.Initialize();
-        IsPlayer = true;
         Life = Math.Clamp(info.LifeInitialized ? info.Life : BattleMaxLife, 0, BattleMaxLife);
         if (Life <= 0)
         {
@@ -49,6 +51,7 @@ public partial class PlayerCharacter : Character
         }
         SyncLifeBarsToCurrent(syncBufferValue: true);
         SyncPersistentLife();
+        RefreshEnergyIconVisibility();
         ConfigureFootMarker();
     }
 
@@ -438,12 +441,12 @@ public partial class PlayerCharacter : Character
         if (retainLimit <= 0)
             return skill.RetainsAtTurnEndInHand;
 
-        var key = (player.CharacterIndex, skillId);
-        toolboxRetainedCounts.TryGetValue(key, out int retainedCount);
-        if (retainedCount >= retainLimit)
+        var toolboxKey = (player.CharacterIndex, skillId);
+        toolboxRetainedCounts.TryGetValue(toolboxKey, out int toolboxRetainedCount);
+        if (toolboxRetainedCount >= retainLimit)
             return false;
 
-        toolboxRetainedCounts[key] = retainedCount + 1;
+        toolboxRetainedCounts[toolboxKey] = toolboxRetainedCount + 1;
         return true;
     }
 
@@ -453,8 +456,6 @@ public partial class PlayerCharacter : Character
         if (
             BattleNode == null
             || !GodotObject.IsInstanceValid(BattleNode)
-            || BattleNode.MapNode == null
-            || !GodotObject.IsInstanceValid(BattleNode.MapNode)
         )
             return;
 
@@ -465,7 +466,10 @@ public partial class PlayerCharacter : Character
             ResolveTurnStartCardDraw();
             BattleNode.CharacterControl?.ShowPlayerTurn(this);
         }
-        BattleNode?.MapNode?.PlayerResourceState?.SetItemsEnabled(true);
+
+        var mapNode = BattleNode.MapNode;
+        if (mapNode != null && GodotObject.IsInstanceValid(mapNode))
+            mapNode.PlayerResourceState?.SetItemsEnabled(true);
     }
 
     public override void OnActionEnd()

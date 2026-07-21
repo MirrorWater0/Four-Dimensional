@@ -4,7 +4,7 @@ using Godot;
 public partial class HollowBulwark : EnemyCharacter
 {
     private const int StartBarricadeStacks = 1;
-    private const int StartBlock = 70;
+    private const int StartBlock = 100;
 
     public const string PassiveNameText = "空壳壁障";
     public static string PassiveDescriptionText =>
@@ -38,7 +38,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
-        MaxLife = 9;
+        MaxLife = 45;
         Power = 0;
         Survivability = 0;
         BaseSurvivabilityContribution = 0;
@@ -62,13 +62,13 @@ public partial class HollowBulwarkAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(20));
+        return new SkillPlan(this, AttackStep(V("BaseDamage", 28)));
     }
 }
 
 public partial class HollowBulwarkSurvive : Skill
 {
-    private const int BaseBlock = 30;
+    private const int BaseBlock = 40;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -76,7 +76,7 @@ public partial class HollowBulwarkSurvive : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, multiplier: 1));
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)));
     }
 }
 
@@ -91,8 +91,8 @@ public partial class HollowBulwarkSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(16),
-            ModifyPropertyStep(PropertyType.Survivability, 10),
+            AttackStep(V("BaseDamage", 16)),
+            ModifyPropertyStep(PropertyType.Survivability, V("SurvivabilityGain", 10)),
             CustomStep(
                 _ =>
                 {

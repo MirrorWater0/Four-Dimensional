@@ -1,0 +1,118 @@
+﻿{
+    "skills":  {
+                   "ChargedBlade":  {
+                                        "Name":  "聚能之刃",
+                                        "BaseDamage":  4,
+                                        "SurvivabilityLoss":  3
+                                    },
+                   "ConcordSlash":  {
+                                        "Name":  "弧形轨迹",
+                                        "BaseDamage":  7,
+                                        "CalmnessCount":  1
+                                    },
+                   "CrescentWind":  {
+                                        "Name":  "新月之风",
+                                        "BaseDamage":  4,
+                                        "WeakenStacks":  1,
+                                        "Multiplier":  1
+                                    },
+                   "CrystalGuard":  {
+                                        "Name":  "水晶守护",
+                                        "BaseBlock":  4
+                                    },
+                   "EnergyRelay":  {
+                                       "Name":  "能量接续",
+                                       "BaseBlock":  6,
+                                       "NextEnergyStacks":  2
+                                   },
+                   "EnergyTransfer":  {
+                                          "Name":  "能量传输",
+                                          "AllyEnergyGain":  3
+                                      },
+                   "FinalGuard":  {
+                                      "Name":  "终守",
+                                      "BaseBlock":  4,
+                                      "PowerGain":  3
+                                  },
+                   "Foresight":  {
+                                     "Name":  "预见"
+                                 },
+                   "GroupHealing":  {
+                                        "Name":  "圣光沐浴",
+                                        "BaseHeal":  8
+                                    },
+                   "HolyOfHolies":  {
+                                        "Name":  "至圣"
+                                    },
+                   "MariyaBasicSpecial":  {
+                                              "Name":  "治愈",
+                                              "Heal":  6
+                                          },
+                   "MendSlash":  {
+                                     "Name":  "愈合之刃",
+                                     "BaseDamage":  7,
+                                     "BaseHeal":  2
+                                 },
+                   "Prediction":  {
+                                      "Name":  "预测"
+                                  },
+                   "QuietVeil":  {
+                                     "Name":  "静影庇护",
+                                     "InvisibleStacks":  2,
+                                     "SurvivabilityGain":  2
+                                 },
+                   "Ragnarok":  {
+                                    "Name":  "诸神黄昏",
+                                    "PowerGain":  4,
+                                    "DivinityStacks":  3
+                                },
+                   "RearlineRevival":  {
+                                           "Name":  "死者苏生",
+                                           "BaseRebirthHeal":  4,
+                                           "RebirthIStacks":  2
+                                       },
+                   "RebirthPrayer":  {
+                                         "Name":  "复苏祷告",
+                                         "BaseRebirthHeal":  5,
+                                         "BaseBlock":  6
+                                     },
+                   "RenewalFlurry":  {
+                                         "Name":  "回春连刃",
+                                         "BaseDamage":  9,
+                                         "Multiplier":  1
+                                     },
+                   "Sacrifice":  {
+                                     "Name":  "献祭",
+                                     "Multiplier":  2
+                                 },
+                   "SanctuaryForm":  {
+                                         "Name":  "圣域形态"
+                                     },
+                   "ShatterSlash":  {
+                                        "Name":  "斩破",
+                                        "BaseDamage":  4,
+                                        "SelectDrawCount":  1
+                                    },
+                   "SiphonSlash":  {
+                                       "Name":  "汲生之刃",
+                                       "BaseDamage":  5
+                                   },
+                   "StillWaterMirror":  {
+                                            "Name":  "明镜止水",
+                                            "BaseBlock":  6,
+                                            "SurvivabilityGain":  4,
+                                            "CalmnessCount":  2
+                                        },
+                   "SwapSlash":  {
+                                     "Name":  "斩断裂隙",
+                                     "BaseDamage":  12,
+                                     "Multiplier":  2,
+                                     "FriendlyDamage":  3
+                                 },
+                   "TouchOfGod":  {
+                                      "Name":  "上帝之触",
+                                      "BaseBlock":  0,
+                                      "DivinityStacks":  1
+                                  }
+               }
+}

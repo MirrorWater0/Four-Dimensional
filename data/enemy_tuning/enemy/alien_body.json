@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "AlienBody":  {
+                                      "Name":  "AlienBody",
+                                      "MaxLife":  32
+                                  }
+                }
+}

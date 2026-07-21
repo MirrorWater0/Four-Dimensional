@@ -19,9 +19,9 @@ public partial class Relic
     private const int PhilosophersStoneEnergyBonus = 1;
     private const int PhilosophersStoneEnemyPower = 1;
     private const int EternalGlassDrawBonus = 1;
-    private const int TrianglePartyPower = 1;
-    private const int SquarePartySurvivability = 1;
-    private const int PentagonPartyMaxLife = 5;
+    private const int BattleBannerPartyPower = 1;
+    private const int GuardBadgePartySurvivability = 1;
+    private const int VitalityCapsulePartyMaxLife = 5;
     private const int KingsSwordPartyPower = 3;
     private const int RefractometerDamageImmuneStacks = 1;
     private const int PurifierDebuffImmunityStacks = 1;
@@ -30,7 +30,7 @@ public partial class Relic
     private const int KnightHelmetBlock = 5;
     private const int IonizedVoiceSpecialSkillInterval = 3;
     private const int IonizedVoiceDrawCount = 1;
-    private const int HexagonBattleEndHeal = 5;
+    private const int HealingBeaconBattleEndHeal = 5;
     private const float MembershipCardShopPriceMultiplier = 0.5f;
     private const int ToolboxSelectionCount = 2;
     private const float TriggerPopupIconSize = 60f;
@@ -58,12 +58,12 @@ public partial class Relic
     {
         return
         [
-            RelicID.Triangle,
-            RelicID.Square,
-            RelicID.Pentagon,
-            RelicID.Hexagon,
-            RelicID.Heptagon,
-            RelicID.Octagon,
+            RelicID.BattleBanner,
+            RelicID.GuardBadge,
+            RelicID.VitalityCapsule,
+            RelicID.HealingBeacon,
+            RelicID.ArmorBreaker,
+            RelicID.WeakeningEye,
             RelicID.CompressionCore,
             RelicID.MembershipCard,
             RelicID.Toolbox,
@@ -101,12 +101,12 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => new Relic(RelicID.Blessing),
-            RelicID.Triangle => new Relic(RelicID.Triangle),
-            RelicID.Square => new Relic(RelicID.Square),
-            RelicID.Pentagon => new Relic(RelicID.Pentagon),
-            RelicID.Hexagon => new Relic(RelicID.Hexagon),
-            RelicID.Heptagon => new Relic(RelicID.Heptagon),
-            RelicID.Octagon => new Relic(RelicID.Octagon),
+            RelicID.BattleBanner => new Relic(RelicID.BattleBanner),
+            RelicID.GuardBadge => new Relic(RelicID.GuardBadge),
+            RelicID.VitalityCapsule => new Relic(RelicID.VitalityCapsule),
+            RelicID.HealingBeacon => new Relic(RelicID.HealingBeacon),
+            RelicID.ArmorBreaker => new Relic(RelicID.ArmorBreaker),
+            RelicID.WeakeningEye => new Relic(RelicID.WeakeningEye),
             RelicID.CompressionCore => new Relic(RelicID.CompressionCore),
             RelicID.MembershipCard => new Relic(RelicID.MembershipCard),
             RelicID.Toolbox => new Relic(RelicID.Toolbox),
@@ -156,12 +156,6 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => "res://shader/Icon/RelicIcon/Point.gdshader",
-            RelicID.Triangle => "res://shader/Icon/RelicIcon/Triangle.gdshader",
-            RelicID.Square => "res://shader/Icon/RelicIcon/Square.gdshader",
-            RelicID.Pentagon => "res://shader/Icon/RelicIcon/Pentagon.gdshader",
-            RelicID.Hexagon => "res://shader/Icon/RelicIcon/Hexagon.gdshader",
-            RelicID.Heptagon => "res://shader/Icon/RelicIcon/Heptagon.gdshader",
-            RelicID.Octagon => "res://shader/Icon/RelicIcon/Octagon.gdshader",
             RelicID.CompressionCore => "res://shader/Icon/RelicIcon/CompressionCore.gdshader",
             RelicID.PhilosophersStone => "res://shader/Icon/RelicIcon/Hexagon.gdshader",
             RelicID.EternalGlass => "res://shader/Icon/RelicIcon/Octagon.gdshader",
@@ -174,6 +168,14 @@ public partial class Relic
     {
         return relicID switch
         {
+            RelicID.Blessing => "res://asset/svg/RelicIcon/Blessing.svg",
+            RelicID.BattleBanner => "res://asset/svg/RelicIcon/BattleBanner.svg",
+            RelicID.GuardBadge => "res://asset/svg/RelicIcon/GuardBadge.svg",
+            RelicID.VitalityCapsule => "res://asset/svg/RelicIcon/VitalityCapsule.svg",
+            RelicID.HealingBeacon => "res://asset/svg/RelicIcon/HealingBeacon.svg",
+            RelicID.ArmorBreaker => "res://asset/svg/RelicIcon/ArmorBreaker.svg",
+            RelicID.WeakeningEye => "res://asset/svg/RelicIcon/WeakeningEye.svg",
+            RelicID.CompressionCore => "res://asset/svg/RelicIcon/CompressionCore.svg",
             RelicID.MembershipCard => "res://asset/svg/RelicIcon/MembershipCard.svg",
             RelicID.Toolbox => "res://asset/svg/RelicIcon/Toolbox.svg",
             RelicID.MatrixShield => "res://asset/svg/RelicIcon/MatrixShield.svg",
@@ -191,6 +193,7 @@ public partial class Relic
             RelicID.EternalGlass => "res://asset/svg/RelicIcon/EternalGlass.svg",
             RelicID.KingsSword => "res://asset/svg/RelicIcon/KingsSword.svg",
             RelicID.PulseController => "res://asset/svg/RelicIcon/PulseController.svg",
+            RelicID.curse => "res://asset/svg/RelicIcon/Curse.svg",
             _ => null,
         };
     }
@@ -423,8 +426,8 @@ public partial class Relic
 
         foreach (var relic in battle.MapNode.PlayerResourceState.RelicList)
         {
-            if (relic?.ID == RelicID.Hexagon)
-                ApplyHexagonBattleEndHeal(battle);
+            if (relic?.ID == RelicID.HealingBeacon)
+                ApplyHealingBeaconBattleEndHeal(battle);
         }
     }
 
@@ -491,16 +494,16 @@ public partial class Relic
                 await Task.WhenAll(list);
                 Num--;
                 break;
-            case RelicID.Triangle:
-            case RelicID.Square:
-            case RelicID.Pentagon:
+            case RelicID.BattleBanner:
+            case RelicID.GuardBadge:
+            case RelicID.VitalityCapsule:
                 break;
-            case RelicID.Hexagon:
+            case RelicID.HealingBeacon:
                 break;
-            case RelicID.Heptagon:
+            case RelicID.ArmorBreaker:
                 ApplyDebuffToEnemies(battle, Buff.BuffName.Vulnerable, 1, ID);
                 break;
-            case RelicID.Octagon:
+            case RelicID.WeakeningEye:
                 ApplyDebuffToEnemies(battle, Buff.BuffName.Weaken, 1, ID);
                 break;
             case RelicID.CompressionCore:
@@ -565,12 +568,12 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => "祝福",
-            RelicID.Triangle => "三角形",
-            RelicID.Square => "正方形",
-            RelicID.Pentagon => "正五边形",
-            RelicID.Hexagon => "正六边形",
-            RelicID.Heptagon => "七边形",
-            RelicID.Octagon => "八边形",
+            RelicID.BattleBanner => "战旗",
+            RelicID.GuardBadge => "守护徽章",
+            RelicID.VitalityCapsule => "活力胶囊",
+            RelicID.HealingBeacon => "治疗信标",
+            RelicID.ArmorBreaker => "裂甲棱镜",
+            RelicID.WeakeningEye => "衰弱之眼",
             RelicID.CompressionCore => "压缩核心",
             RelicID.MembershipCard => "会员卡",
             RelicID.Toolbox => "工具箱",
@@ -598,12 +601,12 @@ public partial class Relic
         return relicID switch
         {
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
-            RelicID.Triangle => $"拾起时全阵获得{TrianglePartyPower}点力量。",
-            RelicID.Square => $"拾起时全阵获得{SquarePartySurvivability}点生存。",
-            RelicID.Pentagon => $"拾起时全阵获得{PentagonPartyMaxLife}点生命上限。",
-            RelicID.Hexagon => $"战斗结束时，为血量最低的角色回复{HexagonBattleEndHeal}点生命。",
-            RelicID.Heptagon => "战斗开始时，敌方全阵获得1层易伤。",
-            RelicID.Octagon => "战斗开始时，敌方全阵获得1层虚弱。",
+            RelicID.BattleBanner => $"拾起时全阵获得{BattleBannerPartyPower}点力量。",
+            RelicID.GuardBadge => $"拾起时全阵获得{GuardBadgePartySurvivability}点生存。",
+            RelicID.VitalityCapsule => $"拾起时全阵获得{VitalityCapsulePartyMaxLife}点生命上限。",
+            RelicID.HealingBeacon => $"战斗结束时，为血量最低的角色回复{HealingBeaconBattleEndHeal}点生命。",
+            RelicID.ArmorBreaker => "战斗开始时，敌方全阵获得1层易伤。",
+            RelicID.WeakeningEye => "战斗开始时，敌方全阵获得1层虚弱。",
             RelicID.CompressionCore => "获得的电力币增加20%。",
             RelicID.MembershipCard => "商店中的所有商品价格降低50%。",
             RelicID.Toolbox => $"拾起时选择{ToolboxSelectionCount}张卡牌，为其添加保留。",
@@ -654,8 +657,6 @@ public partial class Relic
 
             foreach (EventCardSelection selection in selections)
                 GameInfo.AddToolboxRetainCard(selection.PlayerIndex, selection.SkillId);
-
-            SaveSystem.SaveRunCheckpoint();
         }
         catch (Exception ex)
         {
@@ -715,7 +716,7 @@ public partial class Relic
         }
     }
 
-    private static void ApplyHexagonBattleEndHeal(Battle battle)
+    private static void ApplyHealingBeaconBattleEndHeal(Battle battle)
     {
         var target = battle
             ?.PlayersList
@@ -726,9 +727,9 @@ public partial class Relic
         if (target == null)
             return;
 
-        using var _ = target.BeginEffectSource(GetRelicName(RelicID.Hexagon));
-        ShowRelicTriggerPopup(target, RelicID.Hexagon);
-        target.Recover(HexagonBattleEndHeal, rebirth: true, source: target);
+        using var _ = target.BeginEffectSource(GetRelicName(RelicID.HealingBeacon));
+        ShowRelicTriggerPopup(target, RelicID.HealingBeacon);
+        target.Recover(HealingBeaconBattleEndHeal, rebirth: true, source: target);
     }
 
     private static void ApplyDebuffToEnemies(
@@ -930,14 +931,14 @@ public partial class Relic
     {
         switch (relicID)
         {
-            case RelicID.Triangle:
-                ApplyPartyAcquireStat(power: TrianglePartyPower);
+            case RelicID.BattleBanner:
+                ApplyPartyAcquireStat(power: BattleBannerPartyPower);
                 break;
-            case RelicID.Square:
-                ApplyPartyAcquireStat(survivability: SquarePartySurvivability);
+            case RelicID.GuardBadge:
+                ApplyPartyAcquireStat(survivability: GuardBadgePartySurvivability);
                 break;
-            case RelicID.Pentagon:
-                ApplyPartyAcquireStat(maxLife: PentagonPartyMaxLife);
+            case RelicID.VitalityCapsule:
+                ApplyPartyAcquireStat(maxLife: VitalityCapsulePartyMaxLife);
                 break;
             case RelicID.KingsSword:
                 ApplyPartyAcquireStat(power: KingsSwordPartyPower);
@@ -1022,7 +1023,7 @@ public partial class Relic
         tween
             .TweenProperty(popup, "scale", Vector2.One, 0.14f)
             .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Back);
+            .SetTrans(Tween.TransitionType.Cubic);
         tween
             .TweenProperty(popup, "global_position", start + new Vector2(0f, -24f), 0.2f)
             .SetEase(Tween.EaseType.Out)
@@ -1202,12 +1203,12 @@ public partial class Relic
 public enum RelicID
 {
     Blessing,
-    Triangle,
-    Square,
-    Pentagon,
-    Hexagon,
-    Heptagon,
-    Octagon,
+    BattleBanner,
+    GuardBadge,
+    VitalityCapsule,
+    HealingBeacon,
+    ArmorBreaker,
+    WeakeningEye,
     CompressionCore,
     MembershipCard,
     Toolbox,

@@ -30,13 +30,13 @@ public partial class FinalGuard : Skill
 
 public partial class RebirthPrayer : Skill
 {
-    private const int BaseRebirthHeal = 2;
+    private const int BaseRebirthHeal = 5;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "复苏祷告";
     public override int EnergyCost => 2;
-
+    public override bool ExhaustsAfterUse => true;
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -46,7 +46,7 @@ public partial class RebirthPrayer : Skill
                 target: TargetReference.ManualFriendly,
                 preferNonFull: true
             ),
-            BlockStep(target: TargetReference.HealKey, baseBlock: 4)
+            BlockStep(target: TargetReference.HealKey, baseBlock: V("BaseBlock", 6))
         );
     }
 }
@@ -79,7 +79,7 @@ public partial class StillWaterMirror : Skill
         return new SkillPlan(
             this,
             BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
-            AddCardsStep(SkillID.Calmness, 2)
+            AddCardsStep(SkillID.Calmness, V("CalmnessCount", 2))
         );
     }
 }
@@ -111,7 +111,7 @@ public partial class QuietVeil : Skill
 public partial class EnergyRelay : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override int EnergyCost => 2;
+    public override int EnergyCost => 1;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -121,8 +121,8 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: 6),
-            SelectDrawPileCardsToHandStep(1)
+            BlockStep(target: TargetReference.Self, baseBlock: V("BaseBlock", 6)),
+            ApplyBuffFriendly(Buff.BuffName.NextEnergy, V("NextEnergyStacks", 2))
         );
     }
 }
@@ -151,4 +151,3 @@ public partial class TouchOfGod : Skill
         );
     }
 }
-

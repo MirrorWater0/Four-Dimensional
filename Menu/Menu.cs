@@ -56,8 +56,6 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<CheckBox>("IncomingDamagePreviewCheckBox");
     private CheckBox IntentionTargetNamesCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("IntentionTargetNamesCheckBox");
-    private CheckBox SingleTargetDamageIntentionArrowsCheckBox =>
-        field ??= GetSettingsPanelNode<CheckBox>("SingleTargetDamageIntentionArrowsCheckBox");
     private CheckBox HideEnemySkillsCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("HideEnemySkillsCheckBox");
     private CheckBox GroupBattlePilesByCharacterCheckBox =>
@@ -146,10 +144,6 @@ public partial class Menu : Control
         if (IntentionTargetNamesCheckBox != null)
             IntentionTargetNamesCheckBox.Pressed += OnIntentionTargetNamesPressed;
 
-        if (SingleTargetDamageIntentionArrowsCheckBox != null)
-            SingleTargetDamageIntentionArrowsCheckBox.Pressed +=
-                OnSingleTargetDamageIntentionArrowsPressed;
-
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.Pressed += OnHideEnemySkillsPressed;
 
@@ -224,7 +218,7 @@ public partial class Menu : Control
         {
             _transitionTween
                 .TweenProperty(CenterPanel, "scale", Vector2.One, OpenDuration)
-                .SetTrans(Tween.TransitionType.Back)
+                .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
             _transitionTween
                 .TweenProperty(CenterPanel, "modulate:a", 1.0f, OpenDuration - 0.02f)
@@ -364,17 +358,6 @@ public partial class Menu : Control
             return;
 
         UserSettings.SetShowIntentionTargetNames(IntentionTargetNamesCheckBox.ButtonPressed);
-        FindActiveBattle(GetTree()?.Root)?.RefreshEnemyIntentionPreviews();
-    }
-
-    private void OnSingleTargetDamageIntentionArrowsPressed()
-    {
-        if (SingleTargetDamageIntentionArrowsCheckBox == null)
-            return;
-
-        UserSettings.SetShowSingleTargetDamageIntentionArrows(
-            SingleTargetDamageIntentionArrowsCheckBox.ButtonPressed
-        );
         FindActiveBattle(GetTree()?.Root)?.RefreshEnemyIntentionPreviews();
     }
 
@@ -558,9 +541,6 @@ public partial class Menu : Control
             IncomingDamagePreviewCheckBox.ButtonPressed = UserSettings.ShowIncomingDamagePreview;
         if (IntentionTargetNamesCheckBox != null)
             IntentionTargetNamesCheckBox.ButtonPressed = UserSettings.ShowIntentionTargetNames;
-        if (SingleTargetDamageIntentionArrowsCheckBox != null)
-            SingleTargetDamageIntentionArrowsCheckBox.ButtonPressed =
-                UserSettings.ShowSingleTargetDamageIntentionArrows;
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.ButtonPressed = UserSettings.HideEnemySkills;
         if (GroupBattlePilesByCharacterCheckBox != null)
@@ -799,11 +779,6 @@ public partial class Menu : Control
             IntentionTargetNamesCheckBox.Text = I18n.Tr(
                 "ui.settings.intention_target_names",
                 "意图目标直接显示角色名称"
-            );
-        if (SingleTargetDamageIntentionArrowsCheckBox != null)
-            SingleTargetDamageIntentionArrowsCheckBox.Text = I18n.Tr(
-                "ui.settings.single_target_damage_intention_arrows",
-                "单体伤害意图显示目标箭头"
             );
         if (HideEnemySkillsCheckBox != null)
             HideEnemySkillsCheckBox.Text = I18n.Tr(

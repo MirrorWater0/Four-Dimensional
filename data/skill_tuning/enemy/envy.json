@@ -1,0 +1,25 @@
+﻿{
+    "skills":  {
+                   "EnvyEliteAttack":  {
+                                           "Name":  "觊觎刺击",
+                                           "BaseDamage":  9,
+                                           "SurvivabilityDown":  2,
+                                           "HitCount":  2,
+                                           "DazeCount":  1
+                                       },
+                   "EnvyEliteSpecial":  {
+                                            "Name":  "夺辉",
+                                            "BaseDamage":  11,
+                                            "PowerDown":  2,
+                                            "SelfPowerGain":  2,
+                                            "EnemySpecialIntentionCooldown":  3
+                                        },
+                   "EnvyEliteSurvive":  {
+                                            "Name":  "藏锋",
+                                            "BaseBlock":  20,
+                                            "WeakenStacks":  1,
+                                            "PowerGain":  1,
+                                            "DazeCount":  2
+                                        }
+               }
+}

@@ -1,0 +1,23 @@
+﻿{
+    "skills":  {
+                   "BasicAttack":  {
+                                       "Name":  "基础攻击",
+                                       "BaseDamage":  4,
+                                       "PowerMultiplier":  1
+                                   },
+                   "BasicDefense":  {
+                                        "Name":  "基础防御",
+                                        "BaseBlock":  4,
+                                        "SurvivabilityMultiplier":  1
+                                    },
+                   "BasicGuard":  {
+                                      "Name":  "护卫",
+                                      "BaseBlock":  2,
+                                      "SurvivabilityMultiplier":  1
+                                  },
+                   "BasicSpecial":  {
+                                        "Name":  "基础特殊",
+                                        "PowerGain":  1
+                                    }
+               }
+}

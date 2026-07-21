@@ -1,0 +1,9 @@
+﻿{
+    "skills":  {
+                   "WarThrallAttack":  {
+                                           "Name":  "冲锋陷阵",
+                                           "BaseDamage":  5,
+                                           "SelfPowerGain":  1
+                                       }
+               }
+}

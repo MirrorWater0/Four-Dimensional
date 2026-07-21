@@ -1,13 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M48 19h32" stroke="#7fe7ff" stroke-width="6"/>
-    <path d="M54 19v13h20V19" stroke="#7fe7ff" stroke-width="5"/>
-    <path d="M38 34h52c5 0 9 4 9 9v59c0 6-5 11-11 11H40c-6 0-11-5-11-11V43c0-5 4-9 9-9z" stroke="#7fe7ff" stroke-width="6"/>
-    <path d="M43 86h42" stroke="#7fe7ff" stroke-width="5"/>
-    <path d="M49 65c8-15 22-19 34-11" stroke="#ffd97f" stroke-width="5"/>
-    <path d="M80 47l5 10-11 2" stroke="#ffd97f" stroke-width="5"/>
-    <path d="M79 76c-8 15-22 19-34 11" stroke="#ffd97f" stroke-width="5"/>
-    <path d="M48 94l-5-10 11-2" stroke="#ffd97f" stroke-width="5"/>
-    <path d="M64 55v33" stroke="#ffd97f" stroke-width="5"/>
-  </g>
-</svg>
+<svg data-game-icons-source="delapouite/energy-tank.svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#ffd97f" d="M256 25.908l-66.275 44.184h132.55zM131.727 88.092L105 114.818v168.547l26.727 26.727h61.71L167 257.217V155.365l32-32V88.092zm181.273 0v35.273l32 32v101.852l-26.438 52.875h61.711L407 283.365V114.818l-26.727-26.726zm-176 240v30h50.184l20-30zm91.816 0l-20 30h94.368l-20-30zm76 0l20 30H375v-30zm-167.816 48v30h50.184l20-30zm91.816 0l-20 30h95.145l-18.316-30zm77.916 0l18.319 30H375v-30zm-267.355 48l-12.4 62H71v-62zm49.623 0v62h138.1c-7.463-7.437-12.1-17.707-12.1-29 0-13.49 6.618-25.515 16.762-33zm191.238 0c10.144 7.485 16.762 19.51 16.762 33 0 11.293-4.637 21.563-12.1 29H407v-62zm144.762 0v62h60.023l-12.4-62zm-169 10c-12.81 0-23 10.19-23 23s10.19 23 23 23 23-10.19 23-23-10.19-23-23-23z"/></svg>

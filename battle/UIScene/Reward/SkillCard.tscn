@@ -4,7 +4,6 @@
 [ext_resource type="Shader" uid="uid://cor3ybvi6p8o6" path="res://shader/Effect/RewardCardCanvasGroup.gdshader" id="1_wi1bx"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="3_line"]
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="3_sitiv"]
-[ext_resource type="Texture2D" uid="uid://bqoajgvusvrn6" path="res://asset/CardPicture/Kasiya/AbsouluteDefense.png" id="3_xqx8h"]
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
 [ext_resource type="Shader" uid="uid://cqhlq7i8p42di" path="res://shader/Effect/PlayableCardCrystalBorder.gdshader" id="5_playable_highlight"]
 
@@ -18,17 +17,38 @@ shader_parameter/line_strength = 0.7310000347225
 shader_parameter/aberration_amount = 0.002000000095
 shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
 
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_playable_highlight"]
+seed = 918273
+frequency = 0.024
+fractal_lacunarity = 2.18
+fractal_gain = 0.58
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_playable_highlight"]
+width = 256
+height = 256
+noise = SubResource("FastNoiseLite_playable_highlight")
+seamless = true
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_playable_highlight"]
 resource_local_to_scene = true
 shader = ExtResource("5_playable_highlight")
 shader_parameter/ease = 0.005
-shader_parameter/modulo_width = 0.02999999932944
-shader_parameter/width = 0.40000000596048
-shader_parameter/ripple_speed = 0.03
+shader_parameter/modulo_width = 0.05999999865888
+shader_parameter/width = 0.10000000149012
+shader_parameter/ripple_speed = 0.28000000119209
 shader_parameter/card_size = Vector2(240, 370)
 shader_parameter/effect_margin = Vector2(32, 32)
 shader_parameter/corner_radius_px = 0.0
-shader_parameter/glow_radius_px = 20.0
+shader_parameter/glow_radius_px = 46.0
+shader_parameter/noise_tex = SubResource("NoiseTexture2D_playable_highlight")
+shader_parameter/core_color = Color(0.72, 0.96, 1, 1)
+shader_parameter/accent_color = Color(0.08, 0.42, 1, 1)
+shader_parameter/spark_color = Color(0.58, 0.92, 1, 1)
+shader_parameter/pulse_speed = 2.25
+shader_parameter/flame_height_px = 34.0
+shader_parameter/flame_scale = 7.0
+shader_parameter/flame_speed = 0.85000002384186
+shader_parameter/flame_turbulence = 0.41999998688698
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
@@ -201,7 +221,6 @@ clear_margin = 32.0
 
 [node name="PlayableHighlight" type="ColorRect" parent="SubViewport" unique_id=1878566179]
 visible = false
-modulate = Color(0, 0.957, 0.988, 0.98)
 material = SubResource("ShaderMaterial_playable_highlight")
 offset_left = -32.0
 offset_top = -32.0
@@ -295,7 +314,6 @@ layout_mode = 0
 offset_right = 216.0
 offset_bottom = 114.0
 mouse_filter = 2
-texture = ExtResource("3_xqx8h")
 expand_mode = 1
 stretch_mode = 6
 

@@ -1,74 +1,167 @@
 [gd_scene format=3 uid="uid://dtdx2hnar6rwv"]
 
-[ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="1_texture"]
-[ext_resource type="Script" uid="uid://n7vv0vj5oovv" path="res://battle/Effect/BuffGainParticle.cs" id="2_script"]
+[ext_resource type="Script" uid="uid://n7vv0vj5oovv" path="res://battle/Effect/BuffGainParticle.cs" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="2_texture"]
+[ext_resource type="Shader" uid="uid://cd0suyqpvkrgv" path="res://shader/Particle/BuffGainLineParticle.gdshader" id="3_shader"]
 
-[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_hlx2d"]
-blend_mode = 1
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_core"]
+shader = ExtResource("3_shader")
+shader_parameter/line_color = Color(0.76, 1, 0.5, 1)
+shader_parameter/half_width = 0.012
+shader_parameter/edge_softness = 0.001
+shader_parameter/end_softness = 0.006
+shader_parameter/glow_width = 0.018
+shader_parameter/glow_strength = 0.18
 
-[sub_resource type="Curve" id="Curve_alpha"]
-_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.12, 1), 0.0, 0.0, 0, 0, Vector2(0.72, 0.42), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+[sub_resource type="Curve" id="Curve_alpha_core"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.12, 1), 0.0, 0.0, 0, 0, Vector2(0.82, 0.82), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
 point_count = 4
 
-[sub_resource type="CurveTexture" id="CurveTexture_alpha"]
-curve = SubResource("Curve_alpha")
+[sub_resource type="CurveTexture" id="CurveTexture_alpha_core"]
+curve = SubResource("Curve_alpha_core")
 
-[sub_resource type="Gradient" id="Gradient_orbit"]
-offsets = PackedFloat32Array(0, 0.45, 1)
-colors = PackedColorArray(0.933333, 0.992157, 1, 0.96, 0.494118, 0.87451, 1, 0.88, 0.454902, 0.721569, 1, 0)
+[sub_resource type="Gradient" id="Gradient_core"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.86, 1, 0.58, 1, 0.38, 1, 0.72, 0.92, 0.38, 1, 0.72, 0)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture_orbit"]
-gradient = SubResource("Gradient_orbit")
+[sub_resource type="GradientTexture1D" id="GradientTexture_core"]
+gradient = SubResource("Gradient_core")
 
-[sub_resource type="Curve" id="Curve_scale"]
-_data = [Vector2(0, 0.95), 0.0, 0.0, 0, 0, Vector2(0.35, 0.72), 0.0, 0.0, 0, 0, Vector2(1, 0.45), 0.0, 0.0, 0, 0]
-point_count = 3
-
-[sub_resource type="CurveTexture" id="CurveTexture_scale"]
-curve = SubResource("Curve_scale")
-
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_orbit"]
-lifetime_randomness = 0.5
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_core"]
+lifetime_randomness = 0.16
 particle_flag_disable_z = true
-emission_shape = 6
-emission_ring_axis = Vector3(0, 0, 1)
-emission_ring_height = 833.33
-emission_ring_radius = 226.2
-emission_ring_inner_radius = 171.17
-emission_ring_cone_angle = 60.81
+emission_shape = 3
+emission_box_extents = Vector3(146, 118, 1)
 direction = Vector3(0, -1, 0)
-spread = 0.0
-initial_velocity_min = 10.0
-initial_velocity_max = 18.0
-orbit_velocity_min = 1.6
-orbit_velocity_max = 2.4
-radial_velocity_min = -8.0
-radial_velocity_max = -2.0
-radial_accel_min = -6.0
-radial_accel_max = -2.0
-tangential_accel_min = 8.0
-tangential_accel_max = 14.0
-damping_min = 12.0
-damping_max = 18.0
-scale_min = 0.12
-scale_max = 0.22
-scale_curve = SubResource("CurveTexture_scale")
-color_ramp = SubResource("GradientTexture_orbit")
-alpha_curve = SubResource("CurveTexture_alpha")
+spread = 0.8
+initial_velocity_min = 521.48
+initial_velocity_max = 625.48
+gravity = Vector3(0, 0, 0)
+damping_min = 5.0
+damping_max = 9.0
+scale_min = 8.2
+scale_max = 14.0
+color_ramp = SubResource("GradientTexture_core")
+alpha_curve = SubResource("CurveTexture_alpha_core")
+hue_variation_min = -0.01
+hue_variation_max = 0.02
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_stream"]
+shader = ExtResource("3_shader")
+shader_parameter/line_color = Color(0.36, 1, 0.78, 1)
+shader_parameter/half_width = 0.011
+shader_parameter/edge_softness = 0.001
+shader_parameter/end_softness = 0.004
+shader_parameter/glow_width = 0.016
+shader_parameter/glow_strength = 0.16
+
+[sub_resource type="Curve" id="Curve_alpha_stream"]
+_data = [Vector2(0, 0), 0.0, 0.0, 0, 0, Vector2(0.16, 0.86), 0.0, 0.0, 0, 0, Vector2(0.84, 0.52), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 4
+
+[sub_resource type="CurveTexture" id="CurveTexture_alpha_stream"]
+curve = SubResource("Curve_alpha_stream")
+
+[sub_resource type="Gradient" id="Gradient_stream"]
+offsets = PackedFloat32Array(0, 0.55, 1)
+colors = PackedColorArray(0.48, 1, 0.8, 0.88, 0.26, 0.92, 1, 0.66, 0.26, 0.92, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_stream"]
+gradient = SubResource("Gradient_stream")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_stream"]
+lifetime_randomness = 0.34
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(146, 118, 1)
+direction = Vector3(0, -1, 0)
+spread = 1.8
+initial_velocity_min = 456.87
+initial_velocity_max = 538.87
+gravity = Vector3(0, 4, 0)
+tangential_accel_min = -0.6
+tangential_accel_max = 0.6
+damping_min = 4.0
+damping_max = 8.0
+scale_min = 3.4
+scale_max = 6.4
+color_ramp = SubResource("GradientTexture_stream")
+alpha_curve = SubResource("CurveTexture_alpha_stream")
 hue_variation_min = -0.02
 hue_variation_max = 0.03
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_outer"]
+shader = ExtResource("3_shader")
+shader_parameter/line_color = Color(0.42, 0.82, 1, 0.72)
+shader_parameter/half_width = 0.01
+shader_parameter/edge_softness = 0.001
+shader_parameter/end_softness = 0.003
+shader_parameter/glow_width = 0.014
+shader_parameter/glow_strength = 0.12
+
+[sub_resource type="Gradient" id="Gradient_outer"]
+offsets = PackedFloat32Array(0, 0.62, 1)
+colors = PackedColorArray(0.38, 0.78, 1, 0.56, 0.34, 0.56, 1, 0.36, 0.34, 0.56, 1, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture_outer"]
+gradient = SubResource("Gradient_outer")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_outer"]
+lifetime_randomness = 0.42
+particle_flag_disable_z = true
+emission_shape = 3
+emission_box_extents = Vector3(146, 118, 1)
+direction = Vector3(0, -1, 0)
+spread = 2.4
+initial_velocity_min = 309.83
+initial_velocity_max = 371.83
+gravity = Vector3(0, 5, 0)
+tangential_accel_min = -0.9
+tangential_accel_max = 0.9
+damping_min = 3.5
+damping_max = 7.0
+scale_min = 1.35
+scale_max = 3.0
+color_ramp = SubResource("GradientTexture_outer")
+alpha_curve = SubResource("CurveTexture_alpha_stream")
+hue_variation_min = -0.03
+hue_variation_max = 0.04
+
 [node name="BuffGainParticle" type="Node2D" unique_id=1805963364]
 z_index = 1
-script = ExtResource("2_script")
+scale = Vector2(1.3, 1.3)
+script = ExtResource("1_script")
 
-[node name="OrbitTrail" type="GPUParticles2D" parent="." unique_id=132930514]
-material = SubResource("CanvasItemMaterial_hlx2d")
+[node name="CoreNeedles" type="GPUParticles2D" parent="." unique_id=658665714]
+material = SubResource("ShaderMaterial_core")
+position = Vector2(1.3333334, 164.66667)
+amount = 3
+texture = ExtResource("2_texture")
+lifetime = 0.85
+preprocess = 0.85
+explosiveness = 0.08
+randomness = 0.76
+visibility_rect = Rect2(-180, -190, 360, 260)
+process_material = SubResource("ParticleProcessMaterial_core")
+
+[node name="ChannelNeedles" type="GPUParticles2D" parent="." unique_id=1817328018]
+material = SubResource("ShaderMaterial_stream")
+position = Vector2(-0.6666665, 162)
 amount = 15
-texture = ExtResource("1_texture")
-lifetime = 0.7
-explosiveness = 0.88
-visibility_rect = Rect2(-96, -96, 192, 192)
-trail_enabled = true
-trail_lifetime = 0.22
-process_material = SubResource("ParticleProcessMaterial_orbit")
+texture = ExtResource("2_texture")
+preprocess = 1.0
+explosiveness = 0.03
+randomness = 0.88
+visibility_rect = Rect2(-200, -210, 400, 290)
+process_material = SubResource("ParticleProcessMaterial_stream")
+
+[node name="OuterNeedles" type="GPUParticles2D" parent="." unique_id=132930514]
+material = SubResource("ShaderMaterial_outer")
+position = Vector2(-0.6666665, 162)
+amount = 16
+texture = ExtResource("2_texture")
+lifetime = 1.1
+preprocess = 1.1
+randomness = 0.92
+visibility_rect = Rect2(-230, -230, 460, 320)
+process_material = SubResource("ParticleProcessMaterial_outer")

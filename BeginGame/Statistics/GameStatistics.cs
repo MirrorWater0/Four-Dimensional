@@ -34,6 +34,8 @@ public partial class GameStatistics : CanvasLayer
         "res://battle/UIScene/Tip.tscn"
     );
 
+    private readonly Dictionary<Control, Tween> _hoverTweens = new();
+
     private ColorRect BG => field ??= GetNodeOrNull<ColorRect>("BG");
     private Control CenterPanel => field ??= GetNodeOrNull<Control>("CenterPanel");
     private Control VisualContent =>
@@ -112,6 +114,7 @@ public partial class GameStatistics : CanvasLayer
         Skill.SkillTypes.Attack,
         Skill.SkillTypes.Survive,
         Skill.SkillTypes.Special,
+        Skill.SkillTypes.Ability,
     ];
 
     private RunHistoryRecord _currentRecord;
@@ -1360,7 +1363,15 @@ public partial class GameStatistics : CanvasLayer
             parts.Add(I18n.Format("ui.statistics.node_enemies", "敌人：{value}", ("value", string.Join("，", record.EnemyNames))));
         if (record.ElectricityCoinChange != 0)
             parts.Add(I18n.Format("ui.statistics.node_coins", "电力币：{value}", ("value", FormatSigned(record.ElectricityCoinChange))));
-        if (record.TransitionEnergyChange != 0)
+        if (record.NodeType == LevelNode.LevelType.Rest)
+        {
+            var recoveryLines = record.PlayerLifeChanges
+                ?.Where(change => change != null && change.Amount > 0)
+                .Select(change => $"{change.CharacterName} {FormatSigned(change.Amount)}")
+                .ToList();
+            AppendJoined(parts, "角色恢复", recoveryLines);
+        }
+        else if (record.TransitionEnergyChange != 0)
             parts.Add(I18n.Format("ui.statistics.node_core_energy", "队伍生命：{value}", ("value", FormatSigned(record.TransitionEnergyChange))));
         AppendJoined(parts, I18n.Tr("ui.statistics.skills", "技能"), record.SkillChanges);
         AppendJoined(parts, I18n.Tr("ui.statistics.items", "道具"), record.GainedItems);
@@ -1559,15 +1570,25 @@ public partial class GameStatistics : CanvasLayer
             parts.Add($"{label}：{text}");
     }
 
-    private static void TweenHover(Control target, float scale)
+    private void TweenHover(Control target, float scale)
     {
         if (target == null || !target.IsInsideTree())
             return;
 
-        target.CreateTween()
+        if (_hoverTweens.TryGetValue(target, out Tween running) && GodotObject.IsInstanceValid(running))
+            running.Kill();
+
+        Tween tween = target.CreateTween();
+        _hoverTweens[target] = tween;
+        tween
             .TweenProperty(target, "scale", new Vector2(scale, scale), 0.10f)
             .SetEase(Tween.EaseType.Out)
             .SetTrans(Tween.TransitionType.Cubic);
+        tween.Finished += () =>
+        {
+            if (_hoverTweens.TryGetValue(target, out Tween activeTween) && activeTween == tween)
+                _hoverTweens.Remove(target);
+        };
     }
 
     private static Label CreateEmptyLabel(string text)
@@ -1675,6 +1696,7 @@ public partial class GameStatistics : CanvasLayer
             Skill.SkillTypes.Attack => new Color(1.00f, 0.48f, 0.36f, 1f),
             Skill.SkillTypes.Survive => new Color(0.42f, 0.78f, 1.00f, 1f),
             Skill.SkillTypes.Special => new Color(0.86f, 0.72f, 1.00f, 1f),
+            Skill.SkillTypes.Ability => new Color(1.00f, 0.82f, 0.38f, 1f),
             _ => new Color(0.82f, 0.86f, 0.92f, 1f),
         };
     }
@@ -1686,6 +1708,7 @@ public partial class GameStatistics : CanvasLayer
             Skill.SkillTypes.Attack => I18n.Tr("skill_type.attack", "攻击"),
             Skill.SkillTypes.Survive => I18n.Tr("skill_type.survive", "生存"),
             Skill.SkillTypes.Special => I18n.Tr("skill_type.special", "特殊"),
+            Skill.SkillTypes.Ability => I18n.Tr("skill_type.ability", "能力"),
             Skill.SkillTypes.Status => I18n.Tr("ui.encyclopedia.skill_type.status", "状态"),
             _ => I18n.Tr("ui.statistics.skill_type.other", "其它"),
         };

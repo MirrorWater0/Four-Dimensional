@@ -1,0 +1,24 @@
+﻿{
+    "skills":  {
+                   "DeathAttack":  {
+                                       "Name":  "双魂裁决",
+                                       "BaseDamage":  7,
+                                       "HitCount":  2,
+                                       "WeakenStacks":  1
+                                   },
+                   "DeathSpecial":  {
+                                        "Name":  "终焉宣告",
+                                        "SelfPowerGain":  2,
+                                        "DisasterStacks":  4,
+                                        "PlagueCount":  2,
+                                        "EnemySpecialIntentionCooldown":  3
+                                    },
+                   "DeathSurvive":  {
+                                        "Name":  "死寂",
+                                        "BaseBlock":  33,
+                                        "Heal":  15,
+                                        "Multiplier":  2,
+                                        "DazeCount":  1
+                                    }
+               }
+}

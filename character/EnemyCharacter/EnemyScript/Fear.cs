@@ -71,7 +71,7 @@ public partial class FearEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2)
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount", 2))
         );
     }
 }
@@ -89,7 +89,7 @@ public partial class FearEliteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 3)
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3))
         );
     }
 }
@@ -110,7 +110,7 @@ public partial class FearEliteSpecial : Skill
             this,
             ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.All),
             AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            HealStep(15)
+            HealStep(V("BaseHeal", 15))
         );
     }
 }

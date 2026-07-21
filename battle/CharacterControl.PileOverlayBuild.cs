@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -12,6 +11,11 @@ public partial class CharacterControl
         PileOverlayOpenContext openContext = default
     )
     {
+        if (_liftedCardIndex != -1)
+            ClearLiftedCard(instant: false);
+        ClearAllHandCardHoverMotionExcept(-1, instant: false);
+        HideAllCardHoverPreviews();
+
         ulong syncStartUsec = Time.GetTicksUsec();
         EnsurePileOverlayUi();
         int buildVersion = ++_pileOverlayBuildVersion;
@@ -36,7 +40,7 @@ public partial class CharacterControl
         EnsurePileOverlayDrawOrder();
         SyncPileOverlaySelectionButtons();
         ResetPileOverlayScroll();
-        LogPileOverlayLayoutTrace($"show-after-reset wasVisible={wasVisible} total={sections?.Sum(section => section.Pile?.Length ?? 0) ?? 0}");
+        LogPileOverlayLayoutTrace($"show-after-reset wasVisible={wasVisible} total={CountPileOverlayCardsInSections(sections)}");
 
         if (!wasVisible)
             PlayPileOverlayIntroAnimation();
@@ -64,7 +68,7 @@ public partial class CharacterControl
         var state = new PileOverlayBuildState
         {
             Version = buildVersion,
-            TotalCards = sections?.Sum(section => section.Pile?.Length ?? 0) ?? 0,
+            TotalCards = CountPileOverlayCardsInSections(sections),
             ShatterSlashInPile = CountShatterSlashCardsInSections(sections),
             OpenContext = openContext,
         };
@@ -211,12 +215,10 @@ public partial class CharacterControl
         bool groupByCharacter = UserSettings.GroupBattlePilesByCharacter;
         grid.Visible = !groupByCharacter;
         groups.Visible = groupByCharacter;
-        IndexedBattlePileEntry[] indexedPile = section.Pile
-            .Select((entry, index) => new IndexedBattlePileEntry(index, entry))
-            .ToArray();
 
         if (groupByCharacter)
         {
+            IndexedBattlePileEntry[] indexedPile = BuildIndexedPileEntries(section.Pile);
             await AddPileOverlayCharacterGroups(
                 groups,
                 player,
@@ -232,21 +234,24 @@ public partial class CharacterControl
             {
                 grid.Visible = false;
                 state.UsesVirtualization = true;
+                IndexedBattlePileEntry[] indexedPile = BuildIndexedPileEntries(section.Pile);
                 AddPileOverlayVirtualGrid(sectionRoot, player, section, indexedPile);
                 return;
             }
 
-            foreach (IndexedBattlePileEntry indexedEntry in indexedPile)
+            for (int index = 0; index < section.Pile.Length; index++)
             {
                 if (!IsPileOverlayBuildCurrent(state))
                     return;
 
-                PlayerCharacter entryOwner = IsStatusSkillId(indexedEntry.Entry.SkillId)
+                Battle.BattleCardPileEntry entry = section.Pile[index];
+                PlayerCharacter entryOwner = IsStatusSkillId(entry.SkillId)
                     ? null
-                    : indexedEntry.Entry.Owner ?? player;
+                    : entry.Owner ?? player;
                 var holder = CreatePilePreviewCardHolder(
                     entryOwner,
-                    indexedEntry.Entry.SkillId,
+                    entry.SkillId,
+                    entry.InstanceId,
                     out SkillCard card
                 );
                 if (holder == null || card == null)
@@ -256,11 +261,12 @@ public partial class CharacterControl
                 ApplyPilePreviewCardForOverlay(
                     card,
                     entryOwner,
-                    indexedEntry.Entry.SkillId
+                    entry.SkillId,
+                    entry.InstanceId
                 );
                 card.ResetState();
                 card.HoverHint.Visible = false;
-                ConfigurePileSelectionCard(card, section.Kind, indexedEntry.Index);
+                ConfigurePileSelectionCard(card, section.Kind, index);
                 PlayPileOverlayCardEntryAnimation(card, holder, section.Kind, state);
                 holder.Visible = true;
                 await YieldPileOverlayBuildIfNeeded(state);
@@ -339,86 +345,157 @@ public partial class CharacterControl
             return;
 
         bool forceVirtualizedGroups = pile.Count >= PileOverlayVirtualizationThreshold;
-        foreach (
-            var ownerGroup in pile.GroupBy(indexedEntry =>
-                IsStatusSkillId(indexedEntry.Entry.SkillId)
-                    ? null
-                    : indexedEntry.Entry.Owner ?? fallbackPlayer
-            )
-        )
+        BuildPileOverlayCharacterGroups(pile, fallbackPlayer);
+        try
         {
-            if (!IsPileOverlayBuildCurrent(state))
-                return;
-
-            PlayerCharacter owner = ownerGroup.Key;
-            IndexedBattlePileEntry[] entries = ownerGroup.ToArray();
-            if (entries.Length == 0)
-                continue;
-
-            var groupRoot = new VBoxContainer
-            {
-                MouseFilter = MouseFilterEnum.Ignore,
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-            };
-            ConfigurePileOverlayFixedWidthContainer(groupRoot, SizeFlags.ShrinkBegin);
-            groupRoot.AddThemeConstantOverride("separation", 8);
-            groups.AddChild(groupRoot);
-
-            var label = new Label
-            {
-                Text = $"{GetPileGroupDisplayName(owner)}  {entries.Length}",
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            ConfigurePileOverlayLabel(label);
-            groupRoot.AddChild(label);
-
-            var grid = new GridContainer
-            {
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            ConfigurePileOverlayGrid(grid);
-            groupRoot.AddChild(grid);
-            _pileOverlayGrid = grid;
-
-            if (forceVirtualizedGroups || entries.Length >= PileOverlayVirtualizationThreshold)
-            {
-                grid.Visible = false;
-                state.UsesVirtualization = true;
-                AddPileOverlayVirtualGrid(groupRoot, owner ?? fallbackPlayer, kind, entries);
-                continue;
-            }
-
-            foreach (IndexedBattlePileEntry indexedEntry in entries)
+            for (int groupIndex = 0; groupIndex < _pileOverlayCharacterGroups.Count; groupIndex++)
             {
                 if (!IsPileOverlayBuildCurrent(state))
                     return;
 
-                PlayerCharacter entryOwner = IsStatusSkillId(indexedEntry.Entry.SkillId)
-                    ? null
-                    : owner ?? fallbackPlayer;
-                var holder = CreatePilePreviewCardHolder(
-                    entryOwner,
-                    indexedEntry.Entry.SkillId,
-                    out SkillCard card
-                );
-                if (holder == null || card == null)
+                PileOverlayCharacterGroup ownerGroup = _pileOverlayCharacterGroups[groupIndex];
+                PlayerCharacter owner = ownerGroup.Owner;
+                List<IndexedBattlePileEntry> entries = ownerGroup.Entries;
+                if (entries.Count == 0)
                     continue;
 
-                grid.AddChild(holder);
-                ApplyPilePreviewCardForOverlay(card, entryOwner, indexedEntry.Entry.SkillId);
-                card.ResetState();
-                card.HoverHint.Visible = false;
-                ConfigurePileSelectionCard(card, kind, indexedEntry.Index);
-                PlayPileOverlayCardEntryAnimation(card, holder, kind, state);
-                holder.Visible = true;
-                await YieldPileOverlayBuildIfNeeded(state);
-            }
+                var groupRoot = new VBoxContainer
+                {
+                    MouseFilter = MouseFilterEnum.Ignore,
+                    SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+                    SizeFlagsVertical = SizeFlags.ShrinkBegin,
+                };
+                ConfigurePileOverlayFixedWidthContainer(groupRoot, SizeFlags.ShrinkBegin);
+                groupRoot.AddThemeConstantOverride("separation", 8);
+                groups.AddChild(groupRoot);
 
-            grid.QueueSort();
+                var label = new Label
+                {
+                    Text = $"{GetPileGroupDisplayName(owner)}  {entries.Count}",
+                    MouseFilter = MouseFilterEnum.Ignore,
+                };
+                ConfigurePileOverlayLabel(label);
+                groupRoot.AddChild(label);
+
+                var grid = new GridContainer
+                {
+                    SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+                    SizeFlagsVertical = SizeFlags.ShrinkBegin,
+                    MouseFilter = MouseFilterEnum.Ignore,
+                };
+                ConfigurePileOverlayGrid(grid);
+                groupRoot.AddChild(grid);
+                _pileOverlayGrid = grid;
+
+                if (forceVirtualizedGroups || entries.Count >= PileOverlayVirtualizationThreshold)
+                {
+                    grid.Visible = false;
+                    state.UsesVirtualization = true;
+                    AddPileOverlayVirtualGrid(
+                        groupRoot,
+                        owner ?? fallbackPlayer,
+                        kind,
+                        CopyIndexedPileEntries(entries)
+                    );
+                    continue;
+                }
+
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    if (!IsPileOverlayBuildCurrent(state))
+                        return;
+
+                    IndexedBattlePileEntry indexedEntry = entries[i];
+                    PlayerCharacter entryOwner = IsStatusSkillId(indexedEntry.Entry.SkillId)
+                        ? null
+                        : owner ?? fallbackPlayer;
+                    var holder = CreatePilePreviewCardHolder(
+                        entryOwner,
+                        indexedEntry.Entry.SkillId,
+                        indexedEntry.Entry.InstanceId,
+                        out SkillCard card
+                    );
+                    if (holder == null || card == null)
+                        continue;
+
+                    grid.AddChild(holder);
+                    ApplyPilePreviewCardForOverlay(
+                        card,
+                        entryOwner,
+                        indexedEntry.Entry.SkillId,
+                        indexedEntry.Entry.InstanceId
+                    );
+                    card.ResetState();
+                    card.HoverHint.Visible = false;
+                    ConfigurePileSelectionCard(card, kind, indexedEntry.Index);
+                    PlayPileOverlayCardEntryAnimation(card, holder, kind, state);
+                    holder.Visible = true;
+                    await YieldPileOverlayBuildIfNeeded(state);
+                }
+
+                grid.QueueSort();
+            }
         }
+        finally
+        {
+            ClearPileOverlayCharacterGroupBuffers();
+        }
+    }
+
+    private void BuildPileOverlayCharacterGroups(
+        IReadOnlyList<IndexedBattlePileEntry> pile,
+        PlayerCharacter fallbackPlayer
+    )
+    {
+        ClearPileOverlayCharacterGroupBuffers();
+        for (int i = 0; i < pile.Count; i++)
+        {
+            IndexedBattlePileEntry indexedEntry = pile[i];
+            PlayerCharacter owner = IsStatusSkillId(indexedEntry.Entry.SkillId)
+                ? null
+                : indexedEntry.Entry.Owner ?? fallbackPlayer;
+            PileOverlayCharacterGroup group = GetOrCreatePileOverlayCharacterGroup(owner);
+            group.Entries.Add(indexedEntry);
+        }
+    }
+
+    private PileOverlayCharacterGroup GetOrCreatePileOverlayCharacterGroup(PlayerCharacter owner)
+    {
+        for (int i = 0; i < _pileOverlayCharacterGroups.Count; i++)
+        {
+            PileOverlayCharacterGroup group = _pileOverlayCharacterGroups[i];
+            if (ReferenceEquals(group.Owner, owner))
+                return group;
+        }
+
+        var newGroup = new PileOverlayCharacterGroup { Owner = owner };
+        _pileOverlayCharacterGroups.Add(newGroup);
+        return newGroup;
+    }
+
+    private void ClearPileOverlayCharacterGroupBuffers()
+    {
+        for (int i = 0; i < _pileOverlayCharacterGroups.Count; i++)
+        {
+            PileOverlayCharacterGroup group = _pileOverlayCharacterGroups[i];
+            group.Owner = null;
+            group.Entries.Clear();
+        }
+        _pileOverlayCharacterGroups.Clear();
+    }
+
+    private static IndexedBattlePileEntry[] CopyIndexedPileEntries(
+        IReadOnlyList<IndexedBattlePileEntry> entries
+    )
+    {
+        if (entries == null || entries.Count == 0)
+            return Array.Empty<IndexedBattlePileEntry>();
+
+        var copy = new IndexedBattlePileEntry[entries.Count];
+        for (int i = 0; i < entries.Count; i++)
+            copy[i] = entries[i];
+
+        return copy;
     }
 
     private bool IsPileOverlayBuildCurrent(PileOverlayBuildState state)
@@ -452,6 +529,34 @@ public partial class CharacterControl
             await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
             state.LastYieldUsec = Time.GetTicksUsec();
         }
+    }
+
+    private static int CountPileOverlayCardsInSections(
+        IReadOnlyList<BattlePileOverlaySection> sections
+    )
+    {
+        if (sections == null)
+            return 0;
+
+        int count = 0;
+        for (int i = 0; i < sections.Count; i++)
+            count += sections[i].Pile?.Length ?? 0;
+
+        return count;
+    }
+
+    private static IndexedBattlePileEntry[] BuildIndexedPileEntries(
+        Battle.BattleCardPileEntry[] pile
+    )
+    {
+        if (pile == null || pile.Length == 0)
+            return Array.Empty<IndexedBattlePileEntry>();
+
+        var indexedPile = new IndexedBattlePileEntry[pile.Length];
+        for (int i = 0; i < pile.Length; i++)
+            indexedPile[i] = new IndexedBattlePileEntry(i, pile[i]);
+
+        return indexedPile;
     }
 
     private void OnPileOverlayScrollChanged(double _)
@@ -521,8 +626,9 @@ public partial class CharacterControl
         }
 
         Rect2 visibleRect = _pileOverlayScroll.GetGlobalRect();
-        foreach (PileOverlayVirtualGrid virtualGrid in _pileOverlayVirtualGrids.ToArray())
+        for (int i = 0; i < _pileOverlayVirtualGrids.Count; i++)
         {
+            PileOverlayVirtualGrid virtualGrid = _pileOverlayVirtualGrids[i];
             if (
                 virtualGrid?.Grid == null
                 || !GodotObject.IsInstanceValid(virtualGrid.Grid)
@@ -552,8 +658,9 @@ public partial class CharacterControl
         }
 
         Rect2 visibleRect = _pileOverlayScroll.GetGlobalRect();
-        foreach (PileOverlayVirtualGrid virtualGrid in _pileOverlayVirtualGrids.ToArray())
+        for (int i = 0; i < _pileOverlayVirtualGrids.Count; i++)
         {
+            PileOverlayVirtualGrid virtualGrid = _pileOverlayVirtualGrids[i];
             if (
                 virtualGrid?.Grid == null
                 || !GodotObject.IsInstanceValid(virtualGrid.Grid)
@@ -731,6 +838,7 @@ public partial class CharacterControl
             card,
             owner,
             indexedEntry.Entry.SkillId,
+            indexedEntry.Entry.InstanceId,
             indexedEntry.Index
         );
         if (previewChanged)
@@ -766,6 +874,7 @@ public partial class CharacterControl
         SkillCard card,
         PlayerCharacter player,
         SkillID skillId,
+        ulong instanceId,
         int pileIndex
     )
     {
@@ -773,6 +882,8 @@ public partial class CharacterControl
         if (
             holder.HasMeta(PileHolderPreviewSkillIdMeta)
             && holder.GetMeta(PileHolderPreviewSkillIdMeta).AsInt32() == (int)skillId
+            && holder.HasMeta(PileHolderPreviewInstanceIdMeta)
+            && holder.GetMeta(PileHolderPreviewInstanceIdMeta).AsUInt64() == instanceId
             && holder.GetMeta(PileHolderPreviewOwnerIdMeta).AsUInt64() == ownerId
             && holder.GetMeta(PileHolderPreviewPileIndexMeta).AsInt32() == pileIndex
         )
@@ -780,8 +891,9 @@ public partial class CharacterControl
             return false;
         }
 
-        ApplyPilePreviewCardForOverlay(card, player, skillId);
+        ApplyPilePreviewCardForOverlay(card, player, skillId, instanceId);
         holder.SetMeta(PileHolderPreviewSkillIdMeta, (int)skillId);
+        holder.SetMeta(PileHolderPreviewInstanceIdMeta, instanceId);
         holder.SetMeta(PileHolderPreviewOwnerIdMeta, ownerId);
         holder.SetMeta(PileHolderPreviewPileIndexMeta, pileIndex);
         return true;
@@ -794,6 +906,8 @@ public partial class CharacterControl
 
         if (holder.HasMeta(PileHolderPreviewSkillIdMeta))
             holder.RemoveMeta(PileHolderPreviewSkillIdMeta);
+        if (holder.HasMeta(PileHolderPreviewInstanceIdMeta))
+            holder.RemoveMeta(PileHolderPreviewInstanceIdMeta);
         if (holder.HasMeta(PileHolderPreviewOwnerIdMeta))
             holder.RemoveMeta(PileHolderPreviewOwnerIdMeta);
         if (holder.HasMeta(PileHolderPreviewPileIndexMeta))

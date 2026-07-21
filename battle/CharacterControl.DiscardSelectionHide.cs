@@ -142,9 +142,7 @@ public partial class CharacterControl
             PlayDiscardSelectionTemporaryShowAnimation();
 
         SyncDiscardSelectionHideButton();
-        RefreshTurnUi();
-        if (hidden)
-            ScheduleCardHoverRefresh();
+        RequestTurnUiRefresh(refreshHover: hidden);
     }
 
     private void PlayDiscardSelectionTemporaryHideAnimation()

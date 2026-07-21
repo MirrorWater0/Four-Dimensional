@@ -16,7 +16,11 @@ public partial class ReadyStance : Skill
         return new SkillPlan(
             this,
             DoubleEnergyStep(),
-            AddCardsStep(SkillID.VoidStatus, 1, BattleCardPileTarget.DiscardPileCards)
+            AddCardsStep(
+                SkillID.VoidStatus,
+                V("VoidCount", 1),
+                BattleCardPileTarget.DiscardPileCards
+            )
         );
     }
 }
@@ -45,73 +49,6 @@ public class HolySeal : Skill
     }
 }
 
-public class AegisPledge : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BarricadeStacks = 1;
-    public override bool ExhaustsAfterUse => true;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "壁垒";
-    public override int EnergyCost => 3;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Barricade,
-                stacks: BarricadeStacks,
-                target: TargetReference.All
-            )
-        );
-    }
-}
-
-public class HopeBeacon : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BeaconStacks = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "希望灯塔";
-    public override int EnergyCost => 1;
-    public override bool ExhaustsAfterUse => true;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Beacon,
-                stacks: BeaconStacks,
-                target: TargetReference.Self
-            )
-        );
-    }
-}
-
-public class WarGodWill : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int PowerGain = 3;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "战神意志";
-    public override bool ExhaustsAfterUse => true;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ModifyPropertyStep(PropertyType.Power, PowerGain, TargetReference.All)
-        );
-    }
-}
-
 public class TacticalPreparation : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
@@ -126,8 +63,12 @@ public class TacticalPreparation : Skill
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(2),
-            AddCardsStep(SkillID.VoidStatus, 1, BattleCardPileTarget.DiscardPileCards),
+            DrawCardsStep(V("DrawCount", 2)),
+            AddCardsStep(
+                SkillID.VoidStatus,
+                V("VoidCount", 1),
+                BattleCardPileTarget.DiscardPileCards
+            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: ExtraDrawStacks,
@@ -158,51 +99,3 @@ public class RadiantOverload : Skill
         );
     }
 }
-
-public class DemonForm : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int DemonStacks = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "恶魔形态";
-    public override int EnergyCost => 4;
-    public override bool ExhaustsAfterUse => true;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Demon,
-                stacks: DemonStacks,
-                target: TargetReference.Self
-            )
-        );
-    }
-}
-
-public class ExhaustBulwark : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int ExhaustShieldStacks = 2;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-    public override bool ExhaustsAfterUse => true;
-    public override string SkillName { get; set; } = "烬盾誓约";
-    public override int EnergyCost => 2;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.ExhaustShield,
-                stacks: ExhaustShieldStacks,
-                target: TargetReference.All
-            )
-        );
-    }
-}
-

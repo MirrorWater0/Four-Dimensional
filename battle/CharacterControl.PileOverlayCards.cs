@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -9,10 +8,11 @@ public partial class CharacterControl
     private Control CreatePilePreviewCardHolder(
         PlayerCharacter player,
         SkillID skillId,
+        ulong instanceId,
         out SkillCard card
     )
     {
-        if (GetPilePreviewSkill(player, skillId) == null)
+        if (GetPilePreviewSkill(player, skillId, instanceId) == null)
         {
             card = null;
             return null;
@@ -74,52 +74,9 @@ public partial class CharacterControl
         if (card == null || !GodotObject.IsInstanceValid(card))
             return;
 
-        Vector2 targetPosition = card.Position;
-        if (cardIndex >= PileOverlayAnimatedCardCount)
-        {
-            card.Position = targetPosition;
-            card.Modulate = SkillButton.EnabledModulate;
-            card.Scale = Vector2.One;
-            card.SetTransientPointerInputDisabled(false, refreshHoverWhenEnabled: true);
-            return;
-        }
-
-        float delay = PileOverlayCardEntryBaseDelay
-            + Math.Min(cardIndex, PileOverlayAnimatedCardCount - 1) * PileOverlayCardEntryStagger;
-
-        Vector2? startPosition = GetPileOverlayCardEntryStartPosition(
-            holder,
-            GetPileButtonForKind(kind)
-        );
-        card.SetTransientPointerInputDisabled(true);
-        card.Position = startPosition ?? targetPosition + new Vector2(0f, PileOverlayCardEntryYOffset);
-        Color targetModulate = SkillButton.EnabledModulate;
-        card.Modulate = new Color(targetModulate.R, targetModulate.G, targetModulate.B, 0f);
+        card.Modulate = SkillButton.EnabledModulate;
         card.Scale = Vector2.One;
-        Tween tween = card.CreateTween();
-        tween.SetParallel(true);
-
-        tween
-            .TweenProperty(card, "position", targetPosition, PileOverlayCardEntryDuration)
-            .SetDelay(delay)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        tween
-            .TweenProperty(card, "modulate", targetModulate, PileOverlayCardEntryDuration)
-            .SetDelay(delay)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        tween.SetParallel(false);
-        tween.TweenCallback(
-            Callable.From(() =>
-            {
-                if (GodotObject.IsInstanceValid(card))
-                    card.SetTransientPointerInputDisabled(
-                        false,
-                        refreshHoverWhenEnabled: true
-                    );
-            })
-        );
+        card.SetTransientPointerInputDisabled(false, refreshHoverWhenEnabled: true);
     }
 
     private static int CountShatterSlashCardsInSections(
@@ -129,9 +86,21 @@ public partial class CharacterControl
         if (sections == null || sections.Count == 0)
             return 0;
 
-        return sections.Sum(section =>
-            section.Pile?.Count(entry => entry.SkillId == SkillID.ShatterSlash) ?? 0
-        );
+        int count = 0;
+        for (int i = 0; i < sections.Count; i++)
+        {
+            Battle.BattleCardPileEntry[] pile = sections[i].Pile;
+            if (pile == null)
+                continue;
+
+            for (int entryIndex = 0; entryIndex < pile.Length; entryIndex++)
+            {
+                if (pile[entryIndex].SkillId == SkillID.ShatterSlash)
+                    count++;
+            }
+        }
+
+        return count;
     }
 
     private SkillID? GetPileSelectionTriggerSkillId()
@@ -190,12 +159,7 @@ public partial class CharacterControl
         double populateMs = (Time.GetTicksUsec() - buildStartUsec) / 1000.0;
         PileOverlayApplyPerfTracker perf = state.ApplyPerf;
         PileOverlayOpenContext context = state.OpenContext;
-        string sectionSummary = string.Join(
-            ", ",
-            (sections ?? Array.Empty<BattlePileOverlaySection>()).Select(section =>
-                $"{section.Title}:{section.Pile.Length}"
-            )
-        );
+        string sectionSummary = BuildPileOverlaySectionSummary(sections);
         string playerName = string.IsNullOrWhiteSpace(player?.CharacterName)
             ? player?.Name ?? "<player>"
             : player.CharacterName;
@@ -238,11 +202,12 @@ public partial class CharacterControl
     private void ApplyPilePreviewCardForOverlay(
         SkillCard card,
         PlayerCharacter player,
-        SkillID skillId
+        SkillID skillId,
+        ulong instanceId
     )
     {
         ulong startUsec = Time.GetTicksUsec();
-        ApplyPilePreviewCard(card, player, skillId);
+        ApplyPilePreviewCard(card, player, skillId, instanceId);
         if (_pileOverlayActiveApplyPerfTracker == null)
             return;
 
@@ -250,9 +215,14 @@ public partial class CharacterControl
         _pileOverlayActiveApplyPerfTracker.Record(skillId, elapsedMs);
     }
 
-    private void ApplyPilePreviewCard(SkillCard card, PlayerCharacter player, SkillID skillId)
+    private void ApplyPilePreviewCard(
+        SkillCard card,
+        PlayerCharacter player,
+        SkillID skillId,
+        ulong instanceId
+    )
     {
-        Skill skill = GetPilePreviewSkill(player, skillId);
+        Skill skill = GetPilePreviewSkill(player, skillId, instanceId);
         if (skill == null || card == null)
             return;
 
@@ -274,11 +244,11 @@ public partial class CharacterControl
         card.ConfigurePilePreviewVisuals();
     }
 
-    private Skill GetPilePreviewSkill(PlayerCharacter player, SkillID skillId)
+    private Skill GetPilePreviewSkill(PlayerCharacter player, SkillID skillId, ulong instanceId)
     {
         bool isStatusCard = IsStatusSkillId(skillId);
         ulong ownerId = isStatusCard ? 0UL : player?.GetInstanceId() ?? 0UL;
-        var key = new PileOverlayPreviewSkillKey(skillId, ownerId);
+        var key = new PileOverlayPreviewSkillKey(skillId, instanceId, ownerId);
         if (_pileOverlayPreviewSkillCache.TryGetValue(key, out Skill cachedSkill))
             return cachedSkill;
 
@@ -288,9 +258,32 @@ public partial class CharacterControl
 
         if (!isStatusCard)
             skill.OwnerCharater = player;
+        skill.BattleCardInstanceId = instanceId;
 
         _pileOverlayPreviewSkillCache[key] = skill;
         return skill;
+    }
+
+    private static string BuildPileOverlaySectionSummary(
+        IReadOnlyList<BattlePileOverlaySection> sections
+    )
+    {
+        if (sections == null || sections.Count == 0)
+            return string.Empty;
+
+        var builder = new System.Text.StringBuilder();
+        for (int i = 0; i < sections.Count; i++)
+        {
+            if (i > 0)
+                builder.Append(", ");
+
+            BattlePileOverlaySection section = sections[i];
+            builder.Append(section.Title);
+            builder.Append(':');
+            builder.Append(section.Pile.Length);
+        }
+
+        return builder.ToString();
     }
 
     private bool IsStatusSkillId(SkillID skillId)

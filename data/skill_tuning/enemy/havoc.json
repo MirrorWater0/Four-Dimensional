@@ -1,0 +1,25 @@
+﻿{
+    "skills":  {
+                   "HavocAttack":  {
+                                       "Name":  "裂壳横扫",
+                                       "BaseDamage":  8,
+                                       "WeakenStacks":  1,
+                                       "HitCount":  2
+                                   },
+                   "HavocSpecial":  {
+                                        "Name":  "崩坏回响",
+                                        "DisasterStacks":  7,
+                                        "SelfPowerGain":  2,
+                                        "BaseDamage":  13,
+                                        "Multiplier":  1,
+                                        "PlagueCount":  3,
+                                        "EnemySpecialIntentionCooldown":  3
+                                    },
+                   "HavocSurvive":  {
+                                        "Name":  "天灾之证",
+                                        "BaseBlock":  22,
+                                        "SurvivabilityGain":  2,
+                                        "Multiplier":  2
+                                    }
+               }
+}

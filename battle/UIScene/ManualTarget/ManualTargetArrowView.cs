@@ -52,9 +52,15 @@ public partial class ManualTargetArrowView : Control
     private Tween _headTipScaleTween;
     private float _headTipScale = 0.95f;
     private Vector2[] _lastPoints = System.Array.Empty<Vector2>();
+    private Vector2[] _shaftPoints = System.Array.Empty<Vector2>();
+    private int _shaftPointCount;
+    private bool _curveDirty = true;
+    private bool _hasEndpointGeometry;
 
     public Vector2 StartPosition { get; private set; }
     public Vector2 EndPosition { get; private set; }
+    public Vector2 StartTangent { get; private set; } = Vector2.Right;
+    public Vector2 EndTangent { get; private set; } = Vector2.Right;
 
     public override void _Ready()
     {
@@ -78,9 +84,9 @@ public partial class ManualTargetArrowView : Control
 
         _headTipScaleTween = CreateTween();
         _headTipScaleTween
-            .TweenMethod(Callable.From<float>(SetHeadTipScale), _headTipScale, targetScale, 1.0f)
+            .TweenMethod(Callable.From<float>(SetHeadTipScale), _headTipScale, targetScale, 0.16f)
             .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Elastic);
+            .SetTrans(Tween.TransitionType.Cubic);
     }
 
     public void SetEndpoints(
@@ -90,13 +96,40 @@ public partial class ManualTargetArrowView : Control
         Vector2? endTangent = null
     )
     {
+        Vector2 resolvedStartTangent = GetSafeDirection(
+            startTangent ?? endPosition - startPosition,
+            Vector2.Right
+        );
+        Vector2 resolvedEndTangent = GetSafeDirection(
+            endTangent ?? endPosition - startPosition,
+            resolvedStartTangent
+        );
+        if (
+            _hasEndpointGeometry
+            && StartPosition.DistanceSquaredTo(startPosition) < 0.01f
+            && EndPosition.DistanceSquaredTo(endPosition) < 0.01f
+            && StartTangent.DistanceSquaredTo(resolvedStartTangent) < 0.0001f
+            && EndTangent.DistanceSquaredTo(resolvedEndTangent) < 0.0001f
+        )
+        {
+            return;
+        }
+
         StartPosition = startPosition;
         EndPosition = endPosition;
+        StartTangent = resolvedStartTangent;
+        EndTangent = resolvedEndTangent;
+        _hasEndpointGeometry = true;
+        _curveDirty = true;
         if (EndPosition.DistanceSquaredTo(StartPosition) < 9f)
         {
-            _lastPoints = System.Array.Empty<Vector2>();
+            ClearPointBuffers();
             SetTipsVisible(false);
+            QueueRedraw();
+            return;
         }
+
+        EnsureCurveGeometry();
         UpdateTipNodes();
         QueueRedraw();
     }
@@ -113,42 +146,115 @@ public partial class ManualTargetArrowView : Control
             return;
         }
 
-        Vector2 control = (StartPosition + EndPosition) * 0.5f + new Vector2(0f, -CurveLift);
-        _lastPoints = BuildCurvePoints(StartPosition, control, EndPosition);
-        Vector2[] shaftPoints = BuildInsetShaftPoints(_lastPoints);
-        if (shaftPoints.Length < 2)
+        EnsureCurveGeometry();
+        if (_shaftPointCount < 2)
         {
             SetTipsVisible(false);
             return;
         }
 
-        DrawPolyline(shaftPoints, ShadowColor, ShadowWidth, true);
-        DrawPolyline(shaftPoints, ArrowColor, ArrowWidth, true);
+        DrawPolyline(_shaftPoints, ShadowColor, ShadowWidth, true);
+        DrawPolyline(_shaftPoints, ArrowColor, ArrowWidth, true);
         UpdateTipNodes();
     }
 
-    private Vector2[] BuildCurvePoints(Vector2 start, Vector2 control, Vector2 end)
+    private void GetCurveControls(
+        Vector2 start,
+        Vector2 end,
+        out Vector2 controlA,
+        out Vector2 controlB
+    )
+    {
+        float distance = start.DistanceTo(end);
+        float handleLength = Mathf.Clamp(distance * 0.38f, 48f, 260f);
+        Vector2 lift = new(0f, -Mathf.Min(CurveLift, distance * 0.28f));
+        controlA = start + StartTangent * handleLength + lift * 0.35f;
+        controlB = end - EndTangent * handleLength + lift * 0.35f;
+    }
+
+    private void EnsureCurveGeometry()
+    {
+        int expectedPointCount = Mathf.Max(4, PointCount);
+        if (!_curveDirty && _lastPoints.Length == expectedPointCount)
+            return;
+
+        GetCurveControls(StartPosition, EndPosition, out Vector2 controlA, out Vector2 controlB);
+        int pointCount = BuildCurvePoints(StartPosition, controlA, controlB, EndPosition);
+        _shaftPointCount = BuildInsetShaftPoints(pointCount);
+        _curveDirty = false;
+    }
+
+    private int BuildCurvePoints(Vector2 start, Vector2 controlA, Vector2 controlB, Vector2 end)
     {
         int count = Mathf.Max(4, PointCount);
-        Vector2[] points = new Vector2[count];
+        EnsurePointBuffers(count);
         for (int i = 0; i < count; i++)
         {
             float t = i / (float)(count - 1);
-            points[i] = start.Lerp(control, t).Lerp(control.Lerp(end, t), t);
+            _lastPoints[i] = CubicBezier(start, controlA, controlB, end, t);
         }
 
-        return points;
+        return count;
     }
 
-    private Vector2[] BuildInsetShaftPoints(Vector2[] points)
+    private static Vector2 CubicBezier(
+        Vector2 a,
+        Vector2 b,
+        Vector2 c,
+        Vector2 d,
+        float t
+    )
     {
-        if (points == null || points.Length < 2)
-            return System.Array.Empty<Vector2>();
+        float inv = 1f - t;
+        return a * (inv * inv * inv)
+            + b * (3f * inv * inv * t)
+            + c * (3f * inv * t * t)
+            + d * (t * t * t);
+    }
 
-        Vector2[] result = (Vector2[])points.Clone();
-        result[0] = MovePointAlongSegment(result[0], result[1], TailShaftInset);
-        result[^1] = MovePointAlongSegment(result[^1], result[^2], HeadShaftInset);
-        return result;
+    private static Vector2 GetSafeDirection(Vector2 value, Vector2 fallback)
+    {
+        if (value.LengthSquared() >= 0.01f)
+            return value.Normalized();
+
+        if (fallback.LengthSquared() >= 0.01f)
+            return fallback.Normalized();
+
+        return Vector2.Right;
+    }
+
+    private int BuildInsetShaftPoints(int pointCount)
+    {
+        if (pointCount < 2)
+            return 0;
+
+        for (int i = 0; i < pointCount; i++)
+            _shaftPoints[i] = _lastPoints[i];
+
+        _shaftPoints[0] = MovePointAlongSegment(_shaftPoints[0], _shaftPoints[1], TailShaftInset);
+        int last = pointCount - 1;
+        _shaftPoints[last] = MovePointAlongSegment(
+            _shaftPoints[last],
+            _shaftPoints[last - 1],
+            HeadShaftInset
+        );
+        return pointCount;
+    }
+
+    private void EnsurePointBuffers(int count)
+    {
+        if (_lastPoints.Length != count)
+            _lastPoints = new Vector2[count];
+        if (_shaftPoints.Length != count)
+            _shaftPoints = new Vector2[count];
+    }
+
+    private void ClearPointBuffers()
+    {
+        _lastPoints = System.Array.Empty<Vector2>();
+        _shaftPoints = System.Array.Empty<Vector2>();
+        _shaftPointCount = 0;
+        _curveDirty = true;
     }
 
     private static Vector2 MovePointAlongSegment(Vector2 point, Vector2 toward, float distance)

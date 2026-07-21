@@ -35,7 +35,7 @@ public partial class WarThrall : SummonCharacter
 
 public partial class WarThrallAttack : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 5;
     private const int SelfPowerGain = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;

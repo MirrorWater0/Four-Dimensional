@@ -52,7 +52,7 @@ public partial class ReNewedSpirit : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: 0),
+            BlockStep(baseBlock: V("BaseBlock", 0)),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
@@ -71,8 +71,8 @@ public partial class AbsouluteDefense : Skill
     {
         return new SkillPlan(
             this,
-            WhileStep(loopSteps: [BlockStep(baseBlock: 6, multiplier: 1)]),
-            ApplyBuffFriendly(Buff.BuffName.Taunt, 1)
+            WhileStep(loopSteps: [BlockStep(baseBlock: V("BaseBlock", 6), multiplier: V("Multiplier", 1))]),
+            ApplyBuffFriendly(Buff.BuffName.Taunt, V("TauntStacks", 1))
         );
     }
 }
@@ -95,7 +95,7 @@ public partial class TauntingGuard : Skill
                 stacks: TauntStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(baseBlock: BaseBlock, multiplier: 1)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1))
         );
     }
 }
@@ -225,7 +225,7 @@ public partial class Purification : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(0),
+            BlockStep(V("BaseBlock", 0)),
             CustomStep(
                 skill =>
                     skill?.OwnerCharater?.BattleNode?.ExhaustAllPlayerBattleStatusCardsAsync(
@@ -292,8 +292,8 @@ public partial class Resistance : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(4),
-            ExhaustCardsStep(BattleCardPileTarget.HandCards, 2, false)
+            BlockStep(V("BaseBlock", 4)),
+            ExhaustCardsStep(BattleCardPileTarget.HandCards, V("ExhaustCount", 2), false)
         );
     }
 }

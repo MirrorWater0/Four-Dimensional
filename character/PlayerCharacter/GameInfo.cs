@@ -425,6 +425,38 @@ public static partial class GameInfo
         return pool[rng.Next(pool.Length)];
     }
 
+    public static SkillID? PickRandomTransformBattleSkillId(
+        PlayerCharacter player,
+        SkillID sourceSkillId,
+        Random rng
+    )
+    {
+        if (
+            player == null
+            || PlayerCharacters == null
+            || player.CharacterIndex < 0
+            || player.CharacterIndex >= PlayerCharacters.Length
+        )
+        {
+            return null;
+        }
+
+        SkillID[] allSkills = PlayerCharacters[player.CharacterIndex].AllSkills ?? Array.Empty<SkillID>();
+        SkillID[] pool = allSkills
+            .Where(skillId => skillId != sourceSkillId && IsSelectableDeckCard(skillId))
+            .Distinct()
+            .ToArray();
+        if (pool.Length == 0)
+            return null;
+
+        SkillID[] preferredPool = pool.Where(skillId => !IsBasicSkill(skillId)).ToArray();
+        if (preferredPool.Length > 0)
+            pool = preferredPool;
+
+        rng ??= new Random();
+        return pool[rng.Next(pool.Length)];
+    }
+
     private static int GetDeckSelectionSkillSortIndex(SkillID skillId)
     {
         var skill = Skill.GetSkill(skillId);
@@ -433,7 +465,8 @@ public static partial class GameInfo
             Skill.SkillTypes.Attack => 0,
             Skill.SkillTypes.Survive => 1,
             Skill.SkillTypes.Special => 2,
-            _ => 3,
+            Skill.SkillTypes.Ability => 3,
+            _ => 4,
         };
     }
 
@@ -554,30 +587,33 @@ public struct PlayerInfoStructure
 
 public static class GlobalFunction
 {
+    private static readonly Dictionary<ulong, Dictionary<string, Tween>> ShaderTweens = new();
+
     public static void TweenShader(Control node, string var, float val, float duration)
     {
-        ShaderMaterial material = node?.Material as ShaderMaterial;
-        if (material == null)
-            return;
-
-        node.CreateTween()
-            .TweenMethod(
-                Callable.From<float>(value =>
-                    SetShaderParameterIfValid(material, var, value)
-                ),
-                GetShaderParameterFloat(material, var),
-                val,
-                duration
-            );
+        TweenShaderParameter(node, var, val, duration);
     }
 
     public static void TweenShader(Node2D node, string var, float val, float duration)
     {
+        TweenShaderParameter(node, var, val, duration);
+    }
+
+    private static void TweenShaderParameter(CanvasItem node, string var, float val, float duration)
+    {
         ShaderMaterial material = node?.Material as ShaderMaterial;
         if (material == null)
             return;
 
-        node.CreateTween()
+        ulong nodeId = node.GetInstanceId();
+        Dictionary<string, Tween> nodeTweens = GetShaderTweenMap(nodeId);
+        if (nodeTweens.TryGetValue(var, out Tween running) && GodotObject.IsInstanceValid(running))
+            running.Kill();
+        nodeTweens.Remove(var);
+
+        Tween tween = node.CreateTween();
+        nodeTweens[var] = tween;
+        tween
             .TweenMethod(
                 Callable.From<float>(value =>
                     SetShaderParameterIfValid(material, var, value)
@@ -586,6 +622,29 @@ public static class GlobalFunction
                 val,
                 duration
             );
+        tween.Finished += () => ClearFinishedShaderTween(nodeId, var, tween);
+    }
+
+    private static Dictionary<string, Tween> GetShaderTweenMap(ulong nodeId)
+    {
+        if (!ShaderTweens.TryGetValue(nodeId, out Dictionary<string, Tween> nodeTweens))
+        {
+            nodeTweens = new Dictionary<string, Tween>();
+            ShaderTweens[nodeId] = nodeTweens;
+        }
+
+        return nodeTweens;
+    }
+
+    private static void ClearFinishedShaderTween(ulong nodeId, string var, Tween tween)
+    {
+        if (!ShaderTweens.TryGetValue(nodeId, out Dictionary<string, Tween> nodeTweens))
+            return;
+
+        if (nodeTweens.TryGetValue(var, out Tween activeTween) && activeTween == tween)
+            nodeTweens.Remove(var);
+        if (nodeTweens.Count == 0)
+            ShaderTweens.Remove(nodeId);
     }
 
     private static void SetShaderParameterIfValid(

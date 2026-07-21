@@ -16,7 +16,11 @@ public partial class SacredOnslaught : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 1),
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: V("Multiplier", 1),
+                times: V("HitCount", 1)
+            ),
             CustomStep(
                 _ =>
                 {
@@ -75,8 +79,12 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: 1),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 2, HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, times: V("HitCount", 1)),
+            ApplyBuffHostile(
+                Buff.BuffName.Weaken,
+                V("WeakenStacks", 2),
+                HostileTargetReference.AttackKey
+            )
         );
     }
 }
@@ -94,7 +102,11 @@ public partial class EchoPuncture : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: 2, target: HostileTargetReference.All),
+            AttackStep(
+                baseDamage: BaseDamage,
+                times: V("HitCount", 2),
+                target: HostileTargetReference.All
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -116,7 +128,11 @@ public partial class Extract : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage), DrawCardsStep(2));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage),
+            DrawCardsStep(V("DrawCount", 2))
+        );
     }
 }
 
@@ -142,8 +158,8 @@ public partial class BladeOfSlaughter : Skill
 public partial class DisasterImpact : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseDamage = 7;
-    private const int WeakenStacksPerExtraDraw = 2;
+    private const int BaseDamage = 4;
+    private const int WeakenStacksPerExtraDraw = 1;
     public override int EnergyCost => 0;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -200,7 +216,7 @@ public class EchonicResonance : Skill
             WhileStep(
                 loopSteps:
                 [
-                    AttackStep(baseDamage: 0, multiplier: 1),
+                    AttackStep(baseDamage: V("BaseDamage", 0), multiplier: V("Multiplier", 1)),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )
@@ -223,7 +239,7 @@ public class SonicBoom : Skill
         return new SkillPlan(
             this,
             WhileStep(
-                times: () => 4,
+                times: () => V("LoopCount", 4),
                 loopSteps: [AttackStep(BaseDamage, target: HostileTargetReference.All)]
             )
         );
@@ -232,20 +248,19 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 12;
-    int PowerGain = -2;
+    int damage = 7;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "相位回声";
-    public override int EnergyCost => 1;
-    
+    public override int EnergyCost => 0;
+
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: damage, target: HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            AttackStep(baseDamage: damage, target: HostileTargetReference.One),
+            ShuffleDiscardPileIntoDrawPileStep()
         );
     }
 }
@@ -272,7 +287,7 @@ public class ReverbChain : Skill
             ),
             WhileStep(
                 times: GetLoopTimes,
-                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: 1)]
+                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1))]
             )
         );
     }

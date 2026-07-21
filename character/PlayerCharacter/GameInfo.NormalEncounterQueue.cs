@@ -3,8 +3,10 @@ using System.Collections.Generic;
 public static partial class GameInfo
 {
     private const int MaxNormalBattlesPerRegion = 24;
+    private const int CurrentNormalEncounterQueueVersion = 1;
 
     public static List<int> NormalEncounterQueue = new();
+    public static int NormalEncounterQueueVersion;
 
     public static void ResetNormalEncounterQueueState()
     {
@@ -28,11 +30,17 @@ public static partial class GameInfo
 
             passIndex++;
         }
+
+        NormalEncounterQueueVersion = CurrentNormalEncounterQueueVersion;
     }
 
     public static void EnsureNormalEncounterQueue()
     {
-        if (NormalEncounterQueue != null && NormalEncounterQueue.Count >= MaxNormalBattlesPerRegion)
+        if (
+            NormalEncounterQueueVersion == CurrentNormalEncounterQueueVersion
+            && NormalEncounterQueue != null
+            && NormalEncounterQueue.Count >= MaxNormalBattlesPerRegion
+        )
             return;
 
         InitializeNormalEncounterQueue();

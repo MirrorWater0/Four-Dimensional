@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "Turbine":  {
+                                    "Name":  "Turbine",
+                                    "MaxLife":  105
+                                }
+                }
+}

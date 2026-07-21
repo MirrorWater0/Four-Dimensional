@@ -1328,6 +1328,78 @@
       "Colorless": true,
       "Managed": "generated",
       "ImplementationClass": "DefenceFocus"
+    },
+    {
+      "EnumName": "RenewalFlurry",
+      "Id": 175,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "RenewalFlurry"
+    },
+    {
+      "EnumName": "SoundPickup",
+      "Id": 176,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "SoundPickup"
+    },
+    {
+      "EnumName": "LingeringTone",
+      "Id": 177,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "LingeringTone"
+    },
+    {
+      "EnumName": "WardGift",
+      "Id": 178,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "WardGift"
+    },
+    {
+      "EnumName": "ShadowBladeWard",
+      "Id": 179,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "ShadowBladeWard"
+    },
+    {
+      "EnumName": "Overdraw",
+      "Id": 180,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "Overdraw"
+    },
+    {
+      "EnumName": "Recycling",
+      "Id": 181,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "Recycling"
+    },
+    {
+      "EnumName": "Prediction",
+      "Id": 182,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "Prediction"
+    },
+    {
+      "EnumName": "Search",
+      "Id": 183,
+      "Player": "Nightingale",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "Search"
     }
   ]
 }

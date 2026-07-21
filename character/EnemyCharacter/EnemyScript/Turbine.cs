@@ -119,7 +119,6 @@ public partial class TurbineSurvive : Skill
     private const int BaseSurvivabilityGain = 23;
     private const int SurvivabilityMultiplier = 2;
     private const int AllyPowerGain = 5;
-    private const int AllyEnergyGain = 2;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -133,8 +132,7 @@ public partial class TurbineSurvive : Skill
                 baseBlock: BaseSurvivabilityGain,
                 multiplier: SurvivabilityMultiplier
             ),
-            ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next),
-            EnergyStep(AllyEnergyGain)
+            ModifyPropertyStep(PropertyType.Power, AllyPowerGain, TargetReference.Next)
         );
     }
 }
@@ -154,7 +152,7 @@ public partial class TurbineSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(19),
+            AttackStep(V("BaseDamage", 19)),
             CarryStep(target: TargetReference.Previous, skillIndex: 1),
             AddCardsStep(SkillID.WoundStatus, WoundCount)
         );

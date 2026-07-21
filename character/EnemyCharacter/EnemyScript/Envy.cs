@@ -1,13 +1,14 @@
 using System;
-using System.Threading.Tasks;
+using System.Linq;
 using Godot;
 
 public partial class Envy : EnemyCharacter
 {
-    private Action<Character, PropertyType, int, Character> _propertyIncreasedHandler;
+    private Action<Skill> _skillUsedHandler;
 
     public const string PassiveNameText = "嫉妒";
-    public static string PassiveDescriptionText => "敌方获得属性时：获得等量同名属性。";
+    public static string PassiveDescriptionText =>
+        "敌方打出卡牌时：获得该卡牌中的正面增益（包括属性提升）。";
 
     public override string CharacterName { get; set; } = "嫉妒";
 
@@ -20,38 +21,70 @@ public partial class Envy : EnemyCharacter
         if (BattleNode == null)
             return;
 
-        _propertyIncreasedHandler ??= TriggerPassive;
-        BattleNode.PropertyIncreased -= _propertyIncreasedHandler;
-        BattleNode.PropertyIncreased += _propertyIncreasedHandler;
+        _skillUsedHandler ??= TriggerPassive;
+        BattleNode.UsedSkills.ItemAdded -= _skillUsedHandler;
+        BattleNode.UsedSkills.ItemAdded += _skillUsedHandler;
     }
 
     public override void _ExitTree()
     {
-        if (BattleNode != null && _propertyIncreasedHandler != null)
-            BattleNode.PropertyIncreased -= _propertyIncreasedHandler;
+        if (BattleNode != null && _skillUsedHandler != null)
+            BattleNode.UsedSkills.ItemAdded -= _skillUsedHandler;
         base._ExitTree();
     }
 
-    private async void TriggerPassive(
-        Character target,
-        PropertyType type,
-        int value,
-        Character source
-    )
+    private async void TriggerPassive(Skill skill)
     {
         if (
-            value <= 0
-            || State == CharacterState.Dying
-            || target == null
-            || target.BattleNode != BattleNode
-            || target.IsPlayer == IsPlayer
+            State == CharacterState.Dying
+            || skill?.OwnerCharater == null
+            || skill.OwnerCharater.BattleNode != BattleNode
+            || skill.OwnerCharater.IsPlayer == IsPlayer
         )
         {
             return;
         }
 
+        Skill.PreviewEffectEntry[] effects = skill.BuildPreviewEffectEntriesRaw();
+        var positiveBuffs = effects
+            .Where(entry =>
+                entry.Kind == Skill.PreviewEffectKind.Buff
+                && entry.Value > 0
+                && entry.BuffName.HasValue
+                && Buff.GetNature(entry.BuffName.Value) == Nature.positive
+                && (
+                    entry.Target == null
+                    || entry.Target.IsPlayer == skill.OwnerCharater.IsPlayer
+                )
+            )
+            .GroupBy(entry => entry.BuffName.Value)
+            .Select(group => new { BuffName = group.Key, Stacks = group.Max(entry => entry.Value) })
+            .ToArray();
+        var positiveProperties = effects
+            .Where(entry =>
+                entry.Kind == Skill.PreviewEffectKind.Property
+                && entry.Value > 0
+                && entry.PropertyType.HasValue
+                && (
+                    entry.Target == null
+                    || entry.Target.IsPlayer == skill.OwnerCharater.IsPlayer
+                )
+            )
+            .GroupBy(entry => entry.PropertyType.Value)
+            .Select(group => new
+            {
+                PropertyType = group.Key,
+                Value = group.Max(entry => entry.Value),
+            })
+            .ToArray();
+        if (positiveBuffs.Length == 0 && positiveProperties.Length == 0)
+            return;
+
         using var _ = BeginEffectSource("被动");
-        await IncreaseProperties(type, value, this);
+        foreach (var buff in positiveBuffs)
+            Skill.TryApplyBuffToTarget(buff.BuffName, this, buff.Stacks, this);
+        foreach (var property in positiveProperties)
+            await IncreaseProperties(property.PropertyType, property.Value, this);
     }
 }
 
@@ -89,13 +122,13 @@ public partial class EnvyEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: 2),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount", 2)),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
                 HostileTargetReference.AttackKey
             ),
-            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DrawPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1), BattleCardPileTarget.DrawPileCards)
         );
     }
 }
@@ -113,9 +146,9 @@ public partial class EnvyEliteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Power, 1),
-            AddCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1), HostileTargetReference.All),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 1)),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }

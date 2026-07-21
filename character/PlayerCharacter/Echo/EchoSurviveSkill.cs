@@ -8,13 +8,17 @@ public partial class SoundBarrier : Skill
 {
     public override string SkillName { get; set; } = "音墙";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AddCardsToHandStep(SkillID.DefenceFocus, 3, TargetReference.ManualFriendly)
+            AddCardsToHandStep(
+                SkillID.DefenceFocus,
+                V("DefenceFocusCount", 3),
+                TargetReference.ManualFriendly
+            )
         );
     }
 }
@@ -28,17 +32,26 @@ public partial class SonicDeflection : Skill
 
     public override string SkillName { get; set; } = "声波偏转";
     public override int EnergyCost => 2;
+
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(
+                target: TargetReference.Self,
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1)
+            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
                 target: TargetReference.ManualFriendly
             ),
-            ModifyPropertyStep(PropertyType.Survivability, -3, TargetReference.Self)
+            ModifyPropertyStep(
+                PropertyType.Survivability,
+                -V("SurvivabilityLoss", 3),
+                TargetReference.Self
+            )
         );
     }
 }
@@ -57,7 +70,11 @@ public partial class DeflectionShield : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(
+                target: TargetReference.Self,
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1)
+            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -106,7 +123,7 @@ public partial class DissonantField : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -130,11 +147,65 @@ public partial class Shelter : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(
+                target: TargetReference.ManualFriendly,
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1)
+            ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,
                 target: TargetReference.Others
+            )
+        );
+    }
+}
+
+public partial class SoundPickup : Skill
+{
+    private const int BaseBlock = 6;
+    private const int DrawPilePickCount = 1;
+
+    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    public override string SkillName { get; set; } = "拾音";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(
+                target: TargetReference.Self,
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1)
+            ),
+            SelectDrawPileCardsToHandStep(DrawPilePickCount)
+        );
+    }
+}
+
+public partial class LingeringTone : Skill
+{
+    private const int BaseBlock = 6;
+    private const int HandKeywordCount = 1;
+
+    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    public override string SkillName { get; set; } = "留音";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(
+                target: TargetReference.Self,
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1)
+            ),
+            SelectCardsAddKeywordStep(
+                BattleCardKeyword.Retain,
+                HandKeywordCount,
+                BattleCardPileTarget.HandCards
             )
         );
     }

@@ -81,7 +81,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 5, multiplier: PowerMultiplier, times: 3),
+            AttackStep(baseDamage: V("BaseDamage", 5), multiplier: PowerMultiplier, times: V("HitCount", 3)),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -101,7 +101,7 @@ public partial class BlackHawkSurvive : Skill
         return new SkillPlan(
             this,
             HealStep(HealAmount, TargetReference.Previous),
-            ModifyPropertyStep(PropertyType.Power, 2, TargetReference.Previous),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2), TargetReference.Previous),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -124,7 +124,7 @@ public partial class BlackHawkSpecial : Skill
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(baseDamage: 4, multiplier: 1, target: HostileTargetReference.All),
+                    AttackStep(baseDamage: V("BaseDamage", 4), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
                 ]
             )
         );

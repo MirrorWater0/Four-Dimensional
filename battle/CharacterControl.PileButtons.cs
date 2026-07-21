@@ -6,6 +6,10 @@ using Godot;
 
 public partial class CharacterControl
 {
+    private static readonly Color PileButtonIconEnabledModulate = new(0.90f, 0.98f, 1f, 0.90f);
+    private static readonly Color PileButtonIconHoverModulate = Colors.White;
+    private static readonly Color PileButtonIconDisabledModulate = new(0.58f, 0.66f, 0.72f, 0.46f);
+
     private void ConfigurePileButton(Button button, string text)
     {
         if (button == null)
@@ -63,10 +67,12 @@ public partial class CharacterControl
         if (size == Vector2.Zero)
             size = new Vector2(80f, 80f);
 
-        icon.Position = Vector2.Zero;
-        icon.Size = size;
-        icon.CustomMinimumSize = size;
-        icon.PivotOffset = size * 0.5f;
+        float iconEdge = Math.Min(size.X, size.Y) * 0.76f;
+        Vector2 iconSize = new(iconEdge, iconEdge);
+        icon.Position = (size - iconSize) * 0.5f;
+        icon.Size = iconSize;
+        icon.CustomMinimumSize = iconSize;
+        icon.PivotOffset = iconSize * 0.5f;
         icon.MouseFilter = MouseFilterEnum.Ignore;
     }
 
@@ -118,6 +124,7 @@ public partial class CharacterControl
             button.AddChild(label);
         }
 
+        EnsurePileButtonCountBackground(button);
         PositionPileButtonCountLabel(button);
         return label;
     }
@@ -129,9 +136,16 @@ public partial class CharacterControl
             return;
 
         label.Text = Math.Max(0, count).ToString();
-        label.Modulate = button.Disabled
+        Color modulate = button.Disabled
             ? new Color(0.70f, 0.78f, 0.84f, 0.62f)
             : Colors.White;
+        label.Modulate = modulate;
+        ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
+        if (background != null)
+        {
+            background.Modulate = modulate;
+            background.Visible = true;
+        }
         label.Visible = true;
     }
 
@@ -148,16 +162,53 @@ public partial class CharacterControl
         if (size == Vector2.Zero)
             size = button.CustomMinimumSize;
 
-        float width = Math.Max(48f, size.X);
-        label.Size = new Vector2(width, 24f);
-        label.Position = new Vector2((size.X - width) * 0.5f, size.Y - 14f);
+        const float badgeSize = 26f;
+        Vector2 badgePosition = new(size.X - badgeSize + 2f, size.Y - badgeSize + 2f);
+        label.Size = new Vector2(badgeSize, badgeSize);
+        label.Position = badgePosition;
+
+        ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
+        if (background != null)
+        {
+            background.Size = new Vector2(badgeSize, badgeSize);
+            background.Position = badgePosition;
+        }
+    }
+
+    private static ColorRect EnsurePileButtonCountBackground(Button button)
+    {
+        ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
+        if (background != null)
+            return background;
+
+        Shader shader = GD.Load<Shader>("res://shader/UI/PileCountBadge.gdshader");
+        background = new ColorRect
+        {
+            Name = PileButtonCountBackgroundName,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ZIndex = 11,
+            Material = shader == null ? null : new ShaderMaterial { Shader = shader },
+        };
+        button.AddChild(background);
+        return background;
     }
 
     private void SyncPileButtonVisualState(Button button)
     {
         Control icon = GetPileButtonIcon(button);
-        if (icon == null || !GodotObject.IsInstanceValid(icon) || icon.Material is not ShaderMaterial shader)
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
             return;
+
+        icon.Modulate = button.Disabled
+            ? PileButtonIconDisabledModulate
+            : PileButtonIconEnabledModulate;
+
+        if (icon.Material is not ShaderMaterial shader)
+        {
+            if (button.Disabled)
+                icon.Scale = Vector2.One;
+            return;
+        }
 
         shader.SetShaderParameter("disabled_amount", button.Disabled ? 1f : 0f);
         if (button.Disabled)
@@ -191,9 +242,19 @@ public partial class CharacterControl
 
         icon.PivotOffset = icon.Size / 2f;
         Vector2 targetScale = hovered ? new Vector2(1.10f, 1.10f) : Vector2.One;
+        Color targetModulate = hovered
+            ? PileButtonIconHoverModulate
+            : button.Disabled
+                ? PileButtonIconDisabledModulate
+                : PileButtonIconEnabledModulate;
         Tween newHoverTween = icon.CreateTween();
+        newHoverTween.SetParallel(true);
         newHoverTween
             .TweenProperty(icon, "scale", targetScale, hovered ? 0.18f : 0.14f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+        newHoverTween
+            .TweenProperty(icon, "modulate", targetModulate, hovered ? 0.18f : 0.14f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
         SetPileButtonHoverTween(button, newHoverTween);
@@ -250,26 +311,39 @@ public partial class CharacterControl
 
     private void PulsePileButtonReceive(Button button)
     {
+        if (!ShouldPlayPileButtonReceivePulse(button))
+            return;
+
         Control icon = GetPileButtonIcon(button);
         if (icon == null || !GodotObject.IsInstanceValid(icon))
             return;
+
+        Tween oldScaleTween = GetPileButtonReceiveScaleTween(button);
+        if (oldScaleTween != null && GodotObject.IsInstanceValid(oldScaleTween))
+            oldScaleTween.Kill();
+
+        Tween oldShaderTween = GetPileButtonReceiveShaderTween(button);
+        if (oldShaderTween != null && GodotObject.IsInstanceValid(oldShaderTween))
+            oldShaderTween.Kill();
 
         icon.PivotOffset = icon.Size / 2f;
         Tween scaleTween = icon.CreateTween();
         scaleTween.SetParallel(false);
         scaleTween
-            .TweenProperty(icon, "scale", new Vector2(1.16f, 1.16f), PileButtonReceivePulseDuration * 0.42f)
+            .TweenProperty(icon, "scale", new Vector2(1.07f, 1.07f), PileButtonReceivePulseDuration * 0.38f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         scaleTween
-            .TweenProperty(icon, "scale", Vector2.One, PileButtonReceivePulseDuration * 0.58f)
+            .TweenProperty(icon, "scale", GetPileButtonRestScale(button), PileButtonReceivePulseDuration * 0.62f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.InOut);
+        SetPileButtonReceiveScaleTween(button, scaleTween);
 
         if (icon.Material is not ShaderMaterial shader)
             return;
 
-        icon.CreateTween()
+        Tween shaderTween = icon.CreateTween();
+        shaderTween
             .TweenMethod(
                 Callable.From<float>(value =>
                 {
@@ -279,12 +353,86 @@ public partial class CharacterControl
                     )
                         liveShader.SetShaderParameter("receive_amount", value);
                 }),
-                0f,
+                GetShaderParameterFloat(shader, "receive_amount"),
                 1f,
-                PileButtonReceivePulseDuration
+                PileButtonReceivePulseDuration * 0.42f
             )
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
+        shaderTween
+            .TweenMethod(
+                Callable.From<float>(value =>
+                {
+                    if (
+                        GodotObject.IsInstanceValid(icon)
+                        && icon.Material is ShaderMaterial liveShader
+                    )
+                        liveShader.SetShaderParameter("receive_amount", value);
+                }),
+                1f,
+                0f,
+                PileButtonReceivePulseDuration * 0.58f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        SetPileButtonReceiveShaderTween(button, shaderTween);
+    }
+
+    private void PulsePileButtonOpen(Button button)
+    {
+        Control icon = GetPileButtonIcon(button);
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
+            return;
+
+        icon.PivotOffset = icon.Size / 2f;
+        Tween scaleTween = icon.CreateTween();
+        scaleTween
+            .TweenProperty(icon, "scale", new Vector2(0.94f, 0.94f), 0.045f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        scaleTween
+            .TweenProperty(icon, "scale", new Vector2(1.08f, 1.08f), 0.10f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        scaleTween
+            .TweenProperty(icon, "scale", Vector2.One, 0.13f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+
+        if (icon.Material is not ShaderMaterial shader)
+            return;
+
+        Tween shaderTween = icon.CreateTween();
+        shaderTween
+            .TweenMethod(
+                Callable.From<float>(value => SetPileButtonOpenShaderPulse(icon, value)),
+                GetShaderParameterFloat(shader, "pressed_amount"),
+                1f,
+                0.075f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        shaderTween
+            .TweenMethod(
+                Callable.From<float>(value => SetPileButtonOpenShaderPulse(icon, value)),
+                1f,
+                0f,
+                0.18f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private static void SetPileButtonOpenShaderPulse(Control icon, float value)
+    {
+        if (
+            GodotObject.IsInstanceValid(icon)
+            && icon.Material is ShaderMaterial liveShader
+        )
+        {
+            liveShader.SetShaderParameter("pressed_amount", value);
+            liveShader.SetShaderParameter("receive_amount", value * 0.82f);
+        }
     }
 
     private static float GetShaderParameterFloat(ShaderMaterial shader, string parameterName)
@@ -394,6 +542,92 @@ public partial class CharacterControl
             _exhaustedPileShaderTween = tween;
     }
 
+    private bool ShouldPlayPileButtonReceivePulse(Button button)
+    {
+        if (button == null || !GodotObject.IsInstanceValid(button) || button.Disabled)
+            return false;
+
+        ulong now = Time.GetTicksMsec();
+        ulong lastPulse = GetPileButtonLastReceivePulseMsec(button);
+        if (lastPulse != 0 && now - lastPulse < PileButtonReceivePulseMinIntervalMsec)
+            return false;
+
+        SetPileButtonLastReceivePulseMsec(button, now);
+        return true;
+    }
+
+    private Vector2 GetPileButtonRestScale(Button button)
+    {
+        if (
+            button != null
+            && GodotObject.IsInstanceValid(button)
+            && button.IsInsideTree()
+            && button.GetGlobalRect().HasPoint(GetGlobalMousePosition())
+        )
+        {
+            return new Vector2(1.10f, 1.10f);
+        }
+
+        return Vector2.One;
+    }
+
+    private Tween GetPileButtonReceiveScaleTween(Button button)
+    {
+        if (button == _drawPileButton)
+            return _drawPileReceiveScaleTween;
+        if (button == _discardPileButton)
+            return _discardPileReceiveScaleTween;
+        return _exhaustedPileReceiveScaleTween;
+    }
+
+    private void SetPileButtonReceiveScaleTween(Button button, Tween tween)
+    {
+        if (button == _drawPileButton)
+            _drawPileReceiveScaleTween = tween;
+        else if (button == _discardPileButton)
+            _discardPileReceiveScaleTween = tween;
+        else if (button == _exhaustedPileButton)
+            _exhaustedPileReceiveScaleTween = tween;
+    }
+
+    private Tween GetPileButtonReceiveShaderTween(Button button)
+    {
+        if (button == _drawPileButton)
+            return _drawPileReceiveShaderTween;
+        if (button == _discardPileButton)
+            return _discardPileReceiveShaderTween;
+        return _exhaustedPileReceiveShaderTween;
+    }
+
+    private void SetPileButtonReceiveShaderTween(Button button, Tween tween)
+    {
+        if (button == _drawPileButton)
+            _drawPileReceiveShaderTween = tween;
+        else if (button == _discardPileButton)
+            _discardPileReceiveShaderTween = tween;
+        else if (button == _exhaustedPileButton)
+            _exhaustedPileReceiveShaderTween = tween;
+    }
+
+    private ulong GetPileButtonLastReceivePulseMsec(Button button)
+    {
+        if (button == _drawPileButton)
+            return _drawPileLastReceivePulseMsec;
+        if (button == _discardPileButton)
+            return _discardPileLastReceivePulseMsec;
+        return _exhaustedPileLastReceivePulseMsec;
+    }
+
+    private void SetPileButtonLastReceivePulseMsec(Button button, ulong msec)
+    {
+        if (button == _drawPileButton)
+            _drawPileLastReceivePulseMsec = msec;
+        else if (button == _discardPileButton)
+            _discardPileLastReceivePulseMsec = msec;
+        else if (button == _exhaustedPileButton)
+            _exhaustedPileLastReceivePulseMsec = msec;
+    }
+
 
     private void UpdatePileButtons()
     {
@@ -448,16 +682,19 @@ public partial class CharacterControl
 
     private void OnDrawPilePressed()
     {
+        PulsePileButtonOpen(_drawPileButton);
         ShowCurrentPlayerPile(BattlePileKind.Draw);
     }
 
     private void OnDiscardPilePressed()
     {
+        PulsePileButtonOpen(_discardPileButton);
         ShowCurrentPlayerPile(BattlePileKind.Discard);
     }
 
     private void OnExhaustedPilePressed()
     {
+        PulsePileButtonOpen(_exhaustedPileButton);
         ShowCurrentPlayerPile(BattlePileKind.Exhausted);
     }
 

@@ -51,6 +51,7 @@ public partial class BattlePreview : Control
         };
 
     private bool _isTransitioning;
+    private Tween _startBattleHoverTween;
     private readonly Dictionary<Control, Vector2> _basePositions = [];
     private readonly List<Tip> _previewPortraitTips = [];
     private CanvasLayer _tipLayer;
@@ -61,6 +62,7 @@ public partial class BattlePreview : Control
     private PortaitFrame _dragTarget;
     private Control _dragOriginalParent;
     private Vector2 _dragMouseOffset;
+    private readonly Dictionary<PortaitFrame, Tween> _portraitReturnTweens = [];
 
     private readonly struct AssemblyItem(Control control, Vector2 offset, float delay)
     {
@@ -97,25 +99,22 @@ public partial class BattlePreview : Control
         UpdateBrushButtonMaterialSize();
         tex.Resized += UpdateBrushButtonMaterialSize;
         StartBattleButton.Pressed += StartBattle;
-        StartBattleButton.MouseEntered += () =>
-        {
-            StartBattleButton.Modulate = 2 * new Color(1, 1, 1, 1);
+        StartBattleButton.MouseEntered += () => AnimateStartBattleButtonHover(true);
+        StartBattleButton.MouseExited += () => AnimateStartBattleButtonHover(false);
+    }
 
-            tex.PivotOffset = tex.Size / 2;
-            Tween tween = CreateTween();
-            tween.TweenProperty(tex, "scale", new Vector2(1.2f, 1.2f), 0.2f);
-            GlobalFunction.TweenShader(tex, "cut_x", 0.4f, 0.2f);
-            GlobalFunction.TweenShader(tex, "cut_y", 0.4f, 0.2f);
-        };
-        StartBattleButton.MouseExited += () =>
-        {
-            StartBattleButton.Modulate = new Color(1, 1, 1, 1);
-            tex.PivotOffset = tex.Size / 2;
-            Tween tween = CreateTween();
-            tween.TweenProperty(tex, "scale", new Vector2(1f, 1f), 0.2f);
-            GlobalFunction.TweenShader(tex, "cut_x", 0.6f, 0.2f);
-            GlobalFunction.TweenShader(tex, "cut_y", 0.6f, 0.2f);
-        };
+    private void AnimateStartBattleButtonHover(bool hovered)
+    {
+        StartBattleButton.Modulate = hovered ? new Color(1.35f, 1.35f, 1.35f, 1f) : Colors.White;
+        tex.PivotOffset = tex.Size / 2;
+        _startBattleHoverTween?.Kill();
+        _startBattleHoverTween = CreateTween();
+        _startBattleHoverTween
+            .TweenProperty(tex, "scale", hovered ? new Vector2(1.08f, 1.08f) : Vector2.One, 0.14f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        GlobalFunction.TweenShader(tex, "cut_x", hovered ? 0.4f : 0.6f, 0.18f);
+        GlobalFunction.TweenShader(tex, "cut_y", hovered ? 0.4f : 0.6f, 0.18f);
     }
 
     public override void _Process(double delta)
@@ -465,6 +464,7 @@ public partial class BattlePreview : Control
         portrait.PortaitButton.KeepPressedOutside = true;
         portrait.PortaitButton.ButtonDown += () => BeginPlayerPortraitDrag(portrait);
         portrait.PortaitButton.ButtonUp += () => EndPlayerPortraitDrag(portrait);
+        portrait.TreeExiting += () => StopPortraitReturnTween(portrait);
     }
 
     private void BeginPlayerPortraitDrag(PortaitFrame portrait)
@@ -473,6 +473,7 @@ public partial class BattlePreview : Control
             return;
 
         HidePortraitTooltipsImmediate();
+        StopPortraitReturnTween(portrait);
         _dragTarget = portrait;
         _dragOriginalParent = portrait.GetParent<Control>();
         _dragMouseOffset = GetViewport().GetMousePosition() - portrait.GlobalPosition;
@@ -531,9 +532,14 @@ public partial class BattlePreview : Control
         if (portrait == null || !GodotObject.IsInstanceValid(portrait))
             return;
 
-        CreateTween().TweenProperty(portrait, "position", Vector2.Zero, duration);
-        CreateTween()
-            .Chain()
+        StopPortraitReturnTween(portrait);
+        Tween tween = CreateTween();
+        _portraitReturnTweens[portrait] = tween;
+        tween
+            .TweenProperty(portrait, "position", Vector2.Zero, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
             .TweenCallback(
                 Callable.From(() =>
                 {
@@ -541,6 +547,23 @@ public partial class BattlePreview : Control
                         portrait.Animation?.Play("explode");
                 })
             );
+        tween.Finished += () =>
+        {
+            if (_portraitReturnTweens.TryGetValue(portrait, out Tween activeTween) && activeTween == tween)
+                _portraitReturnTweens.Remove(portrait);
+        };
+    }
+
+    private void StopPortraitReturnTween(PortaitFrame portrait)
+    {
+        if (portrait == null)
+            return;
+
+        if (!_portraitReturnTweens.TryGetValue(portrait, out Tween tween))
+            return;
+
+        tween?.Kill();
+        _portraitReturnTweens.Remove(portrait);
     }
 
     private void CommitPlayerFormationPositions()
@@ -762,6 +785,7 @@ public partial class BattlePreview : Control
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Attack);
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Survive);
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Special);
+        AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Ability);
 
         return sb.ToString().TrimEnd();
     }
@@ -988,6 +1012,16 @@ public partial class BattlePreview : Control
         battle.BattleIntentionRandom = new Random(RandomNum);
         battle.CurrentLevelNode = WhichNode;
         layer.AddChild(battle);
+        await battle.WhenPresentationReadyAsync();
+        if (!GodotObject.IsInstanceValid(battle))
+        {
+            if (GodotObject.IsInstanceValid(layer))
+                layer.QueueFree();
+            if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
+                await transitionLayer.FadeFromBlackAsync(0.24f);
+            return;
+        }
+
         Close();
         if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
             await transitionLayer.FadeFromBlackAsync(0.24f);

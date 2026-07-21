@@ -1,0 +1,19 @@
+﻿{
+    "skills":  {
+                   "HollowBulwarkAttack":  {
+                                               "Name":  "壁刃冲击",
+                                               "BaseDamage":  28
+                                           },
+                   "HollowBulwarkSpecial":  {
+                                                "Name":  "闭合",
+                                                "BaseDamage":  16,
+                                                "SurvivabilityGain":  10,
+                                                "EnemySpecialIntentionCooldown":  2
+                                            },
+                   "HollowBulwarkSurvive":  {
+                                                "Name":  "空壳",
+                                                "BaseBlock":  40,
+                                                "Multiplier":  1
+                                            }
+               }
+}

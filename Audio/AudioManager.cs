@@ -10,16 +10,39 @@ public partial class AudioManager : Node
         Hurt,
         BlockGain,
         BlockImpact,
+        BuffGain,
+        UiHover,
+        UiClick,
+        UiButtonDown,
+        UiButtonUp,
+        CardDeal,
+        CardHover,
+        CardPickup,
+        CardExhaust,
+        BattleStart,
+        PlayerTurn,
+        EnemyTurn,
+        Victory,
+        Deny,
     }
 
     private const string SfxBusName = "SFX";
     private const int MaxPlayerCount = 16;
+    private const ulong AttackCueCooldownMsec = 80;
     private const ulong HurtCueCooldownMsec = 65;
     private const ulong BlockImpactCueCooldownMsec = 65;
+    private const ulong BuffGainCueCooldownMsec = 250;
+    private const ulong UiHoverCueCooldownMsec = 35;
+    private const ulong UiClickCueCooldownMsec = 35;
+    private const ulong UiButtonCueCooldownMsec = 20;
+    private const ulong CardDealCueCooldownMsec = 40;
+    private const ulong CardHoverCueCooldownMsec = 55;
+    private const ulong CardPickupCueCooldownMsec = 45;
 
     private readonly List<AudioStreamPlayer> _runtimeSfxPlayers = new();
     private readonly Dictionary<AudioCue, AudioStreamPlayer> _cuePlayers = new();
     private readonly Dictionary<AudioCue, ulong> _lastCuePlayTicks = new();
+    private readonly HashSet<ulong> _boundButtonInstanceIds = new();
 
     public static AudioManager Instance { get; private set; }
 
@@ -30,6 +53,12 @@ public partial class AudioManager : Node
 
     public override void _ExitTree()
     {
+        SceneTree tree = GetTree();
+        if (tree != null)
+            tree.NodeAdded -= OnTreeNodeAdded;
+
+        _boundButtonInstanceIds.Clear();
+
         if (Instance == this)
             Instance = null;
     }
@@ -39,6 +68,11 @@ public partial class AudioManager : Node
         EnsureSfxBus();
         BindCuePlayers();
         RefreshSettings();
+        BindExistingButtonSfx();
+
+        SceneTree tree = GetTree();
+        if (tree != null)
+            tree.NodeAdded += OnTreeNodeAdded;
     }
 
     public static void RefreshSettings()
@@ -78,6 +112,112 @@ public partial class AudioManager : Node
         Instance?.PlayCue(AudioCue.BlockImpact, source, volumeDbOffset, pitchScale);
     }
 
+    public static void PlayBuffGain(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.BuffGain, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayUiHover(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
+    {
+        Instance?.PlayCue(AudioCue.UiHover, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayUiClick(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
+    {
+        Instance?.PlayCue(AudioCue.UiClick, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayUiButtonDown(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.UiButtonDown, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayUiButtonUp(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.UiButtonUp, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayCardDeal(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
+    {
+        Instance?.PlayCue(AudioCue.CardDeal, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayCardHover(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.CardHover, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayCardPickup(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.CardPickup, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayCardExhaust(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.CardExhaust, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayBattleStart(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.BattleStart, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayPlayerTurn(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.PlayerTurn, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayEnemyTurn(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.EnemyTurn, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayVictory(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
+    {
+        Instance?.PlayCue(AudioCue.Victory, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayDeny(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
+    {
+        Instance?.PlayCue(AudioCue.Deny, source, volumeDbOffset, pitchScale);
+    }
+
     public void SetCueStream(AudioCue cue, AudioStream stream)
     {
         if (_cuePlayers.TryGetValue(cue, out AudioStreamPlayer player) && player != null)
@@ -91,6 +231,20 @@ public partial class AudioManager : Node
         BindCuePlayer(AudioCue.Hurt, "HurtPlayer");
         BindCuePlayer(AudioCue.BlockGain, "BlockGainPlayer");
         BindCuePlayer(AudioCue.BlockImpact, "BlockImpactPlayer");
+        BindCuePlayer(AudioCue.BuffGain, "BuffGainPlayer");
+        BindCuePlayer(AudioCue.UiHover, "UiHoverPlayer");
+        BindCuePlayer(AudioCue.UiClick, "UiClickPlayer");
+        BindCuePlayer(AudioCue.UiButtonDown, "UiButtonDownPlayer");
+        BindCuePlayer(AudioCue.UiButtonUp, "UiButtonUpPlayer");
+        BindCuePlayer(AudioCue.CardDeal, "CardDealPlayer");
+        BindCuePlayer(AudioCue.CardHover, "CardHoverPlayer");
+        BindCuePlayer(AudioCue.CardPickup, "CardPickupPlayer");
+        BindCuePlayer(AudioCue.CardExhaust, "CardExhaustPlayer");
+        BindCuePlayer(AudioCue.BattleStart, "BattleStartPlayer");
+        BindCuePlayer(AudioCue.PlayerTurn, "PlayerTurnPlayer");
+        BindCuePlayer(AudioCue.EnemyTurn, "EnemyTurnPlayer");
+        BindCuePlayer(AudioCue.Victory, "VictoryPlayer");
+        BindCuePlayer(AudioCue.Deny, "DenyPlayer");
     }
 
     private void ApplyBusVolumes()
@@ -161,10 +315,103 @@ public partial class AudioManager : Node
     {
         return cue switch
         {
+            AudioCue.Attack => AttackCueCooldownMsec,
             AudioCue.Hurt => HurtCueCooldownMsec,
             AudioCue.BlockImpact => BlockImpactCueCooldownMsec,
+            AudioCue.BuffGain => BuffGainCueCooldownMsec,
+            AudioCue.UiHover => UiHoverCueCooldownMsec,
+            AudioCue.UiClick => UiClickCueCooldownMsec,
+            AudioCue.UiButtonDown => UiButtonCueCooldownMsec,
+            AudioCue.UiButtonUp => UiButtonCueCooldownMsec,
+            AudioCue.CardDeal => CardDealCueCooldownMsec,
+            AudioCue.CardHover => CardHoverCueCooldownMsec,
+            AudioCue.CardPickup => CardPickupCueCooldownMsec,
             _ => 0,
         };
+    }
+
+    private void BindExistingButtonSfx()
+    {
+        Node root = GetTree()?.Root;
+        if (root == null)
+            return;
+
+        BindButtonSfxRecursive(root);
+    }
+
+    private void OnTreeNodeAdded(Node node)
+    {
+        BindButtonSfxRecursive(node);
+    }
+
+    private void BindButtonSfxRecursive(Node node)
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node))
+            return;
+
+        if (node is Button button)
+            BindButtonSfx(button);
+
+        foreach (Node child in node.GetChildren())
+            BindButtonSfxRecursive(child);
+    }
+
+    private void BindButtonSfx(Button button)
+    {
+        if (button == null || !GodotObject.IsInstanceValid(button))
+            return;
+
+        ulong instanceId = button.GetInstanceId();
+        if (!_boundButtonInstanceIds.Add(instanceId))
+            return;
+
+        button.MouseEntered += () => OnButtonMouseEntered(button);
+        button.ButtonDown += () => OnButtonDown(button);
+        button.ButtonUp += () => OnButtonUp(button);
+        button.TreeExiting += () => _boundButtonInstanceIds.Remove(instanceId);
+    }
+
+    private void OnButtonMouseEntered(Button button)
+    {
+        if (
+            !CanPlayButtonSfx(button)
+            || (button.HasMeta("suppress_ui_hover_sfx")
+                && button.GetMeta("suppress_ui_hover_sfx").AsBool())
+        )
+            return;
+
+        PlayCue(AudioCue.UiHover, button, 0f, 1f);
+    }
+
+    private void OnButtonDown(Button button)
+    {
+        if (!CanPlayButtonClickSfx(button))
+            return;
+
+        PlayCue(AudioCue.UiButtonDown, button, 0f, 1f);
+    }
+
+    private void OnButtonUp(Button button)
+    {
+        if (!CanPlayButtonClickSfx(button))
+            return;
+
+        PlayCue(AudioCue.UiButtonUp, button, 0f, 1f);
+    }
+
+    private static bool CanPlayButtonClickSfx(Button button)
+    {
+        return CanPlayButtonSfx(button)
+            && (!button.HasMeta("suppress_ui_click_sfx")
+                || !button.GetMeta("suppress_ui_click_sfx").AsBool());
+    }
+
+    private static bool CanPlayButtonSfx(Button button)
+    {
+        return button != null
+            && GodotObject.IsInstanceValid(button)
+            && button.IsVisibleInTree()
+            && !button.Disabled;
     }
 
     private void BindCuePlayer(AudioCue cue, string nodeName)

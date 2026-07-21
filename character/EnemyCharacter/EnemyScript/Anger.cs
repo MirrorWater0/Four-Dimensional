@@ -88,7 +88,7 @@ public partial class AngerEliteAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 9, HostileTargetReference.AttackKey)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 9), HostileTargetReference.AttackKey)
         );
     }
 }
@@ -106,7 +106,7 @@ public partial class AngerEliteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.All)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 3), HostileTargetReference.All)
         );
     }
 }

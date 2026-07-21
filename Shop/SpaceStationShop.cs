@@ -25,6 +25,8 @@ public partial class SpaceStationShop : Control
     private static readonly bool SinglePageLayoutEnabled = true;
     private const int RelicOfferBasePrice = 150;
     private const int RelicOfferPriceVariance = 20;
+    private const int CardRemovalServiceBasePrice = 80;
+    private const int CardRemovalServicePriceVariance = 15;
     private const float ModuleSelectorTweenDuration = 0.06f;
     private const float ModuleContentFadeOutDuration = 0.10f;
     private const float ModuleContentFadeInDuration = 0.14f;
@@ -37,12 +39,16 @@ public partial class SpaceStationShop : Control
     private const float StatPanelHoverDuration = 0.14f;
     private const float CatalogOfferHoverDuration = 0.12f;
     private const float CatalogOfferHoverScale = 1.12f;
-    private const float PriceFeedbackShakeOffset = 7f;
-    private const float PriceFeedbackShakeStep = 0.045f;
+    private const float PriceFeedbackPulseScale = 1.06f;
+    private const float PriceFeedbackPulseDuration = 0.12f;
+    private const float OfferPurchasePulseDuration = 0.18f;
+    private const float OfferRejectPulseDuration = 0.16f;
     private static readonly Vector2 CompactCatalogTileSize = new(118f, 138f);
     private static readonly Vector2 CompactCatalogIconFrameSize = new(82f, 82f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(250f, 400f);
     private static readonly Color PriceFeedbackColor = new(1f, 0.16f, 0.12f, 1f);
+    private static readonly Color OfferPurchasePulseColor = new(0.72f, 1.24f, 0.92f, 1f);
+    private static readonly Color OfferRejectPulseColor = new(1.35f, 0.62f, 0.58f, 1f);
     private static readonly Color CatalogPriceAvailableColor = new(1f, 0.88f, 0.4f, 0.98f);
     private static readonly Color CatalogPriceUnavailableColor = new(0.92f, 0.76f, 0.58f, 0.9f);
     private static readonly ItemID[] PotionCatalog =
@@ -90,6 +96,7 @@ public partial class SpaceStationShop : Control
         Relic,
         Skill,
         Item,
+        CardRemovalService,
     }
 
     private enum ShopModule
@@ -247,6 +254,7 @@ public partial class SpaceStationShop : Control
     private bool _isHidden;
     private bool _isTransitioning;
     private Tip _shopRelicTip;
+    private EventCardSelectOverlay _cardSelectOverlay;
     private Control _inputBlocker;
     private Control _moduleTransitionBlocker;
     private readonly Dictionary<Control, Vector2> _assemblyBasePositions = new();
@@ -254,7 +262,9 @@ public partial class SpaceStationShop : Control
     private readonly Dictionary<Control, Tween> _catalogOfferHoverTweens = new();
     private readonly Dictionary<Label, Tween> _priceFeedbackTweens = new();
     private readonly Dictionary<Label, Vector2> _priceFeedbackBasePositions = new();
+    private readonly Dictionary<Label, Vector2> _priceFeedbackBaseScales = new();
     private readonly Dictionary<Label, Color> _priceFeedbackBaseColors = new();
+    private readonly Dictionary<Control, Tween> _offerFeedbackTweens = new();
     private Vector2 _panelBasePosition;
     private bool _catalogOffersBuilt;
     private bool _skillOffersBuilt;
@@ -412,12 +422,14 @@ public partial class SpaceStationShop : Control
         _statPanelHoverTweens.Clear();
         KillCatalogOfferHoverTweens();
         KillPriceFeedbackTweens();
+        KillOfferFeedbackTweens();
         HideRelicTip();
     }
 
     private void BuildShop()
     {
         KillCatalogOfferHoverTweens();
+        KillOfferFeedbackTweens();
         ClearStatOffers();
         ClearCatalogCards();
         ClearSkillCards();
@@ -559,6 +571,16 @@ public partial class SpaceStationShop : Control
                 return;
 
             await BuildPotionOffersAsync();
+            if (!IsInsideTree() || _isClosing)
+                return;
+
+            AddCardRemovalServiceOffer(
+                ComputeShopPrice(
+                    CreateShopRandom(0x5A1E),
+                    CardRemovalServiceBasePrice,
+                    CardRemovalServicePriceVariance
+                )
+            );
             _catalogOffersBuilt = true;
             ArrangeSinglePageOffers();
 
@@ -783,6 +805,12 @@ public partial class SpaceStationShop : Control
 
     private async Task BuildRelicOffersAsync()
     {
+        if (WhichNode == null && IsInsideTree() && !_isClosing)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        if (WhichNode == null)
+            return;
+
         RelicID[] relicPool = GameInfo.GetShopRelicOffers(WhichNode);
         var rng = CreateShopRandom(0x6E11);
         for (int i = 0; i < relicPool.Length; i++)
@@ -975,6 +1003,19 @@ public partial class SpaceStationShop : Control
         SetupPotionCard(offer);
     }
 
+    private void AddCardRemovalServiceOffer(int price)
+    {
+        var offer = new CatalogOffer
+        {
+            Kind = OfferKind.CardRemovalService,
+            Title = "战术清理",
+            Detail = "选择一张牌，从牌组中永久删除。",
+            Price = price,
+        };
+        _catalogOffers.Add(offer);
+        SetupCardRemovalServiceCard(offer);
+    }
+
     private void AddStatOffer(
         PanelContainer tile,
         int playerIndex,
@@ -1135,6 +1176,63 @@ public partial class SpaceStationShop : Control
         };
 
         PotionGrid.AddChild(frame);
+        offer.View = frame;
+        offer.IconRect = icon;
+        offer.PriceLabel = priceLabel;
+    }
+
+    private void SetupCardRemovalServiceCard(CatalogOffer offer)
+    {
+        if (offer == null)
+            return;
+
+        var frame = new VBoxContainer
+        {
+            Name = $"CardRemovalServiceOffer{_catalogOffers.Count}",
+            CustomMinimumSize = CompactCatalogTileSize,
+            MouseFilter = MouseFilterEnum.Stop,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            Alignment = BoxContainer.AlignmentMode.Center,
+        };
+        frame.AddThemeConstantOverride("separation", 8);
+
+        var iconHolder = new Control
+        {
+            CustomMinimumSize = CompactCatalogIconFrameSize,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        frame.AddChild(iconHolder);
+
+        var icon = CreateCardRemovalServiceIcon();
+        iconHolder.AddChild(icon);
+
+        var priceLabel = CreateCatalogPriceLabel();
+        frame.AddChild(priceLabel);
+
+        frame.GuiInput += @event =>
+        {
+            if (
+                @event is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
+            )
+                return;
+            OnCatalogOfferPressed(offer);
+        };
+        frame.Resized += () => UpdateCatalogOfferPivot(frame);
+        frame.MouseEntered += () =>
+        {
+            ShowCatalogTip(BuildCardRemovalServiceTooltip(offer));
+            AnimateCatalogOfferHover(frame, true);
+        };
+        frame.MouseExited += () =>
+        {
+            HideRelicTip();
+            AnimateCatalogOfferHover(frame, false);
+        };
+
+        RelicGrid.AddChild(frame);
         offer.View = frame;
         offer.IconRect = icon;
         offer.PriceLabel = priceLabel;
@@ -1312,7 +1410,101 @@ public partial class SpaceStationShop : Control
 
         _priceFeedbackTweens.Clear();
         _priceFeedbackBasePositions.Clear();
+        _priceFeedbackBaseScales.Clear();
         _priceFeedbackBaseColors.Clear();
+    }
+
+    private void KillOfferFeedbackTweens()
+    {
+        foreach (var pair in _offerFeedbackTweens.ToArray())
+        {
+            pair.Value?.Kill();
+            if (pair.Key != null && GodotObject.IsInstanceValid(pair.Key))
+            {
+                pair.Key.Scale = Vector2.One;
+                pair.Key.Modulate = Colors.White;
+            }
+        }
+
+        _offerFeedbackTweens.Clear();
+    }
+
+    private async Task PlayOfferPurchaseSuccessAsync(Control view, Label priceLabel)
+    {
+        if (priceLabel != null && GodotObject.IsInstanceValid(priceLabel))
+        {
+            priceLabel.AddThemeColorOverride("font_color", OfferPurchasePulseColor);
+            priceLabel.Text = "已购入";
+        }
+
+        await PlayOfferFeedbackAsync(
+            view,
+            OfferPurchasePulseColor,
+            new Vector2(1.08f, 1.08f),
+            OfferPurchasePulseDuration,
+            restoreToCurrent: true
+        );
+    }
+
+    private void PlayOfferRejectFeedback(Control view, Label priceLabel)
+    {
+        if (priceLabel != null && GodotObject.IsInstanceValid(priceLabel))
+            PlayPriceInsufficientFeedback(priceLabel);
+
+        _ = PlayOfferFeedbackAsync(
+            view,
+            OfferRejectPulseColor,
+            new Vector2(0.96f, 0.96f),
+            OfferRejectPulseDuration,
+            restoreToCurrent: true
+        );
+    }
+
+    private async Task PlayOfferFeedbackAsync(
+        Control view,
+        Color pulseColor,
+        Vector2 pulseScale,
+        float duration,
+        bool restoreToCurrent
+    )
+    {
+        if (view == null || !GodotObject.IsInstanceValid(view) || !view.IsInsideTree())
+            return;
+
+        if (_offerFeedbackTweens.TryGetValue(view, out Tween running))
+        {
+            running?.Kill();
+            _offerFeedbackTweens.Remove(view);
+        }
+
+        UpdateCatalogOfferPivot(view);
+        Vector2 baseScale = view.Scale == Vector2.Zero ? Vector2.One : view.Scale;
+        Color baseModulate = view.Modulate;
+        int baseZIndex = view.ZIndex;
+        view.Modulate = pulseColor;
+        view.Scale = pulseScale;
+        view.ZIndex = Math.Max(view.ZIndex, 30);
+
+        Tween tween = CreateTween();
+        _offerFeedbackTweens[view] = tween;
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(view, "scale", baseScale, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(view, "modulate", restoreToCurrent ? baseModulate : Colors.White, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+        if (!GodotObject.IsInstanceValid(this))
+            return;
+
+        if (_offerFeedbackTweens.TryGetValue(view, out Tween activeTween) && activeTween == tween)
+            _offerFeedbackTweens.Remove(view);
+        if (GodotObject.IsInstanceValid(view))
+            view.ZIndex = baseZIndex;
     }
 
     private void RestorePriceFeedbackLabel(Label label)
@@ -1322,6 +1514,8 @@ public partial class SpaceStationShop : Control
 
         if (_priceFeedbackBasePositions.TryGetValue(label, out var basePosition))
             label.Position = basePosition;
+        if (_priceFeedbackBaseScales.TryGetValue(label, out var baseScale))
+            label.Scale = baseScale;
         if (_priceFeedbackBaseColors.TryGetValue(label, out var baseColor))
             label.AddThemeColorOverride("font_color", baseColor);
     }
@@ -1337,6 +1531,7 @@ public partial class SpaceStationShop : Control
         _priceFeedbackTweens.Remove(label);
         RestorePriceFeedbackLabel(label);
         _priceFeedbackBasePositions.Remove(label);
+        _priceFeedbackBaseScales.Remove(label);
         _priceFeedbackBaseColors.Remove(label);
     }
 
@@ -1352,6 +1547,7 @@ public partial class SpaceStationShop : Control
         RestorePriceFeedbackLabel(label);
         _priceFeedbackTweens.Remove(label);
         _priceFeedbackBasePositions.Remove(label);
+        _priceFeedbackBaseScales.Remove(label);
         _priceFeedbackBaseColors.Remove(label);
     }
 
@@ -1430,51 +1626,167 @@ public partial class SpaceStationShop : Control
         return label;
     }
 
-    private void OnStatOfferPressed(StatOffer offer)
+    private async void OnStatOfferPressed(StatOffer offer)
     {
         if (offer == null || offer.Sold)
             return;
         if (!CanApplyStatOffer(offer))
         {
             SetStatus($"{offer.CharacterName} 当前不可进行属性提升。");
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             RefreshShopState();
             return;
         }
         int price = GetShopOfferPrice(offer.Price);
         if (!TrySpendCurrency(price, offer.PriceLabel))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
         if (!ApplyPropertyToPlayer(offer.PlayerIndex, offer.PropertyType, offer.PropertyValue))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
 
         ResourceState?.RefreshPartyLifeResource();
         offer.Sold = true;
         SetStatus(
             $"已为 {offer.CharacterName} 提升 {offer.PropertyType.GetDescription()} +{offer.PropertyValue}"
         );
+        await PlayOfferPurchaseSuccessAsync(offer.View, offer.PriceLabel);
         RefreshShopState();
     }
 
-    private void OnCatalogOfferPressed(CatalogOffer offer)
+    private async void OnCatalogOfferPressed(CatalogOffer offer)
     {
         if (offer == null || offer.Sold)
             return;
+
+        if (offer.Kind == OfferKind.CardRemovalService)
+        {
+            await PurchaseCardRemovalServiceAsync(offer);
+            return;
+        }
+
         int price = GetShopOfferPrice(offer.Price);
         if (GetCurrentCurrency() < price)
         {
             TrySpendCurrency(price, offer.PriceLabel);
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
         }
         if (!CanPurchaseCatalogOffer(offer))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
         if (!TrySpendCurrency(price, offer.PriceLabel))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
         if (!ApplyCatalogOffer(offer))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
 
         offer.Sold = true;
         HideRelicTip();
         SetStatus($"已购入：{offer.Title}");
+        await PlayOfferPurchaseSuccessAsync(offer.View, offer.PriceLabel);
         RefreshShopState();
+    }
+
+    private async Task PurchaseCardRemovalServiceAsync(CatalogOffer offer)
+    {
+        if (offer == null || offer.Sold)
+            return;
+
+        int price = GetShopOfferPrice(offer.Price);
+        if (GetCurrentCurrency() < price)
+        {
+            TrySpendCurrency(price, offer.PriceLabel);
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
+            return;
+        }
+
+        var entries = GameInfo.BuildSelectableDeckCardEntries();
+        if (entries.Count == 0)
+        {
+            SetStatus("当前没有可删除的卡牌。");
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
+            RefreshShopState();
+            return;
+        }
+
+        HideRelicTip();
+        SetStatus("请选择要删除的卡牌。");
+        EventCardSelection? selection = await SelectDeckCardForRemovalAsync(entries);
+        if (!selection.HasValue)
+        {
+            SetStatus("已取消战术清理。");
+            RefreshShopState();
+            return;
+        }
+
+        if (!TrySpendCurrency(price, offer.PriceLabel))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
+            return;
+        }
+
+        BattleReadyDeckOperationResult result = await BattleReady.RemoveDeckCardAsync(
+            this,
+            selection.Value.PlayerIndex,
+            selection.Value.SkillId,
+            selection.Value.SourceCard
+        );
+        HideCardSelection();
+
+        if (!result.Changed)
+        {
+            SetCurrentCurrency(GetCurrentCurrency() + price);
+            SetStatus("删除卡牌失败。");
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
+            RefreshShopState();
+            return;
+        }
+
+        offer.Sold = true;
+        SetStatus(result.Message ?? "已删除卡牌。");
+        await PlayOfferPurchaseSuccessAsync(offer.View, offer.PriceLabel);
+        RefreshShopState();
+    }
+
+    private async Task<EventCardSelection?> SelectDeckCardForRemovalAsync(
+        IReadOnlyList<EventCardSelectionEntry> entries
+    )
+    {
+        var overlay = EnsureCardSelectOverlay();
+        MoveChild(overlay, GetChildCount() - 1);
+        return await overlay.SelectOneAsync(entries, "请选择要删除的卡牌");
+    }
+
+    private void HideCardSelection()
+    {
+        _cardSelectOverlay?.HideSelection();
+    }
+
+    private EventCardSelectOverlay EnsureCardSelectOverlay()
+    {
+        if (_cardSelectOverlay != null && GodotObject.IsInstanceValid(_cardSelectOverlay))
+            return _cardSelectOverlay;
+
+        _cardSelectOverlay = GetNodeOrNull<EventCardSelectOverlay>("CardSelectOverlay");
+        if (_cardSelectOverlay == null)
+        {
+            _cardSelectOverlay = new EventCardSelectOverlay { Name = "CardSelectOverlay" };
+            AddChild(_cardSelectOverlay);
+        }
+
+        return _cardSelectOverlay;
     }
 
     private async void OnSkillOfferPressed(SkillOffer offer)
@@ -1487,7 +1799,10 @@ public partial class SpaceStationShop : Control
             return;
         int price = GetShopOfferPrice(offer.Price);
         if (!TrySpendCurrency(price, offer.PriceLabel))
+        {
+            PlayOfferRejectFeedback(offer.View, offer.PriceLabel);
             return;
+        }
 
         SkillID skillId = offer.SkillId.Value;
         offer.Sold = true;
@@ -1515,6 +1830,7 @@ public partial class SpaceStationShop : Control
                 ? GameInfo.PlayerCharacters[offer.PlayerIndex].CharacterName
                 : "角色";
         SetStatus($"已购入：{name} 的技能卡");
+        await PlayOfferPurchaseSuccessAsync(offer.View, offer.PriceLabel);
         RefreshShopState();
     }
 
@@ -1529,6 +1845,8 @@ public partial class SpaceStationShop : Control
                 return true;
             case OfferKind.Item:
                 return GrantItemOffer(offer.ItemId);
+            case OfferKind.CardRemovalService:
+                return false;
             default:
                 return false;
         }
@@ -1588,6 +1906,14 @@ public partial class SpaceStationShop : Control
     {
         if (offer == null)
             return false;
+
+        if (offer.Kind == OfferKind.CardRemovalService)
+        {
+            bool hasSelectableCards = GameInfo.BuildSelectableDeckCardEntries().Count > 0;
+            if (!hasSelectableCards)
+                SetStatus("当前没有可删除的卡牌。");
+            return hasSelectableCards;
+        }
 
         if (offer.Kind != OfferKind.Item)
             return true;
@@ -1649,40 +1975,31 @@ public partial class SpaceStationShop : Control
         KillPriceFeedbackTween(label);
 
         Vector2 basePosition = label.Position;
+        Vector2 baseScale = label.Scale == Vector2.Zero ? Vector2.One : label.Scale;
         Color restoreColor = label.GetThemeColor("font_color");
         _priceFeedbackBasePositions[label] = basePosition;
+        _priceFeedbackBaseScales[label] = baseScale;
         _priceFeedbackBaseColors[label] = restoreColor;
         label.AddThemeColorOverride("font_color", PriceFeedbackColor);
+        label.PivotOffset = label.Size * 0.5f;
+        label.Scale = baseScale * PriceFeedbackPulseScale;
 
         var tween = CreateTween();
         _priceFeedbackTweens[label] = tween;
-        tween.SetTrans(Tween.TransitionType.Sine);
-        tween.SetEase(Tween.EaseType.InOut);
-        tween.TweenProperty(
-            label,
-            "position:x",
-            basePosition.X - PriceFeedbackShakeOffset,
-            PriceFeedbackShakeStep
-        );
-        tween.TweenProperty(
-            label,
-            "position:x",
-            basePosition.X + PriceFeedbackShakeOffset,
-            PriceFeedbackShakeStep * 1.15f
-        );
-        tween.TweenProperty(
-            label,
-            "position:x",
-            basePosition.X - PriceFeedbackShakeOffset * 0.65f,
-            PriceFeedbackShakeStep
-        );
-        tween.TweenProperty(
-            label,
-            "position:x",
-            basePosition.X + PriceFeedbackShakeOffset * 0.35f,
-            PriceFeedbackShakeStep
-        );
-        tween.TweenProperty(label, "position:x", basePosition.X, PriceFeedbackShakeStep);
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(label, "scale", baseScale, PriceFeedbackPulseDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenMethod(
+                Callable.From<Color>(value => label.AddThemeColorOverride("font_color", value)),
+                PriceFeedbackColor,
+                restoreColor,
+                PriceFeedbackPulseDuration * 1.8f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
         tween.Finished += () => ClearFinishedPriceFeedback(label, tween);
     }
 
@@ -1792,12 +2109,23 @@ public partial class SpaceStationShop : Control
             return;
         }
 
-        if (offer.Kind == OfferKind.Item)
+        if (offer.Kind is OfferKind.Item or OfferKind.CardRemovalService)
         {
             offer.View.MouseFilter = MouseFilterEnum.Stop;
-            offer.View.Modulate = hasCurrency ? Colors.White : new Color(0.86f, 0.89f, 0.94f, 0.72f);
+            bool canUse = offer.Kind != OfferKind.CardRemovalService
+                || GameInfo.BuildSelectableDeckCardEntries().Count > 0;
+            offer.View.Modulate = hasCurrency && canUse
+                ? Colors.White
+                : new Color(0.86f, 0.89f, 0.94f, 0.72f);
 
-            SetCatalogOfferPriceLabel(offer, hasCurrency);
+            if (offer.Kind == OfferKind.CardRemovalService && !canUse)
+                SetCatalogOfferPriceLabel(
+                    offer,
+                    "无可删牌",
+                    new Color(0.72f, 0.76f, 0.84f, 0.74f)
+                );
+            else
+                SetCatalogOfferPriceLabel(offer, hasCurrency && canUse);
             return;
         }
 
@@ -1831,10 +2159,22 @@ public partial class SpaceStationShop : Control
             return;
 
         int price = GetShopOfferPrice(offer.Price);
-        offer.PriceLabel.Text = hasCurrency ? $"{price} 电力币" : $"需 {price} 电力币";
+        SetCatalogOfferPriceLabel(
+            offer,
+            hasCurrency ? $"{price} 电力币" : $"需 {price} 电力币",
+            hasCurrency ? CatalogPriceAvailableColor : CatalogPriceUnavailableColor
+        );
+    }
+
+    private static void SetCatalogOfferPriceLabel(CatalogOffer offer, string text, Color color)
+    {
+        if (offer?.PriceLabel == null || !GodotObject.IsInstanceValid(offer.PriceLabel))
+            return;
+
+        offer.PriceLabel.Text = text ?? string.Empty;
         offer.PriceLabel.AddThemeColorOverride(
             "font_color",
-            hasCurrency ? CatalogPriceAvailableColor : CatalogPriceUnavailableColor
+            color
         );
     }
 
@@ -2023,6 +2363,48 @@ public partial class SpaceStationShop : Control
             $"[color=#9cdacf]Can carry up to {GameInfo.ItemsMaxCount} items[/color]";
         return $"{title}\n{effect}\n{carryHint}";
     }
+
+    private static string BuildCardRemovalServiceTooltip(CatalogOffer offer)
+    {
+        string title = "[color=#ffd27a]战术清理[/color]";
+        string effect = GlobalFunction.ColorizeNumbers(
+            offer?.Detail ?? "选择一张牌，从牌组中永久删除。"
+        );
+        return $"{title}\n{effect}";
+    }
+
+    private static ColorRect CreateCardRemovalServiceIcon()
+    {
+        var icon = new ColorRect
+        {
+            Name = "CardRemovalServiceIcon",
+            Color = new Color(0.1f, 0.16f, 0.24f, 1f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        icon.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        icon.OffsetLeft = 10f;
+        icon.OffsetTop = 10f;
+        icon.OffsetRight = -10f;
+        icon.OffsetBottom = -10f;
+
+        var glyph = new Label
+        {
+            Name = "Glyph",
+            Text = "X",
+            MouseFilter = MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        glyph.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        glyph.AddThemeFontSizeOverride("font_size", 44);
+        glyph.AddThemeConstantOverride("outline_size", 5);
+        glyph.AddThemeColorOverride("font_color", new Color(1f, 0.78f, 0.36f, 1f));
+        glyph.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.03f, 0.06f, 0.95f));
+        icon.AddChild(glyph);
+
+        return icon;
+    }
+
     private static int GetRelicAddAmount(RelicID relicId)
     {
         return Relic.GetAcquireAmount(relicId);
@@ -3147,7 +3529,7 @@ public partial class SpaceStationShop : Control
         {
             ShopModule.Skill => kind == OfferKind.Skill,
             ShopModule.Equipment => kind == OfferKind.Equipment,
-            ShopModule.Relic => kind is OfferKind.Relic or OfferKind.Item,
+            ShopModule.Relic => kind is OfferKind.Relic or OfferKind.Item or OfferKind.CardRemovalService,
             ShopModule.Potion => kind == OfferKind.Item,
             _ => false,
         };

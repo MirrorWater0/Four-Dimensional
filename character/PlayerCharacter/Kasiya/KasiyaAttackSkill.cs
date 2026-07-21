@@ -18,7 +18,7 @@ public partial class Determination : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 3, HostileTargetReference.AttackKey)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 3), HostileTargetReference.AttackKey)
         );
     }
 }
@@ -37,7 +37,7 @@ public partial class Smite : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, 1, false)
+            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount", 1), false)
         );
     }
 }
@@ -63,7 +63,7 @@ public partial class Charge : Skill
                         includeBlockedDamage: true
                     ) ?? 0,
                 describe: false,
-                multiplier: 0
+                multiplier: V("Multiplier", 0)
             ),
             TextStep(
                 I18n.Format(
@@ -109,7 +109,7 @@ public partial class VulnerablePurge : Skill
             this,
             AttackStep(
                 baseDamage: BaseDamage,
-                multiplier: 1,
+                multiplier: V("Multiplier", 1),
                 target: HostileTargetReference.All,
                 targetCondition: character =>
                     character?.HurtBuffs?.Any(buff =>
@@ -119,7 +119,7 @@ public partial class VulnerablePurge : Skill
                     ) == true,
                 conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
             ),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 1, HostileTargetReference.All)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 1), HostileTargetReference.All)
         );
     }
 }
@@ -170,8 +170,8 @@ public class TerminateLight : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 4),
-            HurtFriendly(4, ignoreBlock: true)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 4)),
+            HurtFriendly(V("FriendlyDamage", 4), ignoreBlock: true)
         );
     }
 }
@@ -207,7 +207,7 @@ public class VulnerabilityConversion : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 7, multiplier: 2),
+            AttackStep(baseDamage: V("BaseDamage", 7), multiplier: V("Multiplier", 2)),
             ModifyPropertyStep(
                 PropertyType.Power,
                 _ => GetTotalHostileVulnerableStacks(),

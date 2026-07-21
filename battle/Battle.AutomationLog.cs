@@ -9,7 +9,8 @@ using Godot;
 public partial class Battle
 {
     [Export]
-    public bool AutomationBattleLogEnabled { get; set; } = true;
+    public bool AutomationBattleLogEnabled { get; set; } = false;
+    public bool IsAutomationBattleLogActive => AutomationBattleLogEnabled && !WarmupMode;
 
     private const string AutomationBattleLogPath = "user://battle_automation_log.jsonl";
     private const string AutomationBattleLatestPath = "user://battle_automation_latest.json";
@@ -36,7 +37,7 @@ public partial class Battle
         EnsureAutomationLogDirectory(_automationBattleLatestGlobalPath);
         EnsureAutomationLogDirectory(_automationBattleMetaGlobalPath);
 
-        if (!AutomationBattleLogEnabled)
+        if (!IsAutomationBattleLogActive)
             return;
 
         WriteAutomationFile(_automationBattleLogGlobalPath, string.Empty);
@@ -67,7 +68,7 @@ public partial class Battle
 
     private void WriteAutomationEvent(string reason, Dictionary<string, object> details = null)
     {
-        if (!AutomationBattleLogEnabled || WarmupMode)
+        if (!IsAutomationBattleLogActive)
             return;
 
         try
@@ -151,7 +152,7 @@ public partial class Battle
             ["block"] = character.Block,
             ["power"] = character.BattlePower,
             ["survivability"] = character.BattleSurvivability,
-            ["energySources"] = character.EnergySources,
+            ["sourceStacks"] = SpecialBuff.GetSourceEnergyBonus(character),
             ["currentEnergy"] = character.CurrentEnergy,
             ["buffs"] = BuildBuffAutomationState(character),
         };

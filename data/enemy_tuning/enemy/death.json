@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "Death":  {
+                                  "Name":  "Death",
+                                  "MaxLife":  415
+                              }
+                }
+}

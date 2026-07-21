@@ -8,6 +8,10 @@ using Godot;
 public partial class EventInterface : Control
 {
     private const int EventResourceRandomSalt = unchecked((int)0x75a0f19b);
+    private const float OptionPressPulseDuration = 0.11f;
+    private const float OutcomeOverlayFadeDuration = 0.16f;
+    private const float OutcomeBannerEnterDuration = 0.22f;
+    private const float OutcomeOverlayDismissDuration = 0.12f;
 
     [Export(PropertyHint.Range, "0.2,4.0,0.05,or_greater")]
     public float IntroAnimationSpeed = 1.0f;
@@ -77,8 +81,10 @@ public partial class EventInterface : Control
     private EventOption _pendingRestSingleHealOption;
     private EventOption _pendingCardOption;
     private TaskCompletionSource<bool> _outcomeDismissSource;
+    private Vector2 _outcomeBannerBasePosition;
+    private bool _outcomeBannerBasePositionCached;
     private readonly Dictionary<EventOption, int> _electricityRolls = new();
-    private readonly Dictionary<EventOption, int> _transitionEnergyRolls = new();
+    private readonly Dictionary<EventOption, int> _partyHealPercentRolls = new();
     private readonly Dictionary<EventOption, int> _propertyChangeCostRolls = new();
     private readonly Dictionary<EventOption, RelicID?> _relicRewardRolls = new();
     private EventCardSelectOverlay _cardSelectOverlay;
@@ -87,12 +93,12 @@ public partial class EventInterface : Control
     private List<string> _pendingStarterBonusTalentCharacterNames;
     private const bool SkipEnterPrompt = true;
 
-    private readonly struct AppliedResourceChanges(int transitionEnergyChange, int electricityChange, int propertyChangeElectricityCost = 0)
+    private readonly struct AppliedResourceChanges(int partyHealPercent, int electricityChange, int propertyChangeElectricityCost = 0)
     {
-        public int TransitionEnergyChange { get; } = transitionEnergyChange;
+        public int PartyHealPercent { get; } = partyHealPercent;
         public int ElectricityChange { get; } = electricityChange;
         public int PropertyChangeElectricityCost { get; } = propertyChangeElectricityCost;
-        public bool HasAny => TransitionEnergyChange != 0 || ElectricityChange != 0 || PropertyChangeElectricityCost != 0;
+        public bool HasAny => PartyHealPercent != 0 || ElectricityChange != 0 || PropertyChangeElectricityCost != 0;
     }
 
     private float IntroSpeed => MathF.Max(0.05f, IntroAnimationSpeed);
@@ -203,7 +209,7 @@ public partial class EventInterface : Control
                 _optionTipTexts[i] = BuildOptionTipText(
                     options[i],
                     GetRolledElectricityChange(options[i]),
-                    GetRolledTransitionEnergyChange(options[i]),
+                    GetRolledPartyHealPercent(options[i]),
                     GetRolledPropertyChangeCost(options[i]),
                     GetRolledRelicReward(options[i]),
                     WhichNode
@@ -356,6 +362,9 @@ public partial class EventInterface : Control
             return;
         if (!CanUseOption(option))
             return;
+
+        if (optionIndex < OptionButtons.Count)
+            await PlayOptionPressFeedbackAsync(OptionButtons[optionIndex]);
 
         if (option.PropertyChange != null && option.PropertyChange.Count > 0)
         {
@@ -634,7 +643,7 @@ public partial class EventInterface : Control
     private void RollOptionResourceRewards(EventOption[] options)
     {
         _electricityRolls.Clear();
-        _transitionEnergyRolls.Clear();
+        _partyHealPercentRolls.Clear();
         _propertyChangeCostRolls.Clear();
         _relicRewardRolls.Clear();
         if (options == null)
@@ -644,8 +653,8 @@ public partial class EventInterface : Control
         {
             if (option?.HasElectricityChange == true)
                 _electricityRolls[option] = option.RollElectricityChange(_resourceRandom);
-            if (option?.HasTransitionEnergyChange == true)
-                _transitionEnergyRolls[option] = option.RollTransitionEnergyChange(_resourceRandom);
+            if (option?.HasPartyHealPercent == true)
+                _partyHealPercentRolls[option] = option.RollPartyHealPercent(_resourceRandom);
             if (option?.HasPropertyChangeElectricityCost == true)
                 _propertyChangeCostRolls[option] = option.RollPropertyChangeElectricityCost(_resourceRandom);
             if (option?.ActionType == EventOptionActionType.GainRelic)
@@ -663,14 +672,14 @@ public partial class EventInterface : Control
         return option.RollElectricityChange(_resourceRandom);
     }
 
-    private int GetRolledTransitionEnergyChange(EventOption option)
+    private int GetRolledPartyHealPercent(EventOption option)
     {
         if (option == null)
             return 0;
-        if (_transitionEnergyRolls.TryGetValue(option, out int value))
+        if (_partyHealPercentRolls.TryGetValue(option, out int value))
             return value;
         _resourceRandom ??= CreateResourceRandom();
-        return option.RollTransitionEnergyChange(_resourceRandom);
+        return option.RollPartyHealPercent(_resourceRandom);
     }
 
     private int GetRolledPropertyChangeCost(EventOption option)
@@ -1119,7 +1128,7 @@ public partial class EventInterface : Control
                 {
                     GameInfo.ElectricityCoin -= propertyCost;
                     resourceChanges = new AppliedResourceChanges(
-                        resourceChanges.TransitionEnergyChange,
+                        resourceChanges.PartyHealPercent,
                         resourceChanges.ElectricityChange,
                         propertyCost
                     );
@@ -1190,15 +1199,33 @@ public partial class EventInterface : Control
         OutcomeOverlay.Visible = true;
         SetControlAlpha(OutcomeOverlay, 0.0f);
         if (OutcomeBanner != null)
-            OutcomeBanner.Scale = new Vector2(0.985f, 0.985f);
+        {
+            CacheOutcomeBannerBasePosition();
+            OutcomeBanner.Scale = new Vector2(0.94f, 0.94f);
+            OutcomeBanner.Position = _outcomeBannerBasePosition + new Vector2(0f, 28f);
+            OutcomeBanner.Modulate = new Color(1.18f, 1.18f, 1.18f, 1f);
+        }
 
         var tween = CreateTween();
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.Out);
         tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(OutcomeOverlay, "modulate:a", 1.0f, 0.16f);
+        tween.TweenProperty(OutcomeOverlay, "modulate:a", 1.0f, OutcomeOverlayFadeDuration);
         if (OutcomeBanner != null)
-            tween.TweenProperty(OutcomeBanner, "scale", Vector2.One, 0.2f);
+        {
+            tween
+                .TweenProperty(OutcomeBanner, "scale", Vector2.One, OutcomeBannerEnterDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+            tween
+                .TweenProperty(OutcomeBanner, "position", _outcomeBannerBasePosition, OutcomeBannerEnterDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+            tween
+                .TweenProperty(OutcomeBanner, "modulate", Colors.White, OutcomeBannerEnterDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+        }
         await ToSignal(tween, Tween.SignalName.Finished);
 
         await _outcomeDismissSource.Task;
@@ -1214,14 +1241,71 @@ public partial class EventInterface : Control
         tween.SetParallel(true);
         tween.SetEase(Tween.EaseType.In);
         tween.SetTrans(Tween.TransitionType.Cubic);
-        tween.TweenProperty(OutcomeOverlay, "modulate:a", 0.0f, 0.12f);
+        tween.TweenProperty(OutcomeOverlay, "modulate:a", 0.0f, OutcomeOverlayDismissDuration);
         if (OutcomeBanner != null)
-            tween.TweenProperty(OutcomeBanner, "scale", new Vector2(0.985f, 0.985f), 0.12f);
+        {
+            CacheOutcomeBannerBasePosition();
+            tween.TweenProperty(
+                OutcomeBanner,
+                "scale",
+                new Vector2(0.96f, 0.96f),
+                OutcomeOverlayDismissDuration
+            );
+            tween.TweenProperty(
+                OutcomeBanner,
+                "position",
+                _outcomeBannerBasePosition + new Vector2(0f, 10f),
+                OutcomeOverlayDismissDuration
+            );
+        }
         await ToSignal(tween, Tween.SignalName.Finished);
 
         OutcomeOverlay.Visible = false;
+        if (OutcomeBanner != null)
+        {
+            OutcomeBanner.Position = _outcomeBannerBasePosition;
+            OutcomeBanner.Scale = Vector2.One;
+            OutcomeBanner.Modulate = Colors.White;
+        }
         _outcomeDismissSource?.TrySetResult(true);
         _outcomeDismissSource = null;
+    }
+
+    private async Task PlayOptionPressFeedbackAsync(Button button)
+    {
+        if (button == null || !GodotObject.IsInstanceValid(button) || !button.IsInsideTree())
+            return;
+
+        Vector2 baseScale = button.Scale == Vector2.Zero ? Vector2.One : button.Scale;
+        Color baseModulate = button.Modulate;
+        button.PivotOffset = button.Size * 0.5f;
+        button.Modulate = new Color(1.18f, 1.12f, 0.78f, baseModulate.A);
+
+        Tween tween = CreateTween();
+        tween.SetParallel(false);
+        tween
+            .TweenProperty(button, "scale", baseScale * 0.97f, OptionPressPulseDuration * 0.42f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(button, "scale", baseScale, OptionPressPulseDuration * 0.58f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(button, "modulate", baseModulate, OptionPressPulseDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+
+        await ToSignal(tween, Tween.SignalName.Finished);
+    }
+
+    private void CacheOutcomeBannerBasePosition()
+    {
+        if (_outcomeBannerBasePositionCached || OutcomeBanner == null)
+            return;
+
+        _outcomeBannerBasePosition = OutcomeBanner.Position;
+        _outcomeBannerBasePositionCached = true;
     }
 
     private void OnOutcomeOverlayGuiInput(InputEvent inputEvent)
@@ -1246,35 +1330,35 @@ public partial class EventInterface : Control
             return default;
 
         int electricityChange = GetRolledElectricityChange(option);
-        int transitionEnergyChange = GetRolledTransitionEnergyChange(option);
-        if (transitionEnergyChange == 0 && electricityChange == 0)
+        int partyHealPercent = GetRolledPartyHealPercent(option);
+        if (partyHealPercent == 0 && electricityChange == 0)
             return default;
 
-        int previousTransitionEnergy = GameInfo.GetPartyLife();
         int previousElectricityCoin = GameInfo.ElectricityCoin;
+        if (partyHealPercent > 0)
+        {
+            GameInfo.HealPartyByMaxLifePercent(partyHealPercent / 100f);
+            GameInfo.AppendActiveLevelNodeNote($"全体恢复 {partyHealPercent}% 最大生命");
+        }
+
         var map = GetTree().Root.GetNodeOrNull<Map>("/root/Map");
         if (map != null && map.PlayerResourceState != null)
         {
-            if (transitionEnergyChange != 0)
-                map.PlayerResourceState.TransitionEnergy += transitionEnergyChange;
+            if (partyHealPercent > 0)
+                map.PlayerResourceState.RefreshPartyLifeResource();
             if (electricityChange != 0)
                 map.PlayerResourceState.ElectricityCoin += electricityChange;
             return new AppliedResourceChanges(
-                GameInfo.GetPartyLife() - previousTransitionEnergy,
+                partyHealPercent,
                 GameInfo.ElectricityCoin - previousElectricityCoin
             );
-        }
-
-        if (transitionEnergyChange != 0)
-        {
-            GameInfo.AdjustPartyLife(transitionEnergyChange);
         }
 
         if (electricityChange != 0)
             GameInfo.ElectricityCoin += electricityChange;
 
         return new AppliedResourceChanges(
-            GameInfo.GetPartyLife() - previousTransitionEnergy,
+            partyHealPercent,
             GameInfo.ElectricityCoin - previousElectricityCoin
         );
     }
@@ -1490,7 +1574,7 @@ public partial class EventInterface : Control
     private static string BuildOptionTipText(
         EventOption option,
         int electricityChange,
-        int transitionEnergyChange,
+        int partyHealPercent,
         int propertyChangeCost,
         RelicID? relicReward,
         LevelNode whichNode = null
@@ -1523,9 +1607,9 @@ public partial class EventInterface : Control
             hasAny = true;
         }
 
-        if (transitionEnergyChange != 0)
+        if (partyHealPercent > 0)
         {
-            sb.Append($"队伍生命 {FormatSigned(transitionEnergyChange)}\n");
+            sb.Append($"全体恢复 {partyHealPercent}% 最大生命\n");
             hasAny = true;
         }
 
@@ -1753,8 +1837,8 @@ public partial class EventInterface : Control
             if (hasAny)
                 sb.Append('\n');
 
-            if (resourceChanges.TransitionEnergyChange != 0)
-                sb.Append($"队伍生命 {FormatSigned(resourceChanges.TransitionEnergyChange)}\n");
+            if (resourceChanges.PartyHealPercent > 0)
+                sb.Append($"全体恢复 {resourceChanges.PartyHealPercent}% 最大生命\n");
             if (resourceChanges.ElectricityChange != 0)
                 sb.Append($"电力币 {FormatSigned(resourceChanges.ElectricityChange)}\n");
             if (resourceChanges.PropertyChangeElectricityCost != 0)

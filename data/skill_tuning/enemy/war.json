@@ -1,0 +1,22 @@
+﻿{
+    "skills":  {
+                   "WarAttack":  {
+                                     "Name":  "全军出击",
+                                     "BaseDamage":  10,
+                                     "ThrallPowerGain":  2,
+                                     "HitCount":  2
+                                 },
+                   "WarSpecial":  {
+                                      "Name":  "死亡行军",
+                                      "BaseDamage":  12,
+                                      "PowerGain":  2,
+                                      "EnemySpecialIntentionCooldown":  3
+                                  },
+                   "WarSurvive":  {
+                                      "Name":  "逝者军势",
+                                      "BaseBlock":  13,
+                                      "SelfSurvivabilityGain":  2,
+                                      "ThrallBlock":  0
+                                  }
+               }
+}

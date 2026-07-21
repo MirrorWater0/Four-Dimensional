@@ -1,0 +1,138 @@
+﻿{
+    "skills":  {
+                   "BladeOfSlaughter":  {
+                                            "Name":  "弑杀之刃",
+                                            "BaseDamage":  7
+                                        },
+                   "CursePower":  {
+                                      "Name":  "咒力"
+                                  },
+                   "DeflectionShield":  {
+                                            "Name":  "偏折之盾",
+                                            "BaseBlock":  6,
+                                            "DamageImmuneStacks":  1,
+                                            "Multiplier":  1
+                                        },
+                   "DisasterImpact":  {
+                                          "Name":  "灵魂汲取",
+                                          "BaseDamage":  4,
+                                          "WeakenStacksPerExtraDraw":  1
+                                      },
+                   "DissonantField":  {
+                                          "Name":  "失谐力场",
+                                          "BaseBlock":  6,
+                                          "WeakenStacks":  2,
+                                          "Multiplier":  1
+                                      },
+                   "EchoBasicSpecial":  {
+                                            "Name":  "解离",
+                                            "WeakenStacks":  1
+                                        },
+                   "EchoForm":  {
+                                    "Name":  "回响形态"
+                                },
+                   "EchonicResonance":  {
+                                            "Name":  "回响共鸣",
+                                            "PowerGainPerCast":  1,
+                                            "BaseDamage":  0,
+                                            "Multiplier":  1
+                                        },
+                   "EchoPuncture":  {
+                                        "Name":  "回声穿刺",
+                                        "BaseDamage":  1,
+                                        "VulnerableStacks":  1,
+                                        "HitCount":  2
+                                    },
+                   "EternalCore":  {
+                                       "Name":  "永恒核心"
+                                   },
+                   "Extract":  {
+                                   "Name":  "萃取",
+                                   "BaseDamage":  7,
+                                   "DrawCount":  2
+                               },
+                   "LingeringTone":  {
+                                         "Name":  "留音",
+                                         "BaseBlock":  6,
+                                         "HandKeywordCount":  1,
+                                         "Multiplier":  1
+                                     },
+                   "Overdraw":  {
+                                    "Name":  "透支",
+                                    "NoDrawStacks":  1,
+                                    "DrawCount":  0
+                                },
+                   "PhaseEcho":  {
+                                     "Name":  "相位回声"
+                                 },
+                   "Purity":  {
+                                  "Name":  "纯净",
+                                  "EnergyGain":  2
+                              },
+                   "RelayShift":  {
+                                      "Name":  "后撤步",
+                                      "BaseBlock":  6
+                                  },
+                   "ResonanceShelter":  {
+                                            "Name":  "护幕",
+                                            "BaseBlock":  4,
+                                            "CardRefreshStacks":  1,
+                                            "Multiplier":  1
+                                        },
+                   "ResonantSlash":  {
+                                         "Name":  "共振斩击",
+                                         "BaseDamage":  7,
+                                         "HitCount":  1,
+                                         "WeakenStacks":  2
+                                     },
+                   "ResonantWard":  {
+                                        "Name":  "电磁排斥",
+                                        "DebuffImmunityStacks":  1,
+                                        "BaseBlock":  6
+                                    },
+                   "ReverbChain":  {
+                                       "Name":  "回声连奏",
+                                       "BaseDamage":  0,
+                                       "Multiplier":  1
+                                   },
+                   "SacredOnslaught":  {
+                                           "Name":  "圣域冲击",
+                                           "BaseDamage":  7,
+                                           "MaxTargets":  4,
+                                           "Multiplier":  1,
+                                           "HitCount":  1
+                                       },
+                   "SonicBoom":  {
+                                     "Name":  "音爆",
+                                     "BaseDamage":  1,
+                                     "LoopCount":  4
+                                 },
+                   "SonicDeflection":  {
+                                           "Name":  "声波偏转",
+                                           "DamageImmuneStacks":  2,
+                                           "BaseBlock":  0,
+                                           "Multiplier":  1,
+                                           "SurvivabilityLoss":  3
+                                       },
+                   "SoundBarrier":  {
+                                        "Name":  "音墙",
+                                        "DefenceFocusCount":  3
+                                    },
+                   "SoundPickup":  {
+                                       "Name":  "拾音",
+                                       "BaseBlock":  6,
+                                       "DrawPilePickCount":  1,
+                                       "Multiplier":  1
+                                   },
+                   "TuningStance":  {
+                                        "Name":  "韵律",
+                                        "SelectDiscardCount":  2
+                                    },
+                   "VoidForm":  {
+                                    "Name":  "虚无形态"
+                                },
+                   "WeakeningField":  {
+                                          "Name":  "虚弱立场"
+                                      }
+               }
+}

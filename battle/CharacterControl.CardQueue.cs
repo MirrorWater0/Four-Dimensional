@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -12,6 +11,7 @@ public partial class CharacterControl
             skill == null
             || !IsCardIndexValid(index)
             || IsCardCommitted(index)
+            || IsCardDrawEntryInputBlocked(index)
         )
         {
             return;
@@ -30,7 +30,7 @@ public partial class CharacterControl
         if (target == null || !GodotObject.IsInstanceValid(target))
         {
             skill.ClearManualFriendlyTarget();
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -38,7 +38,7 @@ public partial class CharacterControl
         if (!skill.HasManualFriendlyTarget())
         {
             skill.ClearManualFriendlyTarget();
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -48,13 +48,100 @@ public partial class CharacterControl
     private void ClearCardButtonPressSuppression()
     {
         _suppressCardButtonPressUntilLeftRelease = false;
+        _suppressCardButtonPressSerial = -1;
     }
 
-    private void SuppressHandHoverUntilMouseMove()
+    private void TrackCardLeftMouseButtonState(InputEventMouseButton mouseButton)
+    {
+        if (mouseButton == null || mouseButton.ButtonIndex != MouseButton.Left)
+            return;
+
+        if (mouseButton.Pressed)
+        {
+            if (!_leftMouseButtonPressed)
+                BeginTrackedLeftMouseButtonPress();
+            return;
+        }
+
+        _leftMouseButtonPressed = false;
+        ClearCardButtonPressSuppression();
+    }
+
+    private bool IsLeftMouseButtonPressActive()
+    {
+        if (_leftMouseButtonPressed)
+            return true;
+
+        bool pressed = Input.IsMouseButtonPressed(MouseButton.Left);
+        if (pressed)
+            BeginTrackedLeftMouseButtonPress();
+        else
+            _leftMouseButtonPressed = false;
+
+        return pressed;
+    }
+
+    private void BeginTrackedLeftMouseButtonPress()
+    {
+        _leftMouseButtonPressed = true;
+        unchecked
+        {
+            _leftMouseButtonPressSerial++;
+            if (_leftMouseButtonPressSerial < 0)
+                _leftMouseButtonPressSerial = 1;
+        }
+    }
+
+    private void SuppressCardButtonPressForCurrentLeftPress()
+    {
+        if (!IsLeftMouseButtonPressActive())
+        {
+            ClearCardButtonPressSuppression();
+            return;
+        }
+
+        _suppressCardButtonPressUntilLeftRelease = true;
+        _suppressCardButtonPressSerial = _leftMouseButtonPressSerial;
+    }
+
+    private bool IsCardButtonPressSuppressed()
+    {
+        if (!_suppressCardButtonPressUntilLeftRelease)
+            return false;
+
+        if (!IsLeftMouseButtonPressActive())
+        {
+            ClearCardButtonPressSuppression();
+            return false;
+        }
+
+        return _suppressCardButtonPressSerial == _leftMouseButtonPressSerial;
+    }
+
+    private bool TryStartHandCardPress(int index, bool allowSuppressedPress = false)
+    {
+        if (!IsCardIndexValid(index))
+            return false;
+
+        if (IsLeftMouseButtonPressActive())
+        {
+            if (_handledHandCardPressSerial == _leftMouseButtonPressSerial)
+                return false;
+
+            _handledHandCardPressSerial = _leftMouseButtonPressSerial;
+        }
+
+        _ = HandleCardPressedAsync(index, allowSuppressedPress);
+        return true;
+    }
+
+    private void SuppressHandHoverUntilMouseMove(bool requireMouseMove = false)
     {
         _suppressHandHoverUntilMouseMove = true;
-        _handHoverSuppressionMousePosition = GetViewport()?.GetMousePosition() ?? Vector2.Zero;
+        _handHoverSuppressionRequiresMouseMove = requireMouseMove;
+        _handHoverSuppressionMousePosition = GetHandCardPointerPosition();
         _deferredHoverRefreshVersion++;
+        _queuedHoverRefreshVersion = 0;
     }
 
     private void QueueCardPlay(int index, Skill skill, bool keepManualFriendlyTarget = false)
@@ -66,6 +153,7 @@ public partial class CharacterControl
             || !GodotObject.IsInstanceValid(_activePlayer)
             || !IsCardIndexValid(index)
             || IsCardCommitted(index)
+            || IsCardDrawEntryInputBlocked(index)
         )
         {
             return;
@@ -74,14 +162,12 @@ public partial class CharacterControl
         if (!keepManualFriendlyTarget)
             skill.ClearManualFriendlyTarget();
 
-        DetachDrawEntryStateForImmediateInteraction(index);
-
         Character actor = skill.OwnerCharater ?? _activePlayer;
         bool hadStun = HasActiveStun(actor);
         if (!hadStun && !skill.TrySpendDisplayedEnergy())
         {
             ResetCardMotion(index, instant: false);
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -93,7 +179,7 @@ public partial class CharacterControl
         {
             skill.RefundDisplayedEnergy();
             ResetCardMotion(index, instant: false);
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -118,21 +204,25 @@ public partial class CharacterControl
 
         _queuedCardPlays.Enqueue(play);
         _queuedCardSkills.Add(skill);
-        BattleNode?.RecordAutomationEvent(
-            "card_queued",
-            new Dictionary<string, object>
-            {
-                ["slot"] = index + 1,
-                ["actor"] = Battle.CharacterAutomationId(actor),
-                ["skillId"] = skill.SkillId?.ToString(),
-                ["skillName"] = skill.SkillName,
-                ["skillType"] = skill.SkillType.ToString(),
-            }
-        );
+        if (BattleNode?.IsAutomationBattleLogActive == true)
+        {
+            BattleNode.RecordAutomationEvent(
+                "card_queued",
+                new Dictionary<string, object>
+                {
+                    ["slot"] = index + 1,
+                    ["actor"] = Battle.CharacterAutomationId(actor),
+                    ["skillId"] = skill.SkillId?.ToString(),
+                    ["skillName"] = skill.SkillName,
+                    ["skillType"] = skill.SkillType.ToString(),
+                }
+            );
+        }
 
         ResolveHandSlotAfterQueuedPlay(play);
+        RestoreStableHandInputAfterQueuedPlay();
         RefreshQueuedPlayCardLayers();
-        RefreshTurnUi();
+        RequestTurnUiRefresh();
         _ = ProcessCardQueueAsync();
     }
 
@@ -148,7 +238,7 @@ public partial class CharacterControl
             _manualTargetArrowUsesLiftedCard = false;
         }
 
-        _suppressCardButtonPressUntilLeftRelease = false;
+        SuppressCardButtonPressForCurrentLeftPress();
         SetHandInputBlockerVisible(false);
         if (!_manualTargetArrowSelectionActive)
             SetCardHoverUiEnabled(true);
@@ -192,9 +282,10 @@ public partial class CharacterControl
             return null;
         }
 
+        DetachDrawEntryForInteraction(index, card);
         Vector2 globalPosition = card.GlobalPosition;
         Vector2 scale = card.Scale;
-        float rotation = card.Rotation;
+        float rotation = GetCanvasRotation(card);
         Vector2 pivotOffset = card.PivotOffset;
 
         _cardSlotLayoutTweens[index]?.Kill();
@@ -366,6 +457,7 @@ public partial class CharacterControl
         }
         finally
         {
+            ResolveDeferredBattlePilesAfterCardQueue();
             _isProcessingCardQueue = false;
             if (GodotObject.IsInstanceValid(this))
             {
@@ -373,8 +465,7 @@ public partial class CharacterControl
                     await ExecuteQueuedEndTurnAsync();
                 else
                 {
-                    RefreshTurnUi();
-                    ScheduleCardHoverRefresh();
+                    RequestTurnUiRefresh(refreshHover: true);
                 }
             }
         }
@@ -409,18 +500,21 @@ public partial class CharacterControl
         }
 
         if (play.IsHandCard)
-            RefreshTurnUi();
-        BattleNode?.RecordAutomationEvent(
-            "card_execute_start",
-            new Dictionary<string, object>
-            {
-                ["slot"] = play.Index + 1,
-                ["actor"] = Battle.CharacterAutomationId(play.Actor),
-                ["skillId"] = play.Skill.SkillId?.ToString(),
-                ["skillName"] = play.Skill.SkillName,
-                ["skillType"] = play.Skill.SkillType.ToString(),
-            }
-        );
+            RequestTurnUiRefresh();
+        if (BattleNode?.IsAutomationBattleLogActive == true)
+        {
+            BattleNode.RecordAutomationEvent(
+                "card_execute_start",
+                new Dictionary<string, object>
+                {
+                    ["slot"] = play.Index + 1,
+                    ["actor"] = Battle.CharacterAutomationId(play.Actor),
+                    ["skillId"] = play.Skill.SkillId?.ToString(),
+                    ["skillName"] = play.Skill.SkillName,
+                    ["skillType"] = play.SkillType.ToString(),
+                }
+            );
+        }
 
         if (!await SelectManualFriendlyTargetIfNeededAsync(play))
         {
@@ -438,6 +532,9 @@ public partial class CharacterControl
 
         play.CachedDrawEntryStartCenter = TryGetQueuedPlayCardGlobalCenter(play);
 
+        if (play.Skill.IsAbilityCard)
+            await PlayAbilityCardActivationAsync(play);
+
         if (play.FreeEnergyCost)
         {
             using (play.Skill.BeginEnergyCostWaiver())
@@ -450,18 +547,21 @@ public partial class CharacterControl
             await play.Skill.Effect();
         }
 
-        ResolveBattlePileAfterQueuedPlay(play);
-        BattleNode?.RecordAutomationEvent(
-            "card_execute_finished",
-            new Dictionary<string, object>
-            {
-                ["slot"] = play.Index + 1,
-                ["actor"] = Battle.CharacterAutomationId(play.Actor),
-                ["skillId"] = play.Skill.SkillId?.ToString(),
-                ["skillName"] = play.Skill.SkillName,
-                ["skillType"] = play.Skill.SkillType.ToString(),
-            }
-        );
+        DeferBattlePileResolutionUntilCardQueueCompletes(play);
+        if (BattleNode?.IsAutomationBattleLogActive == true)
+        {
+            BattleNode.RecordAutomationEvent(
+                "card_execute_finished",
+                new Dictionary<string, object>
+                {
+                    ["slot"] = play.Index + 1,
+                    ["actor"] = Battle.CharacterAutomationId(play.Actor),
+                    ["skillId"] = play.Skill.SkillId?.ToString(),
+                    ["skillName"] = play.Skill.SkillName,
+                    ["skillType"] = play.SkillType.ToString(),
+                }
+            );
+        }
 
         if (BattleNode?.ShouldAbortSkillResolution() == true)
         {
@@ -484,6 +584,14 @@ public partial class CharacterControl
             return true;
         }
 
+        if (CanRetireQueuedPlayCardVisualAsync(play))
+        {
+            StartQueuedPlayCardVisualRetirement(play);
+            CompleteQueuedPlay(play, succeeded: true);
+            RequestTurnUiRefresh(refreshHover: true);
+            return false;
+        }
+
         await PlayCardVanishAfterExecutionAsync(play);
 
         if (play.IsTemporaryCard)
@@ -500,7 +608,7 @@ public partial class CharacterControl
             if (play.Actor != _activePlayer)
             {
                 CompleteQueuedPlay(play, succeeded: true);
-                RefreshTurnUi();
+                RequestTurnUiRefresh();
                 return false;
             }
 
@@ -512,6 +620,43 @@ public partial class CharacterControl
 
         CompleteQueuedPlay(play, succeeded: true);
         return false;
+    }
+
+    private bool CanRetireQueuedPlayCardVisualAsync(QueuedCardPlay play)
+    {
+        return play?.IsHandCard == true
+            && play.Card != null
+            && GodotObject.IsInstanceValid(play.Card)
+            && play.Actor != null
+            && GodotObject.IsInstanceValid(play.Actor)
+            && play.Actor.State != Character.CharacterState.Dying;
+    }
+
+    private void StartQueuedPlayCardVisualRetirement(QueuedCardPlay play)
+    {
+        _retiringQueuedPlayVisualCount++;
+        _ = RetireQueuedPlayCardVisualAsync(play);
+    }
+
+    private async Task RetireQueuedPlayCardVisualAsync(QueuedCardPlay play)
+    {
+        try
+        {
+            await PlayCardVanishAfterExecutionAsync(play);
+        }
+        catch (Exception ex)
+        {
+            GD.PushWarning($"CharacterControl: queued card visual retirement failed: {ex.Message}");
+        }
+        finally
+        {
+            if (GodotObject.IsInstanceValid(this))
+            {
+                _retiringQueuedPlayVisualCount = Math.Max(0, _retiringQueuedPlayVisualCount - 1);
+                QueueFreeQueuedPlayCard(play);
+                RequestTurnUiRefresh(refreshHover: true);
+            }
+        }
     }
 
     private void ResolveHandSlotAfterQueuedPlay(QueuedCardPlay play)
@@ -530,9 +675,55 @@ public partial class CharacterControl
         play.RemovedFromHand = true;
     }
 
+    private void RestoreStableHandInputAfterQueuedPlay()
+    {
+        if (
+            !_uiBuilt
+            || _endTurnQueued
+            || _isPileCardSelectionActive
+            || IsManualTargetSelectionPending()
+            || _manualTargetArrowSelectionActive
+            || _liftedCardIndex != -1
+        )
+        {
+            return;
+        }
+
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null)
+            return;
+
+        int count = Math.Min(_cards.Length, hand.Length);
+        for (int i = 0; i < count; i++)
+        {
+            Skill skill = hand[i];
+            SkillCard card = _cards[i];
+            if (
+                skill == null
+                || card == null
+                || !GodotObject.IsInstanceValid(card)
+                || !card.Visible
+                || IsCardCommitted(i)
+                || IsCardDrawEntryInputBlocked(i)
+            )
+            {
+                continue;
+            }
+
+            card.SetHoverUiEnabled(true);
+            SetCardButtonInputEnabled(card, true);
+            card.Modulate = SkillButton.EnabledModulate;
+        }
+    }
+
     private void RestoreHandSlotForQueuedPlay(QueuedCardPlay play)
     {
-        if (play?.IsHandCard != true || !play.RemovedFromHand || play.ResolvedToBattlePile)
+        if (
+            play?.IsHandCard != true
+            || !play.RemovedFromHand
+            || play.PendingBattlePileResolution
+            || play.ResolvedToBattlePile
+        )
         {
             return;
         }
@@ -544,8 +735,41 @@ public partial class CharacterControl
         {
             _queuedCardSkills.Remove(play.Skill);
             play.RemovedFromHand = false;
-            RefreshTurnUi();
+            RequestTurnUiRefresh();
         }
+    }
+
+    private void DeferBattlePileResolutionUntilCardQueueCompletes(QueuedCardPlay play)
+    {
+        if (
+            play?.IsHandCard != true
+            || play.PendingBattlePileResolution
+            || play.ResolvedToBattlePile
+        )
+        {
+            return;
+        }
+
+        play.PendingBattlePileResolution = true;
+        _pendingBattlePileQueuedPlays.Add(play);
+    }
+
+    private void ResolveDeferredBattlePilesAfterCardQueue()
+    {
+        if (_pendingBattlePileQueuedPlays.Count == 0)
+            return;
+
+        for (int i = 0; i < _pendingBattlePileQueuedPlays.Count; i++)
+        {
+            QueuedCardPlay play = _pendingBattlePileQueuedPlays[i];
+            if (play == null)
+                continue;
+
+            play.PendingBattlePileResolution = false;
+            ResolveBattlePileAfterQueuedPlay(play);
+        }
+
+        _pendingBattlePileQueuedPlays.Clear();
     }
 
     private void ResolveBattlePileAfterQueuedPlay(QueuedCardPlay play)
@@ -570,11 +794,12 @@ public partial class CharacterControl
         if (play == null)
             return;
 
-        if (!play.ResolvedToBattlePile)
+        if (!play.PendingBattlePileResolution && !play.ResolvedToBattlePile)
             RestoreHandSlotForQueuedPlay(play);
 
         if (
             play.IsHandCard
+            && !play.PendingBattlePileResolution
             && !play.ResolvedToBattlePile
             && GodotObject.IsInstanceValid(this)
             && IsInsideTree()
@@ -611,8 +836,11 @@ public partial class CharacterControl
         if (card == null || !GodotObject.IsInstanceValid(card) || !card.Visible)
             return;
 
+        if (play.AbilityVisualConsumed)
+            return;
+
         card.Button.Disabled = true;
-        if (play?.Skill?.ExhaustsAfterUse == true)
+        if (play?.Skill?.ResolvesExhaustsAfterUse == true)
             card.PlayExhaustEffect(CardPlayVanishDuration);
         else if (play?.IsHandCard == true || play?.FlyToDiscardPileAfterUse == true)
         {
@@ -627,6 +855,61 @@ public partial class CharacterControl
         );
     }
 
+    private async Task PlayAbilityCardActivationAsync(QueuedCardPlay play)
+    {
+        SkillCard card = play?.Card;
+        Character actor = play?.Actor;
+        if (
+            card == null
+            || !GodotObject.IsInstanceValid(card)
+            || actor == null
+            || !GodotObject.IsInstanceValid(actor)
+        )
+        {
+            return;
+        }
+
+        card.Button.Disabled = true;
+        card.HoverHint.Visible = false;
+
+        bool flew = false;
+        var options = new CardTrailMoveOptions
+        {
+            CompressDuration = 0.12f,
+            FlyDuration = 0.34f,
+            TrailFadeDuration = 0.12f,
+            CompressedScaleFactor = 0.34f,
+            TargetScaleFactor = 0.08f,
+            CenterVanish = 0.98f,
+            GlowMultiplier = 1.46f,
+            HideCardVisualOnArrival = true,
+            RotateWithVelocity = true,
+        };
+
+        if (actor.IsInsideTree())
+            flew = await card.FlyWithTrailToPointAsync(
+                actor.GetVisualCenterGlobalPosition(),
+                options
+            );
+
+        if (!flew && GodotObject.IsInstanceValid(card))
+        {
+            card.PressEffectPartial(
+                centerVanish: 1f,
+                glowMultiplier: 1.46f,
+                duration: CardPlayVanishDuration
+            );
+            await ToSignal(
+                GetTree().CreateTimer(CardPlayVanishDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+            if (GodotObject.IsInstanceValid(card))
+                card.SetCardVisualVisible(false);
+        }
+
+        play.AbilityVisualConsumed = true;
+    }
+
     public async Task PlayEndTurnHandDiscardAnimationsAsync(
         PlayerCharacter player,
         HashSet<int> handIndexes = null
@@ -635,9 +918,12 @@ public partial class CharacterControl
         if (player == null || !GodotObject.IsInstanceValid(player))
             return;
 
-        var animationTasks = new List<Task>();
-        var discardEntries = new List<(int Index, SkillCard Card)>();
-        var exhaustCards = new List<(int Index, SkillCard Card)>();
+        List<Task> animationTasks = _endTurnHandDiscardAnimationTasks;
+        List<(int Index, SkillCard Card)> discardEntries = _endTurnHandDiscardEntries;
+        List<(int Index, SkillCard Card)> exhaustCards = _endTurnHandExhaustEntries;
+        animationTasks.Clear();
+        discardEntries.Clear();
+        exhaustCards.Clear();
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -660,7 +946,7 @@ public partial class CharacterControl
             if (skill == null && hand != null && i < hand.Length)
                 skill = hand[i];
 
-            if (skill?.ExhaustsAtTurnEndInHand == true)
+            if (skill?.ResolvesExhaustsAtTurnEndInHand == true)
             {
                 SkillCard animationCard = CreateEndTurnHandDiscardAnimationCard(
                     i,
@@ -702,8 +988,11 @@ public partial class CharacterControl
             animationTasks.Add(PlayCardDiscardFlyAndFreeAsync(entry.Card));
         }
 
-        if (animationTasks.Count > 0)
-            await Task.WhenAll(animationTasks);
+        for (int i = 0; i < animationTasks.Count; i++)
+            await animationTasks[i];
+        animationTasks.Clear();
+        discardEntries.Clear();
+        exhaustCards.Clear();
     }
 
     private SkillCard CreateEndTurnHandDiscardAnimationCard(
@@ -738,7 +1027,7 @@ public partial class CharacterControl
         card.Visible = true;
         card.GlobalPosition = sourceCard.GlobalPosition;
         card.Scale = sourceCard.Scale;
-        card.Rotation = sourceCard.Rotation;
+        card.Rotation = GetCanvasRotation(sourceCard);
         card.PivotOffset = sourceCard.PivotOffset;
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.Disabled = true;
@@ -906,7 +1195,7 @@ public partial class CharacterControl
         }
 
         card.PivotOffset = BattleCardBaseSize * 0.5f;
-        Tween compressShaderTween = card.PressEffectPartial(
+        card.PressEffectPartial(
             centerVanish: 0.92f,
             glowMultiplier: 1.28f,
             duration: CardPlayDiscardCompressDuration
@@ -939,16 +1228,14 @@ public partial class CharacterControl
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.In);
         compressTween.SetParallel(false);
-        await Task.WhenAll(
-            WaitForTweenFinishedAsync(compressTween),
-            WaitForTweenFinishedAsync(compressShaderTween)
-        );
+        await ToSignal(compressTween, Tween.SignalName.Finished);
 
         if (card == null || !GodotObject.IsInstanceValid(card))
             return;
 
         Vector2 flyStartCenter = startCenter;
-        PrepareCardDiscardTrail(card, out Line trail, out GpuParticles2D particles);
+        bool enableTrailParticles = GetQueuedCardPlayVisualPressure() <= 1;
+        PrepareCardDiscardTrail(card, out Line trail, out GpuParticles2D particles, enableTrailParticles);
         Vector2 control = GetRandomCardDiscardControlPoint(flyStartCenter, endCenter);
         Vector2 initialVelocity = GetQuadraticBezierVelocity(
             flyStartCenter,
@@ -958,7 +1245,7 @@ public partial class CharacterControl
         );
         card.Rotation = GetRotationWithTopFacingVelocity(initialVelocity);
         UpdateTrailParticlesRotation(particles, initialVelocity);
-        Tween flyShaderTween = card.PressEffectPartial(
+        card.PressEffectPartial(
             centerVanish: 0.9f,
             glowMultiplier: 1.18f,
             duration: CardPlayDiscardFlyDuration
@@ -1001,10 +1288,7 @@ public partial class CharacterControl
             .SetEase(Tween.EaseType.In);
         tween.SetParallel(false);
 
-        await Task.WhenAll(
-            WaitForTweenFinishedAsync(tween),
-            WaitForTweenFinishedAsync(flyShaderTween)
-        );
+        await ToSignal(tween, Tween.SignalName.Finished);
         if (card != null && GodotObject.IsInstanceValid(card))
         {
             card.SetCardVisualVisible(false);
@@ -1028,7 +1312,8 @@ public partial class CharacterControl
     private static void PrepareCardDiscardTrail(
         SkillCard card,
         out Line trail,
-        out GpuParticles2D particles
+        out GpuParticles2D particles,
+        bool enableParticles = true
     )
     {
         trail = null;
@@ -1057,6 +1342,9 @@ public partial class CharacterControl
         trail.Modulate = Colors.White;
         trail.ClearPoints();
 
+        if (!enableParticles)
+            return;
+
         particles = card.DiscardTrailParticles;
         if (particles == null || !GodotObject.IsInstanceValid(particles))
             return;
@@ -1066,6 +1354,28 @@ public partial class CharacterControl
         particles.Emitting = false;
         particles.Restart();
         particles.Emitting = true;
+    }
+
+    private int GetQueuedCardPlayVisualPressure()
+    {
+        int count = 0;
+        count += _retiringQueuedPlayVisualCount;
+        if (_activeQueuedCardPlay?.IsHandCard == true)
+            count++;
+
+        foreach (QueuedCardPlay play in _queuedCardPlays)
+        {
+            if (play?.IsHandCard == true)
+                count++;
+        }
+
+        foreach (QueuedCardPlay play in _queuedFollowUpCardPlays)
+        {
+            if (play?.IsHandCard == true)
+                count++;
+        }
+
+        return count;
     }
 
     private static void UpdateTrailParticlesRotation(GpuParticles2D particles, Vector2 velocity)
@@ -1262,6 +1572,14 @@ public partial class CharacterControl
         return overlay;
     }
 
+    private static float GetCanvasRotation(CanvasItem item)
+    {
+        if (item == null || !GodotObject.IsInstanceValid(item))
+            return 0f;
+
+        return item.GetGlobalTransformWithCanvas().X.Angle();
+    }
+
     private async Task ShowTemporaryCardAtCenterAsync(QueuedCardPlay play, string tag)
     {
         SkillCard card = play?.Card;
@@ -1277,20 +1595,21 @@ public partial class CharacterControl
         card.HoverHint.Visible = false;
         card.ZIndex = TemporaryCardZIndex;
         card.Scale = PlayedCardScale * TemporaryCardSpawnScaleMultiplier;
-        card.GlobalPosition = GetScreenCenterCardPosition(card.Scale);
+        card.GlobalPosition = GetTemporaryPlayCardPosition(card.Scale);
         card.StartAnimation();
+        card.PressEffectPartial(centerVanish: 0.22f, glowMultiplier: 1.18f, duration: 0.16f);
 
         Tween tween = card.CreateTween();
         tween.SetParallel(true);
         tween
             .TweenProperty(card, "scale", PlayedCardScale, CardPlayMoveDuration)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         tween
             .TweenProperty(
                 card,
                 "global_position",
-                GetScreenCenterCardPosition(PlayedCardScale),
+                GetTemporaryPlayCardPosition(PlayedCardScale),
                 CardPlayMoveDuration
             )
             .SetTrans(Tween.TransitionType.Cubic)
@@ -1305,15 +1624,24 @@ public partial class CharacterControl
 
     private void RefreshQueuedPlayCardLayers()
     {
-        var plays = new List<QueuedCardPlay>();
+        _queuedPlayLayerBuffer.Clear();
         if (_activeQueuedCardPlay?.IsHandCard == true)
-            plays.Add(_activeQueuedCardPlay);
+            _queuedPlayLayerBuffer.Add(_activeQueuedCardPlay);
 
-        plays.AddRange(_queuedCardPlays.Where(play => play?.IsHandCard == true));
-        plays.AddRange(_queuedFollowUpCardPlays.Where(play => play?.IsHandCard == true));
+        foreach (QueuedCardPlay play in _queuedCardPlays)
+        {
+            if (play?.IsHandCard == true)
+                _queuedPlayLayerBuffer.Add(play);
+        }
+
+        foreach (QueuedCardPlay play in _queuedFollowUpCardPlays)
+        {
+            if (play?.IsHandCard == true)
+                _queuedPlayLayerBuffer.Add(play);
+        }
 
         int layerIndex = 0;
-        foreach (QueuedCardPlay play in plays)
+        foreach (QueuedCardPlay play in _queuedPlayLayerBuffer)
         {
             if (
                 play == null
@@ -1327,6 +1655,7 @@ public partial class CharacterControl
 
             RefreshQueuedPlayCardLayer(play, layerIndex++);
         }
+        _queuedPlayLayerBuffer.Clear();
     }
 
     private void RefreshQueuedPlayCardLayer(QueuedCardPlay play, int layerIndex)
@@ -1363,18 +1692,25 @@ public partial class CharacterControl
         play.MoveToCenterTask = MoveHandPlayCardToLayerAsync(play, layerIndex);
     }
 
-    private async Task MoveHandPlayCardToLayerAsync(QueuedCardPlay play, int layerIndex)
+    private Task MoveHandPlayCardToLayerAsync(QueuedCardPlay play, int layerIndex)
     {
         SkillCard card = play?.Card;
         if (card == null || !GodotObject.IsInstanceValid(card))
-            return;
+            return Task.CompletedTask;
 
         layerIndex = Math.Max(0, layerIndex);
         Vector2 targetScale = GetQueuedPlayCardLayerScale(layerIndex);
         Vector2 targetPosition = GetQueuedPlayCardLayerPosition(targetScale, layerIndex);
+        CancelQueuedPlayMoveTween(play);
+
         play.MoveToCenterLayerIndex = layerIndex;
         play.MoveToCenterTargetPosition = targetPosition;
         play.MoveToCenterTargetScale = targetScale;
+        int motionSerial = ++play.MoveToCenterMotionSerial;
+        var completion = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        play.MoveToCenterCompletion = completion;
 
         card.Visible = true;
         card.Button.Disabled = true;
@@ -1382,18 +1718,159 @@ public partial class CharacterControl
         card.ZIndex = GetQueuedPlayCardLayerZIndex(layerIndex);
         card.Modulate = GetQueuedPlayCardLayerModulate(layerIndex);
         card.StopBattleMotion();
+        if (layerIndex == 0)
+            card.PressEffectPartial(centerVanish: 0.28f, glowMultiplier: 1.22f, duration: 0.18f);
 
+        Vector2 startPosition = card.GlobalPosition;
+        Vector2 startScale = card.Scale;
+        float startRotation = card.Rotation;
+        float targetRotation = 0f;
+        float moveDuration = GetQueuedPlayCardMoveDuration(startPosition, targetPosition);
+        bool useArc = ShouldUseQueuedPlayCardArc(layerIndex, startPosition, targetPosition);
         Tween tween = card.CreateTween();
-        tween.SetParallel(true);
         tween
-            .TweenProperty(card, "scale", targetScale, CardPlayMoveDuration)
-            .SetTrans(Tween.TransitionType.Cubic)
+            .TweenMethod(
+                Callable.From<float>(progress =>
+                    ApplyQueuedPlayCardMoveProgress(
+                        card,
+                        startPosition,
+                        targetPosition,
+                        startScale,
+                        targetScale,
+                        startRotation,
+                        targetRotation,
+                        useArc,
+                        progress
+                    )
+                ),
+                0f,
+                1f,
+                moveDuration
+            )
+            .SetTrans(Tween.TransitionType.Linear)
             .SetEase(Tween.EaseType.Out);
-        tween
-            .TweenProperty(card, "global_position", targetPosition, CardPlayMoveDuration)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        await ToSignal(tween, Tween.SignalName.Finished);
+        play.MoveToCenterTween = tween;
+        tween.Finished += () =>
+        {
+            if (play.MoveToCenterMotionSerial != motionSerial)
+                return;
+
+            if (card != null && GodotObject.IsInstanceValid(card))
+            {
+                card.GlobalPosition = targetPosition;
+                card.Scale = targetScale;
+                card.Rotation = targetRotation;
+            }
+
+            play.MoveToCenterTween = null;
+            play.MoveToCenterCompletion = null;
+            completion.TrySetResult(true);
+        };
+        return completion.Task;
+    }
+
+    private static void ApplyQueuedPlayCardMoveProgress(
+        SkillCard card,
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        Vector2 startScale,
+        Vector2 targetScale,
+        float startRotation,
+        float targetRotation,
+        bool useArc,
+        float progress
+    )
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        float easedProgress = EaseQueuedPlayCardMoveProgress(progress);
+        card.GlobalPosition = useArc
+            ? GetQueuedPlayCardArcPosition(startPosition, targetPosition, easedProgress)
+            : startPosition.Lerp(targetPosition, easedProgress);
+        card.Scale = startScale.Lerp(targetScale, easedProgress);
+        card.Rotation = Mathf.LerpAngle(
+            startRotation,
+            targetRotation,
+            EaseQueuedPlayCardRotationProgress(progress)
+        );
+    }
+
+    private static bool ShouldUseQueuedPlayCardArc(
+        int layerIndex,
+        Vector2 startPosition,
+        Vector2 targetPosition
+    )
+    {
+        return layerIndex == 0 && startPosition.DistanceSquaredTo(targetPosition) > 80f * 80f;
+    }
+
+    private static Vector2 GetQueuedPlayCardArcPosition(
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        float progress
+    )
+    {
+        GetQueuedPlayCardArcControls(
+            startPosition,
+            targetPosition,
+            out Vector2 controlA,
+            out Vector2 controlB
+        );
+        return CubicBezier(startPosition, controlA, controlB, targetPosition, progress);
+    }
+
+    private static void GetQueuedPlayCardArcControls(
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        out Vector2 controlA,
+        out Vector2 controlB
+    )
+    {
+        Vector2 delta = targetPosition - startPosition;
+        float distance = delta.Length();
+        float lift = Mathf.Clamp(distance * 0.18f, CardPlayArcLiftMin, CardPlayArcLiftMax);
+        float sidePull = Mathf.Clamp(delta.X * 0.08f, -CardPlayArcSidePull, CardPlayArcSidePull);
+        controlA = startPosition + new Vector2(delta.X * 0.34f + sidePull, delta.Y * 0.20f - lift);
+        controlB = startPosition + new Vector2(delta.X * 0.74f + sidePull * 0.35f, delta.Y * 0.66f - lift * 0.38f);
+    }
+
+    private static float EaseQueuedPlayCardMoveProgress(float progress)
+    {
+        progress = Mathf.Clamp(progress, 0f, 1f);
+        float inv = 1f - progress;
+        return 1f - inv * inv * inv;
+    }
+
+    private static float EaseQueuedPlayCardRotationProgress(float progress)
+    {
+        progress = Mathf.Clamp(progress, 0f, 1f);
+        return 1f - Mathf.Pow(1f - progress, 4f);
+    }
+
+    private static void CancelQueuedPlayMoveTween(QueuedCardPlay play)
+    {
+        if (play == null)
+            return;
+
+        play.MoveToCenterCompletion?.TrySetResult(false);
+        play.MoveToCenterCompletion = null;
+        if (play.MoveToCenterTween != null && GodotObject.IsInstanceValid(play.MoveToCenterTween))
+            play.MoveToCenterTween.Kill();
+        play.MoveToCenterTween = null;
+    }
+
+    private static float GetQueuedPlayCardMoveDuration(Vector2 startPosition, Vector2 targetPosition)
+    {
+        float distance = startPosition.DistanceTo(targetPosition);
+        if (distance <= 1f)
+            return QueuedCardLayerMinMoveDuration;
+
+        return Mathf.Clamp(
+            distance / QueuedCardLayerPixelsPerSecond,
+            QueuedCardLayerMinMoveDuration,
+            CardPlayMoveDuration
+        );
     }
 
     private static Vector2 GetQueuedPlayCardLayerScale(int layerIndex)
@@ -1446,6 +1923,11 @@ public partial class CharacterControl
         return viewportSize / 2f - scaledSize / 2f;
     }
 
+    private Vector2 GetTemporaryPlayCardPosition(Vector2 scale)
+    {
+        return GetQueuedPlayCardLayerPosition(scale, 0);
+    }
+
     private static Vector2 GetBattleCardScaledSize(Vector2 scale)
     {
         return new Vector2(BattleCardBaseSize.X * scale.X, BattleCardBaseSize.Y * scale.Y);
@@ -1472,6 +1954,7 @@ public partial class CharacterControl
 
     private void QueueFreeQueuedPlayCard(QueuedCardPlay play)
     {
+        CancelQueuedPlayMoveTween(play);
         if (play?.IsHandCard == true)
             ReturnBattleCardToPool(play.Card);
         else if (play?.IsTemporaryCard == true)

@@ -10,6 +10,9 @@ using Godot;
 
 public partial class Buff
 {
+    public const float IconBaseSize = 40f;
+    private const string TextureIconInsetMeta = "texture_icon_inset";
+
     private sealed class VisualBudgetState
     {
         public ulong WindowStartMsec;
@@ -36,28 +39,14 @@ public partial class Buff
     public static PackedScene BuffTriggerFlashVfxScene = GD.Load<PackedScene>(
         "res://battle/Effect/BuffTriggerFlashVfx.tscn"
     );
+    private static readonly string IconTemplateScenePath = "res://battle/buff/IconTemplate.tscn";
     private static readonly Dictionary<BuffName, string> IconScenePaths = new()
     {
         [BuffName.RebirthI] = "res://battle/buff/StateIcon/Rebirth.tscn",
-        [BuffName.DamageImmune] = "res://battle/buff/StateIcon/Buffer.tscn",
-        [BuffName.Vulnerable] = "res://battle/buff/StateIcon/Vulnerable.tscn",
-        [BuffName.Weaken] = "res://battle/buff/StateIcon/Weaken.tscn",
-        [BuffName.Fear] = "res://battle/buff/StateIcon/Fear.tscn",
-        [BuffName.Taunt] = "res://battle/buff/StateIcon/Aim.tscn",
-        [BuffName.Thorn] = "res://battle/buff/StateIcon/Thorn.tscn",
-        [BuffName.Stun] = "res://battle/buff/StateIcon/Stun.tscn",
         [BuffName.Pursuit] = "res://battle/buff/StateIcon/Pursuit.tscn",
-        [BuffName.DebuffImmunity] = "res://battle/buff/StateIcon/DebuffImmunity.tscn",
-        [BuffName.Invisible] = "res://battle/buff/StateIcon/Invisible.tscn",
         [BuffName.EternalDark] = "res://battle/buff/StateIcon/EternalDark.tscn",
-        [BuffName.Swift] = "res://battle/buff/StateIcon/Swift.tscn",
-        [BuffName.ExtraPower] = "res://battle/buff/StateIcon/ExtraPower.tscn",
-        [BuffName.ExtraSurvivability] = "res://battle/buff/StateIcon/ExtraSurvivability.tscn",
-        [BuffName.AutoArmor] = "res://battle/buff/StateIcon/AutoArmor.tscn",
-        [BuffName.Barricade] = "res://battle/buff/StateIcon/Barricade.tscn",
         [BuffName.Beacon] = "res://battle/buff/StateIcon/Beacon.tscn",
         [BuffName.Afterimage] = "res://battle/buff/StateIcon/Afterimage.tscn",
-        [BuffName.Disaster] = "res://battle/buff/StateIcon/Disaster.tscn",
         [BuffName.Divinity] = "res://battle/buff/StateIcon/Divinity.tscn",
         [BuffName.Echo] = "res://battle/buff/StateIcon/Echo.tscn",
         [BuffName.CursePower] = "res://battle/buff/StateIcon/CursePower.tscn",
@@ -66,10 +55,123 @@ public partial class Buff
         [BuffName.Demon] = "res://battle/buff/StateIcon/Demon.tscn",
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
-        [BuffName.ExtraDraw] = "res://battle/buff/StateIcon/CardRefresh.tscn",
+        [BuffName.Source] = "res://battle/buff/StateIcon/Source.tscn",
         [BuffName.EnergyStorage] = "res://battle/buff/StateIcon/Source.tscn",
-        [BuffName.ExhaustShield] = "res://battle/buff/StateIcon/ExhaustShield.tscn",
-        [BuffName.Foresight] = "res://battle/buff/StateIcon/Foresight.tscn",
+        [BuffName.NextEnergy] = "res://battle/buff/StateIcon/NextEnergy.tscn",
+    };
+
+    private readonly record struct TextureIconOverride(
+        string TexturePath,
+        Godot.Color Modulate,
+        float Inset = 7.5f
+    );
+
+    private static readonly Dictionary<BuffName, TextureIconOverride> TextureIconOverrides = new()
+    {
+        [BuffName.DamageImmune] = new(
+            "res://asset/svg/BuffIcon/Kenney/shield.svg",
+            new Godot.Color(0.22f, 0.95f, 0.65f, 1f)
+        ),
+        [BuffName.Vulnerable] = new(
+            "res://asset/svg/BuffIcon/Kenney/suit_hearts_broken.svg",
+            new Godot.Color(1f, 0.22f, 0.2f, 1f),
+            8.5f
+        ),
+        [BuffName.Weaken] = new(
+            "res://asset/svg/BuffIcon/Kenney/sword.svg",
+            new Godot.Color(0.55f, 0.55f, 0.72f, 1f),
+            8f
+        ),
+        [BuffName.Fear] = new(
+            "res://asset/svg/BuffIcon/Kenney/skull.svg",
+            new Godot.Color(0.94f, 0.22f, 0.3f, 1f),
+            8f
+        ),
+        [BuffName.Taunt] = new(
+            "res://asset/svg/BuffIcon/Kenney/card_target.svg",
+            new Godot.Color(1f, 0.78f, 0.28f, 1f)
+        ),
+        [BuffName.Thorn] = new(
+            "res://asset/svg/BuffIcon/Kenney/dice_sword.svg",
+            new Godot.Color(0.2f, 0.96f, 0.55f, 1f)
+        ),
+        [BuffName.Stun] = new(
+            "res://asset/svg/BuffIcon/Kenney/dice_close.svg",
+            new Godot.Color(1f, 0.9f, 0.18f, 1f)
+        ),
+        [BuffName.DebuffImmunity] = new(
+            "res://asset/svg/BuffIcon/Kenney/lock_closed.svg",
+            new Godot.Color(0.56f, 1f, 0.86f, 1f),
+            8f
+        ),
+        [BuffName.Invisible] = new(
+            "res://asset/svg/BuffIcon/Invisible.svg",
+            Colors.White,
+            3f
+        ),
+        [BuffName.Swift] = new(
+            "res://asset/svg/BuffIcon/Kenney/arrow_right_curve.svg",
+            new Godot.Color(0.32f, 0.78f, 1f, 1f),
+            8f
+        ),
+        [BuffName.ExtraPower] = new(
+            "res://asset/svg/BuffIcon/Kenney/sword.svg",
+            new Godot.Color(1f, 0.45f, 0.22f, 1f),
+            8f
+        ),
+        [BuffName.ExtraSurvivability] = new(
+            "res://asset/svg/BuffIcon/Kenney/tag_shield.svg",
+            new Godot.Color(0.26f, 0.78f, 1f, 1f)
+        ),
+        [BuffName.AutoArmor] = new(
+            "res://asset/svg/BuffIcon/Kenney/dice_shield.svg",
+            new Godot.Color(0.34f, 0.9f, 1f, 1f)
+        ),
+        [BuffName.Barricade] = new(
+            "res://asset/svg/BuffIcon/Kenney/structure_wall.svg",
+            new Godot.Color(0.78f, 0.86f, 1f, 1f),
+            8f
+        ),
+        [BuffName.Disaster] = new(
+            "res://asset/svg/BuffIcon/Kenney/fire.svg",
+            new Godot.Color(1f, 0.38f, 0.18f, 1f),
+            8f
+        ),
+        [BuffName.ExtraDraw] = new(
+            "res://asset/svg/BuffIcon/Kenney/cards_take.svg",
+            new Godot.Color(0.42f, 0.96f, 1f, 1f),
+            8f
+        ),
+        [BuffName.Foresight] = new(
+            "res://asset/svg/BuffIcon/Kenney/cards_seek_top.svg",
+            new Godot.Color(0.78f, 0.62f, 1f, 1f),
+            8f
+        ),
+        [BuffName.ExhaustShield] = new(
+            "res://asset/third_party/kenney_board_game_icons/PNG/Default (64px)/cards_stack_cross.png",
+            new Godot.Color(0.38f, 0.86f, 1f, 1f),
+            7.5f
+        ),
+        [BuffName.NoDraw] = new(
+            "res://asset/third_party/kenney_board_game_icons/PNG/Default (64px)/hand_cross.png",
+            new Godot.Color(1f, 0.38f, 0.48f, 1f),
+            7.5f
+        ),
+        [BuffName.Search] = new(
+            "res://asset/third_party/kenney_board_game_icons/PNG/Default (64px)/cards_seek.png",
+            new Godot.Color(1f, 0.82f, 0.3f, 1f),
+            7.5f
+        ),
+        [BuffName.Prediction] = new(
+            "res://asset/third_party/kenney_board_game_icons/PNG/Default (64px)/cards_order.png",
+            new Godot.Color(0.72f, 0.58f, 1f, 1f),
+            7.5f
+        ),
+        [BuffName.Recycling] = new(
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/card_rotate.svg",
+            new Godot.Color(0.34f, 1f, 0.78f, 1f),
+            8f
+        ),
     };
 
     private static string GetBuffNameKey(BuffName name)
@@ -102,22 +204,29 @@ public partial class Buff
             BuffName.Afterimage => "阵营回合开始时，格挡不会消失，减少1层。",
             BuffName.Weaken => "造成的伤害降低25%；阵营回合结束时减少1层。",
             BuffName.Disaster => "己方阵营回合结束时，每层受到1点伤害，并消耗1层。",
-            BuffName.Divinity => "攻击伤害翻倍；回合开始时消耗1层。",
+            BuffName.Divinity => "攻击伤害变为3倍；回合开始时消耗1层。",
             BuffName.Shadow => "其他己方角色攻击时，每层获得1点力量。",
             BuffName.Demon =>
                 "每有一张牌被消耗，每层获得1点力量。",
             BuffName.Void =>
-                "其他己方角色使用生存牌时，每层获得1点力量。",
+                "任意己方角色使用生存牌时，每层获得1点力量。",
             BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
             BuffName.Sanctuary => "每当有角色恢复生命时，每层获得1点力量。",
             BuffName.ExtraDraw => "阵营回合开始时，最多消耗1层并抽1张牌。",
+            BuffName.Source => "己方阵营回合开始时，每层额外获得1点能量。",
             BuffName.EnergyStorage => "阵营回合结束时，每层少失去1点能量。",
             BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
-            BuffName.Beacon => "获得格挡时，其他队友获得等同于获得格挡的1/3的格挡。",
+            BuffName.NextEnergy => "下回合开始时，消耗所有层数，每层获得1点能量。",
+            BuffName.Beacon => "获得格挡时，其他队友每层获得1点格挡。",
             BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
             BuffName.WeakeningField => "每给予1层虚弱，每层使己方全阵获得{block}点格挡。",
             BuffName.ExhaustShield => "每有一张牌被消耗，每层获得1点格挡。",
             BuffName.Foresight => "每次使用生成卡牌的技能时，抽1张牌。",
+            BuffName.Recycling => "每当有一张牌被消耗时，抽1张牌。",
+            BuffName.NoDraw => "无法抽牌；回合结束时减少1层。",
+            BuffName.Search => "洗牌时，从抽牌堆中选择1张牌加入手牌。",
+            BuffName.Prediction =>
+                "回合开始时，每层查看抽牌堆顶部1张牌，并可将其中任意张放入弃牌堆。",
             _ => string.Empty,
         };
 
@@ -190,8 +299,8 @@ public partial class Buff
         var ghost = node.Duplicate() as Control;
         if (ghost == null)
             return;
-        if (removeFirstChild && ghost.GetChildCount() > 0)
-            ghost.GetChild(0).QueueFree();
+        if (removeFirstChild)
+            StripStackLabels(ghost);
         ghost.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
 
         if (ghost.Material is ShaderMaterial originalMat && originalMat.Shader != null)
@@ -247,7 +356,7 @@ public partial class Buff
             ? sourceCenterInParent - ghost.Size / 2
             : -ghost.Size / 2;
         Vector2 basePos = centeredPos;
-        Vector2 jitterPos = basePos;
+        Vector2 flashPos = basePos;
         Vector2 arcPos = basePos;
         Vector2 endPos = basePos;
 
@@ -257,10 +366,8 @@ public partial class Buff
             float lateral = (float)GD.RandRange(-28.0, 28.0);
             float lift = (float)GD.RandRange(20.0, 34.0);
             float settle = (float)GD.RandRange(-10.0, 10.0);
-            float jitterX = (float)GD.RandRange(-8.0, 8.0);
-            float jitterY = (float)GD.RandRange(-4.0, 4.0);
 
-            jitterPos = basePos + new Vector2(jitterX, jitterY);
+            flashPos = basePos;
             arcPos = basePos + new Vector2(lateral * 0.55f, -lift);
             endPos = basePos + new Vector2(lateral + settle, -lift - 24f);
         }
@@ -282,10 +389,10 @@ public partial class Buff
 
         var tween = ghost.CreateTween();
 
-        // Stage 1: small jitter + flash pop.
+        // Stage 1: clean flash before the upward drift.
         tween.SetParallel(true);
         tween
-            .TweenProperty(ghost, "position", jitterPos, 0.06f)
+            .TweenProperty(ghost, "position", flashPos, 0.06f)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
         tween
@@ -298,7 +405,7 @@ public partial class Buff
             .SetEase(Tween.EaseType.Out);
         tween
             .TweenProperty(ghost, "scale", scale * 0.92f, 0.06f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
         // Stage 2: arc lift with slight rotation and glow.
@@ -318,7 +425,7 @@ public partial class Buff
             .SetEase(Tween.EaseType.Out);
         tween
             .TweenProperty(ghost, "scale", scale * 1.08f, 0.22f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
         // Stage 3: curved drift + fade out.
@@ -444,6 +551,7 @@ public partial class Buff
         [Description("迅捷")]
         Swift,
 
+        [Description("源泉")]
         Source,
 
         [Description("能量储存")]
@@ -454,6 +562,21 @@ public partial class Buff
 
         [Description("预见")]
         Foresight,
+
+        [Description("次回合能量")]
+        NextEnergy,
+
+        [Description("循环利用")]
+        Recycling,
+
+        [Description("无法抽牌")]
+        NoDraw,
+
+        [Description("搜寻")]
+        Search,
+
+        [Description("预测")]
+        Prediction,
     }
 
     public Character Owner;
@@ -501,10 +624,16 @@ public partial class Buff
             BuffName.Void => Nature.positive,
             BuffName.Sanctuary => Nature.positive,
             BuffName.ExtraDraw => Nature.positive,
+            BuffName.Source => Nature.positive,
             BuffName.EnergyStorage => Nature.positive,
             BuffName.Beacon => Nature.positive,
             BuffName.ExhaustShield => Nature.positive,
             BuffName.Foresight => Nature.positive,
+            BuffName.NextEnergy => Nature.positive,
+            BuffName.Recycling => Nature.positive,
+            BuffName.NoDraw => Nature.negative,
+            BuffName.Search => Nature.positive,
+            BuffName.Prediction => Nature.positive,
             _ => Nature.positive,
         };
     }
@@ -589,10 +718,14 @@ public partial class Buff
         if (BuffIcon == null || !GodotObject.IsInstanceValid(BuffIcon))
             return;
 
+        Label stackLabel = GetStackLabel();
+        if (stackLabel == null)
+            return;
+
         Tween tween = BuffIcon.CreateTween();
-        BuffIcon.GetChild<Label>(0).PivotOffset = BuffIcon.GetChild<Label>(0).Size / 2;
-        tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(2f, 2f), 0.15f);
-        tween.TweenProperty(BuffIcon.GetChild<Label>(0), "scale", new Vector2(1f, 1f), 0.35f);
+        stackLabel.PivotOffset = stackLabel.Size / 2;
+        tween.TweenProperty(stackLabel, "scale", new Vector2(2f, 2f), 0.15f);
+        tween.TweenProperty(stackLabel, "scale", new Vector2(1f, 1f), 0.35f);
     }
 
     public void FlashTrigger()
@@ -607,6 +740,7 @@ public partial class Buff
             return;
 
         FlashBuffIconPulse();
+        Owner.PlayTargetLockPulse(new Godot.Color(1.36f, 1.08f, 1.82f, 1f), 0.82f);
         SpawnTriggerBodyVfx();
     }
 
@@ -693,9 +827,9 @@ public partial class Buff
         BuffIcon.PivotOffset = BuffIcon.Size / 2;
         Tween tween = BuffIcon.CreateTween();
         tween
-            .TweenProperty(BuffIcon, "scale", new Vector2(1.38f, 1.38f), 0.12f)
+            .TweenProperty(BuffIcon, "scale", new Vector2(1.24f, 1.24f), 0.10f)
             .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Back);
+            .SetTrans(Tween.TransitionType.Cubic);
         tween
             .TweenProperty(BuffIcon, "scale", Vector2.One, 0.3f)
             .SetEase(Tween.EaseType.Out);
@@ -706,12 +840,7 @@ public partial class Buff
         if (BuffTriggerFlashVfxScene == null || Owner == null || !GodotObject.IsInstanceValid(Owner))
             return;
 
-        var vfx = BuffTriggerFlashVfxScene.Instantiate<BuffTriggerFlashVfx>();
-        if (vfx == null)
-            return;
-
-        vfx.Initialize(this);
-        Owner.AddChild(vfx);
+        BuffTriggerFlashVfx.Spawn(this, Owner);
     }
 
     public void BuffAddAnimation()
@@ -729,9 +858,39 @@ public partial class Buff
         // Avoid Godot warning: setting Size on Controls with stretched anchors gets overridden after _Ready.
         depIcon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         depIcon.Size = new Vector2(200, 200);
+        RefreshTextureIconOverrideLayout(depIcon);
         GhostExplode(depIcon, new Vector2(2f, 2f), Owner, useOffsetMotion: false);
+        PlayBuffIconGainPulse();
         PlayBuffGainParticle();
         depIcon.Free();
+    }
+
+    private void PlayBuffIconGainPulse()
+    {
+        if (BuffIcon == null || !GodotObject.IsInstanceValid(BuffIcon))
+            return;
+
+        BuffIcon.PivotOffset = BuffIcon.Size / 2;
+        Vector2 baseScale = BuffIcon.Scale == Vector2.Zero ? Vector2.One : BuffIcon.Scale;
+        Godot.Color baseModulate = BuffIcon.Modulate;
+
+        Tween tween = BuffIcon.CreateTween();
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(BuffIcon, "scale", baseScale * 1.14f, 0.08f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(
+                BuffIcon,
+                "modulate",
+                new Godot.Color(1.32f, 1.24f, 1.78f, baseModulate.A),
+                0.08f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween.TweenProperty(BuffIcon, "scale", baseScale, 0.18f).SetDelay(0.08f);
+        tween.TweenProperty(BuffIcon, "modulate", baseModulate, 0.18f).SetDelay(0.08f);
     }
 
     private void PlayBuffGainParticle()
@@ -739,8 +898,7 @@ public partial class Buff
         if (Owner == null || !GodotObject.IsInstanceValid(Owner) || BuffGainParticleScene == null)
             return;
 
-        var particle = BuffGainParticleScene.Instantiate<Node2D>();
-        Owner.AddChild(particle);
+        BuffGainParticle.Spawn(Owner);
     }
 
     public void Hint(BuffName name, BuffHintLabel.Which which)
@@ -757,10 +915,33 @@ public partial class Buff
         BuffHintLabel.Spawn(Owner, $"{GetBuffDisplayName(name)}{suffix}", Owner.GlobalPosition);
     }
 
-    protected Label GetStackLabel() =>
-        BuffIcon != null && GodotObject.IsInstanceValid(BuffIcon)
-            ? BuffIcon.GetChildOrNull<Label>(0)
-            : null;
+    protected Label GetStackLabel() => FindStackLabel(BuffIcon);
+
+    private static Label FindStackLabel(Control icon)
+    {
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
+            return null;
+
+        return icon.GetNodeOrNull<Label>("Label")
+            ?? icon.GetChildren().OfType<Label>().FirstOrDefault();
+    }
+
+    private static void StripStackLabels(Node root)
+    {
+        if (root == null || !GodotObject.IsInstanceValid(root))
+            return;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is Label)
+            {
+                child.QueueFree();
+                continue;
+            }
+
+            StripStackLabels(child);
+        }
+    }
 
     protected void UpdateStackLabel()
     {
@@ -773,9 +954,21 @@ public partial class Buff
 
     protected static ColorRect CreateBuffIcon(BuffName name)
     {
+        if (TextureIconOverrides.ContainsKey(name))
+        {
+            var textureIcon = InstantiateBuffIconScene(IconTemplateScenePath);
+            ApplyTextureIconOverride(textureIcon, name);
+            return textureIcon;
+        }
+
         if (!IconScenePaths.TryGetValue(name, out var scenePath))
             return null;
 
+        return InstantiateBuffIconScene(scenePath);
+    }
+
+    private static ColorRect InstantiateBuffIconScene(string scenePath)
+    {
         PackedScene scene = null;
         if (PreloadeScene.PreloadedScenes.TryGetValue(scenePath, out var cachedScene))
             scene = cachedScene;
@@ -783,6 +976,68 @@ public partial class Buff
             scene = GD.Load<PackedScene>(scenePath);
 
         return scene?.Instantiate() as ColorRect;
+    }
+
+    private static void ApplyTextureIconOverride(ColorRect icon, BuffName name)
+    {
+        if (icon == null || !TextureIconOverrides.TryGetValue(name, out var config))
+            return;
+
+        Texture2D texture = GD.Load<Texture2D>(config.TexturePath);
+        if (texture == null)
+            return;
+
+        icon.Material = null;
+        icon.Color = Colors.Transparent;
+
+        var existing = icon.GetNodeOrNull<TextureRect>("TextureIcon");
+        existing?.QueueFree();
+
+        var textureIcon = new TextureRect
+        {
+            Name = "TextureIcon",
+            Texture = texture,
+            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            SelfModulate = config.Modulate,
+        };
+        icon.SetMeta(TextureIconInsetMeta, config.Inset);
+        textureIcon.SetMeta(TextureIconInsetMeta, config.Inset);
+        textureIcon.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        textureIcon.OffsetLeft = config.Inset;
+        textureIcon.OffsetTop = config.Inset;
+        textureIcon.OffsetRight = -config.Inset;
+        textureIcon.OffsetBottom = -config.Inset;
+        icon.AddChild(textureIcon);
+        icon.MoveChild(textureIcon, 0);
+        FindStackLabel(icon)?.MoveToFront();
+    }
+
+    public static void RefreshTextureIconOverrideLayout(Control icon)
+    {
+        if (icon == null || !GodotObject.IsInstanceValid(icon))
+            return;
+
+        var textureIcon = icon.GetNodeOrNull<TextureRect>("TextureIcon");
+        if (textureIcon == null)
+            return;
+
+        bool hasInsetMeta = icon.HasMeta(TextureIconInsetMeta)
+            || textureIcon.HasMeta(TextureIconInsetMeta);
+        if (!hasInsetMeta)
+            return;
+
+        float baseInset = icon.HasMeta(TextureIconInsetMeta)
+            ? icon.GetMeta(TextureIconInsetMeta).AsSingle()
+            : textureIcon.GetMeta(TextureIconInsetMeta).AsSingle();
+        float size = Mathf.Max(IconBaseSize, Mathf.Min(icon.Size.X, icon.Size.Y));
+        float inset = baseInset * (size / IconBaseSize);
+
+        textureIcon.OffsetLeft = inset;
+        textureIcon.OffsetTop = inset;
+        textureIcon.OffsetRight = -inset;
+        textureIcon.OffsetBottom = -inset;
     }
 
     public static string BuildTooltipIconTag(BuffName name) => $"[buff_icon={name}]";
@@ -796,11 +1051,30 @@ public partial class Buff
         icon.MouseFilter = Control.MouseFilterEnum.Ignore;
         icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         icon.Position = Vector2.Zero;
+        if (HasTextureIconChild(icon))
+            icon.Color = Colors.Transparent;
         icon.CustomMinimumSize = Vector2.Zero;
-        icon.Size = new Vector2(40f, 40f);
-        if (icon.GetChildOrNull<Label>(0) is Label stackLabel)
+        icon.Size = new Vector2(IconBaseSize, IconBaseSize);
+        if (FindStackLabel(icon) is Label stackLabel)
             stackLabel.Visible = false;
         return icon;
+    }
+
+    private static bool HasTextureIconChild(Node root)
+    {
+        if (root == null || !GodotObject.IsInstanceValid(root))
+            return false;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is TextureRect)
+                return true;
+
+            if (HasTextureIconChild(child))
+                return true;
+        }
+
+        return false;
     }
 
     protected static bool TryStackExisting<TBuff>(
@@ -821,6 +1095,7 @@ public partial class Buff
         existingBuff.TweenLabel();
         existingBuff.Hint(existingBuff.ThisBuffName, BuffHintLabel.Which.gain);
         existingBuff.BuffAddAnimation();
+        PlayBuffGainAudio(target, stack);
         if (stack > 0)
             target?.MarkBuffSeen(name);
         target?.InvalidateBuffTooltipCache();
@@ -829,6 +1104,7 @@ public partial class Buff
             target?.BattleNode?.RetargetEnemySingleTargetDamageIntentionsForInvisible(target);
         if (name == BuffName.Taunt && stack > 0)
             target?.BattleNode?.RetargetEnemyIntentionsForTaunt();
+        NotifyHandPreviewContextChanged(target);
         return true;
     }
 
@@ -842,6 +1118,7 @@ public partial class Buff
         buff.UpdateStackLabel();
         target.StateIconContainer.AddChild(buff.BuffIcon);
         buff.BuffAddAnimation();
+        PlayBuffGainAudio(target, buff.Stack);
         if (buff.Stack > 0)
             target.MarkBuffSeen(buff.ThisBuffName);
         target.InvalidateBuffTooltipCache();
@@ -850,6 +1127,15 @@ public partial class Buff
             target.BattleNode?.RetargetEnemySingleTargetDamageIntentionsForInvisible(target);
         if (buff.ThisBuffName == BuffName.Taunt && buff.Stack > 0)
             target.BattleNode?.RetargetEnemyIntentionsForTaunt();
+        NotifyHandPreviewContextChanged(target);
+    }
+
+    private static void PlayBuffGainAudio(Character target, int stack)
+    {
+        if (stack <= 0 || target == null || !GodotObject.IsInstanceValid(target))
+            return;
+
+        AudioManager.PlayBuffGain(target);
     }
 
     protected bool IsOwnerUnavailableForTrigger() =>
@@ -872,11 +1158,19 @@ public partial class Buff
         buffs?.Remove((TBuff)this);
         Owner?.InvalidateBuffTooltipCache();
         Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
+        NotifyHandPreviewContextChanged(Owner);
 
         if (showVanishHint)
             Hint(ThisBuffName, BuffHintLabel.Which.vanish);
 
         return true;
+    }
+
+    private static void NotifyHandPreviewContextChanged(Character target)
+    {
+        Battle battle = target?.BattleNode;
+        battle?.NotifyHandPreviewContextChanged();
+        battle?.RefreshEnemyIntentionPreviews();
     }
 }
 
@@ -961,9 +1255,10 @@ public partial class HurtBuff : Buff
                 triggered = true;
                 break;
             case BuffName.Vulnerable:
-                if (damageKind == Character.DamageKind.Attack)
+                if (damageKind == Character.DamageKind.Attack && damage > 0)
                 {
                     damage *= 1.5f;
+                    triggered = true;
                 }
                 break;
             case BuffName.Thorn:
@@ -1082,8 +1377,19 @@ public partial class StartActionBuff : Buff
                 StartActionBuff.BuffAdd(BuffName.Invisible, Owner, Stack, Owner);
                 break;
             case BuffName.Swift:
-                if (Owner?.BattleNode != null)
+                if (Owner?.IsPlayer == true && Owner.BattleNode != null)
                     Owner.BattleNode.TryDrawPlayerTeamBattleCards(Stack);
+                break;
+            case BuffName.NextEnergy:
+                int energyGain = Stack;
+                if (Owner?.IsPlayer == true)
+                    Owner.BattleNode?.UpdataEnergy(Owner, energyGain, Owner);
+                Stack = 0;
+                UpdateStackLabel();
+                break;
+            case BuffName.Prediction:
+                if (Owner?.IsPlayer == true)
+                    Owner.BattleNode?.QueuePredictionAtTurnStart(Owner, Stack);
                 break;
             case BuffName.Barricade:
                 // Passive effect: checked by Character.StartAction before block reset.
@@ -1138,6 +1444,8 @@ public partial class StartActionBuff : Buff
                 && name != BuffName.Barricade
                 && name != BuffName.Afterimage
                 && name != BuffName.Divinity
+                && name != BuffName.NextEnergy
+                && name != BuffName.Prediction
             )
         )
             return;
@@ -1277,7 +1585,7 @@ public partial class AttackBuff : Buff
 
         if (!isPreview && HasDivinity(attacker))
         {
-            context.Damage = Math.Max(context.Damage * 2, 0);
+            context.Damage = Math.Max(context.Damage * 3, 0);
             StartActionBuff divinity = attacker.StartActionBuffs?.FirstOrDefault(x =>
                 x != null && x.ThisBuffName == BuffName.Divinity && x.Stack > 0
             );
@@ -1285,7 +1593,7 @@ public partial class AttackBuff : Buff
         }
         else if (isPreview && HasDivinity(attacker))
         {
-            context.Damage = Math.Max(context.Damage * 2, 0);
+            context.Damage = Math.Max(context.Damage * 3, 0);
         }
 
         if (attacker?.AttackBuffs == null)
@@ -1392,11 +1700,9 @@ public partial class SkillBuff : Buff
 
                 if (skill?.OwnerCharater?.CharacterEffectScene != null)
                 {
-                    var effect =
-                        skill.OwnerCharater.CharacterEffectScene.Instantiate<CharacterEffect>();
-                    skill.OwnerCharater.AddChild(effect);
-                    effect.Animation.Play("stun");
-                    await skill.OwnerCharater.ToSignal(effect.Animation, "animation_finished");
+                    var effect = CharacterEffect.Spawn(skill.OwnerCharater, "stun");
+                    if (effect?.Animation != null)
+                        await skill.OwnerCharater.ToSignal(effect.Animation, "animation_finished");
                 }
                 break;
             case BuffName.Echo:
@@ -1481,7 +1787,33 @@ public partial class EndActionBuff : Buff
                 skill.OwnerCharater = Owner;
                 await skill.Attack(Owner.BattlePower);
                 break;
+            case BuffName.NoDraw:
+                ConsumeOneStack();
+                break;
         }
+    }
+
+    public static bool TryBlockPlayerTeamDraw(Battle battle)
+    {
+        if (battle == null)
+            return false;
+
+        Character[] owners = battle
+            .GetTeamCharacters(isPlayer: true, includeSummons: false)
+            .Where(character =>
+                character != null
+                && character.State != Character.CharacterState.Dying
+                && character.EndActionBuffs?.Any(buff =>
+                    buff != null && buff.ThisBuffName == BuffName.NoDraw && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+        if (owners.Length == 0)
+            return false;
+
+        foreach (Character owner in owners)
+            FlashTriggersOnOwner(owner, BuffName.NoDraw);
+        return true;
     }
 
     public static void TriggerDemonPowerOnExhaust(Battle battle, int exhaustedCardCount)
@@ -1538,6 +1870,7 @@ public partial class EndActionBuff : Buff
             && name != BuffName.Demon
             && name != BuffName.Void
             && name != BuffName.Sanctuary
+            && name != BuffName.NoDraw
         )
             return;
 
@@ -1600,9 +1933,7 @@ public partial class SpecialBuff : Buff
         if (beaconStacks <= 0)
             return;
 
-        int sharedBlock = gainedBlock * beaconStacks / 3;
-        if (sharedBlock <= 0)
-            return;
+        int sharedBlock = beaconStacks;
 
         var allies = owner
             .BattleNode?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
@@ -1657,6 +1988,38 @@ public partial class SpecialBuff : Buff
         }
     }
 
+    public static void TriggerRecyclingDraw(Battle battle, int exhaustedCardCount)
+    {
+        if (
+            battle == null
+            || exhaustedCardCount <= 0
+            || battle.GetPlayerTeamBattleHandEmptySlotCount() <= 0
+        )
+        {
+            return;
+        }
+
+        Character[] owners = battle
+            .GetTeamCharacters(isPlayer: true, includeSummons: false)
+            .Where(x =>
+                x != null
+                && x.State != Character.CharacterState.Dying
+                && x.SpecialBuffs?.Any(buff =>
+                    buff != null && buff.ThisBuffName == BuffName.Recycling && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+        if (owners.Length == 0)
+            return;
+
+        int drawCount = exhaustedCardCount * owners.Length;
+        if (!battle.TryDrawPlayerTeamBattleCards(drawCount))
+            return;
+
+        foreach (Character owner in owners)
+            FlashTriggersOnOwner(owner, BuffName.Recycling);
+    }
+
     public static bool TryConsumeDebuffImmunity(
         Character target,
         Character source = null,
@@ -1683,7 +2046,7 @@ public partial class SpecialBuff : Buff
 
     public static bool TryConsumeCardRefresh(Character target)
     {
-        if (target?.SpecialBuffs == null)
+        if (target?.IsPlayer != true || target.SpecialBuffs == null)
             return false;
 
         var refresh = target.SpecialBuffs.FirstOrDefault(x =>
@@ -1701,6 +2064,9 @@ public partial class SpecialBuff : Buff
 
     public static int GetCardRefreshStack(Character target)
     {
+        if (target?.IsPlayer != true)
+            return 0;
+
         return target
                 ?.SpecialBuffs?.FirstOrDefault(x =>
                     x != null && x.ThisBuffName == BuffName.ExtraDraw && x.Stack > 0
@@ -1710,7 +2076,7 @@ public partial class SpecialBuff : Buff
 
     public static int ConsumeCardRefresh(Character target, int count)
     {
-        if (count <= 0 || target?.SpecialBuffs == null)
+        if (count <= 0 || target?.IsPlayer != true || target.SpecialBuffs == null)
             return 0;
 
         var refresh = target.SpecialBuffs.FirstOrDefault(x =>
@@ -1730,6 +2096,9 @@ public partial class SpecialBuff : Buff
 
     public static int GetForesightStack(Character target)
     {
+        if (target?.IsPlayer != true)
+            return 0;
+
         return target
                 ?.SpecialBuffs?.FirstOrDefault(x =>
                     x != null && x.ThisBuffName == BuffName.Foresight && x.Stack > 0
@@ -1751,14 +2120,43 @@ public partial class SpecialBuff : Buff
             );
     }
 
+    public static PlayerCharacter[] GetSearchOwners(Battle battle)
+    {
+        if (battle == null)
+            return Array.Empty<PlayerCharacter>();
+
+        return battle
+            .GetTeamCharacters(isPlayer: true, includeSummons: false)
+            .OfType<PlayerCharacter>()
+            .Where(player =>
+                player.State != Character.CharacterState.Dying
+                && player.SpecialBuffs?.Any(buff =>
+                    buff != null && buff.ThisBuffName == BuffName.Search && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+    }
+
     public static int GetEnergyStorageReduction(Character target)
     {
-        if (target?.SpecialBuffs == null)
+        if (target?.IsPlayer != true || target.SpecialBuffs == null)
             return 0;
 
         return target
             .SpecialBuffs.Where(x =>
                 x != null && x.ThisBuffName == BuffName.EnergyStorage && x.Stack > 0
+            )
+            .Sum(x => x.Stack);
+    }
+
+    public static int GetSourceEnergyBonus(Character target)
+    {
+        if (target?.IsPlayer != true || target.SpecialBuffs == null)
+            return 0;
+
+        return target
+            .SpecialBuffs.Where(x =>
+                x != null && x.ThisBuffName == BuffName.Source && x.Stack > 0
             )
             .Sum(x => x.Stack);
     }
@@ -1776,11 +2174,14 @@ public partial class SpecialBuff : Buff
             && name != BuffName.ExtraPower
             && name != BuffName.ExtraSurvivability
             && name != BuffName.ExtraDraw
+            && name != BuffName.Source
             && name != BuffName.EnergyStorage
             && name != BuffName.Beacon
             && name != BuffName.WeakeningField
             && name != BuffName.ExhaustShield
             && name != BuffName.Foresight
+            && name != BuffName.Recycling
+            && name != BuffName.Search
         )
             return;
 

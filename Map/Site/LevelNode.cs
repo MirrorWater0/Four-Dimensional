@@ -435,11 +435,17 @@ public partial class LevelNode : ColorRect
         EnsureBattleEncounter();
         int battleRandomNum = NextBattleRandomNum();
         RandomizePlayerPreviewPositions(battleRandomNum);
+        var prewarmTask = BattleStartResourcePreloader.PrewarmBattleNodeAsync(
+            this,
+            this,
+            allocateEncounter: false
+        );
         SceneTransitionLayer transitionLayer = SceneTransitionLayer.Ensure(this);
         if (transitionLayer != null)
             await transitionLayer.FadeToBlackAsync(0.4f);
         if (tween != null && GodotObject.IsInstanceValid(tween) && tween.IsRunning())
             await ToSignal(tween, Tween.SignalName.Finished);
+        await prewarmTask;
         if (!GodotObject.IsInstanceValid(this))
         {
             if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
@@ -463,6 +469,16 @@ public partial class LevelNode : ColorRect
         battle.CurrentLevelNode = this;
         battle.BattleRandomNum = battleRandomNum;
         layer.AddChild(battle);
+        await battle.WhenPresentationReadyAsync();
+        if (!GodotObject.IsInstanceValid(battle))
+        {
+            layer.QueueFree();
+            GetParent()?.GetParent<LevelProgress>()?.UnlockAllNodes();
+            if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
+                await transitionLayer.FadeFromBlackAsync(0.24f);
+            return;
+        }
+
         if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
             await transitionLayer.FadeFromBlackAsync(0.24f);
     }

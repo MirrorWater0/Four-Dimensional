@@ -27,12 +27,8 @@ public partial class CharacterControl
     private const int PileOverlayContentZIndex = 1;
     private const int PileOverlayConfirmZIndex = 2;
     private const float PileOverlayMaskMaxAlpha = 0.68f;
-    private const float PileOverlayMaskFadeInDuration = 0.24f;
-    private const float PileOverlayMaskFadeOutDuration = 0.16f;
-    private const float PileOverlayContentFadeInDuration = 0.30f;
-    private const float PileOverlayContentFadeOutDuration = 0.18f;
-    private const float PileOverlayContentSlideOffset = 22f;
-    private const float PileOverlayContentIntroDelay = 0.05f;
+    private const float PileOverlayContentMoveDuration = 0.18f;
+    private const float PileOverlayContentSlideOffset = 42f;
     private const float PileOverlayConfirmFadeDuration = 0.18f;
     private const float PileOverlayConfirmFadeDelay = 0.12f;
     private const float PileOverlayScrollBounceStep = 18f;
@@ -47,18 +43,16 @@ public partial class CharacterControl
     private const float PileOverlaySmoothScrollSnapDistance = 0.6f;
     private const float PileOverlaySmoothScrollStopSpeed = 12f;
     private static readonly bool PileOverlayLayoutTraceEnabled = false;
-    private const int PileOverlayAnimatedCardCount = 10;
-    private const float PileOverlayCardEntryYOffset = 28f;
-    private const float PileOverlayCardEntryDuration = 0.20f;
-    private const float PileOverlayCardEntryStagger = 0.010f;
-    private const float PileOverlayCardEntryBaseDelay = 0.02f;
 
-    private const float PileButtonReceivePulseDuration = 0.24f;
+    private const float PileButtonReceivePulseDuration = 0.20f;
+    private const ulong PileButtonReceivePulseMinIntervalMsec = 170;
 
     private const int BattlePileOverlayLayer = 100;
 
     private const string PileButtonCountLabelName = "CountLabel";
+    private const string PileButtonCountBackgroundName = "CountBackground";
     private const string PileHolderPreviewSkillIdMeta = "pile_preview_skill_id";
+    private const string PileHolderPreviewInstanceIdMeta = "pile_preview_instance_id";
     private const string PileHolderPreviewOwnerIdMeta = "pile_preview_owner_id";
     private const string PileHolderPreviewPileIndexMeta = "pile_preview_pile_index";
 
@@ -74,6 +68,15 @@ public partial class CharacterControl
     private Tween _drawPileShaderTween;
     private Tween _discardPileShaderTween;
     private Tween _exhaustedPileShaderTween;
+    private Tween _drawPileReceiveScaleTween;
+    private Tween _discardPileReceiveScaleTween;
+    private Tween _exhaustedPileReceiveScaleTween;
+    private Tween _drawPileReceiveShaderTween;
+    private Tween _discardPileReceiveShaderTween;
+    private Tween _exhaustedPileReceiveShaderTween;
+    private ulong _drawPileLastReceivePulseMsec;
+    private ulong _discardPileLastReceivePulseMsec;
+    private ulong _exhaustedPileLastReceivePulseMsec;
     private CanvasLayer _pileOverlayLayer;
     private Control _pileOverlayRoot;
     private ScrollContainer _pileOverlayScroll;
@@ -108,11 +111,19 @@ public partial class CharacterControl
     private readonly Dictionary<SkillID, bool> _pileOverlayStatusSkillIdCache = new();
     private readonly List<PileOverlayVirtualGrid> _pileOverlayVirtualGrids = new();
     private readonly Dictionary<SkillCard, Action> _pileCardSelectionPressHandlers = new();
+    private readonly List<int> _pileCardSelectionIndexBuffer = new();
+    private readonly List<int> _pileCardSelectionRemovalBuffer = new();
+    private readonly List<StatusCardExhaustAnimationEntry> _pileCardSelectionExhaustAnimationEntries =
+        new();
+    private readonly List<PileOverlayCharacterGroup> _pileOverlayCharacterGroups = new();
 
     private bool _isPileCardSelectionActive;
     private BattlePileKind _pileCardSelectionKind;
     private PileCardSelectionAction _pileCardSelectionAction;
+    private BattleCardKeyword _pileCardSelectionKeyword;
+    private SkillID _pileCardSelectionTransformSkillId = SkillID.None;
     private int _pileCardSelectionTargetCount;
+    private bool _pileCardSelectionAllowsFewer;
     private readonly List<int> _pileCardSelectionIndexes = new();
     private readonly Dictionary<int, SkillCard> _pileCardSelectionCards = new();
     private TaskCompletionSource<int> _pileCardSelectionCompletion;
@@ -184,30 +195,43 @@ public partial class CharacterControl
         public bool EntryAnimationPlayed { get; set; }
     }
 
+    private sealed class PileOverlayCharacterGroup
+    {
+        public PlayerCharacter Owner { get; set; }
+        public readonly List<IndexedBattlePileEntry> Entries = new();
+    }
+
     private readonly struct PileOverlayPreviewSkillKey : IEquatable<PileOverlayPreviewSkillKey>
     {
-        public PileOverlayPreviewSkillKey(SkillID skillId, ulong ownerId)
+        public PileOverlayPreviewSkillKey(SkillID skillId, ulong instanceId, ulong ownerId)
         {
             SkillId = skillId;
+            InstanceId = instanceId;
             OwnerId = ownerId;
         }
 
         public SkillID SkillId { get; }
+        public ulong InstanceId { get; }
         public ulong OwnerId { get; }
 
         public bool Equals(PileOverlayPreviewSkillKey other) =>
-            SkillId == other.SkillId && OwnerId == other.OwnerId;
+            SkillId == other.SkillId
+            && InstanceId == other.InstanceId
+            && OwnerId == other.OwnerId;
 
         public override bool Equals(object obj) =>
             obj is PileOverlayPreviewSkillKey other && Equals(other);
 
-        public override int GetHashCode() => HashCode.Combine(SkillId, OwnerId);
+        public override int GetHashCode() => HashCode.Combine(SkillId, InstanceId, OwnerId);
     }
 
     private enum PileCardSelectionAction
     {
         MoveToHand,
         Exhaust,
+        ApplyKeyword,
+        Transform,
+        FilterToDiscard,
     }
 
     private readonly struct IndexedBattlePileEntry
@@ -240,11 +264,66 @@ public partial class CharacterControl
         return SelectPileCardsAsync(player, kind, count, PileCardSelectionAction.Exhaust);
     }
 
+    public Task<int> SelectPileCardsForKeywordAsync(
+        PlayerCharacter player,
+        BattleCardPileTarget pileTarget,
+        int count,
+        BattleCardKeyword keyword
+    )
+    {
+        BattlePileKind kind = pileTarget switch
+        {
+            BattleCardPileTarget.DiscardPileCards => BattlePileKind.Discard,
+            BattleCardPileTarget.DrawPileCards => BattlePileKind.Draw,
+            _ => BattlePileKind.Draw,
+        };
+        return SelectPileCardsAsync(
+            player,
+            kind,
+            count,
+            PileCardSelectionAction.ApplyKeyword,
+            keyword
+        );
+    }
+
+    public Task<int> SelectPileCardsToTransformAsync(
+        PlayerCharacter player,
+        BattleCardPileTarget pileTarget,
+        int count,
+        SkillID replacementSkillId = SkillID.None
+    )
+    {
+        BattlePileKind kind = pileTarget == BattleCardPileTarget.DiscardPileCards
+            ? BattlePileKind.Discard
+            : BattlePileKind.Draw;
+        return SelectPileCardsAsync(
+            player,
+            kind,
+            count,
+            PileCardSelectionAction.Transform,
+            replacementSkillId: replacementSkillId
+        );
+    }
+
+    public Task<int> FilterTopDrawPileCardsAsync(PlayerCharacter player, int viewCount) =>
+        SelectPileCardsAsync(
+            player,
+            BattlePileKind.Draw,
+            viewCount,
+            PileCardSelectionAction.FilterToDiscard,
+            allowFewer: true,
+            visibleCardCount: viewCount
+        );
+
     private async Task<int> SelectPileCardsAsync(
         PlayerCharacter player,
         BattlePileKind kind,
         int count,
-        PileCardSelectionAction action
+        PileCardSelectionAction action,
+        BattleCardKeyword keyword = BattleCardKeyword.Retain,
+        SkillID replacementSkillId = SkillID.None,
+        bool allowFewer = false,
+        int visibleCardCount = 0
     )
     {
         if (count <= 0)
@@ -267,6 +346,8 @@ public partial class CharacterControl
         }
 
         Battle.BattleCardPileEntry[] pile = GetPileEntriesForSelection(player, kind);
+        if (visibleCardCount > 0 && pile.Length > visibleCardCount)
+            pile = pile.Take(visibleCardCount).ToArray();
         int availableCount = action == PileCardSelectionAction.MoveToHand
             ? Math.Min(pile.Length, BattleNode.GetPlayerTeamBattleHandEmptySlotCount())
             : pile.Length;
@@ -277,7 +358,10 @@ public partial class CharacterControl
         CancelPileCardSelection();
         _pileCardSelectionKind = kind;
         _pileCardSelectionAction = action;
+        _pileCardSelectionKeyword = keyword;
+        _pileCardSelectionTransformSkillId = replacementSkillId;
         _pileCardSelectionTargetCount = Math.Min(count, availableCount);
+        _pileCardSelectionAllowsFewer = allowFewer;
         _pileCardSelectionCompletion = new TaskCompletionSource<int>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
@@ -309,13 +393,18 @@ public partial class CharacterControl
             {
                 new BattlePileOverlaySection(
                     kind,
-                    BuildPileCardSelectionTitle(kind, action, _pileCardSelectionTargetCount),
+                    BuildPileCardSelectionTitle(
+                        kind,
+                        action,
+                        _pileCardSelectionTargetCount,
+                        keyword
+                    ),
                     pile
                 ),
             },
             openContext
         );
-        RefreshTurnUi();
+        RequestTurnUiRefresh();
 
         int movedCount = await _pileCardSelectionCompletion.Task;
         return Math.Max(0, movedCount);
@@ -324,11 +413,20 @@ public partial class CharacterControl
     private static string BuildPileCardSelectionTitle(
         BattlePileKind kind,
         PileCardSelectionAction action,
-        int count
+        int count,
+        BattleCardKeyword keyword = BattleCardKeyword.Retain
     )
     {
-        string actionText = action == PileCardSelectionAction.Exhaust ? "消耗" : "加入手牌";
-        return $"选择{count}张{GetPileTitle(kind)}{actionText}";
+        return action switch
+        {
+            PileCardSelectionAction.Exhaust => $"选择{count}张{GetPileTitle(kind)}消耗",
+            PileCardSelectionAction.ApplyKeyword =>
+                $"选择{count}张{GetPileTitle(kind)}为其添加{keyword.GetDisplayName()}",
+            PileCardSelectionAction.Transform => $"选择{count}张{GetPileTitle(kind)}变化",
+            PileCardSelectionAction.FilterToDiscard =>
+                $"查看{GetPileTitle(kind)}顶部{count}张牌，选择任意张放入弃牌堆",
+            _ => $"选择{count}张{GetPileTitle(kind)}加入手牌",
+        };
     }
 
     private Battle.BattleCardPileEntry[] GetPileEntriesForSelection(

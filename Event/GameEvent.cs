@@ -28,7 +28,7 @@ public partial class GameEvent
                 randomChange: true
             ),
             Option("手动指定校准对象", propertyChange: Stats((PropertyType.Survivability, 2))),
-            Option("稳定场核并回充", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
+            Option("稳定场核并回充", partyHealPercentMin: 15, partyHealPercentMax: 25)
         ),
         Event(
             "镜像编译器",
@@ -50,7 +50,7 @@ public partial class GameEvent
                 actionType: EventOptionActionType.GainTalentPoint,
                 talentPointAmount: 1
             ),
-            Option("抽走维生电池", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
+            Option("抽走维生电池", partyHealPercentMin: 15, partyHealPercentMax: 25)
         ),
         Event(
             "轨道黑匣",
@@ -59,7 +59,7 @@ public partial class GameEvent
                 + "你可以出售残存记录、复制一段战术日志，或把余电导回队伍系统。",
             Option("出售事故航迹", electricityChangeMin: 70, electricityChangeMax: 100),
             Option("复制战术日志", actionType: EventOptionActionType.CopyCard),
-            Option("接入残余电容", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
+            Option("接入残余电容", partyHealPercentMin: 15, partyHealPercentMax: 25)
         ),
         Event(
             "记忆铸炉",
@@ -77,7 +77,7 @@ public partial class GameEvent
                 + "旁路电池还残留着一点可以直接导入队伍的能量。",
             Option("执行卡牌清除", actionType: EventOptionActionType.RemoveCard),
             Option("压缩废料数据", electricityChangeMin: 45, electricityChangeMax: 75),
-            Option("导入旁路电池", transitionEnergyChangeMin: 12, transitionEnergyChangeMax: 22)
+            Option("导入旁路电池", partyHealPercentMin: 12, partyHealPercentMax: 22)
         ),
         Event(
             "静默圣所",
@@ -90,7 +90,7 @@ public partial class GameEvent
                 talentPointAmount: 1
             ),
             Option("开启祭台存放柜", actionType: EventOptionActionType.GainRelic),
-            Option("静坐片刻", transitionEnergyChangeMin: 15, transitionEnergyChangeMax: 25)
+            Option("静坐片刻", partyHealPercentMin: 15, partyHealPercentMax: 25)
         ),
         Event(
             "废弃军械舱",
@@ -112,7 +112,7 @@ public partial class GameEvent
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option("复制应急流程", actionType: EventOptionActionType.CopyCard),
             Option("导出医疗账本", electricityChangeMin: 40, electricityChangeMax: 70),
-            Option("抽走备用电池", transitionEnergyChangeMin: 18, transitionEnergyChangeMax: 28)
+            Option("抽走备用电池", partyHealPercentMin: 18, partyHealPercentMax: 28)
         ),
     ];
 
@@ -292,9 +292,9 @@ public partial class GameEvent
         Dictionary<PropertyType, int> propertyChange = null,
         bool randomChange = false,
         bool exit = true,
-        int transitionEnergyChange = 0,
-        int transitionEnergyChangeMin = 0,
-        int transitionEnergyChangeMax = 0,
+        int partyHealPercent = 0,
+        int partyHealPercentMin = 0,
+        int partyHealPercentMax = 0,
         int electricityChange = 0,
         int electricityChangeMin = 0,
         int electricityChangeMax = 0,
@@ -311,9 +311,9 @@ public partial class GameEvent
             PropertyChange = propertyChange,
             RandomChange = randomChange,
             Exit = exit,
-            TransitionEnergyChange = transitionEnergyChange,
-            TransitionEnergyChangeMin = transitionEnergyChangeMin,
-            TransitionEnergyChangeMax = transitionEnergyChangeMax,
+            PartyHealPercent = partyHealPercent,
+            PartyHealPercentMin = partyHealPercentMin,
+            PartyHealPercentMax = partyHealPercentMax,
             ElectricityChange = electricityChange,
             ElectricityChangeMin = electricityChangeMin,
             ElectricityChangeMax = electricityChangeMax,
@@ -362,9 +362,9 @@ public class EventOption
     public Dictionary<PropertyType, int> PropertyChange;
     public bool RandomChange = false;
     public bool Exit;
-    public int TransitionEnergyChange;
-    public int TransitionEnergyChangeMin;
-    public int TransitionEnergyChangeMax;
+    public int PartyHealPercent;
+    public int PartyHealPercentMin;
+    public int PartyHealPercentMax;
     public int ElectricityChange;
     public int ElectricityChangeMin;
     public int ElectricityChangeMax;
@@ -382,21 +382,18 @@ public class EventOption
                 or EventOptionActionType.TransformCard
                 or EventOptionActionType.RemoveCard;
 
-    public bool HasTransitionEnergyChange =>
-        TransitionEnergyChange != 0
-        || TransitionEnergyChangeMin != 0
-        || TransitionEnergyChangeMax != 0;
+    public bool HasPartyHealPercent =>
+        PartyHealPercent != 0 || PartyHealPercentMin != 0 || PartyHealPercentMax != 0;
 
-    public bool HasTransitionEnergyRange =>
-        TransitionEnergyChangeMin != 0 || TransitionEnergyChangeMax != 0;
+    public bool HasPartyHealPercentRange => PartyHealPercentMin != 0 || PartyHealPercentMax != 0;
 
-    public int RollTransitionEnergyChange(Random rng)
+    public int RollPartyHealPercent(Random rng)
     {
-        if (!HasTransitionEnergyRange)
-            return TransitionEnergyChange;
+        if (!HasPartyHealPercentRange)
+            return PartyHealPercent;
 
-        int min = Math.Min(TransitionEnergyChangeMin, TransitionEnergyChangeMax);
-        int max = Math.Max(TransitionEnergyChangeMin, TransitionEnergyChangeMax);
+        int min = Math.Min(PartyHealPercentMin, PartyHealPercentMax);
+        int max = Math.Max(PartyHealPercentMin, PartyHealPercentMax);
         if (min == max)
             return min;
 

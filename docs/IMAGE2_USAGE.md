@@ -1,95 +1,75 @@
 # Image2 调用说明
 
-这份文档用于在新的 Codex 对话里复用当前项目的图片生成接口。把本文档路径发给 Codex，或复制“给 Codex 的最短说明”这一段即可。
+这份文档用于在新的 Codex 对话里复用当前项目的图片生成流程。把本文档路径发给 Codex，或复制“给 Codex 的最短说明”这一段即可。
 
 ## 接口配置
 
-- `base_url`: `https://api.traxnode.com/v1`
-- `model`: `gpt-image-2`
-- API key 默认放在：`C:\tmp\key.txt`
-- 不要在聊天、README、提交记录或 issue 里明文粘贴 API key。
-
-如果以后改用环境变量，也可以设置：
-
-```powershell
-[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "你的key", "User")
-```
-
-设置后需要重启 IDE/Codex。
+- 默认使用 Codex 内置 `image_gen` 工具生成图片。
+- 不需要 `base_url`、`OPENAI_API_KEY` 或 `C:\tmp\key.txt`。
+- Codex 内置工具会先把图片保存到 Codex 自己的生成目录；项目资产必须再复制到项目内目标路径。
+- 不要把项目正式引用的图片只留在 Codex 生成目录里。
+- 不要覆盖已有正式图，除非用户明确要求替换；补缺失图可以直接保存到缺失路径。
 
 ## 给 Codex 的最短说明
 
 ```text
-请使用项目里的 docs/IMAGE2_USAGE.md 调用图片接口。
-base_url = https://api.traxnode.com/v1
-model = gpt-image-2
-API key 在 C:\tmp\key.txt，不要打印 key。
-生成图片保存到我指定的项目路径。
+请使用项目里的 docs/IMAGE2_USAGE.md 和 Codex 内置 image_gen 工具生成图片。
+生成后把图片从 Codex 生成目录复制到我指定的项目路径。
+角色卡图要先查看项目里的角色参考图，并严格保持角色身份、服饰、配色和元素限制。
+背景色调最好按人物所属颜色来。
 ```
 
 带参考图时补充：
 
 ```text
 参考图：asset/PlayerCharater/Kasiya/KasiyaPortrait.png
-输出：asset/CardPicture/Kasiya/SomeSkill.png
+输出：asset/CardPicture/Kasiya/SomeSkill.jpg
 ```
 
 ## 纯文本生成图片
 
-> 注意：角色、敌人、Boss 立绘禁止只用纯文本生成。必须使用“参考图生成/编辑”接口并传入项目内已有风格参考图，否则画风很容易跑偏。
+> 注意：角色、敌人、Boss 立绘禁止只用纯文本裸生成。必须先查看项目内已有角色/敌人参考图，再在内置 `image_gen` 提示词里明确说明参考图用途，否则画风、服饰和元素很容易跑偏。
 
-接口：
+适合纯文本生成的场景：
 
-```text
-POST https://api.traxnode.com/v1/images/generations
-```
+- 无角色身份的通用技能特效、UI 背景、抽象 VFX。
+- 无色卡图或只需要项目卡图风格参考的概念图。
 
-PowerShell 示例：
+项目资产输出流程：
 
-```powershell
-$ErrorActionPreference = "Stop"
-
-$key = (Get-Content -Raw -LiteralPath "C:\tmp\key.txt").Trim()
-$outPath = "C:\godot_project\Four-Dimensional\asset\generated\example.png"
-$prompt = "clean anime game card art, pale background, no text, no watermark"
-
-$body = @{
-    model = "gpt-image-2"
-    prompt = $prompt
-    size = "1024x1024"
-} | ConvertTo-Json -Depth 5
-
-$response = Invoke-RestMethod `
-    -Uri "https://api.traxnode.com/v1/images/generations" `
-    -Method Post `
-    -Headers @{ Authorization = "Bearer $key" } `
-    -ContentType "application/json" `
-    -Body $body `
-    -TimeoutSec 180
-
-$item = $response.data[0]
-if ($item.b64_json) {
-    [IO.File]::WriteAllBytes($outPath, [Convert]::FromBase64String($item.b64_json))
-} elseif ($item.url) {
-    Invoke-WebRequest -Uri $item.url -OutFile $outPath -TimeoutSec 180 | Out-Null
-} else {
-    throw "Response did not include b64_json or url"
-}
-```
+1. 用内置 `image_gen` 生成图片。
+2. 从 Codex 生成目录选择最终图。
+3. 复制到项目目标路径，例如 `asset/CardPicture/Colorless/SomeSkill.jpg`。
+4. 必要时本地缩放/裁剪到项目常用卡图规格 `980x700`。
+5. 确认 Godot 可加载的正式图已经落在项目目录内。
 
 ## 参考图生成/编辑
 
-接口：
+Codex 内置 `image_gen` 没有项目内路径参数。需要参考图时，先让 Codex 查看本地图片，再在提示词里明确标注参考图角色：
 
 ```text
-POST https://api.traxnode.com/v1/images/edits
+先查看：asset/PlayerCharater/Kasiya/KasiyaPortrait.png
+再生成：asset/CardPicture/Kasiya/SomeSkill.jpg
+
+提示词必须写：
+Use the viewed Kasiya portrait as the character identity and outfit reference.
+Keep the same character identity, outfit, palette, and allowed elements.
+Use skill-themed VFX only for new elements.
+Background tone should follow Kasiya's character colors: white, gold, and pale holy light.
+No text, no watermark, no logo, no card frame.
 ```
 
-单张参考图使用 multipart 字段 `image`。多张参考图使用 `image[]`。
+如果是多张参考图，逐张说明用途，例如：
+
+```text
+Image 1 is the character identity reference.
+Image 2 is only an action/composition/effect reference.
+Image 2 is not an element whitelist.
+```
 
 ## 敌人/Boss 立绘硬规则
 
-敌人、Boss、角色立绘必须传参考图，不允许只用纯文本生成。默认使用 `/images/edits` 接口，并用 multipart 字段 `image[]` 传入多张项目内已有立绘作为风格参考。
+敌人、Boss、角色立绘必须使用项目内参考图，不允许只用纯文本生成。默认先查看多张项目内已有立绘作为风格参考，再用 Codex 内置 `image_gen` 生成。
 
 默认参考图选择：
 
@@ -151,71 +131,12 @@ Do not make it a plain hooded human or a simple robe figure.
 
 立绘输出流程：
 
-1. 先用 `gpt-image-2` 生成合法尺寸，例如 `2048x2048`。
-2. 保存绿幕源图到临时文件。
+1. 先用 Codex 内置 `image_gen` 生成合法尺寸的源图。
+2. 从 Codex 生成目录复制绿幕源图到项目临时目录。
 3. 本地用绿幕抠图, 只移除接近 `#00ff00` 的背景色, 不要按白色或边缘亮色抠图。
 4. 本地缩放/裁剪成项目默认立绘规格 `2500x2500`。
 5. 最终保存到 `asset/EnemyCharater/{EnemyName}.png`。
 6. 不要覆盖已有正式图，除非明确要求替换。
-
-PowerShell 单参考图示例：
-
-```powershell
-$ErrorActionPreference = "Stop"
-Add-Type -AssemblyName System.Net.Http
-
-$key = (Get-Content -Raw -LiteralPath "C:\tmp\key.txt").Trim()
-$refPath = "C:\godot_project\Four-Dimensional\asset\PlayerCharater\Kasiya\KasiyaPortrait.png"
-$outPath = "C:\godot_project\Four-Dimensional\asset\CardPicture\Kasiya\SomeSkill.png"
-$prompt = @"
-Use the provided image as the only visual reference.
-Create clean anime game card art.
-Keep the character identity, outfit, and color palette.
-No text, no watermark, no logo.
-"@
-
-$client = [System.Net.Http.HttpClient]::new()
-$client.Timeout = [TimeSpan]::FromMinutes(5)
-$client.DefaultRequestHeaders.Authorization =
-    [System.Net.Http.Headers.AuthenticationHeaderValue]::new("Bearer", $key)
-
-$form = [System.Net.Http.MultipartFormDataContent]::new()
-$form.Add([System.Net.Http.StringContent]::new("gpt-image-2"), "model")
-$form.Add([System.Net.Http.StringContent]::new($prompt), "prompt")
-$form.Add([System.Net.Http.StringContent]::new("1024x768"), "size")
-
-$fileStream = [System.IO.File]::OpenRead($refPath)
-try {
-    $fileContent = [System.Net.Http.StreamContent]::new($fileStream)
-    $fileContent.Headers.ContentType =
-        [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
-    $form.Add($fileContent, "image", [System.IO.Path]::GetFileName($refPath))
-
-    $response = $client.PostAsync(
-        "https://api.traxnode.com/v1/images/edits",
-        $form
-    ).GetAwaiter().GetResult()
-
-    $text = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
-    if (-not $response.IsSuccessStatusCode) {
-        throw "HTTP $([int]$response.StatusCode): $text"
-    }
-
-    $json = $text | ConvertFrom-Json
-    $item = $json.data[0]
-    if ($item.b64_json) {
-        [IO.File]::WriteAllBytes($outPath, [Convert]::FromBase64String($item.b64_json))
-    } elseif ($item.url) {
-        Invoke-WebRequest -Uri $item.url -OutFile $outPath -TimeoutSec 180 | Out-Null
-    } else {
-        throw "Response did not include b64_json or url"
-    }
-} finally {
-    $form.Dispose()
-    $client.Dispose()
-    $fileStream.Dispose()
-}
-```
 
 ## 项目内常用路径
 
@@ -223,12 +144,15 @@ try {
 - Kasiya 贴图：`asset/PlayerCharater/Kasiya/Kasiya.png`
 - 卡图目录：`asset/CardPicture/{CharacterName}/`
 - 临时/生成目录：`asset/generated/`
-- 技能卡图加载规则：`SkillCard` 会优先按角色子目录查找 `asset/CardPicture/{CharacterName}/{SkillId}.png`，找不到时再回退旧的平铺路径 `asset/CardPicture/{SkillId}.png`。
+- 技能卡图加载规则：`SkillCard` 会优先按角色子目录查找 `asset/CardPicture/{CharacterName}/{SkillId}.jpg`，也兼容 `.png/.jpeg/.webp`；找不到时再回退旧的平铺路径 `asset/CardPicture/{SkillId}.jpg` 等同名资源。
+- 新卡图默认保存为 `.jpg`。只有确实需要透明通道时，才保存为 `.png`。
 
 例子：`AbsouluteDefense` 技能会自动尝试加载：
 
 ```text
+asset/CardPicture/Kasiya/AbsouluteDefense.jpg
 asset/CardPicture/Kasiya/AbsouluteDefense.png
+asset/CardPicture/KasiyaAbsouluteDefense.jpg
 asset/CardPicture/KasiyaAbsouluteDefense.png
 ```
 
@@ -242,7 +166,8 @@ asset/CardPicture/KasiyaAbsouluteDefense.png
 Use the provided image as the only visual reference.
 Keep the same character identity, outfit, palette, and simple pale anime rendering.
 Raw game skill artwork only, not a finished card template.
-Bright white background, controlled negative space.
+Bright white background with a subtle tone matching the character's own color family, controlled negative space.
+Background tone should preferably follow the character's belonging color: Kasiya white/gold, Mariya light blue/green, Nightingale black/red with pale contrast, Echo white/purple/dark blue, Colorless neutral white/pale blue.
 No text, no watermark, no logo.
 ```
 
@@ -737,11 +662,11 @@ Keep the picture clean and readable at small card size.
 
 ## 安全注意
 
-- 不要打印 key。
-- 不要把 `C:\tmp\key.txt` 加到项目或提交。
-- 生成图先保存为新文件，例如 `SomeSkill_v2.png`，确认后再覆盖正式文件。
+- 内置 `image_gen` 不需要 API key；不要在本文档或提交记录里新增任何 key 配置。
+- 生成源图会先留在 Codex 生成目录；项目正式使用的图必须复制到项目目录。
+- 卡图先保存为新文件，例如 `SomeSkill_v2.jpg`，确认后再覆盖正式文件；需要透明通道的图再使用 `.png`。
 - 覆盖 Godot 正在使用的图片时可能失败，先关闭占用或保存成新文件。
-- 如果 `/images/edits` 或 `/images/generations` 在长时间等待后返回 `504 Gateway Time-out`，不要默认认为请求没有生成。代理后台可能已经完成并计费，只是本地没有收到 `b64_json` 或 `url`，因此没有落盘。遇到这种情况先检查代理面板的请求记录；如果面板显示成功或已扣费，优先尝试用请求记录取回结果或让用户在面板确认，不要立刻重复发起同规格请求。
+- 如果内置工具生成了多个候选，先确认最终候选，再复制/缩放到正式路径。
 
 ## 当前卡图分组
 

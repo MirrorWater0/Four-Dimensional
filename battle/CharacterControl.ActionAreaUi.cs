@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -9,7 +8,8 @@ public partial class CharacterControl
     public void RefreshCurrentTurnUi()
     {
         RefreshTurnUi();
-        BattleNode?.RecordAutomationSnapshot("ui_refreshed");
+        if (BattleNode?.IsAutomationBattleLogActive == true)
+            BattleNode.RecordAutomationSnapshot("ui_refreshed");
     }
 
     public Dictionary<string, object> GetAutomationUiState()
@@ -22,25 +22,25 @@ public partial class CharacterControl
             selection["targetCount"] = _discardSelectionTargetCount;
             selection["selectedCount"] = _discardSelectionSkills.Count;
             selection["remaining"] = Math.Max(0, _discardSelectionTargetCount - _discardSelectionSkills.Count);
-            selection["selectedSlots"] = _discardSelectionSkills
-                .Select(skill => Array.IndexOf(GetActiveHandSkills(), skill) + 1)
-                .Where(slot => slot > 0)
-                .ToArray();
+            selection["selectedSlots"] = BuildDiscardSelectionAutomationSlots();
         }
         else if (_isPileCardSelectionActive)
         {
             selectionMode =
                 _pileCardSelectionAction == PileCardSelectionAction.Exhaust
                     ? "pile_selection_exhaust"
-                    : "pile_selection_to_hand";
+                    : _pileCardSelectionAction == PileCardSelectionAction.FilterToDiscard
+                        ? "pile_selection_filter"
+                        : "pile_selection_to_hand";
             selection["pile"] = _pileCardSelectionKind.ToString();
             selection["targetCount"] = _pileCardSelectionTargetCount;
             selection["selectedCount"] = _pileCardSelectionIndexes.Count;
+            selection["allowsFewer"] = _pileCardSelectionAllowsFewer;
             selection["remaining"] = Math.Max(
                 0,
                 _pileCardSelectionTargetCount - _pileCardSelectionIndexes.Count
             );
-            selection["selectedPileIndexes"] = _pileCardSelectionIndexes.ToArray();
+            selection["selectedPileIndexes"] = BuildPileSelectionAutomationIndexes();
         }
         else if (_manualTargetArrowSelectionActive)
         {
@@ -127,7 +127,7 @@ public partial class CharacterControl
 
             SkillCard card =
                 cardSlot.GetNodeOrNull<SkillCard>($"Card{i}")
-                ?? cardSlot.GetChildren().OfType<SkillCard>().FirstOrDefault();
+                ?? FindChildSkillCard(cardSlot);
             if (card == null)
             {
                 card = CreateBattleCard(i);
@@ -199,6 +199,9 @@ public partial class CharacterControl
             card.ConfigureDisplayScale(BattleCardScale);
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = false;
+        card.Button.ActionMode = BaseButton.ActionModeEnum.Press;
+        card.Button.SetMeta("suppress_ui_click_sfx", true);
+        card.Button.SetMeta("suppress_ui_hover_sfx", true);
         SetCardButtonInputEnabled(card, false);
         card.SetMeta("hand_card_index", index);
 
@@ -211,14 +214,33 @@ public partial class CharacterControl
         {
             int cardIndex = GetBattleCardSignalIndex(card);
             if (IsCardIndexValid(cardIndex))
-                _ = HandleCardPressedAsync(cardIndex);
+                TryStartHandCardPress(cardIndex);
         };
         card.Button.MouseEntered += () =>
         {
+            int cardIndex = GetBattleCardSignalIndex(card);
+            if (
+                IsCardIndexValid(cardIndex)
+                && CanHoverHandCardAt(cardIndex)
+                && SetCardHovered(cardIndex, true)
+            )
+            {
+                AudioManager.PlayCardHover(card);
+                SetCardHoverPreviewActive(cardIndex, true);
+                return;
+            }
+
             ScheduleCardHoverRefresh();
         };
         card.Button.MouseExited += () =>
         {
+            int cardIndex = GetBattleCardSignalIndex(card);
+            if (IsCardIndexValid(cardIndex) && cardIndex != _liftedCardIndex)
+            {
+                SetCardHovered(cardIndex, false);
+                SetCardHoverPreviewActive(cardIndex, false);
+            }
+
             ScheduleCardHoverRefresh();
         };
     }
@@ -318,7 +340,7 @@ public partial class CharacterControl
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.ZIndex = 0;
         card.SetMeta("hand_card_index", -1);
-        card.HoverHint.Visible = false;
+        card.HideHoverUi();
         card.SetHoverUiEnabled(false);
         card.SetRelatedCardPreviewSuppressed(true);
         card.SetHandIndexBadge(0, visible: false);
@@ -329,10 +351,13 @@ public partial class CharacterControl
     {
         UserSettings.EnsureLoaded();
         bool showIndices = UserSettings.ShowHandCardIndices;
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: false);
-        var visibleOrders = new Dictionary<int, int>();
-        for (int order = 0; order < visibleSlotIndexes.Length; order++)
-            visibleOrders[visibleSlotIndexes[order]] = order + 1;
+        Array.Fill(_handLayoutOrderBySlotIndex, 0);
+        int visibleCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: false
+        );
+        for (int order = 0; order < visibleCount; order++)
+            _handLayoutOrderBySlotIndex[_visibleHandSlotIndexesBuffer[order]] = order + 1;
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -345,11 +370,60 @@ public partial class CharacterControl
                 && i < hand.Length
                 && hand[i] != null
                 && card.Visible;
-            int order = hasVisibleSkill && visibleOrders.TryGetValue(i, out int visibleOrder)
-                ? visibleOrder
-                : 0;
+            int order = hasVisibleSkill ? _handLayoutOrderBySlotIndex[i] : 0;
             card.SetHandIndexBadge(order, showIndices && order > 0);
         }
+    }
+
+    private int[] BuildDiscardSelectionAutomationSlots()
+    {
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null || _discardSelectionSkills.Count == 0)
+            return Array.Empty<int>();
+
+        var slots = new int[_discardSelectionSkills.Count];
+        int write = 0;
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
+        {
+            int index = Array.IndexOf(hand, _discardSelectionSkills[i]);
+            if (index >= 0)
+                slots[write++] = index + 1;
+        }
+
+        if (write == slots.Length)
+            return slots;
+
+        if (write == 0)
+            return Array.Empty<int>();
+
+        Array.Resize(ref slots, write);
+        return slots;
+    }
+
+    private int[] BuildPileSelectionAutomationIndexes()
+    {
+        if (_pileCardSelectionIndexes.Count == 0)
+            return Array.Empty<int>();
+
+        var indexes = new int[_pileCardSelectionIndexes.Count];
+        for (int i = 0; i < _pileCardSelectionIndexes.Count; i++)
+            indexes[i] = _pileCardSelectionIndexes[i];
+
+        return indexes;
+    }
+
+    private static SkillCard FindChildSkillCard(Node parent)
+    {
+        if (parent == null)
+            return null;
+
+        for (int i = 0; i < parent.GetChildCount(); i++)
+        {
+            if (parent.GetChild(i) is SkillCard card)
+                return card;
+        }
+
+        return null;
     }
 
     private void ClearHandCardIndexBadges()
@@ -508,8 +582,12 @@ public partial class CharacterControl
         if (card?.Button == null)
             return;
 
-        card.Button.Disabled = !enabled;
-        card.Button.MouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        bool disabled = !enabled;
+        MouseFilterEnum mouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        if (card.Button.Disabled != disabled)
+            card.Button.Disabled = disabled;
+        if (card.Button.MouseFilter != mouseFilter)
+            card.Button.MouseFilter = mouseFilter;
     }
 
     private static void ConfigureEndTurnButton(Button button)

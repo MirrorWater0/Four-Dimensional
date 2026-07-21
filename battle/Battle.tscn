@@ -7,43 +7,12 @@
 [ext_resource type="Shader" uid="uid://dl34660sc1hw" path="res://shader/LightSphere.gdshader" id="11_ttuon"]
 [ext_resource type="PackedScene" uid="uid://dcivwl06q4oiv" path="res://character/CharacterTemplate.tscn" id="12_4km6a"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="13_ttuon"]
-[ext_resource type="Shader" uid="uid://dfyb0vpf1xs5t" path="res://shader/UI/BattlePileIcon.gdshader" id="15_pileicon"]
-[ext_resource type="Shader" uid="uid://cfs7u53irvree" path="res://shader/BattlePleiades.gdshader" id="16_pleiades_bg"]
-
-[sub_resource type="Environment" id="Environment_ttuon"]
-background_mode = 3
-glow_enabled = true
-glow_normalized = true
-glow_intensity = 1.0
-glow_strength = 1.42
-glow_hdr_threshold = 0.9
-glow_hdr_scale = 1.8
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ts8fe"]
-shader = ExtResource("16_pleiades_bg")
-shader_parameter/i_mouse = Vector4(0, 0, 0, 0)
-shader_parameter/camera_mode = 4
-shader_parameter/time_scale = 1.0
-shader_parameter/time_offset = -4.0
-shader_parameter/orbit_radius = 30.0
-shader_parameter/orbit_speed = 0.48
-shader_parameter/camera_zoom = 0.81300003209773
-shader_parameter/camera_height = 0.2
-shader_parameter/look_lead = 0.35
-shader_parameter/drift_amount = 0.18
-shader_parameter/wander_amount = 0.42
-shader_parameter/wander_speed = 0.65
-shader_parameter/cluster_center = Vector3(0, 0.8, 0)
-shader_parameter/cluster_spread_min = 1.25
-shader_parameter/cluster_spread_max = 1.75
-shader_parameter/cluster_spread_speed = 0.35
-shader_parameter/exposure = 0.42800001381023
-shader_parameter/blue_factor = 1.5
-shader_parameter/core_gain = 0.22
-shader_parameter/halo_gain = 0.06
-shader_parameter/spike_gain = 0.012
-shader_parameter/nebula_strength = 0.85
-shader_parameter/dust_cloud_radius = 28.0
+[ext_resource type="Texture2D" uid="uid://d0aqmbp6bb1eb" path="res://asset/third_party/kenney_board_game_icons/Vector/Icons/cards_stack_high.svg" id="15_pileicon"]
+[ext_resource type="Texture2D" uid="uid://bf85s0c4metx3" path="res://asset/UI/UI1.png" id="16_hudframe"]
+[ext_resource type="PackedScene" uid="uid://dbl6psathov0q" path="res://Background/StarfieldBackground3D.tscn" id="17_starfield_bg"]
+[ext_resource type="Texture2D" uid="uid://b8glg0152v5m0" path="res://asset/UI/EnergyBackgroundIcon.png" id="18_energyicon"]
+[ext_resource type="Texture2D" uid="uid://bygse4xqrcg6a" path="res://asset/third_party/kenney_board_game_icons/Vector/Icons/cards_take.svg" id="19_discardicon"]
+[ext_resource type="Texture2D" uid="uid://b20c6p7fbehcs" path="res://asset/third_party/kenney_board_game_icons/Vector/Icons/cards_skull.svg" id="20_exhausticon"]
 
 [sub_resource type="Animation" id="Animation_4km6a"]
 resource_name = "Incapacitate"
@@ -102,34 +71,22 @@ tracks/2/keys = {
 tracks/3/type = "value"
 tracks/3/imported = false
 tracks/3/enabled = true
-tracks/3/path = NodePath("bg:self_modulate")
+tracks/3/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
 tracks/3/interp = 1
 tracks/3/loop_wrap = true
 tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Color(1, 1, 1, 1)]
+"values": [Color(1, 1, 1, 0)]
 }
 tracks/4/type = "value"
 tracks/4/imported = false
 tracks/4/enabled = true
-tracks/4/path = NodePath("CanvasLayer/Incapacitate:self_modulate")
+tracks/4/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
 tracks/4/interp = 1
 tracks/4/loop_wrap = true
 tracks/4/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Color(1, 1, 1, 0)]
-}
-tracks/5/type = "value"
-tracks/5/imported = false
-tracks/5/enabled = true
-tracks/5/path = NodePath("CanvasLayer/ColorRect3:self_modulate")
-tracks/5/interp = 1
-tracks/5/loop_wrap = true
-tracks/5/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
@@ -178,18 +135,6 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector2(960, 540), Vector2(975, 550), Vector2(980, 535), Vector2(970, 550), Vector2(960, 540)]
 }
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("bg:self_modulate")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.333333, 0.466667),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
-"update": 0,
-"values": [Color(1, 1, 1, 1), Color(0.4, 0.4, 0.4, 1), Color(0.4, 0.4, 0.4, 1), Color(1, 1, 1, 1)]
-}
 
 [sub_resource type="Animation" id="Animation_8cf7v"]
 resource_name = "start"
@@ -215,6 +160,21 @@ _data = {
 &"start": SubResource("Animation_8cf7v")
 }
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_backdrop"]
+bg_color = Color(0.018, 0.035, 0.07, 0.56)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.72, 1, 0.42)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0.01, 0.04, 0.58)
+shadow_size = 18
+shadow_offset = Vector2(0, 7)
+
 [sub_resource type="Shader" id="Shader_1euq2"]
 code = "shader_type canvas_item;
 
@@ -236,56 +196,20 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_uifq5"]
 shader = SubResource("Shader_1euq2")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_draw_pile_icon"]
-resource_local_to_scene = true
-shader = ExtResource("15_pileicon")
-shader_parameter/back_card_color = Color(0.05, 0.12, 0.22, 0.78)
-shader_parameter/mid_card_color = Color(0.16, 0.35, 0.55, 0.72)
-shader_parameter/front_card_color = Color(0.46, 0.72, 0.95, 0.78)
-shader_parameter/edge_color = Color(0.72, 0.94, 1, 0.82)
-shader_parameter/shadow_color = Color(0.015, 0.035, 0.065, 0.56)
-shader_parameter/hover_amount = 0.0
-shader_parameter/disabled_amount = 1.0
-shader_parameter/pressed_amount = 0.0
-shader_parameter/receive_amount = 0.0
-shader_parameter/stack_tilt = -0.1
-shader_parameter/fan_amount = 0.12
-shader_parameter/card_radius = 0.045
-shader_parameter/edge_width = 0.018
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_discard_pile_icon"]
-resource_local_to_scene = true
-shader = ExtResource("15_pileicon")
-shader_parameter/back_card_color = Color(0.22, 0.13, 0.04, 0.78)
-shader_parameter/mid_card_color = Color(0.56, 0.36, 0.12, 0.72)
-shader_parameter/front_card_color = Color(0.95, 0.72, 0.32, 0.78)
-shader_parameter/edge_color = Color(1, 0.88, 0.56, 0.82)
-shader_parameter/shadow_color = Color(0.07, 0.04, 0.015, 0.56)
-shader_parameter/hover_amount = 0.0
-shader_parameter/disabled_amount = 1.0
-shader_parameter/pressed_amount = 0.0
-shader_parameter/receive_amount = 0.0
-shader_parameter/stack_tilt = 0.1
-shader_parameter/fan_amount = 0.12
-shader_parameter/card_radius = 0.045
-shader_parameter/edge_width = 0.018
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_exhausted_pile_icon"]
-resource_local_to_scene = true
-shader = ExtResource("15_pileicon")
-shader_parameter/back_card_color = Color(0.2, 0.035, 0.055, 0.8)
-shader_parameter/mid_card_color = Color(0.46, 0.11, 0.14, 0.74)
-shader_parameter/front_card_color = Color(0.86, 0.3, 0.3, 0.78)
-shader_parameter/edge_color = Color(1, 0.62, 0.58, 0.82)
-shader_parameter/shadow_color = Color(0.075, 0.018, 0.024, 0.58)
-shader_parameter/hover_amount = 0.0
-shader_parameter/disabled_amount = 1.0
-shader_parameter/pressed_amount = 0.0
-shader_parameter/receive_amount = 0.0
-shader_parameter/stack_tilt = 0.0
-shader_parameter/fan_amount = 0.16
-shader_parameter/card_radius = 0.045
-shader_parameter/edge_width = 0.018
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_plate"]
+bg_color = Color(0.035, 0.075, 0.13, 0.84)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.42, 0.86, 1, 0.46)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.01, 0.02, 0.06, 0.55)
+shadow_size = 8
+shadow_offset = Vector2(0, 3)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_t871k"]
 shader = ExtResource("10_t871k")
@@ -355,39 +279,81 @@ hue_variation_min = -0.18000002
 hue_variation_max = 0.009999977
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_battle_record"]
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-bg_color = Color(0.06, 0.08, 0.1, 0.55)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.45, 0.65, 0.85, 0.35)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.02, 0.03, 0.06, 0.2)
-shadow_size = 6
-shadow_offset = Vector2(0, 2)
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 16.0
+bg_color = Color(0.025, 0.045, 0.08, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.78, 1, 0.62)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.01, 0.02, 0.06, 0.6)
+shadow_size = 14
+shadow_offset = Vector2(0, 5)
 
 [sub_resource type="Theme" id="Theme_battle_record"]
 RichTextLabel/styles/normal = SubResource("StyleBoxFlat_battle_record")
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_record_button"]
+bg_color = Color(0.04, 0.11, 0.19, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.36, 0.82, 1, 0.8)
+corner_radius_top_left = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_record_button_pressed"]
+bg_color = Color(0.03, 0.07, 0.13, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(1, 0.76, 0.32, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_record_button_hover"]
+bg_color = Color(0.08, 0.24, 0.36, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.58, 0.94, 1, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_left = 8
+
 [node name="Battle" type="Node2D" unique_id=167871935]
 script = ExtResource("1_n3ui2")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1636278870]
-environment = SubResource("Environment_ttuon")
-
-[node name="bg" type="ColorRect" parent="." unique_id=2102393615]
-material = SubResource("ShaderMaterial_ts8fe")
+[node name="bg" type="Control" parent="." unique_id=2102393615]
+layout_mode = 3
+anchors_preset = 0
 offset_left = -257.0
 offset_top = -225.0
 offset_right = 2303.0
 offset_bottom = 1215.0
+mouse_filter = 2
+metadata/_edit_lock_ = true
+
+[node name="StarfieldBackground3D" parent="bg" unique_id=742155960 instance=ExtResource("17_starfield_bg")]
+layout_mode = 1
+NearStarCount = 460
+FarStarCount = 860
+NebulaBrightness = 1.55
+CameraPathSpeed = 0.02
+DeepSpaceContrastStrength = 0.46
+SkyBrightness = 0.12
+OverlayUpdateRate = 60.0
+NebulaColorA = Color(0.21960784, 0.52156866, 0.8784314, 0.81960785)
+NebulaColorB = Color(0.85882354, 0.47843137, 0.78039217, 0.79607844)
 metadata/_edit_lock_ = true
 
 [node name="Right" type="Node2D" parent="." unique_id=489797672]
@@ -404,6 +370,28 @@ autoplay = &"start"
 
 [node name="CharacterControlLayer" type="CanvasLayer" parent="." unique_id=1561799286]
 layer = 14
+
+[node name="BattleHudBackdrop" type="Panel" parent="CharacterControlLayer" unique_id=367479134]
+offset_left = -21.0
+offset_top = 740.0
+offset_right = 1942.0
+offset_bottom = 790.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud_backdrop")
+
+[node name="CornerFrame" type="NinePatchRect" parent="CharacterControlLayer/BattleHudBackdrop" unique_id=1043653421]
+modulate = Color(0.42, 0.88, 1, 0.26)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("16_hudframe")
+patch_margin_left = 22
+patch_margin_top = 22
+patch_margin_right = 22
+patch_margin_bottom = 22
 
 [node name="CharacterControl" type="HBoxContainer" parent="CharacterControlLayer" unique_id=1407403704]
 z_index = 2
@@ -430,8 +418,10 @@ theme_override_constants/separation = 200
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.82, 0.95, 1, 0.95)
 theme_override_font_sizes/font_size = 24
 text = "等待行动"
+horizontal_alignment = 1
 
 [node name="BattleActionButtons" type="Control" parent="CharacterControlLayer" unique_id=1518664475]
 z_index = 3
@@ -443,12 +433,94 @@ offset_right = 1490.0
 offset_bottom = 656.0
 mouse_filter = 2
 
-[node name="EndTurnButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1518664472]
-custom_minimum_size = Vector2(164, 72)
+[node name="DrawPilePlate" type="Panel" parent="CharacterControlLayer/BattleActionButtons" unique_id=1450916322]
 layout_mode = 0
-offset_left = 186.0
+offset_left = -1478.0
+offset_top = -6.0
+offset_right = -1406.0
+offset_bottom = 66.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_plate")
+
+[node name="Frame" type="NinePatchRect" parent="CharacterControlLayer/BattleActionButtons/DrawPilePlate" unique_id=676895367]
+modulate = Color(1, 0.48, 0.58, 0.48)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("16_hudframe")
+patch_margin_left = 18
+patch_margin_top = 18
+patch_margin_right = 18
+patch_margin_bottom = 18
+
+[node name="EndTurnFrame" type="NinePatchRect" parent="CharacterControlLayer/BattleActionButtons" unique_id=352232778]
+modulate = Color(0.42, 0.9, 1, 0.45)
+layout_mode = 0
+offset_left = 146.0
+offset_top = -30.0
+offset_right = 330.0
+offset_bottom = 56.0
+texture = ExtResource("16_hudframe")
+patch_margin_left = 18
+patch_margin_top = 18
+patch_margin_right = 18
+patch_margin_bottom = 18
+
+[node name="DiscardPilePlate" type="Panel" parent="CharacterControlLayer/BattleActionButtons" unique_id=1747784404]
+layout_mode = 0
+offset_left = 334.0
+offset_top = -6.0
+offset_right = 406.0
+offset_bottom = 66.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_plate")
+
+[node name="Frame" type="NinePatchRect" parent="CharacterControlLayer/BattleActionButtons/DiscardPilePlate" unique_id=1170770214]
+modulate = Color(1, 0.86, 0.3, 0.5)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("16_hudframe")
+patch_margin_left = 18
+patch_margin_top = 18
+patch_margin_right = 18
+patch_margin_bottom = 18
+
+[node name="ExhaustedPilePlate" type="Panel" parent="CharacterControlLayer/BattleActionButtons" unique_id=1627744267]
+layout_mode = 0
+offset_left = 334.0
+offset_top = -109.0
+offset_right = 406.0
+offset_bottom = -37.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pile_plate")
+
+[node name="Frame" type="NinePatchRect" parent="CharacterControlLayer/BattleActionButtons/ExhaustedPilePlate" unique_id=1913415132]
+modulate = Color(0.72, 0.55, 1, 0.5)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("16_hudframe")
+patch_margin_left = 18
+patch_margin_top = 18
+patch_margin_right = 18
+patch_margin_bottom = 18
+
+[node name="EndTurnButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1518664472]
+custom_minimum_size = Vector2(168, 72)
+layout_mode = 0
+offset_left = 156.0
 offset_top = -23.0
-offset_right = 350.0
+offset_right = 324.0
 offset_bottom = 49.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
@@ -457,33 +529,34 @@ disabled = true
 text = "结束回合"
 
 [node name="DrawPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1198832786]
-custom_minimum_size = Vector2(80, 80)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 0
-offset_left = -1490.0
-offset_top = -6.0
-offset_right = -1420.0
-offset_bottom = 64.0
+offset_left = -1472.0
+offset_right = -1412.0
+offset_bottom = 60.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "抽牌堆"
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/DrawPileButton" unique_id=388596969]
-material = SubResource("ShaderMaterial_draw_pile_icon")
-custom_minimum_size = Vector2(80, 80)
+[node name="PileIcon" type="TextureRect" parent="CharacterControlLayer/BattleActionButtons/DrawPileButton" unique_id=388596969]
+modulate = Color(1, 0.5, 0.5, 1)
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 0
-offset_right = 46.0
-offset_bottom = 46.0
+offset_right = 48.0
+offset_bottom = 48.0
 mouse_filter = 2
+texture = ExtResource("15_pileicon")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="DiscardPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=906387459]
-custom_minimum_size = Vector2(80, 80)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 0
-offset_left = 358.0
-offset_top = -6.0
-offset_right = 428.0
-offset_bottom = 64.0
+offset_left = 340.0
+offset_right = 400.0
+offset_bottom = 60.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "弃牌堆"
@@ -491,21 +564,23 @@ mouse_filter = 1
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/DiscardPileButton" unique_id=1352855306]
-material = SubResource("ShaderMaterial_discard_pile_icon")
-custom_minimum_size = Vector2(80, 80)
+[node name="PileIcon" type="TextureRect" parent="CharacterControlLayer/BattleActionButtons/DiscardPileButton" unique_id=1352855306]
+modulate = Color(1, 0.88, 0.34, 1)
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 0
-offset_right = 46.0
-offset_bottom = 46.0
-mouse_filter = 1
+offset_right = 48.0
+offset_bottom = 48.0
+texture = ExtResource("19_discardicon")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="ExhaustedPileButton" type="Button" parent="CharacterControlLayer/BattleActionButtons" unique_id=1059610785]
-custom_minimum_size = Vector2(80, 80)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 0
-offset_left = 360.0
-offset_top = -109.0
-offset_right = 430.0
-offset_bottom = -39.0
+offset_left = 340.0
+offset_top = -103.0
+offset_right = 400.0
+offset_bottom = -43.0
 size_flags_horizontal = 4
 size_flags_vertical = 4
 tooltip_text = "消耗牌堆"
@@ -513,13 +588,26 @@ mouse_filter = 1
 disabled = true
 flat = true
 
-[node name="PileIcon" type="ColorRect" parent="CharacterControlLayer/BattleActionButtons/ExhaustedPileButton" unique_id=1621808690]
-material = SubResource("ShaderMaterial_exhausted_pile_icon")
-custom_minimum_size = Vector2(80, 80)
+[node name="PileIcon" type="TextureRect" parent="CharacterControlLayer/BattleActionButtons/ExhaustedPileButton" unique_id=1621808690]
+modulate = Color(0.78, 0.64, 1, 1)
+custom_minimum_size = Vector2(48, 48)
 layout_mode = 0
-offset_right = 46.0
-offset_bottom = 46.0
-mouse_filter = 1
+offset_right = 48.0
+offset_bottom = 48.0
+texture = ExtResource("20_exhausticon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="EnergyFrame" type="TextureRect" parent="CharacterControlLayer" unique_id=1062803561]
+modulate = Color(0.52, 0.78, 1, 0.48)
+offset_left = 76.0
+offset_top = 623.0
+offset_right = 235.0
+offset_bottom = 782.0
+mouse_filter = 2
+texture = ExtResource("18_energyicon")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="EnergyBG" type="ColorRect" parent="CharacterControlLayer" unique_id=301268437]
 material = SubResource("ShaderMaterial_t871k")
@@ -686,15 +774,15 @@ z_index = 5
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -409.0
-offset_top = 130.0
-offset_right = -2.0
-offset_bottom = 747.0
+offset_left = -420.0
+offset_top = 138.0
+offset_right = -18.0
+offset_bottom = 712.0
 grow_horizontal = 0
 theme = SubResource("Theme_battle_record")
-theme_override_colors/default_color = Color(0.9, 0.95, 1, 0.9)
+theme_override_colors/default_color = Color(0.9, 0.96, 1, 0.95)
 theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.7)
-theme_override_constants/line_separation = 4
+theme_override_constants/line_separation = 6
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
@@ -702,8 +790,20 @@ scroll_following = true
 metadata/_edit_lock_ = true
 
 [node name="RecordButton" type="Button" parent="UI" unique_id=413180388]
-offset_left = 1867.0
-offset_top = 78.0
+offset_left = 1848.0
+offset_top = 82.0
 offset_right = 1920.0
-offset_bottom = 131.0
-text = "<"
+offset_bottom = 132.0
+tooltip_text = "展开战斗记录"
+focus_mode = 0
+theme_override_colors/font_color = Color(0.82, 0.95, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.82, 0.42, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.03, 0.08, 0.95)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_record_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_record_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_record_button_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_record_button_hover")
+text = "战报"

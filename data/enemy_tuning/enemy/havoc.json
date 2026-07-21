@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "Havoc":  {
+                                  "Name":  "Havoc",
+                                  "MaxLife":  375
+                              }
+                }
+}

@@ -118,19 +118,22 @@ public partial class SkillCard : Control
     private ShaderMaterial _defaultCardMaterial;
     private ShaderMaterial _playableHighlightMaterial;
     private ColorRect _playableHighlight;
-    private float _playableHighlightWidth = 0.075f;
+    private float _playableHighlightWidth = 0.2f;
     private bool _playableHighlightEnabled;
-    private static readonly Color PlayableHighlightColor = new(0f, 0.957f, 0.988f, 0.98f);
     private CanvasItem _cardEffectMaterialTarget;
     private Character[] _previewHostileTargets = Array.Empty<Character>();
     private Character[] _previewFriendlyTargets = Array.Empty<Character>();
     private bool _energyCostAffordable = true;
     private Label _handIndexLabel;
     private readonly List<VBoxContainer> _previewDamagePanels = new();
+    private readonly List<Character> _previewDamageTargetsBuffer = new();
+    private readonly Dictionary<Character, List<Skill.PreviewEffectEntry>> _previewDamageEntriesByTarget =
+        new();
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Color ExhaustFadeModulate = new(0.1f, 0.1f, 0.1f, 0f);
     private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -115f);
+    private const int KeywordTooltipHoverDelayMs = 70;
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
@@ -163,8 +166,25 @@ public partial class SkillCard : Control
     private Tip _keywordTooltip;
     private SkillRelatedCardPreview _relatedCardPreview;
     private Skill _cachedHoverSkill;
+    private Skill _activeSkillPreviewSkill;
+    private Skill _cachedSkillPreviewSkill;
+    private int _cachedSkillPreviewRevision = int.MinValue;
+    private int _cachedHoverPreviewRevision = int.MinValue;
+    private bool _skillPreviewActive;
+    private bool _preserveSkillPreviewOnNextExitTree;
+    private int _keywordTooltipHoverVersion;
+    private bool _pointerHoverActive;
     private string _cachedKeywordTooltipText = string.Empty;
     private IReadOnlyList<SkillID> _cachedRelatedSkillIds = Array.Empty<SkillID>();
+    private Character[] _cachedPreviewHostileTargets = Array.Empty<Character>();
+    private Character[] _cachedPreviewFriendlyTargets = Array.Empty<Character>();
+    private Skill.PreviewEffectEntry[] _cachedPreviewEffectEntries =
+        Array.Empty<Skill.PreviewEffectEntry>();
+    private CardPreviewTargetEffectGroup[] _cachedPreviewEffectGroups =
+        Array.Empty<CardPreviewTargetEffectGroup>();
+    private int _debugSkillPreviewShowCalls;
+    private int _debugSkillPreviewShowSkipped;
+    private int _debugSkillPreviewCacheBuilds;
     private Skill.SkillRarity _lastAppliedRarity = Skill.SkillRarity.Common;
     private bool _lastAppliedStatusCard;
     private bool _lastAppliedColorlessCard;
@@ -324,8 +344,8 @@ public partial class SkillCard : Control
         _handIndexLabel.AddThemeColorOverride("font_color", new Color(1f, 0.96f, 0.72f, 1f));
         _handIndexLabel.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.96f));
         _handIndexLabel.AddThemeConstantOverride("outline_size", 5);
-        AddChild(_handIndexLabel);
-        MoveChild(_handIndexLabel, GetChildCount() - 1);
+        CardVisualRoot.AddChild(_handIndexLabel);
+        CardVisualRoot.MoveChild(_handIndexLabel, CardVisualRoot.GetChildCount() - 1);
         return _handIndexLabel;
     }
 
@@ -409,18 +429,18 @@ public partial class SkillCard : Control
             return;
 
         _drawSettleTween?.Kill();
-        Scale = _baseScale * 1.045f;
+        Scale = _baseScale * 1.018f;
         _drawSettleTween = CreateTween();
         if (delay > 0f)
             _drawSettleTween.TweenInterval(delay);
 
         _drawSettleTween
-            .TweenProperty(this, "scale", _baseScale * 0.992f, 0.07f)
+            .TweenProperty(this, "scale", _baseScale * 0.998f, 0.055f)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
         _drawSettleTween
-            .TweenProperty(this, "scale", _baseScale, 0.09f)
-            .SetTrans(Tween.TransitionType.Back)
+            .TweenProperty(this, "scale", _baseScale, 0.07f)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
     }
 
@@ -435,6 +455,7 @@ public partial class SkillCard : Control
         if (ReferenceEquals(CurrentSkill, skill))
         {
             RefreshCurrentSkillDynamicText();
+            RefreshSkillPreviewIfStale();
             return;
         }
 
@@ -446,9 +467,52 @@ public partial class SkillCard : Control
     public void InvalidateHoverPreviewCache()
     {
         _cachedHoverSkill = null;
+        InvalidateSkillPreviewState();
         _cachedKeywordTooltipText = string.Empty;
         _cachedRelatedSkillIds = Array.Empty<SkillID>();
         _keywordTooltip?.HideTooltip();
+    }
+
+    private void InvalidateSkillPreviewState()
+    {
+        _activeSkillPreviewSkill = null;
+        _cachedSkillPreviewSkill = null;
+        _cachedSkillPreviewRevision = int.MinValue;
+        _cachedPreviewHostileTargets = Array.Empty<Character>();
+        _cachedPreviewFriendlyTargets = Array.Empty<Character>();
+        _cachedPreviewEffectEntries = Array.Empty<Skill.PreviewEffectEntry>();
+        _cachedPreviewEffectGroups = Array.Empty<CardPreviewTargetEffectGroup>();
+    }
+
+    private int GetCurrentPreviewCacheRevision() =>
+        CurrentSkill?.ComputePreviewCacheRevision() ?? 0;
+
+    public void RefreshSkillPreviewIfStale()
+    {
+        if (CurrentSkill == null)
+            return;
+
+        int revision = GetCurrentPreviewCacheRevision();
+        bool cacheFresh =
+            ReferenceEquals(_cachedSkillPreviewSkill, CurrentSkill)
+            && _cachedSkillPreviewRevision == revision;
+
+        if (!cacheFresh)
+            InvalidateSkillPreviewState();
+
+        if (
+            !ReferenceEquals(_cachedHoverSkill, CurrentSkill)
+            || _cachedHoverPreviewRevision != revision
+        )
+        {
+            _cachedHoverSkill = null;
+            _cachedHoverPreviewRevision = int.MinValue;
+            _cachedKeywordTooltipText = string.Empty;
+            _cachedRelatedSkillIds = Array.Empty<SkillID>();
+        }
+
+        if (_skillPreviewActive)
+            ShowSkillPreview();
     }
 
     private void RefreshCurrentSkillDynamicText()
@@ -669,6 +733,24 @@ public partial class SkillCard : Control
 
     public void ShowSkillPreview()
     {
+        _debugSkillPreviewShowCalls++;
+        int revision = GetCurrentPreviewCacheRevision();
+        if (
+            _skillPreviewActive
+            && ReferenceEquals(_activeSkillPreviewSkill, CurrentSkill)
+            && _cachedSkillPreviewRevision == revision
+        )
+        {
+            _debugSkillPreviewShowSkipped++;
+            return;
+        }
+
+        HideSkillPreview();
+        if (CurrentSkill == null)
+            return;
+
+        _skillPreviewActive = true;
+        _activeSkillPreviewSkill = CurrentSkill;
         ShowTargetPreview();
         ShowDamagePreview();
     }
@@ -677,6 +759,35 @@ public partial class SkillCard : Control
     {
         HideDamagePreview();
         HideTargetPreview();
+        _skillPreviewActive = false;
+        _activeSkillPreviewSkill = null;
+    }
+
+    public void PreserveSkillPreviewOnNextReparent()
+    {
+        _preserveSkillPreviewOnNextExitTree = true;
+    }
+
+    public Dictionary<string, object> GetDebugSkillPreviewState()
+    {
+        return new Dictionary<string, object>
+        {
+            ["hasSkill"] = CurrentSkill != null,
+            ["skillId"] = CurrentSkill?.SkillId?.ToString() ?? string.Empty,
+            ["skillName"] = CurrentSkill?.SkillName ?? string.Empty,
+            ["previewActive"] = _skillPreviewActive,
+            ["activeSkillMatchesCurrent"] = ReferenceEquals(_activeSkillPreviewSkill, CurrentSkill),
+            ["cachedSkillMatchesCurrent"] = ReferenceEquals(_cachedSkillPreviewSkill, CurrentSkill),
+            ["cachedPreviewRevision"] = _cachedSkillPreviewRevision,
+            ["currentPreviewRevision"] = GetCurrentPreviewCacheRevision(),
+            ["cachedHostileTargets"] = _cachedPreviewHostileTargets?.Length ?? 0,
+            ["cachedFriendlyTargets"] = _cachedPreviewFriendlyTargets?.Length ?? 0,
+            ["cachedEffectEntries"] = _cachedPreviewEffectEntries?.Length ?? 0,
+            ["cachedEffectGroups"] = _cachedPreviewEffectGroups?.Length ?? 0,
+            ["showCalls"] = _debugSkillPreviewShowCalls,
+            ["showSkipped"] = _debugSkillPreviewShowSkipped,
+            ["cacheBuilds"] = _debugSkillPreviewCacheBuilds,
+        };
     }
 
     public void SetPlayableHighlight(bool enabled, bool instant = false)
@@ -800,13 +911,13 @@ public partial class SkillCard : Control
             || Button.Disabled
             || Input.IsMouseButtonPressed(MouseButton.Left)
             || !IsInsideTree()
-            || !Button.GetGlobalRect().HasPoint(GetGlobalMousePosition())
         )
         {
+            ApplyPointerHoverState(false, instant: true);
             return;
         }
 
-        ApplyPointerHoverState(true);
+        ApplyPointerHoverState(Button.IsHovered());
     }
 
     public void SetRelatedCardPreviewSuppressed(bool suppressed)
@@ -818,6 +929,8 @@ public partial class SkillCard : Control
 
     public void HideHoverUi()
     {
+        _keywordTooltipHoverVersion++;
+        _pointerHoverActive = false;
         HoverHint.Visible = false;
         _keywordTooltip?.HideTooltip();
         _relatedCardPreview?.HidePreviews();
@@ -836,18 +949,108 @@ public partial class SkillCard : Control
                 return;
             }
 
+            if (_pointerHoverActive && !instant)
+                return;
+
+            _pointerHoverActive = true;
+            ClearStaleSiblingPilePreviewHoverStates();
             HoverHint.Visible = true;
-            ShowKeywordTooltip();
+            ScheduleKeywordTooltip();
             TweenPointerHoverScale(_baseScale * 1.08f, instant);
             if (_pilePreviewVisualsActive)
                 ZIndex = PilePreviewHoverZIndex;
             return;
         }
 
+        _keywordTooltipHoverVersion++;
+        _pointerHoverActive = false;
         HideHoverUi();
         TweenPointerHoverScale(_baseScale, instant);
         if (_pilePreviewVisualsActive)
             ZIndex = 0;
+    }
+
+    private void ScheduleKeywordTooltip()
+    {
+        int version = ++_keywordTooltipHoverVersion;
+        _ = ShowKeywordTooltipDelayed(version);
+    }
+
+    private async Task ShowKeywordTooltipDelayed(int version)
+    {
+        if (KeywordTooltipHoverDelayMs > 0)
+        {
+            SceneTree tree = GetTree();
+            if (tree == null)
+                return;
+
+            await ToSignal(
+                tree.CreateTimer(KeywordTooltipHoverDelayMs / 1000.0f),
+                SceneTreeTimer.SignalName.Timeout
+            );
+        }
+
+        if (
+            version != _keywordTooltipHoverVersion
+            || !_pointerHoverActive
+            || !HoverUiEnabled
+            || Button.Disabled
+            || Input.IsMouseButtonPressed(MouseButton.Left)
+            || !IsInsideTree()
+        )
+        {
+            return;
+        }
+
+        ShowKeywordTooltip();
+    }
+
+    private void ClearStaleSiblingPilePreviewHoverStates()
+    {
+        if (!_pilePreviewVisualsActive || Button == null || !IsInsideTree())
+            return;
+
+        Node holder = GetParent();
+        Node grid = holder?.GetParent();
+        if (grid == null)
+            return;
+
+        Vector2 mousePosition = GetGlobalMousePosition();
+        foreach (Node siblingHolder in grid.GetChildren())
+        {
+            if (siblingHolder == holder)
+                continue;
+
+            SkillCard card = FindSkillCardChild(siblingHolder);
+            if (
+                card == null
+                || !GodotObject.IsInstanceValid(card)
+                || ReferenceEquals(card, this)
+                || !card._pilePreviewVisualsActive
+            )
+            {
+                continue;
+            }
+
+            if (card.Button != null && card.Button.GetGlobalRect().HasPoint(mousePosition))
+                continue;
+
+            card.ApplyPointerHoverState(false, instant: true);
+        }
+    }
+
+    private static SkillCard FindSkillCardChild(Node node)
+    {
+        if (node == null)
+            return null;
+
+        for (int i = 0; i < node.GetChildCount(); i++)
+        {
+            if (node.GetChild(i) is SkillCard card)
+                return card;
+        }
+
+        return null;
     }
 
     private void TweenPointerHoverScale(Vector2 targetScale, bool instant)
@@ -863,8 +1066,19 @@ public partial class SkillCard : Control
         }
 
         _hoverTween = CreateTween();
-        _hoverTween.TweenProperty(this, "scale", targetScale, 0.15f);
+        _hoverTween
+            .TweenProperty(this, "scale", targetScale, GetPointerHoverScaleDuration(targetScale))
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(GetPointerHoverScaleEase(targetScale));
     }
+
+    private float GetPointerHoverScaleDuration(Vector2 targetScale) =>
+        targetScale.DistanceSquaredTo(_baseScale) > 0.0001f ? 0.18f : 0.14f;
+
+    private Tween.EaseType GetPointerHoverScaleEase(Vector2 targetScale) =>
+        targetScale.DistanceSquaredTo(_baseScale) > 0.0001f
+            ? Tween.EaseType.Out
+            : Tween.EaseType.InOut;
 
     private void ShowKeywordTooltip()
     {
@@ -879,7 +1093,8 @@ public partial class SkillCard : Control
 
         if (!hasText && !hasCardPreviews)
         {
-            HideHoverUi();
+            _keywordTooltip?.HideTooltip();
+            _relatedCardPreview?.HidePreviews();
             return;
         }
 
@@ -905,20 +1120,24 @@ public partial class SkillCard : Control
 
     private void EnsureHoverPreviewCache()
     {
-        if (ReferenceEquals(_cachedHoverSkill, CurrentSkill))
-            return;
-
-        _cachedHoverSkill = CurrentSkill;
         if (CurrentSkill == null)
         {
+            _cachedHoverSkill = null;
+            _cachedHoverPreviewRevision = int.MinValue;
             _cachedKeywordTooltipText = string.Empty;
             _cachedRelatedSkillIds = Array.Empty<SkillID>();
             return;
         }
 
+        int revision = GetCurrentPreviewCacheRevision();
+        if (ReferenceEquals(_cachedHoverSkill, CurrentSkill) && _cachedHoverPreviewRevision == revision)
+            return;
+
+        _cachedHoverSkill = CurrentSkill;
+        _cachedHoverPreviewRevision = revision;
         CurrentSkill.UpdateDescription();
         Skill.SkillTooltipHints hints = CurrentSkill.CollectTooltipHints();
-        _cachedRelatedSkillIds = hints.RelatedSkillIds.ToArray();
+        _cachedRelatedSkillIds = hints.RelatedSkillIds;
         _cachedKeywordTooltipText = Skill.BuildKeywordTooltipText(CurrentSkill, hints);
     }
 
@@ -992,21 +1211,53 @@ public partial class SkillCard : Control
             return;
         }
 
+        Vector2 startPosition = Position;
+        Vector2 startScale = Scale;
         _motionTween = CreateTween();
-        _motionTween.SetParallel(true);
         _motionTween
-            .TweenProperty(this, "position", targetPosition, duration)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        _motionTween
-            .TweenProperty(this, "scale", targetScale, duration)
-            .SetTrans(Tween.TransitionType.Cubic)
+            .TweenMethod(
+                Callable.From<float>(progress =>
+                    ApplyBattleMotionProgress(
+                        startPosition,
+                        targetPosition,
+                        startScale,
+                        targetScale,
+                        progress
+                    )
+                ),
+                0f,
+                1f,
+                duration
+            )
+            .SetTrans(Tween.TransitionType.Linear)
             .SetEase(Tween.EaseType.Out);
         _motionTween.Finished += () =>
         {
+            Position = targetPosition;
+            Scale = targetScale;
             _battleMotionTargetPosition = null;
             _battleMotionTargetScale = null;
         };
+    }
+
+    private void ApplyBattleMotionProgress(
+        Vector2 startPosition,
+        Vector2 targetPosition,
+        Vector2 startScale,
+        Vector2 targetScale,
+        float progress
+    )
+    {
+        float easedProgress = EaseBattleMotionProgress(progress);
+        Position = startPosition.Lerp(targetPosition, easedProgress);
+        Scale = startScale.Lerp(targetScale, easedProgress);
+    }
+
+    private static float EaseBattleMotionProgress(float progress)
+    {
+        progress = Mathf.Clamp(progress, 0f, 1f);
+        float inv = 1f - progress;
+        return 1f - inv * inv * inv;
     }
 
     public async Task<bool> FlyWithTrailToControlAsync(
@@ -1043,7 +1294,7 @@ public partial class SkillCard : Control
         PivotOffset = CardBaseSize * 0.5f;
         if (options.CompressDuration > 0f)
         {
-            Tween compressShaderTween = PressEffectPartial(
+            PressEffectPartial(
                 centerVanish: options.CenterVanish,
                 glowMultiplier: options.GlowMultiplier,
                 duration: options.CompressDuration
@@ -1070,10 +1321,7 @@ public partial class SkillCard : Control
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
             compressTween.SetParallel(false);
-            await Task.WhenAll(
-                WaitForTweenFinishedAsync(compressTween),
-                WaitForTweenFinishedAsync(compressShaderTween)
-            );
+            await ToSignal(compressTween, Tween.SignalName.Finished);
         }
 
         if (!GodotObject.IsInstanceValid(this))
@@ -1093,7 +1341,7 @@ public partial class SkillCard : Control
             Rotation = GetRotationWithTopFacingVelocity(initialVelocity);
         UpdateTrailParticlesRotation(particles, initialVelocity);
 
-        Tween flyShaderTween = PressEffectPartial(
+        PressEffectPartial(
             centerVanish: options.CenterVanish,
             glowMultiplier: options.GlowMultiplier,
             duration: options.FlyDuration
@@ -1136,10 +1384,7 @@ public partial class SkillCard : Control
             .SetEase(Tween.EaseType.In);
         flyTween.SetParallel(false);
 
-        await Task.WhenAll(
-            WaitForTweenFinishedAsync(flyTween),
-            WaitForTweenFinishedAsync(flyShaderTween)
-        );
+        await ToSignal(flyTween, Tween.SignalName.Finished);
 
         if (GodotObject.IsInstanceValid(this) && options.HideCardVisualOnArrival)
         {
@@ -1523,45 +1768,23 @@ public partial class SkillCard : Control
             _playableHighlightMaterial =
                 _playableHighlight.Material as ShaderMaterial
                 ?? CreatePlayableHighlightMaterial(shader);
-            _playableHighlight.Material = _playableHighlightMaterial;
-            _playableHighlight.MouseFilter = MouseFilterEnum.Ignore;
-            _playableHighlight.Modulate = PlayableHighlightColor;
-            _playableHighlightWidth = 0.075f;
-            int topIndex = Math.Max(0, root.GetChildCount() - 1);
-            if (_playableHighlight.GetIndex() != topIndex)
-                root.MoveChild(_playableHighlight, topIndex);
+            if (_playableHighlight.Material == null)
+                _playableHighlight.Material = _playableHighlightMaterial;
+            float configuredWidth = GetShaderParameterFloat(_playableHighlightMaterial, "width");
+            if (configuredWidth > 0f)
+                _playableHighlightWidth = configuredWidth;
             return _playableHighlight;
         }
-
-        _playableHighlightMaterial = CreatePlayableHighlightMaterial(shader);
-        _playableHighlight = new ColorRect
-        {
-            Name = "PlayableHighlight",
-            Position = Vector2.Zero,
-            Size = CardBaseSize,
-            CustomMinimumSize = CardBaseSize,
-            MouseFilter = MouseFilterEnum.Ignore,
-            Color = Colors.White,
-            Modulate = PlayableHighlightColor,
-            Material = _playableHighlightMaterial,
-            Visible = false,
-        };
-        root.AddChild(_playableHighlight);
-        return _playableHighlight;
+        return null;
     }
 
     private static ShaderMaterial CreatePlayableHighlightMaterial(Shader shader)
     {
-        var material = new ShaderMaterial
+        return new ShaderMaterial
         {
             Shader = shader,
             ResourceLocalToScene = true,
         };
-        material.SetShaderParameter("ease", 0.005f);
-        material.SetShaderParameter("modulo_width", 0.02f);
-        material.SetShaderParameter("width", 0f);
-        material.SetShaderParameter("ripple_speed", 0.03f);
-        return material;
     }
 
     private CanvasItem CardEffectMaterialTarget
@@ -1708,9 +1931,16 @@ public partial class SkillCard : Control
 
     public override void _ExitTree()
     {
-        HideSkillPreview();
-        _keywordTooltip?.HideTooltip();
-        FreeDamagePreviewLabels();
+        if (_preserveSkillPreviewOnNextExitTree)
+        {
+            _preserveSkillPreviewOnNextExitTree = false;
+        }
+        else
+        {
+            HideSkillPreview();
+            _keywordTooltip?.HideTooltip();
+            FreeDamagePreviewLabels();
+        }
         base._ExitTree();
     }
 
@@ -1894,6 +2124,7 @@ public partial class SkillCard : Control
             Skill.SkillTypes.Attack => "res://asset/svg/SkillIcon/attack.svg",
             Skill.SkillTypes.Survive => "res://asset/svg/SkillIcon/survive.svg",
             Skill.SkillTypes.Special => "res://asset/svg/SkillIcon/special.svg",
+            Skill.SkillTypes.Ability => "res://asset/svg/SkillIcon/ability.svg",
             _ => "res://asset/svg/SkillIcon/default.svg",
         };
 
@@ -1914,22 +2145,25 @@ public partial class SkillCard : Control
         if (CurrentSkill == null)
             return;
 
-        _previewHostileTargets = CurrentSkill.GetPreviewHostileTargets();
-        _previewFriendlyTargets = CurrentSkill.GetPreviewFriendlyTargets();
+        EnsureSkillPreviewCache();
+        _previewHostileTargets = _cachedPreviewHostileTargets;
+        _previewFriendlyTargets = _cachedPreviewFriendlyTargets;
 
-        foreach (
-            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-            target.ShowTargetPreview(HostileTargetPreviewColor);
+        Character[] hostileTargets = _previewHostileTargets;
+        for (int i = 0; i < hostileTargets.Length; i++)
+        {
+            Character target = hostileTargets[i];
+            if (GodotObject.IsInstanceValid(target))
+                target.ShowTargetPreview(HostileTargetPreviewColor);
+        }
 
-        foreach (
-            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-            target.ShowTargetPreview(FriendlyTargetPreviewColor);
+        Character[] friendlyTargets = _previewFriendlyTargets;
+        for (int i = 0; i < friendlyTargets.Length; i++)
+        {
+            Character target = friendlyTargets[i];
+            if (GodotObject.IsInstanceValid(target))
+                target.ShowTargetPreview(FriendlyTargetPreviewColor);
+        }
     }
 
     private void HideTargetPreview()
@@ -1944,19 +2178,21 @@ public partial class SkillCard : Control
             return;
         }
 
-        foreach (
-            var target in (_previewHostileTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-            target.HideTargetPreview();
+        Character[] hostileTargets = _previewHostileTargets;
+        for (int i = 0; i < hostileTargets.Length; i++)
+        {
+            Character target = hostileTargets[i];
+            if (GodotObject.IsInstanceValid(target))
+                target.HideTargetPreview();
+        }
 
-        foreach (
-            var target in (_previewFriendlyTargets ?? Array.Empty<Character>()).Where(
-                GodotObject.IsInstanceValid
-            )
-        )
-            target.HideTargetPreview();
+        Character[] friendlyTargets = _previewFriendlyTargets;
+        for (int i = 0; i < friendlyTargets.Length; i++)
+        {
+            Character target = friendlyTargets[i];
+            if (GodotObject.IsInstanceValid(target))
+                target.HideTargetPreview();
+        }
 
         _previewHostileTargets = Array.Empty<Character>();
         _previewFriendlyTargets = Array.Empty<Character>();
@@ -1968,7 +2204,8 @@ public partial class SkillCard : Control
         if (CurrentSkill == null)
             return;
 
-        var entries = CurrentSkill.GetPreviewEffectEntries();
+        EnsureSkillPreviewCache();
+        var entries = _cachedPreviewEffectEntries;
         if (entries == null || entries.Length == 0)
             return;
 
@@ -1977,17 +2214,27 @@ public partial class SkillCard : Control
             return;
 
         int panelIndex = 0;
-        foreach (
-            var group in entries
-                .Where(entry => entry.Target != null && GodotObject.IsInstanceValid(entry.Target))
-                .GroupBy(entry => entry.Target)
-        )
+        CardPreviewTargetEffectGroup[] groups =
+            _cachedPreviewEffectGroups ?? Array.Empty<CardPreviewTargetEffectGroup>();
+        for (int i = 0; i < groups.Length; i++)
         {
+            CardPreviewTargetEffectGroup group = groups[i];
+            Character target = group.Target;
+            if (
+                target == null
+                || !GodotObject.IsInstanceValid(target)
+                || group.Entries == null
+                || group.Entries.Length == 0
+            )
+            {
+                continue;
+            }
+
             var panel = GetOrCreateDamagePanel(layer, panelIndex++);
             PreviewEffectDisplay.ShowPanel(
                 panel,
-                group.ToArray(),
-                GetTargetScreenPosition(group.Key),
+                group.Entries,
+                GetTargetScreenPosition(target),
                 DamagePreviewLabelOffset
             );
         }
@@ -1997,6 +2244,58 @@ public partial class SkillCard : Control
             if (GodotObject.IsInstanceValid(_previewDamagePanels[i]))
                 _previewDamagePanels[i].Visible = false;
         }
+    }
+
+    private void BuildPreviewDamageEntryGroups(Skill.PreviewEffectEntry[] entries)
+    {
+        _previewDamageTargetsBuffer.Clear();
+        foreach (List<Skill.PreviewEffectEntry> targetEntries in _previewDamageEntriesByTarget.Values)
+            targetEntries.Clear();
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Skill.PreviewEffectEntry entry = entries[i];
+            Character target = entry.Target;
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            if (!_previewDamageEntriesByTarget.TryGetValue(target, out var targetEntries))
+            {
+                targetEntries = new List<Skill.PreviewEffectEntry>(4);
+                _previewDamageEntriesByTarget[target] = targetEntries;
+            }
+            if (targetEntries.Count == 0)
+                _previewDamageTargetsBuffer.Add(target);
+
+            targetEntries.Add(entry);
+        }
+    }
+
+    private void EnsureSkillPreviewCache()
+    {
+        if (CurrentSkill == null)
+        {
+            _cachedSkillPreviewSkill = null;
+            _cachedSkillPreviewRevision = int.MinValue;
+            _cachedPreviewHostileTargets = Array.Empty<Character>();
+            _cachedPreviewFriendlyTargets = Array.Empty<Character>();
+            _cachedPreviewEffectEntries = Array.Empty<Skill.PreviewEffectEntry>();
+            _cachedPreviewEffectGroups = Array.Empty<CardPreviewTargetEffectGroup>();
+            return;
+        }
+
+        int revision = GetCurrentPreviewCacheRevision();
+        if (ReferenceEquals(_cachedSkillPreviewSkill, CurrentSkill) && _cachedSkillPreviewRevision == revision)
+            return;
+
+        _cachedSkillPreviewSkill = CurrentSkill;
+        _cachedSkillPreviewRevision = revision;
+        _debugSkillPreviewCacheBuilds++;
+        CardEffectPreviewSnapshot snapshot = CardEffectPreviewEcs.GetSnapshot(CurrentSkill);
+        _cachedPreviewHostileTargets = snapshot.HostileTargets;
+        _cachedPreviewFriendlyTargets = snapshot.FriendlyTargets;
+        _cachedPreviewEffectEntries = snapshot.EffectEntries;
+        _cachedPreviewEffectGroups = snapshot.EffectGroupsByTarget;
     }
 
     private void HideDamagePreview()

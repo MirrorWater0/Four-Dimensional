@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -21,21 +20,24 @@ public partial class CharacterControl
             return;
 
         Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
-        int handCount = visibleSlotIndexes.Length;
+        int handCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: true
+        );
         float rowWidth = Math.Max(_cardRow.Size.X, 0f);
         float rowHeight = Math.Max(_cardRow.Size.Y, cardSize.Y);
         float cardY = GetHandCardY(rowHeight, cardSize);
         Vector2 hiddenPosition = new(-cardSize.X * 2f, cardY);
-        Dictionary<int, Vector2> targetPositions = BuildHandLayoutTargetPositions(
-            visibleSlotIndexes,
+        BuildHandLayoutTargetPositions(
+            _visibleHandSlotIndexesBuffer,
+            handCount,
             cardSize,
             rowWidth,
             rowHeight
         );
-        var handOrderBySlotIndex = new Dictionary<int, int>();
-        for (int order = 0; order < visibleSlotIndexes.Length; order++)
-            handOrderBySlotIndex[visibleSlotIndexes[order]] = order;
+        Array.Fill(_handLayoutOrderBySlotIndex, -1);
+        for (int order = 0; order < handCount; order++)
+            _handLayoutOrderBySlotIndex[_visibleHandSlotIndexesBuffer[order]] = order;
 
         for (int i = 0; i < _cardSlots.Length; i++)
         {
@@ -46,14 +48,20 @@ public partial class CharacterControl
             if (_turnEndStatusTriggerCardIndexes.Contains(i))
                 continue;
 
-            bool isDetachedFromHand = IsCardDetachedFromHandLayout(i) || IsCardCommitted(i);
+            bool isDetachedFromHand =
+                IsCardDetachedFromHandLayout(i)
+                || IsCardCommitted(i);
             slot.Size = cardSize;
             slot.CustomMinimumSize = cardSize;
             slot.PivotOffset = cardSize * 0.5f;
-            if (handOrderBySlotIndex.TryGetValue(i, out int handOrder))
-                ApplyHandCardLayer(i, handOrder);
-            else
-                ApplyHandCardLayer(i, 0);
+            bool preservesHandLayer = _discardSelectionOriginalVisualHandIndexes.Contains(i);
+            if (!preservesHandLayer)
+            {
+                if (_handLayoutOrderBySlotIndex[i] >= 0)
+                    ApplyHandCardLayer(i, _handLayoutOrderBySlotIndex[i]);
+                else
+                    ApplyHandCardLayer(i, 0);
+            }
 
             if (isDetachedFromHand)
             {
@@ -63,17 +71,21 @@ public partial class CharacterControl
                 _cardSlotLayoutRotationTargets[i] = null;
                 _cardSlotLayoutFollowActive[i] = false;
                 _cardSlotLayoutPixelsPerSecondOverrides[i] = 0f;
+                ClearDrawEntryArc(i);
                 ClearDrawEntryState(i, revealCard: true);
                 continue;
             }
 
-            Vector2 targetPosition = targetPositions.TryGetValue(i, out Vector2 visiblePosition)
-                ? visiblePosition
+            Vector2 targetPosition = _handLayoutTargetPositionValid[i]
+                ? _handLayoutTargetPositions[i]
                 : hiddenPosition;
+            float targetRotation = _handLayoutTargetPositionValid[i]
+                ? _handLayoutTargetRotations[i]
+                : 0f;
             if (_discardSelectionFlyingReturnHandIndexes.Contains(i))
             {
                 _cardSlotLayoutTargets[i] = targetPosition;
-                _cardSlotLayoutRotationTargets[i] = 0f;
+                _cardSlotLayoutRotationTargets[i] = targetRotation;
                 if (!_cardSlotLayoutFollowActive[i])
                 {
                     _cardSlotLayoutFollowActive[i] = true;
@@ -83,21 +95,25 @@ public partial class CharacterControl
             }
 
             bool drawEntry = _drawEntrySlotIndexes.Contains(i);
-            MoveCardSlotTo(i, targetPosition, 0f, instant || !_layoutInitialized, drawEntry);
+            MoveCardSlotTo(i, targetPosition, targetRotation, instant || !_layoutInitialized, drawEntry);
         }
 
         _layoutInitialized = true;
     }
 
-    private Dictionary<int, Vector2> BuildHandLayoutTargetPositions(
+    private void BuildHandLayoutTargetPositions(
         int[] visibleSlotIndexes,
+        int handCount,
         Vector2 cardSize,
         float rowWidth,
         float rowHeight
     )
     {
-        visibleSlotIndexes ??= Array.Empty<int>();
-        int handCount = visibleSlotIndexes?.Length ?? 0;
+        Array.Fill(_handLayoutTargetPositionValid, false);
+        Array.Fill(_handLayoutTargetRotations, 0f);
+        if (visibleSlotIndexes == null || handCount <= 0)
+            return;
+
         float preferredStep =
             handCount > 1 ? cardSize.X * HandCardOverlapStepRatio : cardSize.X + HandCardGap;
         float minStep = cardSize.X * HandCardMinStepRatio;
@@ -109,14 +125,13 @@ public partial class CharacterControl
             handCount > 1 ? cardSize.X + cardStep * (handCount - 1) : handCount * cardSize.X;
         float x = (rowWidth - totalWidth) / 2f;
         float cardY = GetHandCardY(rowHeight, cardSize);
-        int hoveredOrder = Array.IndexOf(visibleSlotIndexes, _hoveredCardIndex);
+        int hoveredOrder = FindVisibleHandOrder(visibleSlotIndexes, handCount, _hoveredCardIndex);
         float overlapWidth = Math.Max(0f, cardSize.X - cardStep);
         float hoverSpread = Mathf.Clamp(
             overlapWidth * HandCardHoverSpreadRatio,
             0f,
             HandCardMaxHoverSpread
         );
-        var targetPositions = new Dictionary<int, Vector2>();
         for (int order = 0; order < handCount; order++)
         {
             int slotIndex = visibleSlotIndexes[order];
@@ -128,10 +143,25 @@ public partial class CharacterControl
                 targetX += Math.Sign(order - hoveredOrder) * hoverSpread * distanceFalloff;
             }
 
-            targetPositions[slotIndex] = new Vector2(targetX, cardY);
+            _handLayoutTargetPositionValid[slotIndex] = true;
+            _handLayoutTargetPositions[slotIndex] = new Vector2(targetX, cardY);
+            _handLayoutTargetRotations[slotIndex] = 0f;
+        }
+    }
+
+    private static int FindVisibleHandOrder(int[] visibleSlotIndexes, int handCount, int slotIndex)
+    {
+        if (visibleSlotIndexes == null || slotIndex < 0)
+            return -1;
+
+        int count = Math.Min(handCount, visibleSlotIndexes.Length);
+        for (int order = 0; order < count; order++)
+        {
+            if (visibleSlotIndexes[order] == slotIndex)
+                return order;
         }
 
-        return targetPositions;
+        return -1;
     }
 
     private float GetHandCardY(float rowHeight, Vector2 cardSize)
@@ -162,6 +192,7 @@ public partial class CharacterControl
             {
                 _cardSlotLayoutFollowActive[i] = false;
                 _cardSlotLayoutPixelsPerSecondOverrides[i] = 0f;
+                ClearDrawEntryArc(i);
                 continue;
             }
 
@@ -207,6 +238,34 @@ public partial class CharacterControl
             UpdateProcessState();
     }
 
+    private void ClearDrawEntryArc(int index)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        _drawEntryArcActive[index] = false;
+        _drawEntryArcElapsed[index] = 0f;
+        _drawEntryArcDurations[index] = 0f;
+        _drawEntryArcVelocities[index] = Vector2.Zero;
+        _drawEntryArcOvershootPositions[index] = Vector2.Zero;
+        _drawEntryArcTargetPositions[index] = Vector2.Zero;
+    }
+
+    private static Vector2 CubicBezier(
+        Vector2 a,
+        Vector2 b,
+        Vector2 c,
+        Vector2 d,
+        float t
+    )
+    {
+        float inv = 1f - t;
+        return a * (inv * inv * inv)
+            + b * (3f * inv * inv * t)
+            + c * (3f * inv * t * t)
+            + d * (t * t * t);
+    }
+
     private void UpdateProcessState()
     {
         SetProcess(
@@ -218,7 +277,13 @@ public partial class CharacterControl
 
     private bool IsAnyHandLayoutFollowerActive()
     {
-        return _cardSlotLayoutFollowActive?.Any(active => active) == true;
+        for (int i = 0; i < _cardSlotLayoutFollowActive.Length; i++)
+        {
+            if (_cardSlotLayoutFollowActive[i])
+                return true;
+        }
+
+        return false;
     }
 
     private void ApplyHandCardLayer(int index, int handOrder)
@@ -236,9 +301,6 @@ public partial class CharacterControl
             layer = HandCardHoverZIndex;
         else if (index == _liftedCardIndex || IsCardCommitted(index))
             layer = Math.Max(slot.ZIndex, PlayedCardZIndex);
-        else if (_discardSelectionFlyingReturnHandIndexes.Contains(index))
-            layer = DiscardSelectionSelectedCardZIndex;
-
         slot.ZIndex = layer;
         if (card != null && GodotObject.IsInstanceValid(card))
             card.ZIndex = layer;
@@ -246,10 +308,17 @@ public partial class CharacterControl
 
     private List<int> BuildHandCardInputPriorityOrder()
     {
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
-        var ordered = new List<int>(visibleSlotIndexes.Length);
-        foreach (int index in visibleSlotIndexes)
+        int visibleCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: true
+        );
+        List<int> ordered = _handCardInputPriorityOrderBuffer;
+        ordered.Clear();
+        for (int i = 0; i < visibleCount; i++)
+        {
+            int index = _visibleHandSlotIndexesBuffer[i];
             ordered.Add(index);
+        }
 
         if (_hoveredCardIndex >= 0 && ordered.Remove(_hoveredCardIndex))
             ordered.Add(_hoveredCardIndex);
@@ -280,28 +349,40 @@ public partial class CharacterControl
         if (orderedVisible.Count == 0)
             return;
 
-        int insertIndex = GetHandCardInputInsertIndex();
         foreach (int slotIndex in orderedVisible)
         {
             Control slot = _cardSlots[slotIndex];
             if (slot == null || !GodotObject.IsInstanceValid(slot) || slot.GetParent() != _cardRow)
                 continue;
 
+            int insertIndex = GetHandCardInputInsertIndex();
+            if (slot.GetIndex() < insertIndex)
+                insertIndex--;
+
+            insertIndex = Math.Clamp(insertIndex, 0, Math.Max(0, _cardRow.GetChildCount() - 1));
             _cardRow.MoveChild(slot, insertIndex);
         }
     }
 
     private void ApplyHandCardHoverInputOrder()
     {
-        if (_hoveredCardIndex != -1)
-            ScheduleCardHoverRefresh();
+        SyncHandCardInputOrder();
+        ScheduleCardHoverRefresh();
     }
 
     private int GetHandOrderForSlotIndex(int index)
     {
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: true);
-        int order = Array.IndexOf(visibleSlotIndexes, index);
-        return order >= 0 ? order : Math.Max(0, index);
+        int visibleCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: true
+        );
+        for (int order = 0; order < visibleCount; order++)
+        {
+            if (_visibleHandSlotIndexesBuffer[order] == index)
+                return order;
+        }
+
+        return Math.Max(0, index);
     }
 
     private void MoveCardSlotTo(
@@ -355,6 +436,7 @@ public partial class CharacterControl
             _cardSlotLayoutRotationTargets[index] = targetRotation;
             _cardSlotLayoutFollowActive[index] = false;
             _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+            ClearDrawEntryArc(index);
             ClearDrawEntryState(index, revealCard: true);
             CancelDrawEntryPreview(index);
             slot.Position = targetPosition;
@@ -385,6 +467,7 @@ public partial class CharacterControl
         _cardSlotLayoutTargets[index] = targetPosition;
         _cardSlotLayoutRotationTargets[index] = targetRotation;
         _cardSlotLayoutFollowActive[index] = true;
+        ClearDrawEntryArc(index);
         slot.Scale = Vector2.One;
         UpdateProcessState();
     }
@@ -501,7 +584,13 @@ public partial class CharacterControl
         Vector2 startCenter = GetDrawEntryStartCenter(index);
         Vector2 targetCenter = GetDrawEntryTargetCenter(index, currentTargetPosition);
 
-        PrepareDrawEntryPreviewTrail(movingCard, out Line trail, out GpuParticles2D particles);
+        bool enableTrailParticles = _drawEntrySlotIndexes.Count <= 4;
+        PrepareDrawEntryPreviewTrail(
+            movingCard,
+            out Line trail,
+            out GpuParticles2D particles,
+            enableTrailParticles
+        );
         UpdateTrailParticlesRotation(particles, targetCenter - startCenter);
 
         await WaitForDrawEntrySlotArrivalAsync(index, version, movingCard, particles);
@@ -551,7 +640,7 @@ public partial class CharacterControl
 
         slot.ClipContents = false;
         slot.Position = GetDrawEntryStartSlotPosition(index);
-        slot.Rotation = 0f;
+        slot.Rotation = GetDrawEntryStartRotation(index);
         slot.Scale = Vector2.One;
 
         card.RestoreDisplayState();
@@ -559,7 +648,7 @@ public partial class CharacterControl
         card.CharacterName.Text = GetSkillOwnerDisplayName(skill);
         card.Visible = true;
         card.MouseFilter = MouseFilterEnum.Stop;
-        SetCardButtonInputEnabled(card, false);
+        SetCardButtonInputEnabled(card, true);
         card.HoverHint.Visible = false;
         card.PivotOffset = BattleCardBaseSize * 0.5f;
         card.Scale = BattleCardScale;
@@ -570,6 +659,7 @@ public partial class CharacterControl
         _cardSlotLayoutTargets[index] = targetPosition;
         _cardSlotLayoutRotationTargets[index] = 0f;
         _cardSlotLayoutFollowActive[index] = true;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = HandDrawEntryPixelsPerSecond;
         UpdateProcessState();
         _drawEntryPreviewCards[index] = card;
         return card;
@@ -582,6 +672,8 @@ public partial class CharacterControl
         GpuParticles2D particles
     )
     {
+        Vector2 previousCenter =
+            movingCard.GetGlobalTransformWithCanvas() * movingCard.PivotOffset;
         while (
             CanContinueDrawEntryAnimation(index, version, movingCard)
             && _cardSlotLayoutFollowActive[index]
@@ -594,9 +686,34 @@ public partial class CharacterControl
                 index,
                 GetDrawEntryTargetSlotPosition(index, Vector2.Zero)
             );
-            UpdateTrailParticlesRotation(particles, targetCenter - currentCenter);
+            Vector2 velocity = currentCenter - previousCenter;
+            UpdateTrailParticlesRotation(
+                particles,
+                velocity.LengthSquared() > 0.01f ? velocity : targetCenter - currentCenter
+            );
+            previousCenter = currentCenter;
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
+    }
+
+    private void DetachDrawEntryForInteraction(int index, SkillCard card)
+    {
+        if (
+            !IsCardIndexValid(index)
+            || card == null
+            || !GodotObject.IsInstanceValid(card)
+            || !_drawEntryPreviewCards.TryGetValue(index, out SkillCard previewCard)
+            || !ReferenceEquals(previewCard, card)
+        )
+        {
+            return;
+        }
+
+        _drawEntryAnimationVersions[index]++;
+        _drawEntryPreviewCards.Remove(index);
+        _cardSlotLayoutFollowActive[index] = false;
+        _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        ClearDrawEntryState(index, revealCard: true, hideTrail: true);
     }
 
     private void FinishDrawEntrySlotArrival(int index, SkillCard card)
@@ -612,11 +729,19 @@ public partial class CharacterControl
             slot.Scale = Vector2.One;
             _cardSlotLayoutFollowActive[index] = false;
             _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+            ClearDrawEntryArc(index);
         }
 
-        card.Position = Vector2.Zero;
         card.Rotation = 0f;
-        card.Scale = BattleCardScale;
+        bool preserveHoverMotion =
+            _hoveredCardIndex == index
+            && _liftedCardIndex == -1
+            && CanHoverHandCardAt(index);
+        if (!preserveHoverMotion)
+        {
+            card.Position = Vector2.Zero;
+            card.Scale = BattleCardScale;
+        }
     }
 
     private async Task ReturnDrawEntryCardToSlotSmoothAsync(int index, SkillCard card)
@@ -707,6 +832,25 @@ public partial class CharacterControl
             : GetDrawEntryStartCenter();
     }
 
+    private Vector2 GetDrawEntryStartCenterForOrder(int order)
+    {
+        Vector2 baseCenter = GetDrawEntryStartCenter();
+        if (order <= 0)
+            return baseCenter;
+
+        float side = (order & 1) == 0 ? -1f : 1f;
+        float x = side * (14f + (order % 3) * 9f);
+        float y = -Math.Min(40f, 8f + order * 4f) + Mathf.Sin(order * 1.21f) * 6f;
+        return baseCenter + new Vector2(x, y);
+    }
+
+    private float GetDrawEntryStartRotation(int index)
+    {
+        int order = GetDrawEntryOrder(index);
+        float side = (order & 1) == 0 ? -1f : 1f;
+        return Mathf.DegToRad(side * (4f + (order % 3) * 2.5f));
+    }
+
     private Vector2 GetDrawEntryStartSlotPosition(int index)
     {
         Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
@@ -751,7 +895,19 @@ public partial class CharacterControl
             return;
 
         ClearDrawEntryState(index, revealCard, hideTrail: true);
-        RefreshTurnUi();
+        if (!IsAnyCardDrawEntryBusy())
+        {
+            // The pointer can already be over the final card when its Button changes from
+            // disabled/ignored to interactive. Godot does not guarantee a new MouseEntered
+            // event in that case, so finish the batch with a synchronous input-state rebuild
+            // and force the stationary-pointer validator to run once more.
+            _handHoverValidationPointerInitialized = false;
+            RefreshTurnUi();
+            ScheduleCardHoverRefresh();
+            return;
+        }
+
+        RequestTurnUiRefresh(refreshHover: true);
     }
 
     private bool CanContinueDrawEntryAnimation(int index, int version, SkillCard previewCard)
@@ -828,17 +984,31 @@ public partial class CharacterControl
         if (version != _shuffleDelayedLayoutRefreshVersion || !IsInsideTree())
             return;
 
-        RefreshTurnUi();
+        RequestTurnUiRefresh(refreshHover: true);
     }
 
     private int[] GetVisibleHandSlotIndexes(bool excludeLiftedCard = false)
     {
-        Skill[] hand = GetActiveHandSkills();
-        if (hand == null)
+        int count = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard
+        );
+        if (count <= 0)
             return Array.Empty<int>();
 
+        int[] indexes = new int[count];
+        Array.Copy(_visibleHandSlotIndexesBuffer, indexes, count);
+        return indexes;
+    }
+
+    private int FillVisibleHandSlotIndexes(int[] buffer, bool excludeLiftedCard = false)
+    {
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null || buffer == null || buffer.Length == 0)
+            return 0;
+
         int max = Math.Min(hand.Length, _cards.Length);
-        var indexes = new List<int>(max);
+        int count = 0;
         for (int i = 0; i < max; i++)
         {
             if (excludeLiftedCard && IsCardDetachedFromHandLayout(i))
@@ -846,10 +1016,10 @@ public partial class CharacterControl
             if (_turnEndStatusTriggerCardIndexes.Contains(i))
                 continue;
             if (hand[i] != null)
-                indexes.Add(i);
+                buffer[count++] = i;
         }
 
-        return indexes.ToArray();
+        return count;
     }
 
     private bool IsCardDetachedFromHandLayout(int index)
@@ -858,15 +1028,19 @@ public partial class CharacterControl
             return false;
 
         return index == _liftedCardIndex
+            || _discardSelectionOriginalVisualHandIndexes.Contains(index)
             || (
                 _manualTargetArrowSelectionActive
                 && index == _manualTargetArrowCardIndex
             );
     }
 
-    private Vector2?[] CaptureCardSlotPositions()
+    private void CaptureCardSlotPositions(Vector2?[] positions)
     {
-        var positions = new Vector2?[_cardSlots.Length];
+        if (positions == null)
+            return;
+
+        Array.Clear(positions, 0, positions.Length);
         for (int i = 0; i < _cardSlots.Length; i++)
         {
             Control slot = _cardSlots[i];
@@ -875,13 +1049,14 @@ public partial class CharacterControl
 
             positions[i] = slot.Position;
         }
-
-        return positions;
     }
 
-    private float?[] CaptureCardSlotRotations()
+    private void CaptureCardSlotRotations(float?[] rotations)
     {
-        var rotations = new float?[_cardSlots.Length];
+        if (rotations == null)
+            return;
+
+        Array.Clear(rotations, 0, rotations.Length);
         for (int i = 0; i < _cardSlots.Length; i++)
         {
             Control slot = _cardSlots[i];
@@ -890,8 +1065,6 @@ public partial class CharacterControl
 
             rotations[i] = slot.Rotation;
         }
-
-        return rotations;
     }
 
     private bool IsDiscardSelectionReturnSlot(int index) =>
@@ -939,6 +1112,7 @@ public partial class CharacterControl
         _cardSlotLayoutRotationTargets[index] = null;
         _cardSlotLayoutFollowActive[index] = false;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        ClearDrawEntryArc(index);
         _cardSlots[index].Position = startPosition;
         _cardSlots[index].Rotation = 0f;
         _cardSlots[index].Scale = Vector2.One;
@@ -961,36 +1135,6 @@ public partial class CharacterControl
         startPosition = NormalizeHandReorderStartPosition(startPosition);
 
         return true;
-    }
-
-    private void DetachDrawEntryStateForImmediateInteraction(int index)
-    {
-        if (!IsCardIndexValid(index) || !IsCardDrawEntryBusy(index))
-            return;
-
-        TryDetachDrawEntryStateForHandReorder(index, out _);
-
-        Control slot = _cardSlots[index];
-        SkillCard card = _cards[index];
-        if (
-            slot == null
-            || !GodotObject.IsInstanceValid(slot)
-            || card == null
-            || !GodotObject.IsInstanceValid(card)
-        )
-        {
-            return;
-        }
-
-        Vector2 globalCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
-        slot.Position = GetCardRowLocalPosition(globalCenter)
-            - BattleCardBaseSize * BattleCardScale * 0.5f;
-        slot.Rotation = 0f;
-        slot.Scale = Vector2.One;
-        card.Position = Vector2.Zero;
-        card.Rotation = 0f;
-        card.Scale = BattleCardScale;
-        card.Visible = true;
     }
 
     private void PrepareNewHandCardSlotForDrawEntry(int index)
@@ -1033,6 +1177,7 @@ public partial class CharacterControl
         _cardSlotLayoutRotationTargets[index] = null;
         _cardSlotLayoutFollowActive[index] = false;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        ClearDrawEntryArc(index);
         _drawEntrySlotIndexes.Add(index);
         _drawEntrySlotOrders[index] = drawOrder;
         _hiddenPendingDrawEntrySlotIndexes.Add(index);
@@ -1075,6 +1220,7 @@ public partial class CharacterControl
         _cardSlotLayoutRotationTargets[index] = null;
         _cardSlotLayoutFollowActive[index] = false;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        ClearDrawEntryArc(index);
         CancelDrawEntryPreview(index);
         _drawEntrySlotIndexes.Remove(index);
         _drawEntrySlotOrders.Remove(index);
@@ -1112,6 +1258,7 @@ public partial class CharacterControl
         _cardSlotLayoutRotationTargets[index] = null;
         _cardSlotLayoutFollowActive[index] = false;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
+        ClearDrawEntryArc(index);
         CancelDrawEntryPreview(index);
         _drawEntrySlotIndexes.Remove(index);
         _drawEntrySlotOrders.Remove(index);
@@ -1157,6 +1304,7 @@ public partial class CharacterControl
         _drawEntrySlotOrders.Remove(index);
         _drawEntryStartCenters.Remove(index);
         _drawEntryFromPlayedCardOrigin.Remove(index);
+        ClearDrawEntryArc(index);
         if (_cardSlots[index] != null && GodotObject.IsInstanceValid(_cardSlots[index]))
             _cardSlots[index].Scale = Vector2.One;
 
@@ -1201,7 +1349,8 @@ public partial class CharacterControl
     private static void PrepareDrawEntryPreviewTrail(
         SkillCard card,
         out Line trail,
-        out GpuParticles2D particles
+        out GpuParticles2D particles,
+        bool enableParticles = true
     )
     {
         trail = null;
@@ -1230,6 +1379,9 @@ public partial class CharacterControl
         trail.Modulate = Colors.White;
         trail.Width = HandDrawTrailWidth;
         trail.ClearPoints();
+
+        if (!enableParticles)
+            return;
 
         particles = card.DrawTrailParticles;
         if (particles == null || !GodotObject.IsInstanceValid(particles))

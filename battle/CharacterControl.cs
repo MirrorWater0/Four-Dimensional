@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -41,8 +40,10 @@ public partial class CharacterControl : Control
     {
         SkillCard.PrewarmExhaustEffect();
         BuildActionAreaUi();
+        StartHandHoverValidationTimer();
         SetProcess(false);
         SetProcessInput(true);
+        SetProcessUnhandledInput(true);
         Visible = false;
     }
 
@@ -57,6 +58,50 @@ public partial class CharacterControl : Control
 
     public override void _Input(InputEvent @event)
     {
+        if (@event is InputEventMouseButton trackedMouseButton)
+        {
+            TrackCardLeftMouseButtonState(trackedMouseButton);
+            if (TryHandleResponsiveHandCardPress(trackedMouseButton))
+            {
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (
+                !trackedMouseButton.Pressed
+                && trackedMouseButton.ButtonIndex == MouseButton.Left
+                && _suppressHandHoverUntilMouseMove
+                && !_handHoverSuppressionRequiresMouseMove
+            )
+            {
+                _suppressHandHoverUntilMouseMove = false;
+                _handHoverSuppressionRequiresMouseMove = false;
+            }
+        }
+        else if (@event is InputEventMouseMotion)
+        {
+            _handHoverValidationPointerInitialized = true;
+            _lastHandHoverValidationPointerPosition = GetHandCardPointerPosition();
+            if (_suppressHandHoverUntilMouseMove)
+            {
+                Vector2 mousePosition = GetHandCardPointerPosition();
+                if (
+                    !Input.IsMouseButtonPressed(MouseButton.Left)
+                    && mousePosition.DistanceSquaredTo(_handHoverSuppressionMousePosition)
+                        >= HandHoverResumeMouseMoveDistance * HandHoverResumeMouseMoveDistance
+                )
+                {
+                    _suppressHandHoverUntilMouseMove = false;
+                    _handHoverSuppressionRequiresMouseMove = false;
+                    ScheduleCardHoverRefresh();
+                }
+            }
+            else
+            {
+                ScheduleCardHoverRefresh();
+            }
+        }
+
         if (
             @event is InputEventKey key
             && key.Pressed
@@ -69,17 +114,6 @@ public partial class CharacterControl : Control
         )
         {
             OnEndTurnPressed();
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-
-        if (
-            @event is InputEventKey handCardKey
-            && handCardKey.Pressed
-            && !handCardKey.Echo
-            && TryHandleHandCardIndexShortcut(handCardKey)
-        )
-        {
             GetViewport().SetInputAsHandled();
             return;
         }
@@ -125,67 +159,6 @@ public partial class CharacterControl : Control
         }
 
         if (
-            @event is InputEventMouseButton leftMouseButton
-            && leftMouseButton.Pressed
-            && leftMouseButton.ButtonIndex == MouseButton.Left
-            && _liftedCardIndex != -1
-            && !_manualTargetArrowSelectionActive
-        )
-        {
-            if (!IsMouseOutsideHandArea())
-            {
-                GetViewport().SetInputAsHandled();
-                return;
-            }
-
-            if (_suppressCardButtonPressUntilLeftRelease)
-            {
-                GetViewport().SetInputAsHandled();
-                return;
-            }
-
-            int liftedIndex = _liftedCardIndex;
-            _suppressCardButtonPressUntilLeftRelease = true;
-            _ = HandleCardPressedAsync(liftedIndex, allowSuppressedPress: true);
-            GetViewport().SetInputAsHandled();
-            return;
-        }
-
-        if (
-            @event is InputEventMouseButton leftMouseRelease
-            && !leftMouseRelease.Pressed
-            && leftMouseRelease.ButtonIndex == MouseButton.Left
-        )
-        {
-            if (_suppressCardButtonPressUntilLeftRelease)
-                CallDeferred(nameof(ClearCardButtonPressSuppression));
-
-            if (_suppressHandHoverUntilMouseMove)
-            {
-                _suppressHandHoverUntilMouseMove = false;
-                ScheduleCardHoverRefresh();
-            }
-        }
-
-        if (_suppressHandHoverUntilMouseMove && @event is InputEventMouseMotion)
-        {
-            Vector2 mousePosition = GetViewport()?.GetMousePosition() ?? Vector2.Zero;
-            if (
-                !Input.IsMouseButtonPressed(MouseButton.Left)
-                && mousePosition.DistanceSquaredTo(_handHoverSuppressionMousePosition)
-                    >= HandHoverResumeMouseMoveDistance * HandHoverResumeMouseMoveDistance
-            )
-            {
-                _suppressHandHoverUntilMouseMove = false;
-                ScheduleCardHoverRefresh();
-            }
-        }
-        else if (@event is InputEventMouseMotion && _liftedCardIndex == -1)
-        {
-            ScheduleCardHoverRefresh();
-        }
-
-        if (
             @event is InputEventMouseButton mouseButton
             && mouseButton.Pressed
             && mouseButton.ButtonIndex == MouseButton.Right
@@ -215,6 +188,61 @@ public partial class CharacterControl : Control
         }
     }
 
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (
+            @event is InputEventKey handCardKey
+            && handCardKey.Pressed
+            && !handCardKey.Echo
+            && TryHandleHandCardIndexShortcut(handCardKey)
+        )
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (
+            @event is InputEventMouseButton leftMouseButton
+            && leftMouseButton.Pressed
+            && leftMouseButton.ButtonIndex == MouseButton.Left
+            && _liftedCardIndex != -1
+            && !_manualTargetArrowSelectionActive
+        )
+        {
+            if (!IsMouseOutsideHandArea())
+            {
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (IsCardButtonPressSuppressed())
+            {
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            int liftedIndex = _liftedCardIndex;
+            SuppressCardButtonPressForCurrentLeftPress();
+            TryStartHandCardPress(liftedIndex, allowSuppressedPress: true);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (
+            @event is InputEventMouseButton leftMouseRelease
+            && !leftMouseRelease.Pressed
+            && leftMouseRelease.ButtonIndex == MouseButton.Left
+        )
+        {
+            if (_suppressHandHoverUntilMouseMove && !_handHoverSuppressionRequiresMouseMove)
+            {
+                _suppressHandHoverUntilMouseMove = false;
+                _handHoverSuppressionRequiresMouseMove = false;
+                ScheduleCardHoverRefresh();
+            }
+        }
+    }
+
     private bool TryHandleHandCardIndexShortcut(InputEventKey key)
     {
         if (!CanUseHandCardIndexShortcut(key))
@@ -224,12 +252,15 @@ public partial class CharacterControl : Control
         if (shortcutNumber <= 0)
             return false;
 
-        int[] visibleSlotIndexes = GetVisibleHandSlotIndexes(excludeLiftedCard: false);
+        int visibleCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: false
+        );
         int orderIndex = shortcutNumber - 1;
-        if (orderIndex < 0 || orderIndex >= visibleSlotIndexes.Length)
+        if (orderIndex < 0 || orderIndex >= visibleCount)
             return false;
 
-        int slotIndex = visibleSlotIndexes[orderIndex];
+        int slotIndex = _visibleHandSlotIndexesBuffer[orderIndex];
         _ = HandleHandCardIndexShortcutAsync(slotIndex);
         return true;
     }
@@ -245,7 +276,19 @@ public partial class CharacterControl : Control
             && !key.ShiftPressed
             && Visible
             && _uiBuilt
-            && !IsBlockingMenuOpen();
+            && !IsHandInputBlockedByOverlay();
+    }
+
+    private bool IsHandInputBlockedByOverlay()
+    {
+        bool pileOverlayBlocksInput =
+            _pileOverlayRoot != null
+            && GodotObject.IsInstanceValid(_pileOverlayRoot)
+            && _pileOverlayRoot.Visible
+            && !_pileOverlayContentTemporarilyHidden;
+        return pileOverlayBlocksInput
+            || IsManualTargetSelectionPending()
+            || IsBlockingMenuOpen();
     }
 
     private static int GetHandCardShortcutNumber(InputEventKey key)
@@ -284,25 +327,17 @@ public partial class CharacterControl : Control
 
     private bool IsBlockingMenuOpen()
     {
-        Node root = GetTree()?.Root;
-        return IsBlockingMenuOpen(root);
-    }
+        if (_blockingMenu != null && GodotObject.IsInstanceValid(_blockingMenu))
+            return _blockingMenu.Visible;
 
-    private static bool IsBlockingMenuOpen(Node node)
-    {
-        if (node == null)
+        if (_blockingMenuLookupCompleted)
             return false;
 
-        if (node is Menu menu && menu.Visible)
-            return true;
-
-        foreach (Node child in node.GetChildren())
-        {
-            if (IsBlockingMenuOpen(child))
-                return true;
-        }
-
-        return false;
+        _blockingMenuLookupCompleted = true;
+        _blockingMenu = GetNodeOrNull<Menu>(BlockingMenuNodePath);
+        return _blockingMenu != null
+            && GodotObject.IsInstanceValid(_blockingMenu)
+            && _blockingMenu.Visible;
     }
 
     public void Connect()
@@ -321,7 +356,7 @@ public partial class CharacterControl : Control
 
         BuildActionAreaUi();
         bool preserveHandDisplay =
-            _activePlayer == player && GetActiveHandSkills()?.Any(skill => skill != null) == true;
+            _activePlayer == player && HasAnySkill(GetActiveHandSkills());
         _activePlayer = player;
         _isResolvingCard = false;
         _isProcessingCardQueue = false;
@@ -394,6 +429,63 @@ public partial class CharacterControl : Control
 
             card.InvalidateHoverPreviewCache();
         }
+    }
+
+    public void RefreshActiveHandSkillPreviews()
+    {
+        if (!_uiBuilt)
+            return;
+
+        for (int i = 0; i < _cards.Length; i++)
+        {
+            if (!_cardHoverPreviewActive[i])
+                continue;
+
+            SkillCard card = _cards[i];
+            if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            card.RefreshSkillPreviewIfStale();
+        }
+    }
+
+    public Dictionary<string, object> GetDebugHandPreviewState()
+    {
+        var cards = new List<Dictionary<string, object>>();
+        for (int i = 0; i < _cards.Length; i++)
+        {
+            SkillCard card = _cards[i];
+            var cardState = new Dictionary<string, object>
+            {
+                ["index"] = i,
+                ["valid"] = card != null && GodotObject.IsInstanceValid(card),
+                ["hoverPreviewActive"] =
+                    i >= 0 && i < _cardHoverPreviewActive.Length && _cardHoverPreviewActive[i],
+                ["committed"] = IsCardCommitted(i),
+                ["drawEntryInputBlocked"] = IsCardDrawEntryInputBlocked(i),
+            };
+
+            if (card != null && GodotObject.IsInstanceValid(card))
+            {
+                cardState["visible"] = card.Visible;
+                cardState["buttonDisabled"] = card.Button.Disabled;
+                cardState["hoverHintVisible"] = card.HoverHint.Visible;
+                cardState["skillPreview"] = card.GetDebugSkillPreviewState();
+            }
+
+            cards.Add(cardState);
+        }
+
+        return new Dictionary<string, object>
+        {
+            ["hoveredCardIndex"] = _hoveredCardIndex,
+            ["liftedCardIndex"] = _liftedCardIndex,
+            ["pendingPreviewIndex"] = _pendingCardHoverPreviewIndex,
+            ["manualTargetArrowSelectionActive"] = _manualTargetArrowSelectionActive,
+            ["manualTargetArrowCardIndex"] = _manualTargetArrowCardIndex,
+            ["suppressHandHoverUntilMouseMove"] = _suppressHandHoverUntilMouseMove,
+            ["cards"] = cards,
+        };
     }
 
     public void RefreshTextSizeFromSettings()
@@ -476,7 +568,13 @@ public partial class CharacterControl : Control
         if (hand == null || skill == null)
             return false;
 
-        return hand.Any(oldSkill => ReferenceEquals(oldSkill, skill));
+        for (int i = 0; i < hand.Length; i++)
+        {
+            if (ReferenceEquals(hand[i], skill))
+                return true;
+        }
+
+        return false;
     }
 
     private Skill[] GetActiveHandSkills()
@@ -487,11 +585,25 @@ public partial class CharacterControl : Control
         Skill[] teamHand = BattleNode?.GetPlayerTeamBattleHand();
         if (
             BattleNode?.IsResolvingPlayerTeamActionPhase == true
-            || teamHand?.Any(skill => skill != null) == true
+            || HasAnySkill(teamHand)
         )
             return teamHand;
 
         return _activePlayer.Skills;
+    }
+
+    private static bool HasAnySkill(Skill[] hand)
+    {
+        if (hand == null)
+            return false;
+
+        for (int i = 0; i < hand.Length; i++)
+        {
+            if (hand[i] != null)
+                return true;
+        }
+
+        return false;
     }
 
 }

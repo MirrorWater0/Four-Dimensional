@@ -47,15 +47,16 @@ public partial class Skill
     public SkillTooltipHints CollectTooltipHints()
     {
         var hints = new SkillTooltipHints();
-        if (ExhaustsAtTurnEndInHand)
+        if (ResolvesExhaustsAtTurnEndInHand)
             hints.AddKeyword(SkillTooltipKeyword.Voidness);
 
         GetPlan()?.CollectTooltipHints(this, hints);
+        CollectBuffHintsFromDescription(hints);
 
         foreach (SkillID skillId in hints.RelatedSkillIds)
         {
             Skill related = GetSkill(skillId);
-            if (related?.ExhaustsAtTurnEndInHand == true)
+            if (related?.ResolvesExhaustsAtTurnEndInHand == true)
                 hints.AddKeyword(SkillTooltipKeyword.Voidness);
         }
 
@@ -87,6 +88,9 @@ public partial class Skill
         {
             case AddCardsSkillStep addCardsStep:
                 CollectAddCardsHints(addCardsStep, hints);
+                break;
+            case TransformCardsSkillStep transformCardsStep:
+                CollectTransformCardsHints(skill, transformCardsStep, hints);
                 break;
             case ApplyBuffHostileSkillStep:
             case ApplyBuffFriendlySkillStep:
@@ -162,6 +166,25 @@ public partial class Skill
         hints.AddRelatedSkillId(skillId);
     }
 
+    private static void CollectTransformCardsHints(
+        Skill skill,
+        TransformCardsSkillStep step,
+        SkillTooltipHints hints
+    )
+    {
+        int count = ResolveStepBaseValue(
+            skill,
+            GetStepField<int>(step, "_count"),
+            GetStepField<Func<Skill, int>>(step, "_countProvider")
+        );
+        if (count <= 0)
+            return;
+
+        SkillID skillId = GetStepField<SkillID>(step, "_replacementSkillId");
+        if (skillId != SkillID.None)
+            hints.AddRelatedSkillId(skillId);
+    }
+
     private static void CollectBuffStepHints(Skill skill, SkillStep step, SkillTooltipHints hints)
     {
         Buff.BuffName buffName = GetStepField<Buff.BuffName>(step, "_buffName");
@@ -193,6 +216,36 @@ public partial class Skill
                 hints.AddStatVariable(StatX.Survivability);
                 break;
         }
+    }
+
+    private void CollectBuffHintsFromDescription(SkillTooltipHints hints)
+    {
+        if (hints == null || string.IsNullOrWhiteSpace(Description))
+            return;
+
+        string plainDescription = StripBbCodeTags(Description);
+        if (string.IsNullOrWhiteSpace(plainDescription))
+            return;
+
+        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
+        {
+            if (ContainsBuffKeyword(plainDescription, Buff.GetBuffDisplayName(buffName))
+                || ContainsBuffKeyword(
+                    plainDescription,
+                    StripBbCodeTags(buffName.GetDescription())
+                ))
+            {
+                hints.AddBuff(buffName);
+            }
+        }
+    }
+
+    private static bool ContainsBuffKeyword(string text, string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(keyword))
+            return false;
+
+        return text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     private static T GetStepField<T>(SkillStep step, string fieldName)

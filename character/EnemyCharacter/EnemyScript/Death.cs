@@ -81,7 +81,7 @@ public partial class DeathAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, times: HitCount),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 1)
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1))
         );
     }
 }
@@ -99,9 +99,9 @@ public partial class DeathSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
             HealStep(Heal, target: TargetReference.Self),
-            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DiscardPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
@@ -123,7 +123,7 @@ public partial class DeathSpecial : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
-            AddCardsStep(SkillID.PlagueStatus, 2)
+            AddCardsStep(SkillID.PlagueStatus, V("PlagueCount", 2))
         );
     }
 }

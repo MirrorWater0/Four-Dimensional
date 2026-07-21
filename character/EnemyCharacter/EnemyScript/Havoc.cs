@@ -78,7 +78,7 @@ public partial class HavocAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount", 2)));
     }
 }
 
@@ -95,7 +95,7 @@ public partial class HavocSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
     }
@@ -116,8 +116,8 @@ public partial class HavocSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 13, multiplier: 1, target: HostileTargetReference.All),
-            AddCardsStep(SkillID.PlagueStatus, 3, BattleCardPileTarget.DiscardPileCards),
+            AttackStep(baseDamage: V("BaseDamage", 13), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+            AddCardsStep(SkillID.PlagueStatus, V("PlagueCount", 3), BattleCardPileTarget.DiscardPileCards),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

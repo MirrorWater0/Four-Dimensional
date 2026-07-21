@@ -1,11 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M64 15 79 30 70 78H58L49 30z" stroke="#7fe7ff" stroke-width="6"/>
-    <path d="M38 78h52M52 90h24" stroke="#ffd97f" stroke-width="7"/>
-    <path d="M64 90v22" stroke="#ffd97f" stroke-width="6"/>
-    <path d="M54 112h20" stroke="#ffd97f" stroke-width="6"/>
-    <path d="M44 35 33 24M84 35l11-11M64 15V7" stroke="#ffd97f" stroke-width="5"/>
-    <path d="M64 32v40" stroke="#7fe7ff" stroke-width="4"/>
-  </g>
-  <path d="M64 17 70 30H58z" fill="#fff1a8"/>
-</svg>
+<svg data-game-icons-source="delapouite/sword-altar.svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="#ffd97f" d="M256 24l-20 24 12 19.2v38.7c5.3.3 10.7.3 16 0V67.2L276 48l-20-24zm-61.5 86.4l-5 15.2c49 16.3 84 16.3 133 0l-5-15.2c-47 15.7-76 15.7-123 0zM232 152v128h16V152h-16zm32 0v128h16V152h-16zm-51.1 144l-8 16h102.2l-8-16h-86.2zm-80.2 32L71.65 440H440.3l-61.1-112H132.7zm43.3 16h96v16h-96v-16zm112 0h48v16h-48v-16zm-112 32h32v16h-32v-16zm48 0h112v16H224v-16zm-48 32h64v16h-64v-16zM37.77 456L27.1 488h457.8l-10.7-32H37.77z"/></svg>

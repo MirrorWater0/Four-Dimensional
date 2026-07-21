@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class CharacterControl
 {
+    private const float DiscardSelectionMouseEnableProgress = 0.7f;
+
     private async Task HandleCardPressedAsync(int index, bool allowSuppressedPress = false)
     {
-        if (_suppressCardButtonPressUntilLeftRelease && !allowSuppressedPress)
+        if (IsCardButtonPressSuppressed() && !allowSuppressedPress)
             return;
 
         if (_isDiscardSelectionActive)
@@ -18,14 +19,15 @@ public partial class CharacterControl
         }
 
         if (
-            _isResolvingCard
-            || _endTurnQueued
+            _endTurnQueued
             || _isPileCardSelectionActive
-            || IsManualTargetSelectionPending()
+            || IsHandInputBlockedByOverlay()
             || _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
             || index < 0
             || index >= (GetActiveHandSkills()?.Length ?? 0)
+            || IsCardCommitted(index)
+            || IsCardDrawEntryInputBlocked(index)
         )
         {
             return;
@@ -70,15 +72,15 @@ public partial class CharacterControl
         }
 
         if (
-            _isResolvingCard
-            || _endTurnQueued
+            _endTurnQueued
             || _isPileCardSelectionActive
-            || IsManualTargetSelectionPending()
+            || IsHandInputBlockedByOverlay()
             || _manualTargetArrowSelectionActive
             || _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
             || index < 0
             || index >= (GetActiveHandSkills()?.Length ?? 0)
+            || IsCardDrawEntryInputBlocked(index)
         )
         {
             return Task.CompletedTask;
@@ -90,7 +92,7 @@ public partial class CharacterControl
 
         if (_liftedCardIndex == index)
         {
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
             return Task.CompletedTask;
         }
 
@@ -111,7 +113,7 @@ public partial class CharacterControl
             || _isDiscardSelectionCompleting
             || !IsCardIndexValid(index)
             || IsCardCommitted(index)
-            || IsAnyCardDrawEntryBusy()
+            || IsCardDrawEntryInputBlocked(index)
             || IsDiscardSelectionReturnSlot(index)
         )
         {
@@ -128,12 +130,20 @@ public partial class CharacterControl
 
         ClearLiftedCard(instant: false);
 
+        if (_discardSelectionSkills.Contains(skill))
+        {
+            _ = MoveDiscardSelectionCardBackAsync(skill, animateBack: true);
+            ArrangeDiscardSelectionSelectedCards();
+            RequestTurnUiRefresh(refreshHover: true);
+            return;
+        }
+
         if (_discardSelectionSkills.Count >= _discardSelectionTargetCount)
             return;
 
         AddDiscardSelectionSelectedCard(index, skill);
         ArrangeDiscardSelectionSelectedCards();
-        RefreshTurnUi();
+        RequestTurnUiRefresh(refreshHover: true);
         await Task.CompletedTask;
     }
 
@@ -166,22 +176,64 @@ public partial class CharacterControl
             return;
 
         _isDiscardSelectionCompleting = true;
+        DisableDiscardSelectionCardInputForResolution();
         HideDiscardSelectionScreenMask();
-        RefreshTurnUi();
+        RequestTurnUiRefresh();
 
-        int selectedCount = _discardSelectionExhaustMode
-            ? await ExhaustSelectedHandCardsAsync()
-            : await DiscardSelectedHandCardsAsync();
+        int selectedCount = _discardSelectionTransformMode
+            ? await TransformSelectedHandCardsAsync()
+            : _discardSelectionKeywordMode
+                ? await ApplyKeywordToSelectedHandCardsAsync()
+                : _discardSelectionExhaustMode
+                    ? await ExhaustSelectedHandCardsAsync()
+                    : await DiscardSelectedHandCardsAsync();
         TaskCompletionSource<int> completion = _discardSelectionCompletion;
+        bool returnSelectedCards =
+            _discardSelectionKeywordMode || _discardSelectionTransformMode;
         _isDiscardSelectionActive = false;
-        _isDiscardSelectionCompleting = false;
         _discardSelectionExhaustMode = false;
+        _discardSelectionKeywordMode = false;
+        _discardSelectionTransformMode = false;
+        _discardSelectionTransformSkillId = SkillID.None;
         _discardSelectionTargetCount = 0;
         _discardSelectionCompletion = null;
         ResetDiscardSelectionInputGuard();
-        ClearDiscardSelectionVisualState(returnCards: false);
-        RefreshTurnUi();
+        if (returnSelectedCards)
+            await ReturnDiscardSelectionCardsAsync();
+        else
+            ClearDiscardSelectionVisualState(returnCards: false);
+        _isDiscardSelectionCompleting = false;
+        RequestTurnUiRefresh(refreshHover: true);
         completion?.TrySetResult(selectedCount);
+    }
+
+    private void DisableDiscardSelectionCardInputForResolution()
+    {
+        foreach (SkillCard card in _discardSelectionCards.Values)
+        {
+            if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            KillDiscardSelectionArrangeTween(card);
+            SetDiscardSelectionCardMouseDetection(card, enabled: false);
+        }
+    }
+
+    private static void SetDiscardSelectionCardMouseDetection(SkillCard card, bool enabled)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        card.SetHoverUiEnabled(enabled);
+        if (!enabled)
+        {
+            card.HideHoverUi();
+            card.HoverHint.Visible = false;
+        }
+
+        card.MouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        card.Button.MouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+        card.Button.Disabled = !enabled;
     }
 
     private void CancelDiscardSelection()
@@ -190,6 +242,9 @@ public partial class CharacterControl
         _isDiscardSelectionActive = false;
         _isDiscardSelectionCompleting = false;
         _discardSelectionExhaustMode = false;
+        _discardSelectionKeywordMode = false;
+        _discardSelectionTransformMode = false;
+        _discardSelectionTransformSkillId = SkillID.None;
         _discardSelectionTargetCount = 0;
         _discardSelectionCompletion = null;
         ResetDiscardSelectionInputGuard();
@@ -204,20 +259,19 @@ public partial class CharacterControl
         if (skill == null || !IsCardIndexValid(index))
             return;
 
+        _discardSelectionOriginalHandIndexes[skill] = index;
         if (!_discardSelectionSkills.Contains(skill))
             _discardSelectionSkills.Add(skill);
 
-        if (!_discardSelectionCards.ContainsKey(skill))
-        {
-            SkillCard previewCard = CreateDiscardSelectionPreviewCard(index, skill);
-            if (previewCard == null)
-                return;
+        SkillCard handCard = _cards[index];
+        if (handCard == null || !GodotObject.IsInstanceValid(handCard))
+            return;
 
-            _discardSelectionCards[skill] = previewCard;
-        }
+        DetachDrawEntryForInteraction(index, handCard);
+        _discardSelectionCards[skill] = handCard;
+        _discardSelectionOriginalVisualHandIndexes.Add(index);
 
         ClearDiscardSelectionHandSlotPreview(index);
-        ClearActiveHandSkillForDiscardSelection(index, skill);
 
         SkillCard card = _discardSelectionCards[skill];
         card.StopBattleMotion();
@@ -239,27 +293,41 @@ public partial class CharacterControl
         if (handCard == null || !GodotObject.IsInstanceValid(handCard))
             return;
 
+        SnapHandCardToBaseVisual(index, handCard);
         handCard.HideHoverUi();
         handCard.HoverHint.Visible = false;
         handCard.StopBattleMotion();
         handCard.Modulate = SkillButton.EnabledModulate;
-        handCard.Visible = false;
-        SetCardButtonInputEnabled(handCard, false);
+        bool keepsOriginalHandVisual = _discardSelectionOriginalVisualHandIndexes.Contains(index);
+        handCard.Visible = keepsOriginalHandVisual;
+        SetCardButtonInputEnabled(handCard, keepsOriginalHandVisual);
     }
 
-    private SkillCard CreateDiscardSelectionPreviewCard(int index, Skill skill)
+    private SkillCard CreateDiscardSelectionActionPreviewCard(Skill skill, SkillCard sourceCard)
     {
         Control overlay = EnsureDiscardSelectionOverlay();
-        if (skill == null || overlay == null || !GodotObject.IsInstanceValid(overlay))
+        CanvasGroup sourceVisual = sourceCard?.CardVisualRoot;
+        if (
+            skill == null
+            || sourceCard == null
+            || !GodotObject.IsInstanceValid(sourceCard)
+            || sourceVisual == null
+            || !GodotObject.IsInstanceValid(sourceVisual)
+            || overlay == null
+            || !GodotObject.IsInstanceValid(overlay)
+        )
+        {
             return null;
+        }
 
-        Vector2 previewScale = GetDiscardSelectionCardScale();
-        Vector2 globalPosition = GetDiscardSelectionPreviewStartPosition(index);
+        Vector2 previewScale = sourceVisual.GlobalScale;
+        Vector2 globalPosition = sourceVisual.GlobalPosition;
+        float globalRotation = sourceVisual.GlobalRotation;
         SkillCard card = SkillCardScene.Instantiate<SkillCard>();
-        card.Name = $"DiscardSelectionCard{index}";
+        card.Name = "DiscardSelectionActionCard";
         card.ConfigureDisplayScale(previewScale);
         card.AutoPressEffect = false;
-        card.UseDefaultHoverEffect = true;
+        card.UseDefaultHoverEffect = false;
         card.PreviewCharacterName = skill.OwnerCharater?.CharacterName;
         card.PreviewCharacterKey = (skill.OwnerCharater as PlayerCharacter)?.CharacterKey;
         overlay.AddChild(card);
@@ -269,49 +337,22 @@ public partial class CharacterControl
         card.Visible = true;
         card.GlobalPosition = globalPosition;
         card.Scale = previewScale;
-        card.Rotation = 0f;
+        card.Rotation = globalRotation;
         card.PivotOffset = BattleCardBaseSize * 0.5f;
-        card.MouseFilter = MouseFilterEnum.Stop;
-        card.Button.MouseFilter = MouseFilterEnum.Stop;
-        card.Button.Disabled = false;
+        card.MouseFilter = MouseFilterEnum.Ignore;
+        card.Button.MouseFilter = MouseFilterEnum.Ignore;
+        card.Button.Disabled = true;
         card.HoverHint.Visible = false;
-        card.Button.Pressed += () =>
-        {
-            if (
-                _isDiscardSelectionActive
-                && !_isDiscardSelectionCompleting
-                && _discardSelectionSkills.Contains(skill)
-            )
-            {
-                MoveDiscardSelectionCardBack(skill, animateBack: true);
-                ArrangeDiscardSelectionSelectedCards();
-                RefreshTurnUi();
-            }
-        };
         return card;
-    }
-
-    private Vector2 GetDiscardSelectionPreviewStartPosition(int index)
-    {
-        SkillCard sourceCard = IsCardIndexValid(index) ? _cards[index] : null;
-        if (sourceCard != null && GodotObject.IsInstanceValid(sourceCard) && sourceCard.Visible)
-            return sourceCard.GlobalPosition;
-
-        Control slot = IsCardIndexValid(index) ? _cardSlots[index] : null;
-        if (slot != null && GodotObject.IsInstanceValid(slot))
-            return slot.GlobalPosition;
-
-        return GetDiscardSelectionSelectedPosition(GetDiscardSelectionCardScale(), 0, 1);
     }
 
     private void ArrangeDiscardSelectionSelectedCards()
     {
-        Skill[] selectedSkills = _discardSelectionSkills.ToArray();
-        int count = selectedSkills.Length;
+        int count = _discardSelectionSkills.Count;
         Vector2 selectedScale = GetDiscardSelectionCardScale();
         for (int order = 0; order < count; order++)
         {
-            Skill skill = selectedSkills[order];
+            Skill skill = _discardSelectionSkills[order];
             if (skill == null || !_discardSelectionCards.TryGetValue(skill, out SkillCard card))
                 continue;
             if (card == null || !GodotObject.IsInstanceValid(card))
@@ -323,22 +364,104 @@ public partial class CharacterControl
                 order,
                 count
             );
-            card.ZIndex = DiscardSelectionSelectedCardZIndex + order;
-            card.Button.Disabled = false;
-            card.HoverHint.Visible = false;
             card.Modulate = SkillButton.EnabledModulate;
+            if (
+                _discardSelectionArrangeTweens.TryGetValue(card, out Tween existingTween)
+                && existingTween != null
+                && existingTween.IsValid()
+            )
+            {
+                existingTween.Kill();
+            }
 
-            Tween tween = card.CreateTween();
+            bool usesOriginalHandVisual = _discardSelectionOriginalVisualHandIndexes.Contains(
+                _discardSelectionOriginalHandIndexes[skill]
+            );
+            CanvasItem movingVisual = usesOriginalHandVisual
+                ? card.CardVisualRoot
+                : card;
+            if (movingVisual == null || !GodotObject.IsInstanceValid(movingVisual))
+                continue;
+
+            SetDiscardSelectionCardMouseDetection(card, enabled: false);
+
+            if (ReferenceEquals(movingVisual, card))
+            {
+                card.ZIndex = DiscardSelectionSelectedCardZIndex + order;
+                card.HoverHint.Visible = false;
+            }
+            else
+            {
+                card.SetHoverUiEnabled(true);
+                ApplyHandCardLayer(
+                    _discardSelectionOriginalHandIndexes[skill],
+                    GetHandOrderForSlotIndex(_discardSelectionOriginalHandIndexes[skill])
+                );
+            }
+
+            Tween tween = movingVisual.CreateTween();
+            _discardSelectionArrangeTweens[card] = tween;
             tween.SetParallel(true);
             tween
-                .TweenProperty(card, "global_position", targetPosition, CardPlayMoveDuration)
+                .TweenProperty(
+                    movingVisual,
+                    "global_position",
+                    targetPosition,
+                    CardPlayMoveDuration
+                )
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
             tween
-                .TweenProperty(card, "scale", targetScale, CardPlayMoveDuration)
+                .TweenProperty(
+                    movingVisual,
+                    ReferenceEquals(movingVisual, card) ? "scale" : "global_scale",
+                    targetScale,
+                    CardPlayMoveDuration
+                )
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
+            tween
+                .TweenCallback(
+                    Callable.From(
+                        () =>
+                            TryEnableDiscardSelectionCardMouseDetection(skill, card, tween)
+                    )
+                )
+                .SetDelay(CardPlayMoveDuration * DiscardSelectionMouseEnableProgress);
+            tween.Finished += () =>
+            {
+                if (
+                    _discardSelectionArrangeTweens.TryGetValue(card, out Tween currentTween)
+                    && ReferenceEquals(currentTween, tween)
+                )
+                {
+                    TryEnableDiscardSelectionCardMouseDetection(skill, card, tween);
+                    _discardSelectionArrangeTweens.Remove(card);
+                }
+            };
         }
+    }
+
+    private void TryEnableDiscardSelectionCardMouseDetection(
+        Skill skill,
+        SkillCard card,
+        Tween tween
+    )
+    {
+        if (
+            !_isDiscardSelectionActive
+            || _isDiscardSelectionCompleting
+            || !_discardSelectionArrangeTweens.TryGetValue(card, out Tween currentTween)
+            || !ReferenceEquals(currentTween, tween)
+            || !_discardSelectionCards.TryGetValue(skill, out SkillCard selectedCard)
+            || !ReferenceEquals(selectedCard, card)
+            || !_discardSelectionSkills.Contains(skill)
+        )
+        {
+            return;
+        }
+
+        SetDiscardSelectionCardMouseDetection(card, enabled: true);
     }
 
     private Vector2 GetDiscardSelectionSelectedPosition(Vector2 scale, int order, int count)
@@ -381,39 +504,156 @@ public partial class CharacterControl
         return BattleCardScale;
     }
 
-    private void MoveDiscardSelectionCardBack(Skill skill, bool animateBack)
+    private Task MoveDiscardSelectionCardBackAsync(Skill skill, bool animateBack)
     {
         if (skill == null)
-            return;
+            return Task.CompletedTask;
 
         _discardSelectionCards.TryGetValue(skill, out SkillCard previewCard);
         _discardSelectionCards.Remove(skill);
+        int originalIndex = _discardSelectionOriginalHandIndexes.TryGetValue(
+            skill,
+            out int storedOriginalIndex
+        )
+            ? storedOriginalIndex
+            : -1;
+        bool usesOriginalHandVisual =
+            originalIndex >= 0
+            && _discardSelectionOriginalVisualHandIndexes.Contains(originalIndex);
 
         int restoredIndex = -1;
         if (_discardSelectionSkills.Remove(skill))
             restoredIndex = RestoreActiveHandSkillFromDiscardSelection(skill);
+        _discardSelectionOriginalHandIndexes.Remove(skill);
 
         if (!animateBack || restoredIndex < 0)
         {
+            if (usesOriginalHandVisual)
+            {
+                KillDiscardSelectionArrangeTween(previewCard);
+                ResetOriginalSelectionCardVisual(previewCard);
+                _discardSelectionOriginalVisualHandIndexes.Remove(originalIndex);
+                return Task.CompletedTask;
+            }
+
+            if (restoredIndex >= 0)
+                _discardSelectionReturningHandIndexes.Add(restoredIndex);
+
             if (previewCard != null && GodotObject.IsInstanceValid(previewCard))
+            {
+                KillDiscardSelectionArrangeTween(previewCard);
                 previewCard.QueueFree();
-            return;
+            }
+            return Task.CompletedTask;
         }
 
         if (previewCard == null || !GodotObject.IsInstanceValid(previewCard))
         {
-            RefreshTurnUi();
-            return;
+            RequestTurnUiRefresh(refreshHover: true);
+            return Task.CompletedTask;
         }
 
         _discardSelectionReturningHandIndexes.Add(restoredIndex);
         _discardSelectionFlyingReturnHandIndexes.Add(restoredIndex);
+        if (usesOriginalHandVisual)
+        {
+            RequestTurnUiRefresh();
+            return AnimateOriginalSelectionCardReturnAsync(previewCard, restoredIndex);
+        }
+
         _discardSelectionReturningPreviewCards[restoredIndex] = previewCard;
-        SkillCard handCard = IsCardIndexValid(restoredIndex) ? _cards[restoredIndex] : null;
-        if (handCard != null && GodotObject.IsInstanceValid(handCard))
-            handCard.ZIndex = DiscardSelectionSelectedCardZIndex;
-        RefreshTurnUi();
-        _ = AnimateDiscardSelectionPreviewReturnAsync(previewCard, restoredIndex);
+        RequestTurnUiRefresh();
+        return AnimateDiscardSelectionPreviewReturnAsync(previewCard, restoredIndex);
+    }
+
+    private async Task AnimateOriginalSelectionCardReturnAsync(SkillCard card, int handIndex)
+    {
+        try
+        {
+            if (
+                card == null
+                || !GodotObject.IsInstanceValid(card)
+                || !IsCardIndexValid(handIndex)
+                || card.CardVisualRoot == null
+                || !GodotObject.IsInstanceValid(card.CardVisualRoot)
+            )
+            {
+                return;
+            }
+
+            KillDiscardSelectionArrangeTween(card);
+            CanvasGroup visual = card.CardVisualRoot;
+            card.SetHoverUiEnabled(false);
+            Vector2 visualGlobalPosition = visual.GlobalPosition;
+            Vector2 visualGlobalScale = visual.GlobalScale;
+            float visualGlobalRotation = visual.GlobalRotation;
+            SnapHandCardToBaseVisual(handIndex, card);
+            _discardSelectionOriginalVisualHandIndexes.Remove(handIndex);
+            LayoutActionCards(instant: false);
+            visual.GlobalPosition = visualGlobalPosition;
+            visual.GlobalScale = visualGlobalScale;
+            visual.GlobalRotation = visualGlobalRotation;
+            card.Button.Disabled = true;
+            card.HoverHint.Visible = false;
+            card.MouseFilter = MouseFilterEnum.Ignore;
+            card.Button.MouseFilter = MouseFilterEnum.Ignore;
+            ApplyHandCardLayer(handIndex, GetHandOrderForSlotIndex(handIndex));
+
+            Tween returnTween = visual.CreateTween();
+            _discardSelectionArrangeTweens[card] = returnTween;
+            returnTween.SetParallel(true);
+            returnTween
+                .TweenProperty(visual, "position", Vector2.Zero, CardPlayMoveDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+            returnTween
+                .TweenProperty(visual, "scale", Vector2.One, CardPlayMoveDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+            returnTween
+                .TweenProperty(visual, "rotation", 0f, CardPlayMoveDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+
+            await ToSignal(
+                GetTree().CreateTimer(CardPlayMoveDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+        }
+        finally
+        {
+            ResetOriginalSelectionCardVisual(card);
+            _discardSelectionOriginalVisualHandIndexes.Remove(handIndex);
+            _discardSelectionFlyingReturnHandIndexes.Remove(handIndex);
+            _discardSelectionReturningHandIndexes.Remove(handIndex);
+            if (IsCardIndexValid(handIndex))
+                ApplyHandCardLayer(handIndex, GetHandOrderForSlotIndex(handIndex));
+            if (IsInsideTree())
+                RequestTurnUiRefresh(refreshHover: true);
+        }
+    }
+
+    private void ResetOriginalSelectionCardVisual(SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        KillDiscardSelectionArrangeTween(card);
+        CanvasGroup visual = card.CardVisualRoot;
+        if (visual != null && GodotObject.IsInstanceValid(visual))
+        {
+            visual.Position = Vector2.Zero;
+            visual.Scale = Vector2.One;
+            visual.Rotation = 0f;
+        }
+
+        card.Visible = true;
+        card.Modulate = SkillButton.EnabledModulate;
+        card.SetHoverUiEnabled(true);
+        card.MouseFilter = MouseFilterEnum.Stop;
+        card.Button.MouseFilter = MouseFilterEnum.Stop;
+        card.Button.Disabled = false;
+        card.HoverHint.Visible = false;
     }
 
     private async Task AnimateDiscardSelectionPreviewReturnAsync(
@@ -445,7 +685,10 @@ public partial class CharacterControl
             Vector2 startGlobal = previewCard.GlobalPosition;
             Vector2 startScale = previewCard.Scale;
             if (previewCard != null && GodotObject.IsInstanceValid(previewCard))
+            {
+                KillDiscardSelectionArrangeTween(previewCard);
                 previewCard.QueueFree();
+            }
             previewCard = null;
             _discardSelectionReturningPreviewCards.Remove(targetIndex);
 
@@ -501,17 +744,28 @@ public partial class CharacterControl
 
             _cardSlotLayoutTargets[targetIndex] = targetPosition;
             _cardSlotLayoutRotationTargets[targetIndex] = 0f;
-            _cardSlotLayoutFollowActive[targetIndex] = true;
-            UpdateProcessState();
+            _cardSlotLayoutFollowActive[targetIndex] = false;
 
-            float moveDuration = GetHandLayoutTweenDuration(slot.Position, targetPosition.Value);
-            Tween scaleTween = movingCard.CreateTween();
-            scaleTween
+            float moveDuration = Math.Min(
+                GetHandLayoutTweenDuration(slot.Position, targetPosition.Value),
+                CardPlayMoveDuration
+            );
+            Tween returnTween = slot.CreateTween();
+            _cardSlotLayoutTweens[targetIndex] = returnTween;
+            returnTween.SetParallel(true);
+            returnTween
+                .TweenProperty(slot, "position", targetPosition.Value, moveDuration)
+                .SetTrans(Tween.TransitionType.Cubic)
+                .SetEase(Tween.EaseType.Out);
+            returnTween
                 .TweenProperty(movingCard, "scale", BattleCardScale, moveDuration)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
 
-            await WaitForDiscardSelectionReturnArrivalAsync(targetIndex, movingCard);
+            await ToSignal(
+                GetTree().CreateTimer(moveDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
         }
         finally
         {
@@ -521,24 +775,12 @@ public partial class CharacterControl
             _discardSelectionReturningHandIndexes.Remove(targetIndex);
             RevealDiscardSelectionReturnedHandCard(targetIndex);
             if (previewCard != null && GodotObject.IsInstanceValid(previewCard))
+            {
+                KillDiscardSelectionArrangeTween(previewCard);
                 previewCard.QueueFree();
+            }
             if (IsInsideTree())
-                RefreshTurnUi();
-        }
-    }
-
-    private async Task WaitForDiscardSelectionReturnArrivalAsync(int index, SkillCard movingCard)
-    {
-        while (
-            IsCardIndexValid(index)
-            && _discardSelectionFlyingReturnHandIndexes.Contains(index)
-            && _cardSlotLayoutFollowActive[index]
-            && movingCard != null
-            && GodotObject.IsInstanceValid(movingCard)
-            && IsInsideTree()
-        )
-        {
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                RequestTurnUiRefresh(refreshHover: true);
         }
     }
 
@@ -621,23 +863,8 @@ public partial class CharacterControl
             handCard,
             _isDiscardSelectionActive
                 && !_isDiscardSelectionCompleting
-                && !IsAnyCardDrawEntryBusy()
+                && !IsCardDrawEntryInputBlocked(targetIndex)
         );
-    }
-
-    private void ClearActiveHandSkillForDiscardSelection(int index, Skill skill)
-    {
-        Skill[] hand = GetActiveHandSkills();
-        if (hand == null || index < 0 || index >= hand.Length)
-            return;
-
-        if (!ReferenceEquals(hand[index], skill))
-            return;
-
-        hand[index] = null;
-        _displayedSkills[index] = null;
-        _displayedSkillIds[index] = null;
-        InvalidateDiscardSelectionSkillOwner(skill);
     }
 
     private int RestoreActiveHandSkillFromDiscardSelection(Skill skill)
@@ -646,7 +873,25 @@ public partial class CharacterControl
         if (hand == null || skill == null)
             return -1;
 
-        int restoreIndex = CompactHandInPlace(hand);
+        int existingIndex = Array.IndexOf(hand, skill);
+        if (existingIndex >= 0)
+            return existingIndex;
+
+        int restoreIndex = -1;
+        if (
+            _discardSelectionOriginalHandIndexes.TryGetValue(skill, out int originalIndex)
+            && originalIndex >= 0
+            && originalIndex < hand.Length
+            && hand[originalIndex] == null
+        )
+        {
+            restoreIndex = originalIndex;
+        }
+        else
+        {
+            restoreIndex = CompactHandInPlace(hand);
+        }
+
         if (restoreIndex < 0)
             return -1;
 
@@ -697,45 +942,126 @@ public partial class CharacterControl
         ClearDiscardSelectionVisualState(returnCards: true);
     }
 
+    private async Task ReturnDiscardSelectionCardsAsync()
+    {
+        _skillRemovalBuffer.Clear();
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
+            _skillRemovalBuffer.Add(_discardSelectionSkills[i]);
+
+        var returnTasks = new List<Task>(_skillRemovalBuffer.Count);
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+        {
+            returnTasks.Add(
+                MoveDiscardSelectionCardBackAsync(
+                    _skillRemovalBuffer[i],
+                    animateBack: true
+                )
+            );
+        }
+        _skillRemovalBuffer.Clear();
+
+        if (returnTasks.Count > 0)
+            await Task.WhenAll(returnTasks);
+
+        _discardSelectionCards.Clear();
+        _discardSelectionSkills.Clear();
+        _discardSelectionOriginalHandIndexes.Clear();
+        _discardSelectionOriginalVisualHandIndexes.Clear();
+    }
+
     private void ClearDiscardSelectionVisualState(bool returnCards)
     {
         if (returnCards)
         {
-            foreach (Skill skill in _discardSelectionSkills.ToArray())
-                MoveDiscardSelectionCardBack(skill, animateBack: false);
+            _skillRemovalBuffer.Clear();
+            for (int i = 0; i < _discardSelectionSkills.Count; i++)
+                _skillRemovalBuffer.Add(_discardSelectionSkills[i]);
+            for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+            {
+                Skill skill = _skillRemovalBuffer[i];
+                _ = MoveDiscardSelectionCardBackAsync(skill, animateBack: false);
+            }
+            _skillRemovalBuffer.Clear();
+
+            if (_discardSelectionReturningHandIndexes.Count > 0)
+                RefreshTurnUi();
         }
         else
         {
-            foreach (SkillCard card in _discardSelectionCards.Values.ToArray())
+            _handCardReturnBuffer.Clear();
+            foreach (SkillCard card in _discardSelectionCards.Values)
+                _handCardReturnBuffer.Add(card);
+            for (int i = 0; i < _handCardReturnBuffer.Count; i++)
             {
-                if (card != null && GodotObject.IsInstanceValid(card))
-                    card.QueueFree();
+                SkillCard card = _handCardReturnBuffer[i];
+                ResetOriginalSelectionCardVisual(card);
+                if (card == null || !GodotObject.IsInstanceValid(card))
+                    continue;
+
+                card.Visible = false;
+                SetCardButtonInputEnabled(card, false);
             }
+            _handCardReturnBuffer.Clear();
         }
 
         _discardSelectionCards.Clear();
         _discardSelectionSkills.Clear();
+        _discardSelectionOriginalHandIndexes.Clear();
+        _discardSelectionOriginalVisualHandIndexes.Clear();
         ClearDiscardSelectionReturnAnimationState();
     }
 
     private void ClearDiscardSelectionReturnAnimationState()
     {
-        int[] returningIndexes = _discardSelectionReturningHandIndexes.ToArray();
-        _discardSelectionReturningHandIndexes.Clear();
-        foreach (int index in returningIndexes)
+        _visibleHandSlotIndexesBuffer.AsSpan().Clear();
+        int returningCount = 0;
+        foreach (int index in _discardSelectionReturningHandIndexes)
         {
+            if (returningCount >= _visibleHandSlotIndexesBuffer.Length)
+                break;
+
+            _visibleHandSlotIndexesBuffer[returningCount++] = index;
+        }
+        _discardSelectionReturningHandIndexes.Clear();
+        for (int i = 0; i < returningCount; i++)
+        {
+            int index = _visibleHandSlotIndexesBuffer[i];
             _discardSelectionFlyingReturnHandIndexes.Remove(index);
             RevealDiscardSelectionReturnedHandCard(index);
         }
 
-        foreach (SkillCard card in _discardSelectionReturningPreviewCards.Values.ToArray())
+        _handCardReturnBuffer.Clear();
+        foreach (SkillCard card in _discardSelectionReturningPreviewCards.Values)
+            _handCardReturnBuffer.Add(card);
+        for (int i = 0; i < _handCardReturnBuffer.Count; i++)
         {
+            SkillCard card = _handCardReturnBuffer[i];
             if (card != null && GodotObject.IsInstanceValid(card))
+            {
+                KillDiscardSelectionArrangeTween(card);
                 card.QueueFree();
+            }
         }
+        _handCardReturnBuffer.Clear();
 
         _discardSelectionReturningPreviewCards.Clear();
         _discardSelectionFlyingReturnHandIndexes.Clear();
+    }
+
+    private void KillDiscardSelectionArrangeTween(SkillCard card)
+    {
+        if (card == null)
+            return;
+
+        if (
+            _discardSelectionArrangeTweens.TryGetValue(card, out Tween tween)
+            && tween != null
+            && tween.IsValid()
+        )
+        {
+            tween.Kill();
+        }
+        _discardSelectionArrangeTweens.Remove(card);
     }
 
     private void HideDiscardedHandCardAfterSelection(int index, SkillCard card)
@@ -850,13 +1176,15 @@ public partial class CharacterControl
 
     private async Task<int> DiscardSelectedHandCardsAsync()
     {
-        Skill[] selectedSkills = _discardSelectionSkills.ToArray();
-        if (selectedSkills.Length == 0)
+        if (_discardSelectionSkills.Count == 0)
             return 0;
 
-        var entries = new List<(Skill Skill, PlayerCharacter Owner, SkillCard Card)>();
-        foreach (Skill skill in selectedSkills)
+        List<(Skill Skill, PlayerCharacter Owner, SkillCard Card)> entries =
+            _discardSelectionEntryBuffer;
+        entries.Clear();
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
         {
+            Skill skill = _discardSelectionSkills[i];
             if (skill == null)
                 continue;
 
@@ -870,18 +1198,25 @@ public partial class CharacterControl
                 continue;
             }
 
+            SkillCard actionCard = CreateDiscardSelectionActionPreviewCard(skill, sourceCard);
+            if (actionCard == null)
+                continue;
+
             PlayerCharacter owner = skill.OwnerCharater as PlayerCharacter ?? _activePlayer;
-            sourceCard.Button.Disabled = true;
-            sourceCard.HoverHint.Visible = false;
-            sourceCard.Modulate = SkillButton.EnabledModulate;
-            sourceCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
-            entries.Add((skill, owner, sourceCard));
+            if (_discardSelectionOriginalHandIndexes.TryGetValue(skill, out int originalIndex))
+                _discardSelectionOriginalVisualHandIndexes.Remove(originalIndex);
+            sourceCard.Visible = false;
+            actionCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
+            entries.Add((skill, owner, actionCard));
         }
 
         if (entries.Count == 0)
         {
-            foreach (Skill skill in selectedSkills)
+            for (int i = 0; i < _discardSelectionSkills.Count; i++)
+            {
+                Skill skill = _discardSelectionSkills[i];
                 RestoreActiveHandSkillFromDiscardSelection(skill);
+            }
             return 0;
         }
 
@@ -891,8 +1226,10 @@ public partial class CharacterControl
             entry.Card.HoverHint.Visible = false;
         }
 
-        var flyTasks = new List<Task>();
+        List<Task> flyTasks = _discardSelectionFlyTasks;
+        flyTasks.Clear();
         bool previousFreezeHandLayout = _freezeHandLayout;
+        int selectedCount = entries.Count;
         _freezeHandLayout = true;
         try
         {
@@ -904,42 +1241,181 @@ public partial class CharacterControl
                     continue;
                 }
 
+                KillDiscardSelectionArrangeTween(entry.Card);
                 entry.Card.ZIndex = PlayedCardZIndex + flyTasks.Count + 1;
                 flyTasks.Add(PlayCardDiscardFlyAsync(entry.Card));
             }
 
-            if (flyTasks.Count > 0)
-                await Task.WhenAll(flyTasks);
+            for (int i = 0; i < flyTasks.Count; i++)
+                await flyTasks[i];
+
+            _skillRemovalBuffer.Clear();
+            for (int i = 0; i < entries.Count; i++)
+                _skillRemovalBuffer.Add(entries[i].Skill);
+            RemoveActiveHandSkillsForSelection(_skillRemovalBuffer);
 
             foreach (var entry in entries)
             {
                 BattleNode?.DiscardBattleSkill(entry.Owner, entry.Skill, forceDiscard: true);
             }
+            _skillRemovalBuffer.Clear();
             CompactActiveHandAfterDiscardSelection();
 
             foreach (var entry in entries)
             {
                 if (entry.Card != null && GodotObject.IsInstanceValid(entry.Card))
+                {
+                    KillDiscardSelectionArrangeTween(entry.Card);
                     entry.Card.QueueFree();
+                }
             }
         }
         finally
         {
             _freezeHandLayout = previousFreezeHandLayout;
+            flyTasks.Clear();
+            entries.Clear();
         }
 
-        return entries.Count;
+        return selectedCount;
+    }
+
+    private Task<int> ApplyKeywordToSelectedHandCardsAsync()
+    {
+        if (_discardSelectionSkills.Count == 0 || BattleNode == null)
+            return Task.FromResult(0);
+
+        int applied = 0;
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
+        {
+            Skill skill = _discardSelectionSkills[i];
+            if (skill?.SkillId is not SkillID)
+                continue;
+
+            PlayerCharacter owner = skill.OwnerCharater as PlayerCharacter ?? _activePlayer;
+            if (owner == null)
+                continue;
+
+            BattleNode.AddBattleCardKeyword(skill, _discardSelectionKeyword);
+            skill.UpdateDescription();
+            owner.InvalidateSkillTooltipCache();
+            applied++;
+        }
+
+        _activePlayer?.InvalidateSkillTooltipCache();
+        RequestTurnUiRefresh();
+        return Task.FromResult(applied);
+    }
+
+    private async Task<int> TransformSelectedHandCardsAsync()
+    {
+        if (_discardSelectionSkills.Count == 0 || BattleNode == null)
+            return 0;
+
+        var transformedEntries = new List<(
+            int SelectionIndex,
+            Skill Source,
+            Skill Replacement,
+            SkillCard Card,
+            int OriginalIndex
+        )>();
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
+        {
+            Skill sourceSkill = _discardSelectionSkills[i];
+            if (sourceSkill == null)
+                continue;
+
+            if (
+                !BattleNode.TryCreateTransformedBattleSkill(
+                    sourceSkill,
+                    _discardSelectionTransformSkillId,
+                    _activePlayer,
+                    out Skill replacementSkill
+                )
+            )
+            {
+                continue;
+            }
+
+            _discardSelectionCards.TryGetValue(sourceSkill, out SkillCard previewCard);
+            int originalIndex = _discardSelectionOriginalHandIndexes.TryGetValue(
+                sourceSkill,
+                out int storedIndex
+            )
+                ? storedIndex
+                : -1;
+            transformedEntries.Add(
+                (i, sourceSkill, replacementSkill, previewCard, originalIndex)
+            );
+        }
+
+        var animationTasks = new List<Task>(transformedEntries.Count);
+        for (int i = 0; i < transformedEntries.Count; i++)
+        {
+            var entry = transformedEntries[i];
+            if (
+                entry.Card == null
+                || !GodotObject.IsInstanceValid(entry.Card)
+                || !entry.Card.IsInsideTree()
+            )
+            {
+                continue;
+            }
+
+            SkillCard card = entry.Card;
+            Skill replacement = entry.Replacement;
+            animationTasks.Add(
+                CardTransformShineVfx.PlayOnCardAsync(
+                    card,
+                    () => card.SetSkill(replacement),
+                    shortVersion: true
+                )
+            );
+        }
+
+        if (animationTasks.Count > 0)
+            await Task.WhenAll(animationTasks);
+
+        int transformedCount = 0;
+        Skill[] hand = GetActiveHandSkills();
+        for (int i = 0; i < transformedEntries.Count; i++)
+        {
+            var entry = transformedEntries[i];
+            if (
+                hand == null
+                || entry.OriginalIndex < 0
+                || entry.OriginalIndex >= hand.Length
+                || !ReferenceEquals(hand[entry.OriginalIndex], entry.Source)
+            )
+            {
+                continue;
+            }
+
+            hand[entry.OriginalIndex] = entry.Replacement;
+            _discardSelectionSkills[entry.SelectionIndex] = entry.Replacement;
+            _discardSelectionCards.Remove(entry.Source);
+            _discardSelectionCards[entry.Replacement] = entry.Card;
+            _discardSelectionOriginalHandIndexes.Remove(entry.Source);
+            _discardSelectionOriginalHandIndexes[entry.Replacement] = entry.OriginalIndex;
+            transformedCount++;
+        }
+
+        _activePlayer?.InvalidateSkillTooltipCache();
+        RequestTurnUiRefresh(refreshHover: true);
+        return transformedCount;
     }
 
     private async Task<int> ExhaustSelectedHandCardsAsync()
     {
-        Skill[] selectedSkills = _discardSelectionSkills.ToArray();
-        if (selectedSkills.Length == 0)
+        if (_discardSelectionSkills.Count == 0)
             return 0;
 
-        var entries = new List<(Skill Skill, PlayerCharacter Owner, SkillCard Card)>();
-        foreach (Skill skill in selectedSkills)
+        List<(Skill Skill, PlayerCharacter Owner, SkillCard Card)> entries =
+            _discardSelectionEntryBuffer;
+        entries.Clear();
+        for (int i = 0; i < _discardSelectionSkills.Count; i++)
         {
+            Skill skill = _discardSelectionSkills[i];
             if (skill == null)
                 continue;
 
@@ -953,22 +1429,30 @@ public partial class CharacterControl
                 continue;
             }
 
+            SkillCard actionCard = CreateDiscardSelectionActionPreviewCard(skill, sourceCard);
+            if (actionCard == null)
+                continue;
+
             PlayerCharacter owner = skill.OwnerCharater as PlayerCharacter ?? _activePlayer;
-            sourceCard.Button.Disabled = true;
-            sourceCard.HoverHint.Visible = false;
-            sourceCard.Modulate = SkillButton.EnabledModulate;
-            sourceCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
-            entries.Add((skill, owner, sourceCard));
+            if (_discardSelectionOriginalHandIndexes.TryGetValue(skill, out int originalIndex))
+                _discardSelectionOriginalVisualHandIndexes.Remove(originalIndex);
+            sourceCard.Visible = false;
+            actionCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
+            entries.Add((skill, owner, actionCard));
         }
 
         if (entries.Count == 0)
         {
-            foreach (Skill skill in selectedSkills)
+            for (int i = 0; i < _discardSelectionSkills.Count; i++)
+            {
+                Skill skill = _discardSelectionSkills[i];
                 RestoreActiveHandSkillFromDiscardSelection(skill);
+            }
             return 0;
         }
 
         bool previousFreezeHandLayout = _freezeHandLayout;
+        int selectedCount = entries.Count;
         _freezeHandLayout = true;
         try
         {
@@ -979,6 +1463,7 @@ public partial class CharacterControl
                 if (entry.Card == null)
                     continue;
 
+                KillDiscardSelectionArrangeTween(entry.Card);
                 entry.Card.ZIndex = PlayedCardZIndex + order + 1;
                 entry.Card.PlayExhaustEffect(CardPlayVanishDuration);
                 playedAny = true;
@@ -993,24 +1478,30 @@ public partial class CharacterControl
                 );
             }
 
-            BattleNode?.ExhaustPlayerTeamBattleSkills(
-                entries.Select(entry => entry.Skill),
-                _activePlayer
-            );
+            _skillRemovalBuffer.Clear();
+            for (int i = 0; i < entries.Count; i++)
+                _skillRemovalBuffer.Add(entries[i].Skill);
+            RemoveActiveHandSkillsForSelection(_skillRemovalBuffer);
+            BattleNode?.ExhaustPlayerTeamBattleSkills(_skillRemovalBuffer, _activePlayer);
+            _skillRemovalBuffer.Clear();
             CompactActiveHandAfterDiscardSelection();
 
             foreach (var entry in entries)
             {
                 if (entry.Card != null && GodotObject.IsInstanceValid(entry.Card))
+                {
+                    KillDiscardSelectionArrangeTween(entry.Card);
                     entry.Card.QueueFree();
+                }
             }
         }
         finally
         {
             _freezeHandLayout = previousFreezeHandLayout;
+            entries.Clear();
         }
 
-        return entries.Count;
+        return selectedCount;
     }
 
     private void CompactActiveHandAfterDiscardSelection()
@@ -1021,15 +1512,36 @@ public partial class CharacterControl
 
         CompactHandInPlace(hand);
 
-        foreach (
-            PlayerCharacter owner in hand.Select(skill => skill?.OwnerCharater)
-                .OfType<PlayerCharacter>()
-                .Distinct()
-        )
+        for (int i = 0; i < hand.Length; i++)
         {
-            owner.InvalidateSkillTooltipCache();
+            Skill skill = hand[i];
+            if (skill?.OwnerCharater is PlayerCharacter owner)
+                owner.InvalidateSkillTooltipCache();
         }
         _activePlayer?.InvalidateSkillTooltipCache();
+    }
+
+    private void RemoveActiveHandSkillsForSelection(IReadOnlyList<Skill> skills)
+    {
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null || skills == null || skills.Count == 0)
+            return;
+
+        for (int handIndex = 0; handIndex < hand.Length; handIndex++)
+        {
+            Skill handSkill = hand[handIndex];
+            if (handSkill == null)
+                continue;
+
+            for (int selectedIndex = 0; selectedIndex < skills.Count; selectedIndex++)
+            {
+                if (!ReferenceEquals(handSkill, skills[selectedIndex]))
+                    continue;
+
+                hand[handIndex] = null;
+                break;
+            }
+        }
     }
 
 

@@ -1,0 +1,21 @@
+﻿{
+    "skills":  {
+                   "VoidAcolyteAttack":  {
+                                             "Name":  "空洞刺击",
+                                             "BaseDamage":  8,
+                                             "HitCount":  2
+                                         },
+                   "VoidAcolyteSpecial":  {
+                                              "Name":  "虚空灌注",
+                                              "VoidCardsInserted":  2,
+                                              "BaseDamage":  7,
+                                              "Multiplier":  1,
+                                              "EnemySpecialIntentionCooldown":  2
+                                          },
+                   "VoidAcolyteSurvive":  {
+                                              "Name":  "空壳蓄势",
+                                              "BaseBlock":  10,
+                                              "PowerGain":  2
+                                          }
+               }
+}

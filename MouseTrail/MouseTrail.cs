@@ -1,9 +1,26 @@
 using System;
+using System.IO;
+using System.Text;
 using Godot;
 
 public partial class MouseTrail : CanvasLayer
 {
     private const int CursorLayerOrder = 1000;
+    private const int MouseTraceFrameCount = 1200;
+    private const string MouseTracePath = "user://mouse_frame_trace.csv";
+
+    private struct MouseFrameSample
+    {
+        public ulong Frame;
+        public ulong TickUsec;
+        public float DeltaMs;
+        public Vector2 ViewportPosition;
+        public Vector2I ScreenPosition;
+        public Vector2 EventPosition;
+        public int MotionEventCount;
+        public bool Focused;
+        public bool UseAccumulatedInput;
+    }
 
     [Export]
     private Vector2 _cursorHotspot = Vector2.Zero;
@@ -50,7 +67,13 @@ public partial class MouseTrail : CanvasLayer
     private int _gc0Count;
     private int _gc1Count;
     private int _gc2Count;
+    private bool _ignoreNextTimingSample;
     private readonly Vector2 _stutterOverlayMargin = new(14f, 12f);
+    private bool _traceMouseFrames;
+    private MouseFrameSample[] _mouseTraceSamples;
+    private int _mouseTraceSampleCount;
+    private int _mouseMotionEventsSinceLastFrame;
+    private Vector2 _lastMouseMotionEventPosition;
 
     public override void _Ready()
     {
@@ -66,7 +89,7 @@ public partial class MouseTrail : CanvasLayer
             _cursor.Resized += UpdateCursorPivot;
         }
 
-        Vector2 mousePosition = GetViewport().GetMousePosition();
+        Vector2 mousePosition = GetResponsiveMousePosition();
         _previousMousePosition = mousePosition;
 
         UpdateCursorPosition(mousePosition);
@@ -75,12 +98,49 @@ public partial class MouseTrail : CanvasLayer
         _gc1Count = GC.CollectionCount(1);
         _gc2Count = GC.CollectionCount(2);
         CreateStutterOverlayIfNeeded();
+        _traceMouseFrames = HasUserArgument("--trace-mouse-frames");
+        if (_traceMouseFrames)
+        {
+            _mouseTraceSamples = new MouseFrameSample[MouseTraceFrameCount];
+            GD.Print(
+                $"[MouseFrameTrace] begin frames={MouseTraceFrameCount} path={ProjectSettings.GlobalizePath(MouseTracePath)}"
+            );
+        }
     }
 
     public override void _ExitTree()
     {
         if (Input.MouseMode == Input.MouseModeEnum.Hidden)
             Input.MouseMode = Input.MouseModeEnum.Visible;
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == MainLoop.NotificationApplicationFocusIn)
+        {
+            CallDeferred(MethodName.ResetPointerTracking);
+            _avgFrameMs = 16.7f;
+            _peakFrameMs = 0f;
+            _stutterLogCooldownLeft = 0f;
+        }
+    }
+
+    public void ResetPointerTracking()
+    {
+        Input.UseAccumulatedInput = true;
+        Input.FlushBufferedEvents();
+        Vector2 mousePosition = GetResponsiveMousePosition();
+        _previousMousePosition = mousePosition;
+        _motionAmount = 0f;
+        _ignoreNextTimingSample = true;
+        UpdateCursorPosition(mousePosition);
+        if (_cursorMaterial != null)
+            _cursorMaterial.SetShaderParameter("motion_amount", 0f);
+    }
+
+    public void ResetPointerTrackingDeferred()
+    {
+        CallDeferred(MethodName.ResetPointerTracking);
     }
 
     public void SetUseSystemCursor(bool useSystemCursor)
@@ -99,6 +159,13 @@ public partial class MouseTrail : CanvasLayer
 
     public override void _Input(InputEvent @event)
     {
+        if (_traceMouseFrames && @event is InputEventMouseMotion mouseMotion)
+        {
+            _mouseMotionEventsSinceLastFrame++;
+            _lastMouseMotionEventPosition = mouseMotion.Position;
+            return;
+        }
+
         if (@event is not InputEventMouseButton mouseButton || !mouseButton.Pressed)
             return;
 
@@ -107,7 +174,7 @@ public partial class MouseTrail : CanvasLayer
 
     public override void _Process(double delta)
     {
-        Vector2 mousePosition = GetViewport().GetMousePosition();
+        Vector2 mousePosition = GetResponsiveMousePosition();
         UpdateCursorPosition(mousePosition);
 
         float deltaF = (float)delta;
@@ -130,7 +197,107 @@ public partial class MouseTrail : CanvasLayer
         }
 
         UpdateStutterMonitor(deltaF);
+        CaptureMouseFrame(deltaF, GetViewport().GetMousePosition());
         _previousMousePosition = mousePosition;
+    }
+
+    private void CaptureMouseFrame(float deltaSeconds, Vector2 viewportPosition)
+    {
+        if (
+            !_traceMouseFrames
+            || _mouseTraceSamples == null
+            || _mouseTraceSampleCount >= _mouseTraceSamples.Length
+        )
+        {
+            return;
+        }
+
+        _mouseTraceSamples[_mouseTraceSampleCount++] = new MouseFrameSample
+        {
+            Frame = Engine.GetProcessFrames(),
+            TickUsec = Time.GetTicksUsec(),
+            DeltaMs = deltaSeconds * 1000f,
+            ViewportPosition = viewportPosition,
+            ScreenPosition = DisplayServer.MouseGetPosition(),
+            EventPosition = _lastMouseMotionEventPosition,
+            MotionEventCount = _mouseMotionEventsSinceLastFrame,
+            Focused = GetWindow()?.HasFocus() == true,
+            UseAccumulatedInput = Input.UseAccumulatedInput,
+        };
+        _mouseMotionEventsSinceLastFrame = 0;
+
+        if (_mouseTraceSampleCount < _mouseTraceSamples.Length)
+            return;
+
+        WriteMouseFrameTrace();
+        _traceMouseFrames = false;
+    }
+
+    private void WriteMouseFrameTrace()
+    {
+        var csv = new StringBuilder(_mouseTraceSampleCount * 96);
+        csv.AppendLine(
+            "frame,tick_usec,delta_ms,viewport_x,viewport_y,screen_x,screen_y,event_x,event_y,motion_events,focused,use_accumulated_input"
+        );
+
+        int screenMovedViewportStatic = 0;
+        int screenMovedWithoutEvent = 0;
+        float maxViewportStep = 0f;
+        float maxScreenStep = 0f;
+        float maxDeltaMs = 0f;
+        for (int i = 0; i < _mouseTraceSampleCount; i++)
+        {
+            MouseFrameSample sample = _mouseTraceSamples[i];
+            csv.Append(sample.Frame).Append(',')
+                .Append(sample.TickUsec).Append(',')
+                .Append(sample.DeltaMs.ToString("F3")).Append(',')
+                .Append(sample.ViewportPosition.X.ToString("F3")).Append(',')
+                .Append(sample.ViewportPosition.Y.ToString("F3")).Append(',')
+                .Append(sample.ScreenPosition.X).Append(',')
+                .Append(sample.ScreenPosition.Y).Append(',')
+                .Append(sample.EventPosition.X.ToString("F3")).Append(',')
+                .Append(sample.EventPosition.Y.ToString("F3")).Append(',')
+                .Append(sample.MotionEventCount).Append(',')
+                .Append(sample.Focused ? "1" : "0").Append(',')
+                .AppendLine(sample.UseAccumulatedInput ? "1" : "0");
+
+            maxDeltaMs = Math.Max(maxDeltaMs, sample.DeltaMs);
+            if (i == 0)
+                continue;
+
+            MouseFrameSample previous = _mouseTraceSamples[i - 1];
+            float viewportStep = sample.ViewportPosition.DistanceTo(previous.ViewportPosition);
+            float screenStep = new Vector2(sample.ScreenPosition.X, sample.ScreenPosition.Y).DistanceTo(
+                new Vector2(previous.ScreenPosition.X, previous.ScreenPosition.Y)
+            );
+            maxViewportStep = Math.Max(maxViewportStep, viewportStep);
+            maxScreenStep = Math.Max(maxScreenStep, screenStep);
+            if (screenStep > 0.5f && viewportStep <= 0.01f)
+                screenMovedViewportStatic++;
+            if (screenStep > 0.5f && sample.MotionEventCount == 0)
+                screenMovedWithoutEvent++;
+        }
+
+        string globalPath = ProjectSettings.GlobalizePath(MouseTracePath);
+        File.WriteAllText(globalPath, csv.ToString());
+        GD.Print(
+            "[MouseFrameTrace] result "
+                + $"samples={_mouseTraceSampleCount} max_delta_ms={maxDeltaMs:F3} "
+                + $"max_viewport_step={maxViewportStep:F1} max_screen_step={maxScreenStep:F1} "
+                + $"screen_moved_viewport_static={screenMovedViewportStatic} "
+                + $"screen_moved_without_event={screenMovedWithoutEvent} path={globalPath}"
+        );
+    }
+
+    private static bool HasUserArgument(string expected)
+    {
+        foreach (string argument in OS.GetCmdlineUserArgs())
+        {
+            if (string.Equals(argument, expected, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private void CreateStutterOverlayIfNeeded()
@@ -158,6 +325,16 @@ public partial class MouseTrail : CanvasLayer
     {
         if (!_enableStutterMonitor || deltaSeconds <= 0f)
             return;
+
+        Window window = GetWindow();
+        if (window != null && !window.HasFocus())
+            return;
+
+        if (_ignoreNextTimingSample)
+        {
+            _ignoreNextTimingSample = false;
+            return;
+        }
 
         float frameMs = deltaSeconds * 1000f;
         _avgFrameMs = Mathf.Lerp(_avgFrameMs, frameMs, 0.08f);
@@ -204,6 +381,35 @@ public partial class MouseTrail : CanvasLayer
             + $"Peak {_peakFrameMs:0.0}ms  Spikes {_stutterCount}  GC {gcDelta0}/{gcDelta1}/{gcDelta2}";
         UpdateStutterOverlayPosition();
     }
+
+    public static Vector2 GetResponsiveViewportMousePosition(
+        Viewport viewport,
+        Window window = null
+    )
+    {
+        if (viewport == null)
+            return Vector2.Zero;
+
+        // Viewport mouse coordinates follow Godot's accumulated input events and can lag
+        // behind the OS cursor even while rendering remains at full frame rate.
+        Vector2 fallbackPosition = viewport.GetMousePosition();
+        window ??= viewport.GetWindow();
+        if (window != null && !window.HasFocus())
+            return fallbackPosition;
+
+        Transform2D screenTransform = viewport.GetScreenTransform();
+        float determinant = screenTransform.Determinant();
+        if (!Mathf.IsFinite(determinant) || Mathf.IsZeroApprox(determinant))
+            return fallbackPosition;
+
+        Vector2I screenPosition = DisplayServer.MouseGetPosition();
+        Vector2 viewportPosition = screenTransform.AffineInverse()
+            * new Vector2(screenPosition.X, screenPosition.Y);
+        return viewportPosition.IsFinite() ? viewportPosition : fallbackPosition;
+    }
+
+    private Vector2 GetResponsiveMousePosition() =>
+        GetResponsiveViewportMousePosition(GetViewport(), GetWindow());
 
     private void UpdateCursorPosition(Vector2 mousePosition)
     {

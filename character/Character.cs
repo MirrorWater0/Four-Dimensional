@@ -8,8 +8,6 @@ using Godot;
 
 public partial class Character : Node2D
 {
-    private const int TurnStartEnergyGain = 3;
-
     public enum DamageKind
     {
         Other,
@@ -21,7 +19,11 @@ public partial class Character : Node2D
     private const float BlockDisplayFadeDuration = 0.2f;
     private const float BlockDisplayShowScaleFactor = 1.8f;
     private const float BlockGhostExplodeAlphaScale = 0.45f;
+    private const double LifeBarDamageBufferHoldDuration = 0.7;
+    private const double LifeBarDamageBufferCatchupDuration = 0.4;
     private static readonly Vector2 BlockGhostExplodeScale = new(1.35f, 1.35f);
+    private static readonly Color NormalSpriteModulate = new(1f, 1f, 1f, 1f);
+    private static readonly Color InvisibleSpriteModulate = new(0.8f, 0.8f, 1f, 0.95f);
     private static readonly Color BlockedLifeBarFillColor = Color.FromHtml("#70d2ff");
     private static readonly Color BlockedBufferBarFillColor = Color.FromHtml("#9EDBFFF2");
     private static readonly PackedScene TooltipScene = ResourceLoader.Load<PackedScene>(
@@ -80,8 +82,7 @@ public partial class Character : Node2D
     public int BaseSurvivabilityContribution { get; private set; }
 
     public int Block { get; protected set; }
-    public int EnergySources { get; internal set; } = 1;
-    public int CurrentEnergy => IsPlayer ? BattleNode?.PlayerEnergy ?? 0 : EnergySources;
+    public int CurrentEnergy => IsPlayer ? BattleNode?.PlayerEnergy ?? 0 : 0;
 
     private string _passiveName;
     protected virtual string PassiveNameKey =>
@@ -135,6 +136,24 @@ public partial class Character : Node2D
 
     public int PositionIndex;
 
+    public Vector2 GetVisualCenterGlobalPosition()
+    {
+        Control hoverframe = GetNodeOrNull<Control>("Hoverframe");
+        if (
+            hoverframe != null
+            && GodotObject.IsInstanceValid(hoverframe)
+            && hoverframe.IsInsideTree()
+        )
+        {
+            return hoverframe.GetGlobalRect().GetCenter();
+        }
+
+        if (Sprite != null && GodotObject.IsInstanceValid(Sprite) && Sprite.IsInsideTree())
+            return Sprite.GetGlobalTransformWithCanvas().Origin;
+
+        return GetGlobalTransformWithCanvas().Origin;
+    }
+
     public PackedScene Number = ResourceLoader.Load<PackedScene>("res://LabelNode/Number.tscn");
     public PackedScene HitParticleScene = ResourceLoader.Load<PackedScene>(
         "res://battle/Effect/HitParticle.tscn"
@@ -176,6 +195,9 @@ public partial class Character : Node2D
     private Tip _localSkillTooltip;
     public Vector2 OriginalPosition;
     private Tween _hurtMoveTween;
+    private Tween _spriteImpactTween;
+    private Vector2 _spriteRestScale;
+    private bool _spriteRestScaleCached;
     private Tween _bufferBarTween;
     private Tween _lifeBarTween;
     private Tween _lifeBarMaxTween;
@@ -210,6 +232,8 @@ public partial class Character : Node2D
     private string _cachedBuffTooltipText;
     private bool _skillTooltipCacheDirty = true;
     private bool _buffTooltipCacheDirty = true;
+    private bool _buffDrivenVisualInitialized;
+    private bool _hasInvisibleBuffVisual;
     private int _skillTooltipHoverVersion;
     private Curve2D _defaultTrailCurve;
     private Vector2 _defaultTrailLinePosition;
@@ -258,7 +282,6 @@ public partial class Character : Node2D
         SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-        EnergeIconLabel.Text = EnergySources.ToString();
         RefreshCombatStatIconVisibility();
         RefreshEnergyIconVisibility();
         SetEnergyUsePreviewVisible(false);
@@ -291,7 +314,6 @@ public partial class Character : Node2D
         SyncLifeBarsToCurrent(syncBufferValue: true);
         PowerIconLabel.Text = BattlePower.ToString();
         SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-        EnergeIconLabel.Text = EnergySources.ToString();
         RefreshCombatStatIconVisibility();
         RefreshEnergyIconVisibility();
 
@@ -312,10 +334,13 @@ public partial class Character : Node2D
         _skillTooltipCacheDirty = false;
         _buffTooltipCacheDirty = false;
         CacheDefaultTrailGeometry();
+        RefreshBuffDrivenVisualState();
     }
 
     public override async void _Ready()
     {
+        SetProcess(false);
+
         if (WarmupMode)
         {
             if (Sprite?.Material is ShaderMaterial material)
@@ -342,9 +367,7 @@ public partial class Character : Node2D
             tween.TweenProperty(Sprite, "material:shader_parameter/progress", 0, 0.8f);
         }
         await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
-        var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(effect);
-        effect.Animation.Play("transition");
+        CharacterEffect.Spawn(this, "transition");
     }
 
     private void OnHoverframeGuiInput(InputEvent @event)
@@ -781,6 +804,36 @@ public partial class Character : Node2D
     {
         _buffTooltipCacheDirty = true;
         _cachedBuffTooltipText = null;
+        RefreshBuffDrivenVisualState();
+    }
+
+    public bool HasActiveStartActionBuff(Buff.BuffName name)
+    {
+        if (StartActionBuffs == null)
+            return false;
+
+        for (int i = 0; i < StartActionBuffs.Count; i++)
+        {
+            StartActionBuff buff = StartActionBuffs[i];
+            if (buff != null && buff.ThisBuffName == name && buff.Stack > 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    internal void RefreshBuffDrivenVisualState()
+    {
+        if (Sprite == null || !GodotObject.IsInstanceValid(Sprite))
+            return;
+
+        bool hasInvisible = HasActiveStartActionBuff(Buff.BuffName.Invisible);
+        if (_buffDrivenVisualInitialized && _hasInvisibleBuffVisual == hasInvisible)
+            return;
+
+        _buffDrivenVisualInitialized = true;
+        _hasInvisibleBuffVisual = hasInvisible;
+        Sprite.SelfModulate = hasInvisible ? InvisibleSpriteModulate : NormalSpriteModulate;
     }
 
     private string GetOrBuildSkillTooltipText()
@@ -921,22 +974,6 @@ public partial class Character : Node2D
             sb.Append($"[color={effectColor}]{effect}[/color]\n");
     }
 
-    public override void _Process(double delta)
-    {
-        if (
-            StartActionBuffs.Any(x =>
-                x != null && x.ThisBuffName == Buff.BuffName.Invisible && x.Stack > 0
-            )
-        )
-        {
-            Sprite.SelfModulate = new Color(0.8f, 0.8f, 1f, 0.95f);
-        }
-        else
-        {
-            Sprite.SelfModulate = new Color(1f, 1f, 1f, 1f);
-        }
-    }
-
     public void PrepareHoverTooltipInstances()
     {
         if (_localSkillTooltip != null || TooltipScene == null)
@@ -1066,7 +1103,7 @@ public partial class Character : Node2D
             _turnOrderPreviewTween
                 .TweenProperty(root, "scale", targetScale, isCurrent ? 0.22f : 0.16f)
                 .SetEase(Tween.EaseType.Out)
-                .SetTrans(Tween.TransitionType.Back);
+                .SetTrans(Tween.TransitionType.Cubic);
             _turnOrderPreviewTween
                 .TweenProperty(root, "modulate", Colors.White, isCurrent ? 0.18f : 0.14f)
                 .SetEase(Tween.EaseType.Out)
@@ -1173,11 +1210,6 @@ public partial class Character : Node2D
             }
         }
 
-        if (!IsPlayer)
-            BattleNode?.UpdataEnergy(
-                this,
-                TurnStartEnergyGain + Relic.GetTurnStartEnergyGainBonus(this)
-            );
         OnTurnStart();
 
         if (StartActionBuffs == null)
@@ -1271,9 +1303,7 @@ public partial class Character : Node2D
         bool ignoreBlock = false
     )
     {
-        Sprite.Modulate = 1.5f * new Color(1, 1, 1, 1);
-        HitParticle hitParticle = HitParticleScene.Instantiate<HitParticle>();
-        AddChild(hitParticle);
+        HitParticle.Spawn(this);
 
         if (HurtBuffs != null)
         {
@@ -1284,10 +1314,6 @@ public partial class Character : Node2D
                 damage = await buff.Trigger(damage, source, damageKind);
             }
         }
-
-        global::Number.Spawn(this, (-(int)damage).ToString(), Colors.Red);
-
-        BattleNode?.PlayHitEffect();
 
         int incomingDamage = Math.Max((int)damage, 0);
         int previousLife = Life;
@@ -1318,16 +1344,19 @@ public partial class Character : Node2D
             AudioManager.PlayHurt(this);
         else if (blockedDamage > 0)
             AudioManager.PlayBlockImpact(this);
-        AnimateLifeBarsAfterDamage();
+        SpawnDamageResultNumbers(incomingDamage, actualDamage, blockedDamage);
+        PlayHurtImpactTween(actualDamage, blockedDamage);
+        BattleNode?.PlayHitEffect(actualDamage, blockedDamage);
+        if (actualDamage > 0)
+            AnimateLifeBarsAfterDamage();
+        else
+            SyncLifeBarsToCurrent(syncBufferValue: false);
         BattleNode?.SyncPlayerLifeToGameInfo();
         BattleNode?.RecordDamage(this, actualDamage, blockedDamage, source);
         if (actualDamage > 0)
             source?.OnDealUnblockedDamage(this, actualDamage, damageKind);
 
-        PlayHurtMoveTween();
-        Tween tween = CreateTween();
-        tween.TweenInterval(0.2f);
-        tween.TweenCallback(Callable.From(() => Sprite.Modulate = new Color(1, 1, 1, 1)));
+        PlayHurtMoveTween(actualDamage, blockedDamage);
 
         if (Life == 0)
         {
@@ -1335,9 +1364,179 @@ public partial class Character : Node2D
         }
     }
 
-    private void PlayHurtMoveTween()
+    private void SpawnDamageResultNumbers(int incomingDamage, int actualDamage, int blockedDamage)
     {
-        Vector2 hurtOffset = IsPlayer ? 20 * Vector2.Left : 20 * Vector2.Right;
+        if (actualDamage > 0)
+        {
+            float damageImpact = Mathf.Clamp(0.92f + actualDamage / 36f, 0.92f, 1.46f);
+            Color damageColor = actualDamage >= 28
+                ? new Color(1f, 0.18f, 0.1f, 1f)
+                : new Color(1f, 0.24f, 0.18f, 1f);
+            global::Number.Spawn(this, $"-{actualDamage}", damageColor, damageImpact);
+        }
+
+        if (blockedDamage > 0)
+        {
+            float blockImpact = Mathf.Clamp(0.78f + blockedDamage / 70f, 0.78f, 1.08f);
+            global::Number.Spawn(
+                this,
+                $"-{blockedDamage}",
+                new Color(0.42f, 0.86f, 1f, 1f),
+                blockImpact
+            );
+        }
+
+        if (incomingDamage <= 0 && actualDamage <= 0 && blockedDamage <= 0)
+            global::Number.Spawn(this, "免疫", new Color(0.76f, 0.92f, 1f, 1f), 0.76f);
+    }
+
+    private void PlayHurtImpactTween(int actualDamage, int blockedDamage)
+    {
+        if (Sprite == null || !GodotObject.IsInstanceValid(Sprite))
+            return;
+
+        float impact = ResolveLocalHitImpact(actualDamage, blockedDamage);
+        Color flashColor = actualDamage > 0
+            ? new Color(1.75f, 1.32f, 1.22f, 1f)
+            : new Color(1.24f, 1.62f, 1.85f, 1f);
+
+        PlaySpriteImpactTween(
+            flashColor,
+            1.0f + 0.055f * impact,
+            1.0f - 0.045f * impact,
+            0.16f + 0.025f * impact
+        );
+    }
+
+    private void PlayPositiveImpactTween(Color flashColor, float strength = 1f)
+    {
+        float impact = Mathf.Clamp(strength, 0.65f, 1.35f);
+        PlaySpriteImpactTween(
+            flashColor,
+            1.0f - 0.028f * impact,
+            1.0f + 0.055f * impact,
+            0.18f + 0.03f * impact
+        );
+    }
+
+    public void PlayTargetLockPulse(Color? flashColor = null, float strength = 1f)
+    {
+        if (State == CharacterState.Dying)
+            return;
+
+        float impact = Mathf.Clamp(strength, 0.75f, 1.5f);
+        PlaySpriteImpactTween(
+            flashColor ?? new Color(1.55f, 1.48f, 0.78f, 1f),
+            1.0f + 0.025f * impact,
+            1.0f + 0.055f * impact,
+            0.17f + 0.025f * impact
+        );
+
+        if (Hoverframe == null || !GodotObject.IsInstanceValid(Hoverframe))
+            return;
+
+        Hoverframe.PivotOffset = Hoverframe.Size / 2;
+        Hoverframe.SelfModulate = new Color(1f, 0.93f, 0.52f, 1f);
+        Hoverframe.Scale = new Vector2(1.18f, 1.18f);
+        Tween tween = Hoverframe.CreateTween();
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(Hoverframe, "scale", Vector2.One, 0.22f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(
+                Hoverframe,
+                "self_modulate:a",
+                _isTargetPreviewVisible ? _targetPreviewColor.A : 0f,
+                0.22f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween.SetParallel(false);
+        tween.TweenCallback(Callable.From(RefreshHoverframeVisual));
+    }
+
+    private void PlaySpriteImpactTween(
+        Color flashColor,
+        float targetScaleX,
+        float targetScaleY,
+        float duration
+    )
+    {
+        if (Sprite == null || !GodotObject.IsInstanceValid(Sprite))
+            return;
+
+        Vector2 baseScale = GetSpriteRestScale();
+        Vector2 impactScale = new(baseScale.X * targetScaleX, baseScale.Y * targetScaleY);
+
+        _spriteImpactTween?.Kill();
+        Sprite.Modulate = flashColor;
+        Sprite.Scale = baseScale;
+        Sprite.Scale = impactScale;
+        _spriteImpactTween = CreateTween();
+        _spriteImpactTween.SetParallel(true);
+        _spriteImpactTween
+            .TweenProperty(Sprite, "scale", baseScale, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _spriteImpactTween
+            .TweenProperty(Sprite, "modulate", Colors.White, Math.Max(0.1f, duration * 0.82f))
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        Tween activeTween = _spriteImpactTween;
+        _spriteImpactTween.Finished += () =>
+        {
+            if (_spriteImpactTween != activeTween)
+                return;
+
+            if (Sprite != null && GodotObject.IsInstanceValid(Sprite))
+            {
+                Sprite.Scale = baseScale;
+                Sprite.Modulate = Colors.White;
+            }
+
+            _spriteImpactTween = null;
+        };
+    }
+
+    private Vector2 GetSpriteRestScale()
+    {
+        if (!_spriteRestScaleCached)
+        {
+            Vector2 currentScale = Sprite?.Scale ?? Vector2.One;
+            _spriteRestScale = currentScale == Vector2.Zero ? Vector2.One : currentScale;
+            _spriteRestScaleCached = true;
+        }
+
+        return _spriteRestScale;
+    }
+
+    private static float ResolveLocalHitImpact(int actualDamage, int blockedDamage)
+    {
+        int effectiveDamage = Math.Max(actualDamage, blockedDamage);
+        float impact = effectiveDamage switch
+        {
+            >= 45 => 1.55f,
+            >= 28 => 1.32f,
+            >= 14 => 1.08f,
+            > 0 => 0.82f,
+            _ => 0.58f,
+        };
+
+        if (actualDamage <= 0 && blockedDamage > 0)
+            impact *= 0.75f;
+
+        return Mathf.Clamp(impact, 0.5f, 1.65f);
+    }
+
+    private void PlayHurtMoveTween(int actualDamage, int blockedDamage)
+    {
+        float impact = ResolveLocalHitImpact(actualDamage, blockedDamage);
+        float directionScale = actualDamage > 0 ? 1f : 0.62f;
+        Vector2 hurtOffset = (IsPlayer ? Vector2.Left : Vector2.Right)
+            * (18f + 10f * impact)
+            * directionScale;
         Vector2 hurtTarget = OriginalPosition + hurtOffset;
         Vector2 currentPosition = Position;
         float maxOffsetDistance = Math.Max(hurtOffset.Length(), 0.001f);
@@ -1409,15 +1608,23 @@ public partial class Character : Node2D
         int actualHeal = Life - previousLife;
         AnimateLifeBarsAfterRecover();
         BattleNode?.SyncPlayerLifeToGameInfo();
-        global::Number.Spawn(this, heal.ToString("+0;-0;0"), heal >= 0 ? Colors.Green : Colors.Red);
+        if (actualHeal > 0)
+        {
+            global::Number.Spawn(
+                this,
+                actualHeal.ToString("+0"),
+                new Color(0.36f, 1f, 0.48f, 1f),
+                Mathf.Clamp(0.86f + actualHeal / 48f, 0.86f, 1.18f)
+            );
+            PlayPositiveImpactTween(new Color(0.72f, 1.55f, 0.92f, 1f), actualHeal / 18f);
+        }
 
-        var effect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(effect);
-        effect.Animation.Play("recover");
+        var effect = CharacterEffect.Spawn(this, "recover");
         if (State == CharacterState.Dying && canRevive && Life > 0)
         {
             State = CharacterState.Normal;
             CreateTween().TweenProperty(this, "modulate", new Color(1, 1, 1, 1), 0.4f);
+            BattleNode?.NotifyHandPreviewContextChanged();
         }
 
         BattleNode?.RecordHeal(this, actualHeal, source);
@@ -1444,8 +1651,12 @@ public partial class Character : Node2D
         if (State == CharacterState.Dying)
         {
             if (enteredDying)
+            {
                 BattleNode?.HandleCharacterEnteredDying(this);
+                BattleNode?.NotifyHandPreviewContextChanged();
+            }
             TriggerOwnedSummonsDying();
+            BattleNode?.QueueBattleOverCheck();
         }
     }
 
@@ -1476,7 +1687,7 @@ public partial class Character : Node2D
     internal void RefreshEnergyIconVisibility()
     {
         if (EnergeIcon != null)
-            EnergeIcon.Visible = IsPlayer && EnergySources > 0;
+            EnergeIcon.Visible = false;
     }
 
     public void SetEnergyUsePreviewVisible(bool visible)
@@ -1554,9 +1765,7 @@ public partial class Character : Node2D
             return;
         if (num > 0)
         {
-            CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
-            AddChild(characterEffect);
-            characterEffect.Animation.Play("shield");
+            CharacterEffect.Spawn(this, "shield");
             AudioManager.PlayBlockGain(this);
         }
         Block = Math.Clamp(Block + num, 0, 999);
@@ -1566,7 +1775,13 @@ public partial class Character : Node2D
 
         if (num > 0)
         {
-            global::Number.Spawn(this, "+" + num.ToString(), new Color(180, 220, 255, 255) / 255);
+            global::Number.Spawn(
+                this,
+                "+" + num.ToString(),
+                new Color(180, 220, 255, 255) / 255,
+                Mathf.Clamp(0.82f + num / 56f, 0.82f, 1.12f)
+            );
+            PlayPositiveImpactTween(new Color(0.64f, 1.08f, 1.65f, 1f), num / 18f);
             if (record)
                 BattleNode?.RecordBlockGain(this, num, source);
         }
@@ -1593,12 +1808,6 @@ public partial class Character : Node2D
                 break;
             case PropertyType.MaxLife:
                 return;
-            case PropertyType.EnergySources:
-                int oldEnergySources = EnergySources;
-                EnergySources = Math.Max(0, EnergySources - value);
-                value = oldEnergySources - EnergySources;
-                icon = EnergeIcon as ColorRect;
-                break;
         }
 
         if (value <= 0)
@@ -1608,15 +1817,11 @@ public partial class Character : Node2D
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-            EnergeIconLabel.Text = EnergySources.ToString();
             RefreshCombatStatIconVisibility();
-            RefreshEnergyIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
-        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(characterEffect);
-        characterEffect.Animation.Play("lightning");
+        CharacterEffect.Spawn(this, "lightning");
 
         BuffHintLabel.Spawn(
             this,
@@ -1627,6 +1832,7 @@ public partial class Character : Node2D
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, -value, source);
         BattleNode?.RefreshEnemyIntentionPreviews();
+        BattleNode?.NotifyHandPreviewContextChanged();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
@@ -1647,9 +1853,7 @@ public partial class Character : Node2D
         AnimateLifeBarCapacityChange();
         BattleNode?.SyncPlayerLifeToGameInfo();
 
-        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(characterEffect);
-        characterEffect.Animation.Play("lightning");
+        CharacterEffect.Spawn(this, "lightning");
 
         BuffHintLabel.Spawn(
             this,
@@ -1685,10 +1889,6 @@ public partial class Character : Node2D
                 break;
             case PropertyType.MaxLife:
                 return;
-            case PropertyType.EnergySources:
-                EnergySources = Math.Max(0, EnergySources + appliedValue);
-                icon = EnergeIcon as ColorRect;
-                break;
         }
 
         TryPlayIncreasePropertyEffect();
@@ -1697,9 +1897,7 @@ public partial class Character : Node2D
         {
             PowerIconLabel.Text = BattlePower.ToString();
             SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
-            EnergeIconLabel.Text = EnergySources.ToString();
             RefreshCombatStatIconVisibility();
-            RefreshEnergyIconVisibility();
             Buff.GhostExplode(icon, new Vector2(2f, 2f), useOffsetMotion: false);
         }
 
@@ -1712,6 +1910,7 @@ public partial class Character : Node2D
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
         BattleNode?.RefreshEnemyIntentionPreviews();
+        BattleNode?.NotifyHandPreviewContextChanged();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
@@ -1728,9 +1927,7 @@ public partial class Character : Node2D
 
         _lastIncreasePropertyEffectTickMsec = now;
 
-        CharacterEffect characterEffect = CharacterEffectScene.Instantiate<CharacterEffect>();
-        AddChild(characterEffect);
-        characterEffect.Animation.Play("absorb");
+        CharacterEffect.Spawn(this, "absorb");
         // if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
         // {
         //     BattleNode.BattleAnimationPlayer.Play("blue");
@@ -1755,16 +1952,7 @@ public partial class Character : Node2D
 
     public virtual void OnTurnStart() { }
 
-    public virtual void OnTurnEnd()
-    {
-        if (!IsPlayer && EnergySources > 0)
-        {
-            int energyLossReduction = SpecialBuff.GetEnergyStorageReduction(this);
-            int energyLoss = Math.Max(0, EnergySources - energyLossReduction);
-            if (energyLoss > 0)
-                BattleNode?.UpdataEnergy(this, -energyLoss, this);
-        }
-    }
+    public virtual void OnTurnEnd() { }
 
     private void StopTween(ref Tween tween)
     {
@@ -1933,7 +2121,7 @@ public partial class Character : Node2D
         bar.AddThemeStyleboxOverride("fill", defaultFillStyle.Duplicate() as StyleBox);
     }
 
-    private void AnimateLifeBarsAfterDamage(double duration = 0.2)
+    private void AnimateLifeBarsAfterDamage(double duration = LifeBarDamageBufferCatchupDuration)
     {
         StopTween(ref _lifeBarTween);
         StopTween(ref _bufferBarTween);
@@ -1941,7 +2129,11 @@ public partial class Character : Node2D
         LifeBar.Value = Life;
 
         _bufferBarTween = CreateTween();
-        _bufferBarTween.TweenProperty(BufferBar, "value", Life, duration);
+        _bufferBarTween
+            .TweenProperty(BufferBar, "value", Life, duration)
+            .SetDelay(LifeBarDamageBufferHoldDuration)
+            .SetEase(Tween.EaseType.Out)
+            .SetTrans(Tween.TransitionType.Expo);
         _bufferBarTween.TweenCallback(
             Callable.From(() =>
             {
@@ -2345,12 +2537,12 @@ public partial class Character : Node2D
         Tween tween = CreateTween();
         tween
             .TweenProperty(Hoverframe, "scale", new Vector2(1.1f, 1.1f), 0.1f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
         tween
             .TweenProperty(Hoverframe, "scale", new Vector2(1f, 1f), 0.2f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
     }
 

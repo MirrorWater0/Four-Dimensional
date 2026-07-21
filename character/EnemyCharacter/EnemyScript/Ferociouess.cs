@@ -118,7 +118,7 @@ public partial class FerociouessSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 5, times: HitCount, target: HostileTargetReference.All)
+            AttackStep(baseDamage: V("BaseDamage", 5), times: HitCount, target: HostileTargetReference.All)
         );
     }
 }
