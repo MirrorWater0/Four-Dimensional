@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
+#nullable enable annotations
+
 public readonly struct EventCardSelection(
     int playerIndex,
     SkillID skillId,

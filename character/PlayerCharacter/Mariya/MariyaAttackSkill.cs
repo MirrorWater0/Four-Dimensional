@@ -191,7 +191,6 @@ public partial class Sacrifice : Skill
 {
     int basisDamage = 12;
     int allyHurt = 4;
-    int DeMax = 10;
     public override string SkillName { get; set; } = "献祭";
     public override int EnergyCost => 2;
 

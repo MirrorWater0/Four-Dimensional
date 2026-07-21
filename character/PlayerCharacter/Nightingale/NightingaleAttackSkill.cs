@@ -8,7 +8,6 @@ public partial class NightingaleAttackSkill { }
 public partial class ShadowAmbush : Skill
 {
     private const int BaseDamage = 7;
-    int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
         == true;
