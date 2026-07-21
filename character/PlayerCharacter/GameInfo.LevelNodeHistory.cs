@@ -20,6 +20,7 @@ public sealed class LevelNodeCompletionRecord
     public int ElectricityCoinChange;
     public int ElectricityCoinGained;
     public int TransitionEnergyChange;
+    public List<LevelNodeLifeChangeRecord> PlayerLifeChanges = new();
     public List<string> SkillChanges = new();
     public List<string> GainedItems = new();
     public List<string> ConsumedItems = new();
@@ -32,6 +33,12 @@ public sealed class LevelNodeCompletionRecord
     public int NextBattleEquipmentDropChance;
     public List<string> Notes = new();
     public string Summary;
+}
+
+public sealed class LevelNodeLifeChangeRecord
+{
+    public string CharacterName;
+    public int Amount;
 }
 
 public sealed class LevelNodePropertyChangeRecord
@@ -162,6 +169,10 @@ public static partial class GameInfo
                     : CopyStringList(PlayerDamageSummaryLines),
                 ElectricityCoinChange = GameInfo.ElectricityCoin - ElectricityCoin,
                 TransitionEnergyChange = GameInfo.GetPartyLife() - TransitionEnergy,
+                PlayerLifeChanges = BuildPlayerLifeChanges(
+                    PlayerProperties,
+                    GameInfo.PlayerCharacters
+                ),
                 SkillChanges = BuildSkillChanges(PlayerGainedSkills, GameInfo.PlayerCharacters),
                 GainedItems = BuildPositiveItemChanges(Items, GameInfo.Items),
                 ConsumedItems = BuildNegativeItemChanges(Items, GameInfo.Items),
@@ -192,6 +203,7 @@ public static partial class GameInfo
         public string CharacterName;
         public int Power;
         public int Survivability;
+        public int Life;
         public int MaxLife;
     }
 
@@ -362,6 +374,7 @@ public static partial class GameInfo
             ElectricityCoinChange = source.ElectricityCoinChange,
             ElectricityCoinGained = source.ElectricityCoinGained,
             TransitionEnergyChange = source.TransitionEnergyChange,
+            PlayerLifeChanges = CloneLifeChangeRecords(source.PlayerLifeChanges),
             SkillChanges = CopyStringList(source.SkillChanges),
             GainedItems = CopyStringList(source.GainedItems),
             ConsumedItems = CopyStringList(source.ConsumedItems),
@@ -376,6 +389,31 @@ public static partial class GameInfo
 
     private static List<string> CopyStringList(List<string> source) =>
         source == null ? new List<string>() : new List<string>(source);
+
+    private static List<LevelNodeLifeChangeRecord> CloneLifeChangeRecords(
+        List<LevelNodeLifeChangeRecord> source
+    )
+    {
+        var result = new List<LevelNodeLifeChangeRecord>();
+        if (source == null)
+            return result;
+
+        foreach (var change in source)
+        {
+            if (change == null)
+                continue;
+
+            result.Add(
+                new LevelNodeLifeChangeRecord
+                {
+                    CharacterName = change.CharacterName,
+                    Amount = change.Amount,
+                }
+            );
+        }
+
+        return result;
+    }
 
     private static List<LevelNodePropertyChangeRecord> ClonePropertyChangeRecords(
         List<LevelNodePropertyChangeRecord> source
@@ -488,7 +526,12 @@ public static partial class GameInfo
     }
 
     private static Skill.SkillTypes[] GetDisplaySkillTypes() =>
-        [Skill.SkillTypes.Attack, Skill.SkillTypes.Survive, Skill.SkillTypes.Special];
+        [
+            Skill.SkillTypes.Attack,
+            Skill.SkillTypes.Survive,
+            Skill.SkillTypes.Special,
+            Skill.SkillTypes.Ability,
+        ];
 
     private static void AppendRunNodeSection(StringBuilder sb, RunHistoryRecord record)
     {
@@ -619,7 +662,9 @@ public static partial class GameInfo
 
         if (node.ElectricityCoinChange != 0)
             parts.Add($"电力币 {FormatSigned(node.ElectricityCoinChange)}");
-        if (node.TransitionEnergyChange != 0)
+        if (node.NodeType is LevelNode.LevelType.Event or LevelNode.LevelType.Rest)
+            AddNodeRecordPart(parts, "角色恢复", BuildPlayerLifeRecoveryLines(node));
+        else if (node.TransitionEnergyChange != 0)
             parts.Add($"队伍生命 {FormatSigned(node.TransitionEnergyChange)}");
 
         AddNodeRecordPart(parts, "技能", node.SkillChanges);
@@ -741,6 +786,7 @@ public static partial class GameInfo
             Skill.SkillTypes.Attack => "攻击",
             Skill.SkillTypes.Survive => "生存",
             Skill.SkillTypes.Special => "特殊",
+            Skill.SkillTypes.Ability => "能力",
             _ => "其它",
         };
     }
@@ -877,7 +923,9 @@ public static partial class GameInfo
         if (record.ElectricityCoinChange != 0)
             sb.Append($"\n电力币：{FormatSigned(record.ElectricityCoinChange)}");
 
-        if (record.TransitionEnergyChange != 0)
+        if (record.NodeType is LevelNode.LevelType.Event or LevelNode.LevelType.Rest)
+            AppendJoinedLines(sb, "角色恢复", BuildPlayerLifeRecoveryLines(record));
+        else if (record.TransitionEnergyChange != 0)
             sb.Append($"\n队伍生命：{FormatSigned(record.TransitionEnergyChange)}");
 
         sb.Append($"\n下一场战斗掉率：道具 {record.NextBattleItemDropChance}%");
@@ -901,6 +949,7 @@ public static partial class GameInfo
         if (
             record.ElectricityCoinChange == 0
             && record.TransitionEnergyChange == 0
+            && (record.PlayerLifeChanges == null || record.PlayerLifeChanges.Count == 0)
             && (record.SkillChanges == null || record.SkillChanges.Count == 0)
             && (record.GainedItems == null || record.GainedItems.Count == 0)
             && (record.ConsumedItems == null || record.ConsumedItems.Count == 0)
@@ -921,6 +970,17 @@ public static partial class GameInfo
             return;
 
         sb.Append($"\n{label}：{string.Join("；", values)}");
+    }
+
+    private static List<string> BuildPlayerLifeRecoveryLines(LevelNodeCompletionRecord record)
+    {
+        if (record?.PlayerLifeChanges == null || record.PlayerLifeChanges.Count == 0)
+            return new List<string>();
+
+        return record.PlayerLifeChanges
+            .Where(change => change != null && change.Amount > 0)
+            .Select(change => $"{change.CharacterName} {FormatSigned(change.Amount)}")
+            .ToList();
     }
 
     private static string BuildPropertyChangeLine(LevelNodePropertyChangeRecord change)
@@ -1048,6 +1108,7 @@ public static partial class GameInfo
                 CharacterName = GetPlayerName(player, i),
                 Power = player.Power,
                 Survivability = player.Survivability,
+                Life = Math.Clamp(player.Life, 0, Math.Max(player.LifeMax, 0)),
                 MaxLife = player.LifeMax,
             };
         }
@@ -1210,7 +1271,12 @@ public static partial class GameInfo
     )
     {
         var result = new List<LevelNodePropertyChangeRecord>();
-        if (before == null || before.Length == 0 || currentPlayers == null || currentPlayers.Length == 0)
+        if (
+            before == null
+            || before.Length == 0
+            || currentPlayers == null
+            || currentPlayers.Length == 0
+        )
             return result;
 
         int count = Math.Min(before.Length, currentPlayers.Length);
@@ -1236,6 +1302,37 @@ public static partial class GameInfo
             }
 
             result.Add(change);
+        }
+
+        return result;
+    }
+
+    private static List<LevelNodeLifeChangeRecord> BuildPlayerLifeChanges(
+        PlayerPropertySnapshot[] before,
+        PlayerInfoStructure[] currentPlayers
+    )
+    {
+        var result = new List<LevelNodeLifeChangeRecord>();
+        if (before == null || before.Length == 0 || currentPlayers == null || currentPlayers.Length == 0)
+            return result;
+
+        int count = Math.Min(before.Length, currentPlayers.Length);
+        for (int i = 0; i < count; i++)
+        {
+            var previous = before[i];
+            var current = currentPlayers[i];
+            int currentLife = Math.Clamp(current.Life, 0, Math.Max(current.LifeMax, 0));
+            int amount = currentLife - previous.Life;
+            if (amount == 0)
+                continue;
+
+            result.Add(
+                new LevelNodeLifeChangeRecord
+                {
+                    CharacterName = GetPlayerName(current, i),
+                    Amount = amount,
+                }
+            );
         }
 
         return result;

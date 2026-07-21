@@ -1,0 +1,27 @@
+﻿{
+    "skills":  {
+                   "Blade":  {
+                                 "Name":  "利刃"
+                             },
+                   "Calmness":  {
+                                    "Name":  "宁静"
+                                },
+                   "DazeStatus":  {
+                                      "Name":  "晕眩"
+                                  },
+                   "DefenceFocus":  {
+                                        "Name":  "防御专注"
+                                    },
+                   "PlagueStatus":  {
+                                        "Name":  "瘟疫",
+                                        "TeamDamageAtTurnEnd":  3
+                                    },
+                   "VoidStatus":  {
+                                      "Name":  "虚空之唤",
+                                      "EnergyLossOnDraw":  1
+                                  },
+                   "WoundStatus":  {
+                                       "Name":  "伤口"
+                                   }
+               }
+}

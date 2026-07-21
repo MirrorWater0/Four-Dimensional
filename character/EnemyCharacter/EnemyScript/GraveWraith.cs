@@ -40,7 +40,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 137;
+        MaxLife = 147;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -59,7 +59,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 20;
+    private const int BaseDamage = 30;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -87,13 +87,16 @@ public partial class GraveWraithSurvive : Skill
 
     public override string SkillName { get; set; } = "骨壳蜷护";
 
-
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2, HostileTargetReference.All)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
+            ApplyBuffHostile(
+                Buff.BuffName.Vulnerable,
+                V("VulnerableStacks", 2),
+                HostileTargetReference.All
+            )
         );
     }
 }
@@ -109,8 +112,12 @@ public partial class GraveWraithSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 11, multiplier: 1, target: HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Power, 5)
+            AttackStep(
+                baseDamage: V("BaseDamage", 13),
+                multiplier: V("Multiplier", 1),
+                target: HostileTargetReference.All
+            ),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 5))
         );
     }
 }

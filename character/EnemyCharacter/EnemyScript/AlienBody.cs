@@ -61,7 +61,7 @@ public partial class AlienBodyAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Survivability, 2, HostileTargetReference.AttackKey)
+            LowerTargetPropertyStep(PropertyType.Survivability, V("SurvivabilityLoss", 2), HostileTargetReference.AttackKey)
         );
     }
 }
@@ -80,7 +80,7 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddCardsStep(SkillID.DazeStatus, 2, BattleCardPileTarget.DiscardPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
@@ -99,8 +99,8 @@ public partial class AlienBodySpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(13, target: HostileTargetReference.RandomPreview),
-            AddCardsStep(SkillID.DazeStatus, 1),
+            AttackStep(V("BaseDamage", 13), target: HostileTargetReference.RandomPreview),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1)),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,

@@ -78,8 +78,8 @@ public partial class VoidRotorAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: 3),
-            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: V("HitCount", 3)),
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1), HostileTargetReference.AttackKey)
         );
     }
 }
@@ -97,7 +97,7 @@ public partial class VoidRotorSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddCardsStep(SkillID.DazeStatus, 2)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2))
         );
     }
 }
@@ -116,7 +116,7 @@ public partial class VoidRotorSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 2),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), times: V("HitCount", 2)),
             AddCardsStep(
                 SkillID.DazeStatus,
                 DazeCardsPerTarget,

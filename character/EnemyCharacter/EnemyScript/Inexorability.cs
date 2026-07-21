@@ -72,7 +72,6 @@ public partial class InexorabilityRegedit : EnemyRegedit
 public partial class InexorabilityAttack : Skill
 {
     private const int BaseDamage = 18;
-    private const int SelfEnergyGain = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -82,8 +81,7 @@ public partial class InexorabilityAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1),
-            EnergyStep(SelfEnergyGain)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1))
         );
     }
 }
@@ -101,7 +99,7 @@ public partial class InexorabilitySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 1),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }

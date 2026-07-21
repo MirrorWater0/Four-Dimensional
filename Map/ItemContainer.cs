@@ -19,6 +19,7 @@ public partial class ItemContainer : Panel
     private bool _enabled;
     private Tip _itemTip;
     private ConsumeItem _discardMenuItem;
+    private Tween _borderTween;
 
     public override void _Ready()
     {
@@ -37,6 +38,7 @@ public partial class ItemContainer : Panel
 
     public override void _ExitTree()
     {
+        SetProcessInput(false);
         if (_openDiscardMenuOwner == this)
             _openDiscardMenuOwner = null;
     }
@@ -106,6 +108,7 @@ public partial class ItemContainer : Panel
         _discardMenuItem = item;
         DiscardButton.Visible = true;
         DiscardButton.MoveToFront();
+        SetProcessInput(true);
     }
 
     private bool IsPointInsideSelfOrDiscardMenu(Vector2 globalPosition)
@@ -135,6 +138,7 @@ public partial class ItemContainer : Panel
 
     private void HideDiscardMenuInstance()
     {
+        SetProcessInput(false);
         if (DiscardButton != null && GodotObject.IsInstanceValid(DiscardButton))
             DiscardButton.Visible = false;
         _discardMenuItem = null;
@@ -236,7 +240,7 @@ public partial class ItemContainer : Panel
         if (_runtimeStyle == null || _selected == this)
             return;
 
-        _runtimeStyle.BorderColor = hovered ? HoverBorderColor : _defaultBorderColor;
+        TweenBorderColor(hovered ? HoverBorderColor : _defaultBorderColor);
     }
 
     private static void SetSelected(ItemContainer container)
@@ -265,9 +269,28 @@ public partial class ItemContainer : Panel
         if (_runtimeStyle == null)
             return;
 
-        _runtimeStyle.BorderColor = selected
+        TweenBorderColor(selected
             ? SelectedBorderColor
-            : (_isHovered ? HoverBorderColor : _defaultBorderColor);
+            : (_isHovered ? HoverBorderColor : _defaultBorderColor));
+    }
+
+    private void TweenBorderColor(Color targetColor)
+    {
+        if (_runtimeStyle == null)
+            return;
+
+        _borderTween?.Kill();
+        Color startColor = _runtimeStyle.BorderColor;
+        _borderTween = CreateTween();
+        _borderTween
+            .TweenMethod(
+                Callable.From<Color>(value => _runtimeStyle.BorderColor = value),
+                startColor,
+                targetColor,
+                0.10f
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
     }
 
     private void OnIconChildExiting(Node child)

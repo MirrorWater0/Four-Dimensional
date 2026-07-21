@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -42,13 +41,15 @@ public partial class CharacterControl
             _pileCardSelectionPressHandlers.Remove(card);
         }
 
-        foreach (int key in _pileCardSelectionCards
-            .Where(pair => pair.Value == card)
-            .Select(pair => pair.Key)
-            .ToArray())
+        _pileCardSelectionRemovalBuffer.Clear();
+        foreach (KeyValuePair<int, SkillCard> pair in _pileCardSelectionCards)
         {
-            _pileCardSelectionCards.Remove(key);
+            if (ReferenceEquals(pair.Value, card))
+                _pileCardSelectionRemovalBuffer.Add(pair.Key);
         }
+        for (int i = 0; i < _pileCardSelectionRemovalBuffer.Count; i++)
+            _pileCardSelectionCards.Remove(_pileCardSelectionRemovalBuffer[i]);
+        _pileCardSelectionRemovalBuffer.Clear();
 
         card.Button.ToggleMode = false;
         card.Button.ButtonPressed = false;
@@ -72,7 +73,7 @@ public partial class CharacterControl
         {
             _pileCardSelectionIndexes.Remove(pileIndex);
             RefreshPileCardSelectionVisuals();
-            RefreshTurnUi();
+            RequestTurnUiRefresh();
             return Task.CompletedTask;
         }
 
@@ -83,7 +84,7 @@ public partial class CharacterControl
 
         _pileCardSelectionIndexes.Add(pileIndex);
         RefreshPileCardSelectionVisuals();
-        RefreshTurnUi();
+        RequestTurnUiRefresh();
         return Task.CompletedTask;
     }
 
@@ -92,59 +93,196 @@ public partial class CharacterControl
         if (!_isPileCardSelectionActive)
             return;
 
-        if (_pileCardSelectionIndexes.Count < _pileCardSelectionTargetCount)
+        if (
+            !_pileCardSelectionAllowsFewer
+            && _pileCardSelectionIndexes.Count < _pileCardSelectionTargetCount
+        )
         {
             RefreshPileCardSelectionVisuals();
-            RefreshTurnUi();
+            RequestTurnUiRefresh();
             return;
         }
 
         TaskCompletionSource<int> completion = _pileCardSelectionCompletion;
         bool exhaustSelected = _pileCardSelectionAction == PileCardSelectionAction.Exhaust;
-        int[] selectedIndexes = _pileCardSelectionIndexes.ToArray();
+        bool applyKeywordSelected = _pileCardSelectionAction == PileCardSelectionAction.ApplyKeyword;
+        bool transformSelected = _pileCardSelectionAction == PileCardSelectionAction.Transform;
+        bool filterSelected =
+            _pileCardSelectionAction == PileCardSelectionAction.FilterToDiscard;
+        BattleCardKeyword selectedKeyword = _pileCardSelectionKeyword;
+        SkillID transformSkillId = _pileCardSelectionTransformSkillId;
+        List<int> selectedIndexes = CopySortedUniquePileSelectionIndexes();
         BattlePileKind selectedKind = _pileCardSelectionKind;
         PlayerCharacter selectingPlayer = _activePlayer;
 
         _isPileCardSelectionActive = false;
         _pileCardSelectionAction = PileCardSelectionAction.MoveToHand;
+        _pileCardSelectionKeyword = BattleCardKeyword.Retain;
+        _pileCardSelectionTransformSkillId = SkillID.None;
         _pileCardSelectionTargetCount = 0;
+        _pileCardSelectionAllowsFewer = false;
         _pileCardSelectionIndexes.Clear();
         _pileCardSelectionCards.Clear();
         _pileCardSelectionCompletion = null;
         ClearAllPileSelectionCardBindings();
         HidePileOverlay();
-        RefreshTurnUi();
+        RequestTurnUiRefresh(refreshHover: true);
 
-        int selectedCount = exhaustSelected
-            ? await ExhaustSelectedPileCardsWithAnimationAsync(
-                selectingPlayer,
-                selectedKind,
-                selectedIndexes
-            )
-            : MoveSelectedPileCardsToHand(selectedKind, selectedIndexes);
+        int selectedCount = filterSelected
+            ? MoveSelectedDrawPileCardsToDiscard(selectedIndexes)
+            : transformSelected
+                ? TransformSelectedPileCards(
+                    selectingPlayer,
+                    selectedKind,
+                    selectedIndexes,
+                    transformSkillId
+                )
+                : applyKeywordSelected
+                    ? ApplyKeywordToSelectedPileCards(selectingPlayer, selectedKind, selectedIndexes, selectedKeyword)
+                    : exhaustSelected
+                        ? await ExhaustSelectedPileCardsWithAnimationAsync(
+                            selectingPlayer,
+                            selectedKind,
+                            selectedIndexes
+                        )
+                        : MoveSelectedPileCardsToHand(selectedKind, selectedIndexes);
+        selectedIndexes.Clear();
         completion?.TrySetResult(selectedCount);
     }
 
-    private async Task<int> ExhaustSelectedPileCardsWithAnimationAsync(
+    private List<int> CopySortedUniquePileSelectionIndexes()
+    {
+        _pileCardSelectionIndexBuffer.Clear();
+        for (int i = 0; i < _pileCardSelectionIndexes.Count; i++)
+            _pileCardSelectionIndexBuffer.Add(_pileCardSelectionIndexes[i]);
+
+        _pileCardSelectionIndexBuffer.Sort();
+        int write = 0;
+        int previous = int.MinValue;
+        for (int read = 0; read < _pileCardSelectionIndexBuffer.Count; read++)
+        {
+            int value = _pileCardSelectionIndexBuffer[read];
+            if (read > 0 && value == previous)
+                continue;
+
+            _pileCardSelectionIndexBuffer[write++] = value;
+            previous = value;
+        }
+        if (write < _pileCardSelectionIndexBuffer.Count)
+            _pileCardSelectionIndexBuffer.RemoveRange(write, _pileCardSelectionIndexBuffer.Count - write);
+
+        return _pileCardSelectionIndexBuffer;
+    }
+
+    private int ApplyKeywordToSelectedPileCards(
         PlayerCharacter player,
         BattlePileKind kind,
-        int[] selectedIndexes
+        IReadOnlyList<int> selectedIndexes,
+        BattleCardKeyword keyword
     )
     {
         if (
             player == null
             || !GodotObject.IsInstanceValid(player)
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
             || selectedIndexes == null
-            || selectedIndexes.Length == 0
+            || selectedIndexes.Count == 0
         )
         {
             return 0;
         }
 
         Battle.BattleCardPileEntry[] pile = GetPileEntriesForSelection(player, kind);
-        var animationEntries = new List<StatusCardExhaustAnimationEntry>();
-        foreach (int index in selectedIndexes.Distinct().OrderBy(x => x))
+        int applied = 0;
+        for (int i = 0; i < selectedIndexes.Count; i++)
         {
+            int index = selectedIndexes[i];
+            if (index < 0 || index >= pile.Length)
+                continue;
+
+            Battle.BattleCardPileEntry entry = pile[index];
+            PlayerCharacter owner = entry.Owner ?? player;
+            if (owner == null)
+                continue;
+
+            BattleNode.AddBattleCardKeyword(entry.InstanceId, keyword);
+            owner.InvalidateSkillTooltipCache();
+            applied++;
+        }
+
+        player?.InvalidateSkillTooltipCache();
+
+        return applied;
+    }
+
+    private int TransformSelectedPileCards(
+        PlayerCharacter player,
+        BattlePileKind kind,
+        IReadOnlyList<int> selectedIndexes,
+        SkillID replacementSkillId
+    )
+    {
+        if (
+            player == null
+            || !GodotObject.IsInstanceValid(player)
+            || BattleNode == null
+            || !GodotObject.IsInstanceValid(BattleNode)
+            || selectedIndexes == null
+            || selectedIndexes.Count == 0
+        )
+        {
+            return 0;
+        }
+
+        BattleCardPileTarget pileTarget = kind == BattlePileKind.Discard
+            ? BattleCardPileTarget.DiscardPileCards
+            : BattleCardPileTarget.DrawPileCards;
+        int transformedCount = 0;
+        for (int i = 0; i < selectedIndexes.Count; i++)
+        {
+            if (
+                BattleNode.TryTransformBattlePileCard(
+                    pileTarget,
+                    selectedIndexes[i],
+                    replacementSkillId,
+                    player,
+                    refreshUi: false
+                )
+            )
+            {
+                transformedCount++;
+            }
+        }
+
+        if (transformedCount > 0)
+            RequestTurnUiRefresh(refreshHover: true);
+        return transformedCount;
+    }
+
+    private async Task<int> ExhaustSelectedPileCardsWithAnimationAsync(
+        PlayerCharacter player,
+        BattlePileKind kind,
+        IReadOnlyList<int> selectedIndexes
+    )
+    {
+        if (
+            player == null
+            || !GodotObject.IsInstanceValid(player)
+            || selectedIndexes == null
+            || selectedIndexes.Count == 0
+        )
+        {
+            return 0;
+        }
+
+        Battle.BattleCardPileEntry[] pile = GetPileEntriesForSelection(player, kind);
+        List<StatusCardExhaustAnimationEntry> animationEntries =
+            _pileCardSelectionExhaustAnimationEntries;
+        animationEntries.Clear();
+        for (int i = 0; i < selectedIndexes.Count; i++)
+        {
+            int index = selectedIndexes[i];
             if (index < 0 || index >= pile.Length)
                 continue;
 
@@ -159,12 +297,13 @@ public partial class CharacterControl
             return 0;
 
         await PlayOwnedCardExhaustPreviewAnimationAsync(animationEntries);
+        animationEntries.Clear();
         return ExhaustSelectedPileCards(kind, selectedIndexes);
     }
 
     private int ExhaustSelectedPileCards(
         BattlePileKind kind,
-        IEnumerable<int> selectedIndexes
+        IReadOnlyList<int> selectedIndexes
     )
     {
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
@@ -175,8 +314,10 @@ public partial class CharacterControl
             : BattleCardPileTarget.DrawPileCards;
         int exhaustedCount = 0;
         int removedBefore = 0;
-        foreach (int originalIndex in (selectedIndexes ?? Array.Empty<int>()).Distinct().OrderBy(x => x))
+        int count = selectedIndexes?.Count ?? 0;
+        for (int i = 0; i < count; i++)
         {
+            int originalIndex = selectedIndexes[i];
             int currentIndex = originalIndex - removedBefore;
             if (!BattleNode.TryExhaustBattlePileCard(pileTarget, currentIndex, refreshUi: false))
                 continue;
@@ -190,7 +331,7 @@ public partial class CharacterControl
 
     private int MoveSelectedPileCardsToHand(
         BattlePileKind kind,
-        IEnumerable<int> selectedIndexes
+        IReadOnlyList<int> selectedIndexes
     )
     {
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
@@ -198,8 +339,10 @@ public partial class CharacterControl
 
         int movedCount = 0;
         int removedBefore = 0;
-        foreach (int originalIndex in (selectedIndexes ?? Array.Empty<int>()).Distinct().OrderBy(x => x))
+        int count = selectedIndexes?.Count ?? 0;
+        for (int i = 0; i < count; i++)
         {
+            int originalIndex = selectedIndexes[i];
             int currentIndex = originalIndex - removedBefore;
             int handIndex = GetActiveHandFirstEmptyIndex();
             bool moved = kind switch
@@ -227,26 +370,33 @@ public partial class CharacterControl
         return movedCount;
     }
 
+    private int MoveSelectedDrawPileCardsToDiscard(IReadOnlyList<int> selectedIndexes)
+    {
+        if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
+            return 0;
+
+        int movedCount = 0;
+        int removedBefore = 0;
+        int count = selectedIndexes?.Count ?? 0;
+        for (int i = 0; i < count; i++)
+        {
+            int currentIndex = selectedIndexes[i] - removedBefore;
+            if (!BattleNode.TryMoveDrawPileCardToDiscard(currentIndex, refreshUi: false))
+                continue;
+
+            movedCount++;
+            removedBefore++;
+        }
+
+        if (movedCount > 0)
+            RequestTurnUiRefresh(refreshHover: true);
+        return movedCount;
+    }
+
     private int GetActiveHandFirstEmptyIndex()
     {
         Skill[] hand = GetActiveHandSkills();
         return hand == null ? -1 : Array.FindIndex(hand, skill => skill == null);
-    }
-
-    private int[] GetNextEmptyHandSlotIndexes(int count)
-    {
-        Skill[] hand = GetActiveHandSkills();
-        if (hand == null || count <= 0)
-            return Array.Empty<int>();
-
-        var slots = new List<int>();
-        for (int i = 0; i < hand.Length && slots.Count < count; i++)
-        {
-            if (hand[i] == null)
-                slots.Add(i);
-        }
-
-        return slots.ToArray();
     }
 
     private Vector2? GetPlayedCardDrawEntryStartGlobalCenter()
@@ -328,7 +478,10 @@ public partial class CharacterControl
         TaskCompletionSource<int> completion = _pileCardSelectionCompletion;
         _isPileCardSelectionActive = false;
         _pileCardSelectionAction = PileCardSelectionAction.MoveToHand;
+        _pileCardSelectionKeyword = BattleCardKeyword.Retain;
+        _pileCardSelectionTransformSkillId = SkillID.None;
         _pileCardSelectionTargetCount = 0;
+        _pileCardSelectionAllowsFewer = false;
         _pileCardSelectionIndexes.Clear();
         _pileCardSelectionCards.Clear();
         _pileCardSelectionCompletion = null;
@@ -340,7 +493,7 @@ public partial class CharacterControl
 
     private void ClearAllPileSelectionCardBindings()
     {
-        foreach ((SkillCard card, Action handler) in _pileCardSelectionPressHandlers.ToArray())
+        foreach ((SkillCard card, Action handler) in _pileCardSelectionPressHandlers)
         {
             if (card != null && GodotObject.IsInstanceValid(card))
             {

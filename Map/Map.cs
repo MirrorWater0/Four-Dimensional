@@ -5,9 +5,25 @@ using Godot;
 
 public partial class Map : Control
 {
+    private const float WheelScrollBounceStep = 18f;
+    private const float WheelScrollBounceMaxOffset = 46f;
+    private const float WheelScrollBounceOutDuration = 0.06f;
+    private const float WheelScrollBounceBackDuration = 0.28f;
+
     private static readonly PackedScene DebugConsoleScene = GD.Load<PackedScene>(
         "res://Map/DebugConsole.tscn"
     );
+    private static readonly string[] BattleWorldBranchPaths =
+    [
+        "DragButton",
+        "LevelProgress",
+        "MapLabel",
+        "UI",
+        "BattleReadyLayer",
+        "SiteUI",
+        "MaskLayer",
+        "Camera",
+    ];
 
     [Export]
     public bool WarmupMode { get; set; }
@@ -69,16 +85,35 @@ public partial class Map : Control
     [Export(PropertyHint.Range, "0,2,0.01")]
     public float InertiaStrength = 0.18f;
 
-    [Export(PropertyHint.Range, "1,600,1")]
-    public float WheelStep = 100.0f;
+    [Export(PropertyHint.Range, "1,800,1")]
+    public float WheelStep = 360.0f;
 
-    [Export(PropertyHint.Range, "1,60,1")]
-    public float WheelFollowSharpness = 18.0f;
+    [Export(PropertyHint.Range, "1,600,1")]
+    public float WheelScrollSpring = 210.0f;
+
+    [Export(PropertyHint.Range, "1,80,1")]
+    public float WheelScrollDamping = 24.0f;
+
+    [Export(PropertyHint.Range, "100,8000,10")]
+    public float WheelScrollMaxVelocity = 5200.0f;
+
+    [Export(PropertyHint.Range, "0.1,4,0.1")]
+    public float WheelScrollSnapDistance = 0.6f;
+
+    [Export(PropertyHint.Range, "1,100,1")]
+    public float WheelScrollStopSpeed = 12.0f;
+
+    [Export(PropertyHint.Range, "1,40,1")]
+    public float PanGestureMultiplier = 18.0f;
 
     private Vector2 _targetPos;
     private bool _isDrag;
     private bool _isDragActive;
     private bool _isWheelPanning;
+    private double _wheelScrollPosition;
+    private double _wheelScrollVelocity;
+    private Vector2 _cameraBaseOffset;
+    private Tween _wheelScrollBounceTween;
     private Vector2 _dragStartMousePos = Vector2.Zero;
     private Vector2 _dragStartCameraPos = Vector2.Zero;
     Vector2 _velocity = Vector2.Zero;
@@ -92,17 +127,37 @@ public partial class Map : Control
     public PlayerResourceState PlayerResourceState =>
         field ??= GetNode<PlayerResourceState>("PlayerResourceState");
     public bool IsMapPeekModeActive => _mapPeekModeActive;
+    public bool IsBattleWorldSuspended => _battleWorldSuspended;
     private bool _regionLabelInitialized;
     private bool _lastRegionTwoUnlocked;
     private ulong _blockingOverlayFrame = ulong.MaxValue;
     private bool _blockingOverlayResult;
     private bool _mapPeekModeActive;
     private readonly List<VisibilitySnapshot> _mapPeekHiddenNodes = new();
+    private readonly List<BattleWorldNodeSnapshot> _battleWorldNodeSnapshots = new();
+    private bool _battleWorldSuspensionRequested;
+    private bool _battleWorldSuspended;
+    private bool _battleWorldEnvironmentCaptured;
+    private Godot.Environment _battleWorldEnvironment;
+    private ProcessModeEnum _battleWorldEnvironmentProcessMode;
 
     private sealed class VisibilitySnapshot
     {
         public Node Node;
         public bool Visible;
+    }
+
+    private sealed class BattleWorldNodeSnapshot
+    {
+        public Node Node;
+        public ProcessModeEnum ProcessMode;
+        public bool Processing;
+        public bool PhysicsProcessing;
+        public bool ProcessingInput;
+        public bool ProcessingUnhandledInput;
+        public bool? Visible;
+        public bool? CameraEnabled;
+        public Control.MouseFilterEnum? MouseFilter;
     }
 
     public override void _Process(double delta)
@@ -116,6 +171,8 @@ public partial class Map : Control
             _isDrag = false;
             _isDragActive = false;
             _isWheelPanning = false;
+            _wheelScrollVelocity = 0d;
+            CancelWheelScrollBounce();
             _dragVelocity = Vector2.Zero;
             _velocity = Vector2.Zero;
             _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
@@ -176,18 +233,46 @@ public partial class Map : Control
 
         if (_isWheelPanning)
         {
+            float frameDelta = Mathf.Clamp(dt, 0f, 0.05f);
             Vector2 wheelDesiredTarget = Camera.ClampToBoundary(_targetPos);
             _targetPos = wheelDesiredTarget;
-            float alpha = 1.0f - Mathf.Exp(-WheelFollowSharpness * dt);
-            SetCameraPosition(Camera.GlobalPosition.Lerp(wheelDesiredTarget, alpha));
-            _velocity = Vector2.Zero;
+            GetCameraHorizontalCenterBoundary(out float minX, out float maxX);
+            _wheelScrollPosition = Math.Clamp(_wheelScrollPosition, minX, maxX);
 
-            if (Camera.GlobalPosition.DistanceSquaredTo(wheelDesiredTarget) < 0.25f)
+            double distance = wheelDesiredTarget.X - _wheelScrollPosition;
+            if (
+                Math.Abs(distance) <= WheelScrollSnapDistance
+                && Math.Abs(_wheelScrollVelocity) <= WheelScrollStopSpeed
+            )
             {
+                _wheelScrollPosition = wheelDesiredTarget.X;
+                _wheelScrollVelocity = 0d;
                 SetCameraPosition(wheelDesiredTarget);
                 _isWheelPanning = false;
+                UpdateMiniMapIndicator();
+                return;
             }
 
+            _wheelScrollVelocity += distance * WheelScrollSpring * frameDelta;
+            _wheelScrollVelocity *= Math.Exp(-WheelScrollDamping * frameDelta);
+            _wheelScrollVelocity = Math.Clamp(
+                _wheelScrollVelocity,
+                -WheelScrollMaxVelocity,
+                WheelScrollMaxVelocity
+            );
+
+            double nextPosition =
+                _wheelScrollPosition + _wheelScrollVelocity * frameDelta;
+            if (nextPosition <= minX || nextPosition >= maxX)
+            {
+                nextPosition = Math.Clamp(nextPosition, minX, maxX);
+                _wheelScrollVelocity = 0d;
+            }
+
+            _wheelScrollPosition = nextPosition;
+            SetCameraPosition(new Vector2((float)_wheelScrollPosition, Camera.FixedCenterY));
+            _velocity = Vector2.Zero;
+            UpdateMiniMapIndicator();
             return;
         }
 
@@ -238,16 +323,27 @@ public partial class Map : Control
         {
             if (mouseButton.ButtonIndex == MouseButton.WheelUp)
             {
-                ApplyWheelMove(-WheelStep);
+                ApplyWheelMove(-WheelStep * Math.Max(0.35f, Math.Abs(mouseButton.Factor)));
                 _wheelHandledFrame = Engine.GetProcessFrames();
                 return;
             }
 
             if (mouseButton.ButtonIndex == MouseButton.WheelDown)
             {
-                ApplyWheelMove(WheelStep);
+                ApplyWheelMove(WheelStep * Math.Max(0.35f, Math.Abs(mouseButton.Factor)));
                 _wheelHandledFrame = Engine.GetProcessFrames();
                 return;
+            }
+        }
+
+        if (@event is InputEventPanGesture panGesture)
+        {
+            float scrollDelta = panGesture.Delta.Y * PanGestureMultiplier;
+            if (Mathf.Abs(scrollDelta) > 0.01f)
+            {
+                ApplyWheelMove(scrollDelta);
+                _wheelHandledFrame = Engine.GetProcessFrames();
+                GetViewport().SetInputAsHandled();
             }
         }
     }
@@ -263,6 +359,7 @@ public partial class Map : Control
         }
 
         LocalizeStaticTexts();
+        GetNodeOrNull<MouseTrail>("/root/MouseTrail")?.ResetPointerTrackingDeferred();
         SeedLabel.Text = I18n.Format("ui.map.seed", "Seed: {value}", ("value", GameInfo.Seed));
         if (DifficultyLabel != null)
         {
@@ -283,6 +380,7 @@ public partial class Map : Control
         Camera.Zoom = Vector2.One;
         Camera.HalfViewportWidth = 960.0f;
         Camera.FixedCenterY = 540.0f;
+        _cameraBaseOffset = Camera.Offset;
         DragButton.Disabled = false;
         _targetPos = Camera.ClampToBoundary(Camera.GlobalPosition);
         SetCameraPosition(_targetPos);
@@ -295,6 +393,8 @@ public partial class Map : Control
             _isDrag = true;
             _isDragActive = false;
             _isWheelPanning = false;
+            _wheelScrollVelocity = 0d;
+            CancelWheelScrollBounce();
             _dragStartMousePos = GetViewport().GetMousePosition();
             _dragStartCameraPos = _targetPos;
             _velocity = Vector2.Zero;
@@ -317,11 +417,14 @@ public partial class Map : Control
 
         CallDeferred(nameof(ShowPendingStarterBonusChoiceIfNeeded));
         CallDeferred(nameof(ShowPendingBossRelicChoiceIfNeeded));
+        CallDeferred(nameof(StartBattleResourcePrewarm));
     }
 
     public override void _ExitTree()
     {
+        _battleWorldSuspensionRequested = false;
         ExitMapPeekMode();
+        RestoreBattleWorldSuspension();
     }
 
     private void ShowPendingStarterBonusChoiceIfNeeded()
@@ -340,6 +443,14 @@ public partial class Map : Control
         BossRelicChoice.Show(this);
     }
 
+    private async void StartBattleResourcePrewarm()
+    {
+        if (WarmupMode)
+            return;
+
+        await BattleStartResourcePreloader.PrewarmForMapAsync(this, LevelProgressNode);
+    }
+
     public void ToggleMapPeekMode()
     {
         if (_mapPeekModeActive)
@@ -354,6 +465,12 @@ public partial class Map : Control
             return;
 
         _mapPeekModeActive = true;
+        PlayerResourceState?.SetMapPeekInputActive(true);
+        if (_battleWorldSuspensionRequested)
+        {
+            RestoreBattleWorldSuspension();
+            Camera?.MakeCurrent();
+        }
         _mapPeekHiddenNodes.Clear();
 
         HideForMapPeek(SiteUiLayer);
@@ -366,6 +483,8 @@ public partial class Map : Control
         _isDrag = false;
         _isDragActive = false;
         _isWheelPanning = false;
+        _wheelScrollVelocity = 0d;
+        CancelWheelScrollBounce();
         _dragVelocity = Vector2.Zero;
         _velocity = Vector2.Zero;
         _blockingOverlayFrame = ulong.MaxValue;
@@ -393,7 +512,147 @@ public partial class Map : Control
 
         _mapPeekHiddenNodes.Clear();
         _mapPeekModeActive = false;
+        PlayerResourceState?.SetMapPeekInputActive(false);
         _blockingOverlayFrame = ulong.MaxValue;
+        if (_battleWorldSuspensionRequested)
+            ApplyBattleWorldSuspension();
+    }
+
+    public void SetBattleWorldSuspended(bool suspended)
+    {
+        _battleWorldSuspensionRequested = suspended;
+        if (!suspended)
+        {
+            RestoreBattleWorldSuspension();
+            return;
+        }
+
+        if (!_mapPeekModeActive)
+            ApplyBattleWorldSuspension();
+    }
+
+    private void ApplyBattleWorldSuspension()
+    {
+        if (_battleWorldSuspended || !IsInsideTree())
+            return;
+
+        _battleWorldNodeSnapshots.Clear();
+        SuspendBattleWorldNode(this, hide: false, disableProcessMode: false);
+        foreach (string path in BattleWorldBranchPaths)
+        {
+            SuspendBattleWorldNode(
+                GetNodeOrNull(path),
+                hide: true,
+                disableProcessMode: true
+            );
+        }
+
+        WorldEnvironment environment = GetNodeOrNull<WorldEnvironment>("WorldEnvironment");
+        if (environment != null)
+        {
+            _battleWorldEnvironment = environment.Environment;
+            _battleWorldEnvironmentProcessMode = environment.ProcessMode;
+            _battleWorldEnvironmentCaptured = true;
+            environment.Environment = null;
+            environment.ProcessMode = ProcessModeEnum.Disabled;
+        }
+
+        _isDrag = false;
+        _isDragActive = false;
+        _isWheelPanning = false;
+        _wheelScrollVelocity = 0d;
+        CancelWheelScrollBounce();
+        _dragVelocity = Vector2.Zero;
+        _velocity = Vector2.Zero;
+        _blockingOverlayFrame = ulong.MaxValue;
+        _battleWorldSuspended = true;
+    }
+
+    private void RestoreBattleWorldSuspension()
+    {
+        if (!_battleWorldSuspended)
+            return;
+
+        foreach (BattleWorldNodeSnapshot snapshot in _battleWorldNodeSnapshots)
+        {
+            Node node = snapshot?.Node;
+            if (
+                node == null
+                || !GodotObject.IsInstanceValid(node)
+                || node.IsQueuedForDeletion()
+            )
+            {
+                continue;
+            }
+
+            node.ProcessMode = snapshot.ProcessMode;
+            node.SetProcess(snapshot.Processing);
+            node.SetPhysicsProcess(snapshot.PhysicsProcessing);
+            node.SetProcessInput(snapshot.ProcessingInput);
+            node.SetProcessUnhandledInput(snapshot.ProcessingUnhandledInput);
+            if (snapshot.Visible.HasValue && node is CanvasItem canvasItem)
+                canvasItem.Visible = snapshot.Visible.Value;
+            if (snapshot.Visible.HasValue && node is CanvasLayer canvasLayer)
+                canvasLayer.Visible = snapshot.Visible.Value;
+            if (snapshot.CameraEnabled.HasValue && node is Camera2D camera)
+                camera.Enabled = snapshot.CameraEnabled.Value;
+            if (snapshot.MouseFilter.HasValue && node is Control control)
+                control.MouseFilter = snapshot.MouseFilter.Value;
+        }
+
+        if (_battleWorldEnvironmentCaptured)
+        {
+            WorldEnvironment environment = GetNodeOrNull<WorldEnvironment>("WorldEnvironment");
+            if (environment != null)
+            {
+                environment.Environment = _battleWorldEnvironment;
+                environment.ProcessMode = _battleWorldEnvironmentProcessMode;
+            }
+        }
+
+        _battleWorldNodeSnapshots.Clear();
+        _battleWorldEnvironment = null;
+        _battleWorldEnvironmentCaptured = false;
+        _blockingOverlayFrame = ulong.MaxValue;
+        _battleWorldSuspended = false;
+    }
+
+    private void SuspendBattleWorldNode(Node node, bool hide, bool disableProcessMode)
+    {
+        if (node == null || !GodotObject.IsInstanceValid(node) || node.IsQueuedForDeletion())
+            return;
+
+        _battleWorldNodeSnapshots.Add(
+            new BattleWorldNodeSnapshot
+            {
+                Node = node,
+                ProcessMode = node.ProcessMode,
+                Processing = node.IsProcessing(),
+                PhysicsProcessing = node.IsPhysicsProcessing(),
+                ProcessingInput = node.IsProcessingInput(),
+                ProcessingUnhandledInput = node.IsProcessingUnhandledInput(),
+                Visible = node is CanvasItem item
+                    ? item.Visible
+                    : node is CanvasLayer layer ? layer.Visible : null,
+                CameraEnabled = node is Camera2D camera ? camera.Enabled : null,
+                MouseFilter = node is Control control ? control.MouseFilter : null,
+            }
+        );
+
+        if (disableProcessMode)
+            node.ProcessMode = ProcessModeEnum.Disabled;
+        node.SetProcess(false);
+        node.SetPhysicsProcess(false);
+        node.SetProcessInput(false);
+        node.SetProcessUnhandledInput(false);
+        if (node is Control inputControl)
+            inputControl.MouseFilter = Control.MouseFilterEnum.Ignore;
+        if (hide && node is CanvasItem canvasItem)
+            canvasItem.Visible = false;
+        if (hide && node is CanvasLayer canvasLayer)
+            canvasLayer.Visible = false;
+        if (node is Camera2D cameraNode)
+            cameraNode.Enabled = false;
     }
 
     private void HideRootCanvasLayersForMapPeek()
@@ -571,6 +830,8 @@ public partial class Map : Control
         _isDrag = false;
         _isDragActive = false;
         _isWheelPanning = false;
+        _wheelScrollVelocity = 0d;
+        CancelWheelScrollBounce();
         _dragVelocity = Vector2.Zero;
         _velocity = Vector2.Zero;
         _targetPos = Camera.ClampToBoundary(
@@ -588,9 +849,91 @@ public partial class Map : Control
 
     private void ApplyWheelMove(float deltaX)
     {
-        _targetPos = Camera.ClampToBoundary(_targetPos + new Vector2(deltaX, 0));
+        if (!_isWheelPanning)
+        {
+            Vector2 currentPosition = Camera.ClampToBoundary(Camera.GlobalPosition);
+            _wheelScrollPosition = currentPosition.X;
+            _wheelScrollVelocity = 0d;
+            _targetPos = currentPosition;
+        }
+
+        Vector2 requestedTarget = _targetPos + new Vector2(deltaX, 0f);
+        Vector2 clampedTarget = Camera.ClampToBoundary(requestedTarget);
+        if (!Mathf.IsEqualApprox(requestedTarget.X, clampedTarget.X))
+        {
+            GetCameraHorizontalCenterBoundary(out float minX, out float maxX);
+            bool isAtRequestedEdge = deltaX < 0f
+                ? _wheelScrollPosition <= minX + 0.5d
+                : _wheelScrollPosition >= maxX - 0.5d;
+            if (isAtRequestedEdge)
+            {
+                float bounceStrength = Mathf.Clamp(
+                    Mathf.Abs(deltaX) / Mathf.Max(1f, WheelStep),
+                    0.5f,
+                    2f
+                );
+                PlayWheelScrollBounce(Mathf.Sign(deltaX), bounceStrength);
+            }
+        }
+
+        _targetPos = clampedTarget;
         _isWheelPanning = true;
         _velocity = Vector2.Zero;
+    }
+
+    private void PlayWheelScrollBounce(float scrollDirection, float strength)
+    {
+        if (Camera == null || !GodotObject.IsInstanceValid(Camera))
+            return;
+
+        GetCameraHorizontalCenterBoundary(out float minX, out float maxX);
+        if (Mathf.IsEqualApprox(minX, maxX))
+            return;
+
+        float direction = scrollDirection >= 0f ? 1f : -1f;
+        float currentOffset = Camera.Offset.X - _cameraBaseOffset.X;
+        if (Math.Sign(currentOffset) != Math.Sign(direction))
+            currentOffset = 0f;
+
+        float targetOffset = Mathf.Clamp(
+            currentOffset
+                + direction * WheelScrollBounceStep * Mathf.Clamp(strength, 0.5f, 2f),
+            -WheelScrollBounceMaxOffset,
+            WheelScrollBounceMaxOffset
+        );
+
+        _wheelScrollBounceTween?.Kill();
+        _wheelScrollBounceTween = Camera.CreateTween();
+        _wheelScrollBounceTween.SetParallel(false);
+        _wheelScrollBounceTween
+            .TweenProperty(
+                Camera,
+                "offset",
+                _cameraBaseOffset + new Vector2(targetOffset, 0f),
+                WheelScrollBounceOutDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _wheelScrollBounceTween
+            .TweenProperty(
+                Camera,
+                "offset",
+                _cameraBaseOffset,
+                WheelScrollBounceBackDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _wheelScrollBounceTween.TweenCallback(
+            Callable.From(() => _wheelScrollBounceTween = null)
+        );
+    }
+
+    private void CancelWheelScrollBounce()
+    {
+        _wheelScrollBounceTween?.Kill();
+        _wheelScrollBounceTween = null;
+        if (Camera != null && GodotObject.IsInstanceValid(Camera))
+            Camera.Offset = _cameraBaseOffset;
     }
 
     private bool HasBlockingOverlay()

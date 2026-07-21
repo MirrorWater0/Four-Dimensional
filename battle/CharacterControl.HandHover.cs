@@ -1,11 +1,62 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class CharacterControl
 {
+    private const int HandHoverPreviewDelayMs = 55;
+
+    private void StartHandHoverValidationTimer()
+    {
+        if (_handHoverValidationTimer != null && GodotObject.IsInstanceValid(_handHoverValidationTimer))
+            return;
+
+        _handHoverValidationTimer = new Timer
+        {
+            Name = "HandHoverValidationTimer",
+            WaitTime = HandHoverValidationIntervalSeconds,
+            OneShot = false,
+        };
+        _handHoverValidationTimer.Timeout += ValidateHandHoverUnderMouse;
+        AddChild(_handHoverValidationTimer);
+        _handHoverValidationTimer.Start();
+    }
+
+    private void ValidateHandHoverUnderMouse()
+    {
+        if (!_uiBuilt || !Visible)
+            return;
+
+        Vector2 pointerPosition = GetHandCardPointerPosition();
+        bool handMotionActive = IsAnyHandLayoutFollowerActive() || IsAnyCardDrawEntryBusy();
+        if (
+            _handHoverValidationPointerInitialized
+            && !handMotionActive
+            && _lastHandHoverValidationPointerPosition.DistanceSquaredTo(pointerPosition) < 0.25f
+        )
+        {
+            return;
+        }
+
+        _handHoverValidationPointerInitialized = true;
+        _lastHandHoverValidationPointerPosition = pointerPosition;
+        bool canResolveHover =
+            !_suppressHandHoverUntilMouseMove
+            && !_endTurnQueued
+            && !IsHandInputBlockedByOverlay()
+            && _liftedCardIndex == -1;
+        int hoveredIndex = canResolveHover ? ResolveHandCardHoverIndex(pointerPosition) : -1;
+        ClearOrphanedHandCardHoverVisuals(hoveredIndex);
+
+        // Do not wait for another mouse-motion event to correct a missed MouseExited signal.
+        // A new version also invalidates a deferred refresh queued before this validation.
+        _queuedHoverRefreshVersion = 0;
+        _deferredHoverRefreshVersion++;
+        if (canResolveHover)
+            ApplyResolvedCardHover(hoveredIndex);
+    }
+
     private void UpdateLiftedCardPosition(float delta)
     {
         if (_liftedCardIndex == -1)
@@ -23,7 +74,6 @@ public partial class CharacterControl
         SkillCard card = _liftedCard ?? _cards[_liftedCardIndex];
         bool isManualTargetLiftedCard =
             _manualTargetArrowUsesLiftedCard
-            && _manualTargetArrowSelectionActive
             && _liftedCardIndex == _manualTargetArrowCardIndex;
         if (card == null || !card.Visible || (card.Button.Disabled && !isManualTargetLiftedCard))
         {
@@ -33,23 +83,20 @@ public partial class CharacterControl
 
         if (isManualTargetLiftedCard)
         {
+            RotateLiftedCardTowardNeutral(card, delta);
             card.ZIndex = LiftedCardZIndex;
             return;
         }
 
         Vector2 targetGlobalPosition = GetLiftedCardMouseTargetPosition(card);
         MoveLiftedCardTowardTarget(card, targetGlobalPosition, delta);
+        RotateLiftedCardTowardNeutral(card, delta);
         card.ZIndex = LiftedCardZIndex;
     }
 
     private Vector2 GetLiftedCardMouseTargetPosition(SkillCard card)
     {
-        Vector2 fallbackMousePosition =
-            card != null && GodotObject.IsInstanceValid(card)
-                ? card.GlobalPosition + _liftedCardMouseOffset
-                : Vector2.Zero;
-        Vector2 mousePosition = GetViewport()?.GetMousePosition() ?? fallbackMousePosition;
-        return mousePosition - _liftedCardMouseOffset;
+        return GetGlobalMousePosition() - _liftedCardMouseOffset;
     }
 
     private static void MoveLiftedCardTowardTarget(
@@ -76,6 +123,22 @@ public partial class CharacterControl
         card.GlobalPosition = currentPosition.Lerp(targetGlobalPosition, followRatio);
     }
 
+    private static void RotateLiftedCardTowardNeutral(SkillCard card, float delta)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        if (Math.Abs(card.Rotation) <= LiftedCardRotationSnapDistance)
+        {
+            card.Rotation = 0f;
+            return;
+        }
+
+        float followRatio =
+            1f - Mathf.Exp(-LiftedCardRotationFollowSharpness * Math.Max(0f, delta));
+        card.Rotation = Mathf.LerpAngle(card.Rotation, 0f, followRatio);
+    }
+
     private bool SetCardHovered(int index, bool hovered)
     {
         if (!IsCardIndexValid(index))
@@ -87,7 +150,7 @@ public partial class CharacterControl
         if (_suppressHandHoverUntilMouseMove && hovered)
             return false;
 
-        if (IsCardDrawEntryBusy(index) || _liftedCardIndex != -1)
+        if (IsCardDrawEntryInputBlocked(index) || _liftedCardIndex != -1)
         {
             if (!hovered)
                 ClearHandCardHoverUiOnly(index);
@@ -102,12 +165,30 @@ public partial class CharacterControl
 
             if (hovered)
             {
+                int previousHoveredIndex = _hoveredCardIndex;
+                if (previousHoveredIndex != -1 && previousHoveredIndex != index)
+                {
+                    ClearHandCardHoverMotion(previousHoveredIndex, instant: false);
+                    if (_discardSelectionOriginalVisualHandIndexes.Contains(previousHoveredIndex))
+                    {
+                        ApplyHandCardLayer(
+                            previousHoveredIndex,
+                            GetHandOrderForSlotIndex(previousHoveredIndex)
+                        );
+                        ArrangeDiscardSelectionSelectedCards();
+                    }
+                }
+
                 _hoveredCardIndex = index;
                 handCard.HoverHint.Visible = true;
                 handCard.ZIndex = HandCardHoverZIndex;
+                bool suppressLift = _discardSelectionOriginalVisualHandIndexes.Contains(index);
+                Vector2 targetScale = BattleCardScale * CardHoverScaleMultiplier;
                 handCard.TweenBattleMotion(
-                    new Vector2(0f, CardHoverLiftY),
-                    BattleCardScale * CardHoverScaleMultiplier
+                    suppressLift
+                        ? GetSelectionHoverScaleCompensation(handCard, targetScale)
+                        : new Vector2(0f, CardHoverLiftY),
+                    targetScale
                 );
                 LayoutActionCards(instant: false);
                 ApplyHandCardHoverInputOrder();
@@ -120,6 +201,8 @@ public partial class CharacterControl
                 return false;
 
             ResetCardMotion(index, instant: false);
+            if (_discardSelectionOriginalVisualHandIndexes.Contains(index))
+                ApplyHandCardLayer(index, GetHandOrderForSlotIndex(index));
             LayoutActionCards(instant: false);
             ApplyHandCardHoverInputOrder();
             return true;
@@ -138,7 +221,7 @@ public partial class CharacterControl
 
         if (hovered)
         {
-            if (_isResolvingCard || IsCardCommitted(index))
+            if (IsCardCommitted(index))
                 return false;
 
             if (_hoveredCardIndex != -1 && _hoveredCardIndex != index)
@@ -172,40 +255,76 @@ public partial class CharacterControl
         return true;
     }
 
+    private Vector2 GetSelectionHoverScaleCompensation(
+        SkillCard card,
+        Vector2 targetScale
+    )
+    {
+        if (
+            card == null
+            || !GodotObject.IsInstanceValid(card)
+            || card.CardVisualRoot == null
+            || !GodotObject.IsInstanceValid(card.CardVisualRoot)
+        )
+        {
+            return Vector2.Zero;
+        }
+
+        Vector2 visualGlobalCenter =
+            card.CardVisualRoot.GetGlobalTransformWithCanvas() * (BattleCardBaseSize * 0.5f);
+        Vector2 visualLocalCenter =
+            card.GetGlobalTransformWithCanvas().AffineInverse() * visualGlobalCenter;
+        Vector2 centerFromPivot = visualLocalCenter - card.PivotOffset;
+        Vector2 scaleDelta = BattleCardScale - targetScale;
+        return new Vector2(
+            scaleDelta.X * centerFromPivot.X,
+            scaleDelta.Y * centerFromPivot.Y
+        );
+    }
+
     private void ScheduleCardHoverRefresh()
     {
         if (
             !_uiBuilt
             || !Visible
             || _suppressHandHoverUntilMouseMove
-            || _isResolvingCard
             || _endTurnQueued
         )
             return;
 
+        if (_queuedHoverRefreshVersion != 0)
+            return;
+
         int version = ++_deferredHoverRefreshVersion;
+        _queuedHoverRefreshVersion = version;
         CallDeferred(nameof(RefreshCardHoverUnderMouse), version);
     }
 
     private void RefreshCardHoverUnderMouse(int version)
     {
+        if (version == _queuedHoverRefreshVersion)
+            _queuedHoverRefreshVersion = 0;
+
         if (
             version != _deferredHoverRefreshVersion
             || !_uiBuilt
             || !Visible
             || _suppressHandHoverUntilMouseMove
-            || _isResolvingCard
             || _endTurnQueued
-            || (_isPileCardSelectionActive && !_pileOverlayContentTemporarilyHidden)
-            || IsManualTargetSelectionPending()
+            || IsHandInputBlockedByOverlay()
             || _liftedCardIndex != -1
         )
         {
             return;
         }
 
-        Vector2 mousePosition = GetViewport()?.GetMousePosition() ?? Vector2.Zero;
+        Vector2 mousePosition = GetHandCardPointerPosition();
         int hoveredIndex = ResolveHandCardHoverIndex(mousePosition);
+        ApplyResolvedCardHover(hoveredIndex);
+    }
+
+    private void ApplyResolvedCardHover(int hoveredIndex)
+    {
         if (
             hoveredIndex < 0
             && _hoveredCardIndex != -1
@@ -219,35 +338,146 @@ public partial class CharacterControl
 
         if (hoveredIndex >= 0)
         {
-            if (SetCardHovered(hoveredIndex, true))
-                SetCardHoverPreviewActive(hoveredIndex, true);
+            HideAllCardHoverPreviewsExcept(hoveredIndex);
+            SetCardHovered(hoveredIndex, true);
+            SetCardHoverPreviewActive(hoveredIndex, true);
             return;
         }
 
         if (_hoveredCardIndex != -1)
         {
             int previousHoveredIndex = _hoveredCardIndex;
-            if (SetCardHovered(previousHoveredIndex, false))
-                SetCardHoverPreviewActive(previousHoveredIndex, false);
+            SetCardHovered(previousHoveredIndex, false);
+            SetCardHoverPreviewActive(previousHoveredIndex, false);
+            return;
         }
+
+        HideAllCardHoverPreviews();
     }
 
-    private int ResolveHandCardHoverIndex(Vector2 mousePosition)
+    private void ClearOrphanedHandCardHoverVisuals(int preservedIndex)
     {
-        List<int> probeOrder = BuildHandCardInputPriorityOrder();
-        for (int i = probeOrder.Count - 1; i >= 0; i--)
+        bool clearedAny = false;
+        bool rearrangeSelectedCards = false;
+        for (int i = 0; i < _cards.Length; i++)
         {
-            int index = probeOrder[i];
-            if (CanHoverHandCardAt(index) && GetHandCardHoverRect(index).HasPoint(mousePosition))
+            if (i == preservedIndex || i == _liftedCardIndex)
+                continue;
+
+            SkillCard card = _cards[i];
+            if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            bool hasTrackedHover = _hoveredCardIndex == i;
+            bool hasVisibleHover =
+                card.HoverHint != null
+                && GodotObject.IsInstanceValid(card.HoverHint)
+                && card.HoverHint.Visible;
+            if (!hasTrackedHover && !hasVisibleHover)
+                continue;
+
+            ClearHandCardHoverMotion(i, instant: false);
+            if (_discardSelectionOriginalVisualHandIndexes.Contains(i))
+            {
+                ApplyHandCardLayer(i, GetHandOrderForSlotIndex(i));
+                rearrangeSelectedCards = true;
+            }
+            clearedAny = true;
+        }
+
+        if (!clearedAny)
+            return;
+
+        LayoutActionCards(instant: false);
+        ApplyHandCardHoverInputOrder();
+        if (rearrangeSelectedCards)
+            ArrangeDiscardSelectionSelectedCards();
+    }
+
+    private int ResolveHandCardHoverIndex(Vector2 viewportPosition)
+    {
+        for (int i = _discardSelectionSkills.Count - 1; i >= 0; i--)
+        {
+            Skill skill = _discardSelectionSkills[i];
+            if (
+                skill == null
+                || !_discardSelectionOriginalHandIndexes.TryGetValue(skill, out int index)
+                || !_discardSelectionOriginalVisualHandIndexes.Contains(index)
+                || !CanHoverHandCardAt(index)
+            )
+            {
+                continue;
+            }
+
+            if (IsHandCardPointerInside(index, viewportPosition))
+                return index;
+        }
+
+        int visibleCount = FillVisibleHandSlotIndexes(
+            _visibleHandSlotIndexesBuffer,
+            excludeLiftedCard: true
+        );
+        if (visibleCount <= 0)
+            return -1;
+
+        if (
+            _hoveredCardIndex >= 0
+            && FindVisibleHandOrder(_visibleHandSlotIndexesBuffer, visibleCount, _hoveredCardIndex)
+                >= 0
+            && CanHoverHandCardAt(_hoveredCardIndex)
+            && IsHandCardPointerInside(_hoveredCardIndex, viewportPosition)
+        )
+        {
+            return _hoveredCardIndex;
+        }
+
+        List<int> inputPriorityOrder = BuildHandCardInputPriorityOrder();
+        for (int order = inputPriorityOrder.Count - 1; order >= 0; order--)
+        {
+            int index = inputPriorityOrder[order];
+            if (CanHoverHandCardAt(index) && IsHandCardPointerInside(index, viewportPosition))
                 return index;
         }
 
         return -1;
     }
 
+    private Vector2 GetHandCardPointerPosition()
+    {
+        if (!IsInstanceValid(this))
+            return Vector2.Zero;
+
+        return MouseTrail.GetResponsiveViewportMousePosition(GetViewport(), GetWindow());
+    }
+
+    private bool TryHandleResponsiveHandCardPress(InputEventMouseButton mouseButton)
+    {
+        if (
+            mouseButton == null
+            || !mouseButton.Pressed
+            || mouseButton.ButtonIndex != MouseButton.Left
+            || !_uiBuilt
+            || !Visible
+            || _endTurnQueued
+            || IsHandInputBlockedByOverlay()
+            || _manualTargetArrowSelectionActive
+        )
+        {
+            return false;
+        }
+
+        Vector2 viewportPosition = GetHandCardPointerPosition();
+        int index = ResolveHandCardHoverIndex(viewportPosition);
+        if (index < 0)
+            return false;
+
+        ApplyResolvedCardHover(index);
+        return TryStartHandCardPress(index);
+    }
+
     private bool CanHoverHandCardAt(int index)
     {
-        if (!IsCardIndexValid(index) || IsCardCommitted(index) || IsCardDrawEntryBusy(index))
+        if (!IsCardIndexValid(index) || IsCardCommitted(index) || IsCardDrawEntryInputBlocked(index))
             return false;
 
         SkillCard card = _cards[index];
@@ -258,47 +488,102 @@ public partial class CharacterControl
             && !card.Button.Disabled;
     }
 
-    private Rect2 GetHandCardHoverRect(int index)
+    private bool IsHandCardPointerInside(int index, Vector2 viewportPosition)
     {
         SkillCard card = IsCardIndexValid(index) ? _cards[index] : null;
         if (card != null && GodotObject.IsInstanceValid(card) && card.Visible)
-            return GetSkillCardHoverHitRect(card);
+            return IsViewportPointInsideSkillCard(card, viewportPosition);
 
         Control slot = IsCardIndexValid(index) ? _cardSlots[index] : null;
         if (slot != null && GodotObject.IsInstanceValid(slot) && slot.Visible)
-            return slot.GetGlobalRect();
+            return IsViewportPointInsideControl(slot, viewportPosition);
 
-        return new Rect2();
+        return false;
     }
 
-    private static Rect2 GetSkillCardHoverHitRect(SkillCard card)
+    private static bool IsViewportPointInsideSkillCard(
+        SkillCard card,
+        Vector2 viewportPosition
+    )
     {
-        Rect2 rect =
+        Control hitControl =
             card.Button != null && GodotObject.IsInstanceValid(card.Button)
-                ? card.Button.GetGlobalRect()
-                : card.GetGlobalRect();
-        if (rect.Size.X <= 0f || rect.Size.Y <= 0f)
-            return rect;
+                ? card.Button
+                : card;
 
-        // Scaled hand cards and CanvasGroup fit margin extend slightly beyond the base button rect.
-        float padding = Math.Max(6f, rect.Size.Y * 0.02f);
-        return rect.Grow(padding);
+        float padding = Math.Max(6f, hitControl.Size.Y * 0.02f);
+        return IsViewportPointInsideControl(hitControl, viewportPosition, padding);
+    }
+
+    private static bool IsViewportPointInsideControl(
+        Control control,
+        Vector2 viewportPosition,
+        float localPadding = 0f
+    )
+    {
+        if (
+            control == null
+            || !GodotObject.IsInstanceValid(control)
+            || !control.Visible
+            || !control.IsInsideTree()
+        )
+        {
+            return false;
+        }
+
+        Transform2D transform = control.GetGlobalTransformWithCanvas();
+        float determinant = transform.Determinant();
+        if (!Mathf.IsFinite(determinant) || Mathf.IsZeroApprox(determinant))
+            return false;
+
+        Vector2 localPosition = transform.AffineInverse() * viewportPosition;
+        return new Rect2(Vector2.Zero, control.Size).Grow(Math.Max(0f, localPadding))
+            .HasPoint(localPosition);
+    }
+
+    private static Rect2 GetControlViewportAabb(Control control)
+    {
+        if (
+            control == null
+            || !GodotObject.IsInstanceValid(control)
+            || !control.Visible
+            || !control.IsInsideTree()
+        )
+        {
+            return new Rect2();
+        }
+
+        Transform2D transform = control.GetGlobalTransformWithCanvas();
+        Vector2 topLeft = transform * Vector2.Zero;
+        Vector2 topRight = transform * new Vector2(control.Size.X, 0f);
+        Vector2 bottomLeft = transform * new Vector2(0f, control.Size.Y);
+        Vector2 bottomRight = transform * control.Size;
+        Vector2 min = new(
+            Math.Min(Math.Min(topLeft.X, topRight.X), Math.Min(bottomLeft.X, bottomRight.X)),
+            Math.Min(Math.Min(topLeft.Y, topRight.Y), Math.Min(bottomLeft.Y, bottomRight.Y))
+        );
+        Vector2 max = new(
+            Math.Max(Math.Max(topLeft.X, topRight.X), Math.Max(bottomLeft.X, bottomRight.X)),
+            Math.Max(Math.Max(topLeft.Y, topRight.Y), Math.Max(bottomLeft.Y, bottomRight.Y))
+        );
+        return new Rect2(min, max - min);
     }
 
     private Skill GetHandSkill(int index)
     {
+        Skill[] hand = GetActiveHandSkills();
         if (
             _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
-            || GetActiveHandSkills() == null
+            || hand == null
             || index < 0
-            || index >= GetActiveHandSkills().Length
+            || index >= hand.Length
         )
         {
             return null;
         }
 
-        return GetActiveHandSkills()[index];
+        return hand[index];
     }
 
     private int FindCurrentHandSkillIndex(Skill skill)
@@ -335,7 +620,7 @@ public partial class CharacterControl
 
     private void SetCardHoverPreviewActive(int index, bool active)
     {
-        if (active && _manualTargetArrowSelectionActive)
+        if (active && _manualTargetArrowSelectionActive && index != _liftedCardIndex)
         {
             HideCardHoverPreview(index);
             return;
@@ -352,7 +637,6 @@ public partial class CharacterControl
         {
             if (_cardHoverPreviewActive[index])
             {
-                card.ShowSkillPreview();
                 UpdateCardFootMarkerHover(
                     index,
                     GetHandSkill(index)?.OwnerCharater as PlayerCharacter
@@ -360,20 +644,94 @@ public partial class CharacterControl
                 return;
             }
 
-            _cardHoverPreviewActive[index] = true;
-            card.ShowSkillPreview();
-            UpdateCardFootMarkerHover(index, GetHandSkill(index)?.OwnerCharater as PlayerCharacter);
-        }
-        else
-        {
-            if (!_cardHoverPreviewActive[index])
+            if (_pendingCardHoverPreviewIndex == index)
                 return;
 
-            _cardHoverPreviewActive[index] = false;
-            card.HideSkillPreview();
-            if (_cardFootMarkerHoverIndex == index)
-                ClearCardFootMarkerHover();
+            _pendingCardHoverPreviewIndex = index;
+            int version = ++_cardHoverPreviewRequestVersion;
+            _ = ShowCardHoverPreviewDelayed(index, version);
+            return;
         }
+
+        CancelPendingCardHoverPreview(index);
+
+        if (!_cardHoverPreviewActive[index])
+            return;
+
+        _cardHoverPreviewActive[index] = false;
+        card.HideSkillPreview();
+        if (_cardFootMarkerHoverIndex == index)
+            ClearCardFootMarkerHover();
+    }
+
+    private async Task ShowCardHoverPreviewDelayed(int index, int version)
+    {
+        if (HandHoverPreviewDelayMs > 0)
+        {
+            SceneTree tree = GetTree();
+            if (tree == null)
+                return;
+
+            await ToSignal(
+                tree.CreateTimer(HandHoverPreviewDelayMs / 1000.0f),
+                SceneTreeTimer.SignalName.Timeout
+            );
+        }
+
+        if (
+            version != _cardHoverPreviewRequestVersion
+            || _pendingCardHoverPreviewIndex != index
+            || (_hoveredCardIndex != index && _liftedCardIndex != index)
+            || !IsCardIndexValid(index)
+            || (_manualTargetArrowSelectionActive && index != _liftedCardIndex)
+        )
+        {
+            return;
+        }
+
+        SkillCard card = _cards[index];
+        if (
+            card == null
+            || !GodotObject.IsInstanceValid(card)
+            || !card.Visible
+            || IsCardCommitted(index)
+            || IsCardDrawEntryInputBlocked(index)
+        )
+        {
+            return;
+        }
+
+        _pendingCardHoverPreviewIndex = -1;
+        ShowCardHoverPreviewNow(index);
+    }
+
+    private void ShowCardHoverPreviewNow(int index)
+    {
+        if (!IsCardIndexValid(index))
+            return;
+
+        CancelPendingCardHoverPreview(index);
+
+        SkillCard card = _cards[index];
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        _cardHoverPreviewActive[index] = true;
+        card.HoverHint.Visible = index != _liftedCardIndex;
+        card.ShowSkillPreview();
+        UpdateCardFootMarkerHover(index, GetHandSkill(index)?.OwnerCharater as PlayerCharacter);
+    }
+
+    private void CancelPendingCardHoverPreview(int index = -1)
+    {
+        if (index >= 0 && _pendingCardHoverPreviewIndex != index)
+            return;
+
+        if (_pendingCardHoverPreviewIndex == -1)
+            return;
+
+        _pendingCardHoverPreviewIndex = -1;
+        _cardHoverPreviewRequestVersion++;
     }
 
     private void UpdateCardFootMarkerHover(int index, PlayerCharacter player)
@@ -396,10 +754,28 @@ public partial class CharacterControl
 
     private void HideAllCardHoverPreviews()
     {
+        CancelPendingCardHoverPreview();
         ClearCardEnergyPreview();
         ClearCardFootMarkerHover();
         for (int i = 0; i < _cards.Length; i++)
             HideCardHoverPreview(i);
+    }
+
+    private void HideAllCardHoverPreviewsExcept(int preservedIndex)
+    {
+        if (_pendingCardHoverPreviewIndex != preservedIndex)
+            CancelPendingCardHoverPreview();
+        ClearCardEnergyPreview();
+        if (_cardFootMarkerHoverIndex != preservedIndex)
+            ClearCardFootMarkerHover();
+
+        for (int i = 0; i < _cards.Length; i++)
+        {
+            if (i == preservedIndex)
+                continue;
+
+            HideCardHoverPreview(i);
+        }
     }
 
     private void SetCardHoverUiEnabled(bool enabled)
@@ -417,7 +793,12 @@ public partial class CharacterControl
         if (!IsCardIndexValid(index))
             return;
 
-        if (_cardHoverPreviewActive[index] && _cardFootMarkerHoverIndex == index)
+        CancelPendingCardHoverPreview(index);
+
+        if (!_cardHoverPreviewActive[index])
+            return;
+
+        if (_cardFootMarkerHoverIndex == index)
             ClearCardFootMarkerHover();
 
         _cardHoverPreviewActive[index] = false;
@@ -445,8 +826,6 @@ public partial class CharacterControl
         if (_liftedCardIndex == index)
             _liftedCardIndex = -1;
 
-        HideCardHoverPreview(index);
-        ClearDrawEntryState(index, revealCard: false);
         Control slot = _cardSlots[index];
         if (slot != null && GodotObject.IsInstanceValid(slot))
             slot.Scale = Vector2.One;
@@ -532,8 +911,9 @@ public partial class CharacterControl
         )
             return;
 
-        foreach (QueuedCardPlay play in _queuedCardPlays.ToArray())
+        while (_queuedCardPlays.Count > 0)
         {
+            QueuedCardPlay play = _queuedCardPlays.Dequeue();
             play?.Skill?.RefundDisplayedEnergy();
             CompleteQueuedPlay(play, succeeded: false);
             QueueFreeQueuedPlayCard(play);
@@ -542,23 +922,27 @@ public partial class CharacterControl
                 ResetCardMotion(play.Index, instant: true);
         }
 
-        _queuedCardPlays.Clear();
-        foreach (QueuedCardPlay play in _queuedFollowUpCardPlays.ToArray())
+        while (_queuedFollowUpCardPlays.Count > 0)
         {
+            QueuedCardPlay play = _queuedFollowUpCardPlays.Dequeue();
             play?.Skill?.RefundDisplayedEnergy();
             CompleteQueuedPlay(play, succeeded: false);
             QueueFreeQueuedPlayCard(play);
             RestoreHandSlotForQueuedPlay(play);
         }
-        _queuedFollowUpCardPlays.Clear();
 
-        foreach (Skill skill in _queuedCardSkills.ToArray())
+        _skillRemovalBuffer.Clear();
+        foreach (Skill skill in _queuedCardSkills)
+            _skillRemovalBuffer.Add(skill);
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
         {
+            Skill skill = _skillRemovalBuffer[i];
             int index = FindCurrentHandSkillIndex(skill);
             if (resetCards && IsCardIndexValid(index))
                 ResetCardMotion(index, instant: true);
         }
         _queuedCardSkills.Clear();
+        _skillRemovalBuffer.Clear();
     }
 
     private bool IsCardCommitted(int index)
@@ -570,7 +954,9 @@ public partial class CharacterControl
     private bool IsAnyCardDrawEntryBusy()
     {
         return _hiddenPendingDrawEntrySlotIndexes.Count > 0
-            || _pendingDrawEntryAnimations.Count > 0;
+            || _pendingDrawEntryAnimations.Count > 0
+            || _drawEntryPreviewCards.Count > 0
+            || _drawEntrySlotIndexes.Count > 0;
     }
 
     private bool IsCardDrawEntryBusy(int index)
@@ -583,6 +969,15 @@ public partial class CharacterControl
             );
     }
 
+    private bool IsCardDrawEntryInputBlocked(int index)
+    {
+        return IsCardIndexValid(index)
+            && (
+                _hiddenPendingDrawEntrySlotIndexes.Contains(index)
+                || _pendingDrawEntryAnimations.Contains(index)
+            );
+    }
+
     private bool IsMouseOutsideHandArea()
     {
         Rect2? handRect = null;
@@ -592,7 +987,9 @@ public partial class CharacterControl
             if (slot == null || !GodotObject.IsInstanceValid(slot))
                 continue;
 
-            Rect2 slotRect = slot.GetGlobalRect();
+            Rect2 slotRect = GetControlViewportAabb(slot);
+            if (slotRect.Size == Vector2.Zero)
+                continue;
             handRect = handRect.HasValue ? MergeRect(handRect.Value, slotRect) : slotRect;
         }
 
@@ -601,10 +998,10 @@ public partial class CharacterControl
             if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
                 return true;
 
-            handRect = _cardRow.GetGlobalRect();
+            handRect = GetControlViewportAabb(_cardRow);
         }
 
-        return !handRect.Value.Grow(HandAreaPadding).HasPoint(GetViewport().GetMousePosition());
+        return !handRect.Value.Grow(HandAreaPadding).HasPoint(GetHandCardPointerPosition());
     }
 
     private static Rect2 MergeRect(Rect2 a, Rect2 b)

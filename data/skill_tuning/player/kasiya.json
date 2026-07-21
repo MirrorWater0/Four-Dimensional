@@ -1,0 +1,126 @@
+﻿{
+    "skills":  {
+                   "AbsouluteDefense":  {
+                                            "Name":  "绝对防御",
+                                            "BaseBlock":  6,
+                                            "Multiplier":  1,
+                                            "TauntStacks":  1
+                                        },
+                   "AegisPledge":  {
+                                       "Name":  "壁垒誓约"
+                                   },
+                   "BarrierDuplication":  {
+                                              "Name":  "固守"
+                                          },
+                   "Charge":  {
+                                  "Name":  "冲锋",
+                                  "BaseDamage":  4,
+                                  "Multiplier":  0
+                              },
+                   "DemonForm":  {
+                                     "Name":  "恶魔形态"
+                                 },
+                   "Determination":  {
+                                         "Name":  "剑意已决",
+                                         "BaseDamage":  7,
+                                         "VulnerableStacks":  3
+                                     },
+                   "ExhaustBulwark":  {
+                                          "Name":  "耗尽壁垒"
+                                      },
+                   "HolySeal":  {
+                                    "Name":  "圣光封印",
+                                    "StunStacks":  1
+                                },
+                   "HopeBeacon":  {
+                                      "Name":  "希望灯塔"
+                                  },
+                   "KasiyaBasicSpecial":  {
+                                              "Name":  "侵袭",
+                                              "PowerGain":  1,
+                                              "VulnerableStacks":  2
+                                          },
+                   "Purification":  {
+                                        "Name":  "净化",
+                                        "BaseBlock":  0
+                                    },
+                   "RadiantOverload":  {
+                                           "Name":  "辉光",
+                                           "DazeCount":  1,
+                                           "EnergyGain":  3
+                                       },
+                   "ReadyStance":  {
+                                       "Name":  "能量爆发",
+                                       "VoidCount":  1
+                                   },
+                   "Recycling":  {
+                                     "Name":  "循环利用"
+                                 },
+                   "ReNewedSpirit":  {
+                                         "Name":  "重振精神",
+                                         "PowerGain":  2,
+                                         "SurvivabilityGain":  2,
+                                         "BaseBlock":  0
+                                     },
+                   "Resistance":  {
+                                      "Name":  "抵御",
+                                      "BaseBlock":  4,
+                                      "ExhaustCount":  2
+                                  },
+                   "ShockWave":  {
+                                     "Name":  "冲击波",
+                                     "VulnerableStacks":  1,
+                                     "BaseBlock":  0
+                                 },
+                   "Smite":  {
+                                 "Name":  "绝域剑杀",
+                                 "BaseDamage":  7,
+                                 "SurvivalDown":  5,
+                                 "ExhaustCount":  1
+                             },
+                   "TacticalPreparation":  {
+                                               "Name":  "战术整备",
+                                               "ExtraDrawStacks":  1,
+                                               "DrawCount":  2,
+                                               "VoidCount":  1
+                                           },
+                   "TauntingGuard":  {
+                                         "Name":  "嘲讽守势",
+                                         "TauntStacks":  2,
+                                         "BaseBlock":  4,
+                                         "Multiplier":  1
+                                     },
+                   "TerminateLight":  {
+                                          "Name":  "终末之光",
+                                          "BaseDamage":  4,
+                                          "Multiplier":  4,
+                                          "FriendlyDamage":  4
+                                      },
+                   "Vower":  {
+                                 "Name":  "誓约者",
+                                 "BaseDamage":  7
+                             },
+                   "VulnerabilityConversion":  {
+                                                   "Name":  "万军取敌",
+                                                   "BaseDamage":  7,
+                                                   "Multiplier":  2
+                                               },
+                   "VulnerabilityStrike":  {
+                                               "Name":  "易伤追击",
+                                               "BaseDamage":  7
+                                           },
+                   "VulnerablePurge":  {
+                                           "Name":  "弱点突破",
+                                           "BaseDamage":  10,
+                                           "Multiplier":  1,
+                                           "VulnerableStacks":  1
+                                       },
+                   "WarGodWill":  {
+                                      "Name":  "战神意志"
+                                  },
+                   "WeakpointBulwark":  {
+                                            "Name":  "蓄势待发",
+                                            "BaseBlock":  6
+                                        }
+               }
+}

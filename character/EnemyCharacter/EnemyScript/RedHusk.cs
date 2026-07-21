@@ -59,7 +59,7 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, target: HostileTargetReference.All)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), target: HostileTargetReference.All)
         );
     }
 }
@@ -76,8 +76,8 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 11),
-            ModifyPropertyStep(PropertyType.Power,3)
+            AttackStep(baseDamage: V("BaseDamage", 11)),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3))
         );
     }
 }

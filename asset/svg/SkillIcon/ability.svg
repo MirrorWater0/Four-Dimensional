@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" shape-rendering="geometricPrecision">
+  <rect width="128" height="128" fill="none"/>
+
+  <!-- Broken celestial frame: thin, sharp and deliberately asymmetrical. -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 49V35L38 21H52" stroke="#f8f2dc" stroke-width="4"/>
+    <path d="M76 21H90L104 35V49" stroke="#d8b86f" stroke-width="4"/>
+    <path d="M104 79V93L90 107H76" stroke="#f8f2dc" stroke-width="4"/>
+    <path d="M52 107H38L24 93V79" stroke="#d8b86f" stroke-width="4"/>
+
+    <!-- Intersecting astral rails. -->
+    <path d="M18 69C29 40 54 27 82 33C99 37 109 48 113 60" stroke="#a8a0dc" stroke-width="3.5"/>
+    <path d="M110 70C100 91 79 101 57 97C37 94 23 82 18 68" stroke="#f8f2dc" stroke-width="3.5"/>
+    <path d="M36 96C55 87 70 74 82 55C88 46 92 38 94 29" stroke="#d8b86f" stroke-width="3"/>
+  </g>
+
+  <!-- Rail nodes and minor stars. -->
+  <g fill="#f8f2dc">
+    <circle cx="18" cy="68" r="4"/>
+    <circle cx="112" cy="62" r="3.5"/>
+    <circle cx="94" cy="29" r="3"/>
+    <path d="M33 48 36 54 42 57 36 60 33 66 30 60 24 57 30 54Z"/>
+    <path d="M96 79 98 83 102 85 98 87 96 91 94 87 90 85 94 83Z"/>
+  </g>
+
+  <!-- Four-point stellar core, echoing Star Rail's refined path icons. -->
+  <path d="M64 25C67 43 73 55 91 64C73 68 68 75 64 103C60 75 55 68 37 64C55 55 61 43 64 25Z"
+        fill="#fff9e8" stroke="#d8b86f" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M64 43C66 54 70 61 79 64C70 67 66 74 64 85C62 74 58 67 49 64C58 61 62 54 64 43Z"
+        fill="#b8aef0"/>
+  <circle cx="64" cy="64" r="5" fill="#fff7d4"/>
+</svg>

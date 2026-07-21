@@ -55,10 +55,9 @@ public partial class FearWormRegedit : EnemyRegedit
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 4;
     private const int VulnerableStacks = 2;
     private const int MaxTargets = 3;
-    private const int EnergyGain = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -68,12 +67,11 @@ public partial class FearWormAttack : Skill
     {
         return new SkillPlan(
             this,
-            EnergyStep(EnergyGain),
             AttackStep(
                 baseDamage: BaseDamage,
                 target: HostileTargetReference.All,
-                times: 1,
-                clampMax: 999
+                times: V("HitCount", 1),
+                clampMax: V("ClampMax", 999)
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
@@ -97,14 +95,14 @@ public partial class FearWormSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 3, TargetReference.Self)
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3), TargetReference.Self)
         );
     }
 }
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 13;
+    private const int BaseDamage = 14;
     private const int StunStacks = 2;
 
     public override SkillTypes SkillType => SkillTypes.Special;

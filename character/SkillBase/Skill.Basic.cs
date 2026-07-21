@@ -9,7 +9,13 @@ public partial class BasicAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier));
+        return new SkillPlan(
+            this,
+            AttackStep(
+                baseDamage: V(nameof(BaseDamage), BaseDamage),
+                multiplier: V(nameof(PowerMultiplier), PowerMultiplier)
+            )
+        );
     }
 }
 
@@ -27,7 +33,10 @@ public partial class BasicDefense : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: SurvivabilityMultiplier)
+            BlockStep(
+                baseBlock: V(nameof(BaseBlock), BaseBlock),
+                multiplier: V(nameof(SurvivabilityMultiplier), SurvivabilityMultiplier)
+            )
         );
     }
 }
@@ -47,8 +56,8 @@ public partial class BasicGuard : Skill
             this,
             BlockStep(
                 target: TargetReference.ManualFriendly,
-                baseBlock: BaseBlock,
-                multiplier: SurvivabilityMultiplier
+                baseBlock: V(nameof(BaseBlock), BaseBlock),
+                multiplier: V(nameof(SurvivabilityMultiplier), SurvivabilityMultiplier)
             )
         );
     }
@@ -68,7 +77,7 @@ public partial class BasicSpecial : Skill
     {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ModifyPropertyStep(PropertyType.Power, V(nameof(PowerGain), PowerGain)),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
@@ -88,7 +97,7 @@ public partial class KasiyaBasicSpecial : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, 2),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 2)),
             CarryStep(target: TargetReference.Next, skillIndex: 1)
         );
     }
@@ -106,7 +115,11 @@ public partial class EchoBasicSpecial : Skill
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(Buff.BuffName.Weaken, 1, HostileTargetReference.All)
+            ApplyBuffHostile(
+                Buff.BuffName.Weaken,
+                V("WeakenStacks", 1),
+                HostileTargetReference.All
+            )
         );
     }
 }
@@ -122,7 +135,7 @@ public partial class MariyaBasicSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, HealStep(6, TargetReference.ManualFriendly));
+        return new SkillPlan(this, HealStep(V("Heal", 6), TargetReference.ManualFriendly));
     }
 }
 
@@ -136,6 +149,10 @@ public partial class NightingaleBasicSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, ApplyBuffFriendly(Buff.BuffName.Invisible, 1), DrawCardsStep(1));
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks", 1)),
+            DrawCardsStep(V("DrawCount", 1))
+        );
     }
 }

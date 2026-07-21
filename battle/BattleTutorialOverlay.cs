@@ -473,7 +473,12 @@ public partial class BattleTutorialOverlay : CanvasLayer
         public Rect2? GetTargetRect(Battle battle)
         {
             Control target = Target?.Invoke(battle);
-            if (target == null || !GodotObject.IsInstanceValid(target) || !target.IsInsideTree())
+            if (
+                target == null
+                || !GodotObject.IsInstanceValid(target)
+                || !target.IsInsideTree()
+                || !target.IsVisibleInTree()
+            )
                 return null;
 
             Rect2 rect = target.GetGlobalRect();

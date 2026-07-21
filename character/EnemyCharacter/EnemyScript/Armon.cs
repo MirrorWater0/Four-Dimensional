@@ -100,7 +100,6 @@ public partial class ArmonAttack : Skill
 public partial class ArmonSurvive : Skill
 {
     private const int BaseBlock = 18;
-    private const int EnergyGain = 2;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -110,9 +109,8 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
-            AddCardsStep(SkillID.DazeStatus, 1),
-            EnergyStep(EnergyGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1))
         );
     }
 }
@@ -132,7 +130,7 @@ public partial class ArmonSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: 19),
+            AttackStep(baseDamage: V("BaseDamage", 19)),
             WhileStep(
                 times: () => OverloadTimes,
                 loopSteps: new[]

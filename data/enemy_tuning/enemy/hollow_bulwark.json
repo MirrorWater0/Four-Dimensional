@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "HollowBulwark":  {
+                                          "Name":  "空壳壁卫",
+                                          "MaxLife":  45
+                                      }
+                }
+}

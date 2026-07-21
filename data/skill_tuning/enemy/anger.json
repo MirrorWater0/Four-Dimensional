@@ -1,0 +1,19 @@
+﻿{
+    "skills":  {
+                   "AngerEliteAttack":  {
+                                            "Name":  "裂镰",
+                                            "BaseDamage":  15,
+                                            "VulnerableStacks":  9
+                                        },
+                   "AngerEliteSpecial":  {
+                                             "Name":  "狂怒弧刃",
+                                             "BaseDamage":  6,
+                                             "HitCount":  2
+                                         },
+                   "AngerEliteSurvive":  {
+                                             "Name":  "伏身",
+                                             "BaseBlock":  15,
+                                             "VulnerableStacks":  3
+                                         }
+               }
+}

@@ -19,8 +19,23 @@ public partial class Encyclopedia : Control
     private const float InterfaceExitStagger = 0.018f;
     private const int SkillCardsBuildPerFrame = 3;
     private const int SkillCardsAnimatedOnSwitch = 12;
-    private static readonly Vector2 EncyclopediaSkillCardDisplaySize = new(250f, 375f);
-    private static readonly Vector2 EncyclopediaSkillCardHoverPadding = new(16f, 18f);
+    private static readonly Vector2 EncyclopediaSkillCardDisplaySize = new(240f, 370f);
+    private static readonly Vector2 EncyclopediaSkillCardHoverPadding = new(12f, 14f);
+    private static readonly Vector2 EncyclopediaRelicButtonSize = new(230f, 74f);
+    private static readonly Vector2 EncyclopediaHomeButtonSize = new(360f, 164f);
+    private const float EncyclopediaRelicDetailWidth = 460f;
+
+    private static readonly Dictionary<EncyclopediaModule, string> ModuleIconPaths = new()
+    {
+        [EncyclopediaModule.Home] =
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/book_open.svg",
+        [EncyclopediaModule.Skills] =
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/cards_collection.svg",
+        [EncyclopediaModule.Relics] =
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/crown_b.svg",
+        [EncyclopediaModule.Buffs] =
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/shield.svg",
+    };
 
     private readonly struct AssemblyItem
     {
@@ -38,6 +53,7 @@ public partial class Encyclopedia : Control
 
     private enum EncyclopediaModule
     {
+        Home,
         Buffs,
         Skills,
         Relics,
@@ -51,6 +67,7 @@ public partial class Encyclopedia : Control
         Attack,
         Survive,
         Special,
+        Ability,
         Status,
     }
 
@@ -81,6 +98,8 @@ public partial class Encyclopedia : Control
         public string SearchText { get; init; }
         public PlayerCharacterKey? CharacterKey { get; init; }
         public SkillID? SkillId { get; init; }
+        public RelicID? RelicId { get; init; }
+        public Buff.BuffName? BuffName { get; init; }
         public SkillTypeFilter SkillTypeFilter { get; init; }
         public Skill.SkillRarity SkillRarity { get; init; }
         public SkillCostFilter SkillCostFilter { get; init; }
@@ -90,9 +109,10 @@ public partial class Encyclopedia : Control
 
     private static readonly Dictionary<EncyclopediaModule, string> ModuleNames = new()
     {
-        [EncyclopediaModule.Buffs] = "Buff",
-        [EncyclopediaModule.Skills] = I18n.Tr("ui.encyclopedia.module.skills", "人物技能图鉴"),
-        [EncyclopediaModule.Relics] = I18n.Tr("ui.encyclopedia.module.relics", "遗物"),
+        [EncyclopediaModule.Home] = I18n.Tr("ui.encyclopedia.title", "百科"),
+        [EncyclopediaModule.Buffs] = I18n.Tr("ui.encyclopedia.module.buffs", "Buff图鉴"),
+        [EncyclopediaModule.Skills] = I18n.Tr("ui.encyclopedia.module.skills", "卡牌图鉴"),
+        [EncyclopediaModule.Relics] = I18n.Tr("ui.encyclopedia.module.relics", "遗物图鉴"),
         [EncyclopediaModule.Items] = I18n.Tr("ui.encyclopedia.module.items", "道具"),
         [EncyclopediaModule.Enemies] = I18n.Tr("ui.encyclopedia.module.enemies", "敌人"),
     };
@@ -102,12 +122,14 @@ public partial class Encyclopedia : Control
     );
 
     private readonly Dictionary<EncyclopediaModule, List<EncyclopediaEntry>> _entries = new();
+    private readonly Dictionary<EncyclopediaModule, Button> _moduleButtons = new();
     private readonly Dictionary<Button, EncyclopediaEntry> _buttonEntries = new();
     private readonly Dictionary<PlayerCharacterKey, Button> _characterFilterButtons = new();
     private readonly Dictionary<SkillTypeFilter, Button> _skillTypeFilterButtons = new();
     private readonly Dictionary<Skill.SkillRarity, Button> _skillRarityFilterButtons = new();
     private readonly Dictionary<SkillCostFilter, Button> _skillCostFilterButtons = new();
-    private readonly Dictionary<EncyclopediaEntry, PanelContainer> _skillCardFrames = new();
+    private readonly Dictionary<EncyclopediaEntry, Control> _skillCardFrames = new();
+    private readonly Dictionary<SkillCard, Tween> _skillCardHoverTweens = new();
     private readonly Dictionary<SkillID, Skill> _previewSkillCache = new();
     private readonly Random _skillAnimationRandom = new();
 
@@ -118,6 +140,7 @@ public partial class Encyclopedia : Control
     private VBoxContainer _contentRoot;
     private HBoxContainer _searchRow;
     private LineEdit _searchBox;
+    private Label _titleLabel;
     private Label _moduleTitle;
     private Label _countLabel;
     private HBoxContainer _characterFilterRow;
@@ -126,12 +149,13 @@ public partial class Encyclopedia : Control
     private PanelContainer _skillGridPanel;
     private GridContainer _skillGrid;
     private VBoxContainer _skillFilterPanel;
+    private VBoxContainer _moduleNavigationPanel;
     private SettingsDropdown _skillSortOption;
     private Button _allSkillRarityFilterButton;
     private CenterContainer _detailCardHost;
     private SkillCard _detailSkillCard;
 
-    private EncyclopediaModule _currentModule = EncyclopediaModule.Skills;
+    private EncyclopediaModule _currentModule = EncyclopediaModule.Home;
     private PlayerCharacterKey _selectedSkillCharacter = PlayerCharacterKey.Echo;
     private SkillTypeFilter _selectedSkillTypeFilter = SkillTypeFilter.All;
     private Skill.SkillRarity? _selectedSkillRarityFilter;
@@ -139,6 +163,7 @@ public partial class Encyclopedia : Control
     private SkillSortMode _selectedSkillSortMode = SkillSortMode.Type;
     private EncyclopediaEntry _selectedEntry;
     private int _resultRefreshVersion;
+    private int _observedSkillTuningRevision;
     private Tween _interfaceTween;
     private bool _isClosing;
 
@@ -147,9 +172,19 @@ public partial class Encyclopedia : Control
         MouseFilter = MouseFilterEnum.Stop;
         BuildCatalog();
         BindUi();
-        SelectModule(EncyclopediaModule.Skills);
+        SelectModule(EncyclopediaModule.Home);
+        _observedSkillTuningRevision = SkillTuning.Revision;
         PrepareInterfaceEnterState();
         PlayEnterAnimationDeferred();
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!OS.IsDebugBuild() || SkillTuning.Revision == _observedSkillTuningRevision)
+            return;
+
+        _observedSkillTuningRevision = SkillTuning.Revision;
+        RefreshSkillTuningCatalog();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -176,6 +211,7 @@ public partial class Encyclopedia : Control
         _modulePanel = GetNode<PanelContainer>("CenterPanel/Margin/Root/Body/ModulePanel");
         _contentRoot = GetNode<VBoxContainer>("CenterPanel/Margin/Root/Body/Content");
         _searchRow = GetNode<HBoxContainer>("CenterPanel/Margin/Root/Body/Content/SearchRow");
+        _titleLabel = GetNode<Label>("CenterPanel/Margin/Root/Header/TitleBox/Title");
         _moduleTitle = GetNode<Label>("CenterPanel/Margin/Root/Body/Content/SearchRow/ModuleTitle");
         _searchBox = GetNode<LineEdit>("CenterPanel/Margin/Root/Body/Content/SearchRow/SearchBox");
         _countLabel = GetNode<Label>("CenterPanel/Margin/Root/Body/Content/SearchRow/CountLabel");
@@ -213,6 +249,15 @@ public partial class Encyclopedia : Control
         _detailSkillCard.CallDeferred(nameof(SkillCard.RestoreDisplayState));
 
         _searchBox.TextChanged += _ => RefreshResults();
+        ApplySearchTheme(_searchBox);
+        _detailLabel.AddThemeColorOverride(
+            "default_color",
+            new Color(0.83f, 0.9f, 0.96f, 0.96f)
+        );
+        _detailLabel.AddThemeColorOverride(
+            "font_color",
+            new Color(0.83f, 0.9f, 0.96f, 0.96f)
+        );
 
         var closeButton = GetNode<Button>("CenterPanel/Margin/Root/Header/CloseButton");
         ApplyButtonTheme(closeButton);
@@ -240,6 +285,8 @@ public partial class Encyclopedia : Control
             (int)SkillSortMode.Rarity
         );
         _skillSortOption.ItemSelected += OnSkillSortSelected;
+
+        BuildModuleNavigationButtons();
 
         _characterFilterButtons.Clear();
         RegisterCharacterButton(
@@ -424,6 +471,11 @@ public partial class Encyclopedia : Control
         );
         AddSkillTypeFilterButton(
             typeFlow,
+            I18n.Tr("skill_type.ability", "能力"),
+            SkillTypeFilter.Ability
+        );
+        AddSkillTypeFilterButton(
+            typeFlow,
             I18n.Tr("ui.encyclopedia.skill_type.status", "状态"),
             SkillTypeFilter.Status
         );
@@ -461,6 +513,84 @@ public partial class Encyclopedia : Control
         AddSkillCostFilterButton(costFlow, "X", SkillCostFilter.X);
     }
 
+    private void BuildModuleNavigationButtons()
+    {
+        if (_skillFilterPanel == null)
+            return;
+
+        var section = new PanelContainer
+        {
+            Name = "ModuleNavigationSection",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        section.AddThemeStyleboxOverride(
+            "panel",
+            CreateFilterButtonStyle(new Color(0.07f, 0.11f, 0.16f, 0.9f))
+        );
+
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", 8);
+        margin.AddThemeConstantOverride("margin_top", 6);
+        margin.AddThemeConstantOverride("margin_right", 8);
+        margin.AddThemeConstantOverride("margin_bottom", 8);
+
+        _moduleNavigationPanel = new VBoxContainer
+        {
+            Name = "ModuleNavigationPanel",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        _moduleNavigationPanel.AddThemeConstantOverride("separation", 6);
+
+        var title = new Label
+        {
+            Text = I18n.Tr("ui.encyclopedia.entry.title", "图鉴入口"),
+            CustomMinimumSize = new Vector2(0, 28),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        title.AddThemeFontSizeOverride("font_size", 19);
+        title.Modulate = new Color(0.9f, 0.98f, 1f, 1f);
+        _moduleNavigationPanel.AddChild(title);
+
+        AddModuleNavigationButton(
+            EncyclopediaModule.Skills,
+            I18n.Tr("ui.encyclopedia.entry.skills", "卡牌图鉴")
+        );
+        AddModuleNavigationButton(
+            EncyclopediaModule.Relics,
+            I18n.Tr("ui.encyclopedia.entry.relics", "遗物图鉴")
+        );
+        AddModuleNavigationButton(
+            EncyclopediaModule.Buffs,
+            I18n.Tr("ui.encyclopedia.entry.buffs", "Buff图鉴")
+        );
+
+        margin.AddChild(_moduleNavigationPanel);
+        section.AddChild(margin);
+        _skillFilterPanel.AddChild(section);
+        _skillFilterPanel.MoveChild(section, 0);
+    }
+
+    private void AddModuleNavigationButton(EncyclopediaModule module, string text)
+    {
+        if (_moduleNavigationPanel == null)
+            return;
+
+        Button button = CreateFilterButton(text);
+        Texture2D icon = GetModuleIcon(module);
+        if (icon != null)
+        {
+            button.Icon = icon;
+            button.ExpandIcon = true;
+            button.IconAlignment = HorizontalAlignment.Left;
+            button.AddThemeConstantOverride("icon_max_width", 22);
+        }
+        button.CustomMinimumSize = new Vector2(0f, 44f);
+        button.Alignment = HorizontalAlignment.Left;
+        button.Pressed += () => SelectModule(module);
+        _moduleNavigationPanel.AddChild(button);
+        _moduleButtons[module] = button;
+    }
+
     private T FindSkillFilterNode<T>(string name)
         where T : Node
     {
@@ -476,6 +606,17 @@ public partial class Encyclopedia : Control
         _entries[EncyclopediaModule.Enemies] = BuildEnemyEntries();
     }
 
+    private void RefreshSkillTuningCatalog()
+    {
+        _previewSkillCache.Clear();
+        _entries[EncyclopediaModule.Skills] = BuildSkillEntries();
+
+        if (_currentModule == EncyclopediaModule.Skills)
+            RefreshResults();
+
+        GD.Print($"[SkillTuning] refreshed encyclopedia at revision {_observedSkillTuningRevision}");
+    }
+
     private List<EncyclopediaEntry> BuildBuffEntries()
     {
         return Enum.GetValues<Buff.BuffName>()
@@ -487,7 +628,7 @@ public partial class Encyclopedia : Control
                     : I18n.Tr("ui.encyclopedia.buff.buff", "正面状态");
                 string effect = Buff.GetBuffEffectText(buff);
                 string detail = $"[b]{EscapeBbcode(name)}[/b]\n{nature}\n\n{effect}";
-                return CreateEntry(name, nature, detail, buff.ToString());
+                return CreateEntry(name, nature, detail, buff.ToString(), buffName: buff);
             })
             .OrderBy(entry => entry.Title)
             .ToList();
@@ -577,17 +718,16 @@ public partial class Encyclopedia : Control
             .Select(id =>
             {
                 Relic relic = Relic.Create(id);
-                string count = Relic.FormatCountLabel(Relic.GetAcquireAmount(id));
-                string subtitle = string.IsNullOrWhiteSpace(count)
-                    ? I18n.Tr("ui.encyclopedia.relic.unique", "唯一遗物")
-                    : I18n.Format(
-                        "ui.encyclopedia.relic.count",
-                        "获得数量：{count}",
-                        ("count", count)
-                    );
+                string subtitle = I18n.Tr("ui.encyclopedia.relic.subtitle", "遗物");
                 string detail =
                     $"[b]{EscapeBbcode(relic.RelicName)}[/b]\n{EscapeBbcode(subtitle)}\nID: {id}\n\n{GlobalFunction.ColorizeNumbers(relic.RelicDescription)}";
-                return CreateEntry(relic.RelicName, subtitle, detail, id.ToString());
+                return CreateEntry(
+                    relic.RelicName,
+                    subtitle,
+                    detail,
+                    id.ToString(),
+                    relicId: id
+                );
             })
             .OrderBy(entry => entry.Title)
             .ToList();
@@ -722,9 +862,13 @@ public partial class Encyclopedia : Control
 
     private void SelectModule(EncyclopediaModule module)
     {
-        _currentModule = EncyclopediaModule.Skills;
+        _currentModule = module;
         _selectedEntry = null;
-        _moduleTitle.Text = I18n.Tr("ui.encyclopedia.title", "卡牌图鉴");
+        string moduleName = ModuleNames.GetValueOrDefault(module, module.ToString());
+        if (_titleLabel != null)
+            _titleLabel.Text = moduleName;
+        if (_moduleTitle != null)
+            _moduleTitle.Text = moduleName;
         _searchBox.Text = string.Empty;
         RefreshModuleButtonStates();
         RefreshCharacterFilter();
@@ -753,6 +897,13 @@ public partial class Encyclopedia : Control
 
         if (refreshVersion != _resultRefreshVersion || !IsInsideTree())
             return;
+
+        if (_currentModule == EncyclopediaModule.Home)
+        {
+            AddHomeEntries();
+            SelectEntry(null);
+            return;
+        }
 
         string query = NormalizeSearch(_searchBox.Text);
         var source = _entries.TryGetValue(_currentModule, out var entries)
@@ -795,6 +946,7 @@ public partial class Encyclopedia : Control
         if (!show)
             return;
 
+        SetControlAlpha(_characterFilterRow, 1f);
         foreach (var pair in _characterFilterButtons)
         {
             bool selected = pair.Key == _selectedSkillCharacter;
@@ -806,16 +958,66 @@ public partial class Encyclopedia : Control
 
     private void RefreshContentMode()
     {
+        bool showFlatDetail =
+            _currentModule == EncyclopediaModule.Relics
+            || _currentModule == EncyclopediaModule.Buffs;
         _skillGridPanel.Visible = true;
+        _searchRow.Visible = _currentModule != EncyclopediaModule.Home;
+        _modulePanel.Visible = true;
         _skillFilterPanel.Visible = true;
+        SetSkillFilterControlsVisible(_currentModule == EncyclopediaModule.Skills);
         _detailCardHost.Visible = false;
-        _detailPanel.Visible = false;
+        _detailPanel.Visible = showFlatDetail;
+        _detailPanel.CustomMinimumSize = showFlatDetail
+            ? new Vector2(EncyclopediaRelicDetailWidth, 0f)
+            : Vector2.Zero;
+        _detailPanel.SizeFlagsHorizontal = showFlatDetail ? SizeFlags.Fill : SizeFlags.ShrinkEnd;
+        _skillGridPanel.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        SetControlAlpha(_skillGridPanel, 1f);
+
+        if (_searchRow.Visible)
+            SetControlAlpha(_searchRow, 1f);
+
+        if (showFlatDetail)
+        {
+            SetControlAlpha(_detailPanel, 1f);
+            SetControlAlpha(_detailLabel, 1f);
+        }
+
+        if (_skillGrid != null)
+        {
+            _skillGrid.Columns =
+                _currentModule == EncyclopediaModule.Home ? 3
+                : _currentModule == EncyclopediaModule.Skills ? 5
+                : showFlatDetail ? 2
+                : 2;
+            _skillGrid.AddThemeConstantOverride(
+                "h_separation",
+                showFlatDetail ? 14 : 30
+            );
+            _skillGrid.AddThemeConstantOverride(
+                "v_separation",
+                showFlatDetail ? 12 : 20
+            );
+        }
+
+        if (_searchBox != null)
+        {
+            _searchBox.PlaceholderText =
+                _currentModule == EncyclopediaModule.Relics
+                    ? I18n.Tr("ui.encyclopedia.search.relics", "搜索遗物名称或效果")
+                : _currentModule == EncyclopediaModule.Buffs
+                    ? I18n.Tr("ui.encyclopedia.search.buffs", "搜索Buff名称或效果")
+                    : I18n.Tr("ui.encyclopedia.search.skills", "搜索卡牌名称、类型或描述");
+        }
     }
 
     private void RefreshFilterStates()
     {
         if (_skillFilterPanel != null)
             _skillFilterPanel.Visible = true;
+
+        SetSkillFilterControlsVisible(_currentModule == EncyclopediaModule.Skills);
 
         foreach (var pair in _skillTypeFilterButtons)
         {
@@ -856,7 +1058,285 @@ public partial class Encyclopedia : Control
         }
     }
 
-    private void AddFlatResults(IEnumerable<EncyclopediaEntry> entries) { }
+    private void SetSkillFilterControlsVisible(bool visible)
+    {
+        if (_skillFilterPanel == null)
+            return;
+
+        foreach (Node child in _skillFilterPanel.GetChildren())
+        {
+            if (child is not Control control)
+                continue;
+
+            control.Visible = control.Name == "ModuleNavigationSection" || visible;
+        }
+    }
+
+    private void AddHomeEntries()
+    {
+        AddHomeEntryButton(
+            EncyclopediaModule.Skills,
+            I18n.Tr("ui.encyclopedia.entry.skills", "卡牌图鉴"),
+            I18n.Tr("ui.encyclopedia.entry.skills_desc", "查看角色技能、费用、类型和稀有度。")
+        );
+        AddHomeEntryButton(
+            EncyclopediaModule.Relics,
+            I18n.Tr("ui.encyclopedia.entry.relics", "遗物图鉴"),
+            I18n.Tr("ui.encyclopedia.entry.relics_desc", "查看遗物名称和战斗效果。")
+        );
+        AddHomeEntryButton(
+            EncyclopediaModule.Buffs,
+            I18n.Tr("ui.encyclopedia.entry.buffs", "Buff图鉴"),
+            I18n.Tr("ui.encyclopedia.entry.buffs_desc", "查看正面与负面状态的触发规则和效果。")
+        );
+    }
+
+    private void AddHomeEntryButton(EncyclopediaModule module, string title, string description)
+    {
+        Color accent = GetModuleAccent(module);
+        Button button = CreateButton(string.Empty, EncyclopediaHomeButtonSize);
+        button.AddThemeStyleboxOverride("normal", CreateHomeCardStyle(accent, 0.11f));
+        button.AddThemeStyleboxOverride("hover", CreateHomeCardStyle(accent, 0.21f));
+        button.AddThemeStyleboxOverride("pressed", CreateHomeCardStyle(accent, 0.08f));
+
+        var margin = new MarginContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        margin.AddThemeConstantOverride("margin_left", 22);
+        margin.AddThemeConstantOverride("margin_top", 20);
+        margin.AddThemeConstantOverride("margin_right", 18);
+        margin.AddThemeConstantOverride("margin_bottom", 18);
+
+        var row = new HBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        row.AddThemeConstantOverride("separation", 18);
+
+        var iconBadge = new PanelContainer
+        {
+            CustomMinimumSize = new Vector2(72f, 72f),
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        iconBadge.AddThemeStyleboxOverride("panel", CreateModuleBadgeStyle(accent));
+
+        var icon = new TextureRect
+        {
+            Texture = GetModuleIcon(module),
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        iconBadge.AddChild(icon);
+
+        int entryCount = _entries.TryGetValue(module, out var entries) ? entries.Count : 0;
+        var textColumn = new VBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        textColumn.AddThemeConstantOverride("separation", 3);
+
+        var overline = new Label
+        {
+            Text = I18n.Format(
+                "ui.encyclopedia.entry.count",
+                "ARCHIVE  ·  {count} 条记录",
+                ("count", entryCount.ToString())
+            ),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        overline.AddThemeFontSizeOverride("font_size", 13);
+        overline.AddThemeColorOverride("font_color", accent with { A = 0.9f });
+
+        var titleLabel = new Label
+        {
+            Text = title,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        titleLabel.AddThemeFontSizeOverride("font_size", 25);
+        titleLabel.AddThemeColorOverride("font_color", new Color(0.94f, 0.98f, 1f, 1f));
+
+        var descriptionLabel = new Label
+        {
+            Text = description,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        descriptionLabel.AddThemeFontSizeOverride("font_size", 15);
+        descriptionLabel.AddThemeColorOverride(
+            "font_color",
+            new Color(0.66f, 0.76f, 0.84f, 0.92f)
+        );
+
+        var arrow = new Label
+        {
+            Text = "›",
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        arrow.AddThemeFontSizeOverride("font_size", 34);
+        arrow.AddThemeColorOverride("font_color", accent);
+
+        textColumn.AddChild(overline);
+        textColumn.AddChild(titleLabel);
+        textColumn.AddChild(descriptionLabel);
+        row.AddChild(iconBadge);
+        row.AddChild(textColumn);
+        row.AddChild(arrow);
+        margin.AddChild(row);
+        button.AddChild(margin);
+        button.Pressed += () => SelectModule(module);
+        _skillGrid.AddChild(button);
+    }
+
+    private void AddFlatResults(IEnumerable<EncyclopediaEntry> entries)
+    {
+        foreach (var entry in entries)
+        {
+            Button button = CreateButton(
+                entry.BuffName.HasValue ? string.Empty : $"{entry.Title}\n{entry.Subtitle}",
+                EncyclopediaRelicButtonSize
+            );
+            button.Alignment = HorizontalAlignment.Left;
+            button.AddThemeFontSizeOverride("font_size", 18);
+            button.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
+
+            if (entry.RelicId.HasValue)
+            {
+                string texturePath = Relic.GetIconTexturePath(entry.RelicId.Value);
+                Texture2D texture = string.IsNullOrWhiteSpace(texturePath)
+                    ? null
+                    : GD.Load<Texture2D>(texturePath);
+                if (texture != null)
+                {
+                    button.Icon = texture;
+                    button.ExpandIcon = true;
+                    button.AddThemeConstantOverride("icon_max_width", 46);
+                    button.IconAlignment = HorizontalAlignment.Left;
+                }
+            }
+            else if (entry.BuffName.HasValue)
+            {
+                ConfigureBuffEntryButton(button, entry);
+            }
+
+            button.Pressed += () => SelectEntry(entry);
+            _skillGrid.AddChild(button);
+            _buttonEntries[button] = entry;
+        }
+    }
+
+    private static void ConfigureBuffEntryButton(Button button, EncyclopediaEntry entry)
+    {
+        if (button == null)
+            return;
+
+        var margin = new MarginContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        margin.SetAnchorsPreset(LayoutPreset.FullRect);
+        margin.AddThemeConstantOverride("margin_left", 16);
+        margin.AddThemeConstantOverride("margin_top", 8);
+        margin.AddThemeConstantOverride("margin_right", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 8);
+
+        var row = new HBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            Alignment = BoxContainer.AlignmentMode.Begin,
+        };
+        row.AddThemeConstantOverride("separation", 14);
+
+        var iconHost = new CenterContainer
+        {
+            CustomMinimumSize = new Vector2(48f, 0f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+
+        Control icon = entry.BuffName.HasValue
+            ? Buff.CreateBuffTooltipIcon(entry.BuffName.Value)
+            : null;
+        if (icon != null)
+        {
+            const float iconSize = 42f;
+            icon.Name = "BuffIcon";
+            icon.MouseFilter = MouseFilterEnum.Ignore;
+            icon.Modulate = Colors.White;
+            if (icon is ColorRect colorRect && HasTextureIconChild(icon))
+                colorRect.Color = Colors.Transparent;
+            icon.CustomMinimumSize = new Vector2(iconSize, iconSize);
+            icon.Size = new Vector2(iconSize, iconSize);
+            icon.SetAnchorsPreset(LayoutPreset.TopLeft);
+            Buff.RefreshTextureIconOverrideLayout(icon);
+            iconHost.AddChild(icon);
+        }
+
+        var textColumn = new VBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        textColumn.AddThemeConstantOverride("separation", 0);
+
+        var title = new Label
+        {
+            Text = entry.Title,
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        title.AddThemeFontSizeOverride("font_size", 18);
+        title.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.96f));
+
+        var subtitle = new Label
+        {
+            Text = entry.Subtitle,
+            ClipText = true,
+            TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        subtitle.AddThemeFontSizeOverride("font_size", 17);
+        subtitle.AddThemeColorOverride("font_color", new Color(0.82f, 0.92f, 1f, 0.88f));
+
+        textColumn.AddChild(title);
+        textColumn.AddChild(subtitle);
+        row.AddChild(iconHost);
+        row.AddChild(textColumn);
+        margin.AddChild(row);
+        button.AddChild(margin);
+    }
+
+    private static bool HasTextureIconChild(Node root)
+    {
+        if (root == null || !GodotObject.IsInstanceValid(root))
+            return false;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is TextureRect)
+                return true;
+
+            if (HasTextureIconChild(child))
+                return true;
+        }
+
+        return false;
+    }
 
     private async Task AddSkillCardResultsAsync(
         IReadOnlyList<EncyclopediaEntry> entries,
@@ -890,38 +1370,19 @@ public partial class Encyclopedia : Control
 
     private SkillCard AddSkillCard(EncyclopediaEntry entry)
     {
-        var frame = new PanelContainer
+        var frame = new Control
         {
             CustomMinimumSize =
                 EncyclopediaSkillCardDisplaySize + EncyclopediaSkillCardHoverPadding * 2f,
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore,
         };
-        frame.AddThemeStyleboxOverride("panel", CreateSkillTileFrameStyle(false));
-
-        var cardMargin = new MarginContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-            SizeFlagsVertical = SizeFlags.ShrinkCenter,
-        };
-        cardMargin.AddThemeConstantOverride(
-            "margin_left",
-            (int)EncyclopediaSkillCardHoverPadding.X
-        );
-        cardMargin.AddThemeConstantOverride("margin_top", (int)EncyclopediaSkillCardHoverPadding.Y);
-        cardMargin.AddThemeConstantOverride(
-            "margin_right",
-            (int)EncyclopediaSkillCardHoverPadding.X
-        );
-        cardMargin.AddThemeConstantOverride(
-            "margin_bottom",
-            (int)EncyclopediaSkillCardHoverPadding.Y
-        );
 
         Skill skill = entry.SkillId.HasValue ? GetPreviewSkill(entry.SkillId.Value) : null;
         var card = SkillCardScene.Instantiate<SkillCard>();
         card.AutoPressEffect = false;
-        card.UseDefaultHoverEffect = true;
+        card.UseDefaultHoverEffect = false;
         card.Set("stretch", true);
         card.Set("stretch_shrink", 1);
         card.PreviewCharacterName = entry.Group;
@@ -930,14 +1391,83 @@ public partial class Encyclopedia : Control
         card.Size = EncyclopediaSkillCardDisplaySize;
         card.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
         card.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        card.PivotOffset = Vector2.Zero;
+        card.Resized += () => PositionSkillCardInFrame(frame, card);
+        frame.Resized += () => PositionSkillCardInFrame(frame, card);
         card.SetSkill(skill);
         card.Button.Pressed += () => SelectEntry(entry);
+        card.Button.MouseEntered += () => TweenSkillCardHover(frame, card, true);
+        card.Button.MouseExited += () => TweenSkillCardHover(card, false);
 
-        cardMargin.AddChild(card);
-        frame.AddChild(cardMargin);
+        frame.AddChild(card);
         _skillGrid.AddChild(frame);
+        PositionSkillCardInFrame(frame, card);
         _skillCardFrames[entry] = frame;
         return card;
+    }
+
+    private static void PositionSkillCardInFrame(Control frame, SkillCard card)
+    {
+        if (
+            frame == null
+            || card == null
+            || !GodotObject.IsInstanceValid(frame)
+            || !GodotObject.IsInstanceValid(card)
+        )
+        {
+            return;
+        }
+
+        card.Position = (frame.Size - card.Size * card.Scale) * 0.5f;
+        card.PivotOffset = Vector2.Zero;
+    }
+
+    private void TweenSkillCardHover(Control frame, SkillCard card, bool hovered)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        if (
+            _skillCardHoverTweens.TryGetValue(card, out Tween previousTween)
+            && previousTween != null
+            && GodotObject.IsInstanceValid(previousTween)
+        )
+        {
+            previousTween.Kill();
+        }
+
+        PositionSkillCardInFrame(frame, card);
+        if (hovered)
+            card.ZIndex = 2;
+
+        float scaleFactor = hovered ? 1.055f : 1f;
+        Vector2 targetScale = Vector2.One * scaleFactor;
+        Vector2 targetPosition = frame != null
+            ? (frame.Size - card.Size * scaleFactor) * 0.5f
+            : card.Position;
+        Tween tween = card.CreateTween();
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(card, "scale", targetScale, hovered ? 0.14f : 0.11f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+        tween
+            .TweenProperty(card, "position", targetPosition, hovered ? 0.14f : 0.11f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
+        if (!hovered)
+            tween.Finished += () =>
+            {
+                if (GodotObject.IsInstanceValid(card))
+                    card.ZIndex = 0;
+            };
+        _skillCardHoverTweens[card] = tween;
+    }
+
+    private void TweenSkillCardHover(SkillCard card, bool hovered)
+    {
+        Control frame = card?.GetParent() as Control;
+        TweenSkillCardHover(frame, card, hovered);
     }
 
     private void SelectEntry(EncyclopediaEntry entry)
@@ -948,21 +1478,62 @@ public partial class Encyclopedia : Control
 
         foreach (var pair in _buttonEntries)
         {
+            bool selected = pair.Value == _selectedEntry;
             Color color =
-                pair.Value == _selectedEntry
+                selected
                     ? new Color(0.74f, 0.9f, 1f, 1f)
                     : new Color(0.93f, 0.97f, 1f, 0.92f);
             pair.Key.AddThemeColorOverride("font_color", color);
+            pair.Key.AddThemeStyleboxOverride(
+                "normal",
+                CreateButtonStyle(
+                    selected
+                        ? new Color(0.18f, 0.32f, 0.46f, 1f)
+                        : new Color(0.10f, 0.15f, 0.22f, 0.95f)
+                )
+            );
+            pair.Key.AddThemeStyleboxOverride(
+                "hover",
+                CreateButtonStyle(
+                    selected
+                        ? new Color(0.22f, 0.39f, 0.56f, 1f)
+                        : new Color(0.16f, 0.25f, 0.34f, 1f)
+                )
+            );
         }
 
-        foreach (var pair in _skillCardFrames)
-            pair.Value.AddThemeStyleboxOverride("panel", CreateSkillTileFrameStyle(false));
     }
 
-    private void RefreshModuleButtonStates() { }
+    private void RefreshModuleButtonStates()
+    {
+        foreach (var pair in _moduleButtons)
+        {
+            bool selected = pair.Key == _currentModule;
+            Color accent = GetModuleAccent(pair.Key);
+            pair.Value.Disabled = selected;
+            pair.Value.Modulate = Colors.White;
+            pair.Value.AddThemeColorOverride(
+                selected ? "font_disabled_color" : "font_color",
+                selected
+                    ? new Color(0.96f, 0.99f, 1f, 1f)
+                    : new Color(0.8f, 0.87f, 0.93f, 0.94f)
+            );
+            pair.Value.AddThemeStyleboxOverride(
+                selected ? "disabled" : "normal",
+                CreateNavigationButtonStyle(accent, selected)
+            );
+        }
+    }
 
     private void ClearResultNodes()
     {
+        foreach (Tween tween in _skillCardHoverTweens.Values)
+        {
+            if (tween != null && GodotObject.IsInstanceValid(tween))
+                tween.Kill();
+        }
+        _skillCardHoverTweens.Clear();
+
         foreach (Node child in _skillGrid.GetChildren())
             child.QueueFree();
 
@@ -1225,7 +1796,9 @@ public partial class Encyclopedia : Control
         Skill.SkillRarity skillRarity = Skill.SkillRarity.Common,
         SkillCostFilter skillCostFilter = SkillCostFilter.All,
         int skillCostSortValue = 0,
-        bool isStatusCard = false
+        bool isStatusCard = false,
+        RelicID? relicId = null,
+        Buff.BuffName? buffName = null
     )
     {
         string search = NormalizeSearch(
@@ -1240,6 +1813,8 @@ public partial class Encyclopedia : Control
             SearchText = search,
             CharacterKey = characterKey,
             SkillId = skillId,
+            RelicId = relicId,
+            BuffName = buffName,
             SkillTypeFilter = skillTypeFilter,
             SkillRarity = skillRarity,
             SkillCostFilter = skillCostFilter,
@@ -1289,6 +1864,7 @@ public partial class Encyclopedia : Control
             Skill.SkillTypes.Attack => SkillTypeFilter.Attack,
             Skill.SkillTypes.Survive => SkillTypeFilter.Survive,
             Skill.SkillTypes.Special => SkillTypeFilter.Special,
+            Skill.SkillTypes.Ability => SkillTypeFilter.Ability,
             _ => SkillTypeFilter.Status,
         };
     }
@@ -1334,8 +1910,9 @@ public partial class Encyclopedia : Control
             SkillTypeFilter.Attack => 0,
             SkillTypeFilter.Survive => 1,
             SkillTypeFilter.Special => 2,
-            SkillTypeFilter.Status => 3,
-            _ => 4,
+            SkillTypeFilter.Ability => 3,
+            SkillTypeFilter.Status => 4,
+            _ => 5,
         };
     }
 
@@ -1379,7 +1956,7 @@ public partial class Encyclopedia : Control
         var button = new Button
         {
             Text = text,
-            CustomMinimumSize = new Vector2(wide ? 0 : 76, 40),
+            CustomMinimumSize = new Vector2(wide ? 0 : 76, 34),
             SizeFlagsHorizontal = wide ? SizeFlags.ExpandFill : SizeFlags.Fill,
             ClipText = true,
         };
@@ -1459,6 +2036,29 @@ public partial class Encyclopedia : Control
         optionButton.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.92f));
     }
 
+    private static void ApplySearchTheme(LineEdit searchBox)
+    {
+        if (searchBox == null)
+            return;
+
+        searchBox.ClearButtonEnabled = true;
+        searchBox.AddThemeFontSizeOverride("font_size", 17);
+        searchBox.AddThemeColorOverride(
+            "font_color",
+            new Color(0.9f, 0.96f, 1f, 0.96f)
+        );
+        searchBox.AddThemeColorOverride(
+            "font_placeholder_color",
+            new Color(0.54f, 0.66f, 0.75f, 0.8f)
+        );
+        searchBox.AddThemeColorOverride(
+            "caret_color",
+            new Color(0.38f, 0.9f, 0.96f, 1f)
+        );
+        searchBox.AddThemeStyleboxOverride("normal", CreateSearchBoxStyle(false));
+        searchBox.AddThemeStyleboxOverride("focus", CreateSearchBoxStyle(true));
+    }
+
     private int FindSkillSortOptionIndex(int itemId)
     {
         if (_skillSortOption == null)
@@ -1489,8 +2089,139 @@ public partial class Encyclopedia : Control
             CornerRadiusBottomRight = 14,
             ContentMarginLeft = 10,
             ContentMarginRight = 10,
-            ContentMarginTop = 8,
-            ContentMarginBottom = 8,
+            ContentMarginTop = 6,
+            ContentMarginBottom = 6,
+        };
+    }
+
+    private static StyleBoxFlat CreateSearchBoxStyle(bool focused)
+    {
+        Color accent = focused
+            ? new Color(0.35f, 0.9f, 0.96f, 0.72f)
+            : new Color(0.38f, 0.7f, 0.86f, 0.22f);
+        return new StyleBoxFlat
+        {
+            BgColor = focused
+                ? new Color(0.035f, 0.085f, 0.12f, 0.96f)
+                : new Color(0.02f, 0.05f, 0.078f, 0.9f),
+            BorderColor = accent,
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 14,
+            CornerRadiusTopRight = 14,
+            CornerRadiusBottomLeft = 14,
+            CornerRadiusBottomRight = 14,
+            ContentMarginLeft = 16,
+            ContentMarginRight = 42,
+            ContentMarginTop = 10,
+            ContentMarginBottom = 10,
+            ShadowColor = focused
+                ? new Color(0.12f, 0.72f, 0.88f, 0.16f)
+                : Colors.Transparent,
+            ShadowSize = focused ? 7 : 0,
+        };
+    }
+
+    private static Texture2D GetModuleIcon(EncyclopediaModule module)
+    {
+        return ModuleIconPaths.TryGetValue(module, out string path)
+            ? GD.Load<Texture2D>(path)
+            : null;
+    }
+
+    private static Color GetModuleAccent(EncyclopediaModule module)
+    {
+        return module switch
+        {
+            EncyclopediaModule.Skills => new Color(0.26f, 0.86f, 0.95f, 1f),
+            EncyclopediaModule.Relics => new Color(0.96f, 0.7f, 0.3f, 1f),
+            EncyclopediaModule.Buffs => new Color(0.52f, 0.86f, 0.68f, 1f),
+            EncyclopediaModule.Enemies => new Color(0.94f, 0.4f, 0.48f, 1f),
+            _ => new Color(0.62f, 0.67f, 0.96f, 1f),
+        };
+    }
+
+    private static StyleBoxFlat CreateModuleBadgeStyle(Color accent)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(accent.R * 0.13f, accent.G * 0.13f, accent.B * 0.13f, 0.96f),
+            BorderColor = accent with { A = 0.48f },
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 16,
+            CornerRadiusTopRight = 16,
+            CornerRadiusBottomLeft = 16,
+            CornerRadiusBottomRight = 16,
+            ContentMarginLeft = 17,
+            ContentMarginRight = 17,
+            ContentMarginTop = 17,
+            ContentMarginBottom = 17,
+            ShadowColor = accent with { A = 0.16f },
+            ShadowSize = 9,
+        };
+    }
+
+    private static StyleBoxFlat CreateHomeCardStyle(Color accent, float accentStrength)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = new Color(
+                0.025f + accent.R * accentStrength,
+                0.045f + accent.G * accentStrength,
+                0.07f + accent.B * accentStrength,
+                0.96f
+            ),
+            BorderColor = accent with { A = 0.38f + accentStrength },
+            BorderWidthLeft = 2,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 18,
+            CornerRadiusTopRight = 18,
+            CornerRadiusBottomLeft = 18,
+            CornerRadiusBottomRight = 18,
+            ContentMarginLeft = 0,
+            ContentMarginRight = 0,
+            ContentMarginTop = 0,
+            ContentMarginBottom = 0,
+            ShadowColor = accent with { A = 0.12f + accentStrength * 0.25f },
+            ShadowSize = 10,
+            ShadowOffset = new Vector2(0f, 4f),
+        };
+    }
+
+    private static StyleBoxFlat CreateNavigationButtonStyle(Color accent, bool selected)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = selected
+                ? new Color(
+                    0.04f + accent.R * 0.16f,
+                    0.07f + accent.G * 0.16f,
+                    0.1f + accent.B * 0.16f,
+                    1f
+                )
+                : new Color(0.035f, 0.065f, 0.095f, 0.82f),
+            BorderColor = selected
+                ? accent with { A = 0.66f }
+                : new Color(0.4f, 0.68f, 0.82f, 0.14f),
+            BorderWidthLeft = selected ? 3 : 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 13,
+            CornerRadiusTopRight = 13,
+            CornerRadiusBottomLeft = 13,
+            CornerRadiusBottomRight = 13,
+            ContentMarginLeft = 14,
+            ContentMarginRight = 12,
+            ContentMarginTop = 9,
+            ContentMarginBottom = 9,
         };
     }
 
@@ -1512,27 +2243,10 @@ public partial class Encyclopedia : Control
             ContentMarginRight = 16,
             ContentMarginTop = 10,
             ContentMarginBottom = 10,
+            ShadowColor = new Color(0f, 0f, 0f, 0.24f),
+            ShadowSize = 4,
+            ShadowOffset = new Vector2(0f, 2f),
         };
     }
 
-    private static StyleBoxFlat CreateSkillTileFrameStyle(bool selected)
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0f, 0f, 0f, 0f),
-            BorderWidthLeft = 0,
-            BorderWidthTop = 0,
-            BorderWidthRight = 0,
-            BorderWidthBottom = 0,
-            BorderColor = new Color(0f, 0f, 0f, 0f),
-            CornerRadiusTopLeft = 0,
-            CornerRadiusTopRight = 0,
-            CornerRadiusBottomRight = 0,
-            CornerRadiusBottomLeft = 0,
-            ContentMarginLeft = 0,
-            ContentMarginRight = 0,
-            ContentMarginTop = 0,
-            ContentMarginBottom = 0,
-        };
-    }
 }

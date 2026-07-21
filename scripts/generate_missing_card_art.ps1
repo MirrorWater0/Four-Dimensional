@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $generatorScript = Join-Path $projectRoot "tools/openai_image_generate.ps1"
+$baseUrl = "https://api.okinto.com/v1"
 
 if (-not (Test-Path -LiteralPath $generatorScript)) {
     throw "Generator script not found: $generatorScript"
@@ -150,7 +151,131 @@ Keep the image clean, airy, and readable at small card size.
 This is a neutral colorless skill card, not tied to any specific character.
 "@
     }
+    [pscustomobject]@{
+        Id = "RenewalFlurry"
+        Character = "Mariya"
+        ReferenceImage = "asset/PlayerCharater/Mariya/MariyaPortrait.png"
+        OutputPath = "asset/CardPicture/Mariya/RenewalFlurry.png"
+        Prompt = @"
+Use the provided image only for Mariya identity reference: light blue hair, green eyes, sleeveless white dress, bare arms, and palette.
+Create a completely new effect-dominant composition. Do not copy the reference pose.
+$styleBlock
+Mariya element constraints:
+Allowed: light blue hair, green eyes, sleeveless white dress, bare arms, simple silver crescent staff or polearm motif, blue ribbon accents, pale healing or holy light effects.
+Forbidden: gloves, detached sleeves, long arm coverings, heavy armor, shield, extra swords unless explicitly requested, wings, halo, crown, ornate jewelry, card frame, border, UI ornaments.
+Keep Mariya's outfit simple and sleeveless. Do not add new costume layers.
+Skill: Renewal Flurry (repeated healing-infused slashes based on allied heal count).
+Composition: effect-dominant diagonal slash composition. Mariya may appear only as a small partial silhouette or shoulder crop at one edge.
+Main visual: multiple pale blue-green healing slash trails stacked in a rhythmic flurry, each trail carrying soft holy light and gentle restorative ripples.
+Mood: renewed momentum, healing turned into offense, clean repeated strikes.
+Avoid centered half-body portrait. All slash trails are intangible VFX, not physical weapons.
+"@
+    }
+    [pscustomobject]@{
+        Id = "SoundPickup"
+        Character = "Echo"
+        ReferenceImage = "asset/PlayerCharater/Echo/EchoPortrait.png"
+        OutputPath = "asset/CardPicture/Echo/SoundPickup.png"
+        Prompt = @"
+Use the provided Echo portrait only for identity and palette.
+Create a completely new hand close-up composition. Do not copy the reference pose.
+$styleBlock
+Echo element constraints:
+Allowed: long white hair, purple eyes, white outfit, dark blue angular shadow shapes from the reference, purple blade-like energy, pale sound-wave or resonance effects when explicitly requested.
+Forbidden: shield, staff, heavy armor, wings, halo, crown, ornate jewelry, extra weapons unless explicitly requested, animal-like ears or horns beyond the reference's dark angular shapes, card frame, border, UI ornaments.
+Keep the dark blue shapes abstract and angular. Do not turn them into armor, wings, or creatures.
+Skill: Sound Pickup (block while picking a card from the draw pile).
+Composition: hand close-up at one edge of the frame.
+Action: Echo's fingertips gently lift a translucent sound-wave shard or card-shaped light fragment from the air.
+Main visual: one simple side-view hand silhouette, a pale purple-white waveform fragment being gathered, and a faint resonance ripple near the fingertips.
+Mood: precise, quiet collection, defensive readiness.
+The picked fragment and sound waves are intangible VFX only.
+Avoid full-body portrait, broad slashes, and detailed open palms.
+"@
+    }
+    [pscustomobject]@{
+        Id = "LingeringTone"
+        Character = "Echo"
+        ReferenceImage = "asset/PlayerCharater/Echo/EchoPortrait.png"
+        OutputPath = "asset/CardPicture/Echo/LingeringTone.png"
+        Prompt = @"
+Use the provided Echo portrait only for identity and palette.
+Create a completely new shoulder crop composition. Do not copy the reference pose.
+$styleBlock
+Echo element constraints:
+Allowed: long white hair, purple eyes, white outfit, dark blue angular shadow shapes from the reference, purple blade-like energy, pale sound-wave or resonance effects when explicitly requested.
+Forbidden: shield, staff, heavy armor, wings, halo, crown, ornate jewelry, extra weapons unless explicitly requested, animal-like ears or horns beyond the reference's dark angular shapes, card frame, border, UI ornaments.
+Keep the dark blue shapes abstract and angular. Do not turn them into armor, wings, or creatures.
+Skill: Lingering Tone (block while preserving one hand card with retain).
+Composition: cropped bust or shoulder crop with a floating card outline on the open side of the frame.
+Main visual: one thin translucent card silhouette wrapped by a lingering purple-white sound ring, with soft waveform bands holding the card in place.
+Mood: quiet preservation, sustained resonance, gentle protection.
+The card outline and sound rings are intangible VFX only, not a physical object or UI frame.
+Avoid full-body framing, attack beams, and chaotic energy.
+"@
+    }
+    [pscustomobject]@{
+        Id = "WardGift"
+        Character = "Nightingale"
+        ReferenceImage = "asset/PlayerCharater/Nightingale/NightingalePortrait.png"
+        OutputPath = "asset/CardPicture/Nightingale/WardGift.png"
+        Prompt = @"
+Use the provided image only for Nightingale identity reference: blonde twin-tail hair, black hair bows, red eyes, black sleeveless dress, and palette.
+Create a completely new effect-dominant composition. Do not copy the reference pose.
+$styleBlock
+Nightingale element constraints:
+Allowed: blonde twin-tail hair, black hair bows, red eyes, black sleeveless dress, bare arms, red ribbon accent, white blade-like light effects, shadow veil when needed.
+Forbidden: shield, staff, armor, wings, halo, crown, extra costume layers, card frame, border, UI ornaments.
+Skill: Ward Gift (transfer all self block to an ally).
+Composition: diagonal transfer composition with Nightingale cropped at one side and the protective light flowing outward toward the opposite side.
+Main visual: a translucent white protective ward ribbon or light band leaving Nightingale and stretching toward an unseen ally, with a faint shadow veil trailing behind the gift.
+Mood: generous protection, selfless transfer, clean supportive defense.
+All ward elements must be intangible VFX only, not a physical shield or armor plate.
+Avoid centered half-body portrait and avoid showing a second full character.
+"@
+    }
+    [pscustomobject]@{
+        Id = "ShadowBladeWard"
+        Character = "Nightingale"
+        ReferenceImage = "asset/PlayerCharater/Nightingale/NightingalePortrait.png"
+        OutputPath = "asset/CardPicture/Nightingale/ShadowBladeWard.png"
+        Prompt = @"
+Use the provided image only for Nightingale identity reference: blonde twin-tail hair, black hair bows, red eyes, black sleeveless dress, and palette.
+Create a completely new low-angle defensive composition. Do not copy the reference pose.
+$styleBlock
+Nightingale element constraints:
+Allowed: blonde twin-tail hair, black hair bows, red eyes, black sleeveless dress, bare arms, red ribbon accent, white blade-like light effects, shadow veil when needed.
+Forbidden: shield, staff, armor, wings, halo, crown, extra costume layers, card frame, border, UI ornaments.
+Skill: Shadow Blade Ward (defensive stance that grants blade cards to invisible allies).
+Composition: low-angle crop with Nightingale partly veiled in shadow at one side and a guarded blade-light arc crossing the foreground.
+Main visual: one clean white blade-light arc held in a defensive posture, a thin invisible shadow veil, and a faint afterimage blade mark suggesting hidden support.
+Mood: guarded, elusive, precise protection.
+All blades and shadow veils are intangible VFX only, not physical weapons or armor.
+Avoid full-body portrait and avoid detailed hands.
+"@
+    }
+    [pscustomobject]@{
+        Id = "DefenceFocus"
+        Character = "Colorless"
+        ReferenceImage = "asset/CardPicture/Colorless/Calmness.png"
+        OutputPath = "asset/CardPicture/Colorless/DefenceFocus.png"
+        Prompt = @"
+Use the provided image only as style reference for this game's pale anime skill card look.
+Do not copy its character, pose, composition, or exact layout.
+$styleBlock
+Skill: Defence Focus (generic colorless defensive focus card).
+Composition: abstract effect-dominant. No character, no face, no body, no portrait.
+Main visual: a compact centered defensive focus sigil made of pale blue-white concentric rings and a few clean guard lines, suggesting concentrated block preparation.
+Mood: focused, restrained, ready to defend.
+Keep the image clean, minimal, and instantly readable at small card size.
+All defensive elements must be intangible VFX only, not a physical shield, armor, or held equipment.
+This is a neutral colorless skill card, not tied to any specific character.
+"@
+    }
 )
+
+$failures = New-Object System.Collections.Generic.List[string]
+$successes = New-Object System.Collections.Generic.List[string]
 
 foreach ($job in $jobs) {
     $referencePath = Join-Path $projectRoot $job.ReferenceImage
@@ -176,6 +301,7 @@ foreach ($job in $jobs) {
     Write-Host "  Out: $outputPath"
 
     & powershell -NoProfile -ExecutionPolicy Bypass -File $generatorScript `
+        -BaseUrl $baseUrl `
         -ReferenceImage $referencePath `
         -Size "1024x768" `
         -Quality "high" `
@@ -184,9 +310,34 @@ foreach ($job in $jobs) {
         -Prompt $job.Prompt
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Generation failed for $($job.Id)."
+        Write-Host "[FAILED] $($job.Character) / $($job.Id)" -ForegroundColor Red
+        $failures.Add("$($job.Character)/$($job.Id)")
+        continue
     }
+
+    if (-not (Test-Path -LiteralPath $outputPath)) {
+        Write-Host "[FAILED] $($job.Character) / $($job.Id) (no output file)" -ForegroundColor Red
+        $failures.Add("$($job.Character)/$($job.Id)")
+        continue
+    }
+
+    $successes.Add("$($job.Character)/$($job.Id)")
 }
 
 Write-Host ""
+if ($successes.Count -gt 0) {
+    Write-Host "Generated $($successes.Count) card art file(s):" -ForegroundColor Green
+    foreach ($item in $successes) {
+        Write-Host "  [OK] $item" -ForegroundColor Green
+    }
+}
+
+if ($failures.Count -gt 0) {
+    Write-Host "Failed $($failures.Count) card art job(s):" -ForegroundColor Red
+    foreach ($item in $failures) {
+        Write-Host "  [FAIL] $item" -ForegroundColor Red
+    }
+    exit 1
+}
+
 Write-Host "All missing card art jobs finished." -ForegroundColor Green

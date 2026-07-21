@@ -1,0 +1,20 @@
+﻿{
+    "skills":  {
+                   "InexorabilityAttack":  {
+                                               "Name":  "命定压制",
+                                               "BaseDamage":  18,
+                                               "Multiplier":  1
+                                           },
+                   "InexorabilitySpecial":  {
+                                                "Name":  "终局律令",
+                                                "BaseDamage":  10,
+                                                "PowerMultiplier":  1
+                                            },
+                   "InexorabilitySurvive":  {
+                                                "Name":  "存续封缄",
+                                                "BaseBlock":  10,
+                                                "PowerGain":  3,
+                                                "Multiplier":  1
+                                            }
+               }
+}

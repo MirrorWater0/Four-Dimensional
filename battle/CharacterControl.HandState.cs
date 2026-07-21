@@ -1,21 +1,51 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
 public partial class CharacterControl
 {
+    private void RequestTurnUiRefresh(bool refreshHover = false)
+    {
+        if (!_uiBuilt || !IsInsideTree())
+            return;
+
+        _turnUiRefreshHoverQueued |= refreshHover;
+        if (_turnUiRefreshQueued)
+            return;
+
+        _turnUiRefreshQueued = true;
+        int version = ++_turnUiRefreshVersion;
+        CallDeferred(nameof(FlushRequestedTurnUiRefresh), version);
+    }
+
+    private void FlushRequestedTurnUiRefresh(int version)
+    {
+        if (!_turnUiRefreshQueued || version != _turnUiRefreshVersion)
+            return;
+
+        _turnUiRefreshQueued = false;
+        bool refreshHover = _turnUiRefreshHoverQueued;
+        _turnUiRefreshHoverQueued = false;
+        RefreshTurnUi();
+        if (refreshHover)
+            ScheduleCardHoverRefresh();
+    }
+
     private void RefreshTurnUi()
     {
+        if (_turnUiRefreshQueued)
+            _turnUiRefreshVersion++;
+        _turnUiRefreshQueued = false;
+        _turnUiRefreshHoverQueued = false;
         if (!_uiBuilt)
             return;
 
         bool updateLayout = !_suppressNextRefreshLayout;
         _suppressNextRefreshLayout = false;
-        Skill[] previousDisplayedSkills = _displayedSkills.ToArray();
-        Vector2?[] previousSlotPositions = CaptureCardSlotPositions();
-        float?[] previousSlotRotations = CaptureCardSlotRotations();
+        Array.Copy(_displayedSkills, _previousDisplayedSkillsSnapshot, _displayedSkills.Length);
+        CaptureCardSlotPositions(_previousSlotPositionsSnapshot);
+        CaptureCardSlotRotations(_previousSlotRotationsSnapshot);
         if (
             _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
@@ -75,13 +105,11 @@ public partial class CharacterControl
         Skill[] hand = GetActiveHandSkills();
         PruneHandCardsNotInHand(hand);
         SyncHandSlotIdentities(hand);
-        bool hasAnyDrawEntryBusy = IsAnyCardDrawEntryBusy();
         bool manualTargetSelectionPending = IsManualTargetSelectionPending();
         bool pileSelectionViewMode =
             _isPileCardSelectionActive && _pileOverlayContentTemporarilyHidden;
         bool canInteractWithHandCards =
-            !_isResolvingCard
-            && !_endTurnQueued
+            !_endTurnQueued
             && !_isPileCardSelectionActive
             && !manualTargetSelectionPending;
 
@@ -104,7 +132,7 @@ public partial class CharacterControl
             {
                 card.Visible = true;
                 SetCardButtonInputEnabled(card, false);
-                card.HoverHint.Visible = false;
+                card.HideHoverUi();
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
@@ -113,7 +141,7 @@ public partial class CharacterControl
             {
                 card.Visible = true;
                 SetCardButtonInputEnabled(card, false);
-                card.HoverHint.Visible = false;
+                card.HideHoverUi();
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
@@ -140,9 +168,15 @@ public partial class CharacterControl
 
             bool isNewCardForHand =
                 !_cardDisplayInitialized[i] || !ReferenceEquals(_displayedSkills[i], skill);
-            int previousSlotIndex = FindPreviousDisplayedSkillIndex(previousDisplayedSkills, skill);
+            int previousSlotIndex = FindPreviousDisplayedSkillIndex(
+                _previousDisplayedSkillsSnapshot,
+                skill
+            );
             bool isDiscardReturnFlying = _discardSelectionFlyingReturnHandIndexes.Contains(i);
             bool isDiscardReturnPending = IsDiscardSelectionReturnSlot(i);
+            bool isOriginalSelectionVisual =
+                _isDiscardSelectionActive
+                && _discardSelectionOriginalVisualHandIndexes.Contains(i);
             bool hideForDiscardReturn =
                 _discardSelectionReturningHandIndexes.Contains(i) && !isDiscardReturnFlying;
             bool movedFromExistingHandCard = previousSlotIndex >= 0;
@@ -168,8 +202,8 @@ public partial class CharacterControl
                 PrepareMovedHandCardSlotFromPreviousPosition(
                     i,
                     previousSlotIndex,
-                    previousSlotPositions,
-                    previousSlotRotations
+                    _previousSlotPositionsSnapshot,
+                    _previousSlotRotationsSnapshot
                 );
             bool hideForDrawEntry =
                 _hiddenPendingDrawEntrySlotIndexes.Contains(i)
@@ -195,7 +229,16 @@ public partial class CharacterControl
             {
                 card.Visible = true;
                 SetCardButtonInputEnabled(card, false);
-                card.HoverHint.Visible = false;
+                card.HideHoverUi();
+                card.SetPlayableHighlight(false, instant: true);
+                continue;
+            }
+
+            if (isOriginalSelectionVisual)
+            {
+                card.Visible = true;
+                card.SetHoverUiEnabled(!_isDiscardSelectionCompleting);
+                SetCardButtonInputEnabled(card, !_isDiscardSelectionCompleting);
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
@@ -205,7 +248,7 @@ public partial class CharacterControl
                 if (!isLiftedSkill)
                     card.Visible = false;
                 SetCardButtonInputEnabled(card, false);
-                card.HoverHint.Visible = false;
+                card.HideHoverUi();
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
@@ -222,17 +265,23 @@ public partial class CharacterControl
 
             bool isArrowSelectedCard =
                 _manualTargetArrowSelectionActive && i == _manualTargetArrowCardIndex;
-            bool isDrawEntryBusy = IsCardDrawEntryBusy(i);
             bool canUseCurrentEnergy = skill.CanUseCurrentEnergy();
             bool isDiscardSelectionCandidate =
                 _isDiscardSelectionActive
                 && !_isDiscardSelectionCompleting
                 && skill != null
-                && !hasAnyDrawEntryBusy;
+                && !IsCardDrawEntryInputBlocked(i);
             bool canInteract =
                 _liftedCardIndex != -1
                     ? i == _liftedCardIndex && canInteractWithHandCards
-                    : isDiscardSelectionCandidate || canInteractWithHandCards;
+                    : (isDiscardSelectionCandidate || canInteractWithHandCards)
+                        && !IsCardDrawEntryInputBlocked(i);
+            bool temporarilyBlockedByLift =
+                _liftedCardIndex != -1
+                && i != _liftedCardIndex
+                && canInteractWithHandCards
+                && !IsCardCommitted(i)
+                && !IsCardDrawEntryInputBlocked(i);
             card.SetHoverUiEnabled(
                 !_manualTargetArrowSelectionActive
                 && (i == _liftedCardIndex || _liftedCardIndex == -1)
@@ -240,7 +289,7 @@ public partial class CharacterControl
             bool shouldShowPlayableHighlight =
                 !_isDiscardSelectionActive
                 && !isArrowSelectedCard
-                && canInteract
+                && (canInteract || temporarilyBlockedByLift)
                 && skill.CanBePlayed
                 && canUseCurrentEnergy;
             SetCardButtonInputEnabled(card, canInteract && !isArrowSelectedCard);
@@ -275,7 +324,8 @@ public partial class CharacterControl
             {
                 _endTurnButton.Text = "确认";
                 _endTurnButton.Disabled =
-                    _pileCardSelectionIndexes.Count < _pileCardSelectionTargetCount;
+                    !_pileCardSelectionAllowsFewer
+                    && _pileCardSelectionIndexes.Count < _pileCardSelectionTargetCount;
             }
             else
             {
@@ -304,6 +354,8 @@ public partial class CharacterControl
         {
             ArrangeDiscardSelectionSelectedCards();
         }
+
+        RefreshActiveHandSkillPreviews();
     }
 
     private void SnapHandCardToBaseVisual(int index, SkillCard card)
@@ -317,7 +369,6 @@ public partial class CharacterControl
         card.Position = Vector2.Zero;
         card.Scale = BattleCardScale;
         card.Rotation = 0f;
-        card.HoverHint.Visible = false;
 
         Control slot = IsCardIndexValid(index) ? _cardSlots[index] : null;
         if (slot != null && GodotObject.IsInstanceValid(slot))
@@ -361,12 +412,15 @@ public partial class CharacterControl
             return;
 
         int max = Math.Min(hand.Length, _cardSlots.Length);
-        var activeSkills = new HashSet<Skill>(hand.Take(max).Where(skill => skill != null));
-        foreach (Skill skill in _handSlotsBySkill.Keys.ToArray())
+        FillActiveHandSkillsBuffer(hand, max);
+        _skillRemovalBuffer.Clear();
+        foreach (Skill skill in _handSlotsBySkill.Keys)
         {
-            if (!activeSkills.Contains(skill) && !ReferenceEquals(skill, _liftedCardSkill))
-                _handSlotsBySkill.Remove(skill);
+            if (!_activeHandSkillsBuffer.Contains(skill) && !ReferenceEquals(skill, _liftedCardSkill))
+                _skillRemovalBuffer.Add(skill);
         }
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+            _handSlotsBySkill.Remove(_skillRemovalBuffer[i]);
 
         for (int i = 0; i < max; i++)
         {
@@ -382,7 +436,7 @@ public partial class CharacterControl
             {
                 int currentIndex = FindCardSlotIndex(existingSlot);
                 if (IsCardIndexValid(currentIndex) && currentIndex != i)
-                    MoveHandSlotIdentity(currentIndex, i, skill, activeSkills);
+                    MoveHandSlotIdentity(currentIndex, i, skill, _activeHandSkillsBuffer);
             }
         }
 
@@ -553,12 +607,16 @@ public partial class CharacterControl
 
     private void PruneInvalidHandSlotIdentities()
     {
-        foreach (Skill skill in _handSlotsBySkill.Keys.ToArray())
+        _skillRemovalBuffer.Clear();
+        foreach (Skill skill in _handSlotsBySkill.Keys)
         {
             Control slot = _handSlotsBySkill[skill];
             if (skill == null || slot == null || !GodotObject.IsInstanceValid(slot))
-                _handSlotsBySkill.Remove(skill);
+                _skillRemovalBuffer.Add(skill);
         }
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+            _handSlotsBySkill.Remove(_skillRemovalBuffer[i]);
+        _skillRemovalBuffer.Clear();
     }
 
     private int FindCardSlotIndex(Control slot)
@@ -623,44 +681,75 @@ public partial class CharacterControl
 
         if (card != null)
         {
-            foreach (Skill key in _handCardsBySkill
-                         .Where(pair => ReferenceEquals(pair.Value, card))
-                         .Select(pair => pair.Key)
-                         .ToArray())
+            _skillRemovalBuffer.Clear();
+            foreach (KeyValuePair<Skill, SkillCard> pair in _handCardsBySkill)
             {
-                _handCardsBySkill.Remove(key);
+                if (ReferenceEquals(pair.Value, card))
+                    _skillRemovalBuffer.Add(pair.Key);
             }
+            for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+                _handCardsBySkill.Remove(_skillRemovalBuffer[i]);
         }
     }
 
     private void PruneInvalidHandCardIdentities()
     {
-        foreach (Skill skill in _handCardsBySkill.Keys.ToArray())
+        _skillRemovalBuffer.Clear();
+        foreach (Skill skill in _handCardsBySkill.Keys)
         {
             SkillCard card = _handCardsBySkill[skill];
             if (skill == null || card == null || !GodotObject.IsInstanceValid(card))
-                _handCardsBySkill.Remove(skill);
+                _skillRemovalBuffer.Add(skill);
         }
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+            _handCardsBySkill.Remove(_skillRemovalBuffer[i]);
     }
 
     private void PruneHandCardsNotInHand(Skill[] hand)
     {
-        var activeSkills = new HashSet<Skill>(
-            hand?.Where(skill => skill != null) ?? Enumerable.Empty<Skill>()
-        );
+        FillActiveHandSkillsBuffer(hand, hand?.Length ?? 0);
 
-        foreach (Skill skill in _handCardsBySkill.Keys.ToArray())
+        _skillRemovalBuffer.Clear();
+        _handCardReturnBuffer.Clear();
+        foreach (Skill skill in _handCardsBySkill.Keys)
         {
-            if (activeSkills.Contains(skill))
+            if (_activeHandSkillsBuffer.Contains(skill))
                 continue;
 
             SkillCard card = _handCardsBySkill[skill];
             if (ReferenceEquals(skill, _liftedCardSkill) || ReferenceEquals(card, _liftedCard))
                 continue;
 
+            _skillRemovalBuffer.Add(skill);
+        }
+
+        for (int i = 0; i < _skillRemovalBuffer.Count; i++)
+        {
+            Skill skill = _skillRemovalBuffer[i];
+            if (!_handCardsBySkill.TryGetValue(skill, out SkillCard card))
+                continue;
+
             _handCardsBySkill.Remove(skill);
             if (card != null && GodotObject.IsInstanceValid(card) && FindCardSlotIndex(card) >= 0)
-                ReturnBattleCardToPool(card);
+                _handCardReturnBuffer.Add(card);
+        }
+
+        for (int i = 0; i < _handCardReturnBuffer.Count; i++)
+            ReturnBattleCardToPool(_handCardReturnBuffer[i]);
+        _handCardReturnBuffer.Clear();
+    }
+
+    private void FillActiveHandSkillsBuffer(Skill[] hand, int max)
+    {
+        _activeHandSkillsBuffer.Clear();
+        if (hand == null)
+            return;
+
+        int length = Math.Min(max, hand.Length);
+        for (int i = 0; i < length; i++)
+        {
+            if (hand[i] != null)
+                _activeHandSkillsBuffer.Add(hand[i]);
         }
     }
 
@@ -750,12 +839,24 @@ public partial class CharacterControl
         if (_isDiscardSelectionActive)
         {
             if (_isDiscardSelectionCompleting)
-                return _discardSelectionExhaustMode ? "正在消耗所选牌" : "正在丢弃所选牌";
+                return _discardSelectionKeywordMode
+                    ? "正在添加卡牌关键词"
+                    : _discardSelectionExhaustMode
+                        ? "正在消耗所选牌"
+                        : "正在丢弃所选牌";
 
             int remaining = Math.Max(
                 0,
                 _discardSelectionTargetCount - _discardSelectionSkills.Count
             );
+            if (_discardSelectionKeywordMode)
+            {
+                string keywordName = _discardSelectionKeyword.GetDisplayName();
+                return remaining > 0
+                    ? $"选择{remaining}张手牌为其添加{keywordName}"
+                    : $"确认添加{keywordName}";
+            }
+
             if (_discardSelectionExhaustMode)
                 return remaining > 0 ? $"选择{remaining}张牌消耗" : "确认消耗所选牌";
 
@@ -769,8 +870,19 @@ public partial class CharacterControl
                 _pileCardSelectionTargetCount - _pileCardSelectionIndexes.Count
             );
             string pileName = GetPileTitle(_pileCardSelectionKind);
+            if (_pileCardSelectionAction == PileCardSelectionAction.FilterToDiscard)
+                return $"查看{pileName}顶部{_pileCardSelectionTargetCount}张牌，可选择任意张丢弃";
+
             if (_pileCardSelectionAction == PileCardSelectionAction.Exhaust)
                 return remaining > 0 ? $"从{pileName}选择{remaining}张牌消耗" : "正在消耗所选牌";
+
+            if (_pileCardSelectionAction == PileCardSelectionAction.ApplyKeyword)
+            {
+                string keywordName = _pileCardSelectionKeyword.GetDisplayName();
+                return remaining > 0
+                    ? $"从{pileName}选择{remaining}张牌为其添加{keywordName}"
+                    : $"确认添加{keywordName}";
+            }
 
             return remaining > 0 ? $"从{pileName}选择{remaining}张牌加入手牌" : "正在加入手牌";
         }

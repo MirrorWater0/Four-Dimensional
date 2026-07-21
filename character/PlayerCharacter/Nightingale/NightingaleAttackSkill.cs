@@ -8,7 +8,6 @@ public partial class NightingaleAttackSkill { }
 public partial class ShadowAmbush : Skill
 {
     private const int BaseDamage = 7;
-    int GainPower = 3;
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
         == true;
@@ -48,7 +47,7 @@ public partial class ShadowExecution : Skill
             ConditionStep(
                 AnyAttackTargetDying,
                 "击杀任一目标",
-                AttackStep(baseDamage: DoubleStrikeBaseDamage, times: 1)
+                AttackStep(baseDamage: DoubleStrikeBaseDamage, times: V("HitCount", 1))
             )
         );
     }
@@ -106,7 +105,7 @@ public partial class StasisBlade : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            SelectDiscardPileCardsToHandStep(1)
+            SelectDiscardPileCardsToHandStep(V("SelectDiscardCount", 1))
         );
     }
 }
@@ -128,7 +127,7 @@ public partial class ContinuousPierce : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, 1, TargetReference.ManualFriendly)
+            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks", 1), TargetReference.ManualFriendly)
         );
     }
 }
@@ -146,9 +145,9 @@ public partial class RuinBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: 1, times: 1),
-            AddCardsStep(SkillID.None, 1, BattleCardPileTarget.HandCards),
-            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, 1)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), times: V("HitCount", 1)),
+            AddCardsStep(SkillID.None, V("RandomCardCount", 1), BattleCardPileTarget.HandCards),
+            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount", 1))
         );
     }
 }
@@ -189,6 +188,6 @@ public partial class BladeSalvo : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(0), AddCardsToHandStep(SkillID.Blade, BladeCount));
+        return new SkillPlan(this, AttackStep(V("BaseDamage", 0)), AddCardsToHandStep(SkillID.Blade, BladeCount));
     }
 }

@@ -25,6 +25,8 @@ public partial class Frame : ColorRect
     // Rotation speed (radians per second)
     private float _rotationSpeed = 0.2f;
     private bool _isMouseInsideFrame;
+    private SkillButton[] _skillButtons = Array.Empty<SkillButton>();
+    private bool _buttonLayoutDirty = true;
 
     public override void _Ready()
     {
@@ -35,44 +37,105 @@ public partial class Frame : ColorRect
         Material = _mat;
         // ClickButton.Visible = false;
         Selected.Visible = false;
+        CacheSkillButtons();
         // Set pivot offset for all buttons
-        for (int i = 0; i < SkillButtonContainer.GetChildCount(); i++)
+        for (int i = 0; i < _skillButtons.Length; i++)
         {
-            var skillButton = SkillButtonContainer.GetChild(i) as SkillButton;
+            var skillButton = _skillButtons[i];
+            if (skillButton == null)
+                continue;
+
             skillButton.PivotOffset = skillButton.Size / 2;
         }
         ClickButton.MouseEntered += Mouse_Entered;
         ClickButton.MouseExited += Mouse_Exited;
-        for (int i = 0; i < SkillButtonContainer.GetChildCount(); i++)
+        for (int i = 0; i < _skillButtons.Length; i++)
         {
-            var skillButton = SkillButtonContainer.GetChild(i) as SkillButton;
+            var skillButton = _skillButtons[i];
+            if (skillButton == null)
+                continue;
+
             skillButton.MouseEntered += Mouse_Entered;
             skillButton.MouseExited += Mouse_Exited;
         }
+
+        Resized += MarkButtonLayoutDirty;
+        SkillButtonContainer.Resized += MarkButtonLayoutDirty;
+        VisibilityChanged += UpdateProcessEnabled;
+        MarkButtonLayoutDirty();
+        UpdateProcessEnabled();
     }
 
     public override void _Process(double delta)
     {
-        ClickButton.Position = Size / 2 - ClickButton.Size / 2;
-        UpdateOwnerHoverPreview();
+        if (!Visible)
+            return;
+
+        bool mouseInside = IsMouseInsideFrame();
+        UpdateOwnerHoverPreview(mouseInside);
         UIShaderRotate(delta);
-        if (!IsMouseInsideFrame())
+        if (!mouseInside)
+        {
             _currentRotation += (float)(_rotationSpeed * delta);
+            _buttonLayoutDirty = true;
+        }
 
-        // Calculate origin as center of the container
-        Vector2 origin = SkillButtonContainer.Size / 2;
+        if (_buttonLayoutDirty)
+            ApplyButtonLayout();
+    }
 
-        // Update positions for all buttons (orbiting around origin, no self-rotation)
+    private void CacheSkillButtons()
+    {
+        if (SkillButtonContainer == null)
+        {
+            _skillButtons = Array.Empty<SkillButton>();
+            return;
+        }
+
+        var buttons = new System.Collections.Generic.List<SkillButton>(
+            SkillButtonContainer.GetChildCount()
+        );
         for (int i = 0; i < SkillButtonContainer.GetChildCount(); i++)
         {
-            var skillButton = SkillButtonContainer.GetChild(i) as SkillButton;
+            if (SkillButtonContainer.GetChild(i) is SkillButton skillButton)
+                buttons.Add(skillButton);
+        }
+
+        _skillButtons = buttons.ToArray();
+    }
+
+    private void ApplyButtonLayout()
+    {
+        _buttonLayoutDirty = false;
+        ClickButton.Position = Size / 2 - ClickButton.Size / 2;
+        Vector2 origin = SkillButtonContainer.Size / 2;
+
+        for (int i = 0; i < _skillButtons.Length; i++)
+        {
+            SkillButton skillButton = _skillButtons[i];
+            if (skillButton == null || !GodotObject.IsInstanceValid(skillButton))
+                continue;
+
             float angle = _currentRotation + i * _angleSpacing;
             Vector2 circularPosition =
                 origin
                 + new Vector2((float)Math.Cos(angle) * _radius, (float)Math.Sin(angle) * _radius);
-            // Offset by half button size to center the button on the calculated position
-            Vector2 centeredPosition = circularPosition - skillButton.Size / 2;
-            skillButton.Position = centeredPosition;
+            skillButton.Position = circularPosition - skillButton.Size / 2;
+        }
+    }
+
+    private void MarkButtonLayoutDirty()
+    {
+        _buttonLayoutDirty = true;
+    }
+
+    private void UpdateProcessEnabled()
+    {
+        SetProcess(Visible);
+        if (!Visible && _isMouseInsideFrame)
+        {
+            _isMouseInsideFrame = false;
+            OwnerCharacter?.HideFramePreview();
         }
     }
 
@@ -85,9 +148,8 @@ public partial class Frame : ColorRect
         return ClickButton.GetGlobalRect().HasPoint(mousePosition);
     }
 
-    private void UpdateOwnerHoverPreview()
+    private void UpdateOwnerHoverPreview(bool isInside)
     {
-        bool isInside = IsMouseInsideFrame();
         if (_isMouseInsideFrame == isInside)
             return;
 
@@ -110,9 +172,12 @@ public partial class Frame : ColorRect
         Vector2 origin = SkillButtonContainer.Size / 2;
 
         // Animate buttons to their circular positions with 2π/3 spacing
-        for (int i = 0; i < SkillButtonContainer.GetChildCount(); i++)
+        for (int i = 0; i < _skillButtons.Length; i++)
         {
-            var skillButton = SkillButtonContainer.GetChild(i) as SkillButton;
+            var skillButton = _skillButtons[i];
+            if (skillButton == null || !GodotObject.IsInstanceValid(skillButton))
+                continue;
+
             float angle = i * _angleSpacing;
             Vector2 circularPosition =
                 origin
@@ -130,13 +195,15 @@ public partial class Frame : ColorRect
                 0.3f
             );
         }
+
+        _buttonLayoutDirty = false;
     }
 
     public void Mouse_Entered()
     {
         // ((ShaderMaterial)Material).SetShaderParameter("theme_color", 3 * new Color(0.7f, 1, 1, 1));
         TweenUIshader("hover_progress", 1f, 0.2f);
-        ClickButton.Scale = new Vector2(1.7f, 1.7f);
+        TweenClickButtonScale(new Vector2(1.7f, 1.7f), 0.12f);
         _targetSpeed = 2f;
     }
 
@@ -144,13 +211,25 @@ public partial class Frame : ColorRect
     {
         // ((ShaderMaterial)Material).SetShaderParameter("theme_color", new Color(1f, 1, 1, 1));
         TweenUIshader("hover_progress", 0f, 0.2f);
-        ClickButton.Scale = new Vector2(1, 1);
+        TweenClickButtonScale(Vector2.One, 0.14f);
         _targetSpeed = 1.5f;
     }
 
     private ShaderMaterial _mat;
     private float _currentRotationTime = 0f;
     private float _hoverProgress = 0f;
+    private Tween _shaderTween;
+    private Tween _clickButtonScaleTween;
+
+    private void TweenClickButtonScale(Vector2 targetScale, float duration)
+    {
+        _clickButtonScaleTween?.Kill();
+        _clickButtonScaleTween = CreateTween();
+        _clickButtonScaleTween
+            .TweenProperty(ClickButton, "scale", targetScale, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+    }
 
     // 速度配置
     private float _baseSpeed = 1.5f;
@@ -177,7 +256,9 @@ public partial class Frame : ColorRect
         if (material == null)
             return;
 
-        CreateTween()
+        _shaderTween?.Kill();
+        _shaderTween = CreateTween();
+        _shaderTween
             .TweenMethod(
                 Callable.From<float>(value =>
                     ((ShaderMaterial)Material).SetShaderParameter(var, value)

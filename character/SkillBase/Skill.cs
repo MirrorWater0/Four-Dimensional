@@ -16,9 +16,6 @@ public enum PropertyType
 
     [Description("生命上限")]
     MaxLife,
-
-    [Description("能量源")]
-    EnergySources,
 }
 
 public partial class Skill
@@ -58,6 +55,9 @@ public partial class Skill
 
         [Description("状态")]
         Status = 4,
+
+        [Description("能力")]
+        Ability = 5,
     }
 
     private string _skillName;
@@ -79,17 +79,19 @@ public partial class Skill
     public virtual SkillTypes SkillType => SkillTypes.none;
     public Character OwnerCharater;
     public SkillID? SkillId { get; internal set; }
+    public ulong BattleCardInstanceId { get; internal set; }
     public virtual int EnergyCost => GetDefaultEnergyCost();
     public virtual int EnemySpecialIntentionCooldown => SkillType == SkillTypes.Special ? 1 : 0;
     public virtual bool ExhaustsAfterUse => false;
     public virtual bool ExhaustsAtTurnEndInHand => false;
     public virtual bool IntrinsicRetainsAtTurnEndInHand => false;
     public virtual bool RetainsAtTurnEndInHand =>
-        IntrinsicRetainsAtTurnEndInHand || HasToolboxRetainFeature();
+        IntrinsicRetainsAtTurnEndInHand || HasToolboxRetainFeature() || HasBattleRetainFeature();
     public virtual bool TriggersAtTurnEndInHand => false;
     public virtual bool CanBePlayed =>
         SkillType != SkillTypes.none && SkillType != SkillTypes.Status;
     public bool IsStatusCard => SkillType == SkillTypes.Status;
+    public bool IsAbilityCard => SkillType == SkillTypes.Ability;
     public bool Enable;
     public string Description;
     public bool Upgraded = false;
@@ -239,6 +241,30 @@ public partial class Skill
             && GameInfo.GetToolboxRetainCount(_previewPlayerIndex, skillId) > 0;
     }
 
+    protected bool HasBattleRetainFeature() =>
+        HasBattleCardKeyword(BattleCardKeyword.Retain);
+
+    protected bool HasBattleExhaustAfterUseFeature() =>
+        HasBattleCardKeyword(BattleCardKeyword.ExhaustAfterUse);
+
+    protected bool HasBattleVoidnessFeature() =>
+        HasBattleCardKeyword(BattleCardKeyword.Voidness);
+
+    internal bool HasBattleCardKeyword(BattleCardKeyword keyword) =>
+        OwnerCharater?.BattleNode?.HasBattleCardKeyword(this, keyword) == true;
+
+    internal bool ResolvesExhaustsAfterUse =>
+        !IsAbilityCard && (ExhaustsAfterUse || HasBattleExhaustAfterUseFeature());
+
+    internal bool ResolvesExhaustsAtTurnEndInHand =>
+        ExhaustsAtTurnEndInHand || HasBattleVoidnessFeature();
+
+    internal bool ShowsExhaustKeyword => ResolvesExhaustsAfterUse;
+
+    internal bool ShowsVoidnessKeyword => ResolvesExhaustsAtTurnEndInHand;
+
+    internal bool ShowsRetainKeyword => RetainsAtTurnEndInHand;
+
     private int ConsumeQueuedExtraSkillExecutions()
     {
         int queuedCount = _queuedExtraSkillExecutions;
@@ -295,6 +321,27 @@ public partial class Skill
     public string CardEnergyCostText => UsesXEnergyCost ? "X" : CardEnergyCost.ToString();
     public bool RequiresExternalEnergyPayment => RequiredEnergyCost != 0;
     internal bool IsEnergyCostWaived => _energyCostWaiverDepth > 0;
+
+    public int ComputePreviewCacheRevision()
+    {
+        Character owner = OwnerCharater;
+        int power =
+            owner != null
+                ? owner.GetEffectivePowerForSkillScaling()
+                : _previewPower + _previewBasePowerContribution;
+        int survivability =
+            owner != null
+                ? owner.GetEffectiveSurvivabilityForSkillScaling()
+                : _previewSurvivability + _previewBaseSurvivabilityContribution;
+
+        HashCode hash = new();
+        hash.Add(OwnerEnergy);
+        hash.Add(power);
+        hash.Add(survivability);
+        hash.Add(Description, StringComparer.Ordinal);
+        hash.Add(owner?.BattleNode?.HandPreviewContextRevision ?? 0);
+        return hash.ToHashCode();
+    }
 
     protected int DamageFromPower(int baseDamage = 0, int multiplier = 1, int clampMax = 9999)
     {
@@ -528,6 +575,7 @@ public partial class Skill
             SkillTypes.Attack => 1,
             SkillTypes.Survive => 1,
             SkillTypes.Special => 2,
+            SkillTypes.Ability => 2,
             _ => 0,
         };
     }
@@ -538,9 +586,7 @@ public partial class Skill
         ) == true;
 
     private static bool HasInvisibleBuff(Character target) =>
-        target?.StartActionBuffs?.Any(buff =>
-            buff != null && buff.ThisBuffName == Buff.BuffName.Invisible && buff.Stack > 0
-        ) == true;
+        target?.HasActiveStartActionBuff(Buff.BuffName.Invisible) == true;
 
     public static bool IsSelectableHostileTarget(Character target) =>
         IsSelectableHostileTarget(null, target);
@@ -984,10 +1030,12 @@ public partial class Skill
 
     private void SpawnAttackHitEffect(Character target)
     {
-        var attack = AttackScene.Instantiate() as AttackEffect;
-        target.AddChild(attack);
-        attack.AnimationPlayer0.Play("Attack1");
+        var attack = AttackEffect.Spawn(target);
+        if (attack == null)
+            return;
+
         attack.GlobalPosition = target.GlobalPosition;
+        attack.PlayAttack();
     }
 
     private async Task ExecuteAttackSequence(
@@ -1135,15 +1183,15 @@ public partial class Skill
         if (target == null || IsDummyTarget(this, target))
             return;
 
-        AudioManager.PlayAttack(OwnerCharater);
-        AttackEffect attack = AttackScene.Instantiate() as AttackEffect;
-        OwnerCharater.AddChild(attack);
-        var effect = OwnerCharater.CharacterEffectScene.Instantiate() as CharacterEffect;
-        OwnerCharater.AddChild(effect);
-        effect.Animation.Play("explode");
+        AttackEffect attack = AttackEffect.Spawn(OwnerCharater);
+        CharacterEffect.Spawn(OwnerCharater, "explode");
         await Task.Delay(300);
-        attack.AnimationPlayer0.Play("Attack1");
-        attack.GlobalPosition = target.GlobalPosition;
+        AudioManager.PlayAttack(OwnerCharater);
+        if (attack != null && GodotObject.IsInstanceValid(attack))
+        {
+            attack.GlobalPosition = target.GlobalPosition;
+            attack.PlayAttack();
+        }
     }
 
     public async Task Carry(Character target, int skillIndex)
@@ -1193,10 +1241,10 @@ public partial class Skill
             1 => SkillTypes.Attack,
             2 => SkillTypes.Survive,
             3 => SkillTypes.Special,
+            4 => SkillTypes.Ability,
             _ => SkillTypes.none,
         };
 
         return skillIndex is >= 0 and <= 3;
     }
 }
-

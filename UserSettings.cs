@@ -11,8 +11,6 @@ public static class UserSettings
     private const string BattleTurnOrderPreviewKey = "BattleTurnOrderPreview";
     private const string IncomingDamagePreviewKey = "IncomingDamagePreview";
     private const string ShowIntentionTargetNamesKey = "ShowIntentionTargetNames";
-    private const string ShowSingleTargetDamageIntentionArrowsKey =
-        "ShowSingleTargetDamageIntentionArrows";
     private const string HideEnemySkillsKey = "HideEnemySkills";
     private const string GroupBattlePilesByCharacterKey = "GroupBattlePilesByCharacter";
     private const string ShowHandCardIndicesKey = "ShowHandCardIndices";
@@ -45,7 +43,6 @@ public static class UserSettings
     public static bool ShowBattleTurnOrderPreview { get; private set; } = true;
     public static bool ShowIncomingDamagePreview { get; private set; }
     public static bool ShowIntentionTargetNames { get; private set; }
-    public static bool ShowSingleTargetDamageIntentionArrows { get; private set; } = true;
     public static bool HideEnemySkills { get; private set; } = true;
     public static bool GroupBattlePilesByCharacter { get; private set; }
     public static bool ShowHandCardIndices { get; private set; }
@@ -99,13 +96,6 @@ public static class UserSettings
                 .AsBool();
             ShowIntentionTargetNames = config
                 .GetValue(SectionName, ShowIntentionTargetNamesKey, ShowIntentionTargetNames)
-                .AsBool();
-            ShowSingleTargetDamageIntentionArrows = config
-                .GetValue(
-                    SectionName,
-                    ShowSingleTargetDamageIntentionArrowsKey,
-                    ShowSingleTargetDamageIntentionArrows
-                )
                 .AsBool();
             HideEnemySkills = config
                 .GetValue(SectionName, HideEnemySkillsKey, HideEnemySkills)
@@ -197,13 +187,6 @@ public static class UserSettings
     {
         EnsureLoaded();
         ShowIntentionTargetNames = value;
-        Save();
-    }
-
-    public static void SetShowSingleTargetDamageIntentionArrows(bool value)
-    {
-        EnsureLoaded();
-        ShowSingleTargetDamageIntentionArrows = value;
         Save();
     }
 
@@ -404,11 +387,6 @@ public static class UserSettings
         config.SetValue(SectionName, BattleTurnOrderPreviewKey, ShowBattleTurnOrderPreview);
         config.SetValue(SectionName, IncomingDamagePreviewKey, ShowIncomingDamagePreview);
         config.SetValue(SectionName, ShowIntentionTargetNamesKey, ShowIntentionTargetNames);
-        config.SetValue(
-            SectionName,
-            ShowSingleTargetDamageIntentionArrowsKey,
-            ShowSingleTargetDamageIntentionArrows
-        );
         config.SetValue(SectionName, HideEnemySkillsKey, HideEnemySkills);
         config.SetValue(
             SectionName,

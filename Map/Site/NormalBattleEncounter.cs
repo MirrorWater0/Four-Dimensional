@@ -7,6 +7,8 @@ using System.Collections.Generic;
 public static class NormalBattleEncounter
 {
     public const int PoolSize = 8;
+    private const int RegionOneOpeningWeakBattleCount = 3;
+    private const int RegionTwoOpeningWeakBattleCount = 2;
     private const int NormalEncounterOrderSalt = unchecked((int)0x31C41A7B);
 
     private enum EncounterTier
@@ -40,8 +42,20 @@ public static class NormalBattleEncounter
         );
         ShuffleInPlace(weakIndices, rng);
         ShuffleInPlace(strongIndices, rng);
-        weakIndices.AddRange(strongIndices);
-        return weakIndices;
+
+        var queue = new List<int>(pool.Length);
+        if (passIndex == 0)
+        {
+            int weakBattleCount = Math.Min(
+                GetOpeningWeakBattleCount(regionIndex),
+                weakIndices.Count
+            );
+            for (int i = 0; i < weakBattleCount; i++)
+                queue.Add(weakIndices[i]);
+        }
+
+        queue.AddRange(strongIndices);
+        return queue;
     }
 
     public static List<EnemyRegedit> BuildFormation(int regionIndex, int formationIndex)
@@ -56,6 +70,9 @@ public static class NormalBattleEncounter
 
     private static EncounterDefinition[] GetRegionPool(int regionIndex) =>
         regionIndex > 0 ? RegionTwoEncounters : RegionOneEncounters;
+
+    private static int GetOpeningWeakBattleCount(int regionIndex) =>
+        regionIndex > 0 ? RegionTwoOpeningWeakBattleCount : RegionOneOpeningWeakBattleCount;
 
     private static void ShuffleInPlace<T>(IList<T> values, Random rng)
     {
@@ -105,7 +122,10 @@ public static class NormalBattleEncounter
         Strong(() => Formation([Slot<GraveWraithRegedit>(2)])),
         Strong(() => Formation([Slot<MarrowReaverRegedit>(FrontRight)])),
         Strong(() =>
-            Formation([Slot<MarrowReaverRegedit>(FrontRight), Slot<RedHuskRegedit>(BackRight)])
+            Formation([Slot<HollowBulwarkRegedit>(FrontRight), Slot<VoidAcolyteRegedit>(BackRight)])
+        ),
+        Strong(() =>
+            Formation([Slot<VoidRotorRegedit>(FrontRight), Slot<VoidRotorRegedit>(BackRight)])
         ),
     ];
 

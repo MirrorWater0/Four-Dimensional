@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "VoidRotor":  {
+                                      "Name":  "VoidRotor",
+                                      "MaxLife":  110
+                                  }
+                }
+}

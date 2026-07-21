@@ -1,0 +1,22 @@
+﻿{
+    "skills":  {
+                   "AlienBodyAttack":  {
+                                           "Name":  "异体冲击",
+                                           "BaseDamage":  11,
+                                           "SurvivabilityLoss":  2
+                                       },
+                   "AlienBodySpecial":  {
+                                            "Name":  "共生连携",
+                                            "PowerDown":  1,
+                                            "SurvivabilityDown":  1,
+                                            "BaseDamage":  13,
+                                            "DazeCount":  1
+                                        },
+                   "AlienBodySurvive":  {
+                                            "Name":  "异体护壳",
+                                            "BaseBlock":  8,
+                                            "SurvivabilityDown":  4,
+                                            "DazeCount":  2
+                                        }
+               }
+}

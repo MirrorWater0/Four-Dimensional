@@ -76,6 +76,9 @@ public static partial class GameInfo
     public static RelicID[] GetShopRelicOffers(LevelNode shopNode)
     {
         int start = ResolveShopRelicQueueStart(shopNode);
+        if (start < 0)
+            return Array.Empty<RelicID>();
+
         return GetRelicsAtSlots(start, ShopRelicQueueSlots);
     }
 
@@ -102,28 +105,34 @@ public static partial class GameInfo
 
     public static RelicID? DrawStarterRelicFromQueue()
     {
-        RelicID? relic = GetRelicAtSlot(RelicQueueNextIndex);
-        RelicQueueNextIndex++;
-        return relic;
+        RelicSelection selection = SelectRelicsAtSlots(RelicQueueNextIndex, 1);
+        RelicQueueNextIndex = Math.Max(RelicQueueNextIndex, selection.NextIndex);
+        return selection.Relics.Length > 0 ? selection.Relics[0] : null;
     }
 
     public static RelicID[] GetRelicsAtSlots(int start, int count)
+    {
+        return SelectRelicsAtSlots(start, count).Relics;
+    }
+
+    private static RelicSelection SelectRelicsAtSlots(int start, int count)
     {
         EnsureRelicQueueCapacity();
 
         var result = new List<RelicID>();
         if (count <= 0 || RelicQueue == null || RelicQueue.Count == 0)
-            return result.ToArray();
+            return new RelicSelection(result.ToArray(), Math.Max(0, start));
 
         var offered = new HashSet<RelicID>();
-        for (int index = Math.Max(0, start); index < RelicQueue.Count && result.Count < count; index++)
+        int index = Math.Max(0, start);
+        for (; index < RelicQueue.Count && result.Count < count; index++)
         {
             RelicID relic = RelicQueue[index];
             if (!HasRelic(relic) && offered.Add(relic))
                 result.Add(relic);
         }
 
-        return result.ToArray();
+        return new RelicSelection(result.ToArray(), index);
     }
 
     public static RelicID? GetRelicAtSlot(int slot)
@@ -135,14 +144,19 @@ public static partial class GameInfo
     private static int ResolveShopRelicQueueStart(LevelNode shopNode)
     {
         if (shopNode == null)
-            return RelicQueueNextIndex;
+            return -1;
 
         if (NodeRelicQueueStarts.TryGetValue(shopNode.SelfCoordinate, out int start))
+        {
+            shopNode.RelicQueueStart = start;
             return start;
+        }
 
         start = RelicQueueNextIndex;
-        RelicQueueNextIndex += ShopRelicQueueSlots;
+        RelicSelection selection = SelectRelicsAtSlots(start, ShopRelicQueueSlots);
+        RelicQueueNextIndex = Math.Max(RelicQueueNextIndex, selection.NextIndex);
         NodeRelicQueueStarts[shopNode.SelfCoordinate] = start;
+        shopNode.RelicQueueStart = start;
         return start;
     }
 
@@ -152,11 +166,22 @@ public static partial class GameInfo
             return -1;
 
         if (NodeRelicQueueSlots.TryGetValue(node.SelfCoordinate, out int slot))
+        {
+            node.RelicQueueSlot = slot;
             return slot;
+        }
 
         slot = RelicQueueNextIndex;
-        RelicQueueNextIndex++;
+        RelicSelection selection = SelectRelicsAtSlots(slot, 1);
+        RelicQueueNextIndex = Math.Max(RelicQueueNextIndex, selection.NextIndex);
         NodeRelicQueueSlots[node.SelfCoordinate] = slot;
+        node.RelicQueueSlot = slot;
         return slot;
+    }
+
+    private readonly struct RelicSelection(RelicID[] relics, int nextIndex)
+    {
+        public RelicID[] Relics { get; } = relics;
+        public int NextIndex { get; } = nextIndex;
     }
 }

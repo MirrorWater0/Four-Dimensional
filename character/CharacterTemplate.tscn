@@ -366,6 +366,9 @@ shader_parameter/body_bottom = 0.7
 shader_parameter/end_cap_width = 0.09
 shader_parameter/rail_thickness = 0.026
 shader_parameter/step_height = 0.05
+shader_parameter/core_band_height = 0.36
+shader_parameter/cap_glow_width = 0.055
+shader_parameter/shadow_offset = 0.05
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_n13y5"]
 shader = ExtResource("15_3q742")
@@ -446,7 +449,7 @@ hue_variation_max = 0.009999977
 
 [node name="CharacterTemplate" type="Node2D" unique_id=1123852147 node_paths=PackedStringArray("Sprite")]
 z_index = 1
-scale = Vector2(0.8, 0.8)
+scale = Vector2(0.7, 0.7)
 script = ExtResource("1_4ikhs")
 Sprite = NodePath("Sprite")
 
@@ -721,8 +724,8 @@ normal_material = SubResource("ShaderMaterial_n13y5")
 visible = false
 top_level = true
 material = SubResource("ShaderMaterial_3q742")
-position = Vector2(0, 159)
-scale = Vector2(0.8, 0.8)
+position = Vector2(0, 139.125)
+scale = Vector2(0.7, 0.7)
 amount = 20
 lifetime = 3.0
 process_material = SubResource("ParticleProcessMaterial_difk4")

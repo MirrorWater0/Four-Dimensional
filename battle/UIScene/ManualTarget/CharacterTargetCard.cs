@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Godot;
 
 public partial class CharacterTargetCard : Control
@@ -10,6 +11,7 @@ public partial class CharacterTargetCard : Control
 
     private Character _target;
     private Tween _hoverTween;
+    private bool _selectionPending;
 
     private Button Button => field ??= GetNode<Button>("Button");
     private TextureRect Portrait => field ??= GetNode<TextureRect>("Panel/Margin/Stack/Portrait");
@@ -28,14 +30,7 @@ public partial class CharacterTargetCard : Control
         PivotOffset = CustomMinimumSize * 0.5f;
         Button.MouseEntered += OnMouseEntered;
         Button.MouseExited += OnMouseExited;
-        Button.Pressed += () =>
-        {
-            if (Selectable && _target != null && GodotObject.IsInstanceValid(_target))
-            {
-                HideTargetTooltip();
-                EmitSignal(SignalName.Selected, _target);
-            }
-        };
+        Button.Pressed += OnButtonPressed;
     }
 
     public override void _ExitTree()
@@ -70,20 +65,73 @@ public partial class CharacterTargetCard : Control
             .SetEase(Tween.EaseType.Out);
     }
 
+    private async void OnButtonPressed()
+    {
+        if (
+            _selectionPending
+            || !Selectable
+            || _target == null
+            || !GodotObject.IsInstanceValid(_target)
+        )
+        {
+            return;
+        }
+
+        _selectionPending = true;
+        HideTargetTooltip();
+        await PlaySelectionPulseAsync();
+        if (_target != null && GodotObject.IsInstanceValid(_target))
+        {
+            _target.PlayTargetLockPulse();
+            EmitSignal(SignalName.Selected, _target);
+        }
+        _selectionPending = false;
+    }
+
+    private async Task PlaySelectionPulseAsync()
+    {
+        if (!IsInsideTree())
+            return;
+
+        _hoverTween?.Kill();
+        Vector2 baseScale = Scale == Vector2.Zero ? NormalScale : Scale;
+        _hoverTween = CreateTween();
+        _hoverTween.SetParallel(true);
+        _hoverTween
+            .TweenProperty(this, "scale", baseScale * 0.94f, 0.055f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _hoverTween
+            .TweenProperty(this, "modulate", new Color(1.28f, 1.22f, 0.74f, 1f), 0.055f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _hoverTween.TweenProperty(this, "scale", HoverScale, 0.12f).SetDelay(0.055f);
+        _hoverTween.TweenProperty(this, "modulate", Colors.White, 0.12f).SetDelay(0.055f);
+        await ToSignal(_hoverTween, Tween.SignalName.Finished);
+    }
+
     public void SetTarget(Character target)
     {
         _target = target;
         NameLabel.Text = target?.CharacterName ?? "-";
         Portrait.Texture = target?.Portrait;
-        StatsLabel.Text = target == null
-            ? string.Empty
-            : I18n.Format(
+        StatsLabel.Text = target switch
+        {
+            null => string.Empty,
+            { IsPlayer: true } => I18n.Format(
                 "ui.manual_target.character_stats",
                 "生命 {life}/{max_life}  能量 {energy}",
                 ("life", target.Life),
                 ("max_life", target.BattleMaxLife),
-                ("energy", target.EnergySources)
-            );
+                ("energy", target.CurrentEnergy)
+            ),
+            _ => I18n.Format(
+                "ui.manual_target.character_stats_no_energy",
+                "生命 {life}/{max_life}",
+                ("life", target.Life),
+                ("max_life", target.BattleMaxLife)
+            ),
+        };
     }
 
     public void SetSelectable(bool selectable)

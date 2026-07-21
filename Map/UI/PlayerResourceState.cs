@@ -26,6 +26,7 @@ public partial class PlayerResourceState : CanvasLayer
     private Tip _mapPeekTip;
     private bool _mapPeekButtonHovered;
     private Tween _mapPeekHoverTween;
+    private int _activeBattleCount;
 
     private sealed class PartyLifeSlot
     {
@@ -158,6 +159,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     public override void _Ready()
     {
+        SetProcessUnhandledInput(false);
         EnsureMenuOverlay();
         ElectricityCoin = GameInfo.ElectricityCoin;
         InitTransitionEnergyMax();
@@ -184,6 +186,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     public override void _ExitTree()
     {
+        SetProcessUnhandledInput(false);
         HideMapPeekTip();
         base._ExitTree();
     }
@@ -428,7 +431,42 @@ public partial class PlayerResourceState : CanvasLayer
     {
         MapNode?.ExitMapPeekMode();
         SetResourceChromeVisibleForMapPeek(true);
+        RefreshPartyStatusVisibility();
         RefreshMapPeekButton();
+    }
+
+    public void SetMapPeekInputActive(bool active)
+    {
+        SetProcessUnhandledInput(active);
+    }
+
+    public void SetBattleActive(bool active)
+    {
+        int previousBattleCount = _activeBattleCount;
+        _activeBattleCount = active
+            ? _activeBattleCount + 1
+            : Math.Max(0, _activeBattleCount - 1);
+        bool hasActiveBattle = _activeBattleCount > 0;
+        Map map = MapNode;
+        map?.SetBattleWorldSuspended(hasActiveBattle);
+        if (
+            previousBattleCount > 0
+            && !hasActiveBattle
+            && map?.IsMapPeekModeActive == true
+        )
+        {
+            CloseMapPeekMode();
+        }
+        RefreshPartyStatusVisibility();
+    }
+
+    private void RefreshPartyStatusVisibility()
+    {
+        Control partyStatus = TransitionEnergyControl;
+        if (partyStatus == null || !GodotObject.IsInstanceValid(partyStatus))
+            return;
+
+        partyStatus.Visible = _activeBattleCount == 0 && MapNode?.IsMapPeekModeActive != true;
     }
 
     private void RefreshMapPeekButton()

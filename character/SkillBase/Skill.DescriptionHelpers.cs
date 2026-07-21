@@ -47,7 +47,6 @@ public partial class Skill
         {
             PropertyType.Power => "#ff0000",
             PropertyType.Survivability => "#89fffd",
-            PropertyType.EnergySources => "#87CEEB",
             _ => "white",
         };
     }
@@ -185,12 +184,14 @@ public partial class Skill
     {
         var plan = GetPlan();
         IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
-        if (RetainsAtTurnEndInHand)
+        if (ShowsRetainKeyword)
             lines = new[] { GetRetainKeywordLine() }.Concat(lines);
         if (IsColorless)
             lines = new[] { GetColorlessKeywordLine() }.Concat(lines);
-        if (ExhaustsAfterUse)
+        if (ShowsExhaustKeyword)
             lines = new[] { GetExhaustKeywordLine() }.Concat(lines);
+        if (ShowsVoidnessKeyword)
+            lines = new[] { GetVoidnessKeywordLine() }.Concat(lines);
 
         SetDescriptionLines(lines.ToArray());
     }
@@ -394,13 +395,13 @@ public partial class Skill
         hints ??= skill.CollectTooltipHints();
         var entries = new List<string>();
 
-        if (skill.ExhaustsAfterUse)
+        if (skill.ShowsExhaustKeyword)
         {
             entries.Add(
                 BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText())
             );
         }
-        if (skill.RetainsAtTurnEndInHand)
+        if (skill.ShowsRetainKeyword)
         {
             entries.Add(
                 BuildKeywordTooltipEntry(GetRetainKeyword(), GetRetainKeywordEffectText())
@@ -596,5 +597,6 @@ public partial class Skill
 
     private static string GetExhaustKeywordLine() => $"{GetExhaustKeyword()}。";
     private static string GetRetainKeywordLine() => $"{GetRetainKeyword()}。";
+    private static string GetVoidnessKeywordLine() => $"{GetVoidnessKeyword()}。";
     private static string GetColorlessKeywordLine() => $"{GetColorlessKeyword()}。";
 }

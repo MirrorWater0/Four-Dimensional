@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "Inexorability":  {
+                                          "Name":  "Inexorability",
+                                          "MaxLife":  117
+                                      }
+                }
+}

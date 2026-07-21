@@ -25,14 +25,18 @@ public partial class SkillButton : Button
     Color HangColor = new Color(0.6f, 0.7f, 1.2f);
     bool animating = false;
     public Tip globalTooltip => field ??= EnsureGlobalTooltip();
+    private Color _baseModulate = new(0.9f, 0.9f, 0.9f, 1f);
+    private bool? _lastDisabledVisualState;
 
     public override void _Ready()
     {
         MouseEntered += mouse_entered;
         MouseExited += mouse_exited;
-        Modulate = new Color(0.9f, 0.9f, 0.9f);
+        _baseModulate = new Color(0.9f, 0.9f, 0.9f, Modulate.A);
+        Modulate = _baseModulate;
 
         ApplySkillTypeIcons();
+        SyncAbleRingVisibility(force: true);
     }
 
     public void SetSkillType(Skill.SkillTypes skillType)
@@ -61,6 +65,7 @@ public partial class SkillButton : Button
                 TerminateSkillIcon.Visible = false;
                 break;
             case Skill.SkillTypes.Special:
+            case Skill.SkillTypes.Ability:
                 RhomboidIcon.Visible = false;
                 SwordIcon.Visible = false;
                 break;
@@ -69,21 +74,24 @@ public partial class SkillButton : Button
 
     public override void _Process(double delta)
     {
-        if (Disabled)
-        {
-            AbleRing.Visible = false;
-        }
-        else
-        {
-            AbleRing.Visible = true;
-        }
+        SyncAbleRingVisibility();
+    }
+
+    private void SyncAbleRingVisibility(bool force = false)
+    {
+        bool disabled = Disabled;
+        if (!force && _lastDisabledVisualState == disabled)
+            return;
+
+        _lastDisabledVisualState = disabled;
+        AbleRing.Visible = !disabled;
     }
 
     Color changeColor = 0.4f * new Color(0.5f, 0.5f, 0.5f, 0.4f);
 
     public void mouse_entered()
     {
-        Modulate += changeColor;
+        Modulate = _baseModulate + changeColor;
 
         if (SelfSkill != null && globalTooltip != null)
         {
@@ -100,7 +108,7 @@ public partial class SkillButton : Button
 
     public void mouse_exited()
     {
-        Modulate -= changeColor;
+        Modulate = _baseModulate;
 
         // Hide tooltip
         globalTooltip?.HideTooltip();
@@ -145,6 +153,7 @@ public partial class SkillButton : Button
     public void Enable()
     {
         Disabled = false;
+        SyncAbleRingVisibility(force: true);
         var tween = ShockWave.CreateTween();
 
         CreateTween().Parallel().TweenCallback(Callable.From(() => animating = false));

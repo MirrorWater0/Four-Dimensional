@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 
@@ -16,15 +15,15 @@ public partial class CharacterControl
             return;
 
         SkillCard card = _cards[index];
-        if (card == null || card.Button.Disabled)
+        if (card == null || card.Button.Disabled || IsCardDrawEntryInputBlocked(index))
             return;
 
-        DetachDrawEntryStateForImmediateInteraction(index);
-
-        _suppressCardButtonPressUntilLeftRelease = Input.IsMouseButtonPressed(MouseButton.Left);
+        DetachDrawEntryForInteraction(index, card);
+        SuppressCardButtonPressForCurrentLeftPress();
         _liftedCardIndex = index;
         _liftedCardSkill = skill;
         _liftedCard = card;
+        AudioManager.PlayCardPickup(card);
         _liftedCardMouseOffset = GetSkillCardCenterOffset(card);
         SetHandInputBlockerVisible(true);
         BlockOtherHandCardInputWhileLifted(index);
@@ -36,6 +35,10 @@ public partial class CharacterControl
         card.StopBattleMotion();
         card.SetRelatedCardPreviewSuppressed(true);
         card.SetHoverUiEnabled(false);
+        Vector2 liftedGlobalPosition = card.GlobalPosition;
+        float liftedGlobalRotation = GetCanvasRotation(card);
+        Vector2 liftedPivotCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
+        Vector2 liftedScale = BattleCardScale * CardHoverScaleMultiplier;
 
         Control slot = _cardSlots[index];
         if (slot != null && GodotObject.IsInstanceValid(slot))
@@ -52,14 +55,17 @@ public partial class CharacterControl
         CanvasLayer overlay = EnsureLiftedCardOverlay();
         if (overlay != null && GodotObject.IsInstanceValid(overlay))
         {
-            Vector2 globalPosition = card.GlobalPosition;
+            card.PreserveSkillPreviewOnNextReparent();
             card.GetParent()?.RemoveChild(card);
             overlay.AddChild(card);
-            card.GlobalPosition = globalPosition;
+            card.GlobalPosition = liftedGlobalPosition;
+            card.Rotation = liftedGlobalRotation;
+            card.Scale = liftedScale;
+            SetCardPivotCenterAt(card, liftedPivotCenter);
+            _liftedCardMouseOffset = GetBattleCardCenterOffset(liftedScale);
         }
 
-        card.HoverHint.Visible = true;
-        SetCardHoverPreviewActive(index, true);
+        card.HoverHint.Visible = false;
         card.ZIndex = LiftedCardZIndex;
         SetProcess(true);
         LayoutActionCards(instant: false);
@@ -87,7 +93,8 @@ public partial class CharacterControl
         _manualTargetArrowUsesLiftedCard = false;
         if (liftedCard != null && GodotObject.IsInstanceValid(liftedCard))
             liftedCard.SetRelatedCardPreviewSuppressed(false);
-        _suppressCardButtonPressUntilLeftRelease = false;
+        ClearCardButtonPressSuppression();
+        SuppressHandHoverUntilMouseMove(requireMouseMove: true);
         SetHandInputBlockerVisible(false);
         if (!_manualTargetArrowSelectionActive)
             SetCardHoverUiEnabled(true);
@@ -97,7 +104,47 @@ public partial class CharacterControl
         UpdateProcessState();
         ResetCardMotion(index, instant, HandDroppedCardReturnMotionDuration);
         LayoutActionCards(instant);
-        RefreshTurnUi();
+        RequestTurnUiRefresh(refreshHover: true);
+        ScheduleLiftedCardDropHoverRefresh(instant);
+    }
+
+    private void ScheduleLiftedCardDropHoverRefresh(bool instant)
+    {
+        int version = ++_liftedCardDropHoverRefreshVersion;
+        _ = RefreshHoverAfterLiftedCardDropAsync(version, instant);
+    }
+
+    private async Task RefreshHoverAfterLiftedCardDropAsync(int version, bool instant)
+    {
+        SceneTree tree = GetTree();
+        if (tree == null)
+            return;
+
+        if (!instant && HandDroppedCardReturnMotionDuration > 0f)
+            await ToSignal(
+                tree.CreateTimer(HandDroppedCardReturnMotionDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+        else
+            await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+
+        if (
+            version != _liftedCardDropHoverRefreshVersion
+            || !GodotObject.IsInstanceValid(this)
+            || !_uiBuilt
+            || !Visible
+            || _endTurnQueued
+            || _liftedCardIndex != -1
+            || _manualTargetArrowSelectionActive
+            || IsManualTargetSelectionPending()
+        )
+        {
+            return;
+        }
+
+        _suppressHandHoverUntilMouseMove = false;
+        _handHoverSuppressionRequiresMouseMove = false;
+        ScheduleCardHoverRefresh();
     }
 
     private void ReleaseLiftedCardForManualTargetSelection(int index)
@@ -106,7 +153,7 @@ public partial class CharacterControl
             return;
 
         _manualTargetArrowUsesLiftedCard = true;
-        _suppressCardButtonPressUntilLeftRelease = false;
+        ClearCardButtonPressSuppression();
         SetHandInputBlockerVisible(false);
         SetCardHoverUiEnabled(false);
         UpdateProcessState();
@@ -132,15 +179,14 @@ public partial class CharacterControl
         _manualTargetArrowUsesLiftedCard = true;
         _manualTargetArrowCardIndex = index;
         _liftedCardMouseOffset = GetSkillCardCenterOffset(card);
-        _suppressCardButtonPressUntilLeftRelease = false;
+        ClearCardButtonPressSuppression();
         SetHandInputBlockerVisible(true);
         SuppressHandInteractionForManualTargetSelection();
         if (_hoveredCardIndex == index)
             _hoveredCardIndex = -1;
 
-        card.HoverHint.Visible = true;
+        card.HoverHint.Visible = false;
         card.ZIndex = LiftedCardZIndex;
-        HideCardHoverPreview(index);
         SetProcess(true);
     }
 
@@ -216,14 +262,18 @@ public partial class CharacterControl
             return;
         }
 
-        slot.GlobalPosition = card.GlobalPosition;
+        Vector2 pivotCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
+        slot.GlobalPosition = pivotCenter - card.PivotOffset;
         if (card.GetParent() != slot)
         {
+            card.PreserveSkillPreviewOnNextReparent();
             card.GetParent()?.RemoveChild(card);
             slot.AddChild(card);
         }
 
         card.Position = Vector2.Zero;
+        card.Rotation = 0f;
+        SetCardPivotCenterAt(card, pivotCenter);
         _cards[index] = card;
         WireBattleCard(card, index);
     }
@@ -244,12 +294,10 @@ public partial class CharacterControl
         {
             if (play.Skill.TryGetManualFriendlyCarrySkillType(out Skill.SkillTypes carrySkillType))
             {
-                Character[] drawableCandidates = candidates
-                    .Where(candidate =>
-                        candidate is PlayerCharacter player
-                        && BattleNode?.HasDrawablePlayerCarrySkill(player, carrySkillType) == true
-                    )
-                    .ToArray();
+                Character[] drawableCandidates = GetDrawableManualFriendlyTargetCandidates(
+                    candidates,
+                    carrySkillType
+                );
                 if (drawableCandidates.Length > 0)
                     candidates = drawableCandidates;
             }
@@ -286,17 +334,80 @@ public partial class CharacterControl
         bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
         bool allowDying = skill.ManualFriendlyTargetAllowsDying();
         Character owner = skill.OwnerCharater;
+        var team = BattleNode.GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true);
+        if (team == null)
+            return Array.Empty<Character>();
 
-        return BattleNode
-            .GetTeamCharacters(skill.OwnerCharater.IsPlayer, includeSummons: true)
-            .Where(character =>
-                character != null
-                && GodotObject.IsInstanceValid(character)
-                && (allowDying || character.State != Character.CharacterState.Dying)
-                && (!excludeSelf || character != owner)
+        int count = 0;
+        foreach (Character character in team)
+        {
+            if (IsValidManualFriendlyTargetCandidate(character, owner, excludeSelf, allowDying))
+                count++;
+        }
+        if (count == 0)
+            return Array.Empty<Character>();
+
+        var candidates = new Character[count];
+        int write = 0;
+        foreach (Character character in team)
+        {
+            if (IsValidManualFriendlyTargetCandidate(character, owner, excludeSelf, allowDying))
+                candidates[write++] = character;
+        }
+
+        Array.Sort(candidates, CompareTargetPosition);
+        return candidates;
+    }
+
+    private static bool IsValidManualFriendlyTargetCandidate(
+        Character character,
+        Character owner,
+        bool excludeSelf,
+        bool allowDying
+    )
+    {
+        return character != null
+            && GodotObject.IsInstanceValid(character)
+            && (allowDying || character.State != Character.CharacterState.Dying)
+            && (!excludeSelf || !ReferenceEquals(character, owner));
+    }
+
+    private Character[] GetDrawableManualFriendlyTargetCandidates(
+        Character[] candidates,
+        Skill.SkillTypes carrySkillType
+    )
+    {
+        if (candidates == null || candidates.Length == 0)
+            return Array.Empty<Character>();
+
+        int count = 0;
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (
+                candidates[i] is PlayerCharacter player
+                && BattleNode?.HasDrawablePlayerCarrySkill(player, carrySkillType) == true
             )
-            .OrderBy(character => character.PositionIndex)
-            .ToArray();
+            {
+                count++;
+            }
+        }
+        if (count == 0)
+            return Array.Empty<Character>();
+
+        var drawableCandidates = new Character[count];
+        int write = 0;
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (
+                candidates[i] is PlayerCharacter player
+                && BattleNode?.HasDrawablePlayerCarrySkill(player, carrySkillType) == true
+            )
+            {
+                drawableCandidates[write++] = candidates[i];
+            }
+        }
+
+        return drawableCandidates;
     }
 
     private static bool ShouldUseManualTargetArrowSelection(Skill skill)
@@ -573,13 +684,7 @@ public partial class CharacterControl
         if (BattleNode == null)
             return null;
 
-        Character[] targets = BattleNode
-            .GetTeamCharacters(isPlayer: true, includeSummons: true)
-            .Concat(BattleNode.GetTeamCharacters(isPlayer: false, includeSummons: true))
-            .Where(character => character != null && GodotObject.IsInstanceValid(character))
-            .OrderBy(character => character.IsPlayer ? 0 : 1)
-            .ThenBy(character => character.PositionIndex)
-            .ToArray();
+        Character[] targets = GetItemTargetCandidates();
 
         if (targets.Length == 0)
             return null;
@@ -924,6 +1029,7 @@ public partial class CharacterControl
             return false;
 
         SetManualTargetArrowHoveredTarget(target);
+        target.PlayTargetLockPulse(ManualTargetHoveredColor, 1.1f);
         _manualTargetCompletion?.TrySetResult(target);
         return true;
     }
@@ -961,6 +1067,7 @@ public partial class CharacterControl
 
             if (_manualTargetArrowHoveredTarget != null)
             {
+                _manualTargetArrowHoveredTarget.PlayTargetLockPulse(ManualTargetHoveredColor, 1.1f);
                 _manualTargetCompletion?.TrySetResult(_manualTargetArrowHoveredTarget);
                 return true;
             }
@@ -988,11 +1095,8 @@ public partial class CharacterControl
 
     private Character GetNextManualTargetArrowTarget(int direction)
     {
-        Character[] candidates = (_manualTargetArrowTargets ?? Array.Empty<Character>())
-            .Where(target => target != null && GodotObject.IsInstanceValid(target))
-            .OrderBy(target => target.PositionIndex)
-            .ToArray();
-        if (candidates.Length == 0)
+        Character[] candidates = _manualTargetArrowTargets ?? Array.Empty<Character>();
+        if (!HasValidTargetCandidate(candidates))
             return null;
 
         Character current = _manualTargetArrowHoveredTarget;
@@ -1000,27 +1104,130 @@ public partial class CharacterControl
         if (currentIndex < 0)
             return GetDefaultManualTargetArrowTarget(_manualTargetArrowOwner, candidates);
 
-        int nextIndex = (currentIndex + direction + candidates.Length) % candidates.Length;
-        return candidates[nextIndex];
+        for (int offset = 1; offset <= candidates.Length; offset++)
+        {
+            int nextIndex =
+                (currentIndex + direction * offset + candidates.Length) % candidates.Length;
+            Character target = candidates[nextIndex];
+            if (target != null && GodotObject.IsInstanceValid(target))
+                return target;
+        }
+
+        return null;
     }
 
     private static Character GetDefaultManualTargetArrowTarget(Character owner, Character[] targets)
     {
-        Character[] candidates = (targets ?? Array.Empty<Character>())
-            .Where(target => target != null && GodotObject.IsInstanceValid(target))
-            .OrderBy(target => target.PositionIndex)
-            .ToArray();
-        if (candidates.Length == 0)
+        if (targets == null || targets.Length == 0)
             return null;
 
-        if (owner == null || !GodotObject.IsInstanceValid(owner))
-            return candidates[0];
+        Character best = null;
+        bool hasValidOwner = owner != null && GodotObject.IsInstanceValid(owner);
+        int bestDistance = int.MaxValue;
+        int bestPosition = int.MaxValue;
+        for (int i = 0; i < targets.Length; i++)
+        {
+            Character target = targets[i];
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
 
-        return candidates
-            .OrderBy(target => Math.Abs(target.PositionIndex - owner.PositionIndex))
-            .ThenBy(target => target.PositionIndex)
-            .FirstOrDefault();
+            int distance = hasValidOwner
+                ? Math.Abs(target.PositionIndex - owner.PositionIndex)
+                : 0;
+            int position = target.PositionIndex;
+            if (best == null || distance < bestDistance || (distance == bestDistance && position < bestPosition))
+            {
+                best = target;
+                bestDistance = distance;
+                bestPosition = position;
+            }
+        }
+
+        return best;
     }
+
+    private static bool HasValidTargetCandidate(Character[] candidates)
+    {
+        if (candidates == null)
+            return false;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (candidates[i] != null && GodotObject.IsInstanceValid(candidates[i]))
+                return true;
+        }
+
+        return false;
+    }
+
+    private Character[] GetItemTargetCandidates()
+    {
+        if (BattleNode == null)
+            return Array.Empty<Character>();
+
+        var playerTeam = BattleNode.GetTeamCharacters(isPlayer: true, includeSummons: true);
+        var enemyTeam = BattleNode.GetTeamCharacters(isPlayer: false, includeSummons: true);
+        int count = CountValidCharacters(playerTeam) + CountValidCharacters(enemyTeam);
+        if (count == 0)
+            return Array.Empty<Character>();
+
+        var targets = new Character[count];
+        int write = 0;
+        AppendValidCharacters(playerTeam, targets, ref write);
+        AppendValidCharacters(enemyTeam, targets, ref write);
+        Array.Sort(targets, CompareItemTargetOrder);
+        return targets;
+    }
+
+    private static int CountValidCharacters(IEnumerable<Character> characters)
+    {
+        if (characters == null)
+            return 0;
+
+        int count = 0;
+        foreach (Character character in characters)
+        {
+            if (character != null && GodotObject.IsInstanceValid(character))
+                count++;
+        }
+
+        return count;
+    }
+
+    private static void AppendValidCharacters(
+        IEnumerable<Character> source,
+        Character[] target,
+        ref int write
+    )
+    {
+        if (source == null || target == null)
+            return;
+
+        foreach (Character character in source)
+        {
+            if (character != null && GodotObject.IsInstanceValid(character))
+                target[write++] = character;
+        }
+    }
+
+    private static int CompareTargetPosition(Character a, Character b)
+    {
+        int aPosition = a?.PositionIndex ?? int.MaxValue;
+        int bPosition = b?.PositionIndex ?? int.MaxValue;
+        return aPosition.CompareTo(bPosition);
+    }
+
+    private static int CompareItemTargetOrder(Character a, Character b)
+    {
+        int teamCompare = GetItemTargetTeamOrder(a).CompareTo(GetItemTargetTeamOrder(b));
+        if (teamCompare != 0)
+            return teamCompare;
+
+        return CompareTargetPosition(a, b);
+    }
+
+    private static int GetItemTargetTeamOrder(Character character) =>
+        character?.IsPlayer == true ? 0 : 1;
 
     private Character ResolveManualTargetArrowHoveredTarget(Vector2 mousePosition)
     {
@@ -1077,7 +1284,7 @@ public partial class CharacterControl
     {
         return target != null
             && GodotObject.IsInstanceValid(target)
-            && (_manualTargetArrowTargets ?? Array.Empty<Character>()).Contains(target);
+            && ContainsCharacterReference(_manualTargetArrowTargets, target);
     }
 
     private void ApplyManualTargetArrowCardVisual(SkillCard card)
@@ -1087,7 +1294,7 @@ public partial class CharacterControl
 
         Vector2 targetScale = BattleCardScale * ManualTargetCenteredCardScaleMultiplier;
         int index = GetBattleCardSignalIndex(card);
-        card.HoverHint.Visible = true;
+        card.HoverHint.Visible = false;
         card.ZIndex =
             _manualTargetArrowUsesLiftedCard
             && index == _manualTargetArrowCardIndex
@@ -1276,7 +1483,10 @@ public partial class CharacterControl
         if (hoveredTarget != null && !_manualTargetArrowSkill.HasManualFriendlyTarget())
             return;
 
-        var entries = _manualTargetArrowSkill.GetPreviewEffectEntries();
+        CardEffectPreviewSnapshot snapshot = CardEffectPreviewEcs.GetSnapshot(
+            _manualTargetArrowSkill
+        );
+        var entries = snapshot.EffectEntries;
         if (entries == null || entries.Length == 0)
             return;
 
@@ -1287,17 +1497,27 @@ public partial class CharacterControl
             return;
 
         int panelIndex = 0;
-        foreach (
-            var group in entries
-                .Where(entry => entry.Target != null && GodotObject.IsInstanceValid(entry.Target))
-                .GroupBy(entry => entry.Target)
-        )
+        CardPreviewTargetEffectGroup[] groups =
+            snapshot.EffectGroupsByTarget ?? Array.Empty<CardPreviewTargetEffectGroup>();
+        for (int i = 0; i < groups.Length; i++)
         {
+            CardPreviewTargetEffectGroup group = groups[i];
+            Character target = group.Target;
+            if (
+                target == null
+                || !GodotObject.IsInstanceValid(target)
+                || group.Entries == null
+                || group.Entries.Length == 0
+            )
+            {
+                continue;
+            }
+
             VBoxContainer panel = GetOrCreateManualTargetArrowDamagePanel(layer, panelIndex++);
             PreviewEffectDisplay.ShowPanel(
                 panel,
-                group.ToArray(),
-                GetTargetScreenPosition(group.Key),
+                group.Entries,
+                GetTargetScreenPosition(target),
                 ManualTargetDamagePreviewLabelOffset
             );
         }
@@ -1306,6 +1526,36 @@ public partial class CharacterControl
         {
             if (GodotObject.IsInstanceValid(_manualTargetArrowDamagePanels[i]))
                 _manualTargetArrowDamagePanels[i].Visible = false;
+        }
+    }
+
+    private void BuildManualTargetArrowDamageEntryGroups(Skill.PreviewEffectEntry[] entries)
+    {
+        _manualTargetArrowDamageTargetsBuffer.Clear();
+        foreach (
+            List<Skill.PreviewEffectEntry> targetEntries in _manualTargetArrowDamageEntriesByTarget
+                .Values
+        )
+        {
+            targetEntries.Clear();
+        }
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Skill.PreviewEffectEntry entry = entries[i];
+            Character target = entry.Target;
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            if (!_manualTargetArrowDamageEntriesByTarget.TryGetValue(target, out var targetEntries))
+            {
+                targetEntries = new List<Skill.PreviewEffectEntry>(4);
+                _manualTargetArrowDamageEntriesByTarget[target] = targetEntries;
+            }
+            if (targetEntries.Count == 0)
+                _manualTargetArrowDamageTargetsBuffer.Add(target);
+
+            targetEntries.Add(entry);
         }
     }
 
@@ -1329,25 +1579,29 @@ public partial class CharacterControl
             return;
 
         Character[] manualCandidates = _manualTargetArrowTargets ?? Array.Empty<Character>();
-        _manualTargetArrowEffectHostileTargets = entries
-            .Where(entry =>
-                entry.Target != null
-                && GodotObject.IsInstanceValid(entry.Target)
-                && entry.Target.IsPlayer != owner.IsPlayer
+        _manualTargetArrowEffectHostileTargets.Clear();
+        _manualTargetArrowEffectFriendlyTargets.Clear();
+        for (int i = 0; i < entries.Count; i++)
+        {
+            Character target = entries[i].Target;
+            if (target == null || !GodotObject.IsInstanceValid(target))
+                continue;
+
+            if (target.IsPlayer != owner.IsPlayer)
+            {
+                if (!_manualTargetArrowEffectHostileTargets.Contains(target))
+                    _manualTargetArrowEffectHostileTargets.Add(target);
+                continue;
+            }
+
+            if (
+                !ContainsCharacterReference(manualCandidates, target)
+                && !_manualTargetArrowEffectFriendlyTargets.Contains(target)
             )
-            .Select(entry => entry.Target)
-            .Distinct()
-            .ToArray();
-        _manualTargetArrowEffectFriendlyTargets = entries
-            .Where(entry =>
-                entry.Target != null
-                && GodotObject.IsInstanceValid(entry.Target)
-                && entry.Target.IsPlayer == owner.IsPlayer
-                && !manualCandidates.Contains(entry.Target)
-            )
-            .Select(entry => entry.Target)
-            .Distinct()
-            .ToArray();
+            {
+                _manualTargetArrowEffectFriendlyTargets.Add(target);
+            }
+        }
 
         foreach (Character target in _manualTargetArrowEffectHostileTargets)
             target.ShowTargetPreview(ManualTargetEffectHostileColor, animate: false);
@@ -1370,11 +1624,25 @@ public partial class CharacterControl
                 target.HideTargetPreview();
         }
 
-        _manualTargetArrowEffectHostileTargets = Array.Empty<Character>();
-        _manualTargetArrowEffectFriendlyTargets = Array.Empty<Character>();
+        _manualTargetArrowEffectHostileTargets.Clear();
+        _manualTargetArrowEffectFriendlyTargets.Clear();
 
         if (_manualTargetArrowSelectionActive)
             RefreshManualTargetArrowPreviews(_manualTargetArrowHoveredTarget);
+    }
+
+    private static bool ContainsCharacterReference(Character[] candidates, Character target)
+    {
+        if (candidates == null || target == null)
+            return false;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            if (ReferenceEquals(candidates[i], target))
+                return true;
+        }
+
+        return false;
     }
 
     private VBoxContainer GetOrCreateManualTargetArrowDamagePanel(CanvasLayer layer, int index)
@@ -1464,7 +1732,7 @@ public partial class CharacterControl
 
     private void HideManualRebirthTargetPreviews()
     {
-        foreach (var entry in _manualRebirthTargetPreviewStates.ToArray())
+        foreach (KeyValuePair<Character, RebirthPreviewState> entry in _manualRebirthTargetPreviewStates)
         {
             Character target = entry.Key;
             if (target == null || !GodotObject.IsInstanceValid(target))
@@ -1622,6 +1890,7 @@ public partial class CharacterControl
                 && GodotObject.IsInstanceValid(_manualTargetArrowHoveredTarget)
             )
             {
+                _manualTargetArrowHoveredTarget.PlayTargetLockPulse(ManualTargetHoveredColor, 1.1f);
                 _manualTargetCompletion?.TrySetResult(_manualTargetArrowHoveredTarget);
             }
 
@@ -1664,11 +1933,11 @@ public partial class CharacterControl
             .SetEase(Tween.EaseType.Out);
         tween
             .TweenProperty(card, "rotation", finalRotation, 0.28f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         tween
             .TweenProperty(card, "scale", Vector2.One, 0.22f)
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
     }
 
@@ -1730,7 +1999,7 @@ public partial class CharacterControl
         )
         {
             if (shouldRefreshTurnUiAfterHide)
-                RefreshTurnUi();
+                RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -1738,7 +2007,7 @@ public partial class CharacterControl
         ApplyManualTargetPickerTemporaryHiddenState();
         ClearManualTargetCards();
         if (shouldRefreshTurnUiAfterHide)
-            RefreshTurnUi();
+            RequestTurnUiRefresh(refreshHover: true);
     }
 
     private void ResetManualTargetArrowCardVisual(int index)

@@ -23,9 +23,10 @@ public partial class Number : Node2D
     private Rect2 _hoverRect;
     private bool _registered;
     private int _playVersion;
+    private float _impactScale = 1f;
     private readonly List<Tween> _runningTweens = new();
 
-    public static Number Spawn(Node parent, string text, Color? color = null)
+    public static Number Spawn(Node parent, string text, Color? color = null, float impactScale = 1f)
     {
         if (parent == null || !GodotObject.IsInstanceValid(parent))
             return null;
@@ -44,6 +45,7 @@ public partial class Number : Node2D
         number.StopRunningTweens();
         number._playVersion++;
         number.ResetStateForSpawn(text, color);
+        number._impactScale = Mathf.Clamp(impactScale, 0.72f, 1.46f);
         parent.AddChild(number);
         if (parent is Node2D parent2D)
             number.GlobalPosition = parent2D.GlobalPosition;
@@ -80,6 +82,11 @@ public partial class Number : Node2D
         GlobalPosition = ClampToViewport(GlobalPosition);
         Vector2 startPos = GlobalPosition;
         Vector2 labelSize = GetLabelSize();
+        float impact = Mathf.Clamp(_impactScale, 0.72f, 1.46f);
+        float popRise1 = PopRise1 * Mathf.Lerp(0.84f, 1.12f, (impact - 0.72f) / 0.74f);
+        float popRise2 = PopRise2 * Mathf.Lerp(0.86f, 1.18f, (impact - 0.72f) / 0.74f);
+        float popScale = Mathf.Lerp(1.18f, 1.58f, (impact - 0.72f) / 0.74f);
+        float holdTime = Mathf.Lerp(0.38f, 0.56f, (impact - 0.72f) / 0.74f);
         float stackStep = Mathf.Max(24f, labelSize.Y * 0.6f);
         float padding = Mathf.Max(6f, labelSize.Y * 0.1f);
         (float offset, float stackRise) = PickOffset(
@@ -103,14 +110,14 @@ public partial class Number : Node2D
         pop.TweenProperty(
                 this,
                 "global_position",
-                ClampToViewport(startPos + new Vector2(offset * 0.25f, -PopRise1)),
+                ClampToViewport(startPos + new Vector2(offset * 0.25f, -popRise1)),
                 0.1f
             )
             .SetEase(Tween.EaseType.Out)
             .SetTrans(Tween.TransitionType.Quad);
-        pop.TweenProperty(this, "scale", new Vector2(1.4f, 1.4f), 0.1f)
+        pop.TweenProperty(this, "scale", new Vector2(popScale, popScale), 0.1f)
             .SetEase(Tween.EaseType.Out)
-            .SetTrans(Tween.TransitionType.Back);
+            .SetTrans(Tween.TransitionType.Cubic);
 
         pop.SetParallel(false);
         pop.TweenProperty(this, "scale", new Vector2(1.0f, 1.0f), 0.08f)
@@ -118,12 +125,12 @@ public partial class Number : Node2D
         pop.TweenProperty(
                 this,
                 "global_position",
-                ClampToViewport(startPos + new Vector2(offset * 0.35f, -PopRise2)),
+                ClampToViewport(startPos + new Vector2(offset * 0.35f, -popRise2)),
                 0.08f
             )
             .SetEase(Tween.EaseType.Out);
 
-        await ToSignal(GetTree().CreateTimer(0.5f), "timeout");
+        await ToSignal(GetTree().CreateTimer(holdTime), "timeout");
         if (version != _playVersion || !IsInsideTree())
             return;
 

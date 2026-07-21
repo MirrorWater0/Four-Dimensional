@@ -167,6 +167,7 @@ public partial class BattleReady : Control
             Skill.SkillTypes.Attack => 0,
             Skill.SkillTypes.Survive => 1,
             Skill.SkillTypes.Special => 2,
+            Skill.SkillTypes.Ability => 3,
             _ => -1,
         };
     }

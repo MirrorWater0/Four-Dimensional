@@ -146,15 +146,15 @@ public partial class CharacterControl
 
         if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
         {
-            _pileOverlayScroll.Modulate = new Color(1f, 1f, 1f, 0f);
+            _pileOverlayScroll.Modulate = Colors.White;
             _pileOverlayScroll.OffsetTop = _pileOverlayScrollBaseOffsetTop + PileOverlayContentSlideOffset;
         }
 
         if (_pileOverlayConfirmButton != null && GodotObject.IsInstanceValid(_pileOverlayConfirmButton))
-            _pileOverlayConfirmButton.Modulate = new Color(1f, 1f, 1f, 0f);
+            _pileOverlayConfirmButton.Modulate = Colors.White;
 
         if (_pileOverlayHideButton != null && GodotObject.IsInstanceValid(_pileOverlayHideButton))
-            _pileOverlayHideButton.Modulate = new Color(1f, 1f, 1f, 0f);
+            _pileOverlayHideButton.Modulate = Colors.White;
 
         _pileOverlayConfirmSelectionReady = false;
         _pileOverlayContentTemporarilyHidden = false;
@@ -193,37 +193,23 @@ public partial class CharacterControl
 
         if (_pileOverlayMask != null && GodotObject.IsInstanceValid(_pileOverlayMask))
         {
-            _pileOverlayFadeTween
-                .TweenProperty(
-                    _pileOverlayMask,
-                    "color:a",
-                    PileOverlayMaskMaxAlpha,
-                    PileOverlayMaskFadeInDuration
-                )
-                .SetTrans(Tween.TransitionType.Sine)
-                .SetEase(Tween.EaseType.Out);
+            Color maskColor = _pileOverlayMask.Color;
+            maskColor.A = PileOverlayMaskMaxAlpha;
+            _pileOverlayMask.Color = maskColor;
         }
 
         if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
         {
-            _pileOverlayFadeTween
-                .TweenProperty(
-                    _pileOverlayScroll,
-                    "modulate:a",
-                    1f,
-                    PileOverlayContentFadeInDuration
-                )
-                .SetDelay(PileOverlayContentIntroDelay)
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
+            _pileOverlayScroll.Modulate = Colors.White;
+            _pileOverlayScroll.OffsetTop =
+                _pileOverlayScrollBaseOffsetTop + PileOverlayContentSlideOffset;
             _pileOverlayFadeTween
                 .TweenProperty(
                     _pileOverlayScroll,
                     "offset_top",
                     _pileOverlayScrollBaseOffsetTop,
-                    PileOverlayContentFadeInDuration
+                    PileOverlayContentMoveDuration
                 )
-                .SetDelay(PileOverlayContentIntroDelay)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
         }
@@ -235,17 +221,8 @@ public partial class CharacterControl
         )
         {
             _pileOverlayHideButton.Visible = true;
+            _pileOverlayHideButton.Modulate = Colors.White;
             EnsurePileOverlaySelectionButtonsOnTop();
-            _pileOverlayFadeTween
-                .TweenProperty(
-                    _pileOverlayHideButton,
-                    "modulate:a",
-                    1f,
-                    PileOverlayConfirmFadeDuration
-                )
-                .SetDelay(PileOverlayConfirmFadeDelay)
-                .SetTrans(Tween.TransitionType.Sine)
-                .SetEase(Tween.EaseType.Out);
         }
     }
 
@@ -265,30 +242,27 @@ public partial class CharacterControl
         if (_pileOverlayMask != null && GodotObject.IsInstanceValid(_pileOverlayMask))
         {
             _pileOverlayFadeTween
-                .TweenProperty(_pileOverlayMask, "color:a", 0f, PileOverlayMaskFadeOutDuration)
+                .TweenProperty(
+                    _pileOverlayMask,
+                    "color:a",
+                    0f,
+                    PileOverlayContentMoveDuration
+                )
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.In);
         }
 
         if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
         {
+            _pileOverlayScroll.Modulate = Colors.White;
             _pileOverlayFadeTween
                 .TweenProperty(
                     _pileOverlayScroll,
                     "modulate:a",
                     0f,
-                    PileOverlayContentFadeOutDuration
+                    PileOverlayContentMoveDuration
                 )
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.In);
-            _pileOverlayFadeTween
-                .TweenProperty(
-                    _pileOverlayScroll,
-                    "offset_top",
-                    _pileOverlayScrollBaseOffsetTop + PileOverlayContentSlideOffset * 0.5f,
-                    PileOverlayContentFadeOutDuration
-                )
-                .SetTrans(Tween.TransitionType.Cubic)
+                .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.In);
         }
 
@@ -651,7 +625,7 @@ public partial class CharacterControl
                 _pileOverlayScrollBaseOffsetTop,
                 PileOverlayScrollBounceBackDuration
             )
-            .SetTrans(Tween.TransitionType.Back)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         _pileOverlayScrollBounceTween.TweenCallback(
             Callable.From(() => _pileOverlayScrollBounceTween = null)
@@ -705,7 +679,7 @@ public partial class CharacterControl
                 _pileOverlayRoot.Visible = false;
                 ResetPileOverlayPresentation();
                 ClearPileOverlayCards();
-                RefreshTurnUi();
+                RequestTurnUiRefresh(refreshHover: true);
             }
         );
     }

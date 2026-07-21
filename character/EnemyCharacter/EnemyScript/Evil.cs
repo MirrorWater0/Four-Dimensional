@@ -4,7 +4,6 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
-    private const int StartEnergyGain = 2;
     private const int RebirthStacks = 1;
 
     public const string PassiveNameText = "重生律动";
@@ -24,8 +23,6 @@ public partial class Evil : EnemyCharacter
         base.Initialize();
         PassiveName = PassiveNameText;
         PassiveDescription = PassiveBaseDescriptionText;
-        using var _ = BeginEffectSource("被动");
-        BattleNode?.UpdataEnergy(this, StartEnergyGain, this);
     }
 
     public override void OnTurnStart()
@@ -66,7 +63,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 7;
+    private const int HitDamage = 5;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -74,14 +71,14 @@ public partial class EvilAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(HitDamage, times: 2));
+        return new SkillPlan(this, AttackStep(HitDamage, times: V("HitCount", 2)));
     }
 }
 
 public partial class EvilSurvive : Skill
 {
     private const int PowerGain = 3;
-    private const int BaseBlock = 11;
+    private const int BaseBlock = 6;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -112,7 +109,7 @@ public partial class EvilTermin : Skill
             this,
             WhileStep(
                 times: () => AttackTimes,
-                loopSteps: [AttackStep(baseDamage: 7, multiplier: 1, clampMax: 9999)]
+                loopSteps: [AttackStep(baseDamage: V("BaseDamage", 7), multiplier: V("Multiplier", 1), clampMax: V("ClampMax", 9999))]
             )
         );
     }

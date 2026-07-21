@@ -19,6 +19,9 @@ public partial class SelectButton : Control
     public Button Button => field ??= GetNode("Control/Button") as Button;
     public Control Control => field ??= GetNode("Control") as Control;
     private Tip GlobalTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/Tip");
+    private Tween _scaleTween;
+    private Tween _enterTween;
+    private Tween _fadeTween;
 
     public override void _ExitTree()
     {
@@ -39,7 +42,7 @@ public partial class SelectButton : Control
             if (!AllowPressEffect)
                 return;
 
-            CreateTween().TweenProperty(this, "scale", OriginalScale, 0.1f);
+            TweenScale(OriginalScale, 0.1f);
         };
         Button.ButtonDown += () =>
         {
@@ -54,7 +57,7 @@ public partial class SelectButton : Control
 
     public void mouse_entered()
     {
-        CreateTween().TweenProperty(this, "scale", 1.02f * OriginalScale, 0.15f);
+        TweenScale(1.02f * OriginalScale, 0.12f);
         Border.Visible = true;
 
         if (MySkill == null || GlobalTooltip == null)
@@ -68,7 +71,7 @@ public partial class SelectButton : Control
 
     public void mouse_exited()
     {
-        CreateTween().TweenProperty(this, "scale", OriginalScale, 0.2f);
+        TweenScale(OriginalScale, 0.14f);
         Border.Visible = false;
 
         GlobalTooltip?.HideTooltip();
@@ -78,17 +81,45 @@ public partial class SelectButton : Control
     {
         await ToSignal(GetTree().CreateTimer(delay), "timeout");
         Control.Position = new Vector2(-50, 0);
-        CreateTween()
+        _enterTween?.Kill();
+        _enterTween = CreateTween();
+        _enterTween
             .TweenProperty(Control, "position", new Vector2(0, 0), SkillButtonEnterDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
-        CreateTween().TweenProperty(this, "modulate:a", 1f, SkillButtonEnterFadeDuration);
+        _fadeTween?.Kill();
+        _fadeTween = CreateTween();
+        _fadeTween
+            .TweenProperty(this, "modulate:a", 1f, SkillButtonEnterFadeDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
     }
 
     public async void FadeAnimation(float delay)
     {
         await ToSignal(GetTree().CreateTimer(delay), "timeout");
-        CreateTween().TweenProperty(Control, "position", new Vector2(50, 0), SkillButtonExitDuration);
-        CreateTween().TweenProperty(this, "modulate:a", 0f, SkillButtonExitFadeDuration);
+        _enterTween?.Kill();
+        _enterTween = CreateTween();
+        _enterTween
+            .TweenProperty(Control, "position", new Vector2(50, 0), SkillButtonExitDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _fadeTween?.Kill();
+        _fadeTween = CreateTween();
+        _fadeTween
+            .TweenProperty(this, "modulate:a", 0f, SkillButtonExitFadeDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+    }
+
+    private void TweenScale(Vector2 targetScale, float duration)
+    {
+        _scaleTween?.Kill();
+        _scaleTween = CreateTween();
+        _scaleTween
+            .TweenProperty(this, "scale", targetScale, duration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
     }
 
     private static string BuildSkillTooltipText(Skill skill)

@@ -13,6 +13,7 @@ public partial class ReadyButton : Button
     [Export]
     public CanvasLayer Layer;
     private Color _originalColor;
+    private Tween _colorTween;
     [Export]
     ColorRect ChangeEffect;
 
@@ -135,9 +136,8 @@ public partial class ReadyButton : Button
 
     public void mouse_entered()
     {
-        ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
+        TweenReadyButtonColor(Colors.White, 0.16f);
         GlobalFunction.TweenShader(this, "dist2", 1f, 0.2f);
-        ((ShaderMaterial)Material).SetShaderParameter("color", new Color(1, 1, 1, 1));
         GlobalFunction.TweenShader(this, "dist1", 1f, 0.2f);
         GlobalFunction.TweenShader(this, "outer_ring_dist", 0.43f, 0.2f);
         GlobalFunction.TweenShader(this, "triangle_dist", 0.45f, 0.2f);
@@ -145,13 +145,34 @@ public partial class ReadyButton : Button
 
     public void mouse_right_entered()
     {
-        ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
+        TweenReadyButtonColor(_originalColor, 0.16f);
         GlobalFunction.TweenShader(this, "dist2", 0.5f, 0.2f);
 
-        ((ShaderMaterial)Material).SetShaderParameter("color", _originalColor);
         GlobalFunction.TweenShader(this, "dist1", 0.7f, 0.2f);
 
         GlobalFunction.TweenShader(this, "outer_ring_dist", 0.27f, 0.2f);
         GlobalFunction.TweenShader(this, "triangle_dist", 0.28f, 0.2f);
+    }
+
+    private void TweenReadyButtonColor(Color targetColor, float duration)
+    {
+        if (Material is not ShaderMaterial material)
+            return;
+
+        _colorTween?.Kill();
+        _colorTween = CreateTween();
+        _colorTween
+            .TweenMethod(
+                Callable.From<Color>(value =>
+                {
+                    if (GodotObject.IsInstanceValid(material))
+                        material.SetShaderParameter("color", value);
+                }),
+                GetShaderParameterColor(material, "color"),
+                targetColor,
+                duration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
     }
 }

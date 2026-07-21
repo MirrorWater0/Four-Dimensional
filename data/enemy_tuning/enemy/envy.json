@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "EnvyElite":  {
+                                      "Name":  "嫉妒",
+                                      "MaxLife":  206
+                                  }
+                }
+}

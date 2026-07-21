@@ -13,7 +13,7 @@ public partial class Blade : ColorlessSkill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: 0, multiplier: 1));
+        return new SkillPlan(this, AttackStep(baseDamage: V("BaseDamage", 0), multiplier: V("Multiplier", 1)));
     }
 }
 
@@ -27,7 +27,7 @@ public partial class Calmness : ColorlessSkill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, DrawCardsStep(2));
+        return new SkillPlan(this, DrawCardsStep(V("DrawCount", 2)));
     }
 }
 
@@ -41,6 +41,6 @@ public partial class DefenceFocus : ColorlessSkill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(0));
+        return new SkillPlan(this, BlockStep(V("BaseBlock", 0)));
     }
 }

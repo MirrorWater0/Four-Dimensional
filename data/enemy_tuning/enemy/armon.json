@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "Armon":  {
+                                  "Name":  "Armon",
+                                  "MaxLife":  119
+                              }
+                }
+}

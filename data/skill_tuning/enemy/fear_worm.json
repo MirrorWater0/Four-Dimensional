@@ -1,0 +1,22 @@
+﻿{
+    "skills":  {
+                   "FearWormAttack":  {
+                                          "Name":  "恐惧咬噬",
+                                          "BaseDamage":  4,
+                                          "VulnerableStacks":  2,
+                                          "MaxTargets":  3,
+                                          "HitCount":  1,
+                                          "ClampMax":  999
+                                      },
+                   "FearWormSurvive":  {
+                                           "Name":  "潜伏",
+                                           "BaseBlock":  12,
+                                           "PowerGain":  3
+                                       },
+                   "FearWormTermin":  {
+                                          "Name":  "梦魇缠绕",
+                                          "BaseDamage":  14,
+                                          "StunStacks":  2
+                                      }
+               }
+}

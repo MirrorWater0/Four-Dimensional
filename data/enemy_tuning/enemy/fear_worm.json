@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "FearWorm":  {
+                                     "Name":  "FearWorm",
+                                     "MaxLife":  71
+                                 }
+                }
+}

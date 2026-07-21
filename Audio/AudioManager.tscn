@@ -1,17 +1,92 @@
 [gd_scene format=3 uid="uid://b4i6folibqjya"]
 
 [ext_resource type="Script" uid="uid://17y24fe7hfod" path="res://Audio/AudioManager.cs" id="1"]
+[ext_resource type="AudioStream" uid="uid://1svhiv4tm2hr" path="res://Audio/Sfx/Combat/hurt_stab.wav" id="3_hurt"]
+[ext_resource type="AudioStream" uid="uid://1y44dglwr8od" path="res://Audio/block_gain.wav" id="4_lh8hr"]
+[ext_resource type="AudioStream" uid="uid://dec4s82jnu4vr" path="res://Audio/Sfx/Combat/block_impact_armor.wav" id="5_block_impact"]
+[ext_resource type="AudioStream" uid="uid://b86cum1vvx1c1" path="res://Audio/Sfx/Temporary/map_hover.mp3" id="6_ui_hover"]
+[ext_resource type="AudioStream" uid="uid://cx4ygep2stpx6" path="res://Audio/Sfx/Temporary/ui_click.wav" id="7_ui_click"]
+[ext_resource type="AudioStream" uid="uid://rt6cct2drne0" path="res://Audio/Sfx/Temporary/card_deal.mp3" id="8_card_deal"]
+[ext_resource type="AudioStream" uid="uid://b0smwst814m4k" path="res://Audio/Sfx/Temporary/card_exhaust.mp3" id="9_card_exhaust"]
+[ext_resource type="AudioStream" uid="uid://cg4kfsm04x0yv" path="res://Audio/Sfx/Temporary/battle_start_1.mp3" id="10_battle_start"]
+[ext_resource type="AudioStream" uid="uid://d4i6oc7fukfp1" path="res://Audio/Sfx/Temporary/player_turn.mp3" id="11_player_turn"]
+[ext_resource type="AudioStream" uid="uid://dagf80ofqk3yt" path="res://Audio/card_hover.wav" id="11_r3j77"]
+[ext_resource type="AudioStream" uid="uid://b1l06p76i1ye8" path="res://Audio/Sfx/Temporary/enemy_turn.mp3" id="12_enemy_turn"]
+[ext_resource type="AudioStream" uid="uid://djposhbuijrn8" path="res://Audio/Sfx/Temporary/victory.mp3" id="13_victory"]
+[ext_resource type="AudioStream" uid="uid://drim4ug0hn721" path="res://Audio/Sfx/Temporary/deny.mp3" id="14_deny"]
+[ext_resource type="AudioStream" uid="uid://d27jy1mtw5ijs" path="res://Audio/Sfx/Card/card_pickup.wav" id="15_card_pickup"]
+[ext_resource type="AudioStream" uid="uid://soabffjsnt4c" path="res://Audio/Sfx/UI/Button/button_press_ice_crack.wav" id="16_button_down"]
+[ext_resource type="AudioStream" uid="uid://cf2t3u5t82g4p" path="res://Audio/Sfx/UI/Button/button_release_ice_crack.wav" id="17_button_up"]
+[ext_resource type="AudioStream" uid="uid://dt3trmqntox0m" path="res://Audio/Sfx/Buff/buff_gain_holy.wav" id="19_buff_gain"]
 
 [node name="AudioManager" type="Node" unique_id=1535016815]
 process_mode = 3
 script = ExtResource("1")
 
 [node name="AttackPlayer" type="AudioStreamPlayer" parent="." unique_id=2016564275]
-pitch_scale = 0.61
+volume_db = -4.0
 
 [node name="HurtPlayer" type="AudioStreamPlayer" parent="." unique_id=268489212]
-pitch_scale = 1.8
+stream = ExtResource("3_hurt")
+volume_db = -6.0
 
 [node name="BlockGainPlayer" type="AudioStreamPlayer" parent="." unique_id=2129259566]
+stream = ExtResource("4_lh8hr")
+volume_db = 0.805
 
 [node name="BlockImpactPlayer" type="AudioStreamPlayer" parent="." unique_id=154081632]
+stream = ExtResource("5_block_impact")
+
+[node name="BuffGainPlayer" type="AudioStreamPlayer" parent="." unique_id=1277736717]
+stream = ExtResource("19_buff_gain")
+volume_db = -8.0
+
+[node name="UiHoverPlayer" type="AudioStreamPlayer" parent="." unique_id=602255925]
+stream = ExtResource("6_ui_hover")
+volume_db = -18.0
+
+[node name="UiClickPlayer" type="AudioStreamPlayer" parent="." unique_id=250922231]
+stream = ExtResource("7_ui_click")
+volume_db = -12.0
+
+[node name="UiButtonDownPlayer" type="AudioStreamPlayer" parent="." unique_id=1633163384]
+stream = ExtResource("16_button_down")
+volume_db = -10.0
+
+[node name="UiButtonUpPlayer" type="AudioStreamPlayer" parent="." unique_id=1693096602]
+stream = ExtResource("17_button_up")
+volume_db = -12.0
+
+[node name="CardDealPlayer" type="AudioStreamPlayer" parent="." unique_id=571366138]
+stream = ExtResource("8_card_deal")
+volume_db = -9.0
+
+[node name="CardHoverPlayer" type="AudioStreamPlayer" parent="." unique_id=1310882929]
+stream = ExtResource("11_r3j77")
+
+[node name="CardPickupPlayer" type="AudioStreamPlayer" parent="." unique_id=1864379469]
+stream = ExtResource("15_card_pickup")
+volume_db = -8.604
+
+[node name="CardExhaustPlayer" type="AudioStreamPlayer" parent="." unique_id=208656418]
+stream = ExtResource("9_card_exhaust")
+
+[node name="BattleStartPlayer" type="AudioStreamPlayer" parent="." unique_id=1866184025]
+stream = ExtResource("10_battle_start")
+volume_db = -8.0
+
+[node name="PlayerTurnPlayer" type="AudioStreamPlayer" parent="." unique_id=119796223]
+stream = ExtResource("11_player_turn")
+volume_db = -10.0
+
+[node name="EnemyTurnPlayer" type="AudioStreamPlayer" parent="." unique_id=1155538446]
+stream = ExtResource("12_enemy_turn")
+volume_db = -10.0
+
+[node name="VictoryPlayer" type="AudioStreamPlayer" parent="." unique_id=930727687]
+stream = ExtResource("13_victory")
+volume_db = -9.0
+
+[node name="DenyPlayer" type="AudioStreamPlayer" parent="." unique_id=2127089421]
+stream = ExtResource("14_deny")
+volume_db = -9.0

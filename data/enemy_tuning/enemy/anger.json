@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "AngerElite":  {
+                                       "Name":  "愤怒",
+                                       "MaxLife":  134
+                                   }
+                }
+}

@@ -16,7 +16,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         NonAttack = 2,
     }
 
-    private const string StunIntentionIconPath = "res://battle/buff/StateIcon/Stun.tscn";
     private static readonly Color IntentionHostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color IntentionFriendlyTargetPreviewColor = new(
         0.48f,
@@ -55,6 +54,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     private bool _preserveCurrentIntentionOnNextRefresh;
     private readonly Dictionary<SkillID, int> _specialIntentionCooldowns = new();
     private Character _lastSingleTargetIntentionLock;
+    private Tween _intentionDisplayTween;
 
     public override void _Ready()
     {
@@ -87,7 +87,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     {
         if (Registry != null)
         {
-            int maxLife = Math.Max(1, Registry.MaxLife);
+            int maxLife = GetEffectiveMaxLife(Registry, null);
             CharacterName = Registry.CharacterName;
             PassiveName = Registry.PassiveName;
             PassiveDescription = Registry.PassiveDescription;
@@ -124,7 +124,32 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         if (regedit == null)
             return 0;
 
-        return Math.Max(1, regedit.MaxLife);
+        int maxLife = EnemyTuning.TryGetInt(regedit, nameof(EnemyRegedit.MaxLife), out int tunedMaxLife)
+            ? tunedMaxLife
+            : regedit.MaxLife;
+        return Math.Max(1, maxLife);
+    }
+
+    public bool RefreshTuning()
+    {
+        if (Registry == null)
+            return false;
+
+        int newMaxLife = GetEffectiveMaxLife(Registry, null);
+        if (newMaxLife == BattleMaxLife)
+            return false;
+
+        int oldMaxLife = Math.Max(1, BattleMaxLife);
+        int missingLife = Math.Max(0, oldMaxLife - Life);
+        bool wasFullLife = Life >= oldMaxLife;
+
+        Registry.MaxLife = newMaxLife;
+        Registry.CurrentLife = wasFullLife ? newMaxLife : Math.Clamp(newMaxLife - missingLife, 0, newMaxLife);
+        SetCombatStats(BattlePower, BattleSurvivability, newMaxLife);
+        Life = Registry.CurrentLife;
+        SyncLifeBarsToCurrent(syncBufferValue: true);
+        InvalidateHoverTooltipCache();
+        return true;
     }
 
     protected Character[] ChooseHostileTargetsByOrder(
@@ -399,8 +424,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         if (existing != null)
             return existing;
 
-        PackedScene scene = GD.Load<PackedScene>(StunIntentionIconPath);
-        var stun = scene?.Instantiate<ColorRect>();
+        var stun = Buff.CreateBuffTooltipIcon(Buff.BuffName.Stun);
         if (stun == null)
         {
             stun = new ColorRect { Color = new Color(0.94f, 0.87f, 0.13f, 1f) };
@@ -413,6 +437,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         stun.CustomMinimumSize = Vector2.Zero;
         stun.Position = new Vector2(-30f, -30f);
         stun.Size = new Vector2(60f, 60f);
+        Buff.RefreshTextureIconOverrideLayout(stun);
         if (stun.GetChildOrNull<Label>(0) is Label label)
             label.Visible = false;
 
@@ -431,6 +456,13 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             removeFirstChild: false
         );
         await ToSignal(GetTree().CreateTimer(0.3f), "timeout");
+        ResetIntentionDisplayImmediate();
+    }
+
+    public void ResetIntentionDisplayImmediate()
+    {
+        HideIntentionTargetPreview();
+        HideIntentionDamageSummary();
         AttackIntention.Visible = false;
         SurviveIntention.Visible = false;
         SpecialIntention.Visible = false;
@@ -447,11 +479,16 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
 
         IntentionContorl.Modulate = new Color(1, 1, 1, 0);
         IntentionContorl.Scale = new Vector2(1.8f, 1.8f);
-        Tween tween = CreateTween();
-        tween.SetParallel(true);
-        tween.TweenProperty(IntentionContorl, "modulate", new Color(1, 1, 1, 1), 0.2f);
-        tween
+        _intentionDisplayTween?.Kill();
+        _intentionDisplayTween = CreateTween();
+        _intentionDisplayTween.SetParallel(true);
+        _intentionDisplayTween
+            .TweenProperty(IntentionContorl, "modulate", new Color(1, 1, 1, 1), 0.2f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _intentionDisplayTween
             .TweenProperty(IntentionContorl, "scale", new Vector2(1f, 1f), 0.2f)
+            .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
         if (_intentionPreviewHoverDepth > 0)

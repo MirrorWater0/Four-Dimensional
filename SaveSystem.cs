@@ -115,6 +115,37 @@ public static class SaveSystem
     }
 
     // --- 自动读取 ---
+    public static bool TryReadRunFinished(out bool runFinished)
+    {
+        runFinished = false;
+
+        var config = new ConfigFile();
+        if (config.Load(SavePath) != Error.Ok)
+            return false;
+
+        if (!config.HasSectionKey("Data", nameof(GameInfo.RunFinished)))
+            return true;
+
+        runFinished = config.GetValue("Data", nameof(GameInfo.RunFinished), false).AsBool();
+        return true;
+    }
+
+    public static void LoadRunHistory()
+    {
+        var config = new ConfigFile();
+        if (config.Load(SavePath) != Error.Ok)
+            return;
+
+        if (!config.HasSectionKey("Data", nameof(GameInfo.RunHistoryRecords)))
+            return;
+
+        Variant savedVariant = config.GetValue("Data", nameof(GameInfo.RunHistoryRecords));
+        GameInfo.RunHistoryRecords =
+            DeserializeCollection(savedVariant, typeof(List<RunHistoryRecord>))
+                as List<RunHistoryRecord>
+            ?? new List<RunHistoryRecord>();
+    }
+
     public static void LoadAll()
     {
         var config = new ConfigFile();
@@ -122,6 +153,7 @@ public static class SaveSystem
             return;
 
         FieldInfo[] fields = GetSavableGameInfoFields();
+        GameInfo.NormalEncounterQueueVersion = 0;
 
         foreach (var field in fields)
         {

@@ -62,7 +62,7 @@ public partial class VoidAcolyteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: 2));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount", 2)));
     }
 }
 
@@ -99,7 +99,7 @@ public partial class VoidAcolyteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(7, multiplier: 1, target: HostileTargetReference.All),
+            AttackStep(V("BaseDamage", 7), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
             AddCardsStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,

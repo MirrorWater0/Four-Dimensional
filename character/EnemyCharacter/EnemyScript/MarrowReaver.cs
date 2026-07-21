@@ -80,7 +80,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 11;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -91,15 +91,15 @@ public partial class MarrowReaverAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Survivability, 5)
+            ModifyPropertyStep(PropertyType.Survivability, V("SurvivabilityGain", 5))
         );
     }
 }
 
 public partial class MarrowReaverSurvive : Skill
 {
-    private const int BaseBlock = 32;
-    private const int PowerGain = 2;
+    private const int BaseBlock = 22;
+    private const int PowerGain = 3;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -109,7 +109,7 @@ public partial class MarrowReaverSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -120,7 +120,7 @@ public partial class MarrowReaverSpecial : Skill
     private const int BaseDamage = 10;
     private const int HitCount = 2;
 
-    public override SkillTypes SkillType => SkillTypes.Special;
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "双刃蚀髓";
 

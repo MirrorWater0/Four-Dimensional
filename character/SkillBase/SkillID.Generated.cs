@@ -281,4 +281,22 @@ public enum SkillID
     Calmness = 173,
     [ColorlessSkill]
     DefenceFocus = 174,
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    RenewalFlurry = 175,
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    SoundPickup = 176,
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    LingeringTone = 177,
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    WardGift = 178,
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    ShadowBladeWard = 179,
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    Overdraw = 180,
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    Recycling = 181,
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    Prediction = 182,
+    [PlayerSkill(PlayerCharacterKey.Nightingale)]
+    Search = 183,
 }

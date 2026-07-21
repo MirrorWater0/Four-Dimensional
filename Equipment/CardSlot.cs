@@ -17,8 +17,8 @@ public partial class CardSlot : Control
     private static readonly Color RejectModulate = new(1f, 0.45f, 0.45f, 1f);
     private static readonly Color EnabledModulate = Colors.White;
     private static readonly Color DisabledModulate = new(0.62f, 0.68f, 0.78f, 0.78f);
-    private const float RejectShakeOffset = 10f;
-    private const float RejectShakeStepDuration = 0.045f;
+    private const float RejectPulseScale = 0.96f;
+    private const float RejectPulseDuration = 0.10f;
     private const float RewardIconSize = 68f;
     private const float TalentPointIconSize = 57f;
     private const float RewardIconLeftPadding = 18f;
@@ -287,9 +287,12 @@ public partial class CardSlot : Control
         SyncPanelSizeToCard();
         Vector2 basePosition = Vector2.Zero;
         Color baseModulate = new(1f, 1f, 1f, Panel.Modulate.A);
+        Vector2 baseScale = Panel.Scale == Vector2.Zero ? Vector2.One : Panel.Scale;
         Color targetBorderColor = GetBorderStateColor();
 
         Panel.Position = basePosition;
+        Panel.PivotOffset = Panel.Size * 0.5f;
+        Panel.Scale = baseScale * RejectPulseScale;
         Panel.Modulate = RejectModulate with { A = baseModulate.A };
         if (_runtimeStyleBox != null)
         {
@@ -298,28 +301,11 @@ public partial class CardSlot : Control
         }
 
         _rejectTween = CreateTween();
-        _rejectTween.SetTrans(Tween.TransitionType.Sine);
-        _rejectTween.SetEase(Tween.EaseType.Out);
-        _rejectTween.TweenProperty(
-            Panel,
-            "position",
-            basePosition + new Vector2(-RejectShakeOffset, 0),
-            RejectShakeStepDuration
-        );
-        _rejectTween.TweenProperty(
-            Panel,
-            "position",
-            basePosition + new Vector2(RejectShakeOffset, 0),
-            RejectShakeStepDuration
-        );
-        _rejectTween.TweenProperty(
-            Panel,
-            "position",
-            basePosition + new Vector2(-RejectShakeOffset * 0.55f, 0),
-            RejectShakeStepDuration
-        );
-        _rejectTween.TweenProperty(Panel, "position", basePosition, RejectShakeStepDuration);
         _rejectTween.SetParallel(true);
+        _rejectTween
+            .TweenProperty(Panel, "scale", baseScale, RejectPulseDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
         _rejectTween.TweenProperty(Panel, "modulate", baseModulate, 0.16f);
         if (_runtimeStyleBox != null)
         {
@@ -341,6 +327,7 @@ public partial class CardSlot : Control
             if (Panel != null && GodotObject.IsInstanceValid(Panel))
             {
                 Panel.Position = basePosition;
+                Panel.Scale = baseScale;
                 Panel.Modulate = baseModulate;
             }
 

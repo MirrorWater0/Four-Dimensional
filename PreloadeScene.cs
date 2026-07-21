@@ -10,13 +10,22 @@ public partial class PreloadeScene : Node2D
     public string MainScenePath = "res://BeginGame/StartInterface.tscn";
 
     [Export]
-    public float BlackScreenMinTime = 0.3f;
+    public float BlackScreenMinTime = 0.05f;
 
     [Export]
-    public float FadeOutDuration = 0.25f;
+    public float FadeOutDuration = 0.18f;
 
     [Export]
-    public float WarmupHoldTime = 0.6f;
+    public float WarmupHoldTime = 0f;
+
+    [Export]
+    public bool WarmupBeforeMainScene = false;
+
+    [Export]
+    public bool RunBackgroundWarmupAfterMainScene = false;
+
+    [Export]
+    public float BackgroundWarmupDelay = 2f;
 
     [Export]
     public string[] WarmupScenePaths =
@@ -39,13 +48,16 @@ public partial class PreloadeScene : Node2D
     public bool WarmupAllBattleUIScenes = false;
 
     [Export]
-    public bool WarmupAllShaders = true;
+    public bool WarmupAllShaders = false;
 
     [Export]
     public bool WarmupAllSkills = true;
 
     [Export]
-    public bool PreloadSkillArtTextures = true;
+    public bool PreloadSkillArtTextures = false;
+
+    [Export]
+    public bool PreloadSkillIconTextures = true;
 
     [Export]
     public int ShaderWarmupMaxCount = 0;
@@ -75,6 +87,8 @@ public partial class PreloadeScene : Node2D
     private Node _warmupHolder;
     private ColorRect _shaderWarmupRect;
     private readonly List<Node> _warmupInstances = new();
+    private bool _backgroundWarmupRunning;
+    private bool _warmupFinished;
 
     // Store references to keep them in memory
     public static Dictionary<string, PackedScene> PreloadedScenes =
@@ -103,6 +117,7 @@ public partial class PreloadeScene : Node2D
 
         PreloadedTextures.Clear();
         PreloadedScenes.Clear();
+        StarfieldBackground3D.ReleaseCachedResources();
 
         SkillCard.ClearSharedCaches();
     }
@@ -154,18 +169,9 @@ public partial class PreloadeScene : Node2D
         // Ensure the black frame is rendered before heavy loading.
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
-        GD.Print("--- Start Preloading Scenes ---");
-        await ScanAndLoadAsync("res://");
-        GD.Print($"--- Finished Preloading. Loaded {PreloadedScenes.Count} scenes ---");
+        if (WarmupBeforeMainScene)
+            await RunWarmupPipelineAsync(background: false);
 
-        GD.Print("--- Start Preloading Textures ---");
-        await PreloadTexturesAsync();
-        GD.Print($"--- Finished Preloading. Loaded {PreloadedTextures.Count} textures ---");
-
-        await WarmupInstantiateScenesAsync();
-        await WarmupSkillsAsync();
-        await WarmupShadersAsync();
-        SkillCard.PrewarmExhaustEffect();
         LoadMainSceneIntoHolder();
 
         if (BlackScreenMinTime > 0f)
@@ -174,22 +180,31 @@ public partial class PreloadeScene : Node2D
                 SceneTreeTimer.SignalName.Timeout
             );
 
-        if (WarmupHoldTime > 0f)
+        if (WarmupBeforeMainScene && WarmupHoldTime > 0f)
             await ToSignal(
                 GetTree().CreateTimer(WarmupHoldTime),
                 SceneTreeTimer.SignalName.Timeout
             );
 
-        CleanupWarmupInstances();
+        if (WarmupBeforeMainScene)
+            CleanupWarmupInstances();
 
         if (transitionLayer != null)
             await transitionLayer.FadeFromBlackAsync(FadeOutDuration);
+
+        if (!WarmupBeforeMainScene && RunBackgroundWarmupAfterMainScene)
+            StartBackgroundWarmup();
     }
 
     public override void _Notification(int what)
     {
         if (what == NotificationWMCloseRequest)
             ReleaseCachedResources();
+    }
+
+    private bool CanContinueWarmup()
+    {
+        return GodotObject.IsInstanceValid(this) && IsInsideTree() && !_exitCleanupPerformed;
     }
 
     private void LoadMainSceneIntoHolder()
@@ -210,6 +225,84 @@ public partial class PreloadeScene : Node2D
         _sceneHolder.AddChild(instance);
     }
 
+    private void StartBackgroundWarmup()
+    {
+        if (_backgroundWarmupRunning || _warmupFinished)
+            return;
+        if (!IsInsideTree())
+            return;
+
+        _backgroundWarmupRunning = true;
+        _ = RunBackgroundWarmupAsync();
+    }
+
+    private async System.Threading.Tasks.Task RunBackgroundWarmupAsync()
+    {
+        try
+        {
+            if (BackgroundWarmupDelay > 0f)
+            {
+                await ToSignal(
+                    GetTree().CreateTimer(BackgroundWarmupDelay),
+                    SceneTreeTimer.SignalName.Timeout
+                );
+                if (!CanContinueWarmup())
+                    return;
+            }
+
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (!CanContinueWarmup())
+                return;
+
+            await RunWarmupPipelineAsync(background: true);
+        }
+        catch (Exception e)
+        {
+            GD.PrintErr($"Background warmup failed: {e.Message}");
+        }
+        finally
+        {
+            CleanupWarmupInstances();
+            HideShaderWarmupRect();
+            _backgroundWarmupRunning = false;
+        }
+    }
+
+    private async System.Threading.Tasks.Task RunWarmupPipelineAsync(bool background)
+    {
+        if (_warmupFinished)
+            return;
+        if (!CanContinueWarmup())
+            return;
+
+        string logPrefix = background ? "Background " : "";
+
+        GD.Print($"--- Start {logPrefix}Preloading Scenes ---");
+        await ScanAndLoadAsync("res://");
+        if (!CanContinueWarmup())
+            return;
+        GD.Print($"--- Finished {logPrefix}Preloading. Loaded {PreloadedScenes.Count} scenes ---");
+
+        GD.Print($"--- Start {logPrefix}Preloading Textures ---");
+        await PreloadTexturesAsync();
+        if (!CanContinueWarmup())
+            return;
+        GD.Print($"--- Finished {logPrefix}Preloading. Loaded {PreloadedTextures.Count} textures ---");
+
+        await WarmupInstantiateScenesAsync();
+        if (!CanContinueWarmup())
+            return;
+        await WarmupSkillsAsync();
+        if (!CanContinueWarmup())
+            return;
+        await WarmupShadersAsync();
+        if (!CanContinueWarmup())
+            return;
+        SkillCard.PrewarmExhaustEffect();
+
+        _warmupFinished = true;
+    }
+
     private async System.Threading.Tasks.Task WarmupInstantiateScenesAsync()
     {
         if (_warmupHolder == null)
@@ -221,6 +314,9 @@ public partial class PreloadeScene : Node2D
 
         foreach (var path in paths)
         {
+            if (!CanContinueWarmup())
+                return;
+
             if (string.IsNullOrWhiteSpace(path))
                 continue;
 
@@ -265,7 +361,11 @@ public partial class PreloadeScene : Node2D
             if (WarmupSceneYieldFrames > 0)
             {
                 for (int i = 0; i < WarmupSceneYieldFrames; i++)
+                {
+                    if (!CanContinueWarmup())
+                        return;
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                }
             }
         }
     }
@@ -430,14 +530,19 @@ public partial class PreloadeScene : Node2D
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         AddCharacterPortraitPaths(paths);
 
+        if (PreloadSkillIconTextures)
+        {
+            AddExplicitSkillIconTexturePaths(paths);
+
+            foreach (var path in ScanTexturePaths("res://asset/svg/SkillIcon"))
+                paths.Add(path);
+        }
+
         if (PreloadSkillArtTextures)
         {
             AddExplicitSkillArtTexturePaths(paths);
-            AddExplicitSkillIconTexturePaths(paths);
 
             foreach (var path in ScanTexturePaths("res://asset/CardPicture"))
-                paths.Add(path);
-            foreach (var path in ScanTexturePaths("res://asset/svg/SkillIcon"))
                 paths.Add(path);
         }
 
@@ -445,10 +550,17 @@ public partial class PreloadeScene : Node2D
         int loaded = 0;
         foreach (var path in paths)
         {
+            if (!CanContinueWarmup())
+                return;
+
             LoadTexture(path);
             loaded++;
             if (loaded % batchSize == 0)
+            {
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!CanContinueWarmup())
+                    return;
+            }
         }
     }
 
@@ -463,37 +575,52 @@ public partial class PreloadeScene : Node2D
         if (shaderPaths.Count == 0)
             return;
 
-        _shaderWarmupRect.Visible = true;
-
-        int warmed = 0;
-        foreach (var path in shaderPaths)
+        try
         {
-            if (ShaderWarmupMaxCount > 0 && warmed >= ShaderWarmupMaxCount)
-                break;
+            _shaderWarmupRect.Visible = true;
 
-            var shader = GD.Load<Shader>(path);
-            if (shader == null)
-                continue;
-
-            var material = new ShaderMaterial();
-            material.Shader = shader;
-            _shaderWarmupRect.Material = material;
-
-            int frames = Math.Max(1, ShaderWarmupFramesPerShader);
-            for (int i = 0; i < frames; i++)
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-
-            warmed++;
-
-            if (ShaderWarmupGapFrames > 0)
+            int warmed = 0;
+            foreach (var path in shaderPaths)
             {
-                for (int i = 0; i < ShaderWarmupGapFrames; i++)
+                if (!CanContinueWarmup())
+                    return;
+
+                if (ShaderWarmupMaxCount > 0 && warmed >= ShaderWarmupMaxCount)
+                    break;
+
+                var shader = GD.Load<Shader>(path);
+                if (shader == null)
+                    continue;
+
+                var material = new ShaderMaterial();
+                material.Shader = shader;
+                _shaderWarmupRect.Material = material;
+
+                int frames = Math.Max(1, ShaderWarmupFramesPerShader);
+                for (int i = 0; i < frames; i++)
+                {
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (!CanContinueWarmup())
+                        return;
+                }
+
+                warmed++;
+
+                if (ShaderWarmupGapFrames > 0)
+                {
+                    for (int i = 0; i < ShaderWarmupGapFrames; i++)
+                    {
+                        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                        if (!CanContinueWarmup())
+                            return;
+                    }
+                }
             }
         }
-
-        _shaderWarmupRect.Material = null;
-        _shaderWarmupRect.Visible = false;
+        finally
+        {
+            HideShaderWarmupRect();
+        }
     }
 
     private async System.Threading.Tasks.Task WarmupSkillsAsync()
@@ -507,6 +634,9 @@ public partial class PreloadeScene : Node2D
             int warmed = 0;
             foreach (var id in ids)
             {
+                if (!CanContinueWarmup())
+                    return;
+
                 var skill = Skill.GetSkill(id);
                 if (skill == null)
                     continue;
@@ -523,7 +653,11 @@ public partial class PreloadeScene : Node2D
 
                 warmed++;
                 if (SkillWarmupBatchSize > 0 && warmed % SkillWarmupBatchSize == 0)
+                {
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    if (!CanContinueWarmup())
+                        return;
+                }
             }
         }
         catch (Exception e)
@@ -545,15 +679,31 @@ public partial class PreloadeScene : Node2D
         _warmupInstances.Clear();
     }
 
+    private void HideShaderWarmupRect()
+    {
+        if (!GodotObject.IsInstanceValid(_shaderWarmupRect))
+            return;
+
+        _shaderWarmupRect.Material = null;
+        _shaderWarmupRect.Visible = false;
+    }
+
     private async System.Threading.Tasks.Task ScanAndLoadAsync(string dirPath)
     {
         var paths = ScanScenePaths(dirPath);
         int batchSize = Math.Max(1, PreloadSceneBatchSize);
         for (int i = 0; i < paths.Count; i++)
         {
+            if (!CanContinueWarmup())
+                return;
+
             LoadResource(paths[i]);
             if ((i + 1) % batchSize == 0)
+            {
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                if (!CanContinueWarmup())
+                    return;
+            }
         }
     }
 

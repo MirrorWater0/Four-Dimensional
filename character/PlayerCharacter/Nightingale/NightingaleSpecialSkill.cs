@@ -16,43 +16,10 @@ public partial class NightingaleEnergy : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, EnergyStep(1), ModifyPropertyStep(PropertyType.Power, 1));
-    }
-}
-
-public partial class TempoSurge : Skill
-{
-    public override bool ExhaustsAfterUse => true;
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "疾奏";
-    public override int EnergyCost => 2;
-
-    protected override SkillPlan BuildPlan()
-    {
         return new SkillPlan(
             this,
-            ModifyPropertyStep(PropertyType.Survivability, 3, TargetReference.All)
-        );
-    }
-}
-
-public partial class LongNight : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override string SkillName { get; set; } = "长夜";
-    public override int EnergyCost => 2;
-    public override bool ExhaustsAfterUse => true;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            CarryStep(target: TargetReference.Previous, skillIndex: 3),
-            CarryStep(target: TargetReference.Next, skillIndex: 3)
+            EnergyStep(V("EnergyGain", 1)),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 1))
         );
     }
 }
@@ -70,8 +37,8 @@ public partial class RequiemBloom : Skill
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(2),
-            DiscardCardsStep(2),
+            DrawCardsStep(V("DrawCount", 2)),
+            DiscardCardsStep(V("DiscardCount", 2)),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -82,11 +49,11 @@ public partial class CurtainCallMoment : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int WeakenStacks = 2;
     private const int InvisibleStacks = 2;
-    public override bool ExhaustsAfterUse => true;
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "落幕时刻";
     public override int EnergyCost => 3;
+    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -126,52 +93,6 @@ public partial class SunMoonCycle : Skill
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,
                 target: TargetReference.All
-            )
-        );
-    }
-}
-
-public partial class Swift : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int SwiftStacks = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "迅捷";
-    public override bool ExhaustsAfterUse => true;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Swift,
-                stacks: SwiftStacks,
-                target: TargetReference.Self
-            )
-        );
-    }
-}
-
-public partial class ShadowForm : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int ShadowStacks = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-    public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => 4;
-    public override bool ExhaustsAfterUse => true;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.Shadow,
-                stacks: ShadowStacks,
-                target: TargetReference.Self
             )
         );
     }
@@ -247,28 +168,5 @@ public partial class BrightestMoment : Skill
         OwnerCharater.StartActionBuffs.Remove(invisible);
         OwnerCharater.InvalidateBuffTooltipCache();
         OwnerCharater.BattleNode?.RefreshEnemyIntentionPreviews();
-    }
-}
-
-public partial class EternalDarkSkill : Skill
-{
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EternalDarkStacks = 2;
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } = "永暗";
-    public override bool ExhaustsAfterUse => true;
-    public override int EnergyCost => 1;
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.EternalDark,
-                stacks: EternalDarkStacks,
-                target: TargetReference.Self
-            )
-        );
     }
 }

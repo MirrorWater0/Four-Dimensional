@@ -1,0 +1,22 @@
+﻿{
+    "skills":  {
+                   "BlackHawkAttack":  {
+                                           "Name":  "裂羽连袭",
+                                           "PowerMultiplier":  1,
+                                           "InvisibleStacks":  1,
+                                           "BaseDamage":  5,
+                                           "HitCount":  3
+                                       },
+                   "BlackHawkSpecial":  {
+                                            "Name":  "黑羽风暴",
+                                            "BaseDamage":  4,
+                                            "Multiplier":  1
+                                        },
+                   "BlackHawkSurvive":  {
+                                            "Name":  "夜幕回翔",
+                                            "HealAmount":  10,
+                                            "InvisibleStacks":  2,
+                                            "PowerGain":  2
+                                        }
+               }
+}

@@ -23,21 +23,22 @@ public partial class StartInterface : CanvasLayer
         public Tween Tween;
     }
 
-    public static PackedScene TipScene = GD.Load<PackedScene>("res://battle/UIScene/Tip.tscn");
-    public static PackedScene _Echo = (PackedScene)
-        ResourceLoader.Load("res://character/PlayerCharacter/Echo/Echo.tscn");
-    public static PackedScene _Kasiya = ResourceLoader.Load<PackedScene>(
-        "res://character/PlayerCharacter/Kasiya/kasiya.tscn"
-    );
-    public static PackedScene _Mariya = ResourceLoader.Load<PackedScene>(
-        "res://character/PlayerCharacter/Mariya/Mariya.tscn"
-    );
-    public static PackedScene _Nightingale = ResourceLoader.Load<PackedScene>(
-        "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
-    );
-    private static readonly PackedScene EncyclopediaScene = GD.Load<PackedScene>(
-        "res://Menu/Encyclopedia.tscn"
-    );
+    public static PackedScene TipScene =>
+        field ??= PreloadeScene.GetPackedScene("res://battle/UIScene/Tip.tscn");
+    public static PackedScene _Echo =>
+        field ??= PreloadeScene.GetPackedScene("res://character/PlayerCharacter/Echo/Echo.tscn");
+    public static PackedScene _Kasiya =>
+        field ??= PreloadeScene.GetPackedScene(
+            "res://character/PlayerCharacter/Kasiya/kasiya.tscn"
+        );
+    public static PackedScene _Mariya =>
+        field ??= PreloadeScene.GetPackedScene("res://character/PlayerCharacter/Mariya/Mariya.tscn");
+    public static PackedScene _Nightingale =>
+        field ??= PreloadeScene.GetPackedScene(
+            "res://character/PlayerCharacter/Nightingale/Nightingale.tscn"
+        );
+    private static PackedScene EncyclopediaScene =>
+        field ??= PreloadeScene.GetPackedScene("res://Menu/Encyclopedia.tscn");
     private const string CharacterSelectionOverlayScenePath =
         "res://BeginGame/CharacterSelectionOverlay.tscn";
     private Button StartGameButton =>
@@ -64,6 +65,8 @@ public partial class StartInterface : CanvasLayer
     private readonly Dictionary<Button, MenuButtonVisuals> _menuButtonVisuals = new();
     private bool _isCharacterSelectionTransitioning;
     private bool _isContinuingGame;
+    private bool _menuHasAutosave;
+    private bool _menuAutosaveRunFinished;
     private CharacterSelectionOverlay CharacterSelection =>
         GetNodeOrNull<CharacterSelectionOverlay>("CharacterSelectionOverlay");
 
@@ -71,8 +74,9 @@ public partial class StartInterface : CanvasLayer
     {
         GetTree().Root.GetNodeOrNull<GameOverSummary>("GameOverSummary")?.QueueFree();
 
+        SaveSystem.LoadRunHistory();
         LocalizeStaticTexts();
-        TryLoadAutosaveForMenu();
+        RefreshAutosaveMenuState();
         RefreshContinueButtonState();
         SetupMenuButtonHoverAnimations();
 
@@ -201,6 +205,7 @@ public partial class StartInterface : CanvasLayer
             if (transitionLayer != null)
                 await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
             _isContinuingGame = false;
+            RefreshAutosaveMenuState();
             RefreshContinueButtonState();
             return;
         }
@@ -210,6 +215,7 @@ public partial class StartInterface : CanvasLayer
             if (transitionLayer != null)
                 await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
             _isContinuingGame = false;
+            RefreshAutosaveMenuState();
             RefreshContinueButtonState();
             return;
         }
@@ -221,6 +227,7 @@ public partial class StartInterface : CanvasLayer
             if (transitionLayer != null)
                 await transitionLayer.FadeFromBlackAsync(CharacterSelectionTransitionDuration);
             _isContinuingGame = false;
+            RefreshAutosaveMenuState();
             RefreshContinueButtonState();
             return;
         }
@@ -404,18 +411,22 @@ public partial class StartInterface : CanvasLayer
         AddChild(encyclopedia);
     }
 
-    private void TryLoadAutosaveForMenu()
+    private void RefreshAutosaveMenuState()
     {
-        if (!FileAccess.FileExists(AutosavePath))
+        _menuHasAutosave = FileAccess.FileExists(AutosavePath);
+        _menuAutosaveRunFinished = false;
+
+        if (!_menuHasAutosave)
             return;
 
         try
         {
-            SaveSystem.LoadAll();
+            if (SaveSystem.TryReadRunFinished(out bool runFinished))
+                _menuAutosaveRunFinished = runFinished;
         }
         catch (Exception e)
         {
-            GD.PushError($"StartInterface autosave preload failed: {e}");
+            GD.PushError($"StartInterface autosave status read failed: {e}");
         }
     }
 
@@ -424,15 +435,14 @@ public partial class StartInterface : CanvasLayer
         if (ContinueGameButton == null)
             return;
 
-        bool hasAutosave = FileAccess.FileExists(AutosavePath);
-        ContinueGameButton.Disabled = !hasAutosave || GameInfo.RunFinished;
+        ContinueGameButton.Disabled = !_menuHasAutosave || _menuAutosaveRunFinished;
 
         if (StatusLine == null)
             return;
 
         StatusLine.Text =
-            !hasAutosave ? I18n.Tr("ui.start.status.no_autosave", "未检测到自动存档，只能开始新游戏。")
-            : GameInfo.RunFinished ? I18n.Tr("ui.start.status.finished_run", "当前自动存档已结算完成，请开始新一轮游戏。")
+            !_menuHasAutosave ? I18n.Tr("ui.start.status.no_autosave", "未检测到自动存档，只能开始新游戏。")
+            : _menuAutosaveRunFinished ? I18n.Tr("ui.start.status.finished_run", "当前自动存档已结算完成，请开始新一轮游戏。")
             : I18n.Tr("ui.start.status.can_continue", "检测到自动存档，可以继续上一次游戏。");
     }
 

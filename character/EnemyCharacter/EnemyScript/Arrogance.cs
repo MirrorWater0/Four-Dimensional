@@ -36,7 +36,7 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 166;
+        MaxLife = 162;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -56,7 +56,7 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 5;
+    private const int BaseDamage = 4;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -67,7 +67,7 @@ public partial class ArroganceAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            LowerTargetPropertyStep(PropertyType.Survivability, 4, HostileTargetReference.AttackKey)
+            LowerTargetPropertyStep(PropertyType.Survivability, V("SurvivabilityLoss", 4), HostileTargetReference.AttackKey)
         );
     }
 }
@@ -108,8 +108,8 @@ public partial class ArroganceSpecial : Skill
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: 30, target: TargetReference.Self),
-            ModifyPropertyStep(PropertyType.Power, 10),
+            HealStep(baseHeal: V("BaseHeal", 30), target: TargetReference.Self),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 10)),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

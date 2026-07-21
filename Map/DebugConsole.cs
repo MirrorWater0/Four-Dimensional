@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Godot;
 
@@ -162,6 +163,14 @@ public partial class DebugConsole : CanvasLayer
             ["on/off/toggle，也支持 true/false/1/0/开/关"],
             "战斗测试",
             "bt"
+        ),
+        new(
+            "handpreview",
+            "handpreview [simulate]",
+            "打印或模拟战斗手牌 hover/抓起/效果预览缓存状态。",
+            ["simulate=运行断言模拟"],
+            "手牌预览",
+            "hpv"
         ),
         new("save", "save", "手动保存当前 GameInfo。", Array.Empty<string>(), "保存"),
     ];
@@ -1637,6 +1646,12 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
+        if (Matches(command, "handpreview", "手牌预览", "hpv"))
+        {
+            await ExecuteHandPreviewDebugAsync(args);
+            return;
+        }
+
         if (Matches(command, "save", "保存"))
         {
             SaveSystem.SaveAll();
@@ -1738,6 +1753,28 @@ public partial class DebugConsole : CanvasLayer
         if (!CanPlayerUseConsoleSkill(info, skillId))
         {
             AppendError($"{info.CharacterName} 的技能池或初始牌不包含 {skillId}。");
+            return;
+        }
+
+        Battle battle = FindBattle();
+        if (battle != null && GodotObject.IsInstanceValid(battle))
+        {
+            PlayerCharacter battlePlayer = battle.PlayersList.FirstOrDefault(player =>
+                player != null
+                && GodotObject.IsInstanceValid(player)
+                && player.CharacterIndex == playerIndex
+            );
+            if (battlePlayer == null)
+            {
+                AppendError($"未找到 {info.CharacterName} 对应的战斗角色。");
+                return;
+            }
+
+            battle.AddPlayerBattleStatusCardsToDrawPile(battlePlayer, skillId, count);
+            await Task.CompletedTask;
+            AppendSuccess(
+                $"已将 {GetSkillDisplayName(skillId)} x{count} 塞入 {info.CharacterName} 的战斗抽牌堆。"
+            );
             return;
         }
 
@@ -2122,6 +2159,36 @@ public partial class DebugConsole : CanvasLayer
         }
 
         AppendSuccess($"Battle.Istest 已{(Battle.Istest ? "开启" : "关闭")}。");
+    }
+
+    private async Task ExecuteHandPreviewDebugAsync(string[] args)
+    {
+        Battle battle = FindBattle();
+        CharacterControl control = battle?.CharacterControl;
+        if (control == null || !GodotObject.IsInstanceValid(control))
+        {
+            AppendError("当前不在战斗中，无法读取手牌预览状态。");
+            return;
+        }
+
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        if (args.Length >= 2 && Matches(args[1], "simulate", "test", "run", "模拟", "测试"))
+        {
+            var scenario = await control.RunHandPreviewDebugScenarioAsync();
+            string scenarioJson = JsonSerializer.Serialize(scenario, options);
+            bool ok =
+                scenario.TryGetValue("ok", out object okValue)
+                && okValue is bool okBool
+                && okBool;
+            if (ok)
+                AppendSuccess($"手牌预览模拟通过：\n{scenarioJson}");
+            else
+                AppendError($"手牌预览模拟失败：\n{scenarioJson}");
+            return;
+        }
+
+        string json = JsonSerializer.Serialize(control.GetDebugHandPreviewState(), options);
+        AppendInfo($"手牌预览状态：\n{json}");
     }
 
 

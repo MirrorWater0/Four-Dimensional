@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "BlackHawk":  {
+                                      "Name":  "BlackHawk",
+                                      "MaxLife":  74
+                                  }
+                }
+}

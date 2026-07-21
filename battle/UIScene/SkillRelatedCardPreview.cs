@@ -143,21 +143,19 @@ public partial class SkillRelatedCardPreview : Control
     {
         Transform2D transform = control.GetGlobalTransformWithCanvas();
         Vector2 size = control.Size;
-        Vector2[] points =
-        [
-            transform * Vector2.Zero,
-            transform * new Vector2(size.X, 0f),
-            transform * size,
-            transform * new Vector2(0f, size.Y),
-        ];
+        Vector2 p0 = transform * Vector2.Zero;
+        Vector2 p1 = transform * new Vector2(size.X, 0f);
+        Vector2 p2 = transform * size;
+        Vector2 p3 = transform * new Vector2(0f, size.Y);
 
-        Vector2 min = points[0];
-        Vector2 max = points[0];
-        for (int i = 1; i < points.Length; i++)
-        {
-            min = new Vector2(Mathf.Min(min.X, points[i].X), Mathf.Min(min.Y, points[i].Y));
-            max = new Vector2(Mathf.Max(max.X, points[i].X), Mathf.Max(max.Y, points[i].Y));
-        }
+        Vector2 min = new(
+            Mathf.Min(Mathf.Min(p0.X, p1.X), Mathf.Min(p2.X, p3.X)),
+            Mathf.Min(Mathf.Min(p0.Y, p1.Y), Mathf.Min(p2.Y, p3.Y))
+        );
+        Vector2 max = new(
+            Mathf.Max(Mathf.Max(p0.X, p1.X), Mathf.Max(p2.X, p3.X)),
+            Mathf.Max(Mathf.Max(p0.Y, p1.Y), Mathf.Max(p2.Y, p3.Y))
+        );
 
         return new Rect2(min, max - min);
     }
