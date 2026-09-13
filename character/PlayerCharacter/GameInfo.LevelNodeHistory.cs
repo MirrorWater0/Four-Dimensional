@@ -262,7 +262,7 @@ public static partial class GameInfo
         if (records.Length > 1)
         {
             sb.Append("\n\n[b]历史记录[/b]");
-            foreach (var record in records.Reverse().Skip(1).Take(Math.Max(0, recentLimit - 1)))
+            foreach (var record in records.AsEnumerable().Reverse().Skip(1).Take(Math.Max(0, recentLimit - 1)))
             {
                 sb.Append("\n");
                 sb.Append(BuildRunHistoryRecordBriefText(record));

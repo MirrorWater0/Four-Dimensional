@@ -1891,7 +1891,9 @@ public partial class DebugConsole : CanvasLayer
         info.Life = after;
         info.LifeInitialized = true;
         GameInfo.PlayerCharacters[playerIndex] = info;
-        return after - before;
+        int healed = after - before;
+        ScreenEffectOverlay.PlayMapPartyLifeChange(healed);
+        return healed;
     }
 
     private async Task SyncBattleLifeFromGameInfoAsync(int? playerIndex = null)
