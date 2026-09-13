@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" uid="uid://bm2xlnsg38ttk" path="res://Map/ItemContainer.tscn" id="18_bl6si"]
 [ext_resource type="Shader" uid="uid://cinsfrhlgonxw" path="res://shader/Icon/MapPeekIcon.gdshader" id="19_mappeek"]
 [ext_resource type="Shader" uid="uid://dlgce0jik8xvd" path="res://shader/Icon/HourglassIcon.gdshader" id="20_hourglass"]
+[ext_resource type="Script" uid="uid://c4mapsefxovly1" path="res://Map/ScreenEffectOverlay.cs" id="21_sefx"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -1128,6 +1129,10 @@ offset_right = 1924.0
 offset_bottom = 1200.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
+
+[node name="ScreenEffectOverlay" type="CanvasLayer" parent="." unique_id=1629384751]
+layer = 8
+script = ExtResource("21_sefx")
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1362092444]
 position = Vector2(960, 540)

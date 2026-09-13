@@ -288,6 +288,7 @@ public partial class Map : Control
         SetCameraPosition(_targetPos);
         UpdateMiniMapIndicator();
         SceneTransitionLayer.Ensure(this);
+        ScreenEffectOverlay.EnsureMounted(this);
         EnsureDebugConsole();
         ConnectNodeTypeLegend(NodeTypeLegend);
         DragButton.ButtonDown += () =>
@@ -456,6 +457,7 @@ public partial class Map : Control
             && (
                 string.Equals(layer.Name, "MouseTrail", StringComparison.Ordinal)
                 || string.Equals(layer.Name, "TipLayer", StringComparison.Ordinal)
+                || string.Equals(layer.Name, ScreenEffectOverlay.OverlayNodeName, StringComparison.Ordinal)
             );
     }
 

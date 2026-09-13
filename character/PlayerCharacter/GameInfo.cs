@@ -88,10 +88,12 @@ public static partial class GameInfo
         if (delta == 0 || PlayerCharacters == null || PlayerCharacters.Length == 0)
             return;
 
+        int before = GetPartyLife();
         if (delta > 0)
             HealPartyLife(delta);
         else
             DamagePartyLife(-delta);
+        NotifyMapPartyLifeChanged(GetPartyLife() - before);
     }
 
     public static int HealPartyByMaxLifePercent(float percent)
@@ -123,6 +125,7 @@ public static partial class GameInfo
             totalHealed += afterLife - beforeLife;
         }
 
+        NotifyMapPartyLifeChanged(totalHealed);
         return totalHealed;
     }
 
@@ -153,7 +156,9 @@ public static partial class GameInfo
         info.Life = afterLife;
         info.LifeInitialized = true;
         PlayerCharacters[playerIndex] = info;
-        return afterLife - beforeLife;
+        int healed = afterLife - beforeLife;
+        NotifyMapPartyLifeChanged(healed);
+        return healed;
     }
 
     public static int SetPartyLifeToMaxLifePercent(float percent)
@@ -162,6 +167,7 @@ public static partial class GameInfo
         if (PlayerCharacters == null || PlayerCharacters.Length == 0 || percent <= 0f)
             return 0;
 
+        int beforeTotal = GetPartyLife();
         int totalAdjusted = 0;
         for (int i = 0; i < PlayerCharacters.Length; i++)
         {
@@ -178,6 +184,7 @@ public static partial class GameInfo
             totalAdjusted += Math.Abs(targetLife - beforeLife);
         }
 
+        NotifyMapPartyLifeChanged(GetPartyLife() - beforeTotal);
         return totalAdjusted;
     }
 
@@ -202,6 +209,7 @@ public static partial class GameInfo
             totalHealed += maxLife - beforeLife;
         }
 
+        NotifyMapPartyLifeChanged(totalHealed);
         return totalHealed;
     }
 
@@ -240,6 +248,14 @@ public static partial class GameInfo
             PlayerCharacters[targetIndex] = info;
             amount -= applied;
         }
+    }
+
+    private static void NotifyMapPartyLifeChanged(int delta)
+    {
+        if (delta == 0)
+            return;
+
+        ScreenEffectOverlay.PlayMapPartyLifeChange(delta);
     }
 
     public static bool HasRelic(RelicID relicID)
