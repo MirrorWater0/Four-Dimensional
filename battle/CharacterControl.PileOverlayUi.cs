@@ -86,6 +86,7 @@ public partial class CharacterControl
                 _pileOverlayScrollInputTarget.GuiInput -= OnPileOverlayScrollGuiInput;
 
             _pileOverlayScroll = scroll;
+            _pileOverlayScrollMouseFilter = scroll.MouseFilter;
             _pileOverlayScrollInputTarget = scroll;
             _pileOverlayScroll.GuiInput += OnPileOverlayScrollGuiInput;
             _pileOverlayVScrollBar = _pileOverlayScroll.GetVScrollBar();
@@ -396,14 +397,33 @@ public partial class CharacterControl
         if (!_isPileCardSelectionActive || _pileOverlayContentTemporarilyHidden == hidden)
             return;
 
+        if (!hidden)
+        {
+            RestorePileCardSelectionOverlay();
+            return;
+        }
+
         _pileOverlayContentTemporarilyHidden = hidden;
-        if (hidden)
-            PlayPileOverlayTemporaryHideAnimation();
-        else
-            PlayPileOverlayTemporaryShowAnimation();
+        SetPileOverlayContentInputEnabled(!hidden);
+        PlayPileOverlayTemporaryHideAnimation();
 
         SyncPileOverlaySelectionButtons();
-        RequestTurnUiRefresh(refreshHover: hidden);
+        RequestTurnUiRefresh(refreshHover: true);
+    }
+
+    private void SetPileOverlayContentInputEnabled(bool enabled)
+    {
+        if (_pileOverlayMask != null && GodotObject.IsInstanceValid(_pileOverlayMask))
+            _pileOverlayMask.MouseFilter = enabled ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+
+        if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
+        {
+            _pileOverlayScroll.MouseFilter = enabled
+                ? _pileOverlayScrollMouseFilter
+                : MouseFilterEnum.Ignore;
+        }
+
+        SetPileSelectionCardPointerInputEnabled(enabled);
     }
 
     private void PlayPileOverlayTemporaryHideAnimation()
@@ -453,6 +473,21 @@ public partial class CharacterControl
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.In);
         }
+
+        _pileOverlayFadeTween.SetParallel(false);
+        _pileOverlayFadeTween.TweenCallback(
+            Callable.From(() =>
+            {
+                if (
+                    !_pileOverlayContentTemporarilyHidden
+                    || _pileOverlayRoot == null
+                    || !GodotObject.IsInstanceValid(_pileOverlayRoot)
+                )
+                    return;
+
+                _pileOverlayRoot.Visible = false;
+            })
+        );
     }
 
     private void PlayPileOverlayTemporaryShowAnimation()
@@ -567,7 +602,8 @@ public partial class CharacterControl
             return;
 
         mask.SetAnchorsPreset(LayoutPreset.FullRect);
-        mask.Color = new Color(0f, 0f, 0f, 0.68f);
+        if (mask.Color.A <= 0f)
+            mask.Color = new Color(0f, 0f, 0f, 0.68f);
         mask.MouseFilter = MouseFilterEnum.Stop;
         mask.ZIndex = PileOverlayMaskZIndex;
         if (_pileOverlayMaskInputTarget != mask)

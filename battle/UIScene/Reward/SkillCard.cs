@@ -15,63 +15,73 @@ public sealed class CardTrailMoveOptions
     public float GlowMultiplier { get; init; } = 1.2f;
     public bool HideCardVisualOnArrival { get; init; } = true;
     public bool RotateWithVelocity { get; init; } = true;
+    public float RotationSpinTurns { get; init; }
+    public Action OnArrival { get; init; }
 }
 
 public partial class SkillCard : Control
 {
     private const int DefaultDescriptionFontSize = 17;
     private const int MinDescriptionFontSize = 8;
-    private const string EnergyCostNumberColor = "#fff05a";
-    private const string EnergyCostInsufficientNumberColor = "#9aa0a8";
+    private const string EnergyCostNumberColor = "#e8ebee";
+    private const string EnergyCostInsufficientNumberColor = "#858b92";
+    private const float OrnateFrameBrightness = 1.56f;
     private static readonly Vector2 CardBaseSize = new(240f, 370f);
-    private static readonly Color CardBaseColor = new(0.028700002f, 0.04109f, 0.07f, 0.82f);
-    private static readonly Color ArtFrameBaseColor = new(0.07350001f, 0.09389999f, 0.15f, 0.56f);
-    private static readonly Color DescriptionBaseColor = new(
-        0.06666667f,
-        0.08627451f,
-        0.13333334f,
-        0.96f
-    );
-    private static readonly Color FooterBaseColor = new(
-        0.050980393f,
-        0.07058824f,
-        0.10980392f,
-        0.98f
-    );
 
-    public Panel BG => field ??= GetNode<Panel>("SubViewport/BG");
-    public Panel InnerFrame => field ??= GetNode<Panel>("SubViewport/InnerFrame");
-    public RichTextLabel Description => field ??= GetNode<RichTextLabel>("SubViewport/Description");
-    public Label NameLabel => field ??= GetNode<Label>("SubViewport/NameLabel");
-    public Button Button => field ??= GetNode<Button>("SubViewport/Button");
-    public CanvasGroup CardVisualRoot => field ??= GetNodeOrNull<CanvasGroup>("SubViewport");
+    public Control CardVisualScaleHost => field ??= GetNode<Control>("VisualTransform");
+    public Panel BG => field ??= GetNode<Panel>("VisualTransform/SubViewport/BG");
+    public Panel InnerFrame => field ??= GetNode<Panel>("VisualTransform/SubViewport/InnerFrame");
+    public RichTextLabel Description =>
+        field ??= GetNode<RichTextLabel>("VisualTransform/SubViewport/Description");
+    public Label NameLabel => field ??= GetNode<Label>("VisualTransform/SubViewport/NameLabel");
+    public Button Button => field ??= GetNode<Button>("VisualTransform/SubViewport/Button");
+    public CanvasGroup CardVisualRoot =>
+        field ??= GetNodeOrNull<CanvasGroup>("VisualTransform/SubViewport");
     public TextureRect SkillPicture =>
-        field ??= GetNodeOrNull<TextureRect>("SubViewport/ArtFrame/SkillPicture");
+        field ??= GetNodeOrNull<TextureRect>("VisualTransform/SubViewport/ArtFrame/SkillPicture");
     public TextureRect SkillIcon =>
-        field ??= GetNode<TextureRect>("SubViewport/ArtFrame/SkillIcon");
-    public Panel HoverHint => field ??= GetNode<Panel>("SubViewport/HoverHint");
-    public Panel BG2 => field ??= GetNode<Panel>("SubViewport/BG2");
-    public Panel ArtFrame => field ??= GetNode<Panel>("SubViewport/ArtFrame");
-    public Control RarityBadge => field ??= GetNode<Control>("SubViewport/RarityBadge");
-    public Control EnergyBadge => field ??= GetNode<Control>("SubViewport/EnergyBadge");
-    public Label TypeLabel => field ??= GetNode<Label>("SubViewport/TypeBadge/TypeLabel");
-    public Label CharacterName => field ??= GetNode<Label>("SubViewport/CharacterName");
+        field ??= GetNode<TextureRect>("VisualTransform/SubViewport/ArtFrame/SkillIcon");
+    public Panel HoverHint => field ??= GetNode<Panel>("VisualTransform/SubViewport/HoverHint");
+    public Panel BG2 => field ??= GetNode<Panel>("VisualTransform/SubViewport/BG2");
+    public Panel ArtFrame => field ??= GetNode<Panel>("VisualTransform/SubViewport/ArtFrame");
+    public Control RarityBadge =>
+        field ??= GetNode<Control>("VisualTransform/SubViewport/RarityBadge");
+    public Control EnergyBadge =>
+        field ??= GetNode<Control>("VisualTransform/SubViewport/EnergyBadge");
+    public Label TypeLabel =>
+        field ??= GetNode<Label>("VisualTransform/SubViewport/TypeBadge/TypeLabel");
+    public Label CharacterName =>
+        field ??= GetNode<Label>("VisualTransform/SubViewport/CharacterName");
     public RichTextLabel EnergyCost =>
-        field ??= GetNode<RichTextLabel>("SubViewport/EnergyBadge/EnergyCost");
-    public ColorRect ArtFill => field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtFill");
+        field ??= GetNode<RichTextLabel>("VisualTransform/SubViewport/EnergyBadge/EnergyCost");
+    public ColorRect ArtFill =>
+        field ??= GetNodeOrNull<ColorRect>("VisualTransform/SubViewport/ArtFrame/ArtFill");
     public ColorRect ArtBandTop =>
-        field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtBandTop");
-    public ColorRect TopAccent => field ??= GetNodeOrNull<ColorRect>("SubViewport/TopAccent");
+        field ??= GetNodeOrNull<ColorRect>("VisualTransform/SubViewport/ArtFrame/ArtBandTop");
+    public ColorRect TopAccent =>
+        field ??= GetNodeOrNull<ColorRect>("VisualTransform/SubViewport/TopAccent");
+    public ColorRect CharacterAccent =>
+        field ??= GetNodeOrNull<ColorRect>("VisualTransform/SubViewport/CharacterAccent");
+    public TextureRect OrnateFrame =>
+        field ??= GetNodeOrNull<TextureRect>("VisualTransform/SubViewport/OrnateFrame");
     public ColorRect ArtDiamondOuter =>
-        field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtDiamondOuter");
+        field ??= GetNodeOrNull<ColorRect>(
+            "VisualTransform/SubViewport/ArtFrame/ArtDiamondOuter"
+        );
     public ColorRect ArtDiamondInner =>
-        field ??= GetNodeOrNull<ColorRect>("SubViewport/ArtFrame/ArtDiamondInner");
-    public Node2D NativeFrame => field ??= GetNodeOrNull<Node2D>("SubViewport/NativeFrame");
-    public Polygon2D RarityPlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/RarityPlate");
-    public Polygon2D EnergyPlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/EnergyPlate");
-    public Polygon2D NamePlate => field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/NamePlate");
+        field ??= GetNodeOrNull<ColorRect>(
+            "VisualTransform/SubViewport/ArtFrame/ArtDiamondInner"
+        );
+    public Node2D NativeFrame =>
+        field ??= GetNodeOrNull<Node2D>("VisualTransform/SubViewport/NativeFrame");
+    public Polygon2D RarityPlate =>
+        field ??= GetNodeOrNull<Polygon2D>("VisualTransform/SubViewport/RarityPlate");
+    public Polygon2D EnergyPlate =>
+        field ??= GetNodeOrNull<Polygon2D>("VisualTransform/SubViewport/EnergyPlate");
+    public Polygon2D NamePlate =>
+        field ??= GetNodeOrNull<Polygon2D>("VisualTransform/SubViewport/BG2/NamePlate");
     public Polygon2D CharacterPlate =>
-        field ??= GetNodeOrNull<Polygon2D>("SubViewport/BG2/CharacterPlate");
+        field ??= GetNodeOrNull<Polygon2D>("VisualTransform/SubViewport/BG2/CharacterPlate");
     public Node2D DiscardTrailTarget => field ??= GetNodeOrNull<Node2D>("DiscardCardTrailTarget");
     public Line DiscardTrail => field ??= GetNodeOrNull<Line>("DiscardCardTrail");
     public GpuParticles2D DiscardTrailParticles =>
@@ -91,10 +101,13 @@ public partial class SkillCard : Control
     public bool AutoAdjustDescriptionTextSize { get; set; } = true;
     public bool IsPlayableHighlightEnabled => _playableHighlightEnabled;
     public Vector2 ConfiguredDisplayScale => _configuredDisplayScale;
+    public float PointerHoverScaleMultiplier { get; set; } = 1.08f;
 
     private Tween _progressTween;
     private Tween _pressTween;
     private Tween _hoverTween;
+    private Tween _rejectShakeTween;
+    private Tween _visualLayoutTween;
     private Tween _motionTween;
     private Tween _drawSettleTween;
     private Tween _playableHighlightTween;
@@ -106,15 +119,14 @@ public partial class SkillCard : Control
     private int _baseDescriptionFontSize;
     private int _textAdjustVersion;
     private Vector2 _baseScale = Vector2.One;
+    // Selection can enlarge VisualTransform while the SkillCard root stays in its hand slot.
+    // Pointer hover multiplies this baseline instead of replacing it.
+    private Vector2 _visualTransformBaseScale = Vector2.One;
+    private Vector2 _visualTransformHoverScale = Vector2.One;
     private Vector2 _configuredDisplayScale = Vector2.One;
     private bool _pilePreviewVisualsActive;
     private const int PilePreviewHoverZIndex = 12;
     private const float DefaultCanvasFitMargin = 32f;
-    private StyleBoxFlat _bgStyle;
-    private StyleBoxFlat _innerFrameStyle;
-    private StyleBoxFlat _descriptionStyle;
-    private StyleBoxFlat _bg2Style;
-    private StyleBoxFlat _artFrameStyle;
     private ShaderMaterial _defaultCardMaterial;
     private ShaderMaterial _playableHighlightMaterial;
     private ColorRect _playableHighlight;
@@ -132,7 +144,6 @@ public partial class SkillCard : Control
     private static readonly Color HostileTargetPreviewColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color FriendlyTargetPreviewColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Color ExhaustFadeModulate = new(0.1f, 0.1f, 0.1f, 0f);
-    private static readonly Vector2 DamagePreviewLabelOffset = new(-50f, -115f);
     private const int KeywordTooltipHoverDelayMs = 70;
     private static readonly Dictionary<Skill.SkillTypes, Texture2D> TypeIconCache = new();
     private static readonly Dictionary<SkillID, Texture2D> SkillIconCache = new();
@@ -185,10 +196,6 @@ public partial class SkillCard : Control
     private int _debugSkillPreviewShowCalls;
     private int _debugSkillPreviewShowSkipped;
     private int _debugSkillPreviewCacheBuilds;
-    private Skill.SkillRarity _lastAppliedRarity = Skill.SkillRarity.Common;
-    private bool _lastAppliedStatusCard;
-    private bool _lastAppliedColorlessCard;
-    private string _lastAppliedStyleCharacterKey = string.Empty;
     private Tip KeywordTooltip => _keywordTooltip ??= EnsureGlobalTooltip();
     private SkillRelatedCardPreview RelatedCardPreview =>
         _relatedCardPreview ??= EnsureRelatedCardPreview();
@@ -203,6 +210,7 @@ public partial class SkillCard : Control
         HoverHint.Visible = false;
         ApplyConfiguredDisplayScale();
         PivotOffsetRatio = new Vector2(0.5f, 0.5f);
+        ResetCardVisualHoverTransform();
         Button.MouseEntered += () => ApplyPointerHoverState(true);
         Button.MouseExited += () => ApplyPointerHoverState(false);
         RestoreDefaultCardMaterial()?.SetShaderParameter("progress", 0f);
@@ -255,6 +263,8 @@ public partial class SkillCard : Control
 
         RestoreDefaultPilePreviewVisuals();
         SetCardVisualVisible(true);
+        ResetCardVisualHoverTransform();
+        PointerHoverScaleMultiplier = 1.08f;
         HoverHint.Visible = false;
         PivotOffset = CardBaseSize * 0.5f;
         ApplyConfiguredDisplayScale();
@@ -294,6 +304,8 @@ public partial class SkillCard : Control
 
         RestoreDefaultPilePreviewVisuals();
         SetCardVisualVisible(true);
+        ResetCardVisualHoverTransform();
+        PointerHoverScaleMultiplier = 1.08f;
         HoverHint.Visible = false;
         PivotOffset = CardBaseSize * 0.5f;
         ApplyConfiguredDisplayScale();
@@ -327,25 +339,7 @@ public partial class SkillCard : Control
         if (_handIndexLabel != null && GodotObject.IsInstanceValid(_handIndexLabel))
             return _handIndexLabel;
 
-        _handIndexLabel = new Label
-        {
-            Name = "HandIndexLabel",
-            Text = "1",
-            Position = new Vector2(0f, -48f),
-            Size = new Vector2(CardBaseSize.X, 38f),
-            CustomMinimumSize = new Vector2(CardBaseSize.X, 38f),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ZIndex = 500,
-            Visible = false,
-        };
-        _handIndexLabel.AddThemeFontSizeOverride("font_size", 30);
-        _handIndexLabel.AddThemeColorOverride("font_color", new Color(1f, 0.96f, 0.72f, 1f));
-        _handIndexLabel.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.96f));
-        _handIndexLabel.AddThemeConstantOverride("outline_size", 5);
-        CardVisualRoot.AddChild(_handIndexLabel);
-        CardVisualRoot.MoveChild(_handIndexLabel, CardVisualRoot.GetChildCount() - 1);
+        _handIndexLabel = GetNodeOrNull<Label>("VisualTransform/SubViewport/HandIndexLabel");
         return _handIndexLabel;
     }
 
@@ -496,6 +490,7 @@ public partial class SkillCard : Control
         bool cacheFresh =
             ReferenceEquals(_cachedSkillPreviewSkill, CurrentSkill)
             && _cachedSkillPreviewRevision == revision;
+        bool previewWasActive = _skillPreviewActive;
 
         if (!cacheFresh)
             InvalidateSkillPreviewState();
@@ -511,7 +506,7 @@ public partial class SkillCard : Control
             _cachedRelatedSkillIds = Array.Empty<SkillID>();
         }
 
-        if (_skillPreviewActive)
+        if (previewWasActive)
             ShowSkillPreview();
     }
 
@@ -572,11 +567,7 @@ public partial class SkillCard : Control
             if (SkillIcon.Visible)
                 SkillIcon.Visible = false;
             SetArtPlaceholderVisible(true);
-            ApplyRarityStyles(Skill.SkillRarity.Common);
-            _lastAppliedRarity = Skill.SkillRarity.Common;
-            _lastAppliedStatusCard = false;
-            _lastAppliedColorlessCard = false;
-            _lastAppliedStyleCharacterKey = string.Empty;
+            ApplyCardAccentColors(null);
             ApplyPreferredDescriptionFontSize();
             return;
         }
@@ -596,6 +587,7 @@ public partial class SkillCard : Control
             : CurrentSkill.SkillType.GetDescription();
         string descriptionText = CurrentSkill.Description ?? string.Empty;
         string centeredEnergyText = BuildEnergyCostText(CurrentSkill, _energyCostAffordable);
+        ApplyCardAccentColors(CurrentSkill);
         bool textChanged = false;
         if (NameLabel.Text != displayName)
         {
@@ -616,36 +608,6 @@ public partial class SkillCard : Control
         }
         if (EnergyCost.Text != centeredEnergyText)
             EnergyCost.Text = centeredEnergyText;
-
-        string styleCharacterKey = isStatusCard
-            ? string.Empty
-            : PreviewCharacterKey
-                ?? (CurrentSkill.OwnerCharater as PlayerCharacter)?.CharacterKey
-                ?? CurrentSkill.OwnerCharater?.CharacterName
-                ?? string.Empty;
-        bool shouldRefreshStyle =
-            _lastAppliedRarity != CurrentSkill.Rarity
-            || _lastAppliedStatusCard != isStatusCard
-            || _lastAppliedColorlessCard != isColorlessCard
-            || !string.Equals(
-                _lastAppliedStyleCharacterKey,
-                styleCharacterKey,
-                StringComparison.Ordinal
-            );
-        if (shouldRefreshStyle)
-        {
-            ApplyRarityStyles(CurrentSkill.Rarity);
-            if (isStatusCard)
-                ApplyStatusCardStyle();
-            else if (isColorlessCard && !TryGetCharacterPlateColor(CurrentSkill, out _))
-                ApplyColorlessPlateStyle();
-            else
-                ApplyCharacterPlateStyle(CurrentSkill);
-            _lastAppliedRarity = CurrentSkill.Rarity;
-            _lastAppliedStatusCard = isStatusCard;
-            _lastAppliedColorlessCard = isColorlessCard;
-            _lastAppliedStyleCharacterKey = styleCharacterKey;
-        }
 
         Texture2D skillPicture = GetSkillPictureTexture(
             CurrentSkill,
@@ -681,6 +643,79 @@ public partial class SkillCard : Control
 
         if (textChanged)
             ApplyDescriptionFontSizing();
+    }
+
+    private void ApplyCardAccentColors(Skill skill)
+    {
+        Color characterColor = ResolveCharacterAccentColor(skill);
+        Color rarityColor = skill == null
+            ? new Color(0.58f, 0.6f, 0.64f, 1f)
+            : Skill.GetRarityBorderColor(skill.Rarity);
+
+        ApplyAccentModulate(CharacterAccent, characterColor);
+        ApplyAccentFontColor(CharacterName, characterColor.Lerp(Colors.White, 0.38f));
+        ApplyAccentModulate(OrnateFrame, GetOrnateFrameColor(rarityColor));
+        ApplyAccentModulate(RarityPlate, rarityColor);
+        ApplyAccentModulate(EnergyPlate, GetMutedAccentColor(characterColor, 0.52f));
+        ApplyAccentModulate(NamePlate, GetMutedAccentColor(characterColor, 0.72f));
+        ApplyAccentModulate(CharacterPlate, GetMutedAccentColor(characterColor, 0.52f));
+        ApplyAccentModulate(ArtBandTop, GetMutedAccentColor(characterColor, 0.84f));
+        ApplyAccentModulate(TopAccent, GetMutedAccentColor(rarityColor, 0.72f));
+    }
+
+    private static Color GetMutedAccentColor(Color color, float alpha)
+    {
+        return new Color(
+            Mathf.Lerp(0.42f, color.R, 0.7f),
+            Mathf.Lerp(0.48f, color.G, 0.7f),
+            Mathf.Lerp(0.56f, color.B, 0.7f),
+            alpha
+        );
+    }
+
+    private static Color GetOrnateFrameColor(Color rarityColor)
+    {
+        return new Color(
+            rarityColor.R * OrnateFrameBrightness,
+            rarityColor.G * OrnateFrameBrightness,
+            rarityColor.B * OrnateFrameBrightness,
+            rarityColor.A
+        );
+    }
+
+    private Color ResolveCharacterAccentColor(Skill skill)
+    {
+        if (skill?.IsColorless == true)
+            return CharacterPlateColors.ColorlessColor;
+
+        string ownerKey = skill?.OwnerCharater is PlayerCharacter player
+            ? player.CharacterKey
+            : string.Empty;
+        string ownerName = skill?.OwnerCharater?.CharacterName;
+        string[] candidates = [PreviewCharacterKey, ownerKey, PreviewCharacterName, ownerName];
+        foreach (string candidate in candidates)
+        {
+            if (CharacterPlateColors.TryGetColor(candidate, out Color color))
+                return color;
+        }
+
+        return new Color(0.58f, 0.6f, 0.64f, 1f);
+    }
+
+    private static void ApplyAccentModulate(CanvasItem item, Color color)
+    {
+        if (item != null && GodotObject.IsInstanceValid(item) && item.Modulate != color)
+            item.Modulate = color;
+    }
+
+    private static void ApplyAccentFontColor(Label label, Color color)
+    {
+        if (
+            label != null
+            && GodotObject.IsInstanceValid(label)
+            && label.GetThemeColor("font_color") != color
+        )
+            label.AddThemeColorOverride("font_color", color);
     }
 
     public void SetEnergyCostText(string text)
@@ -873,6 +908,52 @@ public partial class SkillCard : Control
             ApplyPointerHoverState(false, instant: true);
     }
 
+    /// <summary>
+    /// Updates the visual-only hover layer without moving the SkillCard layout root.
+    /// This explicit path is also used by battle cards, whose automatic card hover is disabled.
+    /// </summary>
+    public void SetCenteredPointerHoverState(bool hovered, bool instant = false)
+    {
+        if (hovered)
+        {
+            if (
+                !HoverUiEnabled
+                || Button.Disabled
+                || Input.IsMouseButtonPressed(MouseButton.Left)
+            )
+            {
+                return;
+            }
+
+            ApplyPointerHoverState(true, instant);
+            TweenPointerHoverScale(
+                Vector2.One * PointerHoverScaleMultiplier,
+                instant,
+                force: true
+            );
+            return;
+        }
+
+        ApplyPointerHoverState(false, instant);
+        TweenPointerHoverScale(Vector2.One, instant, force: true);
+    }
+
+    /// <summary>Restores a selected card's explicit hover after layout/input refreshes.</summary>
+    public void EnsureCenteredPointerHoverState(bool instant = false)
+    {
+        Vector2 targetHoverScale = Vector2.One * PointerHoverScaleMultiplier;
+        if (
+            _pointerHoverActive
+            && HoverHint.Visible
+            && _visualTransformHoverScale.DistanceSquaredTo(targetHoverScale) < 0.000001f
+        )
+        {
+            return;
+        }
+
+        SetCenteredPointerHoverState(true, instant);
+    }
+
     public void SetTransientPointerInputDisabled(
         bool disabled,
         bool refreshHoverWhenEnabled = false
@@ -956,7 +1037,7 @@ public partial class SkillCard : Control
             ClearStaleSiblingPilePreviewHoverStates();
             HoverHint.Visible = true;
             ScheduleKeywordTooltip();
-            TweenPointerHoverScale(_baseScale * 1.08f, instant);
+            TweenPointerHoverScale(Vector2.One * PointerHoverScaleMultiplier, instant);
             if (_pilePreviewVisualsActive)
                 ZIndex = PilePreviewHoverZIndex;
             return;
@@ -965,7 +1046,7 @@ public partial class SkillCard : Control
         _keywordTooltipHoverVersion++;
         _pointerHoverActive = false;
         HideHoverUi();
-        TweenPointerHoverScale(_baseScale, instant);
+        TweenPointerHoverScale(Vector2.One, instant);
         if (_pilePreviewVisualsActive)
             ZIndex = 0;
     }
@@ -1053,30 +1134,206 @@ public partial class SkillCard : Control
         return null;
     }
 
-    private void TweenPointerHoverScale(Vector2 targetScale, bool instant)
+    private void TweenPointerHoverScale(Vector2 targetScale, bool instant, bool force = false)
     {
-        if (!UseDefaultHoverEffect)
+        if (!UseDefaultHoverEffect && !force)
             return;
 
+        _visualTransformHoverScale = targetScale;
+        TweenCenteredScale(
+            _visualTransformBaseScale * targetScale,
+            GetPointerHoverScaleDuration(targetScale),
+            Tween.TransitionType.Cubic,
+            GetPointerHoverScaleEase(targetScale),
+            instant
+        );
+    }
+
+    /// <summary>
+    /// The single entry point for interactive card scaling. SkillCard stays as the layout frame;
+    /// the VisualTransform Control is the sole card-wide transform node.
+    /// </summary>
+    public Tween TweenCenteredScale(
+        Vector2 targetScale,
+        float duration,
+        Tween.TransitionType transition = Tween.TransitionType.Cubic,
+        Tween.EaseType ease = Tween.EaseType.Out,
+        bool instant = false,
+        bool useGlobalScale = false
+    )
+    {
         _hoverTween?.Kill();
-        if (instant || !IsInsideTree())
+
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return null;
+
+        EnsureVisualTransformPivot(visualScaleHost);
+        Vector2 resolvedScale = useGlobalScale
+            ? GetVisualTransformLocalScaleFromGlobalScale(visualScaleHost, targetScale)
+            : targetScale;
+        if (useGlobalScale)
+            _visualTransformBaseScale = resolvedScale;
+
+        if (instant || duration <= 0f || !IsInsideTree())
         {
-            Scale = targetScale;
-            return;
+            visualScaleHost.Scale = resolvedScale;
+            return null;
         }
 
         _hoverTween = CreateTween();
+        _hoverTween.SetParallel(true);
         _hoverTween
-            .TweenProperty(this, "scale", targetScale, GetPointerHoverScaleDuration(targetScale))
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(GetPointerHoverScaleEase(targetScale));
+            .TweenProperty(
+                visualScaleHost,
+                "scale",
+                resolvedScale,
+                duration
+            )
+            .SetTrans(transition)
+            .SetEase(ease);
+        return _hoverTween;
+    }
+
+    /// <summary>
+    /// Moves a card's visual layer to a selection layout without moving the SkillCard root out
+    /// of its hand slot. The layout scale becomes the new baseline for pointer hover.
+    /// </summary>
+    public Tween TweenCenteredVisualTransformLayout(
+        Vector2 targetLocalPosition,
+        Vector2 targetGlobalScale,
+        float duration,
+        Tween.TransitionType transition = Tween.TransitionType.Cubic,
+        Tween.EaseType ease = Tween.EaseType.Out,
+        bool instant = false
+    )
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return null;
+
+        _visualLayoutTween?.Kill();
+        EnsureVisualTransformPivot(visualScaleHost);
+        _visualTransformBaseScale = GetVisualTransformLocalScaleFromGlobalScale(
+            visualScaleHost,
+            targetGlobalScale
+        );
+        Vector2 targetScale = _visualTransformBaseScale * _visualTransformHoverScale;
+
+        if (instant || duration <= 0f || !IsInsideTree())
+        {
+            visualScaleHost.Position = targetLocalPosition;
+            TweenCenteredScale(targetScale, 0f, transition, ease, instant: true);
+            return null;
+        }
+
+        // Position/layout and pointer scaling must not share a Tween. A selected card can move
+        // beneath a stationary pointer; starting its hover scale must not cancel that movement.
+        _visualLayoutTween = CreateTween();
+        _visualLayoutTween
+            .TweenProperty(visualScaleHost, "position", targetLocalPosition, duration)
+            .SetTrans(transition)
+            .SetEase(ease);
+        TweenCenteredScale(targetScale, duration, transition, ease);
+        return _visualLayoutTween;
+    }
+
+    /// <summary>
+    /// Resolves the VisualTransform's local position from an on-screen centre. Its pivot stays
+    /// at the card centre, so the root can remain at its original hand-slot coordinates.
+    /// </summary>
+    public Vector2 GetCenteredVisualTransformLocalPosition(Vector2 visualGlobalCenter)
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return Vector2.Zero;
+
+        EnsureVisualTransformPivot(visualScaleHost);
+        Transform2D rootTransform = GetGlobalTransformWithCanvas();
+        if (Mathf.IsZeroApprox(rootTransform.Determinant()))
+            return visualScaleHost.Position;
+
+        return rootTransform.AffineInverse() * visualGlobalCenter - visualScaleHost.PivotOffset;
+    }
+
+    public Vector2 GetCenteredVisualTransformGlobalScale()
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return Vector2.One;
+
+        Transform2D transform = visualScaleHost.GetGlobalTransformWithCanvas();
+        return new Vector2(transform.X.Length(), transform.Y.Length());
+    }
+
+    public float GetCenteredVisualTransformGlobalRotation()
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        return visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost)
+            ? 0f
+            : visualScaleHost.GetGlobalTransformWithCanvas().X.Angle();
+    }
+
+    public void SetCenteredVisualTransformGlobalRotation(float globalRotation)
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return;
+
+        float parentRotation = visualScaleHost.GetParent() is CanvasItem parent
+            ? parent.GetGlobalTransformWithCanvas().X.Angle()
+            : 0f;
+        visualScaleHost.Rotation = globalRotation - parentRotation;
+    }
+
+    private static Vector2 GetVisualTransformLocalScaleFromGlobalScale(
+        Control visualScaleHost,
+        Vector2 targetGlobalScale
+    )
+    {
+        if (visualScaleHost.GetParent() is not CanvasItem parent)
+            return targetGlobalScale;
+
+        Transform2D parentTransform = parent.GetGlobalTransformWithCanvas();
+        float parentScaleX = Math.Max(0.0001f, parentTransform.X.Length());
+        float parentScaleY = Math.Max(0.0001f, parentTransform.Y.Length());
+        return new Vector2(targetGlobalScale.X / parentScaleX, targetGlobalScale.Y / parentScaleY);
+    }
+
+    public void ResetCenteredVisualTransformLayout()
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return;
+
+        _visualLayoutTween?.Kill();
+        _hoverTween?.Kill();
+        visualScaleHost.Position = Vector2.Zero;
+        visualScaleHost.Scale = Vector2.One;
+        visualScaleHost.Rotation = 0f;
+        EnsureVisualTransformPivot(visualScaleHost);
+        _visualTransformBaseScale = Vector2.One;
+        _visualTransformHoverScale = Vector2.One;
+    }
+
+    private void ResetCardVisualHoverTransform() => ResetCenteredVisualTransformLayout();
+
+    private static void EnsureVisualTransformPivot(Control visualScaleHost)
+    {
+        if (visualScaleHost == null || !GodotObject.IsInstanceValid(visualScaleHost))
+            return;
+
+        Vector2 size = visualScaleHost.Size;
+        if (size.X <= 1f || size.Y <= 1f)
+            size = CardBaseSize;
+        visualScaleHost.PivotOffset = size * 0.5f;
     }
 
     private float GetPointerHoverScaleDuration(Vector2 targetScale) =>
-        targetScale.DistanceSquaredTo(_baseScale) > 0.0001f ? 0.18f : 0.14f;
+        targetScale.DistanceSquaredTo(Vector2.One) > 0.0001f ? 0.18f : 0.14f;
 
     private Tween.EaseType GetPointerHoverScaleEase(Vector2 targetScale) =>
-        targetScale.DistanceSquaredTo(_baseScale) > 0.0001f
+        targetScale.DistanceSquaredTo(Vector2.One) > 0.0001f
             ? Tween.EaseType.Out
             : Tween.EaseType.InOut;
 
@@ -1338,7 +1595,10 @@ public partial class SkillCard : Control
         );
 
         if (options.RotateWithVelocity)
-            Rotation = GetRotationWithTopFacingVelocity(initialVelocity);
+        {
+            Rotation = GetRotationWithTopFacingVelocity(initialVelocity)
+                + GetCardFlySpinAngle(options, 0.01f);
+        }
         UpdateTrailParticlesRotation(particles, initialVelocity);
 
         PressEffectPartial(
@@ -1373,7 +1633,10 @@ public partial class SkillCard : Control
                     );
                     SetPivotCenterAt(center);
                     if (options.RotateWithVelocity)
-                        Rotation = GetRotationWithTopFacingVelocity(velocity);
+                    {
+                        Rotation = GetRotationWithTopFacingVelocity(velocity)
+                            + GetCardFlySpinAngle(options, t);
+                    }
                     UpdateTrailParticlesRotation(particles, velocity);
                 }),
                 0f,
@@ -1392,6 +1655,8 @@ public partial class SkillCard : Control
             Button.Disabled = true;
             HoverHint.Visible = false;
         }
+
+        options.OnArrival?.Invoke();
 
         await FadeAndHideMoveTrailAsync(trail, particles, options.TrailFadeDuration);
         return true;
@@ -1554,6 +1819,16 @@ public partial class SkillCard : Control
         return mid + new Vector2(sideOffset, -lift);
     }
 
+    private static float GetCardFlySpinAngle(CardTrailMoveOptions options, float progress)
+    {
+        if (options == null || Mathf.IsZeroApprox(options.RotationSpinTurns))
+            return 0f;
+
+        float acceleratedProgress = Mathf.Clamp(progress, 0f, 1f);
+        acceleratedProgress *= acceleratedProgress;
+        return options.RotationSpinTurns * Mathf.Pi * 2f * acceleratedProgress;
+    }
+
     private static Vector2 QuadraticBezier(Vector2 start, Vector2 control, Vector2 end, float t)
     {
         Vector2 a = start.Lerp(control, t);
@@ -1648,6 +1923,44 @@ public partial class SkillCard : Control
         return _pressTween;
     }
 
+    /// <summary>
+    /// Brief horizontal shake for rejected actions such as an unaffordable shop card.
+    /// It only moves the visual child, so the card stays in its layout slot.
+    /// </summary>
+    public void PlayRejectShake()
+    {
+        Control visualScaleHost = CardVisualScaleHost;
+        if (
+            visualScaleHost == null
+            || !GodotObject.IsInstanceValid(visualScaleHost)
+            || !visualScaleHost.IsInsideTree()
+        )
+        {
+            return;
+        }
+
+        _rejectShakeTween?.Kill();
+        Vector2 basePosition = visualScaleHost.Position;
+        _rejectShakeTween = CreateTween();
+        _rejectShakeTween
+            .TweenProperty(visualScaleHost, "position", basePosition + new Vector2(-10f, 0f), 0.045f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        _rejectShakeTween
+            .TweenProperty(visualScaleHost, "position", basePosition + new Vector2(9f, 0f), 0.075f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.InOut);
+        _rejectShakeTween
+            .TweenProperty(visualScaleHost, "position", basePosition, 0.065f)
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.In);
+        _rejectShakeTween.Finished += () =>
+        {
+            if (GodotObject.IsInstanceValid(visualScaleHost))
+                visualScaleHost.Position = basePosition;
+        };
+    }
+
     private void StopProgressEffect(ShaderMaterial shader)
     {
         _progressTween?.Kill();
@@ -1657,7 +1970,23 @@ public partial class SkillCard : Control
 
     public void PlayExhaustEffect(float duration = 0.8f)
     {
-        ExhaustVfx.SpawnAt(this, GetExhaustVfxScale(), duration);
+        PlayExhaustEffect(duration, this);
+    }
+
+    /// <summary>
+    /// Plays the exhaust effect on the rendered card layer while the card root stays in its
+    /// original layout slot. This preserves the card's on-screen position during the effect.
+    /// </summary>
+    public void PlayExhaustEffectAtCurrentVisualTransform(float duration = 0.8f)
+    {
+        PlayExhaustEffect(duration, CardVisualScaleHost);
+    }
+
+    private void PlayExhaustEffect(float duration, Control visualTarget)
+    {
+        visualTarget ??= this;
+        AudioManager.PlayCardExhaust(this);
+        ExhaustVfx.SpawnAt(visualTarget, GetExhaustVfxScale(visualTarget), duration);
 
         _progressTween?.Kill();
         _pressTween?.Kill();
@@ -1675,7 +2004,7 @@ public partial class SkillCard : Control
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
             _pressTween
-                .TweenProperty(this, "scale", Scale * 1.035f, duration)
+                .TweenProperty(visualTarget, "scale", visualTarget.Scale * 1.035f, duration)
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.Out);
             return;
@@ -1703,14 +2032,14 @@ public partial class SkillCard : Control
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.In);
         _pressTween
-            .TweenProperty(this, "scale", Scale * 1.035f, duration)
+            .TweenProperty(visualTarget, "scale", visualTarget.Scale * 1.035f, duration)
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
     }
 
-    private float GetExhaustVfxScale()
+    private float GetExhaustVfxScale(Control visualTarget)
     {
-        Vector2 size = GetGlobalRect().Size;
+        Vector2 size = visualTarget?.GetGlobalRect().Size ?? GetGlobalRect().Size;
         float areaRatio = size.X * size.Y / (CardBaseSize.X * CardBaseSize.Y);
         return Mathf.Clamp(Mathf.Sqrt(areaRatio) * 0.78f, 0.55f, 1.15f);
     }
@@ -1796,7 +2125,9 @@ public partial class SkillCard : Control
 
             _cardEffectMaterialTarget = GetNodeOrNull<CanvasItem>("CardGroup");
             if (_cardEffectMaterialTarget == null)
-                _cardEffectMaterialTarget = GetNodeOrNull<CanvasGroup>("SubViewport");
+                _cardEffectMaterialTarget = GetNodeOrNull<CanvasGroup>(
+                    "VisualTransform/SubViewport"
+                );
             _cardEffectMaterialTarget ??= this;
             return _cardEffectMaterialTarget;
         }
@@ -2231,11 +2562,10 @@ public partial class SkillCard : Control
             }
 
             var panel = GetOrCreateDamagePanel(layer, panelIndex++);
-            PreviewEffectDisplay.ShowPanel(
+            PreviewEffectDisplay.ShowTargetEffectPanel(
                 panel,
                 group.Entries,
-                GetTargetScreenPosition(target),
-                DamagePreviewLabelOffset
+                GetTargetScreenPosition(target)
             );
         }
 
@@ -2449,410 +2779,44 @@ public partial class SkillCard : Control
         if (preferredFontSize <= 0)
             preferredFontSize = DefaultDescriptionFontSize;
 
-        Description.AddThemeFontSizeOverride("normal_font_size", preferredFontSize);
+        SetDescriptionFontSize(preferredFontSize);
     }
 
     private void AdjustDescriptionFont()
     {
         ApplyPreferredDescriptionFontSize();
-        float availableHeight = Description.Size.Y;
-        float availableWidth = Description.Size.X;
-        if (availableHeight <= 0.0f || availableWidth <= 0.0f)
+        StyleBox style = Description.GetThemeStylebox("normal");
+        float availableHeight = Description.Size.Y - style.GetMinimumSize().Y;
+        if (availableHeight <= 0.0f || Description.Size.X <= 0.0f)
             return;
 
         int preferredFontSize = UserSettings.ScaleTextFontSize(_baseDescriptionFontSize);
         if (preferredFontSize <= 0)
             preferredFontSize = DefaultDescriptionFontSize;
 
-        if (DoesDescriptionFitAtFontSize(preferredFontSize, availableWidth, availableHeight))
+        if (Description.GetContentHeight() <= availableHeight)
             return;
 
         for (int fontSize = preferredFontSize - 1; fontSize >= MinDescriptionFontSize; fontSize--)
         {
-            Description.AddThemeFontSizeOverride("normal_font_size", fontSize);
-            if (DoesDescriptionFitAtFontSize(fontSize, availableWidth, availableHeight))
+            SetDescriptionFontSize(fontSize);
+            if (Description.GetContentHeight() <= availableHeight)
                 return;
         }
 
-        Description.AddThemeFontSizeOverride("normal_font_size", MinDescriptionFontSize);
+        SetDescriptionFontSize(MinDescriptionFontSize);
     }
 
-    private bool DoesDescriptionFitAtFontSize(int fontSize, float availableWidth, float availableHeight)
-    {
-        string plainText = StripBbCodeTags(Description.Text);
-        float estimatedHeight = EstimateDescriptionContentHeight(
-            plainText,
-            fontSize,
-            availableWidth
-        );
-        return estimatedHeight <= availableHeight;
-    }
-
-    private static float EstimateDescriptionContentHeight(
-        string text,
-        int fontSize,
-        float availableWidth
-    )
-    {
-        if (string.IsNullOrWhiteSpace(text))
-            return 0f;
-
-        float unitsPerLine = Math.Max(1f, availableWidth / Math.Max(1f, fontSize * 0.92f));
-        int lineCount = 0;
-        foreach (string paragraph in text.Replace("\r\n", "\n").Split('\n'))
-        {
-            float units = EstimateDescriptionTextUnits(paragraph);
-            lineCount += Math.Max(1, Mathf.CeilToInt(units / unitsPerLine));
-        }
-
-        return lineCount * fontSize * 1.22f;
-    }
-
-    private static float EstimateDescriptionTextUnits(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return 0f;
-
-        float units = 0f;
-        foreach (char ch in text)
-        {
-            if (char.IsWhiteSpace(ch))
-                units += 0.35f;
-            else if (ch <= 0x007f)
-                units += char.IsLetterOrDigit(ch) ? 0.55f : 0.35f;
-            else
-                units += 1f;
-        }
-
-        return units;
-    }
-
-    private static string StripBbCodeTags(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return string.Empty;
-
-        char[] buffer = new char[text.Length];
-        int count = 0;
-        bool inTag = false;
-
-        foreach (char ch in text)
-        {
-            if (ch == '[')
-            {
-                inTag = true;
-                continue;
-            }
-
-            if (ch == ']')
-            {
-                inTag = false;
-                continue;
-            }
-
-            if (!inTag)
-                buffer[count++] = ch;
-        }
-
-        return new string(buffer, 0, count);
-    }
-
-    private void ApplyRarityStyles(Skill.SkillRarity rarity)
-    {
-        EnsureStyleOverridesReady();
-
-        Color borderColor = Skill.GetRarityBorderColor(rarity);
-        Color badgeFill = WithAlpha(borderColor, 0.24f);
-        Color footerFill = WithAlpha(borderColor, 0.16f);
-        Color accentColor = WithAlpha(borderColor, 0.66f);
-        Color accentGlow = WithAlpha(borderColor, 0.24f);
-        Color diamondCore = WithAlpha(borderColor, 0.22f);
-        Color outerBorder = WithAlpha(borderColor, 0.9f);
-        Color innerBorder = WithAlpha(borderColor, 0.28f);
-
-        if (_bgStyle != null)
-        {
-            _bgStyle.BorderColor = outerBorder;
-            _bgStyle.BgColor = CardBaseColor;
-        }
-        if (_innerFrameStyle != null)
-            _innerFrameStyle.BorderColor = innerBorder;
-        if (_descriptionStyle != null)
-        {
-            _descriptionStyle.BorderColor = Colors.Transparent;
-            _descriptionStyle.BgColor = DescriptionBaseColor;
-        }
-        if (_bg2Style != null)
-        {
-            _bg2Style.BorderColor = Colors.Transparent;
-            _bg2Style.BgColor = FooterBaseColor;
-        }
-        if (_artFrameStyle != null)
-        {
-            _artFrameStyle.BorderColor = accentColor;
-            _artFrameStyle.BgColor = ArtFrameBaseColor;
-        }
-        if (RarityPlate != null)
-            RarityPlate.Color = badgeFill;
-        if (EnergyPlate != null)
-            EnergyPlate.Color = badgeFill;
-        if (NamePlate != null)
-            NamePlate.Color = accentGlow;
-        if (CharacterPlate != null)
-            CharacterPlate.Color = footerFill;
-        ApplyCardTitleLabelColors(Colors.White, nameAlpha: 1f, characterNameAlpha: 0.92f);
-        if (ArtDiamondOuter != null)
-            ArtDiamondOuter.Color = accentColor;
-        if (ArtDiamondInner != null)
-            ArtDiamondInner.Color = diamondCore;
-        SetCardBeamColor(borderColor);
-
-        if (TopAccent != null)
-            TopAccent.Color = WithAlpha(borderColor, 0.58f);
-
-        SetNativeFramePalette(borderColor, accentColor);
-    }
-
-    private void ApplyCharacterPlateStyle(Skill skill)
-    {
-        if (skill == null)
-            return;
-
-        Color color = TryGetCharacterPlateColor(skill, out Color plateColor)
-            ? plateColor
-            : Skill.GetRarityBorderColor(skill.Rarity);
-
-        if (CharacterPlate != null)
-            CharacterPlate.Color = WithAlpha(color, 0.42f);
-        if (NamePlate != null)
-            NamePlate.Color = WithAlpha(color, 0.18f);
-        ApplyCardTitleLabelColors(color);
-
-        SetNativeFramePalette(Skill.GetRarityBorderColor(skill.Rarity), color);
-    }
-
-    private void ApplyColorlessPlateStyle()
-    {
-        Color color = CharacterPlateColors.ColorlessColor;
-
-        if (CharacterPlate != null)
-            CharacterPlate.Color = WithAlpha(color, 0.42f);
-        if (NamePlate != null)
-            NamePlate.Color = WithAlpha(color, 0.18f);
-        ApplyCardTitleLabelColors(color);
-
-        SetNativeFramePalette(Skill.GetRarityBorderColor(Skill.SkillRarity.Common), color);
-    }
-
-    private bool TryGetCharacterPlateColor(Skill skill, out Color color)
-    {
-        string key = ResolveCharacterColorKey(skill);
-        if (CharacterPlateColors.TryGetColor(key, out color))
-            return true;
-
-        color = default;
-        return false;
-    }
-
-    private string ResolveCharacterColorKey(Skill skill)
-    {
-        if (!string.IsNullOrWhiteSpace(PreviewCharacterKey))
-            return CharacterPlateColors.NormalizeKey(PreviewCharacterKey);
-
-        if (skill?.OwnerCharater is PlayerCharacter player && !string.IsNullOrWhiteSpace(player.CharacterKey))
-            return CharacterPlateColors.NormalizeKey(player.CharacterKey);
-
-        if (!string.IsNullOrWhiteSpace(skill?.OwnerCharater?.CharacterName))
-            return CharacterPlateColors.NormalizeKey(skill.OwnerCharater.CharacterName);
-
-        if (skill?.SkillId.HasValue == true && Skill.TryGetPlayerCharacterKey(skill.SkillId.Value, out var characterKey))
-            return characterKey.ToString();
-
-        if (!string.IsNullOrWhiteSpace(PreviewCharacterName))
-            return CharacterPlateColors.NormalizeKey(PreviewCharacterName);
-
-        return string.Empty;
-    }
-
-    private void ApplyStatusCardStyle()
-    {
-        EnsureStyleOverridesReady();
-
-        Color borderColor = new(0.76f, 0.58f, 1f, 1f);
-        Color accentColor = new(0.52f, 0.34f, 0.95f, 0.7f);
-        Color surfaceColor = new(0.055f, 0.045f, 0.09f, 0.96f);
-
-        if (_bgStyle != null)
-        {
-            _bgStyle.BorderColor = borderColor;
-            _bgStyle.BgColor = new Color(0.035f, 0.026f, 0.06f, 0.86f);
-        }
-        if (_innerFrameStyle != null)
-            _innerFrameStyle.BorderColor = new Color(0.82f, 0.7f, 1f, 0.34f);
-        if (_descriptionStyle != null)
-        {
-            _descriptionStyle.BorderColor = Colors.Transparent;
-            _descriptionStyle.BgColor = surfaceColor;
-        }
-        if (_bg2Style != null)
-        {
-            _bg2Style.BorderColor = Colors.Transparent;
-            _bg2Style.BgColor = new Color(0.04f, 0.032f, 0.075f, 0.98f);
-        }
-        if (_artFrameStyle != null)
-        {
-            _artFrameStyle.BorderColor = accentColor;
-            _artFrameStyle.BgColor = new Color(0.045f, 0.036f, 0.08f, 0.68f);
-        }
-        if (RarityPlate != null)
-            RarityPlate.Color = new Color(0.62f, 0.42f, 1f, 0.3f);
-        if (EnergyPlate != null)
-            EnergyPlate.Color = new Color(0.62f, 0.42f, 1f, 0.3f);
-        if (NamePlate != null)
-            NamePlate.Color = new Color(0.62f, 0.42f, 1f, 0.26f);
-        if (CharacterPlate != null)
-            CharacterPlate.Color = new Color(0.48f, 0.31f, 0.86f, 0.22f);
-        if (ArtDiamondOuter != null)
-            ArtDiamondOuter.Color = new Color(0.72f, 0.54f, 1f, 0.5f);
-        if (ArtDiamondInner != null)
-            ArtDiamondInner.Color = new Color(0.88f, 0.76f, 1f, 0.22f);
-        if (TopAccent != null)
-            TopAccent.Color = new Color(0.86f, 0.72f, 1f, 0.72f);
-
-        ApplyCardTitleLabelColors(
-            Colors.White,
-            nameAlpha: 1f,
-            characterNameAlpha: 0.92f,
-            outlineColorOverride: new Color(0f, 0f, 0f, 1f)
-        );
-        SetCardBeamColor(borderColor);
-        SetNativeFramePalette(borderColor, accentColor);
-    }
-
-    private void ApplyCardTitleLabelColors(
-        Color accentColor,
-        float nameAlpha = 1f,
-        float characterNameAlpha = 0.96f,
-        Color? outlineColorOverride = null
-    )
-    {
-        Color textColor = accentColor.Lightened(0.14f);
-        Color outlineColor = outlineColorOverride
-            ?? WithAlpha(
-                new Color(accentColor.R * 0.18f, accentColor.G * 0.18f, accentColor.B * 0.18f, 1f),
-                0.95f
-            );
-
-        if (NameLabel != null)
-        {
-            NameLabel.AddThemeColorOverride("font_color", WithAlpha(textColor, nameAlpha));
-            NameLabel.AddThemeColorOverride("font_outline_color", outlineColor);
-        }
-
-        if (CharacterName != null)
-        {
-            CharacterName.AddThemeColorOverride("font_color", WithAlpha(textColor, characterNameAlpha));
-            CharacterName.AddThemeColorOverride("font_outline_color", outlineColor);
-        }
+    private void SetDescriptionFontSize(int fontSize) {
+        // BBCode emphasis must shrink with the body; measure the resulting Godot layout.
+        Description.AddThemeFontSizeOverride("normal_font_size", fontSize);
+        Description.AddThemeFontSizeOverride("bold_font_size", fontSize);
+        Description.AddThemeFontSizeOverride("italics_font_size", fontSize);
+        Description.AddThemeFontSizeOverride("bold_italics_font_size", fontSize);
+        Description.AddThemeFontSizeOverride("mono_font_size", fontSize);
     }
 
     private static bool IsStatusCard(Skill skill) => skill?.IsStatusCard == true;
-
-    private void EnsureStyleOverridesReady()
-    {
-        if (_bgStyle == null)
-        {
-            _bgStyle = BG.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
-            if (_bgStyle != null)
-                BG.AddThemeStyleboxOverride("panel", _bgStyle);
-        }
-
-        if (_innerFrameStyle == null)
-        {
-            _innerFrameStyle = InnerFrame.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
-            if (_innerFrameStyle != null)
-                InnerFrame.AddThemeStyleboxOverride("panel", _innerFrameStyle);
-        }
-
-        if (_descriptionStyle == null)
-        {
-            _descriptionStyle = Description.GetThemeStylebox("normal")?.Duplicate() as StyleBoxFlat;
-            if (_descriptionStyle != null)
-                Description.AddThemeStyleboxOverride("normal", _descriptionStyle);
-        }
-
-        if (_bg2Style == null)
-        {
-            _bg2Style = BG2.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
-            if (_bg2Style != null)
-                BG2.AddThemeStyleboxOverride("panel", _bg2Style);
-        }
-
-        if (_artFrameStyle == null)
-        {
-            _artFrameStyle = ArtFrame.GetThemeStylebox("panel")?.Duplicate() as StyleBoxFlat;
-            if (_artFrameStyle != null)
-                ArtFrame.AddThemeStyleboxOverride("panel", _artFrameStyle);
-        }
-    }
-
-    private void SetCardBeamColor(Color color)
-    {
-        if (CardEffectMaterialTarget.Material is not ShaderMaterial shader)
-            return;
-
-        shader.SetShaderParameter("beam_color", new Color(color.R, color.G, color.B, 1f));
-    }
-
-    private void SetNativeFramePalette(Color lineColor, Color accentColor)
-    {
-        if (NativeFrame == null || !GodotObject.IsInstanceValid(NativeFrame))
-            return;
-
-        Color strongLine = WithAlpha(lineColor, 0.82f);
-        Color softLine = WithAlpha(lineColor, 0.24f);
-        Color accent = WithAlpha(accentColor, 0.74f);
-        Color accentSoft = WithAlpha(accentColor, 0.48f);
-        Color transparentAccent = WithAlpha(accentColor, 0f);
-        Color recessShadow = new(0.004f, 0.012f, 0.024f, 0.78f);
-
-        foreach (Node child in NativeFrame.GetChildren())
-        {
-            string nodeName = child.Name.ToString();
-            if (child is Line2D line)
-            {
-                if (line.Gradient != null)
-                {
-                    if (nodeName.Contains("Left"))
-                    {
-                        line.Gradient.SetColor(0, transparentAccent);
-                        line.Gradient.SetColor(1, accentSoft);
-                    }
-                    else if (nodeName.Contains("Right"))
-                    {
-                        line.Gradient.SetColor(0, accentSoft);
-                        line.Gradient.SetColor(1, transparentAccent);
-                    }
-                }
-
-                line.DefaultColor = nodeName.Contains("Shadow")
-                    ? recessShadow
-                    : nodeName.Contains("Recess")
-                        ? accent
-                        : nodeName.Contains("Soft")
-                    ? softLine
-                    : nodeName.Contains("Accent")
-                        ? accentSoft
-                        : strongLine;
-            }
-            else if (child is Polygon2D polygon)
-            {
-                polygon.Color = nodeName.Contains("Inner")
-                    ? WithAlpha(lineColor, 0.72f)
-                    : accent;
-            }
-        }
-    }
 
     private static float GetShaderParameterFloat(ShaderMaterial shader, string parameterName)
     {
@@ -2868,18 +2832,4 @@ public partial class SkillCard : Control
         };
     }
 
-    private static Color BlendSurface(Color baseColor, Color accentColor, float accentAmount)
-    {
-        return new Color(
-            Mathf.Lerp(baseColor.R, accentColor.R, accentAmount),
-            Mathf.Lerp(baseColor.G, accentColor.G, accentAmount),
-            Mathf.Lerp(baseColor.B, accentColor.B, accentAmount),
-            baseColor.A
-        );
-    }
-
-    private static Color WithAlpha(Color color, float alpha)
-    {
-        return new Color(color.R, color.G, color.B, alpha);
-    }
 }

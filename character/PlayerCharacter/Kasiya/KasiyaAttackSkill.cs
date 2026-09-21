@@ -7,7 +7,7 @@ public partial class KasiyaAttackSkill { }
 public partial class Determination : Skill
 {
     private const int BaseDamage = 7;
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -127,7 +127,7 @@ public partial class VulnerablePurge : Skill
 public partial class VulnerabilityStrike : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 9;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -164,7 +164,7 @@ public class TerminateLight : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "终末之光";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -183,7 +183,7 @@ public class VulnerabilityConversion : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "万军取敌";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     private static int GetVulnerableStacks(Character target) =>
         target

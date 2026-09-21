@@ -2,7 +2,7 @@
     "skills":  {
                    "FearWormAttack":  {
                                           "Name":  "恐惧咬噬",
-                                          "BaseDamage":  4,
+                                          "BaseDamage":  5,
                                           "VulnerableStacks":  2,
                                           "MaxTargets":  3,
                                           "HitCount":  1,
@@ -16,7 +16,8 @@
                    "FearWormTermin":  {
                                           "Name":  "梦魇缠绕",
                                           "BaseDamage":  14,
-                                          "StunStacks":  2
+                                          "StunStacks":  2,
+                                          "EnergyCost":  4
                                       }
                }
 }

@@ -2,18 +2,20 @@
     "skills":  {
                    "AfterimageWard":  {
                                           "Name":  "月落残影",
-                                          "BaseBlock":  6,
+                                          "BaseBlock":  7,
                                           "AfterimageStacks":  1
                                       },
                    "BladeDance":  {
                                       "Name":  "刀刃之舞",
                                       "BladeCount":  3,
-                                      "BaseBlock":  4
+                                      "BaseBlock":  5,
+                                      "EnergyCost":  2
                                   },
                    "BladeSalvo":  {
                                       "Name":  "利刃齐发",
                                       "BladeCount":  2,
-                                      "BaseDamage":  0
+                                      "BaseDamage":  0,
+                                      "EnergyCost":  1
                                   },
                    "BreakStrike":  {
                                        "Name":  "破击",
@@ -21,61 +23,71 @@
                                    },
                    "BrightestMoment":  {
                                            "Name":  "至亮时刻",
-                                           "SurvivabilityGainPerInvisible":  2
+                                           "SurvivabilityGainPerInvisible":  2,
+                                           "EnergyCost":  1
                                        },
                    "ContinuousPierce":  {
                                             "Name":  "连续贯穿",
                                             "BaseDamage":  7,
-                                            "InvisibleStacks":  1
+                                            "InvisibleStacks":  1,
+                                            "EnergyCost":  0
                                         },
                    "CurtainCallMoment":  {
                                              "Name":  "落幕时刻",
                                              "WeakenStacks":  2,
-                                             "InvisibleStacks":  2
+                                             "InvisibleStacks":  2,
+                                             "EnergyCost":  2
                                          },
                    "EternalDark":  {
-                                       "Name":  "EternalDark"
+                                       "Name":  "永暗",
+                                       "EternalDarkStacks":  2,
+                                       "EnergyCost":  1
                                    },
                    "FlashOfLight":  {
                                         "Name":  "闪耀之光",
                                         "VulnerableStacks":  2,
-                                        "BaseBlock":  0
+                                        "BaseBlock":  5
                                     },
                    "LongNight":  {
                                      "Name":  "长夜",
-                                     "BaseBlock":  4
+                                     "EnergyCost":  1
                                  },
                    "NightfallFlurry":  {
                                            "Name":  "夜幕连袭",
-                                           "BaseDamage":  4,
-                                           "PowerMultiplier":  1
+                                           "BaseDamage":  7,
+                                           "PowerMultiplier":  1,
+                                           "EnergyCost":  2
                                        },
                    "NightingaleBasicSpecial":  {
                                                    "Name":  "隐藏",
                                                    "InvisibleStacks":  1,
-                                                   "DrawCount":  1
+                                                   "DrawCount":  1,
+                                                   "EnergyCost":  0
                                                },
                    "NightingaleEnergy":  {
                                              "Name":  "安息之歌",
                                              "EnergyGain":  1,
-                                             "PowerGain":  1
+                                             "PowerGain":  2,
+                                             "EnergyCost":  0
                                          },
                    "RequiemBloom":  {
                                         "Name":  "安魂花",
                                         "PowerGain":  2,
                                         "DrawCount":  2,
-                                        "DiscardCount":  2
+                                        "DiscardCount":  2,
+                                        "EnergyCost":  0
                                     },
                    "RuinBlade":  {
                                      "Name":  "破灭之刃",
-                                     "BaseDamage":  4,
+                                     "BaseDamage":  10,
                                      "Multiplier":  1,
                                      "HitCount":  1,
                                      "RandomCardCount":  1,
                                      "ExhaustCount":  1
                                  },
                    "Search":  {
-                                  "Name":  "搜寻"
+                                  "Name":  "搜寻",
+                                  "SearchStacks":  1
                               },
                    "ShadowAmbush":  {
                                         "Name":  "影袭",
@@ -83,8 +95,9 @@
                                     },
                    "ShadowBladeWard":  {
                                            "Name":  "隐刃守势",
-                                           "BaseBlock":  6,
-                                           "Multiplier":  1
+                                           "BaseBlock":  7,
+                                           "Multiplier":  1,
+                                           "EnergyCost":  0
                                        },
                    "ShadowExecution":  {
                                            "Name":  "处决",
@@ -93,13 +106,16 @@
                                            "HitCount":  1
                                        },
                    "ShadowForm":  {
-                                      "Name":  "暗影形态"
+                                      "Name":  "暗影形态",
+                                      "ShadowStacks":  1,
+                                      "EnergyCost":  4
                                   },
                    "StarWard":  {
                                     "Name":  "星辉守势",
-                                    "BaseBlock":  6,
+                                    "BaseBlock":  7,
                                     "ExtraPowerStacks":  1,
-                                    "Multiplier":  1
+                                    "Multiplier":  1,
+                                    "EnergyCost":  2
                                 },
                    "StasisBlade":  {
                                        "Name":  "凝滞之刃",
@@ -109,30 +125,35 @@
                    "SunMoonCycle":  {
                                         "Name":  "日月轮回",
                                         "DrawCount":  2,
-                                        "CardRefreshStacks":  1
+                                        "CardRefreshStacks":  1,
+                                        "EnergyCost":  2
                                     },
                    "Swift":  {
-                                 "Name":  "迅捷"
+                                 "Name":  "迅捷",
+                                 "SwiftStacks":  1
                              },
                    "TempoSurge":  {
-                                      "Name":  "疾奏"
+                                      "Name":  "疾奏",
+                                      "SurvivabilityGain":  3,
+                                      "EnergyCost":  2
                                   },
                    "TwilightParadox":  {
                                            "Name":  "暮光悖论",
-                                           "BaseBlock":  6,
                                            "VulnerableStacks":  9,
                                            "selfStacks":  3,
-                                           "Multiplier":  1
+                                           "EnergyCost":  1
                                        },
                    "VeilStep":  {
                                     "Name":  "夜幕潜行",
                                     "InvisibleStacks":  3,
-                                    "BaseBlock":  6
+                                    "BaseBlock":  6,
+                                    "EnergyCost":  0
                                 },
                    "WardGift":  {
                                     "Name":  "护障转赠",
-                                    "BaseBlock":  4,
-                                    "Multiplier":  1
+                                    "BaseBlock":  5,
+                                    "Multiplier":  1,
+                                    "EnergyCost":  0
                                 }
                }
 }

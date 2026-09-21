@@ -71,7 +71,7 @@ public partial class InexorabilityRegedit : EnemyRegedit
 
 public partial class InexorabilityAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private const int BaseDamage = 21;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -107,13 +107,13 @@ public partial class InexorabilitySurvive : Skill
 
 public partial class InexorabilitySpecial : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 12;
     private const int PowerMultiplier = 1;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "终局律令";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {

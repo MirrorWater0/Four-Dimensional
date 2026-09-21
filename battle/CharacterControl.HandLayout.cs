@@ -51,6 +51,7 @@ public partial class CharacterControl
             bool isDetachedFromHand =
                 IsCardDetachedFromHandLayout(i)
                 || IsCardCommitted(i);
+            bool isWaitingForDrawEntry = IsHandCardWaitingForDrawEntry(i);
             slot.Size = cardSize;
             slot.CustomMinimumSize = cardSize;
             slot.PivotOffset = cardSize * 0.5f;
@@ -61,6 +62,30 @@ public partial class CharacterControl
                     ApplyHandCardLayer(i, _handLayoutOrderBySlotIndex[i]);
                 else
                     ApplyHandCardLayer(i, 0);
+            }
+
+            if (isWaitingForDrawEntry)
+            {
+                Vector2 entryTargetPosition = _handLayoutTargetPositionValid[i]
+                    ? _handLayoutTargetPositions[i]
+                    : GetPendingDrawEntryLandingPosition(
+                        i,
+                        cardSize,
+                        rowWidth,
+                        rowHeight,
+                        out _
+                    );
+                float entryTargetRotation = _handLayoutTargetPositionValid[i]
+                    ? _handLayoutTargetRotations[i]
+                    : 0f;
+                MoveCardSlotTo(
+                    i,
+                    entryTargetPosition,
+                    entryTargetRotation,
+                    instant || !_layoutInitialized,
+                    true
+                );
+                continue;
             }
 
             if (isDetachedFromHand)
@@ -117,9 +142,11 @@ public partial class CharacterControl
         float preferredStep =
             handCount > 1 ? cardSize.X * HandCardOverlapStepRatio : cardSize.X + HandCardGap;
         float minStep = cardSize.X * HandCardMinStepRatio;
+        // Reserve room for the enlarged end cards and the neighboring-card spread.
+        float usableWidth = Math.Max(cardSize.X, rowWidth - 80f);
         float cardStep =
             handCount > 1
-                ? Mathf.Clamp((rowWidth - cardSize.X) / (handCount - 1), minStep, preferredStep)
+                ? Mathf.Clamp((usableWidth - cardSize.X) / (handCount - 1), minStep, preferredStep)
                 : 0f;
         float totalWidth =
             handCount > 1 ? cardSize.X + cardStep * (handCount - 1) : handCount * cardSize.X;
@@ -144,8 +171,11 @@ public partial class CharacterControl
             }
 
             _handLayoutTargetPositionValid[slotIndex] = true;
-            _handLayoutTargetPositions[slotIndex] = new Vector2(targetX, cardY);
-            _handLayoutTargetRotations[slotIndex] = 0f;
+            // A shallow fan keeps the lower edge cropped while exposing each cost.
+            float fan = handCount > 1 ? (order - (handCount - 1) * 0.5f) / Math.Max(1f, (handCount - 1) * 0.5f) : 0f;
+            bool hovered = order == hoveredOrder;
+            _handLayoutTargetPositions[slotIndex] = new Vector2(targetX, cardY + fan * fan * 18f);
+            _handLayoutTargetRotations[slotIndex] = hovered ? 0f : fan * 0.045f;
         }
     }
 
@@ -272,6 +302,7 @@ public partial class CharacterControl
             _liftedCardIndex != -1
                 || IsAnyHandLayoutFollowerActive()
                 || _pileOverlaySmoothScrollActive
+                || _isDiscardSelectionActive
         );
     }
 
@@ -546,6 +577,7 @@ public partial class CharacterControl
         );
     }
 
+
     private async Task PlayDrawEntryPreviewAnimationAsync(
         int index,
         Vector2 targetPosition,
@@ -563,7 +595,15 @@ public partial class CharacterControl
             return;
 
         Vector2 currentTargetPosition = GetDrawEntryTargetSlotPosition(index, targetPosition);
-        SkillCard movingCard = ActivateDrawEntryCardInHandSlot(index, currentTargetPosition);
+        float currentTargetRotation = GetDrawEntryTargetSlotRotation(
+            index,
+            _handLayoutTargetPositionValid[index] ? _handLayoutTargetRotations[index] : 0f
+        );
+        SkillCard movingCard = ActivateDrawEntryCardInHandSlot(
+            index,
+            currentTargetPosition,
+            currentTargetRotation
+        );
         if (movingCard == null)
         {
             _pendingDrawEntryAnimations.Remove(index);
@@ -572,6 +612,9 @@ public partial class CharacterControl
         }
 
         _pendingDrawEntryAnimations.Remove(index);
+        // The card becomes interactable as soon as its staggered entry starts. Rebuild the
+        // playable state now instead of waiting for the card to reach its final hand position.
+        RequestTurnUiRefresh();
 
         if (!CanContinueDrawEntryAnimation(index, version, movingCard))
             return;
@@ -610,7 +653,11 @@ public partial class CharacterControl
         ScheduleCardHoverRefresh();
     }
 
-    private SkillCard ActivateDrawEntryCardInHandSlot(int index, Vector2 targetPosition)
+    private SkillCard ActivateDrawEntryCardInHandSlot(
+        int index,
+        Vector2 targetPosition,
+        float targetRotation
+    )
     {
         Skill[] hand = GetActiveHandSkills();
         Skill skill = hand != null && index < hand.Length ? hand[index] : null;
@@ -657,7 +704,7 @@ public partial class CharacterControl
         ApplyHandCardLayer(index, GetHandOrderForSlotIndex(index));
         _hiddenPendingDrawEntrySlotIndexes.Remove(index);
         _cardSlotLayoutTargets[index] = targetPosition;
-        _cardSlotLayoutRotationTargets[index] = 0f;
+        _cardSlotLayoutRotationTargets[index] = targetRotation;
         _cardSlotLayoutFollowActive[index] = true;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = HandDrawEntryPixelsPerSecond;
         UpdateProcessState();
@@ -725,7 +772,10 @@ public partial class CharacterControl
         if (slot != null && GodotObject.IsInstanceValid(slot))
         {
             slot.Position = GetDrawEntryTargetSlotPosition(index, slot.Position);
-            slot.Rotation = 0f;
+            slot.Rotation = GetDrawEntryTargetSlotRotation(
+                index,
+                _handLayoutTargetPositionValid[index] ? _handLayoutTargetRotations[index] : slot.Rotation
+            );
             slot.Scale = Vector2.One;
             _cardSlotLayoutFollowActive[index] = false;
             _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
@@ -862,6 +912,13 @@ public partial class CharacterControl
         return IsCardIndexValid(index) && _cardSlotLayoutTargets[index].HasValue
             ? _cardSlotLayoutTargets[index].Value
             : fallbackTargetPosition;
+    }
+
+    private float GetDrawEntryTargetSlotRotation(int index, float fallbackTargetRotation = 0f)
+    {
+        return IsCardIndexValid(index) && _cardSlotLayoutRotationTargets[index].HasValue
+            ? _cardSlotLayoutRotationTargets[index].Value
+            : fallbackTargetRotation;
     }
 
     private Vector2 GetDrawEntryTargetCenter(int index, Vector2 fallbackTargetPosition)
@@ -1022,6 +1079,93 @@ public partial class CharacterControl
         return count;
     }
 
+    private bool IsHandCardWaitingForDrawEntry(int index)
+    {
+        return IsCardIndexValid(index)
+            && (
+                _hiddenPendingDrawEntrySlotIndexes.Contains(index)
+                || _pendingDrawEntryAnimations.Contains(index)
+            );
+    }
+
+    private Vector2 GetPendingDrawEntryLandingPosition(
+        int entryIndex,
+        Vector2 cardSize,
+        float rowWidth,
+        float rowHeight
+    )
+    {
+        return GetPendingDrawEntryLandingPosition(
+            entryIndex,
+            cardSize,
+            rowWidth,
+            rowHeight,
+            out _
+        );
+    }
+
+    private Vector2 GetPendingDrawEntryLandingPosition(
+        int entryIndex,
+        Vector2 cardSize,
+        float rowWidth,
+        float rowHeight,
+        out float targetRotation
+    )
+    {
+        targetRotation = 0f;
+        Skill[] hand = GetActiveHandSkills();
+        if (hand == null)
+            return new Vector2((rowWidth - cardSize.X) * 0.5f, GetHandCardY(rowHeight, cardSize));
+
+        int max = Math.Min(hand.Length, _cards.Length);
+        int entryOrder = -1;
+        int logicalCount = 0;
+        for (int i = 0; i < max; i++)
+        {
+            if (
+                hand[i] == null
+                || _turnEndStatusTriggerCardIndexes.Contains(i)
+                || IsCardDetachedFromHandLayout(i)
+            )
+            {
+                continue;
+            }
+
+            if (i == entryIndex)
+                entryOrder = logicalCount;
+            logicalCount++;
+        }
+
+        if (entryOrder < 0 || logicalCount <= 0)
+            return new Vector2((rowWidth - cardSize.X) * 0.5f, GetHandCardY(rowHeight, cardSize));
+
+        float preferredStep =
+            logicalCount > 1
+                ? cardSize.X * HandCardOverlapStepRatio
+                : cardSize.X + HandCardGap;
+        float minStep = cardSize.X * HandCardMinStepRatio;
+        float usableWidth = Math.Max(cardSize.X, rowWidth - 80f);
+        float cardStep =
+            logicalCount > 1
+                ? Mathf.Clamp(
+                    (usableWidth - cardSize.X) / (logicalCount - 1),
+                    minStep,
+                    preferredStep
+                )
+                : 0f;
+        float totalWidth =
+            logicalCount > 1
+                ? cardSize.X + cardStep * (logicalCount - 1)
+                : cardSize.X;
+        float x = (rowWidth - totalWidth) * 0.5f + cardStep * entryOrder;
+        float fan =
+            logicalCount > 1
+                ? (entryOrder - (logicalCount - 1) * 0.5f) / Math.Max(1f, (logicalCount - 1) * 0.5f)
+                : 0f;
+        targetRotation = fan * 0.045f;
+        return new Vector2(x, GetHandCardY(rowHeight, cardSize) + fan * fan * 18f);
+    }
+
     private bool IsCardDetachedFromHandLayout(int index)
     {
         if (!IsCardIndexValid(index))
@@ -1029,6 +1173,7 @@ public partial class CharacterControl
 
         return index == _liftedCardIndex
             || _discardSelectionOriginalVisualHandIndexes.Contains(index)
+            || _discardSelectionFlyingToDiscardHandIndexes.Contains(index)
             || (
                 _manualTargetArrowSelectionActive
                 && index == _manualTargetArrowCardIndex
@@ -1231,7 +1376,11 @@ public partial class CharacterControl
         slot.Position = NormalizeHandReorderStartPosition(
             previousSlotPositions[previousIndex].Value
         );
-        slot.Rotation = 0f;
+        slot.Rotation = previousSlotRotations != null
+            && previousIndex < previousSlotRotations.Length
+            && previousSlotRotations[previousIndex].HasValue
+                ? previousSlotRotations[previousIndex].Value
+                : 0f;
     }
 
     private bool PreparePendingHandReorderMove(int index, Skill skill)
@@ -1267,7 +1416,7 @@ public partial class CharacterControl
         _drawEntryFromPlayedCardOrigin.Remove(index);
         slot.Scale = Vector2.One;
         slot.Position = start.Position;
-        slot.Rotation = 0f;
+        slot.Rotation = start.Rotation;
         _cardSlotLayoutPixelsPerSecondOverrides[index] = start.PixelsPerSecond;
         return true;
     }

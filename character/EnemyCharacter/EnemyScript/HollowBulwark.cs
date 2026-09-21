@@ -38,7 +38,7 @@ public partial class HollowBulwarkRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/HollowBulwark.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/HollowBulwark.tscn");
 
-        MaxLife = 45;
+        MaxLife = 50;
         Power = 0;
         Survivability = 0;
         BaseSurvivabilityContribution = 0;
@@ -62,13 +62,13 @@ public partial class HollowBulwarkAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(V("BaseDamage", 28)));
+        return new SkillPlan(this, AttackStep(V("BaseDamage", 24)));
     }
 }
 
 public partial class HollowBulwarkSurvive : Skill
 {
-    private const int BaseBlock = 40;
+    private const int BaseBlock = 30;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 

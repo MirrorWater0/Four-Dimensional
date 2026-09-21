@@ -4,18 +4,18 @@
 [ext_resource type="Script" uid="uid://cmin73gpxvuar" path="res://battle/UIScene/BattleReady/BattleReady.cs" id="2_wa4fa"]
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_2161l"]
 [ext_resource type="Texture2D" uid="uid://deraktmr5w000" path="res://asset/UI/轨迹素材_093.png" id="4_4b02f"]
-[ext_resource type="Theme" uid="uid://bltfa7a6iswv" path="res://battle/ButtonTheme1.tres" id="10_btn"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="11_latin"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ejwt2"]
 shader = ExtResource("1_q1qv0")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_e2bq2"]
 shader = ExtResource("3_2161l")
-shader_parameter/color_top = Color(0.02, 0.04, 0.1, 1)
-shader_parameter/color_mid = Color(0.04, 0.02, 0.08, 1)
-shader_parameter/color_bot = Color(0.0883951, 0.12219914, 0.21050516, 1)
-shader_parameter/star_color = Color(0.5, 0.8, 1, 1)
-shader_parameter/line_color = Color(0.4, 0.39215687, 0.5882353, 0.3647059)
+shader_parameter/color_top = Color(0.065, 0.068, 0.076, 1)
+shader_parameter/color_mid = Color(0.038, 0.04, 0.046, 1)
+shader_parameter/color_bot = Color(0.012, 0.014, 0.018, 1)
+shader_parameter/star_color = Color(0.82, 0.84, 0.9, 1)
+shader_parameter/line_color = Color(0.7, 0.72, 0.78, 0.2)
 shader_parameter/spacing = 160.0
 shader_parameter/density = 0.28
 shader_parameter/star_base_size = 3.0
@@ -30,65 +30,52 @@ shader_parameter/line_breath = 0.22
 blend_mode = 1
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_track"]
-bg_color = Color(0.08, 0.12, 0.18, 0.36)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.52, 0.66, 0.82, 0.42)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
+bg_color = Color(0.075, 0.08, 0.09, 0.62)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.66, 0.68, 0.74, 0.38)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb"]
-bg_color = Color(0.82, 0.7, 0.48, 0.2)
+bg_color = Color(0.82, 0.84, 0.88, 0.24)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.94, 0.84, 0.66, 0.62)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.91, 0.95, 0.9)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb_accent"]
-bg_color = Color(0.92, 0.84, 0.72, 0.18)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
+bg_color = Color(0.9, 0.91, 0.95, 0.07)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_button_normal"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 2
+border_color = Color(0.66, 0.68, 0.74, 0.4)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_button_hover"]
+bg_color = Color(0.86, 0.88, 0.93, 0.07)
+border_width_left = 2
+border_color = Color(0.93, 0.94, 0.98, 0.82)
+
+[sub_resource type="Theme" id="Theme_mode_button"]
+Button/styles/disabled = SubResource("StyleBoxFlat_mode_button_normal")
+Button/styles/focus = SubResource("StyleBoxFlat_mode_button_normal")
+Button/styles/hover = SubResource("StyleBoxFlat_mode_button_hover")
+Button/styles/normal = SubResource("StyleBoxFlat_mode_button_normal")
+Button/styles/pressed = SubResource("StyleBoxFlat_mode_button_normal")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_header"]
-bg_color = Color(0.13, 0.1, 0.07, 0.24)
+bg_color = Color(0.075, 0.08, 0.09, 0.72)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.82, 0.65, 0.42, 0.56)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.9, 0.91, 0.95, 0.72)
 
 [sub_resource type="Theme" id="Theme_section_header"]
 Panel/styles/panel = SubResource("StyleBoxFlat_section_header")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_section_blue"]
-bg_color = Color(0.08, 0.12, 0.18, 0.3)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5, 0.65, 0.8, 0.5)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
-
-[sub_resource type="Theme" id="Theme_section_blue"]
-Panel/styles/panel = SubResource("StyleBoxFlat_section_blue")
+[sub_resource type="FontVariation" id="FontVariation_tracked"]
+base_font = ExtResource("11_latin")
+spacing_glyph = 5
 
 [sub_resource type="Shader" id="Shader_q1qv0"]
 code = "shader_type canvas_item;
@@ -164,7 +151,7 @@ void fragment() {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wa4fa"]
 shader = SubResource("Shader_q1qv0")
-shader_parameter/star_color = Color(0.95, 0.9, 0.75, 1)
+shader_parameter/star_color = Color(0.86, 0.88, 0.93, 1)
 shader_parameter/line_width = 0.02
 shader_parameter/glow_strength = 25.0
 shader_parameter/outer_size = 0.35
@@ -196,10 +183,10 @@ metadata/_edit_lock_ = true
 
 [node name="ModeSelectorRoot" type="Control" parent="." unique_id=389790671]
 anchors_preset = 0
-offset_left = 158.0
-offset_top = 328.0
-offset_right = 246.0
-offset_bottom = 746.0
+offset_left = 120.0
+offset_top = 288.0
+offset_right = 208.0
+offset_bottom = 568.0
 
 [node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
 layout_mode = 1
@@ -247,8 +234,8 @@ theme_override_constants/separation = 12
 custom_minimum_size = Vector2(0, 126)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 18
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 20
 toggle_mode = true
 text = "技
 能
@@ -260,264 +247,29 @@ flat = true
 custom_minimum_size = Vector2(0, 126)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 18
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 20
 toggle_mode = true
 text = "天
 赋
 树"
 flat = true
 
-[node name="FormationModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=1087776721]
-custom_minimum_size = Vector2(0, 126)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 18
-toggle_mode = true
-text = "角
-色
-预
-览"
-flat = true
-
-[node name="FormationModeRoot" type="Control" parent="." unique_id=107765323]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 942.99994
-offset_top = 60.0
-offset_right = 942.99994
-offset_bottom = 60.0
-grow_horizontal = 2
-grow_vertical = 2
-scale = Vector2(1.1, 1.1)
-
-[node name="FormationHeaderFrame" type="Panel" parent="FormationModeRoot" unique_id=119332421]
-layout_mode = 0
-offset_left = -220.90903
-offset_top = 38.181816
-offset_right = -99.09088
-offset_bottom = 92.181816
-mouse_filter = 2
-theme = SubResource("Theme_section_header")
-
-[node name="FormationHeader" type="Label" parent="FormationModeRoot/FormationHeaderFrame" unique_id=1267270876]
-layout_mode = 0
-offset_left = 11.0
-offset_top = 10.0
-offset_right = 211.0
-offset_bottom = 44.0
-theme_override_font_sizes/font_size = 24
-text = "角色预览"
-
-[node name="CharacterPreviewRoot" type="Control" parent="FormationModeRoot" unique_id=1970557118]
-anchors_preset = 0
-offset_left = -248.18176
-offset_top = 223.63637
-offset_right = 269.81824
-offset_bottom = 705.63635
-mouse_filter = 2
-
-[node name="PreviewLayout" type="HBoxContainer" parent="FormationModeRoot/CharacterPreviewRoot" unique_id=1427427153]
-layout_mode = 0
-offset_left = 18.0
-offset_top = 18.0
-offset_right = 498.0
-offset_bottom = 442.0
-mouse_filter = 2
-theme_override_constants/separation = 40
-
-[node name="PortraitPanel" type="Panel" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout" unique_id=441476654]
-custom_minimum_size = Vector2(210, 424)
-layout_mode = 2
-mouse_filter = 2
-theme = SubResource("Theme_section_blue")
-
-[node name="PortraitMargin" type="MarginContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel" unique_id=495973659]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 14.0
-offset_top = 14.0
-offset_right = -14.0
-offset_bottom = -14.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="PortraitStack" type="VBoxContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin" unique_id=497389650]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="PreviewPortrait" type="TextureRect" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin/PortraitStack" unique_id=1008720179]
-custom_minimum_size = Vector2(182, 310)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 5
-
-[node name="SpinePreviewContainer" type="SubViewportContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin/PortraitStack/PreviewPortrait" unique_id=1541053301]
-texture_filter = 4
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -11.090942
-offset_top = -11.9999695
-offset_right = 13.272705
-offset_bottom = 62.90912
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-stretch = true
-
-[node name="SpinePreviewViewport" type="SubViewport" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin/PortraitStack/PreviewPortrait/SpinePreviewContainer" unique_id=1371628657]
-transparent_bg = true
-handle_input_locally = false
-size = Vector2i(206, 420)
-render_target_update_mode = 4
-
-[node name="SpinePreviewWorld" type="Node2D" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin/PortraitStack/PreviewPortrait/SpinePreviewContainer/SpinePreviewViewport" unique_id=983143045]
-position = Vector2(63.45455, 178)
-
-[node name="PreviewNameLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/PortraitPanel/PortraitMargin/PortraitStack" unique_id=1660089710]
-custom_minimum_size = Vector2(0, 38)
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 24
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="DetailPanel" type="Panel" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout" unique_id=1326206148]
-custom_minimum_size = Vector2(252, 424)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme = SubResource("Theme_section_blue")
-
-[node name="DetailMargin" type="MarginContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel" unique_id=957548445]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 18.0
-offset_top = 18.0
-offset_right = -18.0
-offset_bottom = -18.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="DetailStack" type="VBoxContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin" unique_id=537659738]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 14
-
-[node name="StatsTitle" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=1317257035]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.88, 0.94, 1, 1)
-theme_override_font_sizes/font_size = 20
-text = "属性"
-vertical_alignment = 1
-
-[node name="StatGrid" type="GridContainer" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=272575079]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 8
-columns = 2
-
-[node name="LifeMaxLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=671296849]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "生命"
-vertical_alignment = 1
-
-[node name="LifeMaxValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=429767370]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.48, 0.52, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="PowerLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=25047506]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "力量"
-vertical_alignment = 1
-
-[node name="PowerValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=2095806611]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.78, 0.38, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="SurvivabilityLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=53323105]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.88, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "生存"
-vertical_alignment = 1
-
-[node name="SurvivabilityValue" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack/StatGrid" unique_id=392306081]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.54, 1, 0.99, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 2
-vertical_alignment = 1
-
-[node name="Separator" type="ColorRect" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=1442242451]
-custom_minimum_size = Vector2(0, 1)
-layout_mode = 2
-mouse_filter = 2
-color = Color(0.76, 0.86, 1, 0.35)
-
-[node name="PassiveNameLabel" type="Label" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=83362840]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.92, 0.54, 1)
-theme_override_font_sizes/font_size = 20
-text = "被动"
-vertical_alignment = 1
-
-[node name="PassiveDescriptionLabel" type="RichTextLabel" parent="FormationModeRoot/CharacterPreviewRoot/PreviewLayout/DetailPanel/DetailMargin/DetailStack" unique_id=320626716]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-mouse_filter = 2
-theme_override_font_sizes/normal_font_size = 18
-bbcode_enabled = true
-
 [node name="TacticsModeRoot" type="Control" parent="." unique_id=1957179782]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 120.0
-offset_top = -72.0
-offset_right = 120.0
-offset_bottom = -72.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="SkillAreaHeaderFrame" type="Panel" parent="TacticsModeRoot" unique_id=1453034852]
+visible = false
 layout_mode = 0
-offset_left = 410.0
-offset_top = 177.0
-offset_right = 548.0
-offset_bottom = 231.0
+offset_left = 248.0
+offset_top = 220.0
+offset_right = 386.0
+offset_bottom = 274.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
@@ -532,17 +284,18 @@ text = "技能一览"
 
 [node name="SkillContainer" type="ScrollContainer" parent="TacticsModeRoot" unique_id=972831189]
 layout_mode = 0
-offset_left = 114.0
-offset_top = 323.0
-offset_right = 1274.0
-offset_bottom = 1207.0
+offset_left = 248.0
+offset_top = 292.0
+offset_right = 1448.0
+offset_bottom = 952.0
 horizontal_scroll_mode = 0
 
 [node name="SkillScrollMargin" type="MarginContainer" parent="TacticsModeRoot/SkillContainer" unique_id=792204793]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 0
 theme_override_constants/margin_left = 34
-theme_override_constants/margin_top = 34
+theme_override_constants/margin_top = 44
 theme_override_constants/margin_right = 34
 theme_override_constants/margin_bottom = 34
 
@@ -551,29 +304,29 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 32
 theme_override_constants/v_separation = 35
-columns = 5
+columns = 4
 
 [node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
 anchors_preset = 0
-offset_left = 688.0
-offset_top = 113.0
-offset_right = 1208.0
-offset_bottom = 253.0
+offset_left = 248.0
+offset_top = 168.0
+offset_right = 948.0
+offset_bottom = 268.0
 
 [node name="CharacterSelectFrame" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1033239150]
 layout_mode = 0
-offset_top = 54.0
-offset_right = 520.0
-offset_bottom = 126.0
+offset_top = 32.0
+offset_right = 700.0
+offset_bottom = 92.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
 
 [node name="CharacterSelectThumb" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1485209336]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 62.0
-offset_right = 126.0
-offset_bottom = 118.0
+offset_left = 6.0
+offset_top = 38.0
+offset_right = 174.0
+offset_bottom = 86.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
 
@@ -584,19 +337,20 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
 
 [node name="CharacterSelectHeader" type="Label" parent="CharacterSelectRoot" unique_id=2049201501]
 layout_mode = 0
-offset_left = -99.0
-offset_top = 70.0
-offset_right = -11.0
-offset_bottom = 110.0
-theme_override_font_sizes/font_size = 22
-text = "人物选择"
+offset_left = 2.0
+offset_right = 260.0
+offset_bottom = 24.0
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.62)
+theme_override_fonts/font = SubResource("FontVariation_tracked")
+theme_override_font_sizes/font_size = 15
+text = "UNIT SELECT // 人物选择"
 
 [node name="CharacterSelectPanel" type="MarginContainer" parent="CharacterSelectRoot" unique_id=1332262597]
 layout_mode = 0
-offset_left = 8.0
-offset_top = 54.0
-offset_right = 512.0
-offset_bottom = 126.0
+offset_left = 6.0
+offset_top = 32.0
+offset_right = 694.0
+offset_bottom = 92.0
 mouse_filter = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
@@ -613,8 +367,8 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 16
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 18
 toggle_mode = true
 text = "Echo"
 flat = true
@@ -623,8 +377,8 @@ flat = true
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 16
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 18
 toggle_mode = true
 text = "Kasiya"
 flat = true
@@ -633,8 +387,8 @@ flat = true
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 16
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 18
 toggle_mode = true
 text = "玛瑞娅"
 flat = true
@@ -643,8 +397,8 @@ flat = true
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-theme = ExtResource("10_btn")
-theme_override_font_sizes/font_size = 16
+theme = SubResource("Theme_mode_button")
+theme_override_font_sizes/font_size = 18
 toggle_mode = true
 text = "Nightingale"
 flat = true
@@ -654,19 +408,16 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -56.0
-offset_top = -69.0
-offset_right = -56.0
-offset_bottom = -69.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TalentTreeHeaderFrame" type="Panel" parent="TalentModeRoot" unique_id=876269970]
+visible = false
 layout_mode = 0
-offset_left = 754.0
-offset_top = 175.0
-offset_right = 882.0
-offset_bottom = 229.0
+offset_left = 248.0
+offset_top = 220.0
+offset_right = 376.0
+offset_bottom = 274.0
 mouse_filter = 2
 theme = SubResource("Theme_section_header")
 
@@ -680,12 +431,13 @@ theme_override_font_sizes/font_size = 24
 text = "天赋树"
 
 [node name="TalentPointFrame" type="Panel" parent="TalentModeRoot" unique_id=719139115]
+visible = false
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
-offset_left = 1533.0
-offset_top = 175.0
-offset_right = 1659.0
-offset_bottom = 225.0
+offset_left = 1488.0
+offset_top = 220.0
+offset_right = 1614.0
+offset_bottom = 270.0
 mouse_filter = 2
 
 [node name="TalentPointLabel" type="Label" parent="TalentModeRoot/TalentPointFrame" unique_id=1580695145]
@@ -694,23 +446,23 @@ offset_left = 15.0
 offset_top = 11.0
 offset_right = 114.0
 offset_bottom = 39.0
-theme_override_colors/font_color = Color(1, 0.8575, 0.55, 1)
+theme_override_colors/font_color = Color(0.9, 0.91, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "天赋点 0"
 
 [node name="TalentTreeRoot" type="Control" parent="TalentModeRoot" unique_id=655128754]
 anchors_preset = 0
-offset_left = 680.0
-offset_top = 330.0
-offset_right = 1440.0
-offset_bottom = 760.0
+offset_left = 480.0
+offset_top = 389.0
+offset_right = 1240.0
+offset_bottom = 819.0
 mouse_filter = 2
 metadata/_edit_lock_ = true
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1598531785]
 material = SubResource("ShaderMaterial_wa4fa")
 layout_mode = 0
-offset_left = 960.0
-offset_top = 44.0
-offset_right = 1020.0
-offset_bottom = 110.0
+offset_left = 128.0
+offset_top = 200.0
+offset_right = 192.0
+offset_bottom = 264.0

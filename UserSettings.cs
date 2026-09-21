@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Godot;
 
 public static class UserSettings
@@ -14,9 +15,6 @@ public static class UserSettings
     private const string HideEnemySkillsKey = "HideEnemySkills";
     private const string GroupBattlePilesByCharacterKey = "GroupBattlePilesByCharacter";
     private const string ShowHandCardIndicesKey = "ShowHandCardIndices";
-    private const string KeepManualTargetCardVisibleWhenHiddenKey =
-        "KeepManualTargetCardVisibleWhenHidden";
-    private const string UseArrowManualTargetSelectionKey = "UseArrowManualTargetSelection";
     private const string TextSizeLevelKey = "TextSizeLevel";
     private const string BattleShakeLevelKey = "BattleShakeLevel";
     private const string LastSelectedDifficultyKey = "LastSelectedDifficulty";
@@ -25,6 +23,14 @@ public static class UserSettings
     private const string LocaleKey = "Locale";
     private const string WindowWidthKey = "WindowWidth";
     private const string WindowHeightKey = "WindowHeight";
+    private static readonly Vector2I[] FullscreenResolutionOptions =
+    {
+        new(1280, 720),
+        new(1366, 768),
+        new(1600, 900),
+        new(1920, 1080),
+        new(2560, 1440),
+    };
 
     public const int TextSizeLevelSmall = 0;
     public const int TextSizeLevelStandard = 1;
@@ -39,18 +45,16 @@ public static class UserSettings
     private static bool _loaded;
 
     public static bool UseFormulaCardDescriptions { get; private set; }
-    public static bool HideStatXKeywordTooltips { get; private set; }
+    public static bool HideStatXKeywordTooltips { get; private set; } = true;
     public static bool ShowBattleTurnOrderPreview { get; private set; } = true;
-    public static bool ShowIncomingDamagePreview { get; private set; }
+    public static bool ShowIncomingDamagePreview { get; private set; } = true;
     public static bool ShowIntentionTargetNames { get; private set; }
     public static bool HideEnemySkills { get; private set; } = true;
     public static bool GroupBattlePilesByCharacter { get; private set; }
-    public static bool ShowHandCardIndices { get; private set; }
-    public static bool KeepManualTargetCardVisibleWhenHidden { get; private set; } = true;
-    public static bool UseArrowManualTargetSelection { get; private set; } = true;
+    public static bool ShowHandCardIndices { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
     public static int BattleShakeLevel { get; private set; } = BattleShakeLevelStandard;
-    public static int LastSelectedDifficulty { get; private set; }
+    public static int LastSelectedDifficulty { get; private set; } = 5;
     public static int MasterVolumePercent { get; private set; } = 100;
     public static int SfxVolumePercent { get; private set; } = 100;
     public static string Locale { get; private set; } = "zh_CN";
@@ -109,20 +113,6 @@ public static class UserSettings
                 .AsBool();
             ShowHandCardIndices = config
                 .GetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices)
-                .AsBool();
-            KeepManualTargetCardVisibleWhenHidden = config
-                .GetValue(
-                    SectionName,
-                    KeepManualTargetCardVisibleWhenHiddenKey,
-                    KeepManualTargetCardVisibleWhenHidden
-                )
-                .AsBool();
-            UseArrowManualTargetSelection = config
-                .GetValue(
-                    SectionName,
-                    UseArrowManualTargetSelectionKey,
-                    UseArrowManualTargetSelection
-                )
                 .AsBool();
             TextSizeLevel = NormalizeTextSizeLevel(
                 config.GetValue(SectionName, TextSizeLevelKey, TextSizeLevel).AsInt32()
@@ -211,20 +201,6 @@ public static class UserSettings
         Save();
     }
 
-    public static void SetKeepManualTargetCardVisibleWhenHidden(bool value)
-    {
-        EnsureLoaded();
-        KeepManualTargetCardVisibleWhenHidden = value;
-        Save();
-    }
-
-    public static void SetUseArrowManualTargetSelection(bool value)
-    {
-        EnsureLoaded();
-        UseArrowManualTargetSelection = value;
-        Save();
-    }
-
     public static void SetTextSizeLevel(int value)
     {
         EnsureLoaded();
@@ -283,6 +259,36 @@ public static class UserSettings
         WindowWidth = 0;
         WindowHeight = 0;
         Save();
+    }
+
+    public static IReadOnlyList<Vector2I> GetFullscreenResolutionOptions() =>
+        FullscreenResolutionOptions;
+
+    public static Vector2I GetDesktopResolution(Window window = null)
+    {
+        window ??= (Engine.GetMainLoop() as SceneTree)?.Root;
+        int screen = window?.CurrentScreen ?? DisplayServer.GetPrimaryScreen();
+        Vector2I resolution = DisplayServer.ScreenGetSize(screen);
+        return resolution.X > 0 && resolution.Y > 0 ? resolution : new Vector2I(1920, 1080);
+    }
+
+    public static string GetDefaultFullscreenResolutionLabel(Window window = null)
+    {
+        Vector2I resolution = GetDesktopResolution(window);
+        return I18n.Format(
+            "ui.settings.resolution_default",
+            "默认（{resolution}，全屏）",
+            ("resolution", $"{resolution.X} x {resolution.Y}")
+        );
+    }
+
+    public static string GetFullscreenResolutionLabel(Vector2I resolution)
+    {
+        return I18n.Format(
+            "ui.settings.resolution_fullscreen",
+            "{resolution}（全屏）",
+            ("resolution", $"{resolution.X} x {resolution.Y}")
+        );
     }
 
     public static int NormalizeTextSizeLevel(int value) =>
@@ -365,14 +371,15 @@ public static class UserSettings
         if (window == null)
             return;
 
-        if (!HasCustomWindowResolution)
+        if (MobilePlatform.IsMobile)
         {
             window.Mode = Window.ModeEnum.Fullscreen;
             return;
         }
 
-        window.Mode = Window.ModeEnum.Windowed;
-        window.Size = new Vector2I(WindowWidth, WindowHeight);
+        // Resolution presets affect the saved display preference only. Godot's fullscreen
+        // modes always use the monitor's active video mode, so never downgrade to a window.
+        window.Mode = Window.ModeEnum.Fullscreen;
     }
 
     public static void Save()
@@ -394,16 +401,6 @@ public static class UserSettings
             GroupBattlePilesByCharacter
         );
         config.SetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices);
-        config.SetValue(
-            SectionName,
-            KeepManualTargetCardVisibleWhenHiddenKey,
-            KeepManualTargetCardVisibleWhenHidden
-        );
-        config.SetValue(
-            SectionName,
-            UseArrowManualTargetSelectionKey,
-            UseArrowManualTargetSelection
-        );
         config.SetValue(SectionName, TextSizeLevelKey, TextSizeLevel);
         config.SetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel);
         config.SetValue(SectionName, LastSelectedDifficultyKey, LastSelectedDifficulty);

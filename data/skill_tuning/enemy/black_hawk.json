@@ -4,13 +4,14 @@
                                            "Name":  "裂羽连袭",
                                            "PowerMultiplier":  1,
                                            "InvisibleStacks":  1,
-                                           "BaseDamage":  5,
+                                           "BaseDamage":  6,
                                            "HitCount":  3
                                        },
                    "BlackHawkSpecial":  {
                                             "Name":  "黑羽风暴",
-                                            "BaseDamage":  4,
-                                            "Multiplier":  1
+                                            "BaseDamage":  6,
+                                            "Multiplier":  1,
+                                            "EnergyCost":  5
                                         },
                    "BlackHawkSurvive":  {
                                             "Name":  "夜幕回翔",

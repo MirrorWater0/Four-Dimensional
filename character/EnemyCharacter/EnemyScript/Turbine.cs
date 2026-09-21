@@ -93,7 +93,7 @@ public partial class TurbineRegedit : EnemyRegedit
 
 public partial class TurbineAttack : Skill
 {
-    private const int BaseDamage = 27;
+    private const int BaseDamage = 31;
     private const int AllySurvivabilityGain = 5;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -146,13 +146,13 @@ public partial class TurbineSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "超压模式";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 19)),
+            AttackStep(V("BaseDamage", 22)),
             CarryStep(target: TargetReference.Previous, skillIndex: 1),
             AddCardsStep(SkillID.WoundStatus, WoundCount)
         );

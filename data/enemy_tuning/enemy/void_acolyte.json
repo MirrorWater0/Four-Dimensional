@@ -2,7 +2,7 @@
     "enemies":  {
                     "VoidAcolyte":  {
                                         "Name":  "虚空侍从",
-                                        "MaxLife":  27
+                                        "MaxLife":  30
                                     }
                 }
 }

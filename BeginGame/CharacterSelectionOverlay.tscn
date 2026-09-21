@@ -1,76 +1,111 @@
 [gd_scene format=3 uid="uid://bdvpffues8gu1"]
 
 [ext_resource type="Script" uid="uid://dfio134287t87" path="res://BeginGame/CharacterSelectionOverlay.cs" id="1_script"]
-[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
+[ext_resource type="Shader" path="res://shader/UI/Start/DimensionalField.gdshader" id="2_shader"]
+[ext_resource type="Shader" path="res://shader/UI/CharacterSelect/HeroFeather.gdshader" id="3_feather_shader"]
+
+[sub_resource type="ShaderMaterial" id="Material_atmosphere"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+shader_parameter/emphasis = 0.0
+
+[sub_resource type="ShaderMaterial" id="Material_hero_feather"]
+shader = ExtResource("3_feather_shader")
+shader_parameter/softness = 0.55
+
+[sub_resource type="SystemFont" id="Font_ui"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
+font_weight = 400
+
+[sub_resource type="SystemFont" id="Font_technical"]
+font_names = PackedStringArray("Bahnschrift", "Arial", "Noto Sans")
+font_weight = 600
+font_stretch = 90
+
+[sub_resource type="FontVariation" id="Font_title"]
+base_font = SubResource("Font_technical")
+spacing_glyph = 0
+
+[sub_resource type="FontVariation" id="Font_label"]
+base_font = SubResource("Font_ui")
+spacing_glyph = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.04, 0.06, 0.09, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.74, 0.84, 0.96, 0)
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel"]
-bg_color = Color(0.08, 0.12, 0.18, 0.2)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.72, 0.84, 0.96, 0.34)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dossier_panel"]
+content_margin_left = 26.0
+content_margin_top = 22.0
+content_margin_right = 26.0
+content_margin_bottom = 22.0
+bg_color = Color(0.04, 0.05, 0.07, 0.65)
+border_width_left = 1
+border_color = Color(0.78, 0.82, 0.88, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.06, 0.07, 0.08, 0.45)
+border_width_bottom = 1
+border_color = Color(0.68, 0.70, 0.75, 0.45)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input_focus"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.10, 0.12, 0.15, 0.60)
+border_width_bottom = 1
+border_color = Color(0.92, 0.95, 0.98, 0.90)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-bg_color = Color(0.08, 0.12, 0.18, 0.12)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.55, 0.62, 0.7, 0.22)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+content_margin_left = 22.0
+content_margin_top = 8.0
+content_margin_right = 22.0
+content_margin_bottom = 8.0
+bg_color = Color(0.04, 0.05, 0.06, 0.25)
+border_width_bottom = 1
+border_color = Color(0.40, 0.43, 0.48, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel"]
+content_margin_left = 22.0
+content_margin_top = 8.0
+content_margin_right = 22.0
+content_margin_bottom = 8.0
+bg_color = Color(0.06, 0.07, 0.09, 0.50)
+border_width_bottom = 1
+border_color = Color(0.78, 0.80, 0.82, 0.50)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel_hover"]
-bg_color = Color(0.08, 0.12, 0.18, 0.34)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.72, 0.84, 0.96, 0.42)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+content_margin_left = 22.0
+content_margin_top = 8.0
+content_margin_right = 22.0
+content_margin_bottom = 8.0
+bg_color = Color(0.12, 0.14, 0.18, 0.70)
+border_width_bottom = 1
+border_color = Color(0.94, 0.96, 0.98, 0.95)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm"]
-bg_color = Color(0.18, 0.27, 0.42, 0.52)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.95, 0.86, 0.66, 0.86)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+content_margin_left = 22.0
+content_margin_top = 8.0
+content_margin_right = 22.0
+content_margin_bottom = 8.0
+bg_color = Color(0.91, 0.98, 0.97, 0.20)
+border_width_bottom = 1
+border_color = Color(0.91, 0.98, 0.97, 0.85)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm_hover"]
-bg_color = Color(0.18, 0.27, 0.42, 0.66)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.98, 0.9, 0.74, 0.92)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+content_margin_left = 22.0
+content_margin_top = 8.0
+content_margin_right = 22.0
+content_margin_bottom = 8.0
+bg_color = Color(0.91, 0.98, 0.97, 0.32)
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
 
 [node name="CharacterSelectionOverlay" type="Control" unique_id=755585865]
 layout_mode = 3
@@ -81,11 +116,28 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="HeroImage" type="TextureRect" parent="." unique_id=2014720372]
+[node name="Space" type="ColorRect" parent="." unique_id=120000001]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("Material_atmosphere")
+
+[node name="HeroImage" type="TextureRect" parent="." unique_id=2014720372]
+material = SubResource("Material_hero_feather")
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -410.0
+offset_right = 360.0
+offset_bottom = 410.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -99,8 +151,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 1
-color = Color(0.01, 0.02, 0.04, 0.46)
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
 
 [node name="SafeArea" type="MarginContainer" parent="." unique_id=1658685177]
 layout_mode = 1
@@ -131,97 +183,155 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 [node name="Margin" type="MarginContainer" parent="SafeArea/Center/Panel" unique_id=1253657225]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 36
-theme_override_constants/margin_top = 36
-theme_override_constants/margin_right = 36
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 64
 theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin" unique_id=337259187]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 14
 
-[node name="Eyebrow" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1249833280]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 2
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 20
-text = "SQUAD SELECTION"
-
-[node name="Title" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=2084307780]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.98)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 2
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 76
-text = "Echo"
-
-[node name="StatusLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=941368602]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.84, 0.48, 0.96)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 22
-text = "生命 0    力量 0    生存 0"
-autowrap_mode = 3
-
-[node name="TeamBar" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=238699404]
-custom_minimum_size = Vector2(0, 60)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="TeamLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar" unique_id=273650220]
-custom_minimum_size = Vector2(108, 60)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.78)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
-text = "TEAM"
-vertical_alignment = 1
-
-[node name="TeamSlots" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar" unique_id=217232594]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1874506412]
-custom_minimum_size = Vector2(0, 1)
+[node name="Header" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=100000001]
 layout_mode = 2
 mouse_filter = 2
-color = Color(0.74, 0.84, 0.96, 0.18)
+theme_override_constants/separation = 4
 
-[node name="CardGrid" type="HFlowContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=106678245]
+[node name="Eyebrow" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Header" unique_id=1249833280]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.85)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 14
+text = "SQUAD ASSEMBLY // 编队组建"
+
+[node name="ScreenTitle" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Header" unique_id=100000002]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 40
+text = "选择出击小队"
+
+[node name="Body" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=100000010]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 24
-alignment = 1
+theme_override_constants/separation = 32
 
-[node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=1473406607]
-custom_minimum_size = Vector2(0, 120)
+[node name="RosterColumn" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000011]
+custom_minimum_size = Vector2(510, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 24
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="RosterLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn" unique_id=100000012]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.75)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 13
+text = "ROSTER // 可选干员"
+
+[node name="CardGrid" type="HFlowContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn" unique_id=106678245]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+
+[node name="Spacer" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000013]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="DossierColumn" type="PanelContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000014]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dossier_panel")
+
+[node name="Stack" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn" unique_id=100000015]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="DossierLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=100000016]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.75)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 13
+text = "DOSSIER // 干员档案"
+
+[node name="Title" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=2084307780]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.98, 1, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 38
+text = "Echo"
+
+[node name="StatusLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=941368602]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.88, 0.90, 0.94, 0.95)
+theme_override_fonts/font = SubResource("Font_ui")
+theme_override_font_sizes/font_size = 16
+text = "生命 0    力量 0    生存 0"
+autowrap_mode = 3
+
+[node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=1874506412]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.78, 0.82, 0.88, 0.25)
+
+[node name="DossierScroll" type="ScrollContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="DossierContent" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/DossierScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/DossierScroll/DossierContent" unique_id=1473406607]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.92, 0.94, 0.97, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 16
 text = "被动"
 autowrap_mode = 3
+
+[node name="TeamBar" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=238699404]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="TeamLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/TeamBar" unique_id=273650220]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.75)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 13
+text = "TEAM // 出战顺序"
+
+[node name="TeamSlots" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/TeamBar" unique_id=217232594]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 8
 
 [node name="Footer" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=927023461]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 alignment = 2
 
 [node name="SeedBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=208974967]
@@ -233,25 +343,23 @@ theme_override_constants/separation = 12
 
 [node name="SeedLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=29967614]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.85)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 14
 text = "SEED"
 vertical_alignment = 1
 
 [node name="SeedInput" type="LineEdit" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=1213545331]
 custom_minimum_size = Vector2(264, 36)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.94, 0.97, 1, 0.95)
-theme_override_colors/font_placeholder_color = Color(0.76, 0.84, 0.92, 0.48)
-theme_override_colors/caret_color = Color(0.98, 0.9, 0.74, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_colors/font_color = Color(0.92, 0.94, 0.97, 0.95)
+theme_override_colors/font_placeholder_color = Color(0.58, 0.60, 0.66, 0.45)
+theme_override_colors/caret_color = Color(0.94, 0.95, 0.97, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
 theme_override_styles/read_only = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_input_focus")
 placeholder_text = "empty = random, 0-999999999"
 max_length = 9
 
@@ -264,52 +372,50 @@ theme_override_constants/separation = 12
 
 [node name="DifficultyLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=350293572]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.89, 0.95, 0.72)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.85)
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 14
 text = "DIFFICULTY"
 vertical_alignment = 1
 
 [node name="DifficultyMinusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=781786446]
-custom_minimum_size = Vector2(48, 36)
+custom_minimum_size = Vector2(40, 36)
 layout_mode = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_hover_color = Color(0.98, 0.98, 1, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_input_focus")
+theme_override_styles/hover = SubResource("StyleBoxFlat_input_focus")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_input")
 text = "◀"
 
 [node name="DifficultyValueLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=754368392]
-custom_minimum_size = Vector2(96, 36)
+custom_minimum_size = Vector2(88, 36)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.98, 1, 0.96)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.72)
-theme_override_constants/outline_size = 1
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 18
 text = "难度 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="DifficultyPlusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=2138231347]
-custom_minimum_size = Vector2(48, 36)
+[node name="DifficultyPlusButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer/DifficultyBox" unique_id=141887258]
+custom_minimum_size = Vector2(40, 36)
 layout_mode = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_hover_color = Color(0.98, 0.98, 1, 1)
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_input")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_input_focus")
+theme_override_styles/hover = SubResource("StyleBoxFlat_input_focus")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_input")
 text = "▶"
 
 [node name="Spacer" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=130679445]
@@ -318,30 +424,49 @@ size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="CancelButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=867892672]
-custom_minimum_size = Vector2(192, 60)
+custom_minimum_size = Vector2(160, 54)
 layout_mode = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.92, 0.96, 1, 0.9)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel")
 text = "返回"
 
-[node name="ConfirmButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1176823235]
-custom_minimum_size = Vector2(240, 60)
+[node name="RandomStartButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer"]
+custom_minimum_size = Vector2(180, 54)
 layout_mode = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_disabled_color = Color(0.7, 0.74, 0.8, 0.7)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_hover_color = Color(0.98, 0.98, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.54, 0.56, 0.62, 0.60)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel")
+text = "随机并开始"
+
+[node name="ConfirmButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1176823235]
+custom_minimum_size = Vector2(240, 54)
+layout_mode = 2
+focus_mode = 0
+theme_override_colors/font_color = Color(0.94, 0.95, 0.97, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_disabled_color = Color(0.54, 0.56, 0.62, 0.60)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_confirm")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_confirm_hover")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_confirm_hover")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_confirm_hover")
+theme_override_styles/focus = SubResource("StyleBoxFlat_button_confirm")
 text = "确认并开始"

@@ -7,12 +7,25 @@ public partial class ExitButton : Button
     public delegate void ExitButtonPressed();
     public ObservableList<Action> PressedActions = new (); // List of actions to be executed when the button is pressed>
     public Vector2 OriginalPosition = new Vector2(-10, 130);
+
+    // When true (legacy), _Ready snaps Position to OriginalPosition.
+    // Set false for scenes that position the button via anchors (e.g. GameStatistics).
+    [Export]
+    public bool SnapPositionOnReady = true;
+
+    // Offset applied on hover. Legacy left-edge tab uses (50, 0); anchored buttons use (0, 0).
+    [Export]
+    public Vector2 HoverSlideOffset = new Vector2(50f, 0f);
+
     private Tween _hoverTween;
+    private Vector2 _hoverBasePosition;
 
     public override void _Ready()
     {
         Visible = false;
-        Position = OriginalPosition;
+        if (SnapPositionOnReady)
+            Position = OriginalPosition;
+        _hoverBasePosition = Position;
         MouseEntered += () => AnimateHover(true);
         MouseExited += () => AnimateHover(false);
 
@@ -42,7 +55,7 @@ public partial class ExitButton : Button
             .TweenProperty(
                 this,
                 "position",
-                hovered ? OriginalPosition + 50 * Vector2.Right : OriginalPosition,
+                hovered ? _hoverBasePosition + HoverSlideOffset : _hoverBasePosition,
                 0.16f
             )
             .SetTrans(Tween.TransitionType.Cubic)

@@ -2,7 +2,7 @@
     "enemies":  {
                     "VoidRotor":  {
                                       "Name":  "VoidRotor",
-                                      "MaxLife":  110
+                                      "MaxLife":  121
                                   }
                 }
 }

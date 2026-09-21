@@ -36,7 +36,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidAcolyte.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
 
-        MaxLife = 27;
+        MaxLife = 30;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -69,7 +69,7 @@ public partial class VoidAcolyteAttack : Skill
 public partial class VoidAcolyteSurvive : Skill
 {
     private const int BaseBlock = 10;
-    private const int PowerGain = 2;
+    private const int PowerGain = 4;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -80,8 +80,7 @@ public partial class VoidAcolyteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, PowerGain),
-            ModifyPropertyStep(PropertyType.Power, PowerGain, TargetReference.Next)
+            ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
 }
@@ -99,7 +98,7 @@ public partial class VoidAcolyteSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 7), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+            AttackStep(V("BaseDamage", 9), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
             AddCardsStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,

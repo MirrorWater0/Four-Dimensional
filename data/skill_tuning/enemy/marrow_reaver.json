@@ -2,12 +2,12 @@
     "skills":  {
                    "MarrowReaverAttack":  {
                                               "Name":  "裂髓斩",
-                                              "BaseDamage":  11,
+                                              "BaseDamage":  16,
                                               "SurvivabilityGain":  5
                                           },
                    "MarrowReaverSpecial":  {
                                                "Name":  "双刃蚀髓",
-                                               "BaseDamage":  10,
+                                               "BaseDamage":  15,
                                                "HitCount":  2
                                            },
                    "MarrowReaverSurvive":  {

@@ -81,7 +81,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 5), multiplier: PowerMultiplier, times: V("HitCount", 3)),
+            AttackStep(baseDamage: V("BaseDamage", 6), multiplier: PowerMultiplier, times: V("HitCount", 3)),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -114,7 +114,7 @@ public partial class BlackHawkSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "黑羽风暴";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {
@@ -124,7 +124,7 @@ public partial class BlackHawkSpecial : Skill
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(baseDamage: V("BaseDamage", 4), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+                    AttackStep(baseDamage: V("BaseDamage", 6), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
                 ]
             )
         );

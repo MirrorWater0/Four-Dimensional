@@ -5,7 +5,9 @@ using Godot;
 
 public static class PreviewEffectDisplay
 {
-    private const float IconSize = 60f;
+    // Tightened alongside the row plate: a 60px slot left a visible gap between the glyph and
+    // the number once both sat inside a chip.
+    private const float IconSize = 50f;
     private const float IconVerticalOffset = 6f;
     private const float ActionIconVerticalOffset = 1f;
     private const float StatIconSourceSize = 40f;
@@ -16,6 +18,9 @@ public static class PreviewEffectDisplay
     private const float BuffIconVisualScale = 1.0f;
     private const float PreviewAppearFadeDuration = 0.12f;
     private const float PreviewAppearScaleFactor = 1.8f;
+    private const int PreviewFontSize = 33;
+    private const int PreviewOutlineSize = 4;
+    private const int PlateAccentWidth = 4;
     private const string SwordShaderPath = "res://shader/Icon/sword.gdshader";
     private const string RhomboidShaderPath = "res://shader/Icon/Rhomboid.gdshader";
     private const string DamagePreviewIconPath = "res://asset/svg/SkillIcon/attack.svg";
@@ -30,7 +35,10 @@ public static class PreviewEffectDisplay
     private static Shader _swordShader;
     private static Shader _rhomboidShader;
     private static readonly Color OutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
-    private static readonly Color DamageColor = new(1f, 0.84f, 0.63f, 1f);
+    private static readonly Color PlateFillColor = new(0.035f, 0.05f, 0.092f, 0.92f);
+    private static readonly Color PlateBorderColor = new(0.624f, 0.702f, 0.851f, 0.35f);
+    private static readonly Color PlateShadowColor = new(0f, 0f, 0f, 0.72f);
+    private static readonly Color DamageColor = new(1f, 0.6f, 0.45f, 1f);
     private static readonly Color HealColor = new(0.46f, 1f, 0.68f, 1f);
     private static readonly Color BlockColor = new(0.56f, 0.92f, 1f, 1f);
     private static readonly Color PowerColor = new(1f, 0.23f, 0.2f, 1f);
@@ -41,7 +49,15 @@ public static class PreviewEffectDisplay
     private static readonly ConditionalWeakTable<VBoxContainer, PanelPoolState> PanelStates =
         new();
 
-    public static VBoxContainer CreatePanel()
+    // All target-effect readouts use this shared placement.  The right side is reserved for
+    // tooltips, so labels always grow out from the target's left edge instead.
+    private static readonly Vector2 TargetEffectPreviewOffset = new(8f, 0f);
+
+    /// <param name="showRowBackground">
+    /// Whether each effect row receives its chip background. Incoming-damage readouts sit above
+    /// the health bar, where only the icon and value should remain visible.
+    /// </param>
+    public static VBoxContainer CreatePanel(bool showRowBackground = true)
     {
         var panel = new VBoxContainer
         {
@@ -51,8 +67,27 @@ public static class PreviewEffectDisplay
             ZIndex = 80,
             ZAsRelative = false,
         };
-        panel.AddThemeConstantOverride("separation", 2);
+        panel.AddThemeConstantOverride("separation", 5);
+        PanelStates.Add(panel, new PanelPoolState(panel, showRowBackground));
         return panel;
+    }
+
+    /// <summary>How <see cref="ShowPanel"/> resolves the anchor into a panel rect.</summary>
+    public enum PreviewAnchor
+    {
+        /// <summary>Anchor is the horizontal centre of the panel.</summary>
+        Center,
+
+        /// <summary>
+        /// Anchor is the panel's right edge, keeping the readout on the target's left side.
+        /// </summary>
+        Left,
+
+        /// <summary>
+        /// Anchor is the panel's inner edge, so the readout hangs off the side of the target and
+        /// never covers it. Flips to the opposite side when it would leave the viewport.
+        /// </summary>
+        Side,
     }
 
     public static void ShowPanel(
@@ -60,7 +95,8 @@ public static class PreviewEffectDisplay
         IReadOnlyList<Skill.PreviewEffectEntry> effects,
         Vector2 targetScreenPosition,
         Vector2 offset,
-        bool preservePosition = false
+        bool preservePosition = false,
+        PreviewAnchor anchor = PreviewAnchor.Center
     )
     {
         if (panel == null)
@@ -91,8 +127,13 @@ public static class PreviewEffectDisplay
         }
         else
         {
-            Vector2 anchor = targetScreenPosition + offset;
-            panel.Position = new Vector2(anchor.X - size.X / 2f, anchor.Y);
+            panel.Position = ResolvePanelPosition(
+                panel,
+                targetScreenPosition,
+                offset,
+                size,
+                anchor
+            );
         }
 
         if (wasVisible)
@@ -104,6 +145,67 @@ public static class PreviewEffectDisplay
         {
             PlayAppearTween(panel);
         }
+    }
+
+    /// <summary>
+    /// Displays a card or intention effect preview next to its target using the shared target
+    /// preview layout. Keep callers on this path so manual targeting and regular hover cannot
+    /// drift to different sides of the character.
+    /// </summary>
+    public static void ShowTargetEffectPanel(
+        VBoxContainer panel,
+        IReadOnlyList<Skill.PreviewEffectEntry> effects,
+        Vector2 targetScreenPosition
+    )
+    {
+        ShowPanel(
+            panel,
+            effects,
+            targetScreenPosition,
+            TargetEffectPreviewOffset,
+            anchor: PreviewAnchor.Left
+        );
+    }
+
+    private const float PanelViewportMargin = 12f;
+
+    private static Vector2 ResolvePanelPosition(
+        Control panel,
+        Vector2 targetScreenPosition,
+        Vector2 offset,
+        Vector2 size,
+        PreviewAnchor anchor
+    )
+    {
+        if (anchor == PreviewAnchor.Center)
+        {
+            Vector2 centred = targetScreenPosition + offset;
+            return new Vector2(centred.X - size.X * 0.5f, centred.Y);
+        }
+
+        // Hang the plate off the target's side, vertically centred on it, so the silhouette
+        // (and especially the face) stays unobstructed.
+        float y = targetScreenPosition.Y + offset.Y - size.Y * 0.5f;
+        float rightSide = targetScreenPosition.X + offset.X;
+        float leftSide = targetScreenPosition.X - offset.X - size.X;
+
+        Rect2 viewport = panel.GetViewportRect();
+        float minX = viewport.Position.X + PanelViewportMargin;
+        float maxX = viewport.End.X - PanelViewportMargin - size.X;
+        float minY = viewport.Position.Y + PanelViewportMargin;
+        float maxY = viewport.End.Y - PanelViewportMargin - size.Y;
+
+        float x = anchor switch
+        {
+            PreviewAnchor.Left => leftSide,
+            // Prefer the outward side; mirror when it would run off the edge (bosses sit near it).
+            _ => rightSide > maxX && leftSide >= minX ? leftSide : rightSide,
+        };
+
+        return new Vector2(
+            Mathf.Clamp(x, minX, Mathf.Max(minX, maxX)),
+            Mathf.Clamp(y, minY, Mathf.Max(minY, maxY))
+        );
     }
 
     public static void ClearPanel(VBoxContainer panel)
@@ -147,7 +249,7 @@ public static class PreviewEffectDisplay
         PanelPoolState state = GetPanelState(panel);
         if (state.UsedRows >= state.Rows.Count)
         {
-            var row = new PreviewEffectRow();
+            var row = new PreviewEffectRow(state.ShowRowBackground);
             panel.AddChild(row.Row);
             state.Rows.Add(row);
         }
@@ -326,8 +428,8 @@ public static class PreviewEffectDisplay
         PreviewIconKey iconKey,
         string text,
         Color color,
-        int fontSize = 40,
-        int outlineSize = 6
+        int fontSize = PreviewFontSize,
+        int outlineSize = PreviewOutlineSize
     )
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -359,7 +461,7 @@ public static class PreviewEffectDisplay
         if (string.IsNullOrWhiteSpace(damageText))
             return;
 
-        AddRow(panel, PreviewIconKey.Damage, damageText, DamageColor, 30, 5);
+        AddRow(panel, PreviewIconKey.Damage, damageText, DamageColor);
     }
 
     private static Label CreatePreviewLabel(string text, Color color, int fontSize, int outlineSize)
@@ -618,35 +720,80 @@ public static class PreviewEffectDisplay
 
     private sealed class PanelPoolState
     {
-        public PanelPoolState(VBoxContainer panel)
+        public PanelPoolState(VBoxContainer panel, bool showRowBackground = true)
         {
             Panel = panel;
+            ShowRowBackground = showRowBackground;
         }
 
         public VBoxContainer Panel { get; }
+        public bool ShowRowBackground { get; }
         public readonly List<PreviewEffectRow> Rows = new();
         public int UsedRows;
     }
 
     private sealed class PreviewEffectRow
     {
-        public readonly HBoxContainer Row;
+        public readonly PanelContainer Row;
+        private readonly HBoxContainer _content;
+        private readonly StyleBoxFlat _plate;
         private readonly Label _label;
+        private readonly bool _showRowBackground;
         private Control _icon;
         private PreviewIconKey _iconKey;
-        private int _fontSize = 40;
-        private int _outlineSize = 6;
+        private int _fontSize = PreviewFontSize;
+        private int _outlineSize = PreviewOutlineSize;
+        private Color _plateAccent = Colors.Transparent;
 
-        public PreviewEffectRow()
+        public PreviewEffectRow(bool showRowBackground)
         {
-            Row = new HBoxContainer
+            _showRowBackground = showRowBackground;
+            if (_showRowBackground)
+            {
+                // Effect previews on a card or target need a chip to stay readable over art.
+                _plate = new StyleBoxFlat
+                {
+                    BgColor = PlateFillColor,
+                    BorderColor = PlateBorderColor,
+                    BorderWidthLeft = PlateAccentWidth,
+                    BorderWidthTop = 1,
+                    BorderWidthRight = 1,
+                    BorderWidthBottom = 1,
+                    CornerRadiusTopLeft = 0,
+                    CornerRadiusTopRight = 0,
+                    CornerRadiusBottomRight = 0,
+                    CornerRadiusBottomLeft = 0,
+                    ContentMarginLeft = 8f,
+                    ContentMarginRight = 14f,
+                    ContentMarginTop = 2f,
+                    ContentMarginBottom = 2f,
+                    ShadowColor = PlateShadowColor,
+                    ShadowSize = 10,
+                    ShadowOffset = new Vector2(0f, 3f),
+                };
+            }
+
+            Row = new PanelContainer
+            {
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
+                ClipContents = false,
+            };
+            Row.AddThemeStyleboxOverride(
+                "panel",
+                _showRowBackground ? _plate : new StyleBoxEmpty()
+            );
+
+            _content = new HBoxContainer
             {
                 MouseFilter = Control.MouseFilterEnum.Ignore,
                 ClipContents = false,
             };
-            Row.AddThemeConstantOverride("separation", 4);
+            _content.AddThemeConstantOverride("separation", 2);
+            Row.AddChild(_content);
+
             _label = CreatePreviewLabel(string.Empty, Colors.White, _fontSize, _outlineSize);
-            Row.AddChild(_label);
+            _content.AddChild(_label);
         }
 
         public void Configure(
@@ -671,6 +818,13 @@ public static class PreviewEffectDisplay
             }
             _label.AddThemeColorOverride("font_color", color);
             _label.AddThemeColorOverride("font_outline_color", OutlineColor);
+
+            if (_showRowBackground && _plateAccent != color)
+            {
+                _plateAccent = color;
+                _plate.BorderColor = color with { A = 0.85f };
+                _plate.BgColor = PlateFillColor.Lerp(color, 0.07f) with { A = PlateFillColor.A };
+            }
         }
 
         private void ConfigureIcon(PreviewIconKey iconKey)
@@ -683,7 +837,7 @@ public static class PreviewEffectDisplay
             {
                 if (GodotObject.IsInstanceValid(_icon))
                 {
-                    Row.RemoveChild(_icon);
+                    _content.RemoveChild(_icon);
                     _icon.QueueFree();
                 }
                 _icon = null;
@@ -697,8 +851,8 @@ public static class PreviewEffectDisplay
             if (_icon == null)
                 return;
 
-            Row.AddChild(_icon);
-            Row.MoveChild(_icon, 0);
+            _content.AddChild(_icon);
+            _content.MoveChild(_icon, 0);
         }
     }
 

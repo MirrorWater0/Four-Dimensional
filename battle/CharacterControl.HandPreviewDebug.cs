@@ -38,6 +38,12 @@ public partial class CharacterControl
             return result;
         }
 
+        // The harness drives hover state directly. Stop the real-pointer validator so a
+        // headless pointer parked at (0, 0) cannot clear that simulated hover mid-check.
+        _handHoverValidationTimer?.Stop();
+        _queuedHoverRefreshVersion = 0;
+        _deferredHoverRefreshVersion++;
+
         try
         {
             PrepareHandPreviewDebugCard(index);
@@ -56,6 +62,27 @@ public partial class CharacterControl
                 IsCardPreviewDebugCacheCurrent(card),
                 GetHandPreviewDebugState(index)
             );
+
+            int previewContextBeforeShuffle = BattleNode?.HandPreviewContextRevision ?? 0;
+            int cacheBuildsBeforeShuffle = GetHandPreviewDebugCacheBuilds(card);
+            int shuffledCards = BattleNode?.ShufflePlayerTeamBattleDeck(
+                moveDiscardIntoDrawPile: false,
+                playAnimation: false,
+                triggerSearch: false,
+                refreshUi: false
+            ) ?? 0;
+            await WaitHandPreviewDebugFrameAsync();
+            AddHandPreviewDebugCheck(
+                checks,
+                "deck_shuffle_refreshes_active_preview",
+                shuffledCards > 0
+                    && (BattleNode?.HandPreviewContextRevision ?? 0) > previewContextBeforeShuffle
+                    && IsCardPreviewDebugActive(index)
+                    && IsCardPreviewDebugCacheCurrent(card)
+                    && GetHandPreviewDebugCacheBuilds(card) > cacheBuildsBeforeShuffle,
+                GetHandPreviewDebugState(index)
+            );
+            activeCacheBuilds = GetHandPreviewDebugCacheBuilds(card);
 
             LiftCard(index);
             await WaitHandPreviewDebugFrameAsync();
@@ -241,6 +268,7 @@ public partial class CharacterControl
             SetHandInputBlockerVisible(false);
             SetCardHoverUiEnabled(true);
             RestoreStableHandInputAfterQueuedPlay();
+            _handHoverValidationTimer?.Start();
             RequestTurnUiRefresh(refreshHover: true);
         }
 

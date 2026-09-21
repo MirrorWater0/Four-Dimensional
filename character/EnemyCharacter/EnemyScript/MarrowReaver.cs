@@ -66,7 +66,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/MarrowReaver.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
 
-        MaxLife = 161;
+        MaxLife = 178;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -80,7 +80,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 16;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -90,8 +90,7 @@ public partial class MarrowReaverAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Survivability, V("SurvivabilityGain", 5))
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All)
         );
     }
 }
@@ -117,7 +116,7 @@ public partial class MarrowReaverSurvive : Skill
 
 public partial class MarrowReaverSpecial : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 15;
     private const int HitCount = 2;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -126,6 +125,10 @@ public partial class MarrowReaverSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: HitCount));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, times: HitCount),
+            AddCardsStep(SkillID.WoundStatus, 2)
+        );
     }
 }

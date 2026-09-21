@@ -49,7 +49,7 @@ public partial class EvilRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
 
-        MaxLife = 53;
+        MaxLife = 46;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -63,7 +63,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 5;
+    private const int HitDamage = 7;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -77,7 +77,7 @@ public partial class EvilAttack : Skill
 
 public partial class EvilSurvive : Skill
 {
-    private const int PowerGain = 3;
+    private const int PowerGain = 2;
     private const int BaseBlock = 6;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
@@ -101,7 +101,7 @@ public partial class EvilTermin : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { set; get; } = "虚空终结";
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -109,7 +109,7 @@ public partial class EvilTermin : Skill
             this,
             WhileStep(
                 times: () => AttackTimes,
-                loopSteps: [AttackStep(baseDamage: V("BaseDamage", 7), multiplier: V("Multiplier", 1), clampMax: V("ClampMax", 9999))]
+                loopSteps: [AttackStep(baseDamage: V("BaseDamage", 9), multiplier: V("Multiplier", 1), clampMax: V("ClampMax", 9999))]
             )
         );
     }

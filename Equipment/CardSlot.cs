@@ -9,10 +9,10 @@ public partial class CardSlot : Control
     private static readonly Shader TalentPointRewardIconShader = GD.Load<Shader>(
         "res://shader/Effect/TalentPointReward.gdshader"
     );
-    private static readonly Color DefaultBorderColor = new("#a7d6ff52");
-    private static readonly Color HoverBorderColor = new("#5cff8a");
-    private static readonly Color SelectedBorderColor = Colors.Yellow;
-    private static readonly Color DisabledBorderColor = new("#5e6f8670");
+    private static readonly Color DefaultBorderColor = new("#aeb2bc70");
+    private static readonly Color HoverBorderColor = new("#e7eaf0");
+    private static readonly Color SelectedBorderColor = new("#f6f7fa");
+    private static readonly Color DisabledBorderColor = new("#686c7670");
     private static readonly Color RejectBorderColor = new("#ff465f");
     private static readonly Color RejectModulate = new(1f, 0.45f, 0.45f, 1f);
     private static readonly Color EnabledModulate = Colors.White;

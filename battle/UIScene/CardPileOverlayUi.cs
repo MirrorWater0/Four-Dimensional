@@ -31,14 +31,23 @@ public static class CardPileOverlayUi
     public const int ActionButtonZIndex = 2;
 
     public const float MaskMaxAlpha = 0.68f;
-    public const float MaskFadeInDuration = 0.24f;
-    public const float MaskFadeOutDuration = 0.16f;
-    public const float ContentFadeInDuration = 0.30f;
-    public const float ContentFadeOutDuration = 0.18f;
-    public const float ContentSlideOffset = 22f;
-    public const float ContentIntroDelay = 0.05f;
     public const float ActionButtonFadeDuration = 0.18f;
     public const float ActionButtonFadeDelay = 0.12f;
+
+    // Keep every pile-style card browser on the same motion profile.
+    public const float ContentMoveDuration = 0.18f;
+    public const float ContentSlideOffset = 42f;
+    public const float ScrollBounceStep = 18f;
+    public const float ScrollBounceMaxOffset = 46f;
+    public const float ScrollBounceOutDuration = 0.06f;
+    public const float ScrollBounceBackDuration = 0.28f;
+    public const float SmoothWheelStep = 360f;
+    public const float PanGestureMultiplier = 18f;
+    public const float SmoothScrollSpring = 210f;
+    public const float SmoothScrollDamping = 24f;
+    public const float SmoothScrollMaxVelocity = 5200f;
+    public const float SmoothScrollSnapDistance = 0.6f;
+    public const float SmoothScrollStopSpeed = 12f;
 
     public const int AnimatedCardCount = 15;
     public const float CardEntryYOffset = 28f;

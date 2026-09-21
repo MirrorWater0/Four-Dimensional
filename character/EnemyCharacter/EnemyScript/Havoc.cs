@@ -55,7 +55,7 @@ public partial class HavocRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Havoc_v4.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Havoc.tscn");
 
-        MaxLife = 375;
+        MaxLife = 345;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -69,7 +69,7 @@ public partial class HavocRegedit : EnemyRegedit
 
 public partial class HavocAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 11;
     private const int WeakenStacks = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -95,8 +95,7 @@ public partial class HavocSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
-            ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2))
         );
     }
 }
@@ -104,7 +103,7 @@ public partial class HavocSurvive : Skill
 public partial class HavocSpecial : Skill
 {
     private const int DisasterStacks = 7;
-    private const int SelfPowerGain = 2;
+    private const int SelfPowerGain = 4;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -116,8 +115,8 @@ public partial class HavocSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 13), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
-            AddCardsStep(SkillID.PlagueStatus, V("PlagueCount", 3), BattleCardPileTarget.DiscardPileCards),
+            AttackStep(baseDamage: V("BaseDamage", 16), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+            AddCardsStep(SkillID.WoundStatus, V("PlagueCount", 2), BattleCardPileTarget.HandCards),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

@@ -148,7 +148,7 @@ public partial class ArcTrack : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "弧形轨迹";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -164,12 +164,12 @@ public partial class ArcTrack : Skill
 public partial class RenewalFlurry : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 4;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回春连刃";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -192,7 +192,7 @@ public partial class Sacrifice : Skill
     int basisDamage = 12;
     int allyHurt = 4;
     public override string SkillName { get; set; } = "献祭";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 

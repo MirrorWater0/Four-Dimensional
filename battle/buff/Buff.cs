@@ -43,6 +43,7 @@ public partial class Buff
     private static readonly Dictionary<BuffName, string> IconScenePaths = new()
     {
         [BuffName.RebirthI] = "res://battle/buff/StateIcon/Rebirth.tscn",
+        [BuffName.Stun] = "res://battle/buff/StateIcon/Stun.tscn",
         [BuffName.Pursuit] = "res://battle/buff/StateIcon/Pursuit.tscn",
         [BuffName.EternalDark] = "res://battle/buff/StateIcon/EternalDark.tscn",
         [BuffName.Beacon] = "res://battle/buff/StateIcon/Beacon.tscn",
@@ -56,7 +57,6 @@ public partial class Buff
         [BuffName.Void] = "res://battle/buff/StateIcon/Void.tscn",
         [BuffName.Sanctuary] = "res://battle/buff/StateIcon/Sanctuary.tscn",
         [BuffName.Source] = "res://battle/buff/StateIcon/Source.tscn",
-        [BuffName.EnergyStorage] = "res://battle/buff/StateIcon/Source.tscn",
         [BuffName.NextEnergy] = "res://battle/buff/StateIcon/NextEnergy.tscn",
     };
 
@@ -95,14 +95,15 @@ public partial class Buff
             "res://asset/svg/BuffIcon/Kenney/dice_sword.svg",
             new Godot.Color(0.2f, 0.96f, 0.55f, 1f)
         ),
-        [BuffName.Stun] = new(
-            "res://asset/svg/BuffIcon/Kenney/dice_close.svg",
-            new Godot.Color(1f, 0.9f, 0.18f, 1f)
-        ),
         [BuffName.DebuffImmunity] = new(
-            "res://asset/svg/BuffIcon/Kenney/lock_closed.svg",
-            new Godot.Color(0.56f, 1f, 0.86f, 1f),
-            8f
+            "res://asset/BuffIcon/DebuffImmunity.png",
+            new Godot.Color(1f, 0.86f, 0.16f, 1f),
+            3f
+        ),
+        [BuffName.EnergyStorage] = new(
+            "res://asset/third_party/kenney_board_game_icons/PNG/Default (64px)/hexagon_tile.png",
+            Colors.White,
+            4f
         ),
         [BuffName.Invisible] = new(
             "res://asset/svg/BuffIcon/Invisible.svg",
@@ -204,15 +205,15 @@ public partial class Buff
             BuffName.Afterimage => "阵营回合开始时，格挡不会消失，减少1层。",
             BuffName.Weaken => "造成的伤害降低25%；阵营回合结束时减少1层。",
             BuffName.Disaster => "己方阵营回合结束时，每层受到1点伤害，并消耗1层。",
-            BuffName.Divinity => "攻击伤害变为3倍；回合开始时消耗1层。",
-            BuffName.Shadow => "其他己方角色攻击时，每层获得1点力量。",
+            BuffName.Divinity => "攻击伤害变为2倍；回合开始时消耗1层。",
+            BuffName.Shadow => "其他己方角色攻击时，己方全阵每层获得1点力量。",
             BuffName.Demon =>
-                "每有一张牌被消耗，每层获得1点力量。",
+                "每有一张牌被消耗，己方全阵每层获得1点力量。",
             BuffName.Void =>
-                "任意己方角色使用生存牌时，每层获得1点力量。",
+                "任意己方角色使用生存牌时，己方全阵每层获得1点力量。",
             BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
-            BuffName.Sanctuary => "每当有角色恢复生命时，每层获得1点力量。",
-            BuffName.ExtraDraw => "阵营回合开始时，最多消耗1层并抽1张牌。",
+            BuffName.Sanctuary => "每当有角色恢复或失去生命时，己方全阵每层获得1点力量。",
+            BuffName.ExtraDraw => "回合开始时，消耗1层抽1张牌。",
             BuffName.Source => "己方阵营回合开始时，每层额外获得1点能量。",
             BuffName.EnergyStorage => "阵营回合结束时，每层少失去1点能量。",
             BuffName.EternalDark => "回合开始时，每层获得1层隐身。",
@@ -221,7 +222,7 @@ public partial class Buff
             BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
             BuffName.WeakeningField => "每给予1层虚弱，每层使己方全阵获得{block}点格挡。",
             BuffName.ExhaustShield => "每有一张牌被消耗，每层获得1点格挡。",
-            BuffName.Foresight => "每次使用生成卡牌的技能时，抽1张牌。",
+            BuffName.Foresight => "每次使用生成卡牌的技能时，每层抽1张牌。",
             BuffName.Recycling => "每当有一张牌被消耗时，抽1张牌。",
             BuffName.NoDraw => "无法抽牌；回合结束时减少1层。",
             BuffName.Search => "洗牌时，从抽牌堆中选择1张牌加入手牌。",
@@ -1157,7 +1158,10 @@ public partial class Buff
         BuffIcon = null;
         buffs?.Remove((TBuff)this);
         Owner?.InvalidateBuffTooltipCache();
-        Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
+        if (ThisBuffName == BuffName.Invisible)
+            Owner?.BattleNode?.RetargetEnemyDamageIntentionsAfterInvisibleEnds(Owner);
+        else
+            Owner?.BattleNode?.RefreshEnemyIntentionPreviews();
         NotifyHandPreviewContextChanged(Owner);
 
         if (showVanishHint)
@@ -1462,6 +1466,7 @@ public partial class StartActionBuff : Buff
 public partial class AttackBuff : Buff
 {
     private const float WeakenMultiplier = 0.75f;
+    private const float DivinityMultiplier = 2f;
 
     public sealed class PreviewState
     {
@@ -1585,7 +1590,10 @@ public partial class AttackBuff : Buff
 
         if (!isPreview && HasDivinity(attacker))
         {
-            context.Damage = Math.Max(context.Damage * 3, 0);
+            context.Damage = Math.Max(
+                (int)MathF.Floor(context.Damage * DivinityMultiplier),
+                0
+            );
             StartActionBuff divinity = attacker.StartActionBuffs?.FirstOrDefault(x =>
                 x != null && x.ThisBuffName == BuffName.Divinity && x.Stack > 0
             );
@@ -1593,7 +1601,10 @@ public partial class AttackBuff : Buff
         }
         else if (isPreview && HasDivinity(attacker))
         {
-            context.Damage = Math.Max(context.Damage * 3, 0);
+            context.Damage = Math.Max(
+                (int)MathF.Floor(context.Damage * DivinityMultiplier),
+                0
+            );
         }
 
         if (attacker?.AttackBuffs == null)
@@ -1788,7 +1799,10 @@ public partial class EndActionBuff : Buff
                 await skill.Attack(Owner.BattlePower);
                 break;
             case BuffName.NoDraw:
-                ConsumeOneStack();
+                Stack = 0;
+                UpdateStackLabel();
+                TweenLabel();
+                TryRemoveIfEmpty(Owner.EndActionBuffs);
                 break;
         }
     }
@@ -1826,19 +1840,27 @@ public partial class EndActionBuff : Buff
 
     private static async Task TriggerDemonPowerOnExhaustAsync(Battle battle, int exhaustedCardCount)
     {
-        Character[] allies = battle
+        Character[] team = battle
             .GetTeamCharacters(isPlayer: true, includeSummons: true)
             .Where(x => x != null && x.State != Character.CharacterState.Dying)
             .ToArray();
-        if (allies.Length == 0)
+        if (team.Length == 0)
             return;
 
-        foreach (Character ally in allies)
+        Character[] formOwners = team
+            .Where(character =>
+                character.EndActionBuffs?.Any(buff =>
+                    buff != null && buff.ThisBuffName == BuffName.Demon && buff.Stack > 0
+                ) == true
+            )
+            .ToArray();
+
+        foreach (Character formOwner in formOwners)
         {
-            if (ally.EndActionBuffs == null)
+            if (formOwner.EndActionBuffs == null)
                 continue;
 
-            int stacks = ally
+            int stacks = formOwner
                 .EndActionBuffs.Where(x =>
                     x != null && x.ThisBuffName == BuffName.Demon && x.Stack > 0
                 )
@@ -1847,9 +1869,15 @@ public partial class EndActionBuff : Buff
                 continue;
 
             int powerGain = stacks * exhaustedCardCount;
-            FlashTriggersOnOwner(ally, BuffName.Demon);
-            using var _ = ally.BeginEffectSource(GetBuffDisplayName(BuffName.Demon));
-            await ally.IncreaseProperties(PropertyType.Power, powerGain, ally);
+            FlashTriggersOnOwner(formOwner, BuffName.Demon);
+            using var _ = formOwner.BeginEffectSource(GetBuffDisplayName(BuffName.Demon));
+            foreach (Character ally in team)
+            {
+                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                    continue;
+
+                await ally.IncreaseProperties(PropertyType.Power, powerGain, formOwner);
+            }
         }
     }
 
@@ -1918,11 +1946,7 @@ public partial class SpecialBuff : Buff
             ally.UpdataBlock(block, source: owner);
     }
 
-    public static void TriggerBeaconBlockShare(
-        Character owner,
-        int gainedBlock,
-        Character source = null
-    )
+    public static void TriggerBeaconBlockShare(Character owner, int gainedBlock)
     {
         if (_sharingBeaconBlock || owner?.SpecialBuffs == null || gainedBlock <= 0)
             return;
@@ -2113,10 +2137,10 @@ public partial class SpecialBuff : Buff
 
         return battle
             .GetTeamCharacters(isPlayer: true, includeSummons: false)
-            .Count(x =>
-                x is PlayerCharacter player
-                && x.State != Character.CharacterState.Dying
-                && GetForesightStack(player) > 0
+            .Sum(x =>
+                x is PlayerCharacter player && x.State != Character.CharacterState.Dying
+                    ? GetForesightStack(player)
+                    : 0
             );
     }
 

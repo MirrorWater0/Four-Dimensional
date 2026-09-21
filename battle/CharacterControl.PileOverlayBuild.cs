@@ -19,7 +19,10 @@ public partial class CharacterControl
         ulong syncStartUsec = Time.GetTicksUsec();
         EnsurePileOverlayUi();
         int buildVersion = ++_pileOverlayBuildVersion;
-        _pileOverlayContentTemporarilyHidden = false;
+        bool selectionRemainsHidden =
+            _isPileCardSelectionActive
+            && _pileOverlayContentTemporarilyHidden
+            && openContext.Source != PileOverlayOpenSource.CardSelection;
         _pileOverlayLayoutTraceLastGlobalX.Clear();
         ClearPileOverlayCards();
 
@@ -27,11 +30,13 @@ public partial class CharacterControl
             return;
 
         _pileOverlayFadeTween?.Kill();
+        SetPileOverlayContentInputEnabled(true);
         bool wasVisible = IsPileOverlayVisible();
         if (!wasVisible)
             ResetPileOverlayPresentation();
         else
             SetPileOverlayPresentationFullyVisible();
+        _pileOverlayContentTemporarilyHidden = selectionRemainsHidden;
         _pileOverlayRoot.Visible = true;
         _pileOverlayRoot.Modulate = Colors.White;
         _pileOverlayRoot.MouseFilter = MouseFilterEnum.Ignore;

@@ -13,4 +13,9 @@
     "FileExclusion" "*.pdb"
     "FileExclusion" "*.exp"
     "FileExclusion" "*.lib"
+    "FileExclusion" "*.apk"
+    "FileExclusion" "*.idsig"
+    "FileExclusion" "*.log"
+    "FileExclusion" "Four-Dimensional/*"
+    "FileExclusion" "libspine_godot.windows.template_debug.x86_64.dll"
 }

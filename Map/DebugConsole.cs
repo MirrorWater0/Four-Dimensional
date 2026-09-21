@@ -172,6 +172,14 @@ public partial class DebugConsole : CanvasLayer
             "手牌预览",
             "hpv"
         ),
+        new(
+            "nodeinput",
+            "nodeinput",
+            "用 Godot 内部合成鼠标逐个悬停地图节点，并报告实际命中的控件。不会点击节点。",
+            Array.Empty<string>(),
+            "节点输入",
+            "nip"
+        ),
         new("save", "save", "手动保存当前 GameInfo。", Array.Empty<string>(), "保存"),
     ];
 
@@ -1652,6 +1660,12 @@ public partial class DebugConsole : CanvasLayer
             return;
         }
 
+        if (Matches(command, "nodeinput", "节点输入", "nip"))
+        {
+            await ExecuteNodeInputProbeAsync();
+            return;
+        }
+
         if (Matches(command, "save", "保存"))
         {
             SaveSystem.SaveAll();
@@ -1919,16 +1933,8 @@ public partial class DebugConsole : CanvasLayer
         var info = GameInfo.PlayerCharacters[playerIndex];
         int maxLife = Math.Max(info.LifeMax, 1);
         int before = Math.Clamp(info.Life, 0, maxLife);
-        int after = amount.HasValue
-            ? Math.Clamp(before + Math.Max(amount.Value, 0), 0, maxLife)
-            : maxLife;
-        if (after == before)
-            return 0;
-
-        info.Life = after;
-        info.LifeInitialized = true;
-        GameInfo.PlayerCharacters[playerIndex] = info;
-        return after - before;
+        int requestedAmount = amount ?? maxLife - before;
+        return GameInfo.AdjustPlayerLife(playerIndex, requestedAmount);
     }
 
     private async Task SyncBattleLifeFromGameInfoAsync(int? playerIndex = null)
@@ -2189,6 +2195,45 @@ public partial class DebugConsole : CanvasLayer
 
         string json = JsonSerializer.Serialize(control.GetDebugHandPreviewState(), options);
         AppendInfo($"手牌预览状态：\n{json}");
+    }
+
+    private async Task ExecuteNodeInputProbeAsync()
+    {
+        LevelProgress levelProgress = MapNode?.GetNodeOrNull<LevelProgress>("LevelProgress");
+        if (levelProgress == null || !GodotObject.IsInstanceValid(levelProgress))
+        {
+            AppendError("当前不在地图中，无法模拟节点鼠标输入。");
+            return;
+        }
+
+        // The console's full-screen backdrop would otherwise be the topmost hovered control.
+        // Hide it for the duration of the test, then reopen it with the captured report.
+        Close();
+        if (GetTree() != null)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        IReadOnlyList<MapNodePointerProbe.Result> results =
+            await levelProgress.RunPointerInputProbeAsync();
+        int failures = results.Count(result =>
+            result.State == LevelNode.LevelState.Unlocked
+            && (!result.HitExpectedButton || !result.ButtonMouseEntered || result.ButtonDisabled)
+        );
+
+        string report = string.Join(
+            "\n",
+            results.Select(result =>
+                $"节点 {result.Coordinate} state={result.State} disabled={result.ButtonDisabled} "
+                    + $"hit={result.HitExpectedButton} node_enter={result.NodeMouseEntered} "
+                    + $"button_enter={result.ButtonMouseEntered} hovered={result.HoveredControlPath}"
+            )
+        );
+        GD.Print($"[MapNodePointerProbe] failures={failures}\n{report}");
+
+        Open();
+        if (failures == 0)
+            AppendSuccess($"节点鼠标模拟完成：{results.Count} 个节点均命中预期按钮。\n{report}");
+        else
+            AppendError($"节点鼠标模拟发现 {failures} 个可用节点未命中。\n{report}");
     }
 
 

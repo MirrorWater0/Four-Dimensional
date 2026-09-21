@@ -2,17 +2,18 @@
     "skills":  {
                    "VoidRotorAttack":  {
                                            "Name":  "裂刃斩击",
-                                           "BaseDamage":  6,
+                                           "BaseDamage":  8,
                                            "PowerMultiplier":  1,
                                            "HitCount":  3,
                                            "WeakenStacks":  1
                                        },
                    "VoidRotorSpecial":  {
                                             "Name":  "虚界灌注",
-                                            "BaseDamage":  6,
+                                            "BaseDamage":  8,
                                             "DazeCardsPerTarget":  3,
                                             "Multiplier":  1,
-                                            "HitCount":  2
+                                            "HitCount":  2,
+                                            "EnergyCost":  5
                                         },
                    "VoidRotorSurvive":  {
                                             "Name":  "蚀甲压制",

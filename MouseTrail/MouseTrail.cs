@@ -79,6 +79,15 @@ public partial class MouseTrail : CanvasLayer
     {
         Layer = Math.Max(Layer, CursorLayerOrder);
 
+        if (MobilePlatform.IsMobile)
+        {
+            Visible = false;
+            SetProcess(false);
+            SetProcessInput(false);
+            Input.MouseMode = Input.MouseModeEnum.Visible;
+            return;
+        }
+
         _targetNode = GetNodeOrNull<Node2D>("Node2D");
         _trailLine = GetNodeOrNull<Line2D>("Line2D");
         _cursor = GetNodeOrNull<Control>("Cursor");
@@ -302,7 +311,7 @@ public partial class MouseTrail : CanvasLayer
 
     private void CreateStutterOverlayIfNeeded()
     {
-        if (!_enableStutterMonitor || !_showStutterOverlay)
+        if (!OS.IsDebugBuild() || !_enableStutterMonitor || !_showStutterOverlay)
             return;
 
         _stutterLabel = new Label
@@ -323,7 +332,7 @@ public partial class MouseTrail : CanvasLayer
 
     private void UpdateStutterMonitor(float deltaSeconds)
     {
-        if (!_enableStutterMonitor || deltaSeconds <= 0f)
+        if (!OS.IsDebugBuild() || !_enableStutterMonitor || deltaSeconds <= 0f)
             return;
 
         Window window = GetWindow();
@@ -387,25 +396,9 @@ public partial class MouseTrail : CanvasLayer
         Window window = null
     )
     {
-        if (viewport == null)
-            return Vector2.Zero;
-
-        // Viewport mouse coordinates follow Godot's accumulated input events and can lag
-        // behind the OS cursor even while rendering remains at full frame rate.
-        Vector2 fallbackPosition = viewport.GetMousePosition();
-        window ??= viewport.GetWindow();
-        if (window != null && !window.HasFocus())
-            return fallbackPosition;
-
-        Transform2D screenTransform = viewport.GetScreenTransform();
-        float determinant = screenTransform.Determinant();
-        if (!Mathf.IsFinite(determinant) || Mathf.IsZeroApprox(determinant))
-            return fallbackPosition;
-
-        Vector2I screenPosition = DisplayServer.MouseGetPosition();
-        Vector2 viewportPosition = screenTransform.AffineInverse()
-            * new Vector2(screenPosition.X, screenPosition.Y);
-        return viewportPosition.IsFinite() ? viewportPosition : fallbackPosition;
+        // GUI hit testing and InputEvent positions use this coordinate system. Converting
+        // the OS cursor manually loses the Windows DPI scale on high-resolution displays.
+        return viewport?.GetMousePosition() ?? Vector2.Zero;
     }
 
     private Vector2 GetResponsiveMousePosition() =>

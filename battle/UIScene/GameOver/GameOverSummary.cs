@@ -5,9 +5,9 @@ using Godot;
 public partial class GameOverSummary : CanvasLayer
 {
     private const float IntroOffsetY = 24f;
-    private const float TypeDurationMin = 1.4f;
-    private const float TypeDurationMax = 5.8f;
-    private const float TypeSecondsPerCharacter = 0.018f;
+    private const float TypeDurationMin = 0.35f;
+    private const float TypeDurationMax = 1.8f;
+    private const float TypeSecondsPerCharacter = 0.004f;
 
     private static readonly PackedScene SummaryScene = GD.Load<PackedScene>(
         "res://battle/UIScene/GameOver/GameOverSummary.tscn"

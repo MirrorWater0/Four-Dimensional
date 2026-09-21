@@ -8,7 +8,8 @@
                    "ConcordSlash":  {
                                         "Name":  "弧形轨迹",
                                         "BaseDamage":  7,
-                                        "CalmnessCount":  1
+                                        "CalmnessCount":  1,
+                                        "EnergyCost":  1
                                     },
                    "CrescentWind":  {
                                         "Name":  "新月之风",
@@ -18,35 +19,43 @@
                                     },
                    "CrystalGuard":  {
                                         "Name":  "水晶守护",
-                                        "BaseBlock":  4
+                                        "BaseBlock":  5
                                     },
                    "EnergyRelay":  {
                                        "Name":  "能量接续",
-                                       "BaseBlock":  6,
-                                       "NextEnergyStacks":  2
+                                       "BaseBlock":  7,
+                                       "NextEnergyStacks":  2,
+                                       "EnergyCost":  1
                                    },
                    "EnergyTransfer":  {
                                           "Name":  "能量传输",
-                                          "AllyEnergyGain":  3
+                                          "AllyEnergyGain":  3,
+                                          "EnergyCost":  1
                                       },
                    "FinalGuard":  {
                                       "Name":  "终守",
-                                      "BaseBlock":  4,
+                                      "BaseBlock":  5,
                                       "PowerGain":  3
                                   },
                    "Foresight":  {
-                                     "Name":  "预见"
+                                     "Name":  "预见",
+                                     "ForesightStacks":  1,
+                                     "EnergyCost":  1
                                  },
                    "GroupHealing":  {
                                         "Name":  "圣光沐浴",
-                                        "BaseHeal":  8
+                                        "BaseHeal":  8,
+                                        "EnergyCost":  3
                                     },
                    "HolyOfHolies":  {
-                                        "Name":  "至圣"
+                                        "Name":  "至圣",
+                                        "SourceStacks":  1,
+                                        "EnergyCost":  1
                                     },
                    "MariyaBasicSpecial":  {
                                               "Name":  "治愈",
-                                              "Heal":  6
+                                              "Heal":  6,
+                                              "EnergyCost":  1
                                           },
                    "MendSlash":  {
                                      "Name":  "愈合之刃",
@@ -54,39 +63,53 @@
                                      "BaseHeal":  2
                                  },
                    "Prediction":  {
-                                      "Name":  "预测"
+                                      "Name":  "预测",
+                                      "PredictionStacks":  3,
+                                      "EnergyCost":  1
                                   },
                    "QuietVeil":  {
                                      "Name":  "静影庇护",
                                      "InvisibleStacks":  2,
-                                     "SurvivabilityGain":  2
+                                     "SurvivabilityGain":  2,
+                                     "EnergyCost":  0
                                  },
                    "Ragnarok":  {
                                     "Name":  "诸神黄昏",
-                                    "PowerGain":  4,
-                                    "DivinityStacks":  3
+                                    "PowerGain":  3,
+                                    "DivinityStacks":  3,
+                                    "EnergyCost":  3
                                 },
                    "RearlineRevival":  {
                                            "Name":  "死者苏生",
                                            "BaseRebirthHeal":  4,
-                                           "RebirthIStacks":  2
+                                           "RebirthIStacks":  2,
+                                           "EnergyCost":  3
                                        },
                    "RebirthPrayer":  {
                                          "Name":  "复苏祷告",
                                          "BaseRebirthHeal":  5,
-                                         "BaseBlock":  6
+                                         "BaseBlock":  7,
+                                         "EnergyCost":  2
                                      },
                    "RenewalFlurry":  {
                                          "Name":  "回春连刃",
-                                         "BaseDamage":  9,
-                                         "Multiplier":  1
+                                         "BaseDamage":  4,
+                                         "Multiplier":  1,
+                                         "EnergyCost":  2
                                      },
+                   "SacredLink":  {
+                                      "Name":  "神圣连携",
+                                      "EnergyCost":  1
+                                  },
                    "Sacrifice":  {
                                      "Name":  "献祭",
-                                     "Multiplier":  2
+                                     "Multiplier":  2,
+                                     "EnergyCost":  2
                                  },
                    "SanctuaryForm":  {
-                                         "Name":  "圣域形态"
+                                         "Name":  "圣域形态",
+                                         "SanctuaryStacks":  1,
+                                         "EnergyCost":  4
                                      },
                    "ShatterSlash":  {
                                         "Name":  "斩破",
@@ -99,8 +122,7 @@
                                    },
                    "StillWaterMirror":  {
                                             "Name":  "明镜止水",
-                                            "BaseBlock":  6,
-                                            "SurvivabilityGain":  4,
+                                            "BaseBlock":  7,
                                             "CalmnessCount":  2
                                         },
                    "SwapSlash":  {
@@ -112,7 +134,8 @@
                    "TouchOfGod":  {
                                       "Name":  "上帝之触",
                                       "BaseBlock":  0,
-                                      "DivinityStacks":  1
+                                      "DivinityStacks":  1,
+                                      "EnergyCost":  1
                                   }
                }
 }

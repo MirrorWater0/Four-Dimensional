@@ -2,7 +2,7 @@
     "enemies":  {
                     "Death":  {
                                   "Name":  "Death",
-                                  "MaxLife":  415
+                                  "MaxLife":  567
                               }
                 }
 }

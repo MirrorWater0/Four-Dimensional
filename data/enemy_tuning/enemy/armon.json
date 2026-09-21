@@ -2,7 +2,7 @@
     "enemies":  {
                     "Armon":  {
                                   "Name":  "Armon",
-                                  "MaxLife":  119
+                                  "MaxLife":  65
                               }
                 }
 }

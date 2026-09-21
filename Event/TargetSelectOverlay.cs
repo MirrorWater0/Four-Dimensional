@@ -35,6 +35,7 @@ public partial class TargetSelectOverlay : Control
 
     public override void _Ready()
     {
+        SetProcessUnhandledInput(true);
         CacheBaseLayout();
         Visible = false;
         TitleLabel.Text = I18n.Tr("ui.event.target_select.title", "选择作用角色");
@@ -46,6 +47,15 @@ public partial class TargetSelectOverlay : Control
             CharacterButtons[i].Pressed += () => OnCharacterPressed(capturedIndex);
         }
         CancelButton.Pressed += OnCancelPressed;
+    }
+
+    public override void _UnhandledInput(InputEvent inputEvent)
+    {
+        if (!Visible || !MobilePlatform.IsCancelPress(inputEvent))
+            return;
+
+        OnCancelPressed();
+        GetViewport()?.SetInputAsHandled();
     }
 
     public void ShowSelection(PlayerInfoStructure[] players, string hintText)

@@ -417,7 +417,6 @@ public partial class Map : Control
 
         CallDeferred(nameof(ShowPendingStarterBonusChoiceIfNeeded));
         CallDeferred(nameof(ShowPendingBossRelicChoiceIfNeeded));
-        CallDeferred(nameof(StartBattleResourcePrewarm));
     }
 
     public override void _ExitTree()
@@ -441,14 +440,6 @@ public partial class Map : Control
             return;
 
         BossRelicChoice.Show(this);
-    }
-
-    private async void StartBattleResourcePrewarm()
-    {
-        if (WarmupMode)
-            return;
-
-        await BattleStartResourcePreloader.PrewarmForMapAsync(this, LevelProgressNode);
     }
 
     public void ToggleMapPeekMode()

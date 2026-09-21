@@ -356,7 +356,7 @@ internal static class Program
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        File.WriteAllText(GeneratedPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        WriteTextIfChanged(GeneratedPath, content);
     }
 
     private static void RemoveLegacyEnumFromSkillCs()
@@ -390,12 +390,24 @@ internal static class Program
 
     private static void WriteRegistry(SkillRegistryFile registry)
     {
-        string json = JsonSerializer.Serialize(registry, JsonOptions);
+        string json = JsonSerializer.Serialize(registry, JsonOptions).ReplaceLineEndings("\n");
         string? directory = Path.GetDirectoryName(RegistryPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        File.WriteAllText(RegistryPath, json.ReplaceLineEndings("\n"), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        WriteTextIfChanged(RegistryPath, json);
+    }
+
+    private static void WriteTextIfChanged(string path, string content)
+    {
+        if (File.Exists(path))
+        {
+            string existingContent = File.ReadAllText(path).ReplaceLineEndings("\n");
+            if (string.Equals(existingContent, content, StringComparison.Ordinal))
+                return;
+        }
+
+        File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     private static int FindMatchingBrace(string text, int openIndex)

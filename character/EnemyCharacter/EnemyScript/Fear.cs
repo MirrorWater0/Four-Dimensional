@@ -47,7 +47,7 @@ public partial class FearEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
 
-        MaxLife = 245;
+        MaxLife = 270;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -61,7 +61,7 @@ public partial class FearEliteRegedit : EnemyRegedit
 
 public partial class FearEliteAttack : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 13;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -89,14 +89,14 @@ public partial class FearEliteSurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3))
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2))
         );
     }
 }
 
 public partial class FearEliteSpecial : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 14;
     private const int FearStacks = 2;
 
     public override SkillTypes SkillType => SkillTypes.Special;

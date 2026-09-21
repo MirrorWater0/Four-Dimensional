@@ -23,48 +23,37 @@ public partial class SoundBarrier : Skill
     }
 }
 
-public partial class SonicDeflection : Skill
+public partial class RelayShift : Skill
 {
-    private const int DamageImmuneStacks = 2;
-    private const int BaseBlock = 0;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override int EnergyCost => Cost(2);
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
-    public override string SkillName { get; set; } = "声波偏转";
-    public override int EnergyCost => 2;
+    public override string SkillName { get; set; } = "后撤步";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(
-                target: TargetReference.Self,
-                baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1)
-            ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.DamageImmune,
-                stacks: DamageImmuneStacks,
-                target: TargetReference.ManualFriendly
-            ),
-            ModifyPropertyStep(
-                PropertyType.Survivability,
-                -V("SurvivabilityLoss", 3),
-                TargetReference.Self
-            )
+            BlockStep(V("BaseBlock", 7)),
+            CarryStep(target: TargetReference.Previous, skillIndex: 2),
+            CarryStep(target: TargetReference.Next, skillIndex: 2)
         );
     }
 }
 
+
+
 public partial class DeflectionShield : Skill
 {
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 7;
     private const int DamageImmuneStacks = 1;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "偏折之盾";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -86,10 +75,10 @@ public partial class DeflectionShield : Skill
 
 public partial class ResonantWard : Skill
 {
-    private const int DebuffImmunityStacks = 1;
-    private const int BaseBlock = 6;
-    public override int EnergyCost => 2;
-
+    private const int DebuffImmunityStacks = 2;
+    private const int BaseBlock = 7;
+    public override int EnergyCost => Cost(2);
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "电磁排斥";
@@ -98,11 +87,11 @@ public partial class ResonantWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                target: TargetReference.All
+                target: TargetReference.ManualFriendly
             )
         );
     }
@@ -111,9 +100,9 @@ public partial class ResonantWard : Skill
 public partial class DissonantField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 7;
     private const int WeakenStacks = 2;
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -123,7 +112,11 @@ public partial class DissonantField : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
+            BlockStep(
+                baseBlock: BaseBlock,
+                multiplier: V("Multiplier", 1),
+                target: TargetReference.ManualFriendly
+            ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -135,13 +128,13 @@ public partial class DissonantField : Skill
 
 public partial class Shelter : Skill
 {
-    private const int BaseBlock = 4;
+    private const int BaseBlock = 5;
     private const int CardRefreshStacks = 1;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "护幕";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -163,7 +156,7 @@ public partial class Shelter : Skill
 
 public partial class SoundPickup : Skill
 {
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 7;
     private const int DrawPilePickCount = 1;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
@@ -186,7 +179,7 @@ public partial class SoundPickup : Skill
 
 public partial class LingeringTone : Skill
 {
-    private const int BaseBlock = 6;
+    private const int BaseBlock = 7;
     private const int HandKeywordCount = 1;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
@@ -198,7 +191,7 @@ public partial class LingeringTone : Skill
         return new SkillPlan(
             this,
             BlockStep(
-                target: TargetReference.Self,
+                target: TargetReference.ManualFriendly,
                 baseBlock: BaseBlock,
                 multiplier: V("Multiplier", 1)
             ),

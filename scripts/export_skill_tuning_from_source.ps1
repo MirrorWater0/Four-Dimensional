@@ -172,7 +172,7 @@ function Get-SkillEntries {
 
     foreach ($file in Get-SourceFiles) {
         $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-        foreach ($match in [regex]::Matches($text, '(?:public|private|internal)?\s*(?:partial\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*Skill\b')) {
+        foreach ($match in [regex]::Matches($text, '(?:public|private|internal)?\s*(?:partial\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:Skill|[A-Za-z_][A-Za-z0-9_]*Skill)\b')) {
             $className = $match.Groups[1].Value
             $skillId = Resolve-SkillId $className $skillMeta $overrides
             if ([string]::IsNullOrWhiteSpace($skillId) -or $skillId -eq "None") {
@@ -213,7 +213,7 @@ function Get-SkillEntries {
             foreach ($valueMatch in [regex]::Matches($body, 'V\(\s*"([A-Za-z_][A-Za-z0-9_]*)"\s*,\s*(-?\d+)\s*\)')) {
                 $entry[$valueMatch.Groups[1].Value] = [int]$valueMatch.Groups[2].Value
             }
-            $energyMatch = [regex]::Match($body, 'public\s+override\s+int\s+EnergyCost\s*=>\s*V\(nameof\(EnergyCost\),\s*(-?\d+)\s*\)\s*;')
+            $energyMatch = [regex]::Match($body, 'public\s+override\s+int\s+EnergyCost\s*=>\s*(?:V\(\s*nameof\(EnergyCost\)\s*,\s*|Cost\(\s*)(-?\d+)\s*\)\s*;')
             if ($energyMatch.Success) {
                 $entry["EnergyCost"] = [int]$energyMatch.Groups[1].Value
             }
@@ -256,7 +256,7 @@ function Get-EnemyEntries {
 
     foreach ($file in Get-SourceFiles) {
         $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-        foreach ($match in [regex]::Matches($text, '(?:public|private|internal)?\s*(?:partial\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*EnemyRegedit\b')) {
+        foreach ($match in [regex]::Matches($text, '(?:public|private|internal)?\s*(?:partial\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(?:EnemyRegedit|SummonCharacter)\b')) {
             $className = $match.Groups[1].Value
             $enemyKey = $className
             if ($enemyKey.EndsWith("Regedit")) {
@@ -277,7 +277,7 @@ function Get-EnemyEntries {
             }
 
             $entry = [ordered]@{ Name = $name }
-            $maxLifeMatch = [regex]::Match($body, '\bMaxLife\s*=\s*(-?\d+)\s*;')
+            $maxLifeMatch = [regex]::Match($body, '\bMaxLife(?:Stat)?\s*=\s*(-?\d+)\s*;')
             if ($maxLifeMatch.Success) {
                 $entry["MaxLife"] = [int]$maxLifeMatch.Groups[1].Value
             }

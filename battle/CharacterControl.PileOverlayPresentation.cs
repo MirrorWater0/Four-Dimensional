@@ -353,6 +353,18 @@ public partial class CharacterControl
                 GetViewport().SetInputAsHandled();
             return;
         }
+
+        if (MobilePlatform.TryGetTouchScrollDelta(@event, out float touchDelta, 1.15f))
+        {
+            float visualDirection = touchDelta < 0f ? 1f : -1f;
+            float bounceStrength = Mathf.Clamp(
+                Mathf.Abs(touchDelta) / PileOverlaySmoothWheelStep,
+                0.35f,
+                1.1f
+            );
+            if (QueuePileOverlaySmoothScrollByDelta(touchDelta, visualDirection, bounceStrength))
+                GetViewport().SetInputAsHandled();
+        }
     }
 
     private void OnPileOverlayScrollBarGuiInput(InputEvent @event)
@@ -660,8 +672,8 @@ public partial class CharacterControl
         if (_pileOverlayRoot == null || !GodotObject.IsInstanceValid(_pileOverlayRoot))
             return;
 
-        ResetPileOverlayScroll();
         _pileOverlayRoot.MouseFilter = MouseFilterEnum.Ignore;
+        SetPileOverlayContentInputEnabled(false);
         SyncPileOverlaySelectionButtons();
         PlayPileOverlayOutroAnimation(
             hideVersion,
@@ -677,6 +689,7 @@ public partial class CharacterControl
                 }
 
                 _pileOverlayRoot.Visible = false;
+                ResetPileOverlayScroll();
                 ResetPileOverlayPresentation();
                 ClearPileOverlayCards();
                 RequestTurnUiRefresh(refreshHover: true);

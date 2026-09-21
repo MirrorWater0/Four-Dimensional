@@ -90,6 +90,8 @@ public partial class Battle
     private string _lastHoverPerfCharacter = string.Empty;
 
     public RichTextLabel BattleRecord => field ??= GetNodeOrNull<RichTextLabel>("UI/BattleRecord");
+    public Control BattleRecordPlate =>
+        field ??= GetNodeOrNull<Control>("UI/BattleRecordPlate");
     public Button RecordButton => field ??= GetNodeOrNull<Button>("UI/RecordButton");
 
     private const float RecordSlideDuration = 0.2f;
@@ -106,6 +108,7 @@ public partial class Battle
     private const float IncomingDamagePreviewFloatHalfDuration = 1.5f;
     private bool _recordInitialized;
     private bool _recordVisible;
+    public bool IsBattleRecordOpen => _recordVisible;
     private float _recordVisibleLeft;
     private float _recordVisibleRight;
     private float _recordHiddenLeft;
@@ -435,7 +438,7 @@ public partial class Battle
             return panel;
         }
 
-        panel = PreviewEffectDisplay.CreatePanel();
+        panel = PreviewEffectDisplay.CreatePanel(showRowBackground: false);
         target.AddChild(panel);
         _incomingDamagePreviewPanelsByTarget[targetId] = panel;
         return panel;
@@ -574,6 +577,11 @@ public partial class Battle
             return;
 
         _effectSourceStack.RemoveAt(_effectSourceStack.Count - 1);
+        if (_effectSourceStack.Count == 0 && _battleOverCheckPendingAfterEffect)
+        {
+            _battleOverCheckPendingAfterEffect = false;
+            QueueBattleOverCheck();
+        }
     }
 
     private EffectSourceContext GetCurrentEffectSourceContext() =>
@@ -729,6 +737,8 @@ public partial class Battle
             line += $"(格挡吸收 [color={RecordNeutralColor}]{blockedDamage}[/color])";
 
         AppendRecordLine(line, indent: true);
+        if (actualDamage > 0)
+            _ = TriggerSanctuaryOnLifeChangedAsync(target);
     }
 
     private void RecordPlayerDamageTotal(Character target, int totalDamage)
@@ -823,7 +833,7 @@ public partial class Battle
                 ["actualHeal"] = actualHeal,
             }
         );
-        _ = TriggerSanctuaryOnHealAsync(target, source);
+        _ = TriggerSanctuaryOnLifeChangedAsync(target);
     }
 
     public void RecordBlockGain(Character target, int blockGain, Character source = null)
@@ -1113,12 +1123,16 @@ public partial class Battle
             return;
         }
 
-        Character[] targets = GetTeamCharacters(owner.IsPlayer, includeSummons: true)
-            .Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target.State != Character.CharacterState.Dying
-                && target.EndActionBuffs?.Any(buff =>
+        Character[] team = GetTeamCharacters(owner.IsPlayer, includeSummons: true)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.State != Character.CharacterState.Dying
+            )
+            .ToArray();
+        Character[] formOwners = team
+            .Where(character =>
+                character.EndActionBuffs?.Any(buff =>
                     buff != null
                     && buff.ThisBuffName == Buff.BuffName.Void
                     && buff.Stack > 0
@@ -1126,14 +1140,14 @@ public partial class Battle
             )
             .ToArray();
 
-        for (int i = 0; i < targets.Length; i++)
+        for (int i = 0; i < formOwners.Length; i++)
         {
-            Character target = targets[i];
-            if (target == null || !GodotObject.IsInstanceValid(target))
+            Character formOwner = formOwners[i];
+            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner))
                 continue;
 
             int voidStacks =
-                target
+                formOwner
                     .EndActionBuffs?.Where(buff =>
                         buff != null
                         && buff.ThisBuffName == Buff.BuffName.Void
@@ -1143,9 +1157,16 @@ public partial class Battle
             if (voidStacks <= 0)
                 continue;
 
-            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Void);
-            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
-            await target.IncreaseProperties(PropertyType.Power, voidStacks, target);
+            Buff.FlashTriggersOnOwner(formOwner, Buff.BuffName.Void);
+            using var _ = formOwner.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
+            for (int j = 0; j < team.Length; j++)
+            {
+                Character ally = team[j];
+                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                    continue;
+
+                await ally.IncreaseProperties(PropertyType.Power, voidStacks, formOwner);
+            }
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;
@@ -1167,13 +1188,17 @@ public partial class Battle
             return;
         }
 
-        Character[] targets = GetTeamCharacters(attacker.IsPlayer, includeSummons: true)
-            .Where(target =>
-                target != null
-                && target != attacker
-                && GodotObject.IsInstanceValid(target)
-                && target.State != Character.CharacterState.Dying
-                && target.AttackBuffs?.Any(buff =>
+        Character[] team = GetTeamCharacters(attacker.IsPlayer, includeSummons: true)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.State != Character.CharacterState.Dying
+            )
+            .ToArray();
+        Character[] formOwners = team
+            .Where(character =>
+                character != attacker
+                && character.AttackBuffs?.Any(buff =>
                     buff != null
                     && buff.ThisBuffName == Buff.BuffName.Shadow
                     && buff.Stack > 0
@@ -1181,14 +1206,14 @@ public partial class Battle
             )
             .ToArray();
 
-        for (int i = 0; i < targets.Length; i++)
+        for (int i = 0; i < formOwners.Length; i++)
         {
-            Character target = targets[i];
-            if (target == null || !GodotObject.IsInstanceValid(target))
+            Character formOwner = formOwners[i];
+            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner))
                 continue;
 
             int shadowStacks =
-                target
+                formOwner
                     .AttackBuffs?.Where(buff =>
                         buff != null
                         && buff.ThisBuffName == Buff.BuffName.Shadow
@@ -1198,22 +1223,28 @@ public partial class Battle
             if (shadowStacks <= 0)
                 continue;
 
-            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Shadow);
-            using var _ = target.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Shadow));
-            await target.IncreaseProperties(PropertyType.Power, shadowStacks, attacker);
+            Buff.FlashTriggersOnOwner(formOwner, Buff.BuffName.Shadow);
+            using var _ = formOwner.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Shadow));
+            for (int j = 0; j < team.Length; j++)
+            {
+                Character ally = team[j];
+                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                    continue;
+
+                await ally.IncreaseProperties(PropertyType.Power, shadowStacks, formOwner);
+            }
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;
         }
     }
 
-    private async Task TriggerSanctuaryOnHealAsync(Character healedCharacter, Character source)
+    private async Task TriggerSanctuaryOnLifeChangedAsync(Character affectedCharacter)
     {
         if (
-            healedCharacter == null
-            || !GodotObject.IsInstanceValid(healedCharacter)
-            || healedCharacter.State == Character.CharacterState.Dying
-            || healedCharacter.BattleNode != this
+            affectedCharacter == null
+            || !GodotObject.IsInstanceValid(affectedCharacter)
+            || affectedCharacter.BattleNode != this
             || HasBattleEnded()
             || !IsBattleAlive()
         )
@@ -1221,12 +1252,16 @@ public partial class Battle
             return;
         }
 
-        Character[] targets = GetTeamCharacters(healedCharacter.IsPlayer, includeSummons: true)
-            .Where(target =>
-                target != null
-                && GodotObject.IsInstanceValid(target)
-                && target.State != Character.CharacterState.Dying
-                && target.EndActionBuffs?.Any(buff =>
+        Character[] team = GetTeamCharacters(affectedCharacter.IsPlayer, includeSummons: true)
+            .Where(character =>
+                character != null
+                && GodotObject.IsInstanceValid(character)
+                && character.State != Character.CharacterState.Dying
+            )
+            .ToArray();
+        Character[] formOwners = team
+            .Where(character =>
+                character.EndActionBuffs?.Any(buff =>
                     buff != null
                     && buff.ThisBuffName == Buff.BuffName.Sanctuary
                     && buff.Stack > 0
@@ -1234,14 +1269,14 @@ public partial class Battle
             )
             .ToArray();
 
-        for (int i = 0; i < targets.Length; i++)
+        for (int i = 0; i < formOwners.Length; i++)
         {
-            Character target = targets[i];
-            if (target == null || !GodotObject.IsInstanceValid(target))
+            Character formOwner = formOwners[i];
+            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner))
                 continue;
 
             int sanctuaryStacks =
-                target
+                formOwner
                     .EndActionBuffs?.Where(buff =>
                         buff != null
                         && buff.ThisBuffName == Buff.BuffName.Sanctuary
@@ -1251,15 +1286,22 @@ public partial class Battle
             if (sanctuaryStacks <= 0)
                 continue;
 
-            Buff.FlashTriggersOnOwner(target, Buff.BuffName.Sanctuary);
-            using var _ = target.BeginEffectSource(
+            Buff.FlashTriggersOnOwner(formOwner, Buff.BuffName.Sanctuary);
+            using var _ = formOwner.BeginEffectSource(
                 Buff.GetBuffDisplayName(Buff.BuffName.Sanctuary)
             );
-            await target.IncreaseProperties(
-                PropertyType.Power,
-                sanctuaryStacks,
-                source ?? healedCharacter
-            );
+            for (int j = 0; j < team.Length; j++)
+            {
+                Character ally = team[j];
+                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                    continue;
+
+                await ally.IncreaseProperties(
+                    PropertyType.Power,
+                    sanctuaryStacks,
+                    formOwner
+                );
+            }
 
             if (HasBattleEnded() || !IsBattleAlive())
                 return;
@@ -1339,6 +1381,29 @@ public partial class Battle
             )
             .SetTrans(Tween.TransitionType.Sine)
             .SetEase(Tween.EaseType.Out);
+
+        var plate = BattleRecordPlate;
+        if (plate == null)
+            return;
+
+        _recordTween
+            .TweenProperty(
+                plate,
+                "offset_left",
+                show ? _recordVisibleLeft : _recordHiddenLeft,
+                RecordSlideDuration
+            )
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
+        _recordTween
+            .TweenProperty(
+                plate,
+                "offset_right",
+                show ? _recordVisibleRight : _recordHiddenRight,
+                RecordSlideDuration
+            )
+            .SetTrans(Tween.TransitionType.Sine)
+            .SetEase(Tween.EaseType.Out);
     }
 
     private void SetRecordOffsets(float left, float right)
@@ -1348,5 +1413,12 @@ public partial class Battle
             return;
         record.OffsetLeft = left;
         record.OffsetRight = right;
+
+        var plate = BattleRecordPlate;
+        if (plate != null)
+        {
+            plate.OffsetLeft = left;
+            plate.OffsetRight = right;
+        }
     }
 }

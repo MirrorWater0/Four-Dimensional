@@ -57,7 +57,7 @@ public partial class GameEvent
             "一具漂浮在舱壁缺口旁的黑匣仍在循环广播事故录音。\n"
                 + "加密芯片尚未烧毁，只是供能极不稳定。\n"
                 + "你可以出售残存记录、复制一段战术日志，或把余电导回队伍系统。",
-            Option("出售事故航迹", electricityChangeMin: 70, electricityChangeMax: 100),
+            Option("出售事故航迹", electricityChangeMin: 90, electricityChangeMax: 120),
             Option("复制战术日志", actionType: EventOptionActionType.CopyCard),
             Option("接入残余电容", partyHealPercentMin: 15, partyHealPercentMax: 25)
         ),
@@ -68,7 +68,7 @@ public partial class GameEvent
                 + "若不信任这台设备，炉芯本身也能拆出一笔电力币。",
             Option("重铸一张卡牌", actionType: EventOptionActionType.TransformCard),
             Option("拓印一张卡牌", actionType: EventOptionActionType.CopyCard),
-            Option("拆出售电模块", electricityChangeMin: 50, electricityChangeMax: 80)
+            Option("拆出售电模块", electricityChangeMin: 70, electricityChangeMax: 100)
         ),
         Event(
             "清除协议站",
@@ -76,7 +76,7 @@ public partial class GameEvent
                 + "它可以安全移除一段战术指令，也可以把废料压缩成可交易数据。\n"
                 + "旁路电池还残留着一点可以直接导入队伍的能量。",
             Option("执行卡牌清除", actionType: EventOptionActionType.RemoveCard),
-            Option("压缩废料数据", electricityChangeMin: 45, electricityChangeMax: 75),
+            Option("压缩废料数据", electricityChangeMin: 65, electricityChangeMax: 95),
             Option("导入旁路电池", partyHealPercentMin: 12, partyHealPercentMax: 22)
         ),
         Event(
@@ -103,7 +103,7 @@ public partial class GameEvent
                 actionType: EventOptionActionType.GainTalentPoint,
                 talentPointAmount: 1
             ),
-            Option("拆走挂架电芯", electricityChangeMin: 60, electricityChangeMax: 90)
+            Option("拆走挂架电芯", electricityChangeMin: 80, electricityChangeMax: 110)
         ),
         Event(
             "低温休眠仓",
@@ -111,7 +111,7 @@ public partial class GameEvent
                 + "医疗日志已经损毁，但仓体系统还保存着可复制的应急流程。\n"
                 + "你也可以把备用电池抽走，留作航程中的过渡能量。",
             Option("复制应急流程", actionType: EventOptionActionType.CopyCard),
-            Option("导出医疗账本", electricityChangeMin: 40, electricityChangeMax: 70),
+            Option("导出医疗账本", electricityChangeMin: 60, electricityChangeMax: 90),
             Option("抽走备用电池", partyHealPercentMin: 18, partyHealPercentMax: 28)
         ),
     ];

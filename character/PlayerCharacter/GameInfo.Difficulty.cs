@@ -70,7 +70,7 @@ public static partial class GameInfo
 
         return targetLevel <= 0
             ? SetPartyLifeToMaxLifePercent(ReducedRegionLifeRecoveryPercent)
-            : HealPartyByMaxLifePercent(ReducedRegionLifeRecoveryPercent);
+            : HealPartyByMissingLifePercent(ReducedRegionLifeRecoveryPercent);
     }
 
     public static void ApplyDifficultyBattleStartPenalty(Battle battle)
@@ -238,7 +238,8 @@ public static partial class GameInfo
             GameDifficultyPenalty.BattleStartDaze =>
                 $"战斗开始时抽牌堆加入{BattleStartDazeCount}张{dazeName}",
             GameDifficultyPenalty.ReducedRegionLifeRecovery =>
-                "进入区域一时以80%生命开局；进入区域二时保留剩余生命并额外恢复80%生命",
+                "进入区域一时以80%生命开局；进入新区域时只恢复已失去生命的80%",
+
             _ => string.Empty,
         };
     }

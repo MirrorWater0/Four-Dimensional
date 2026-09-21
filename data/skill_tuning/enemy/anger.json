@@ -2,12 +2,12 @@
     "skills":  {
                    "AngerEliteAttack":  {
                                             "Name":  "裂镰",
-                                            "BaseDamage":  15,
+                                            "BaseDamage":  18,
                                             "VulnerableStacks":  9
                                         },
                    "AngerEliteSpecial":  {
                                              "Name":  "狂怒弧刃",
-                                             "BaseDamage":  6,
+                                             "BaseDamage":  8,
                                              "HitCount":  2
                                          },
                    "AngerEliteSurvive":  {

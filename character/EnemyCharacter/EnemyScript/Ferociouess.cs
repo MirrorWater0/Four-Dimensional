@@ -51,7 +51,7 @@ public partial class FerociouessRegedit : EnemyRegedit
         BasePowerContribution = 0;
         BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.FerociouessAttack, SkillID.FerociouessSurvive];
-
+        OpeningIntentionSkillIDs = [SkillID.FerociouessAttack];
         PassiveName = global::Ferociouess.PassiveNameText;
         PassiveDescription = global::Ferociouess.PassiveDescriptionText;
     }
@@ -59,8 +59,8 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 11;
-    private const int SelfPowerGain = 2;
+    private const int BaseDamage = 14;
+    private const int SelfPowerGain = 0;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -112,13 +112,13 @@ public partial class FerociouessSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "狂暴";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 5), times: HitCount, target: HostileTargetReference.All)
+            AttackStep(baseDamage: V("BaseDamage", 7), times: HitCount, target: HostileTargetReference.All)
         );
     }
 }

@@ -1,427 +1,493 @@
 [gd_scene format=3 uid="uid://ft3l0i72dhji"]
 
-[ext_resource type="Script" uid="uid://dmgyfj5evedtf" path="res://BeginGame/Statistics/GameStatistics.cs" id="1_script"]
-[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
-[ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="2_m0hex"]
-[ext_resource type="Shader" uid="uid://cfpheofcp5oun" path="res://shader/UI/ExitButton.gdshader" id="3_sdmw3"]
-[ext_resource type="Script" uid="uid://cexrnwf6lh4bv" path="res://Map/UI/ExitButton.cs" id="4_m0hex"]
+[ext_resource type="Script" path="res://BeginGame/Statistics/GameStatistics.cs" id="1"]
+[ext_resource type="Shader" path="res://shader/UI/Start/DimensionalField.gdshader" id="2"]
+[ext_resource type="Script" path="res://Map/UI/ExitButton.cs" id="3"]
+[ext_resource type="Script" path="res://BeginGame/StartFlowCurves.cs" id="4"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_7v4ba"]
-shader = ExtResource("2_m0hex")
-shader_parameter/color_top = Color(0.02, 0.05, 0.1, 1)
-shader_parameter/color_mid = Color(0.03, 0.02, 0.06, 1)
-shader_parameter/color_bot = Color(0.01, 0.01, 0.02, 1)
-shader_parameter/star_color = Color(0.6, 0.85, 1, 1)
-shader_parameter/line_color = Color(0.35, 0.55, 1, 0.35)
-shader_parameter/spacing = 160.0
-shader_parameter/density = 0.28
-shader_parameter/star_base_size = 2.0
-shader_parameter/line_weight = 0.7
-shader_parameter/line_softness = 1.3
-shader_parameter/drift_speed = 0.45
-shader_parameter/drift_dist = 0.22
-shader_parameter/flow_strength = 0.18
-shader_parameter/line_breath = 0.22
+[sub_resource type="SystemFont" id="Font_ui"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_transparent"]
-bg_color = Color(0.0470588, 0.0784314, 0.121569, 0)
-border_color = Color(0.470588, 0.635294, 0.776471, 0)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
+[sub_resource type="SystemFont" id="Font_display"]
+font_names = PackedStringArray("Bahnschrift", "Arial", "Noto Sans")
+font_weight = 600
+font_stretch = 90
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_track"]
-bg_color = Color(0.08, 0.12, 0.18, 0.24)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
+[sub_resource type="ShaderMaterial" id="Backdrop"]
+shader = ExtResource("2")
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="StyleBoxFlat" id="Section"]
+bg_color = Color(0, 0, 0, 0)
+border_width_top = 1
+border_color = Color(0.75, 0.79, 0.82, 0.20)
+content_margin_top = 18.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="Button_normal"]
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.75, 0.79, 0.82, 0.25)
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="Button_hover"]
+bg_color = Color(0.85, 0.89, 0.92, 0.035)
+border_width_bottom = 1
+border_color = Color(0.92, 0.95, 0.97, 0.85)
+content_margin_left = 12.0
+content_margin_right = 12.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="Button_focus"]
+bg_color = Color(0, 0, 0, 0)
 border_width_bottom = 2
-border_color = Color(0.52, 0.66, 0.82, 0.48)
-corner_radius_top_left = 28
-corner_radius_top_right = 28
-corner_radius_bottom_right = 28
-corner_radius_bottom_left = 28
+border_color = Color(0.90, 0.94, 0.96, 0.9)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb"]
-bg_color = Color(0.82, 0.7, 0.48, 0.2)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
+[sub_resource type="StyleBoxFlat" id="Track"]
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.8, 0.84, 0.87, 0.16)
+
+[sub_resource type="StyleBoxFlat" id="Thumb"]
+bg_color = Color(0.85, 0.90, 0.94, 0.025)
 border_width_bottom = 2
-border_color = Color(0.94, 0.84, 0.66, 0.68)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
+border_color = Color(0.85, 0.93, 0.94, 0.88)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mode_thumb_accent"]
-bg_color = Color(0.92, 0.84, 0.72, 0.18)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
+[sub_resource type="StyleBoxFlat" id="Scroll_track"]
+bg_color = Color(0.75, 0.8, 0.84, 0.04)
+content_margin_left = 3.0
+content_margin_top = 3.0
+content_margin_right = 3.0
+content_margin_bottom = 3.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_seed_button"]
-bg_color = Color(0.05, 0.08, 0.13, 0.34)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.55, 0.72, 0.92, 0.46)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+[sub_resource type="StyleBoxFlat" id="Scroll_grabber"]
+bg_color = Color(0.72, 0.78, 0.83, 0.38)
+content_margin_left = 3.0
+content_margin_top = 3.0
+content_margin_right = 3.0
+content_margin_bottom = 3.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_seed_button_hover"]
-bg_color = Color(0.08, 0.13, 0.2, 0.58)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.94, 0.84, 0.66, 0.78)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+[sub_resource type="Theme" id="ArchiveTheme"]
+default_font = SubResource("Font_ui")
+default_font_size = 17
+Label/colors/font_color = Color(0.86, 0.89, 0.92, 1)
+Button/colors/font_color = Color(0.72, 0.77, 0.81, 1)
+Button/colors/font_hover_color = Color(0.96, 0.98, 1, 1)
+Button/colors/font_pressed_color = Color(0.88, 0.95, 0.94, 1)
+Button/colors/font_disabled_color = Color(0.56, 0.61, 0.65, 0.4)
+Button/styles/normal = SubResource("Button_normal")
+Button/styles/hover = SubResource("Button_hover")
+Button/styles/pressed = SubResource("Button_hover")
+Button/styles/focus = SubResource("Button_focus")
+Button/styles/disabled = SubResource("Button_normal")
+VScrollBar/styles/scroll = SubResource("Scroll_track")
+VScrollBar/styles/grabber = SubResource("Scroll_grabber")
+VScrollBar/styles/grabber_highlight = SubResource("Scroll_grabber")
+VScrollBar/styles/grabber_pressed = SubResource("Scroll_grabber")
+HScrollBar/styles/scroll = SubResource("Scroll_track")
+HScrollBar/styles/grabber = SubResource("Scroll_grabber")
+HScrollBar/styles/grabber_highlight = SubResource("Scroll_grabber")
+HScrollBar/styles/grabber_pressed = SubResource("Scroll_grabber")
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_blwrf"]
-shader = ExtResource("3_sdmw3")
-shader_parameter/icon_color = Color(1, 1, 1, 1)
-
-[node name="GameStatistics" type="CanvasLayer" unique_id=90928736]
+[node name="GameStatistics" type="CanvasLayer"]
 layer = 60
-script = ExtResource("1_script")
+script = ExtResource("1")
 
-[node name="BG" type="ColorRect" parent="." unique_id=1394478184]
-material = SubResource("ShaderMaterial_7v4ba")
+[node name="BG" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+material = SubResource("Backdrop")
 
-[node name="CenterPanel" type="PanelContainer" parent="." unique_id=116578798]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -840.0
-offset_top = -540.0
-offset_right = 840.0
-offset_bottom = 531.0
+[node name="FlowCurves" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+mouse_filter = 2
+modulate = Color(1, 1, 1, 0.13)
+script = ExtResource("4")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel" unique_id=1568122708]
-layout_mode = 2
-theme_override_constants/margin_left = 28
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 28
-theme_override_constants/margin_bottom = 14
+[node name="CenterPanel" type="Control" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = SubResource("ArchiveTheme")
 
-[node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin" unique_id=2129823271]
-layout_mode = 2
-theme_override_constants/separation = 4
+[node name="Emblem" type="Line2D" parent="CenterPanel"]
+position = Vector2(146, 70)
+points = PackedVector2Array(0, -18, 16, -9, 16, 9, 0, 18, -16, 9, -16, -9, 0, -18, 0, 0, 16, 9, 0, 0, -16, 9)
+width = 1.2
+default_color = Color(0.68, 0.82, 0.91, 0.8)
+antialiased = true
 
-[node name="Eyebrow" type="Label" parent="CenterPanel/Margin/VBox" unique_id=1176213375]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.682353, 0.803922, 0.905882, 0.78)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 18
-text = "RUN ARCHIVE"
-
-[node name="Title" type="Label" parent="CenterPanel/Margin/VBox" unique_id=880632606]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.956863, 0.980392, 1, 0.98)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 30
-text = "历史记录"
-horizontal_alignment = 1
-
-[node name="Description" type="Label" parent="CenterPanel/Margin/VBox" unique_id=147478903]
-layout_mode = 2
+[node name="Brand" type="Label" parent="CenterPanel"]
+offset_left = 186.0
+offset_top = 52.0
+offset_right = 546.0
+offset_bottom = 88.0
+mouse_filter = 2
 theme_override_font_sizes/font_size = 16
-text = "节点记录"
+text = "FOUR-DIMENSIONAL"
 
-[node name="Divider" type="ColorRect" parent="CenterPanel/Margin/VBox" unique_id=91181857]
-custom_minimum_size = Vector2(0, 1)
-layout_mode = 2
-color = Color(0.788235, 0.878431, 0.956863, 0.18)
 
-[node name="MainVisualBox" type="PanelContainer" parent="CenterPanel/Margin/VBox" unique_id=708368516]
-custom_minimum_size = Vector2(0, 820)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+[node name="Eyebrow" type="Label" parent="CenterPanel"]
+offset_left = 528.0
+offset_top = 52.0
+offset_right = 978.0
+offset_bottom = 88.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+text = "RUN ARCHIVE"
+theme_override_colors/font_color = Color(0.64, 0.70, 0.76, 1)
 
-[node name="StatisticsMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox" unique_id=1273297168]
-layout_mode = 2
-theme_override_constants/margin_left = 0
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 0
-theme_override_constants/margin_bottom = 0
+[node name="TopRule" type="ColorRect" parent="CenterPanel"]
+offset_left = 128.0
+offset_top = 122.0
+offset_right = 1792.0
+offset_bottom = 123.0
+mouse_filter = 2
+color = Color(0.76, 0.8, 0.84, 0.20)
 
-[node name="VisualContent" type="VBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin" unique_id=1341387497]
-layout_mode = 2
-theme_override_constants/separation = 8
+[node name="Rail" type="ColorRect" parent="CenterPanel"]
+offset_left = 476.0
+offset_top = 186.0
+offset_right = 477.0
+offset_bottom = 938.0
+mouse_filter = 2
+color = Color(0.76, 0.8, 0.84, 0.20)
 
-[node name="SummaryRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent" unique_id=301937530]
-custom_minimum_size = Vector2(0, 34)
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
+[node name="BottomRule" type="ColorRect" parent="CenterPanel"]
+offset_left = 128.0
+offset_top = 990.0
+offset_right = 1792.0
+offset_bottom = 991.0
+mouse_filter = 2
+color = Color(0.76, 0.8, 0.84, 0.20)
 
-[node name="NodeSection" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent" unique_id=1474158038]
-custom_minimum_size = Vector2(0, 146)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+[node name="Footer" type="Label" parent="CenterPanel"]
+offset_left = 528.0
+offset_top = 1006.0
+offset_right = 1488.0
+offset_bottom = 1042.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+text = "悬停查看详情 · 右键技能查看卡牌"
+theme_override_colors/font_color = Color(0.61, 0.68, 0.73, 1)
 
-[node name="NodeMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/NodeSection" unique_id=1724767610]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 1
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 1
+[node name="Edition" type="Label" parent="CenterPanel"]
+offset_left = 1360.0
+offset_top = 1006.0
+offset_right = 1792.0
+offset_bottom = 1042.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "FOUR-DIMENSIONAL / ARCHIVE"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.61, 0.68, 0.73, 1)
 
-[node name="NodeRows" type="VBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/NodeSection/NodeMargin" unique_id=568445538]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 2
+[node name="Sidebar" type="Control" parent="CenterPanel"]
+offset_left = 128.0
+offset_top = 180.0
+offset_right = 436.0
+offset_bottom = 950.0
+mouse_filter = 2
 
-[node name="RelicSection" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent" unique_id=490728535]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+[node name="DisplayTitle" type="Label" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 308.0
+offset_bottom = 72.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 58
+text = "RUN"
+theme_override_fonts/font = SubResource("Font_display")
+theme_override_colors/font_color = Color(0.9, 0.94, 0.97, 1)
 
-[node name="RelicMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection" unique_id=1414661971]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 0
+[node name="ArchiveTitle" type="Label" parent="CenterPanel/Sidebar"]
+offset_top = 72.0
+offset_right = 308.0
+offset_bottom = 146.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 58
+theme_override_fonts/font = SubResource("Font_display")
+theme_override_colors/font_color = Color(0.9, 0.94, 0.97, 1)
+text = "ARCHIVE"
 
-[node name="RelicVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin" unique_id=1100120392]
-layout_mode = 2
-theme_override_constants/separation = 0
+[node name="Title" type="Label" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 160.0
+offset_right = 308.0
+offset_bottom = 205.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 26
+text = "历史记录"
 
-[node name="RelicTitle" type="Label" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin/RelicVBox" unique_id=1449386563]
-custom_minimum_size = Vector2(0, 22)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.92549, 0.964706, 1, 0.88)
-theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.72)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
-text = "遗物"
 
-[node name="RelicGrid" type="HFlowContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin/RelicVBox" unique_id=393558361]
+[node name="Count" type="Label" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 218.0
+offset_right = 308.0
+offset_bottom = 248.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+text = ""
+theme_override_colors/font_color = Color(0.61, 0.68, 0.73, 1)
+
+[node name="ListRule" type="ColorRect" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 266.0
+offset_right = 308.0
+offset_bottom = 267.0
+mouse_filter = 2
+color = Color(0.76, 0.8, 0.84, 0.20)
+
+[node name="HistoryScroll" type="ScrollContainer" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 286.0
+offset_right = 308.0
+offset_bottom = 676.0
+horizontal_scroll_mode = 0
+
+[node name="HistoryList" type="VBoxContainer" parent="CenterPanel/Sidebar/HistoryScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 4
+theme_override_constants/separation = 8
 
-[node name="EquipmentSection" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent" unique_id=1568064308]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+[node name="PageIndex" type="Label" parent="CenterPanel/Sidebar"]
+offset_left = 0.0
+offset_top = 704.0
+offset_right = 308.0
+offset_bottom = 740.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 15
+text = "— / —"
+horizontal_alignment = 1
+theme_override_fonts/font = SubResource("Font_display")
 
-[node name="EquipmentMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection" unique_id=989136604]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 0
+[node name="Detail" type="Control" parent="CenterPanel"]
+offset_left = 528.0
+offset_top = 182.0
+offset_right = 1792.0
+offset_bottom = 962.0
+mouse_filter = 2
 
-[node name="EquipmentVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin" unique_id=1059773072]
-layout_mode = 2
-theme_override_constants/separation = 5
+[node name="RecordTitle" type="Label" parent="CenterPanel/Detail"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 930.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 34
+text = "航行档案"
 
-[node name="EquipmentTitle" type="Label" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox" unique_id=712899767]
-custom_minimum_size = Vector2(0, 22)
+
+[node name="Description" type="Label" parent="CenterPanel/Detail"]
+offset_left = 0.0
+offset_top = 59.0
+offset_right = 1264.0
+offset_bottom = 99.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.69, 0.74, 0.78, 1)
+
+[node name="Scroll" type="ScrollContainer" parent="CenterPanel/Detail"]
+offset_left = 0.0
+offset_top = 118.0
+offset_right = 1264.0
+offset_bottom = 780.0
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="CenterPanel/Detail/Scroll"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92549, 0.964706, 1, 0.88)
-theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.72)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 20
+size_flags_horizontal = 3
+theme_override_constants/separation = 24
+
+[node name="SummaryRow" type="GridContainer" parent="CenterPanel/Detail/Scroll/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 5
+theme_override_constants/h_separation = 22
+theme_override_constants/v_separation = 16
+
+[node name="NodeSection" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("Section")
+
+[node name="NodeMargin" type="MarginContainer" parent="CenterPanel/Detail/Scroll/Content/NodeSection"]
+layout_mode = 2
+
+[node name="NodeVBox" type="VBoxContainer" parent="CenterPanel/Detail/Scroll/Content/NodeSection/NodeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="NodeTitle" type="Label" parent="CenterPanel/Detail/Scroll/Content/NodeSection/NodeMargin/NodeVBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "01 / 行进路线"
+
+
+[node name="RouteScroll" type="ScrollContainer" parent="CenterPanel/Detail/Scroll/Content/NodeSection/NodeMargin/NodeVBox"]
+layout_mode = 2
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="NodeRows" type="VBoxContainer" parent="CenterPanel/Detail/Scroll/Content/NodeSection/NodeMargin/NodeVBox/RouteScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="RelicSection" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("Section")
+
+[node name="RelicMargin" type="MarginContainer" parent="CenterPanel/Detail/Scroll/Content/RelicSection"]
+layout_mode = 2
+
+[node name="RelicVBox" type="VBoxContainer" parent="CenterPanel/Detail/Scroll/Content/RelicSection/RelicMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RelicTitle" type="Label" parent="CenterPanel/Detail/Scroll/Content/RelicSection/RelicMargin/RelicVBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "02 / 遗物收藏"
+
+
+[node name="RelicGrid" type="HFlowContainer" parent="CenterPanel/Detail/Scroll/Content/RelicSection/RelicMargin/RelicVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 10
+
+[node name="EquipmentSection" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("Section")
+
+[node name="EquipmentMargin" type="MarginContainer" parent="CenterPanel/Detail/Scroll/Content/EquipmentSection"]
+layout_mode = 2
+
+[node name="EquipmentVBox" type="VBoxContainer" parent="CenterPanel/Detail/Scroll/Content/EquipmentSection/EquipmentMargin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EquipmentTitle" type="Label" parent="CenterPanel/Detail/Scroll/Content/EquipmentSection/EquipmentMargin/EquipmentVBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
 text = "装备"
 
-[node name="EquipmentGrid" type="HFlowContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox" unique_id=1636452142]
+
+[node name="EquipmentGrid" type="HFlowContainer" parent="CenterPanel/Detail/Scroll/Content/EquipmentSection/EquipmentMargin/EquipmentVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 6
+theme_override_constants/v_separation = 10
 
-[node name="SkillSection" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent" unique_id=1189150150]
-custom_minimum_size = Vector2(0, 332)
+[node name="SkillSection" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content"]
 layout_mode = 2
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_transparent")
+theme_override_styles/panel = SubResource("Section")
 
-[node name="SkillMargin" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection" unique_id=1190534428]
+[node name="SkillMargin" type="MarginContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection"]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 0
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 0
 
-[node name="SkillVBox" type="VBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin" unique_id=1210401529]
+[node name="SkillVBox" type="VBoxContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 20
 
-[node name="CharacterSwitch" type="Control" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox" unique_id=850155837]
-custom_minimum_size = Vector2(0, 58)
+[node name="CharacterSwitch" type="Control" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 96)
+
+[node name="CharacterSelectHeader" type="Label" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 650.0
+offset_bottom = 30.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "03 / 角色与技能"
+
+
+[node name="CharacterSelectFrame" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"]
+anchor_right = 1.0
+offset_top = 44.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Track")
+
+[node name="CharacterSelectThumb" type="PanelContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"]
+anchor_right = 1.0
+offset_top = 44.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Thumb")
+
+[node name="CharacterSelectPanel" type="MarginContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"]
+anchor_right = 1.0
+offset_top = 44.0
+offset_bottom = 90.0
+mouse_filter = 2
+
+[node name="CharacterButtonList" type="HBoxContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 12
 
-[node name="CharacterSelectHeader" type="Label" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch" unique_id=713749688]
-layout_mode = 0
-offset_left = 3.0
-offset_top = -14.0
-offset_right = 121.0
-offset_bottom = 17.0
-theme_override_colors/font_color = Color(0.92549, 0.964706, 1, 0.95)
-theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.05, 0.72)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 22
-text = "人物选择"
-
-[node name="CharacterSelectFrame" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch" unique_id=1728415380]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-offset_top = 16.0
-offset_bottom = 51.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
-
-[node name="CharacterSelectThumb" type="PanelContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch" unique_id=664246772]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 16.0
-offset_right = 148.0
-offset_bottom = 51.0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
-
-[node name="CharacterSelectThumbAccent" type="Panel" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectThumb" unique_id=568949727]
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb_accent")
-
-[node name="CharacterSelectPanel" type="MarginContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch" unique_id=783812564]
-layout_mode = 1
-anchors_preset = -1
-anchor_right = 1.0
-offset_left = 8.0
-offset_top = 16.0
-offset_right = -8.0
-offset_bottom = 51.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="CharacterButtonList" type="HBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectPanel" unique_id=654011942]
+[node name="SkillColumns" type="HBoxContainer" parent="CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 10
-
-[node name="SkillColumns" type="HBoxContainer" parent="CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox" unique_id=748176793]
-layout_mode = 2
-size_flags_vertical = 3
 theme_override_constants/separation = 18
 
 [node name="PreviousHistoryButton" type="Button" parent="."]
-visible = false
-z_index = 3
-anchors_preset = -1
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 92.0
-offset_top = -48.0
-offset_right = 156.0
-offset_bottom = 48.0
-grow_vertical = 2
-focus_mode = 0
-theme_override_colors/font_color = Color(0.76, 0.86, 1, 0.78)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.94, 0.84, 0.66, 1)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 48
-text = "◀"
-flat = true
+offset_left = 128.0
+offset_top = 884.0
+offset_right = 200.0
+offset_bottom = 932.0
+theme = SubResource("ArchiveTheme")
+text = "←"
+theme_override_font_sizes/font_size = 25
 
 [node name="NextHistoryButton" type="Button" parent="."]
-visible = false
-z_index = 3
-anchors_preset = -1
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -156.0
-offset_top = -48.0
-offset_right = -92.0
-offset_bottom = 48.0
-grow_horizontal = 0
-grow_vertical = 2
-focus_mode = 0
-theme_override_colors/font_color = Color(0.76, 0.86, 1, 0.78)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.94, 0.84, 0.66, 1)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 48
-text = "▶"
-flat = true
+offset_left = 364.0
+offset_top = 884.0
+offset_right = 436.0
+offset_bottom = 932.0
+theme = SubResource("ArchiveTheme")
+text = "→"
+theme_override_font_sizes/font_size = 25
 
 [node name="SeedCopyButton" type="Button" parent="."]
-visible = false
-z_index = 4
-anchors_preset = -1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -292.0
-offset_top = 10.0
-offset_right = -28.0
-offset_bottom = 46.0
-grow_horizontal = 0
-focus_mode = 0
-theme_override_colors/font_color = Color(0.86, 0.94, 1, 0.9)
-theme_override_colors/font_hover_color = Color(1, 0.96, 0.84, 1)
-theme_override_colors/font_pressed_color = Color(0.94, 0.84, 0.66, 1)
-theme_override_colors/font_focus_color = Color(1, 0.96, 0.84, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_seed_button")
-theme_override_styles/hover = SubResource("StyleBoxFlat_seed_button_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_seed_button_hover")
-theme_override_styles/focus = SubResource("StyleBoxFlat_seed_button_hover")
+offset_left = 1370.0
+offset_top = 54.0
+offset_right = 1600.0
+offset_bottom = 94.0
+theme = SubResource("ArchiveTheme")
+theme_override_font_sizes/font_size = 15
 text = "Seed: -"
-flat = false
 
-[node name="ExitButton" type="Button" parent="." unique_id=930503078]
-z_index = 2
-material = SubResource("ShaderMaterial_blwrf")
-offset_left = -15.0
-offset_top = 130.0
-offset_right = 96.0
-offset_bottom = 204.0
-theme_override_font_sizes/font_size = 40
-text = "x"
-script = ExtResource("4_m0hex")
-
-[node name="ColorRect" type="ColorRect" parent="ExitButton" unique_id=1874232539]
-show_behind_parent = true
-layout_mode = 0
-offset_left = -66.0
-offset_top = 9.0
-offset_right = 104.0
-offset_bottom = 69.0
-mouse_filter = 1
-color = Color(0.68235296, 0, 0, 1)
+[node name="ExitButton" type="Button" parent="."]
+offset_left = 1640.0
+offset_top = 48.0
+offset_right = 1792.0
+offset_bottom = 96.0
+theme = SubResource("ArchiveTheme")
+text = "返回  ↗"
+script = ExtResource("3")
+SnapPositionOnReady = false
+HoverSlideOffset = Vector2(0, 0)

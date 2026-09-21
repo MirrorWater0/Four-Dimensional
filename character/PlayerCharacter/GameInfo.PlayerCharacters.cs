@@ -169,6 +169,7 @@ public static partial class GameInfo
         info.TalentPoints = Math.Max(0, info.TalentPoints);
         info.TakenSkills = NormalizeArray(info.TakenSkills, 3);
         info.LifeMax = Math.Max(1, info.LifeMax);
+        TalentTree.ApplyMaxLifeBonus(ref info);
         if (!info.LifeInitialized)
         {
             info.Life = info.LifeMax;

@@ -1,0 +1,8 @@
+﻿{
+    "enemies":  {
+                    "WarThrall":  {
+                                      "Name":  "WarThrall",
+                                      "MaxLife":  16
+                                  }
+                }
+}

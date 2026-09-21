@@ -1,17 +1,19 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Kasiya : PlayerCharacter
 {
     private const int PassiveAttackBlock = 2;
-    private const int PassiveUpgradeAllyBlock = 1;
+    private const int PassiveUpgradePartyMaxLife = 1;
+    private Action<Skill> _skillUsedHandler;
 
     public const string PassiveNameText = "战意";
     public static string PassiveDescriptionText =>
         I18n.Format(
             "character.kasiya.passive.description",
-            "当其他队友使用攻击技能：随机一个角色获得{block}点格挡。",
+            "当任意己方角色打出攻击牌：随机一个己方角色获得{block}点格挡。",
             ("block", PassiveAttackBlock)
         );
 
@@ -29,33 +31,36 @@ public partial class Kasiya : PlayerCharacter
             HasPassiveTalentUpgrade()
         );
 
-        BattleNode.UsedSkills.ItemAdded += skill => TriggerPassive(skill);
+        _skillUsedHandler ??= skill => TriggerPassive(skill);
+        BattleNode.UsedSkills.ItemAdded -= _skillUsedHandler;
+        BattleNode.UsedSkills.ItemAdded += _skillUsedHandler;
+
+        if (HasPassiveTalentUpgrade())
+            BattleNode.StartEffectList.Add(TriggerPassiveUpgradeAtBattleStartAsync);
+    }
+
+    public override void _ExitTree()
+    {
+        if (BattleNode != null && _skillUsedHandler != null)
+            BattleNode.UsedSkills.ItemAdded -= _skillUsedHandler;
+
+        base._ExitTree();
     }
 
     public override void Passive(Skill skill)
     {
         if (State == CharacterState.Dying)
             return;
-        if (skill?.OwnerCharater == null || !skill.OwnerCharater.IsPlayer)
+        if (
+            skill?.OwnerCharater == null
+            || skill.OwnerCharater.IsPlayer != IsPlayer
+            || skill.SkillType != Skill.SkillTypes.Attack
+        )
             return;
 
         using var _ = BeginEffectSource("被动");
 
-        if (
-            skill.OwnerCharater == this
-            && skill.SkillType == Skill.SkillTypes.Attack
-            && HasPassiveTalentUpgrade()
-        )
-        {
-            ApplyPassiveUpgradeAllyBlock();
-            return;
-        }
-
-        if (skill.OwnerCharater == this)
-            return;
-
-        if (skill.SkillType == Skill.SkillTypes.Attack)
-            ApplyPassiveBlockToRandomAlly();
+        ApplyPassiveBlockToRandomAlly();
     }
 
     private void ApplyPassiveBlockToRandomAlly()
@@ -77,21 +82,27 @@ public partial class Kasiya : PlayerCharacter
         candidates[rng.Next(candidates.Length)].UpdataBlock(PassiveAttackBlock, source: this);
     }
 
-    private void ApplyPassiveUpgradeAllyBlock()
+    private async Task TriggerPassiveUpgradeAtBattleStartAsync()
     {
-        Character[] allies =
-            BattleNode
-                ?.GetTeamCharacters(isPlayer: true, includeSummons: true)
-                .Where(ally =>
-                    ally != null
-                    && ally != this
-                    && GodotObject.IsInstanceValid(ally)
-                    && ally.State != CharacterState.Dying
-                )
-                .ToArray() ?? Array.Empty<Character>();
+        if (State != CharacterState.Normal || BattleNode?.PlayersList == null)
+            return;
 
-        foreach (Character ally in allies)
-            ally.UpdataBlock(PassiveUpgradeAllyBlock, source: this);
+        using var _ = BeginEffectSource("被动");
+        Character[] players = BattleNode
+            .PlayersList.Where(player =>
+                player != null
+                && GodotObject.IsInstanceValid(player)
+                && !player.IsSummon
+                && player.State == CharacterState.Normal
+            )
+            .Cast<Character>()
+            .ToArray();
+
+        await Task.WhenAll(
+            players.Select(player =>
+                player.IncreaseMaxLifeFromPassive(PassiveUpgradePartyMaxLife, this)
+            )
+        );
     }
 }
 

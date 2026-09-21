@@ -194,10 +194,14 @@ public partial class SettingsDropdown : Button
             popupStyle.ContentMarginTop = 6f;
             popupStyle.ContentMarginRight = 6f;
             popupStyle.ContentMarginBottom = 6f;
-            popupStyle.BgColor = new Color(0.16f, 0.21f, 0.28f, 0.98f);
-            popupStyle.BorderColor = new Color(0.72f, 0.83f, 0.93f, 0.38f);
-            popupStyle.ShadowSize = 12;
-            popupStyle.ShadowColor = new Color(0.01f, 0.02f, 0.04f, 0.45f);
+            popupStyle.BgColor = new Color(0.065f, 0.07f, 0.085f, 0.99f);
+            popupStyle.BorderColor = new Color(0.68f, 0.7f, 0.75f, 0.7f);
+            popupStyle.CornerRadiusTopLeft = 0;
+            popupStyle.CornerRadiusTopRight = 0;
+            popupStyle.CornerRadiusBottomLeft = 0;
+            popupStyle.CornerRadiusBottomRight = 0;
+            popupStyle.ShadowSize = 10;
+            popupStyle.ShadowColor = new Color(0f, 0f, 0f, 0.6f);
             popupStyle.ShadowOffset = new Vector2(0, 6);
             _popupPanel.AddThemeStyleboxOverride("panel", popupStyle);
             return;
@@ -205,16 +209,16 @@ public partial class SettingsDropdown : Button
 
         var fallback = new StyleBoxFlat
         {
-            BgColor = new Color(0.16f, 0.21f, 0.28f, 0.98f),
-            BorderColor = new Color(0.72f, 0.83f, 0.93f, 0.38f),
+            BgColor = new Color(0.065f, 0.07f, 0.085f, 0.99f),
+            BorderColor = new Color(0.68f, 0.7f, 0.75f, 0.7f),
             BorderWidthLeft = 1,
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 10,
-            CornerRadiusTopRight = 10,
-            CornerRadiusBottomLeft = 10,
-            CornerRadiusBottomRight = 10,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomLeft = 0,
+            CornerRadiusBottomRight = 0,
             ContentMarginLeft = 6f,
             ContentMarginTop = 6f,
             ContentMarginRight = 6f,
@@ -269,7 +273,12 @@ public partial class SettingsDropdown : Button
         if (GetThemeStylebox("normal") is StyleBoxFlat normalFlat)
         {
             var normal = (StyleBoxFlat)normalFlat.Duplicate();
-            normal.BgColor = new Color(0.17f, 0.22f, 0.29f, 0.92f);
+            normal.BgColor = new Color(0.1f, 0.11f, 0.14f, 0.98f);
+            normal.BorderColor = new Color(0.42f, 0.44f, 0.49f, 0.5f);
+            normal.CornerRadiusTopLeft = 0;
+            normal.CornerRadiusTopRight = 0;
+            normal.CornerRadiusBottomLeft = 0;
+            normal.CornerRadiusBottomRight = 0;
             normal.ContentMarginLeft = 16f;
             normal.ContentMarginTop = 10f;
             normal.ContentMarginRight = 16f;
@@ -280,6 +289,12 @@ public partial class SettingsDropdown : Button
         if (GetThemeStylebox("hover") is StyleBoxFlat hoverFlat)
         {
             var hover = (StyleBoxFlat)hoverFlat.Duplicate();
+            hover.BgColor = new Color(0.18f, 0.19f, 0.23f, 1f);
+            hover.BorderColor = new Color(0.82f, 0.84f, 0.9f, 0.85f);
+            hover.CornerRadiusTopLeft = 0;
+            hover.CornerRadiusTopRight = 0;
+            hover.CornerRadiusBottomLeft = 0;
+            hover.CornerRadiusBottomRight = 0;
             hover.ContentMarginLeft = 16f;
             hover.ContentMarginTop = 10f;
             hover.ContentMarginRight = 16f;
@@ -291,6 +306,12 @@ public partial class SettingsDropdown : Button
         if (GetThemeStylebox("pressed") is StyleBoxFlat pressedFlat)
         {
             var pressed = (StyleBoxFlat)pressedFlat.Duplicate();
+            pressed.BgColor = new Color(0.15f, 0.16f, 0.19f, 1f);
+            pressed.BorderColor = new Color(0.86f, 0.88f, 0.93f, 0.8f);
+            pressed.CornerRadiusTopLeft = 0;
+            pressed.CornerRadiusTopRight = 0;
+            pressed.CornerRadiusBottomLeft = 0;
+            pressed.CornerRadiusBottomRight = 0;
             pressed.ContentMarginLeft = 16f;
             pressed.ContentMarginTop = 10f;
             pressed.ContentMarginRight = 16f;

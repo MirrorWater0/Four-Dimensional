@@ -19,16 +19,17 @@ public partial class Encyclopedia : Control
     private const float InterfaceExitStagger = 0.018f;
     private const int SkillCardsBuildPerFrame = 3;
     private const int SkillCardsAnimatedOnSwitch = 12;
+    private const float EncyclopediaSkillCardHoverScale = 1.055f;
     private static readonly Vector2 EncyclopediaSkillCardDisplaySize = new(240f, 370f);
     private static readonly Vector2 EncyclopediaSkillCardHoverPadding = new(12f, 14f);
     private static readonly Vector2 EncyclopediaRelicButtonSize = new(230f, 74f);
-    private static readonly Vector2 EncyclopediaHomeButtonSize = new(360f, 164f);
+    private static readonly Vector2 EncyclopediaHomeButtonSize = new(0f, 196f);
     private const float EncyclopediaRelicDetailWidth = 460f;
 
     private static readonly Dictionary<EncyclopediaModule, string> ModuleIconPaths = new()
     {
         [EncyclopediaModule.Home] =
-            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/book_open.svg",
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/structure_house.svg",
         [EncyclopediaModule.Skills] =
             "res://asset/third_party/kenney_board_game_icons/Vector/Icons/cards_collection.svg",
         [EncyclopediaModule.Relics] =
@@ -132,11 +133,12 @@ public partial class Encyclopedia : Control
     private readonly Dictionary<SkillCard, Tween> _skillCardHoverTweens = new();
     private readonly Dictionary<SkillID, Skill> _previewSkillCache = new();
     private readonly Random _skillAnimationRandom = new();
+    private readonly List<ScrollFeelState> _scrollFeelStates = new();
 
     private ColorRect _backdrop;
-    private PanelContainer _centerPanel;
+    private Control _rail;
+    private TextureRect _railDeco;
     private HBoxContainer _header;
-    private PanelContainer _modulePanel;
     private VBoxContainer _contentRoot;
     private HBoxContainer _searchRow;
     private LineEdit _searchBox;
@@ -145,14 +147,19 @@ public partial class Encyclopedia : Control
     private Label _countLabel;
     private HBoxContainer _characterFilterRow;
     private RichTextLabel _detailLabel;
-    private PanelContainer _detailPanel;
-    private PanelContainer _skillGridPanel;
+    private Control _detailPanel;
+    private Control _skillGridPanel;
+    private MarginContainer _gridMargin;
+    private Control _frameDecor;
+    private ScrollContainer _gridScroll;
     private GridContainer _skillGrid;
     private VBoxContainer _skillFilterPanel;
+    private ScrollContainer _filterScroll;
     private VBoxContainer _moduleNavigationPanel;
     private SettingsDropdown _skillSortOption;
     private Button _allSkillRarityFilterButton;
     private CenterContainer _detailCardHost;
+    private CenterContainer _detailIconHost;
     private SkillCard _detailSkillCard;
 
     private EncyclopediaModule _currentModule = EncyclopediaModule.Home;
@@ -167,6 +174,23 @@ public partial class Encyclopedia : Control
     private Tween _interfaceTween;
     private bool _isClosing;
 
+    private sealed class ScrollFeelState
+    {
+        public ScrollContainer Scroll;
+        public VScrollBar ScrollBar;
+        public float BaseOffsetTop;
+        public Tween BounceTween;
+        public bool BounceCheckPending;
+        public float PendingBounceDirection;
+        public float PendingBounceStrength;
+        public bool SmoothScrollActive;
+        public double SmoothScrollPosition;
+        public double SmoothScrollTarget;
+        public double SmoothScrollVelocity;
+        public Control.GuiInputEventHandler ScrollInputHandler;
+        public Control.GuiInputEventHandler ScrollBarInputHandler;
+    }
+
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
@@ -180,6 +204,8 @@ public partial class Encyclopedia : Control
 
     public override void _Process(double delta)
     {
+        UpdateScrollFeel((float)delta);
+
         if (!OS.IsDebugBuild() || SkillTuning.Revision == _observedSkillTuningRevision)
             return;
 
@@ -201,44 +227,72 @@ public partial class Encyclopedia : Control
         _interfaceTween?.Kill();
         _interfaceTween = null;
         _skillSortOption?.ClosePopup();
+        DisposeScrollFeel();
     }
 
     private void BindUi()
     {
         _backdrop = GetNode<ColorRect>("Backdrop");
-        _centerPanel = GetNode<PanelContainer>("CenterPanel");
-        _header = GetNode<HBoxContainer>("CenterPanel/Margin/Root/Header");
-        _modulePanel = GetNode<PanelContainer>("CenterPanel/Margin/Root/Body/ModulePanel");
-        _contentRoot = GetNode<VBoxContainer>("CenterPanel/Margin/Root/Body/Content");
-        _searchRow = GetNode<HBoxContainer>("CenterPanel/Margin/Root/Body/Content/SearchRow");
-        _titleLabel = GetNode<Label>("CenterPanel/Margin/Root/Header/TitleBox/Title");
-        _moduleTitle = GetNode<Label>("CenterPanel/Margin/Root/Body/Content/SearchRow/ModuleTitle");
-        _searchBox = GetNode<LineEdit>("CenterPanel/Margin/Root/Body/Content/SearchRow/SearchBox");
-        _countLabel = GetNode<Label>("CenterPanel/Margin/Root/Body/Content/SearchRow/CountLabel");
+        _frameDecor = GetNodeOrNull<Control>("FrameDecor");
+        _header = GetNode<HBoxContainer>("ScreenMargin/Root/Header");
+        _rail = GetNode<Control>("ScreenMargin/Root/Body/Rail");
+        _railDeco = GetNodeOrNull<TextureRect>("ScreenMargin/Root/Body/Rail/RailDeco");
+        _contentRoot = GetNode<VBoxContainer>("ScreenMargin/Root/Body/Content");
+        _searchRow = GetNode<HBoxContainer>("ScreenMargin/Root/Body/Content/SearchRow");
+        _titleLabel = GetNode<Label>("ScreenMargin/Root/Header/TitleBlock/TitleRow/Title");
+        _moduleTitle = GetNode<Label>("ScreenMargin/Root/Body/Content/SearchRow/ModuleTitle");
+        _searchBox = GetNode<LineEdit>("ScreenMargin/Root/Body/Content/SearchRow/SearchBox");
+        _countLabel = GetNode<Label>("ScreenMargin/Root/Body/Content/SearchRow/CountLabel");
         _characterFilterRow = GetNode<HBoxContainer>(
-            "CenterPanel/Margin/Root/Body/Content/CharacterFilterRow"
+            "ScreenMargin/Root/Body/Content/CharacterFilterRow"
+        );
+        _filterScroll = GetNode<ScrollContainer>(
+            "ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll"
         );
         _skillFilterPanel = GetNode<VBoxContainer>(
-            "CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel"
+            "ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel"
+        );
+        _moduleNavigationPanel = GetNode<VBoxContainer>(
+            "ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/ModuleNavigationPanel"
         );
         _skillSortOption = GetNode<SettingsDropdown>(
-            "CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root/SkillSortOptionHost/SkillSortOptionHostInner/SkillSortOption"
+            "ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection/SkillSortOptionHost/SkillSortOptionHostInner/SkillSortOption"
         );
-        _skillGridPanel = GetNode<PanelContainer>(
-            "CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel"
+        _skillGridPanel = GetNode<Control>(
+            "ScreenMargin/Root/Body/Content/Split/SkillGridPanel"
+        );
+        _gridMargin = GetNodeOrNull<MarginContainer>(
+            "ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin"
+        );
+        _gridScroll = GetNode<ScrollContainer>(
+            "ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin/GridScroll"
         );
         _skillGrid = GetNode<GridContainer>(
-            "CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel/Margin/GridScroll/SkillGrid"
+            "ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin/GridScroll/GridContentMargin/SkillGrid"
         );
-        _detailPanel = GetNode<PanelContainer>(
-            "CenterPanel/Margin/Root/Body/Content/Split/DetailPanel"
+        _detailPanel = GetNode<Control>(
+            "ScreenMargin/Root/Body/Content/Split/DetailPanel"
         );
         _detailCardHost = GetNode<CenterContainer>(
-            "CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot/DetailCardHost"
+            "ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailCardHost"
+        );
+        _detailIconHost = GetNode<CenterContainer>(
+            "ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailIconHost"
         );
         _detailLabel = GetNode<RichTextLabel>(
-            "CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot/DetailLabel"
+            "ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailLabel"
         );
+
+        SetupHsrPanel(GetNodeOrNull<ColorRect>("ScreenMargin/Root/Body/Rail/RailBG"));
+        SetupHsrPanel(
+            GetNodeOrNull<ColorRect>("ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridBG")
+        );
+        SetupHsrPanel(
+            GetNodeOrNull<ColorRect>("ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailBG")
+        );
+        ApplyScrollBarTheme();
+        ConfigureScrollFeel(_filterScroll);
+        ConfigureScrollFeel(_gridScroll);
 
         _detailSkillCard = SkillCardScene.Instantiate<SkillCard>();
         _detailSkillCard.AutoPressEffect = false;
@@ -252,15 +306,15 @@ public partial class Encyclopedia : Control
         ApplySearchTheme(_searchBox);
         _detailLabel.AddThemeColorOverride(
             "default_color",
-            new Color(0.83f, 0.9f, 0.96f, 0.96f)
+            new Color(0.84f, 0.88f, 0.94f, 0.96f)
         );
         _detailLabel.AddThemeColorOverride(
             "font_color",
-            new Color(0.83f, 0.9f, 0.96f, 0.96f)
+            new Color(0.84f, 0.88f, 0.94f, 0.96f)
         );
 
-        var closeButton = GetNode<Button>("CenterPanel/Margin/Root/Header/CloseButton");
-        ApplyButtonTheme(closeButton);
+        var closeButton = GetNode<Button>("ScreenMargin/Root/Header/CloseButton");
+        ApplyCloseButtonTheme(closeButton);
         closeButton.Pressed += CloseWithExitAnimation;
 
         ApplyOptionTheme(_skillSortOption);
@@ -291,19 +345,19 @@ public partial class Encyclopedia : Control
         _characterFilterButtons.Clear();
         RegisterCharacterButton(
             PlayerCharacterKey.Echo,
-            "CenterPanel/Margin/Root/Body/Content/CharacterFilterRow/EchoButton"
+            "ScreenMargin/Root/Body/Content/CharacterFilterRow/EchoButton"
         );
         RegisterCharacterButton(
             PlayerCharacterKey.Kasiya,
-            "CenterPanel/Margin/Root/Body/Content/CharacterFilterRow/KasiyaButton"
+            "ScreenMargin/Root/Body/Content/CharacterFilterRow/KasiyaButton"
         );
         RegisterCharacterButton(
             PlayerCharacterKey.Mariya,
-            "CenterPanel/Margin/Root/Body/Content/CharacterFilterRow/MariyaButton"
+            "ScreenMargin/Root/Body/Content/CharacterFilterRow/MariyaButton"
         );
         RegisterCharacterButton(
             PlayerCharacterKey.Nightingale,
-            "CenterPanel/Margin/Root/Body/Content/CharacterFilterRow/NightingaleButton"
+            "ScreenMargin/Root/Body/Content/CharacterFilterRow/NightingaleButton"
         );
 
         BuildSkillFilterButtons();
@@ -313,6 +367,7 @@ public partial class Encyclopedia : Control
     private void PrepareInterfaceEnterState()
     {
         SetControlAlpha(_backdrop, 0f);
+        SetControlAlpha(_frameDecor, 0f);
         foreach (var item in CreateInterfaceAssemblyItems(entering: true))
             SetControlAlpha(item.Control, 0f);
     }
@@ -337,6 +392,16 @@ public partial class Encyclopedia : Control
             SetControlAlpha(_backdrop, 0f);
             _interfaceTween
                 .TweenProperty(_backdrop, "modulate:a", 1.0f, InterfaceEnterDuration * 0.72f)
+                .SetEase(Tween.EaseType.Out)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
+        if (_frameDecor != null)
+        {
+            SetControlAlpha(_frameDecor, 0f);
+            _interfaceTween
+                .TweenProperty(_frameDecor, "modulate:a", 1.0f, InterfaceEnterDuration * 0.72f)
+                .SetDelay(InterfaceEnterStagger * 2f)
                 .SetEase(Tween.EaseType.Out)
                 .SetTrans(Tween.TransitionType.Sine);
         }
@@ -381,6 +446,14 @@ public partial class Encyclopedia : Control
                 .SetTrans(Tween.TransitionType.Sine);
         }
 
+        if (_frameDecor != null)
+        {
+            _interfaceTween
+                .TweenProperty(_frameDecor, "modulate:a", 0.0f, InterfaceExitDuration)
+                .SetEase(Tween.EaseType.In)
+                .SetTrans(Tween.TransitionType.Sine);
+        }
+
         float maxDelay = 0f;
         foreach (var item in CreateInterfaceAssemblyItems(entering: false))
         {
@@ -417,7 +490,7 @@ public partial class Encyclopedia : Control
         return
         [
             new AssemblyItem(_header, new Vector2(0f, -34f), stagger * 0f),
-            new AssemblyItem(_modulePanel, new Vector2(-54f, 26f), stagger * 1f),
+            new AssemblyItem(_rail, new Vector2(-54f, 26f), stagger * 1f),
             new AssemblyItem(_searchRow, new Vector2(42f, -14f), stagger * 2f),
             new AssemblyItem(_characterFilterRow, new Vector2(54f, 0f), stagger * 3f),
             new AssemblyItem(_skillGridPanel, new Vector2(0f, 42f), stagger * 4f),
@@ -438,7 +511,7 @@ public partial class Encyclopedia : Control
     private void RegisterCharacterButton(PlayerCharacterKey character, string nodePath)
     {
         var button = GetNode<Button>(nodePath);
-        ApplyButtonTheme(button);
+        ApplyCharacterTabTheme(button);
         button.Text = GetPlayerCharacterDisplayName(character);
         button.Pressed += () => SelectSkillCharacter(character);
         _characterFilterButtons[character] = button;
@@ -515,42 +588,13 @@ public partial class Encyclopedia : Control
 
     private void BuildModuleNavigationButtons()
     {
-        if (_skillFilterPanel == null)
+        if (_moduleNavigationPanel == null)
             return;
 
-        var section = new PanelContainer
-        {
-            Name = "ModuleNavigationSection",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        section.AddThemeStyleboxOverride(
-            "panel",
-            CreateFilterButtonStyle(new Color(0.07f, 0.11f, 0.16f, 0.9f))
+        AddModuleNavigationButton(
+            EncyclopediaModule.Home,
+            I18n.Tr("ui.encyclopedia.entry.home", "首页")
         );
-
-        var margin = new MarginContainer();
-        margin.AddThemeConstantOverride("margin_left", 8);
-        margin.AddThemeConstantOverride("margin_top", 6);
-        margin.AddThemeConstantOverride("margin_right", 8);
-        margin.AddThemeConstantOverride("margin_bottom", 8);
-
-        _moduleNavigationPanel = new VBoxContainer
-        {
-            Name = "ModuleNavigationPanel",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        _moduleNavigationPanel.AddThemeConstantOverride("separation", 6);
-
-        var title = new Label
-        {
-            Text = I18n.Tr("ui.encyclopedia.entry.title", "图鉴入口"),
-            CustomMinimumSize = new Vector2(0, 28),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-        };
-        title.AddThemeFontSizeOverride("font_size", 19);
-        title.Modulate = new Color(0.9f, 0.98f, 1f, 1f);
-        _moduleNavigationPanel.AddChild(title);
-
         AddModuleNavigationButton(
             EncyclopediaModule.Skills,
             I18n.Tr("ui.encyclopedia.entry.skills", "卡牌图鉴")
@@ -563,11 +607,445 @@ public partial class Encyclopedia : Control
             EncyclopediaModule.Buffs,
             I18n.Tr("ui.encyclopedia.entry.buffs", "Buff图鉴")
         );
+    }
 
-        margin.AddChild(_moduleNavigationPanel);
-        section.AddChild(margin);
-        _skillFilterPanel.AddChild(section);
-        _skillFilterPanel.MoveChild(section, 0);
+    private void SetupHsrPanel(ColorRect bg)
+    {
+        if (bg?.Material is not ShaderMaterial sourceMaterial)
+            return;
+
+        var material = (ShaderMaterial)sourceMaterial.Duplicate();
+        bg.Material = material;
+        void SyncRectSize()
+        {
+            if (GodotObject.IsInstanceValid(bg))
+                material.SetShaderParameter("rect_size", bg.Size);
+        }
+        bg.Resized += SyncRectSize;
+        Callable.From(SyncRectSize).CallDeferred();
+    }
+
+    private void ApplyScrollBarTheme()
+    {
+        StyleBoxFlat grabber = CreateScrollGrabberStyle(new Color(0.58f, 0.6f, 0.66f, 0.45f));
+        StyleBoxFlat grabberHover = CreateScrollGrabberStyle(new Color(0.86f, 0.88f, 0.93f, 0.75f));
+        StyleBoxEmpty track = new();
+
+        foreach (
+            ScrollContainer scroll in new[]
+            {
+                _filterScroll,
+                GetNodeOrNull<ScrollContainer>(
+                    "ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin/GridScroll"
+                ),
+            }
+        )
+        {
+            VScrollBar bar = scroll?.GetVScrollBar();
+            if (bar == null)
+                continue;
+
+            bar.CustomMinimumSize = new Vector2(6f, 0f);
+            bar.AddThemeStyleboxOverride("scroll", track);
+            bar.AddThemeStyleboxOverride("grabber", grabber);
+            bar.AddThemeStyleboxOverride("grabber_highlight", grabberHover);
+            bar.AddThemeStyleboxOverride("grabber_pressed", grabberHover);
+        }
+    }
+
+    private static StyleBoxFlat CreateScrollGrabberStyle(Color color)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = color,
+            ContentMarginLeft = 1,
+            ContentMarginRight = 1,
+        };
+    }
+
+    private void ConfigureScrollFeel(ScrollContainer scroll)
+    {
+        if (scroll == null || !GodotObject.IsInstanceValid(scroll))
+            return;
+
+        if (_scrollFeelStates.Any(state => state.Scroll == scroll))
+            return;
+
+        VScrollBar scrollBar = scroll.GetVScrollBar();
+        if (scrollBar == null || !GodotObject.IsInstanceValid(scrollBar))
+            return;
+
+        var state = new ScrollFeelState
+        {
+            Scroll = scroll,
+            ScrollBar = scrollBar,
+            BaseOffsetTop = scroll.OffsetTop,
+        };
+        state.ScrollInputHandler = inputEvent => OnScrollFeelGuiInput(state, inputEvent);
+        state.ScrollBarInputHandler = inputEvent => OnScrollFeelScrollBarGuiInput(state, inputEvent);
+        scroll.GuiInput += state.ScrollInputHandler;
+        scrollBar.GuiInput += state.ScrollBarInputHandler;
+        _scrollFeelStates.Add(state);
+    }
+
+    private void DisposeScrollFeel()
+    {
+        foreach (ScrollFeelState state in _scrollFeelStates)
+        {
+            if (state.Scroll != null && GodotObject.IsInstanceValid(state.Scroll))
+                state.Scroll.GuiInput -= state.ScrollInputHandler;
+            if (state.ScrollBar != null && GodotObject.IsInstanceValid(state.ScrollBar))
+                state.ScrollBar.GuiInput -= state.ScrollBarInputHandler;
+
+            state.BounceTween?.Kill();
+        }
+
+        _scrollFeelStates.Clear();
+    }
+
+    private void OnScrollFeelGuiInput(ScrollFeelState state, InputEvent inputEvent)
+    {
+        if (inputEvent is InputEventMouseButton mouseButton)
+        {
+            if (
+                !mouseButton.Pressed
+                || mouseButton.ButtonIndex is not MouseButton.WheelUp and not MouseButton.WheelDown
+            )
+            {
+                return;
+            }
+
+            float visualDirection = mouseButton.ButtonIndex == MouseButton.WheelUp ? 1f : -1f;
+            float scrollDirection = mouseButton.ButtonIndex == MouseButton.WheelUp ? -1f : 1f;
+            float wheelFactor = Math.Max(0.35f, Math.Abs(mouseButton.Factor));
+            if (
+                QueueSmoothScroll(
+                    state,
+                    scrollDirection * CardPileOverlayUi.SmoothWheelStep * wheelFactor,
+                    visualDirection,
+                    wheelFactor
+                )
+            )
+            {
+                GetViewport().SetInputAsHandled();
+            }
+
+            return;
+        }
+
+        if (inputEvent is InputEventPanGesture panGesture)
+        {
+            float scrollDelta = panGesture.Delta.Y * CardPileOverlayUi.PanGestureMultiplier;
+            if (Mathf.Abs(scrollDelta) <= 0.01f)
+                return;
+
+            float visualDirection = scrollDelta < 0f ? 1f : -1f;
+            float bounceStrength = Mathf.Clamp(
+                Mathf.Abs(scrollDelta) / CardPileOverlayUi.SmoothWheelStep,
+                0.5f,
+                1.4f
+            );
+            if (QueueSmoothScroll(state, scrollDelta, visualDirection, bounceStrength))
+                GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (MobilePlatform.TryGetTouchScrollDelta(inputEvent, out float touchDelta, 1.15f))
+        {
+            float visualDirection = touchDelta < 0f ? 1f : -1f;
+            float bounceStrength = Mathf.Clamp(
+                Mathf.Abs(touchDelta) / CardPileOverlayUi.SmoothWheelStep,
+                0.35f,
+                1.1f
+            );
+            if (QueueSmoothScroll(state, touchDelta, visualDirection, bounceStrength))
+                GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void OnScrollFeelScrollBarGuiInput(ScrollFeelState state, InputEvent inputEvent)
+    {
+        if (
+            state.SmoothScrollActive
+            && inputEvent is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
+        )
+        {
+            CancelSmoothScroll(state);
+        }
+    }
+
+    private bool QueueSmoothScroll(
+        ScrollFeelState state,
+        float scrollDelta,
+        float visualDirection,
+        float bounceStrength
+    )
+    {
+        if (!CanReceiveSmoothScroll(state))
+            return false;
+
+        double minValue = state.ScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue(state);
+        double currentValue = state.ScrollBar.Value;
+        if (!state.SmoothScrollActive)
+        {
+            state.SmoothScrollPosition = currentValue;
+            state.SmoothScrollTarget = currentValue;
+            state.SmoothScrollVelocity = 0d;
+        }
+
+        double requestedTarget = state.SmoothScrollTarget + scrollDelta;
+        double clampedTarget = Math.Clamp(requestedTarget, minValue, maxValue);
+        bool hitEdge = !Mathf.IsEqualApprox((float)requestedTarget, (float)clampedTarget);
+
+        state.SmoothScrollTarget = clampedTarget;
+        state.SmoothScrollActive =
+            Math.Abs(state.SmoothScrollTarget - state.SmoothScrollPosition)
+                > CardPileOverlayUi.SmoothScrollSnapDistance
+            || Math.Abs(state.SmoothScrollVelocity) > CardPileOverlayUi.SmoothScrollStopSpeed;
+        if (hitEdge)
+            QueueScrollBounceCheck(state, visualDirection, bounceStrength);
+
+        return true;
+    }
+
+    private void UpdateScrollFeel(float delta)
+    {
+        foreach (ScrollFeelState state in _scrollFeelStates)
+            UpdateSmoothScroll(state, delta);
+    }
+
+    private void UpdateSmoothScroll(ScrollFeelState state, float delta)
+    {
+        if (!state.SmoothScrollActive)
+            return;
+
+        if (!CanReceiveSmoothScroll(state))
+        {
+            CancelSmoothScroll(state);
+            return;
+        }
+
+        float frameDelta = Mathf.Clamp(delta, 0f, 0.05f);
+        if (frameDelta <= 0f)
+            return;
+
+        double minValue = state.ScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue(state);
+        state.SmoothScrollTarget = Math.Clamp(state.SmoothScrollTarget, minValue, maxValue);
+        state.SmoothScrollPosition = Math.Clamp(state.SmoothScrollPosition, minValue, maxValue);
+
+        double distance = state.SmoothScrollTarget - state.SmoothScrollPosition;
+        if (
+            Math.Abs(distance) <= CardPileOverlayUi.SmoothScrollSnapDistance
+            && Math.Abs(state.SmoothScrollVelocity) <= CardPileOverlayUi.SmoothScrollStopSpeed
+        )
+        {
+            SetScrollValue(state, state.SmoothScrollTarget);
+            CancelSmoothScroll(state);
+            return;
+        }
+
+        state.SmoothScrollVelocity +=
+            distance * CardPileOverlayUi.SmoothScrollSpring * frameDelta;
+        state.SmoothScrollVelocity *= Math.Exp(-CardPileOverlayUi.SmoothScrollDamping * frameDelta);
+        state.SmoothScrollVelocity = Math.Clamp(
+            state.SmoothScrollVelocity,
+            -CardPileOverlayUi.SmoothScrollMaxVelocity,
+            CardPileOverlayUi.SmoothScrollMaxVelocity
+        );
+
+        double nextValue =
+            state.SmoothScrollPosition + state.SmoothScrollVelocity * frameDelta;
+        if (nextValue <= minValue || nextValue >= maxValue)
+        {
+            nextValue = Math.Clamp(nextValue, minValue, maxValue);
+            state.SmoothScrollTarget = Math.Clamp(state.SmoothScrollTarget, minValue, maxValue);
+            state.SmoothScrollVelocity = 0d;
+        }
+
+        state.SmoothScrollPosition = nextValue;
+        SetScrollValue(state, state.SmoothScrollPosition);
+    }
+
+    private bool CanReceiveSmoothScroll(ScrollFeelState state)
+    {
+        return !_isClosing
+            && Visible
+            && state.Scroll != null
+            && GodotObject.IsInstanceValid(state.Scroll)
+            && state.Scroll.IsVisibleInTree()
+            && state.ScrollBar != null
+            && GodotObject.IsInstanceValid(state.ScrollBar)
+            && GetScrollMaxValue(state) > state.ScrollBar.MinValue + 0.5d;
+    }
+
+    private static void SetScrollValue(ScrollFeelState state, double value)
+    {
+        if (state.Scroll == null || !GodotObject.IsInstanceValid(state.Scroll))
+            return;
+
+        state.Scroll.ScrollVertical = Mathf.RoundToInt((float)value);
+    }
+
+    private static void CancelSmoothScroll(ScrollFeelState state)
+    {
+        state.SmoothScrollActive = false;
+        state.SmoothScrollPosition =
+            state.ScrollBar != null && GodotObject.IsInstanceValid(state.ScrollBar)
+                ? state.ScrollBar.Value
+                : 0d;
+        state.SmoothScrollTarget = state.SmoothScrollPosition;
+        state.SmoothScrollVelocity = 0d;
+    }
+
+    private void ResetScrollFeel(ScrollContainer scroll)
+    {
+        ScrollFeelState state = _scrollFeelStates.FirstOrDefault(item => item.Scroll == scroll);
+        if (state == null)
+        {
+            scroll?.SetDeferred(ScrollContainer.PropertyName.ScrollVertical, 0);
+            return;
+        }
+
+        CancelSmoothScroll(state);
+        CancelScrollBounce(state, resetOffsetTop: true);
+        state.BaseOffsetTop = state.Scroll.OffsetTop;
+        state.Scroll.ScrollVertical = 0;
+        if (state.ScrollBar != null && GodotObject.IsInstanceValid(state.ScrollBar))
+            state.ScrollBar.Value = state.ScrollBar.MinValue;
+    }
+
+    private void QueueScrollBounceCheck(
+        ScrollFeelState state,
+        float visualDirection,
+        float strength = 1f
+    )
+    {
+        if (!CanReceiveScrollBounce(state))
+            return;
+
+        state.PendingBounceDirection = visualDirection >= 0f ? 1f : -1f;
+        state.PendingBounceStrength = Math.Max(
+            state.PendingBounceStrength,
+            Math.Max(0.5f, strength)
+        );
+        if (state.BounceCheckPending)
+            return;
+
+        state.BounceCheckPending = true;
+        int stateIndex = _scrollFeelStates.IndexOf(state);
+        if (stateIndex >= 0)
+            CallDeferred(nameof(DeferredApplyScrollBounce), stateIndex);
+    }
+
+    private void DeferredApplyScrollBounce(int stateIndex)
+    {
+        if (stateIndex < 0 || stateIndex >= _scrollFeelStates.Count)
+            return;
+
+        ScrollFeelState state = _scrollFeelStates[stateIndex];
+
+        state.BounceCheckPending = false;
+        float visualDirection = state.PendingBounceDirection;
+        float strength = state.PendingBounceStrength;
+        state.PendingBounceDirection = 0f;
+        state.PendingBounceStrength = 0f;
+
+        if (
+            visualDirection == 0f
+            || !CanReceiveScrollBounce(state)
+            || !IsScrollAtEdge(state, visualDirection)
+        )
+        {
+            return;
+        }
+
+        PlayScrollBounce(state, visualDirection, strength);
+    }
+
+    private bool CanReceiveScrollBounce(ScrollFeelState state) => CanReceiveSmoothScroll(state);
+
+    private bool IsScrollAtEdge(ScrollFeelState state, float visualDirection)
+    {
+        if (state.ScrollBar == null || !GodotObject.IsInstanceValid(state.ScrollBar))
+            return false;
+
+        double value = state.ScrollBar.Value;
+        double minValue = state.ScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue(state);
+        return visualDirection > 0f
+            ? value <= minValue + 0.5d
+            : value >= maxValue - 0.5d;
+    }
+
+    private static double GetScrollMaxValue(ScrollFeelState state)
+    {
+        if (state.ScrollBar == null || !GodotObject.IsInstanceValid(state.ScrollBar))
+            return 0d;
+
+        return Math.Max(state.ScrollBar.MinValue, state.ScrollBar.MaxValue - state.ScrollBar.Page);
+    }
+
+    private void PlayScrollBounce(ScrollFeelState state, float visualDirection, float strength)
+    {
+        if (state.Scroll == null || !GodotObject.IsInstanceValid(state.Scroll))
+            return;
+
+        float direction = visualDirection >= 0f ? 1f : -1f;
+        float currentOffset = state.Scroll.OffsetTop - state.BaseOffsetTop;
+        if (Math.Sign(currentOffset) != Math.Sign(direction))
+            currentOffset = 0f;
+
+        float targetOffset = Mathf.Clamp(
+            currentOffset
+                + direction
+                    * CardPileOverlayUi.ScrollBounceStep
+                    * Mathf.Clamp(strength, 0.5f, 2f),
+            -CardPileOverlayUi.ScrollBounceMaxOffset,
+            CardPileOverlayUi.ScrollBounceMaxOffset
+        );
+
+        state.BounceTween?.Kill();
+        state.BounceTween = state.Scroll.CreateTween();
+        state.BounceTween.SetParallel(false);
+        state.BounceTween
+            .TweenProperty(
+                state.Scroll,
+                "offset_top",
+                state.BaseOffsetTop + targetOffset,
+                CardPileOverlayUi.ScrollBounceOutDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        state.BounceTween
+            .TweenProperty(
+                state.Scroll,
+                "offset_top",
+                state.BaseOffsetTop,
+                CardPileOverlayUi.ScrollBounceBackDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        state.BounceTween.TweenCallback(Callable.From(() => state.BounceTween = null));
+    }
+
+    private static void CancelScrollBounce(ScrollFeelState state, bool resetOffsetTop)
+    {
+        state.BounceCheckPending = false;
+        state.PendingBounceDirection = 0f;
+        state.PendingBounceStrength = 0f;
+        state.BounceTween?.Kill();
+        state.BounceTween = null;
+
+        if (
+            resetOffsetTop
+            && state.Scroll != null
+            && GodotObject.IsInstanceValid(state.Scroll)
+        )
+        {
+            state.Scroll.OffsetTop = state.BaseOffsetTop;
+        }
     }
 
     private void AddModuleNavigationButton(EncyclopediaModule module, string text)
@@ -575,7 +1053,48 @@ public partial class Encyclopedia : Control
         if (_moduleNavigationPanel == null)
             return;
 
-        Button button = CreateFilterButton(text);
+        Color accent = GetModuleAccent(module);
+        Color selectedBg = new Color(0.76f, 0.78f, 0.84f, 0.72f);
+        var button = new Button
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(0f, 46f),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            ClipText = true,
+            Alignment = HorizontalAlignment.Left,
+            MouseDefaultCursorShape = CursorShape.PointingHand,
+        };
+        button.AddThemeFontSizeOverride("font_size", 17);
+        button.AddThemeStyleboxOverride("normal", CreateNavigationButtonStyle(Colors.Transparent, Colors.Transparent));
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateNavigationButtonStyle(
+                new Color(1f, 1f, 1f, 0.06f),
+                new Color(0.62f, 0.65f, 0.72f, 0.35f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateNavigationButtonStyle(selectedBg, selectedBg)
+        );
+        button.AddThemeStyleboxOverride(
+            "disabled",
+            CreateNavigationButtonStyle(selectedBg, selectedBg)
+        );
+        button.AddThemeStyleboxOverride(
+            "focus",
+            CreateNavigationButtonStyle(Colors.Transparent, Colors.Transparent)
+        );
+        button.AddThemeColorOverride("font_color", new Color(0.74f, 0.76f, 0.81f, 0.95f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.94f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.10f, 0.09f, 0.05f, 1f));
+        button.AddThemeColorOverride("font_disabled_color", new Color(0.10f, 0.09f, 0.05f, 1f));
+        button.AddThemeColorOverride("font_focus_color", new Color(0.94f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("icon_normal_color", new Color(0.72f, 0.74f, 0.8f, 0.95f));
+        button.AddThemeColorOverride("icon_hover_color", new Color(0.95f, 0.97f, 1f, 1f));
+        button.AddThemeColorOverride("icon_pressed_color", new Color(0.10f, 0.09f, 0.05f, 1f));
+        button.AddThemeColorOverride("icon_disabled_color", new Color(0.10f, 0.09f, 0.05f, 1f));
+
         Texture2D icon = GetModuleIcon(module);
         if (icon != null)
         {
@@ -584,8 +1103,6 @@ public partial class Encyclopedia : Control
             button.IconAlignment = HorizontalAlignment.Left;
             button.AddThemeConstantOverride("icon_max_width", 22);
         }
-        button.CustomMinimumSize = new Vector2(0f, 44f);
-        button.Alignment = HorizontalAlignment.Left;
         button.Pressed += () => SelectModule(module);
         _moduleNavigationPanel.AddChild(button);
         _moduleButtons[module] = button;
@@ -898,6 +1415,8 @@ public partial class Encyclopedia : Control
         if (refreshVersion != _resultRefreshVersion || !IsInsideTree())
             return;
 
+        ResetScrollFeel(_gridScroll);
+
         if (_currentModule == EncyclopediaModule.Home)
         {
             AddHomeEntries();
@@ -925,7 +1444,7 @@ public partial class Encyclopedia : Control
             filtered = SortSkillEntries(filtered).ToList();
         }
 
-        _countLabel.Text = $"{filtered.Count}/{source.Count}";
+        _countLabel.Text = $"{filtered.Count} / {source.Count}";
 
         if (_currentModule == EncyclopediaModule.Skills)
         {
@@ -952,7 +1471,7 @@ public partial class Encyclopedia : Control
             bool selected = pair.Key == _selectedSkillCharacter;
             pair.Value.Text = GetPlayerCharacterDisplayName(pair.Key);
             pair.Value.Disabled = selected;
-            pair.Value.Modulate = selected ? new Color(0.74f, 0.9f, 1f, 1f) : Colors.White;
+            pair.Value.Modulate = Colors.White;
         }
     }
 
@@ -963,10 +1482,11 @@ public partial class Encyclopedia : Control
             || _currentModule == EncyclopediaModule.Buffs;
         _skillGridPanel.Visible = true;
         _searchRow.Visible = _currentModule != EncyclopediaModule.Home;
-        _modulePanel.Visible = true;
-        _skillFilterPanel.Visible = true;
-        SetSkillFilterControlsVisible(_currentModule == EncyclopediaModule.Skills);
+        if (_filterScroll != null)
+            _filterScroll.Visible = _currentModule == EncyclopediaModule.Skills;
         _detailCardHost.Visible = false;
+        if (_detailIconHost != null)
+            _detailIconHost.Visible = false;
         _detailPanel.Visible = showFlatDetail;
         _detailPanel.CustomMinimumSize = showFlatDetail
             ? new Vector2(EncyclopediaRelicDetailWidth, 0f)
@@ -984,10 +1504,18 @@ public partial class Encyclopedia : Control
             SetControlAlpha(_detailLabel, 1f);
         }
 
+        if (_gridMargin != null)
+        {
+            _gridMargin.AddThemeConstantOverride(
+                "margin_top",
+                _currentModule == EncyclopediaModule.Home ? 64 : 16
+            );
+        }
+
         if (_skillGrid != null)
         {
             _skillGrid.Columns =
-                _currentModule == EncyclopediaModule.Home ? 3
+                _currentModule == EncyclopediaModule.Home ? 1
                 : _currentModule == EncyclopediaModule.Skills ? 5
                 : showFlatDetail ? 2
                 : 2;
@@ -997,7 +1525,7 @@ public partial class Encyclopedia : Control
             );
             _skillGrid.AddThemeConstantOverride(
                 "v_separation",
-                showFlatDetail ? 12 : 20
+                _currentModule == EncyclopediaModule.Home ? 26 : showFlatDetail ? 12 : 20
             );
         }
 
@@ -1014,16 +1542,11 @@ public partial class Encyclopedia : Control
 
     private void RefreshFilterStates()
     {
-        if (_skillFilterPanel != null)
-            _skillFilterPanel.Visible = true;
-
-        SetSkillFilterControlsVisible(_currentModule == EncyclopediaModule.Skills);
-
         foreach (var pair in _skillTypeFilterButtons)
         {
             bool selected = pair.Key == _selectedSkillTypeFilter;
             pair.Value.Disabled = selected;
-            pair.Value.Modulate = selected ? new Color(0.74f, 0.9f, 1f, 1f) : Colors.White;
+            pair.Value.Modulate = Colors.White;
         }
 
         foreach (var pair in _skillRarityFilterButtons)
@@ -1031,23 +1554,21 @@ public partial class Encyclopedia : Control
             bool selected =
                 _selectedSkillRarityFilter.HasValue && pair.Key == _selectedSkillRarityFilter.Value;
             pair.Value.Disabled = selected;
-            pair.Value.Modulate = selected ? new Color(0.74f, 0.9f, 1f, 1f) : Colors.White;
+            pair.Value.Modulate = Colors.White;
         }
 
         if (_allSkillRarityFilterButton != null)
         {
             bool selected = !_selectedSkillRarityFilter.HasValue;
             _allSkillRarityFilterButton.Disabled = selected;
-            _allSkillRarityFilterButton.Modulate = selected
-                ? new Color(0.74f, 0.9f, 1f, 1f)
-                : Colors.White;
+            _allSkillRarityFilterButton.Modulate = Colors.White;
         }
 
         foreach (var pair in _skillCostFilterButtons)
         {
             bool selected = pair.Key == _selectedSkillCostFilter;
             pair.Value.Disabled = selected;
-            pair.Value.Modulate = selected ? new Color(0.74f, 0.9f, 1f, 1f) : Colors.White;
+            pair.Value.Modulate = Colors.White;
         }
 
         if (_skillSortOption != null)
@@ -1055,20 +1576,6 @@ public partial class Encyclopedia : Control
             int index = FindSkillSortOptionIndex((int)_selectedSkillSortMode);
             if (index >= 0 && _skillSortOption.Selected != index)
                 _skillSortOption.Select(index);
-        }
-    }
-
-    private void SetSkillFilterControlsVisible(bool visible)
-    {
-        if (_skillFilterPanel == null)
-            return;
-
-        foreach (Node child in _skillFilterPanel.GetChildren())
-        {
-            if (child is not Control control)
-                continue;
-
-            control.Visible = control.Name == "ModuleNavigationSection" || visible;
         }
     }
 
@@ -1104,10 +1611,10 @@ public partial class Encyclopedia : Control
             MouseFilter = MouseFilterEnum.Ignore,
         };
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 22);
-        margin.AddThemeConstantOverride("margin_top", 20);
-        margin.AddThemeConstantOverride("margin_right", 18);
-        margin.AddThemeConstantOverride("margin_bottom", 18);
+        margin.AddThemeConstantOverride("margin_left", 24);
+        margin.AddThemeConstantOverride("margin_top", 22);
+        margin.AddThemeConstantOverride("margin_right", 20);
+        margin.AddThemeConstantOverride("margin_bottom", 20);
 
         var row = new HBoxContainer
         {
@@ -1119,7 +1626,7 @@ public partial class Encyclopedia : Control
 
         var iconBadge = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(72f, 72f),
+            CustomMinimumSize = new Vector2(88f, 88f),
             MouseFilter = MouseFilterEnum.Ignore,
             SizeFlagsVertical = SizeFlags.ShrinkCenter,
         };
@@ -1162,7 +1669,7 @@ public partial class Encyclopedia : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         titleLabel.AddThemeFontSizeOverride("font_size", 25);
-        titleLabel.AddThemeColorOverride("font_color", new Color(0.94f, 0.98f, 1f, 1f));
+        titleLabel.AddThemeColorOverride("font_color", new Color(0.96f, 0.95f, 0.90f, 1f));
 
         var descriptionLabel = new Label
         {
@@ -1174,7 +1681,7 @@ public partial class Encyclopedia : Control
         descriptionLabel.AddThemeFontSizeOverride("font_size", 15);
         descriptionLabel.AddThemeColorOverride(
             "font_color",
-            new Color(0.66f, 0.76f, 0.84f, 0.92f)
+            new Color(0.70f, 0.70f, 0.68f, 0.92f)
         );
 
         var arrow = new Label
@@ -1186,11 +1693,22 @@ public partial class Encyclopedia : Control
         arrow.AddThemeFontSizeOverride("font_size", 34);
         arrow.AddThemeColorOverride("font_color", accent);
 
+        var index = new Label
+        {
+            Text = (_skillGrid.GetChildCount() + 1).ToString("D2"),
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+        };
+        index.AddThemeFontSizeOverride("font_size", 44);
+        index.AddThemeFontOverride("font", GetSerifFont());
+        index.AddThemeColorOverride("font_color", accent with { A = 0.42f });
+
         textColumn.AddChild(overline);
         textColumn.AddChild(titleLabel);
         textColumn.AddChild(descriptionLabel);
         row.AddChild(iconBadge);
         row.AddChild(textColumn);
+        row.AddChild(index);
         row.AddChild(arrow);
         margin.AddChild(row);
         button.AddChild(margin);
@@ -1300,7 +1818,7 @@ public partial class Encyclopedia : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         title.AddThemeFontSizeOverride("font_size", 18);
-        title.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.96f));
+        title.AddThemeColorOverride("font_color", new Color(0.94f, 0.95f, 0.92f, 0.96f));
 
         var subtitle = new Label
         {
@@ -1311,7 +1829,7 @@ public partial class Encyclopedia : Control
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         };
         subtitle.AddThemeFontSizeOverride("font_size", 17);
-        subtitle.AddThemeColorOverride("font_color", new Color(0.82f, 0.92f, 1f, 0.88f));
+        subtitle.AddThemeColorOverride("font_color", new Color(0.76f, 0.74f, 0.68f, 0.88f));
 
         textColumn.AddChild(title);
         textColumn.AddChild(subtitle);
@@ -1360,7 +1878,11 @@ public partial class Encyclopedia : Control
                     );
                 }
                 else
-                    card.CallDeferred(nameof(SkillCard.RestoreDisplayState));
+                    CallDeferred(
+                        nameof(RestoreSkillCardDisplayState),
+                        card.GetParent() as Control,
+                        card
+                    );
             }
 
             if ((i + 1) % SkillCardsBuildPerFrame == 0 && i + 1 < entries.Count)
@@ -1418,14 +1940,30 @@ public partial class Encyclopedia : Control
             return;
         }
 
-        card.Position = (frame.Size - card.Size * card.Scale) * 0.5f;
         card.PivotOffset = Vector2.Zero;
+        card.Position = (frame.Size - card.Size * card.Scale) * 0.5f;
+    }
+
+    private static void RestoreSkillCardDisplayState(Control frame, SkillCard card)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        card.RestoreDisplayState();
+        PositionSkillCardInFrame(frame, card);
     }
 
     private void TweenSkillCardHover(Control frame, SkillCard card, bool hovered)
     {
-        if (card == null || !GodotObject.IsInstanceValid(card))
+        if (
+            frame == null
+            || card == null
+            || !GodotObject.IsInstanceValid(frame)
+            || !GodotObject.IsInstanceValid(card)
+        )
+        {
             return;
+        }
 
         if (
             _skillCardHoverTweens.TryGetValue(card, out Tween previousTween)
@@ -1438,28 +1976,21 @@ public partial class Encyclopedia : Control
 
         PositionSkillCardInFrame(frame, card);
         if (hovered)
-            card.ZIndex = 2;
+            frame.ZIndex = 2;
 
-        float scaleFactor = hovered ? 1.055f : 1f;
+        float scaleFactor = hovered ? EncyclopediaSkillCardHoverScale : 1f;
         Vector2 targetScale = Vector2.One * scaleFactor;
-        Vector2 targetPosition = frame != null
-            ? (frame.Size - card.Size * scaleFactor) * 0.5f
-            : card.Position;
-        Tween tween = card.CreateTween();
-        tween.SetParallel(true);
-        tween
-            .TweenProperty(card, "scale", targetScale, hovered ? 0.14f : 0.11f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
-        tween
-            .TweenProperty(card, "position", targetPosition, hovered ? 0.14f : 0.11f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(hovered ? Tween.EaseType.Out : Tween.EaseType.InOut);
-        if (!hovered)
+        Tween tween = card.TweenCenteredScale(
+            targetScale,
+            hovered ? 0.14f : 0.11f,
+            Tween.TransitionType.Cubic,
+            hovered ? Tween.EaseType.Out : Tween.EaseType.InOut
+        );
+        if (!hovered && tween != null)
             tween.Finished += () =>
             {
-                if (GodotObject.IsInstanceValid(card))
-                    card.ZIndex = 0;
+                if (GodotObject.IsInstanceValid(frame))
+                    frame.ZIndex = 0;
             };
         _skillCardHoverTweens[card] = tween;
     }
@@ -1475,33 +2006,87 @@ public partial class Encyclopedia : Control
         _selectedEntry = entry;
         _detailLabel.Text =
             entry?.Detail ?? I18n.Tr("ui.encyclopedia.no_match", "没有找到匹配条目。");
+        UpdateDetailIcon(entry);
 
         foreach (var pair in _buttonEntries)
         {
             bool selected = pair.Value == _selectedEntry;
             Color color =
                 selected
-                    ? new Color(0.74f, 0.9f, 1f, 1f)
-                    : new Color(0.93f, 0.97f, 1f, 0.92f);
+                    ? new Color(0.96f, 0.97f, 1f, 1f)
+                    : new Color(0.82f, 0.86f, 0.92f, 0.92f);
             pair.Key.AddThemeColorOverride("font_color", color);
             pair.Key.AddThemeStyleboxOverride(
                 "normal",
                 CreateButtonStyle(
                     selected
-                        ? new Color(0.18f, 0.32f, 0.46f, 1f)
-                        : new Color(0.10f, 0.15f, 0.22f, 0.95f)
+                        ? new Color(0.18f, 0.19f, 0.22f, 0.98f)
+                        : new Color(0.075f, 0.08f, 0.09f, 0.88f),
+                    selected
+                        ? new Color(0.9f, 0.92f, 0.96f, 0.9f)
+                        : new Color(0.58f, 0.6f, 0.66f, 0.2f)
                 )
             );
             pair.Key.AddThemeStyleboxOverride(
                 "hover",
                 CreateButtonStyle(
                     selected
-                        ? new Color(0.22f, 0.39f, 0.56f, 1f)
-                        : new Color(0.16f, 0.25f, 0.34f, 1f)
+                        ? new Color(0.22f, 0.23f, 0.27f, 0.98f)
+                        : new Color(0.13f, 0.14f, 0.16f, 0.95f),
+                    selected
+                        ? new Color(0.96f, 0.97f, 1f, 1f)
+                        : new Color(0.75f, 0.77f, 0.83f, 0.55f)
                 )
             );
         }
 
+    }
+
+    private void UpdateDetailIcon(EncyclopediaEntry entry)
+    {
+        if (_detailIconHost == null)
+            return;
+
+        foreach (Node child in _detailIconHost.GetChildren())
+            child.QueueFree();
+
+        Control iconContent = null;
+        if (entry?.RelicId != null)
+        {
+            string texturePath = Relic.GetIconTexturePath(entry.RelicId.Value);
+            Texture2D texture = string.IsNullOrWhiteSpace(texturePath)
+                ? null
+                : GD.Load<Texture2D>(texturePath);
+            if (texture != null)
+            {
+                var badge = new PanelContainer
+                {
+                    CustomMinimumSize = new Vector2(88f, 88f),
+                    MouseFilter = MouseFilterEnum.Ignore,
+                };
+                badge.AddThemeStyleboxOverride(
+                    "panel",
+                    CreateModuleBadgeStyle(GetModuleAccent(EncyclopediaModule.Relics))
+                );
+                var icon = new TextureRect
+                {
+                    Texture = texture,
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                    MouseFilter = MouseFilterEnum.Ignore,
+                };
+                badge.AddChild(icon);
+                iconContent = badge;
+            }
+        }
+        else if (entry?.BuffName != null)
+        {
+            // Buff icons already render inside the list buttons; keep the detail clean.
+        }
+
+        _detailIconHost.Visible = iconContent != null;
+        if (iconContent != null)
+            _detailIconHost.AddChild(iconContent);
     }
 
     private void RefreshModuleButtonStates()
@@ -1509,19 +2094,15 @@ public partial class Encyclopedia : Control
         foreach (var pair in _moduleButtons)
         {
             bool selected = pair.Key == _currentModule;
-            Color accent = GetModuleAccent(pair.Key);
             pair.Value.Disabled = selected;
             pair.Value.Modulate = Colors.White;
-            pair.Value.AddThemeColorOverride(
-                selected ? "font_disabled_color" : "font_color",
-                selected
-                    ? new Color(0.96f, 0.99f, 1f, 1f)
-                    : new Color(0.8f, 0.87f, 0.93f, 0.94f)
-            );
-            pair.Value.AddThemeStyleboxOverride(
-                selected ? "disabled" : "normal",
-                CreateNavigationButtonStyle(accent, selected)
-            );
+        }
+
+        if (_railDeco != null)
+        {
+            _railDeco.Texture = GetModuleIcon(_currentModule);
+            Color accent = GetModuleAccent(_currentModule);
+            _railDeco.Modulate = new Color(accent.R, accent.G, accent.B, 0.06f);
         }
     }
 
@@ -1956,29 +2537,43 @@ public partial class Encyclopedia : Control
         var button = new Button
         {
             Text = text,
-            CustomMinimumSize = new Vector2(wide ? 0 : 76, 34),
+            CustomMinimumSize = new Vector2(wide ? 0 : 66, 32),
             SizeFlagsHorizontal = wide ? SizeFlags.ExpandFill : SizeFlags.Fill,
             ClipText = true,
+            MouseDefaultCursorShape = CursorShape.PointingHand,
         };
-        button.AddThemeFontSizeOverride("font_size", 16);
+        button.AddThemeFontSizeOverride("font_size", 15);
         button.AddThemeStyleboxOverride(
             "normal",
-            CreateFilterButtonStyle(new Color(0.12f, 0.18f, 0.26f, 0.96f))
+            CreateFilterButtonStyle(
+                new Color(0.35f, 0.45f, 0.62f, 0.07f),
+                new Color(0.55f, 0.65f, 0.82f, 0.16f)
+            )
         );
         button.AddThemeStyleboxOverride(
             "hover",
-            CreateFilterButtonStyle(new Color(0.18f, 0.29f, 0.39f, 1f))
+            CreateFilterButtonStyle(
+                new Color(0.45f, 0.55f, 0.72f, 0.12f),
+                new Color(0.72f, 0.78f, 0.88f, 0.4f)
+            )
         );
         button.AddThemeStyleboxOverride(
             "pressed",
-            CreateFilterButtonStyle(new Color(0.27f, 0.43f, 0.58f, 1f))
+            CreateFilterButtonStyle(
+                new Color(0.91f, 0.76f, 0.47f, 0.14f),
+                new Color(0.91f, 0.76f, 0.47f, 0.75f)
+            )
         );
         button.AddThemeStyleboxOverride(
             "disabled",
-            CreateFilterButtonStyle(new Color(0.27f, 0.43f, 0.58f, 1f))
+            CreateFilterButtonStyle(
+                new Color(0.91f, 0.76f, 0.47f, 0.14f),
+                new Color(0.91f, 0.76f, 0.47f, 0.75f)
+            )
         );
-        button.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.92f));
-        button.AddThemeColorOverride("font_disabled_color", new Color(1f, 1f, 1f, 1f));
+        button.AddThemeColorOverride("font_color", new Color(0.72f, 0.78f, 0.87f, 0.9f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.94f, 0.96f, 1f, 1f));
+        button.AddThemeColorOverride("font_disabled_color", new Color(0.96f, 0.85f, 0.60f, 1f));
         return button;
     }
 
@@ -1997,43 +2592,59 @@ public partial class Encyclopedia : Control
 
     private static void ApplyButtonTheme(Button button)
     {
+        Color normalBorder = new Color(0.55f, 0.65f, 0.82f, 0.16f);
+        Color hoverBorder = new Color(0.88f, 0.72f, 0.46f, 0.55f);
         button.AddThemeFontSizeOverride("font_size", 20);
         button.AddThemeStyleboxOverride(
             "normal",
-            CreateButtonStyle(new Color(0.10f, 0.15f, 0.22f, 0.95f))
+            CreateButtonStyle(new Color(0.045f, 0.065f, 0.11f, 0.88f), normalBorder)
         );
         button.AddThemeStyleboxOverride(
             "hover",
-            CreateButtonStyle(new Color(0.16f, 0.25f, 0.34f, 1f))
+            CreateButtonStyle(new Color(0.08f, 0.105f, 0.16f, 0.95f), hoverBorder)
         );
         button.AddThemeStyleboxOverride(
             "pressed",
-            CreateButtonStyle(new Color(0.08f, 0.12f, 0.18f, 1f))
+            CreateButtonStyle(new Color(0.155f, 0.115f, 0.045f, 0.95f), hoverBorder)
         );
         button.AddThemeStyleboxOverride(
             "disabled",
-            CreateButtonStyle(new Color(0.22f, 0.34f, 0.43f, 1f))
+            CreateButtonStyle(
+                new Color(0.155f, 0.115f, 0.045f, 0.95f),
+                new Color(0.91f, 0.76f, 0.47f, 0.9f)
+            )
         );
-        button.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.92f));
-        button.AddThemeColorOverride("font_disabled_color", new Color(1f, 1f, 1f, 1f));
+        button.AddThemeColorOverride("font_color", new Color(0.82f, 0.86f, 0.92f, 0.92f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.95f, 0.97f, 1f, 1f));
+        button.AddThemeColorOverride("font_disabled_color", new Color(0.97f, 0.87f, 0.62f, 1f));
     }
 
     private static void ApplyOptionTheme(SettingsDropdown optionButton)
     {
-        optionButton.AddThemeFontSizeOverride("font_size", 16);
+        optionButton.AddThemeFontSizeOverride("font_size", 15);
         optionButton.AddThemeStyleboxOverride(
             "normal",
-            CreateFilterButtonStyle(new Color(0.12f, 0.18f, 0.26f, 0.96f))
+            CreateFilterButtonStyle(
+                new Color(0.35f, 0.45f, 0.62f, 0.07f),
+                new Color(0.55f, 0.65f, 0.82f, 0.16f)
+            )
         );
         optionButton.AddThemeStyleboxOverride(
             "hover",
-            CreateFilterButtonStyle(new Color(0.18f, 0.29f, 0.39f, 1f))
+            CreateFilterButtonStyle(
+                new Color(0.45f, 0.55f, 0.72f, 0.12f),
+                new Color(0.72f, 0.78f, 0.88f, 0.4f)
+            )
         );
         optionButton.AddThemeStyleboxOverride(
             "pressed",
-            CreateFilterButtonStyle(new Color(0.27f, 0.43f, 0.58f, 1f))
+            CreateFilterButtonStyle(
+                new Color(0.91f, 0.76f, 0.47f, 0.14f),
+                new Color(0.91f, 0.76f, 0.47f, 0.75f)
+            )
         );
-        optionButton.AddThemeColorOverride("font_color", new Color(0.93f, 0.97f, 1f, 0.92f));
+        optionButton.AddThemeColorOverride("font_color", new Color(0.72f, 0.78f, 0.87f, 0.9f));
+        optionButton.AddThemeColorOverride("font_hover_color", new Color(0.94f, 0.96f, 1f, 1f));
     }
 
     private static void ApplySearchTheme(LineEdit searchBox)
@@ -2042,18 +2653,18 @@ public partial class Encyclopedia : Control
             return;
 
         searchBox.ClearButtonEnabled = true;
-        searchBox.AddThemeFontSizeOverride("font_size", 17);
+        searchBox.AddThemeFontSizeOverride("font_size", 16);
         searchBox.AddThemeColorOverride(
             "font_color",
-            new Color(0.9f, 0.96f, 1f, 0.96f)
+            new Color(0.92f, 0.95f, 1f, 0.96f)
         );
         searchBox.AddThemeColorOverride(
             "font_placeholder_color",
-            new Color(0.54f, 0.66f, 0.75f, 0.8f)
+            new Color(0.47f, 0.56f, 0.70f, 0.75f)
         );
         searchBox.AddThemeColorOverride(
             "caret_color",
-            new Color(0.38f, 0.9f, 0.96f, 1f)
+            new Color(0.91f, 0.76f, 0.47f, 1f)
         );
         searchBox.AddThemeStyleboxOverride("normal", CreateSearchBoxStyle(false));
         searchBox.AddThemeStyleboxOverride("focus", CreateSearchBoxStyle(true));
@@ -2073,55 +2684,127 @@ public partial class Encyclopedia : Control
         return -1;
     }
 
-    private static StyleBoxFlat CreateFilterButtonStyle(Color color)
+    private static StyleBoxFlat CreateFilterButtonStyle(Color color, Color border)
     {
         return new StyleBoxFlat
         {
-            BgColor = color,
-            BorderColor = new Color(0.68f, 0.84f, 0.98f, 0.22f),
+            BgColor = ToNeutral(color),
+            BorderColor = ToNeutral(border),
             BorderWidthLeft = 1,
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 14,
-            CornerRadiusTopRight = 14,
-            CornerRadiusBottomLeft = 14,
-            CornerRadiusBottomRight = 14,
-            ContentMarginLeft = 10,
-            ContentMarginRight = 10,
-            ContentMarginTop = 6,
-            ContentMarginBottom = 6,
+            ContentMarginLeft = 8,
+            ContentMarginRight = 8,
+            ContentMarginTop = 4,
+            ContentMarginBottom = 4,
+        };
+    }
+
+    private static void ApplyCloseButtonTheme(Button button)
+    {
+        button.AddThemeFontSizeOverride("font_size", 19);
+        button.AddThemeStyleboxOverride(
+            "normal",
+            CreateCircleButtonStyle(
+                new Color(0.075f, 0.08f, 0.09f, 0.82f),
+                new Color(0.58f, 0.6f, 0.66f, 0.5f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateCircleButtonStyle(
+                new Color(0.18f, 0.19f, 0.22f, 0.96f),
+                new Color(0.9f, 0.92f, 0.96f, 0.95f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateCircleButtonStyle(
+                new Color(0.24f, 0.25f, 0.29f, 0.98f),
+                new Color(0.96f, 0.97f, 1f, 1f)
+            )
+        );
+        button.AddThemeColorOverride("font_color", new Color(0.78f, 0.8f, 0.86f, 1f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.98f, 0.99f, 1f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.9f, 0.92f, 0.97f, 1f));
+    }
+
+    private static StyleBoxFlat CreateCircleButtonStyle(Color bg, Color border)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = ToNeutral(bg),
+            BorderColor = ToNeutral(border),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+        };
+    }
+
+    private static void ApplyCharacterTabTheme(Button button)
+    {
+        button.AddThemeFontSizeOverride("font_size", 19);
+        button.AddThemeStyleboxOverride("normal", CreateCharacterTabStyle(Colors.Transparent));
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateCharacterTabStyle(new Color(0.72f, 0.74f, 0.8f, 0.35f))
+        );
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateCharacterTabStyle(new Color(0.9f, 0.92f, 0.96f, 1f))
+        );
+        button.AddThemeStyleboxOverride(
+            "disabled",
+            CreateCharacterTabStyle(new Color(0.9f, 0.92f, 0.96f, 1f))
+        );
+        button.AddThemeColorOverride("font_color", new Color(0.66f, 0.68f, 0.74f, 0.9f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.9f, 0.92f, 0.97f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.96f, 0.97f, 1f, 1f));
+        button.AddThemeColorOverride("font_disabled_color", new Color(0.96f, 0.97f, 1f, 1f));
+    }
+
+    private static StyleBoxFlat CreateCharacterTabStyle(Color underlineColor)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = Colors.Transparent,
+            BorderColor = underlineColor,
+            BorderWidthBottom = 2,
+            ContentMarginLeft = 4,
+            ContentMarginRight = 4,
+            ContentMarginBottom = 7,
         };
     }
 
     private static StyleBoxFlat CreateSearchBoxStyle(bool focused)
     {
         Color accent = focused
-            ? new Color(0.35f, 0.9f, 0.96f, 0.72f)
-            : new Color(0.38f, 0.7f, 0.86f, 0.22f);
+            ? new Color(0.9f, 0.92f, 0.96f, 0.8f)
+            : new Color(0.58f, 0.6f, 0.66f, 0.3f);
         return new StyleBoxFlat
         {
             BgColor = focused
-                ? new Color(0.035f, 0.085f, 0.12f, 0.96f)
-                : new Color(0.02f, 0.05f, 0.078f, 0.9f),
+                ? new Color(0.13f, 0.14f, 0.16f, 0.96f)
+                : new Color(0.075f, 0.08f, 0.09f, 0.9f),
             BorderColor = accent,
             BorderWidthLeft = 1,
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 14,
-            CornerRadiusTopRight = 14,
-            CornerRadiusBottomLeft = 14,
-            CornerRadiusBottomRight = 14,
             ContentMarginLeft = 16,
             ContentMarginRight = 42,
             ContentMarginTop = 10,
             ContentMarginBottom = 10,
-            ShadowColor = focused
-                ? new Color(0.12f, 0.72f, 0.88f, 0.16f)
-                : Colors.Transparent,
-            ShadowSize = focused ? 7 : 0,
         };
+    }
+
+    private static Font _serifFont;
+
+    private static Font GetSerifFont()
+    {
+        return _serifFont ??= GD.Load<FontFile>("res://asset/font/CormorantSC-Bold.ttf");
     }
 
     private static Texture2D GetModuleIcon(EncyclopediaModule module)
@@ -2133,36 +2816,23 @@ public partial class Encyclopedia : Control
 
     private static Color GetModuleAccent(EncyclopediaModule module)
     {
-        return module switch
-        {
-            EncyclopediaModule.Skills => new Color(0.26f, 0.86f, 0.95f, 1f),
-            EncyclopediaModule.Relics => new Color(0.96f, 0.7f, 0.3f, 1f),
-            EncyclopediaModule.Buffs => new Color(0.52f, 0.86f, 0.68f, 1f),
-            EncyclopediaModule.Enemies => new Color(0.94f, 0.4f, 0.48f, 1f),
-            _ => new Color(0.62f, 0.67f, 0.96f, 1f),
-        };
+        return new Color(0.78f, 0.8f, 0.86f, 1f);
     }
 
     private static StyleBoxFlat CreateModuleBadgeStyle(Color accent)
     {
         return new StyleBoxFlat
         {
-            BgColor = new Color(accent.R * 0.13f, accent.G * 0.13f, accent.B * 0.13f, 0.96f),
-            BorderColor = accent with { A = 0.48f },
+            BgColor = new Color(0.12f, 0.13f, 0.15f, 0.96f),
+            BorderColor = new Color(0.62f, 0.65f, 0.72f, 0.48f),
             BorderWidthLeft = 1,
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 16,
-            CornerRadiusTopRight = 16,
-            CornerRadiusBottomLeft = 16,
-            CornerRadiusBottomRight = 16,
             ContentMarginLeft = 17,
             ContentMarginRight = 17,
             ContentMarginTop = 17,
             ContentMarginBottom = 17,
-            ShadowColor = accent with { A = 0.16f },
-            ShadowSize = 9,
         };
     }
 
@@ -2171,82 +2841,58 @@ public partial class Encyclopedia : Control
         return new StyleBoxFlat
         {
             BgColor = new Color(
-                0.025f + accent.R * accentStrength,
-                0.045f + accent.G * accentStrength,
-                0.07f + accent.B * accentStrength,
+                0.075f + accentStrength * 0.25f,
+                0.08f + accentStrength * 0.25f,
+                0.09f + accentStrength * 0.25f,
                 0.96f
             ),
-            BorderColor = accent with { A = 0.38f + accentStrength },
-            BorderWidthLeft = 2,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 18,
-            CornerRadiusTopRight = 18,
-            CornerRadiusBottomLeft = 18,
-            CornerRadiusBottomRight = 18,
-            ContentMarginLeft = 0,
-            ContentMarginRight = 0,
-            ContentMarginTop = 0,
-            ContentMarginBottom = 0,
-            ShadowColor = accent with { A = 0.12f + accentStrength * 0.25f },
-            ShadowSize = 10,
-            ShadowOffset = new Vector2(0f, 4f),
-        };
-    }
-
-    private static StyleBoxFlat CreateNavigationButtonStyle(Color accent, bool selected)
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = selected
-                ? new Color(
-                    0.04f + accent.R * 0.16f,
-                    0.07f + accent.G * 0.16f,
-                    0.1f + accent.B * 0.16f,
-                    1f
-                )
-                : new Color(0.035f, 0.065f, 0.095f, 0.82f),
-            BorderColor = selected
-                ? accent with { A = 0.66f }
-                : new Color(0.4f, 0.68f, 0.82f, 0.14f),
-            BorderWidthLeft = selected ? 3 : 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 13,
-            CornerRadiusTopRight = 13,
-            CornerRadiusBottomLeft = 13,
-            CornerRadiusBottomRight = 13,
-            ContentMarginLeft = 14,
-            ContentMarginRight = 12,
-            ContentMarginTop = 9,
-            ContentMarginBottom = 9,
-        };
-    }
-
-    private static StyleBoxFlat CreateButtonStyle(Color color)
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = color,
-            BorderColor = new Color(0.68f, 0.84f, 0.98f, 0.26f),
+            BorderColor = new Color(0.58f, 0.6f, 0.66f, 0.28f + accentStrength * 1.4f),
             BorderWidthLeft = 1,
             BorderWidthTop = 1,
             BorderWidthRight = 1,
             BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 12,
-            CornerRadiusTopRight = 12,
-            CornerRadiusBottomLeft = 12,
-            CornerRadiusBottomRight = 12,
+            ContentMarginLeft = 0,
+            ContentMarginRight = 0,
+            ContentMarginTop = 0,
+            ContentMarginBottom = 0,
+        };
+    }
+
+    private static StyleBoxFlat CreateNavigationButtonStyle(Color bg, Color leftBar)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = ToNeutral(bg),
+            BorderColor = ToNeutral(leftBar),
+            BorderWidthLeft = leftBar.A > 0.001f ? 3 : 0,
+            ContentMarginLeft = 14,
+            ContentMarginRight = 12,
+            ContentMarginTop = 8,
+            ContentMarginBottom = 8,
+        };
+    }
+
+    private static StyleBoxFlat CreateButtonStyle(Color color, Color border)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = ToNeutral(color),
+            BorderColor = ToNeutral(border),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
             ContentMarginLeft = 16,
             ContentMarginRight = 16,
             ContentMarginTop = 10,
             ContentMarginBottom = 10,
-            ShadowColor = new Color(0f, 0f, 0f, 0.24f),
-            ShadowSize = 4,
-            ShadowOffset = new Vector2(0f, 2f),
         };
+    }
+
+    private static Color ToNeutral(Color color)
+    {
+        float value = color.R * 0.2126f + color.G * 0.7152f + color.B * 0.0722f;
+        return new Color(value, value, value, color.A);
     }
 
 }

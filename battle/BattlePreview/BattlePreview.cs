@@ -89,6 +89,7 @@ public partial class BattlePreview : Control
             return;
         }
 
+        SetProcessUnhandledInput(true);
         EnsureTipLayer();
         exitButton.PressedActions.Add(Close);
         Modulate = Modulate with { A = 0.0f };
@@ -101,6 +102,15 @@ public partial class BattlePreview : Control
         StartBattleButton.Pressed += StartBattle;
         StartBattleButton.MouseEntered += () => AnimateStartBattleButtonHover(true);
         StartBattleButton.MouseExited += () => AnimateStartBattleButtonHover(false);
+    }
+
+    public override void _UnhandledInput(InputEvent inputEvent)
+    {
+        if (!Visible || !MobilePlatform.IsCancelPress(inputEvent))
+            return;
+
+        GetViewport()?.SetInputAsHandled();
+        Close();
     }
 
     private void AnimateStartBattleButtonHover(bool hovered)
@@ -146,7 +156,6 @@ public partial class BattlePreview : Control
         if (_basePositions.Count == 0)
             CacheAssemblyBasePositions();
         await PlayAssembleAnimationAsync();
-        await BattlePreviewTutorialOverlay.ShowIfNeededAsync(this);
     }
 
     public async System.Threading.Tasks.Task PlayCloseAnimationAsync()

@@ -31,6 +31,8 @@ public partial class StarfieldBackground3D : Control
     public float CameraLookAhead = 0.18f;
     [Export(PropertyHint.Range, "0.0,0.16,0.005")]
     public float CameraRollAmount = 0.045f;
+    [Export(PropertyHint.Range, "0.0,0.2,0.005")]
+    public float CameraOrbitSpeed = 0.0f;
     [Export(PropertyHint.Range, "0.0,0.6,0.01")]
     public float NebulaExpansionAmount = 0.0f;
     [Export(PropertyHint.Range, "0.0,3.0,0.05")]
@@ -39,6 +41,12 @@ public partial class StarfieldBackground3D : Control
     public float StellarisBattleLayerStrength = 0.0f;
     [Export(PropertyHint.Range, "0.0,1.5,0.01")]
     public float HyperlaneStrength = 0.9f;
+    [Export] public bool BattleComposition = false;
+    private float _presentationMotionScale = 1f;
+
+    public void SetPresentationMotionScale(float scale) {
+        _presentationMotionScale = Mathf.Clamp(scale, 0f, 1f);
+    }
     [Export(PropertyHint.Range, "0.0,1.0,0.01")]
     public float DeepSpaceContrastStrength = 0.0f;
     [Export(PropertyHint.Range, "0.0,1.0,0.01")]
@@ -72,10 +80,11 @@ public partial class StarfieldBackground3D : Control
     private static Godot.Environment _cachedStarfieldEnvironment;
     private static Texture2D _cachedFlowHeadTexture;
 
+    // Keep these values aligned with the StarfieldBackground3D instance in Battle.tscn.
     private static readonly (Color Color, int Seed)[] BattleNebulaDefaults =
     {
-        (new Color(0.21960784f, 0.52156866f, 0.8784314f, 0.48235294f), 1409),
-        (new Color(0.85882354f, 0.47843137f, 0.78039217f, 0.6862745f), 2197),
+        (new Color(0.21960784f, 0.52156866f, 0.8784314f, 0.81960785f), 1409),
+        (new Color(0.85882354f, 0.47843137f, 0.78039217f, 0.79607844f), 2197),
         (new Color(0.35f, 0.95f, 0.82f, 0.13f), 3541),
         (new Color(0.18f, 0.44f, 0.95f, 0.11f), 5081),
         (new Color(0.72f, 0.24f, 0.82f, 0.09f), 6827),
@@ -94,6 +103,7 @@ public partial class StarfieldBackground3D : Control
     private Camera3D _camera;
     private Node3D _sphericalFlowRoot;
     private MeshInstance3D _sphericalSkyShell;
+    private ShaderMaterial _skyMaterial;
     private Node3D _foregroundDecorationRoot;
     private CanvasLayer _battleForegroundLayer;
     private BattleForegroundOverlay _battleForegroundOverlay;
@@ -107,6 +117,12 @@ public partial class StarfieldBackground3D : Control
     private float _time;
     private float _overlayUpdateAccumulator;
     private float _foregroundUpdateAccumulator;
+
+    // A scene transition can safely reveal this background only after the
+    // SubViewport has been populated with the complete set of 3D visuals.
+    // Before then the render target is deliberately disabled while the
+    // deferred builder is adding its meshes and textures.
+    public bool IsPresentationReady => _visualsBuilt;
 
     private static readonly Vector3[] CameraPathPoints =
     {
@@ -188,12 +204,14 @@ public partial class StarfieldBackground3D : Control
         ProcessMode = ProcessModeEnum.Inherit;
         _applicationFocused = GetWindow()?.HasFocus() ?? true;
         SetProcess(_applicationFocused);
+        ApplyMobileQualityProfile();
         _random.Seed = RandomSeed;
         _starTexture = GetCachedStarTexture(Math.Max(16, StarTextureSize), StarSharpness);
         _layers.Clear();
         _nebulaPlanes.Clear();
         _foregroundShards.Clear();
         _flowRings.Clear();
+        _celestialBodies.Clear();
 
         _viewport = GetNodeOrNull<SubViewport>(
             "StarfieldViewportContainer/StarfieldViewport"
@@ -203,6 +221,12 @@ public partial class StarfieldBackground3D : Control
             _viewport.OwnWorld3D = true;
             _viewport.TransparentBg = true;
             _viewport.RenderTargetClearMode = SubViewport.ClearMode.Always;
+            if (MobilePlatform.IsMobile)
+            {
+                _viewport.Size = new Vector2I(960, 540);
+                _viewport.Msaa3D = Viewport.Msaa.Disabled;
+                _viewport.ScreenSpaceAA = Viewport.ScreenSpaceAAEnum.Disabled;
+            }
             if (DeferredBuild || !_applicationFocused)
                 _viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled;
         }
@@ -233,7 +257,12 @@ public partial class StarfieldBackground3D : Control
 
         WorldEnvironment worldEnvironment = _world.GetNodeOrNull<WorldEnvironment>("WorldEnvironment");
         if (worldEnvironment != null)
-            worldEnvironment.Environment = GetCachedStarfieldEnvironment();
+        {
+            Godot.Environment environment = GetCachedStarfieldEnvironment();
+            if (MobilePlatform.IsMobile)
+                environment.GlowEnabled = false;
+            worldEnvironment.Environment = environment;
+        }
 
         SetupBattleForegroundOverlay();
 
@@ -244,6 +273,22 @@ public partial class StarfieldBackground3D : Control
         }
 
         BuildVisuals();
+    }
+
+    private void ApplyMobileQualityProfile()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        NearStarCount = Math.Min(NearStarCount, 260);
+        FarStarCount = Math.Min(FarStarCount, 440);
+        ForegroundShardCount = Math.Min(ForegroundShardCount, 6);
+        NebulaTextureSize = Math.Min(NebulaTextureSize, 128);
+        StarUpdateRate = Math.Min(StarUpdateRate, 18f);
+        OverlayUpdateRate = Math.Min(OverlayUpdateRate, 24f);
+        ForegroundUpdateRate = Math.Min(ForegroundUpdateRate, 20f);
+        ForegroundDecorationStrength *= 0.72f;
+        StellarisBattleLayerStrength *= 0.82f;
     }
 
     public override void _Notification(int what)
@@ -286,6 +331,7 @@ public partial class StarfieldBackground3D : Control
     private void BuildVisuals()
     {
         BuildSphericalSkyShell();
+        BuildCelestialBodies();
         BuildForegroundDecorations();
         BuildStarLayer(
             GetNodeOrNull<MultiMeshInstance3D>(
@@ -331,6 +377,11 @@ public partial class StarfieldBackground3D : Control
             return;
 
         BuildSphericalSkyShell();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!CanBuildVisuals())
+            return;
+
+        BuildCelestialBodies();
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (!CanBuildVisuals())
             return;
@@ -396,7 +447,8 @@ public partial class StarfieldBackground3D : Control
     public override void _Process(double delta)
     {
         float dt = (float)delta;
-        _time += dt;
+        _time += dt * _presentationMotionScale;
+        _skyMaterial?.SetShaderParameter("sky_time", _time);
 
         if (_world != null && GodotObject.IsInstanceValid(_world))
         {
@@ -410,6 +462,7 @@ public partial class StarfieldBackground3D : Control
         UpdateCameraPath();
         UpdateSphericalFlowCurves();
         UpdateForegroundDecorations(dt);
+        UpdateCelestialBodies();
         UpdateBattleForegroundOverlayThrottled(dt);
         if (_visualsBuilt)
         {
@@ -551,10 +604,10 @@ public partial class StarfieldBackground3D : Control
             float Phase
         )[]
         {
-            (new(0.0f, 1.0f, 0.0f), 0.08f, 0.032f, new Color(0.20f, 0.82f, 1f, 0.46f), 0.17f, 0.08f),
-            (new(0.72f, 0.20f, 0.66f), -0.18f, 0.028f, new Color(0.32f, 1f, 0.76f, 0.40f), 0.13f, 0.31f),
-            (new(-0.45f, 0.82f, 0.35f), 0.23f, 0.035f, new Color(0.52f, 0.42f, 1f, 0.44f), 0.15f, 0.53f),
-            (new(0.20f, 0.55f, -0.81f), -0.32f, 0.030f, new Color(0.18f, 0.92f, 0.84f, 0.39f), 0.11f, 0.72f)
+            (new(0.0f, 1.0f, 0.0f), 0.08f, 0.032f, new Color(1f, 1f, 1f, 0.46f), 0.17f, 0.08f),
+            (new(0.72f, 0.20f, 0.66f), -0.18f, 0.028f, new Color(1f, 1f, 1f, 0.40f), 0.13f, 0.31f),
+            (new(-0.45f, 0.82f, 0.35f), 0.23f, 0.035f, new Color(1f, 1f, 1f, 0.44f), 0.15f, 0.53f),
+            (new(0.20f, 0.55f, -0.81f), -0.32f, 0.030f, new Color(1f, 1f, 1f, 0.39f), 0.11f, 0.72f)
         };
 
         float strength = Mathf.Clamp(
@@ -580,6 +633,7 @@ public partial class StarfieldBackground3D : Control
                 strength,
                 1f
             );
+            haloMaterial.SetShaderParameter("battle_composition", BattleComposition);
             var halo = new MeshInstance3D
             {
                 Name = $"FlowRingHalo{i + 1}",
@@ -603,6 +657,7 @@ public partial class StarfieldBackground3D : Control
                 strength,
                 0f
             );
+            coreMaterial.SetShaderParameter("battle_composition", BattleComposition);
             var core = new MeshInstance3D
             {
                 Name = $"FlowRingCore{i + 1}",
@@ -621,6 +676,7 @@ public partial class StarfieldBackground3D : Control
                     ring.Color,
                     strength
                 );
+                heads[headIndex].Visible = !BattleComposition;
                 _sphericalFlowRoot.AddChild(heads[headIndex], false, InternalMode.Disabled);
             }
 
@@ -858,6 +914,7 @@ public partial class StarfieldBackground3D : Control
 
                 uniform float sky_strength = 1.0;
                 uniform float contrast_strength = 0.5;
+                uniform float sky_time = 0.0;
                 varying vec3 sphere_direction;
 
                 void vertex() {
@@ -866,7 +923,7 @@ public partial class StarfieldBackground3D : Control
 
                 void fragment() {
                     vec3 d = normalize(sphere_direction);
-                    float slow_time = TIME * 0.012;
+                    float slow_time = sky_time * 0.012;
                     float broad_wave = sin(d.x * 6.0 + d.z * 3.5 + slow_time)
                         + sin(d.y * 9.0 - d.x * 4.0 - slow_time * 0.7) * 0.55;
                     float fine_wave = sin(d.z * 17.0 + d.y * 11.0 + slow_time * 1.4)
@@ -891,6 +948,7 @@ public partial class StarfieldBackground3D : Control
                 """
         };
         var material = new ShaderMaterial { Shader = shader };
+        _skyMaterial = material;
         material.SetShaderParameter("sky_strength", 0.82f + SkyBrightness * 1.4f);
         material.SetShaderParameter(
             "contrast_strength",
@@ -1170,24 +1228,48 @@ public partial class StarfieldBackground3D : Control
                 shader_type spatial;
                 render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
 
-                uniform vec4 flow_color : source_color = vec4(0.2, 0.8, 1.0, 0.45);
+                uniform vec4 flow_color : source_color = vec4(1.0, 1.0, 1.0, 0.45);
                 uniform float flow_speed = 0.15;
                 uniform float flow_phase = 0.0;
                 uniform float flow_time = 0.0;
                 uniform float flow_strength = 1.0;
                 uniform float soft_layer = 0.0;
+                uniform bool battle_composition = false;
 
                 void fragment() {
                     float flow_position = fract(UV.x * 2.0 - flow_time * flow_speed + flow_phase);
                     const float head_position = 0.08;
                     float trail_distance = fract(head_position - flow_position + 1.0);
-                    float front_cutoff = 1.0 - smoothstep(0.012, 0.028, trail_distance);
-                    float tail_cutoff = 1.0 - smoothstep(0.40, 0.66, trail_distance);
-                    float directional_trail = exp(-trail_distance * 7.1) * tail_cutoff;
+                    float trail_aa = max(fwidth(UV.x * 2.0) * 1.5, 0.00075);
+                    float front_cutoff = 1.0 - smoothstep(
+                        0.012 - trail_aa,
+                        0.028 + trail_aa,
+                        trail_distance
+                    );
+                    float tail_cutoff = 1.0 - smoothstep(
+                        0.40 - trail_aa,
+                        0.66 + trail_aa,
+                        trail_distance
+                    );
+                    float directional_trail = exp(-trail_distance * (battle_composition ? 21.0 : 7.1)) * tail_cutoff;
                     float neck = exp(-trail_distance * 24.0) * front_cutoff;
-                    vec3 color = mix(flow_color.rgb, vec3(0.92, 0.99, 1.0), neck * 0.72);
+                    vec3 color = mix(flow_color.rgb, vec3(1.0), neck * 0.72);
                     float base_level = mix(0.012, 0.055, soft_layer);
+                    float composition_mask = 1.0;
+                    if (battle_composition) {
+                        base_level *= 0.10;
+                        float side = smoothstep(0.25, 0.49, abs(SCREEN_UV.x - 0.5));
+                        float top = 1.0 - smoothstep(0.10, 0.28, SCREEN_UV.y);
+                        composition_mask = mix(0.025, 0.40, max(side, top));
+                    }
                     float tail_level = mix(0.82, 0.92, soft_layer);
+                    float view_facing = clamp(
+                        abs(dot(normalize(NORMAL), normalize(VIEW))),
+                        0.0,
+                        1.0
+                    );
+                    float silhouette_aa = max(fwidth(view_facing) * 1.35, 0.025);
+                    float silhouette_coverage = smoothstep(0.0, silhouette_aa, view_facing);
                     ALBEDO = color;
                     EMISSION = color * mix(
                         0.24 + directional_trail * 2.5,
@@ -1198,7 +1280,8 @@ public partial class StarfieldBackground3D : Control
                         * (
                             base_level
                             + directional_trail * tail_level
-                        );
+                        )
+                        * silhouette_coverage * composition_mask;
                 }
                 """
         };
@@ -1213,7 +1296,7 @@ public partial class StarfieldBackground3D : Control
     )
     {
         const int SegmentCount = 384;
-        const int SideCount = 12;
+        const int SideCount = 24;
         var centers = new Vector3[SegmentCount + 1];
         var normals = new Vector3[SegmentCount + 1];
         var binormals = new Vector3[SegmentCount + 1];
@@ -1266,14 +1349,18 @@ public partial class StarfieldBackground3D : Control
                 Vector3 c = TubePoint(centers[i + 1], normals[i + 1], binormals[i + 1], nextSide, SideCount, width);
                 Vector3 d = TubePoint(centers[i], normals[i], binormals[i], nextSide, SideCount, width);
                 float v0 = (float)side / SideCount;
-                float v1 = (float)nextSide / SideCount;
+                float v1 = (float)(side + 1) / SideCount;
+                Vector3 normalA = (a - centers[i]).Normalized();
+                Vector3 normalB = (b - centers[i + 1]).Normalized();
+                Vector3 normalC = (c - centers[i + 1]).Normalized();
+                Vector3 normalD = (d - centers[i]).Normalized();
 
-                AddFlowVertex(mesh, a, new Vector2(t0, v0));
-                AddFlowVertex(mesh, b, new Vector2(t1, v0));
-                AddFlowVertex(mesh, c, new Vector2(t1, v1));
-                AddFlowVertex(mesh, a, new Vector2(t0, v0));
-                AddFlowVertex(mesh, c, new Vector2(t1, v1));
-                AddFlowVertex(mesh, d, new Vector2(t0, v1));
+                AddFlowVertex(mesh, a, normalA, new Vector2(t0, v0));
+                AddFlowVertex(mesh, b, normalB, new Vector2(t1, v0));
+                AddFlowVertex(mesh, c, normalC, new Vector2(t1, v1));
+                AddFlowVertex(mesh, a, normalA, new Vector2(t0, v0));
+                AddFlowVertex(mesh, c, normalC, new Vector2(t1, v1));
+                AddFlowVertex(mesh, d, normalD, new Vector2(t0, v1));
             }
         }
         mesh.SurfaceEnd();
@@ -1293,8 +1380,14 @@ public partial class StarfieldBackground3D : Control
         return center + (normal * Mathf.Cos(angle) + binormal * Mathf.Sin(angle)) * width;
     }
 
-    private static void AddFlowVertex(ImmediateMesh mesh, Vector3 position, Vector2 uv)
+    private static void AddFlowVertex(
+        ImmediateMesh mesh,
+        Vector3 position,
+        Vector3 normal,
+        Vector2 uv
+    )
     {
+        mesh.SurfaceSetNormal(normal);
         mesh.SurfaceSetUV(uv);
         mesh.SurfaceAddVertex(position);
     }
@@ -1365,6 +1458,21 @@ public partial class StarfieldBackground3D : Control
     {
         if (_camera == null || !GodotObject.IsInstanceValid(_camera))
             return;
+
+        if (CameraOrbitSpeed > 0.0001f)
+        {
+            // Slow panoramic orbit: pivot on a small circle around the origin
+            // and look outward, so bodies placed at different azimuths drift
+            // through the frame one after another instead of crowding one view.
+            // Everything is expressed in _world-local space: LookAt would mix in
+            // the world's own drift rotation, so set the rotation directly.
+            float yaw = _time * CameraOrbitSpeed;
+            var outward = new Vector3(Mathf.Sin(yaw), 0f, -Mathf.Cos(yaw));
+            _camera.Position = -outward * 2.2f
+                + Vector3.Up * (Mathf.Sin(_time * 0.05f) * 0.4f);
+            _camera.Rotation = new Vector3(0f, -yaw, 0f);
+            return;
+        }
 
         float strength = Mathf.Clamp(CameraPathStrength, 0f, 1f);
         if (strength <= 0.001f)
@@ -1458,7 +1566,7 @@ public partial class StarfieldBackground3D : Control
                     1f,
                     Mathf.Cos(layer.Phase[i]) * 0.16f
                 );
-                position = position.Rotated(axis.Normalized(), orbitSpeed * interval);
+                position = position.Rotated(axis.Normalized(), orbitSpeed * interval * _presentationMotionScale);
 
                 layer.BasePositions[i] = position;
 
@@ -1587,7 +1695,7 @@ public partial class StarfieldBackground3D : Control
         Color warm = new(1f, 0.86f, 0.62f, 1f);
         Color violet = new(0.82f, 0.74f, 1f, 1f);
         Color baseColor = warmth < 0.18f ? violet : cold.Lerp(warm, warmth * 0.34f);
-        return baseColor * (speed > 0.5f ? _random.RandfRange(0.82f, 1.18f) : _random.RandfRange(0.42f, 0.78f));
+        return baseColor * (speed > 0.5f ? _random.RandfRange(0.82f, 1.18f) : _random.RandfRange(0.60f, 1.00f));
     }
 
     public static void ReleaseCachedResources()
@@ -1597,17 +1705,18 @@ public partial class StarfieldBackground3D : Control
         _cachedStarfieldEnvironment = null;
     }
 
-    public static async System.Threading.Tasks.Task PrewarmBattleBackgroundTexturesAsync(Node owner)
+    public static async System.Threading.Tasks.Task<bool> PrewarmBattleBackgroundTexturesAsync(Node owner)
     {
         if (owner == null || !GodotObject.IsInstanceValid(owner) || !owner.IsInsideTree())
-            return;
+            return false;
 
-        GetCachedStarTexture(48, 1.65f);
+        GetCachedStarTexture(48, 3.2f);
         await owner.ToSignal(owner.GetTree(), SceneTree.SignalName.ProcessFrame);
         if (owner == null || !GodotObject.IsInstanceValid(owner) || !owner.IsInsideTree())
-            return;
+            return false;
 
-        const float battleNebulaBrightness = 1.25f;
+        int textureSize = MobilePlatform.IsMobile ? 128 : 256;
+        const float battleNebulaBrightness = 1.55f;
         foreach (var entry in BattleNebulaDefaults)
         {
             Color color = new(
@@ -1616,12 +1725,14 @@ public partial class StarfieldBackground3D : Control
                 Mathf.Clamp(entry.Color.B * battleNebulaBrightness, 0f, 1f),
                 Mathf.Clamp(entry.Color.A * battleNebulaBrightness, 0f, 1f)
             );
-            GetCachedNebulaTexture(256, color, entry.Seed);
+            GetCachedNebulaTexture(textureSize, color, entry.Seed);
 
             await owner.ToSignal(owner.GetTree(), SceneTree.SignalName.ProcessFrame);
             if (owner == null || !GodotObject.IsInstanceValid(owner) || !owner.IsInsideTree())
-                return;
+                return false;
         }
+
+        return true;
     }
 
     private static Godot.Environment GetCachedStarfieldEnvironment()
@@ -1636,8 +1747,8 @@ public partial class StarfieldBackground3D : Control
             GlowEnabled = true,
             GlowNormalized = true,
             GlowIntensity = 0.52f,
-            GlowStrength = 0.72f,
-            GlowHdrThreshold = 0.68f,
+            GlowStrength = 0.46f,
+            GlowHdrThreshold = 1.15f,
             AdjustmentEnabled = true,
             AdjustmentBrightness = 0.78f,
             AdjustmentContrast = 1.22f,

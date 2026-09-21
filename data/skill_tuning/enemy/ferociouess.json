@@ -2,13 +2,14 @@
     "skills":  {
                    "FerociouessAttack":  {
                                              "Name":  "凶恶冲击",
-                                             "BaseDamage":  11,
-                                             "SelfPowerGain":  2
+                                             "BaseDamage":  14,
+                                             "SelfPowerGain":  0
                                          },
                    "FerociouessSpecial":  {
                                               "Name":  "狂暴",
                                               "HitCount":  2,
-                                              "BaseDamage":  5
+                                              "BaseDamage":  7,
+                                              "EnergyCost":  4
                                           },
                    "FerociouessSurvive":  {
                                               "Name":  "骨骼免疫",

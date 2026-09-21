@@ -5,40 +5,17 @@
 [ext_resource type="Shader" uid="uid://dp04sa26lq3vp" path="res://shader/Icon/Heart.gdshader" id="4_heart"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.060200002, 0.08946001, 0.14, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3626, 0.53872, 0.74, 0.043137256)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tile"]
-bg_color = Color(0.1, 0.14, 0.22, 0.84)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.48, 0.68, 0.9, 0.46)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+bg_color = Color(0.08, 0.085, 0.095, 0.5)
+border_width_left = 2
+border_color = Color(0.72, 0.74, 0.8, 0.46)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon"]
-bg_color = Color(0.0592, 0.09951998, 0.16, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.84000003, 0.8986667, 1, 0)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_power"]
 resource_local_to_scene = true
@@ -83,14 +60,14 @@ theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="Margin/VBox" unique_id=665766283]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.97, 1, 1)
+theme_override_colors/font_color = Color(0.9, 0.91, 0.95, 1)
 theme_override_font_sizes/font_size = 18
 text = "角色"
 horizontal_alignment = 1
 
 [node name="Hint" type="Label" parent="Margin/VBox" unique_id=522357395]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.81, 0.92, 0.72)
+theme_override_colors/font_color = Color(0.66, 0.68, 0.74, 0.72)
 theme_override_font_sizes/font_size = 12
 text = "选择一项永久提升"
 horizontal_alignment = 1
@@ -140,7 +117,7 @@ mouse_filter = 2
 
 [node name="ValueLabel" type="Label" parent="Margin/VBox/Options/Power/Margin/VBox" unique_id=1864047234]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_colors/font_color = Color(0.88, 0.89, 0.93, 0.96)
 theme_override_font_sizes/font_size = 12
 text = "力量 +1"
 horizontal_alignment = 1
@@ -188,7 +165,7 @@ mouse_filter = 2
 
 [node name="ValueLabel" type="Label" parent="Margin/VBox/Options/Survivability/Margin/VBox" unique_id=37315595]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_colors/font_color = Color(0.88, 0.89, 0.93, 0.96)
 theme_override_font_sizes/font_size = 12
 text = "生存 +1"
 horizontal_alignment = 1
@@ -236,7 +213,7 @@ mouse_filter = 2
 
 [node name="ValueLabel" type="Label" parent="Margin/VBox/Options/MaxLife/Margin/VBox" unique_id=1442583187]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.95, 1, 0.96)
+theme_override_colors/font_color = Color(0.88, 0.89, 0.93, 0.96)
 theme_override_font_sizes/font_size = 12
 text = "生命上限 +3"
 horizontal_alignment = 1

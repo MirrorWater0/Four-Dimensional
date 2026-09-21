@@ -8,7 +8,7 @@ public class VoidForm : AbilitySkill
     private const int VoidStacks = 1;
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -29,7 +29,7 @@ public partial class CursePower : AbilitySkill
     private const int CursePowerStacks = 1;
 
     public override string SkillName { get; set; } = "咒力";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -50,7 +50,7 @@ public partial class WeakeningField : AbilitySkill
     private const int WeakeningFieldStacks = 3;
 
     public override string SkillName { get; set; } = "虚弱立场";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -71,7 +71,7 @@ public partial class EternalCore : AbilitySkill
     private const int EnergyStorageStacks = 3;
 
     public override string SkillName { get; set; } = "永恒核心";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -92,7 +92,7 @@ public class EchoForm : AbilitySkill
     private const int EchoStacks = 1;
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {

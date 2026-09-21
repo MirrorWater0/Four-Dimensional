@@ -40,7 +40,7 @@ public partial class FearWormRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
 
-        MaxLife = 71;
+        MaxLife = 67;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -55,7 +55,7 @@ public partial class FearWormRegedit : EnemyRegedit
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 5;
     private const int VulnerableStacks = 2;
     private const int MaxTargets = 3;
 
@@ -108,7 +108,7 @@ public partial class FearWormTermin : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "梦魇缠绕";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {

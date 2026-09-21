@@ -7,7 +7,7 @@ public partial class ReadyStance : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     public override string SkillName { get; set; } = "能量爆发";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -33,7 +33,7 @@ public class HolySeal : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "圣光封印";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => Cost(3);
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -57,7 +57,7 @@ public class TacticalPreparation : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "战术整备";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -80,14 +80,14 @@ public class TacticalPreparation : Skill
 
 public class RadiantOverload : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    public override SkillRarity Rarity => SkillRarity.Common;
     private const int DazeCount = 1;
     private const int EnergyGain = 3;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "辉光";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(0);
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -95,6 +95,7 @@ public class RadiantOverload : Skill
         return new SkillPlan(
             this,
             AddCardsStep(SkillID.DazeStatus, DazeCount),
+            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DiscardPileCards),
             EnergyStep(EnergyGain)
         );
     }

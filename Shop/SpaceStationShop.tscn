@@ -6,11 +6,11 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bxft0"]
 shader = ExtResource("2_bxft0")
-shader_parameter/color_top = Color(0.02, 0.05, 0.1, 1)
-shader_parameter/color_mid = Color(0.03, 0.02, 0.06, 1)
-shader_parameter/color_bot = Color(0.01, 0.01, 0.02, 1)
-shader_parameter/star_color = Color(0.6, 0.85, 1, 1)
-shader_parameter/line_color = Color(0.35, 0.55, 1, 0.35)
+shader_parameter/color_top = Color(0.06, 0.065, 0.075, 1)
+shader_parameter/color_mid = Color(0.035, 0.038, 0.045, 1)
+shader_parameter/color_bot = Color(0.01, 0.012, 0.016, 1)
+shader_parameter/star_color = Color(0.82, 0.84, 0.9, 1)
+shader_parameter/line_color = Color(0.62, 0.65, 0.72, 0.2)
 shader_parameter/spacing = 160.0
 shader_parameter/density = 0.28
 shader_parameter/star_base_size = 2.0
@@ -27,67 +27,39 @@ bg_color = Color(0, 0, 0, 0)
 border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
-bg_color = Color(0.0296, 0.04975999, 0.08, 0.28235295)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.18, 0.42, 0.5, 0.26)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_track"]
-bg_color = Color(0.03, 0.07, 0.09, 0.44)
+bg_color = Color(0.075, 0.08, 0.09, 0.72)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.16, 0.36, 0.42, 0.26)
-corner_radius_top_left = 24
-corner_radius_top_right = 24
-corner_radius_bottom_right = 24
-corner_radius_bottom_left = 24
+border_color = Color(0.58, 0.6, 0.66, 0.38)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_thumb"]
-bg_color = Color(0.16, 0.32, 0.38, 0.62)
+bg_color = Color(0.78, 0.8, 0.85, 0.28)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.54, 0.8, 0.88, 0.5)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
+border_color = Color(0.86, 0.88, 0.93, 0.86)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_thumb_accent"]
-bg_color = Color(0.94, 0.98, 1, 0.76)
-corner_radius_top_left = 21
-corner_radius_top_right = 21
-corner_radius_bottom_right = 21
-corner_radius_bottom_left = 21
+bg_color = Color(0.86, 0.88, 0.93, 0.16)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_button_clear"]
 bg_color = Color(0, 0, 0, 0)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_module_button_hover"]
-bg_color = Color(0.92, 0.98, 1, 0.05)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
+bg_color = Color(0.86, 0.88, 0.93, 0.08)
 
 [sub_resource type="Theme" id="Theme_module_button"]
-Button/colors/font_color = Color(0.74, 0.84, 0.88, 0.78)
-Button/colors/font_disabled_color = Color(0.44, 0.52, 0.58, 0.7)
-Button/colors/font_hover_color = Color(0.93, 0.97, 1, 0.98)
-Button/colors/font_outline_color = Color(0.04, 0.09, 0.14, 0.42)
+Button/colors/font_color = Color(0.74, 0.76, 0.81, 0.78)
+Button/colors/font_disabled_color = Color(0.48, 0.5, 0.55, 0.7)
+Button/colors/font_hover_color = Color(0.93, 0.94, 0.98, 0.98)
+Button/colors/font_outline_color = Color(0.03, 0.035, 0.04, 0.42)
 Button/colors/font_pressed_color = Color(0.98, 1, 1, 1)
 Button/constants/outline_size = 1
 Button/styles/disabled = SubResource("StyleBoxFlat_module_button_clear")
@@ -113,58 +85,42 @@ shader_parameter/slant = 0.32
 shader_parameter/alpha_scale = 0.66
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-bg_color = Color(0.08, 0.11, 0.14, 0.38)
+bg_color = Color(0.075, 0.08, 0.09, 0.38)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.2, 0.3, 0.36, 0.34)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.42, 0.44, 0.5, 0.34)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(0.13, 0.23, 0.26, 0.82)
+bg_color = Color(0.18, 0.19, 0.22, 0.82)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.7, 0.82, 0.86, 0.54)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.86, 0.88, 0.93, 0.72)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(0.09, 0.15, 0.18, 0.7)
+bg_color = Color(0.09, 0.095, 0.11, 0.7)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.3, 0.56, 0.62, 0.42)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.58, 0.6, 0.66, 0.5)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-bg_color = Color(0.08, 0.16, 0.2, 0.82)
+bg_color = Color(0.14, 0.15, 0.18, 0.82)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.56, 0.8, 0.86, 0.62)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.78, 0.8, 0.86, 0.7)
 
 [sub_resource type="Theme" id="Theme_button"]
-Button/colors/font_color = Color(0.9, 0.95, 1, 1)
-Button/colors/font_disabled_color = Color(0.56, 0.65, 0.76, 0.72)
+Button/colors/font_color = Color(0.9, 0.91, 0.95, 1)
+Button/colors/font_disabled_color = Color(0.56, 0.58, 0.64, 0.72)
 Button/colors/font_hover_color = Color(1, 1, 1, 1)
-Button/colors/font_outline_color = Color(0.05, 0.12, 0.18, 0.52)
+Button/colors/font_outline_color = Color(0.03, 0.035, 0.04, 0.52)
 Button/colors/font_pressed_color = Color(0.92, 0.96, 0.98, 1)
 Button/constants/outline_size = 2
 Button/styles/disabled = SubResource("StyleBoxFlat_button_disabled")
@@ -289,15 +245,6 @@ toggle_mode = true
 text = "技能"
 flat = true
 
-[node name="EquipmentButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=629863191]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = SubResource("Theme_module_button")
-toggle_mode = true
-text = "装备"
-flat = true
-
 [node name="RelicButton" type="Button" parent="Panel/MainLayout/ModulePanel/ModuleBar/ModuleSelector/ButtonsMargin/Buttons" unique_id=1449950045]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
@@ -400,22 +347,32 @@ alignment = 1
 
 [node name="InlineCatalogTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=1764662206]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.93, 0.96, 0.9)
+theme_override_colors/font_color = Color(0.84, 0.85, 0.89, 0.9)
 theme_override_font_sizes/font_size = 18
 text = "遗物 / 道具"
 horizontal_alignment = 1
 
-[node name="InlineCatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=411383537]
+[node name="InlineCatalogContent" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=182779431]
 layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 4
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="InlineCatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=411383537]
+layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 10
 columns = 3
 
+[node name="CardRemovalServiceSlot" type="Control" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=203611191]
+custom_minimum_size = Vector2(140, 286)
+layout_mode = 2
+size_flags_vertical = 4
+
 [node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=746639838]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.76, 0.84, 0.9, 0.68)
+theme_override_colors/font_color = Color(0.7, 0.72, 0.77, 0.68)
 theme_override_font_sizes/font_size = 13
 text = "技能卡购买后会立即加入其所属角色的技能池。"
 horizontal_alignment = 1
@@ -515,6 +472,7 @@ mouse_filter = 2
 metadata/_edit_lock_ = true
 
 [node name="HeaderBackplate" type="ColorRect" parent="Panel/Decor" unique_id=335426685]
+visible = false
 z_index = -1
 material = SubResource("ShaderMaterial_header_accent")
 layout_mode = 1
@@ -545,11 +503,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.44, 0.78, 0.84, 0.44)
+color = Color(0.72, 0.74, 0.8, 0.38)
 
 [node name="HeaderTitle" type="Label" parent="Panel/Decor/Header" unique_id=1180721113]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.93, 0.97, 0.99, 0.96)
+theme_override_colors/font_color = Color(0.93, 0.94, 0.97, 0.96)
 theme_override_font_sizes/font_size = 24
 text = "空间站商店"
 
@@ -559,7 +517,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.44, 0.78, 0.84, 0.44)
+color = Color(0.72, 0.74, 0.8, 0.38)
 
 [node name="CatalogTitle" type="Label" parent="Panel/Decor" unique_id=1593891395]
 layout_mode = 0
@@ -567,7 +525,7 @@ offset_left = 224.0
 offset_top = 78.0
 offset_right = 464.0
 offset_bottom = 108.0
-theme_override_colors/font_color = Color(0.9, 0.95, 0.98, 0.92)
+theme_override_colors/font_color = Color(0.88, 0.89, 0.93, 0.92)
 theme_override_font_sizes/font_size = 20
 text = "补给目录"
 
@@ -577,7 +535,7 @@ offset_left = 224.0
 offset_top = 102.0
 offset_right = 660.0
 offset_bottom = 122.0
-theme_override_colors/font_color = Color(0.72, 0.84, 0.88, 0.62)
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.62)
 theme_override_font_sizes/font_size = 14
 text = "通过模块按钮切换商店区块。"
 
@@ -594,19 +552,6 @@ grow_horizontal = 0
 theme = SubResource("Theme_button")
 text = "离开"
 
-[node name="HideButton" type="Button" parent="Panel/Decor" unique_id=275190641]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -204.0
-offset_top = 70.0
-offset_right = -116.0
-offset_bottom = 114.0
-grow_horizontal = 0
-theme = SubResource("Theme_button")
-text = "隐藏"
-
 [node name="TopLine" type="ColorRect" parent="Panel/Decor" unique_id=1649198424]
 layout_mode = 1
 anchors_preset = 10
@@ -617,7 +562,7 @@ offset_right = -24.0
 offset_bottom = 142.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.42, 0.72, 0.8, 0.26)
+color = Color(0.72, 0.74, 0.8, 0.22)
 
 [node name="FooterLine" type="ColorRect" parent="Panel/Decor" unique_id=1844671991]
 layout_mode = 1
@@ -646,7 +591,7 @@ offset_right = -30.0
 offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_colors/font_color = Color(0.8, 0.88, 0.92, 0.64)
+theme_override_colors/font_color = Color(0.74, 0.76, 0.81, 0.64)
 theme_override_font_sizes/font_size = 14
 text = "浏览空间站补给目录"
 
@@ -657,7 +602,7 @@ offset_top = 12.0
 offset_right = 46.0
 offset_bottom = 14.0
 mouse_filter = 2
-color = Color(0.46, 0.74, 0.8, 0.48)
+color = Color(0.74, 0.76, 0.82, 0.42)
 
 [node name="CornerTL_V" type="ColorRect" parent="Panel/Decor" unique_id=730699794]
 layout_mode = 0
@@ -666,7 +611,7 @@ offset_top = 12.0
 offset_right = 14.0
 offset_bottom = 46.0
 mouse_filter = 2
-color = Color(0.46, 0.74, 0.8, 0.48)
+color = Color(0.74, 0.76, 0.82, 0.42)
 
 [node name="CornerTR_H" type="ColorRect" parent="Panel/Decor" unique_id=1024201182]
 layout_mode = 1
@@ -679,7 +624,7 @@ offset_right = -12.0
 offset_bottom = 14.0
 grow_horizontal = 0
 mouse_filter = 2
-color = Color(0.46, 0.74, 0.8, 0.48)
+color = Color(0.74, 0.76, 0.82, 0.42)
 
 [node name="CornerTR_V" type="ColorRect" parent="Panel/Decor" unique_id=2127359639]
 layout_mode = 1
@@ -692,7 +637,7 @@ offset_right = -12.0
 offset_bottom = 46.0
 grow_horizontal = 0
 mouse_filter = 2
-color = Color(0.46, 0.74, 0.8, 0.48)
+color = Color(0.74, 0.76, 0.82, 0.42)
 
 [node name="CornerBL_H" type="ColorRect" parent="Panel/Decor" unique_id=379827329]
 layout_mode = 1
@@ -705,7 +650,7 @@ offset_right = 46.0
 offset_bottom = -26.0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.52, 0.66, 0.72, 0.34)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBL_V" type="ColorRect" parent="Panel/Decor" unique_id=1668538783]
 layout_mode = 1
@@ -718,7 +663,7 @@ offset_right = 14.0
 offset_bottom = -26.0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.52, 0.66, 0.72, 0.34)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBR_H" type="ColorRect" parent="Panel/Decor" unique_id=180103764]
 layout_mode = 1
@@ -734,7 +679,7 @@ offset_bottom = -26.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.52, 0.66, 0.72, 0.34)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBR_V" type="ColorRect" parent="Panel/Decor" unique_id=753573654]
 layout_mode = 1
@@ -750,4 +695,4 @@ offset_bottom = -26.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.52, 0.66, 0.72, 0.34)
+color = Color(0.64, 0.66, 0.72, 0.3)

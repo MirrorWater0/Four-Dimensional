@@ -71,7 +71,7 @@ public partial class BasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.basic_special.name", "基础特殊");
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -91,7 +91,7 @@ public partial class KasiyaBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.kasiya_basic_special.name", "侵袭");
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -109,7 +109,7 @@ public partial class EchoBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.echo_basic_special.name", "解离");
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -130,7 +130,7 @@ public partial class MariyaBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.mariya_basic_special.name", "治愈");
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
     public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
@@ -145,7 +145,7 @@ public partial class NightingaleBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.nightingale_basic_special.name", "隐藏");
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {

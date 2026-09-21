@@ -7,7 +7,9 @@ using Godot;
 public static class BattleStartResourcePreloader
 {
     private const string BattleScenePath = "res://battle/Battle.tscn";
-    private const int YieldEvery = 3;
+    // Each prewarm item can trigger resource creation or a texture upload. Keep those
+    // operations isolated so they never turn a loading indicator into a frozen frame.
+    private const int YieldEvery = 1;
     private static readonly string[] SharedEffectTexturePaths =
     [
         "res://asset/Effect/explode.png",
@@ -22,6 +24,12 @@ public static class BattleStartResourcePreloader
     ];
     private static readonly HashSet<string> PrewarmedKeys = new(StringComparer.Ordinal);
     private static bool _running;
+    private static bool _sharedResourcesPrewarmed;
+
+    public static Task PrewarmStartupResourcesAsync(Node owner)
+    {
+        return PrewarmSharedBattleResourcesAsync(owner);
+    }
 
     public static async Task PrewarmForMapAsync(Node owner, LevelProgress levelProgress)
     {
@@ -90,20 +98,51 @@ public static class BattleStartResourcePreloader
 
     private static async Task PrewarmSharedBattleResourcesAsync(Node owner)
     {
+        if (_sharedResourcesPrewarmed)
+            return;
+
         PreloadeScene.GetPackedScene(BattleScenePath);
-        Texture2D[] effectTextures = PrewarmSharedEffectTextures();
+        if (!await YieldFrame(owner))
+            return;
+
+        Texture2D[] effectTextures = await PrewarmSharedEffectTexturesAsync(owner);
+        if (!await YieldFrame(owner))
+            return;
+
         SkillCard.PrewarmExhaustEffect();
+        if (!await YieldFrame(owner))
+            return;
+
         CharacterEffect.Prewarm(owner, 4);
+        if (!await YieldFrame(owner))
+            return;
+
         AttackEffect.Prewarm(2);
+        if (!await YieldFrame(owner))
+            return;
+
         HitParticle.Prewarm(6);
+        if (!await YieldFrame(owner))
+            return;
+
         BuffGainParticle.Prewarm(4);
+        if (!await YieldFrame(owner))
+            return;
+
         BuffTriggerFlashVfx.Prewarm(3);
+        if (!await YieldFrame(owner))
+            return;
+
         await PrewarmTextureUploadsAsync(owner, effectTextures);
-        await StarfieldBackground3D.PrewarmBattleBackgroundTexturesAsync(owner);
-        await YieldFrame(owner);
+        if (!await StarfieldBackground3D.PrewarmBattleBackgroundTexturesAsync(owner))
+            return;
+        if (!await YieldFrame(owner))
+            return;
+
+        _sharedResourcesPrewarmed = true;
     }
 
-    private static Texture2D[] PrewarmSharedEffectTextures()
+    private static async Task<Texture2D[]> PrewarmSharedEffectTexturesAsync(Node owner)
     {
         var textures = new List<Texture2D>(SharedEffectTexturePaths.Length);
         for (int i = 0; i < SharedEffectTexturePaths.Length; i++)
@@ -111,6 +150,9 @@ public static class BattleStartResourcePreloader
             Texture2D texture = PreloadeScene.GetTexture(SharedEffectTexturePaths[i]);
             if (texture != null)
                 textures.Add(texture);
+
+            if (!await YieldFrame(owner))
+                return textures.ToArray();
         }
 
         return textures.ToArray();
@@ -147,6 +189,13 @@ public static class BattleStartResourcePreloader
                 Position = Vector2.Zero,
             };
             root.AddChild(sprite);
+
+            if ((i + 1) % YieldEvery == 0 && !await YieldFrame(owner))
+            {
+                if (GodotObject.IsInstanceValid(root))
+                    root.QueueFree();
+                return;
+            }
         }
 
         await YieldFrame(owner);

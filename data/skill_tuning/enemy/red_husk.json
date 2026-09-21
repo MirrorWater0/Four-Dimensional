@@ -2,7 +2,7 @@
     "skills":  {
                    "RedHuskAttack":  {
                                          "Name":  "重拳突刺",
-                                         "BaseDamage":  8,
+                                         "BaseDamage":  14,
                                          "Multiplier":  1
                                      },
                    "RedHuskSpecial":  {
@@ -11,9 +11,8 @@
                                       },
                    "RedHuskSurvive":  {
                                           "Name":  "聚合压缩",
-                                          "BaseBlock":  20,
-                                          "BaseDamage":  11,
-                                          "PowerGain":  3
+                                          "BaseDamage":  21,
+                                          "PowerGain":  4
                                       }
                }
 }

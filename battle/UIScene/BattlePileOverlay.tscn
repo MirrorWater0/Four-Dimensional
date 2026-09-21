@@ -1,5 +1,37 @@
 [gd_scene format=3 uid="uid://dsc653nnxgi8y"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button"]
+bg_color = Color(0.9, 0.91, 0.92, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.14, 0.16, 0.18, 0.72)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_pressed"]
+bg_color = Color(0.92, 0.87, 0.54, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.14, 0.16, 0.18, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_hover"]
+bg_color = Color(0.97, 0.97, 0.91, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.14, 0.16, 0.18, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_disabled"]
+bg_color = Color(0.56, 0.58, 0.61, 0.68)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.22, 0.24, 0.42)
+
 [node name="PileOverlayRoot" type="Control" unique_id=744976890]
 layout_mode = 3
 anchors_preset = 15
@@ -15,7 +47,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 0.68)
+color = Color(0.09, 0.11, 0.13, 0.62)
 
 [node name="Scroll" type="ScrollContainer" parent="." unique_id=1524131821]
 layout_mode = 1
@@ -61,9 +93,8 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.72, 0.86, 1, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 28
 text = "抽牌堆  0"
 horizontal_alignment = 1
@@ -73,9 +104,9 @@ visible = false
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 4
+theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 22
 text = "空"
 horizontal_alignment = 1
@@ -102,9 +133,8 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.62, 0.86, 0.81, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 28
 text = "弃牌堆  0"
 horizontal_alignment = 1
@@ -114,9 +144,9 @@ visible = false
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 4
+theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 22
 text = "空"
 horizontal_alignment = 1
@@ -143,9 +173,8 @@ theme_override_constants/separation = 10
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.72, 0.42, 1)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 5
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 28
 text = "消耗牌堆  0"
 horizontal_alignment = 1
@@ -155,9 +184,9 @@ visible = false
 custom_minimum_size = Vector2(1412, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.7, 0.76, 0.82, 0.9)
-theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.96)
-theme_override_constants/outline_size = 4
+theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
 theme_override_font_sizes/font_size = 22
 text = "空"
 horizontal_alignment = 1
@@ -172,7 +201,7 @@ theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 26
 columns = 5
 
-[node name="PileHideButton" type="Button" parent="."]
+[node name="PileHideButton" type="Button" parent="." unique_id=1303077467]
 visible = false
 layout_mode = 1
 anchors_preset = 3
@@ -187,10 +216,18 @@ offset_bottom = -28.0
 grow_horizontal = 0
 grow_vertical = 0
 focus_mode = 0
-mouse_filter = 0
+theme_override_colors/font_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_pressed_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_hover_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_disabled_color = Color(0.18, 0.2, 0.22, 0.62)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_pile_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pile_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pile_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_pile_button_disabled")
 text = "隐藏"
 
-[node name="PileConfirmButton" type="Button" parent="."]
+[node name="PileConfirmButton" type="Button" parent="." unique_id=1316220136]
 visible = false
 layout_mode = 1
 anchors_preset = 3
@@ -205,5 +242,13 @@ offset_bottom = -28.0
 grow_horizontal = 0
 grow_vertical = 0
 focus_mode = 0
-mouse_filter = 0
+theme_override_colors/font_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_pressed_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_hover_color = Color(0.1, 0.12, 0.14, 1)
+theme_override_colors/font_disabled_color = Color(0.18, 0.2, 0.22, 0.62)
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_pile_button")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_pile_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_pile_button_hover")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_pile_button_disabled")
 text = "确认"

@@ -77,7 +77,7 @@ public partial class AngerEliteRegedit : EnemyRegedit
 
 public partial class AngerEliteAttack : Skill
 {
-    private const int BaseDamage = 15;
+    private const int BaseDamage = 18;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -113,7 +113,7 @@ public partial class AngerEliteSurvive : Skill
 
 public partial class AngerEliteSpecial : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 8;
     private const int HitCount = 2;
 
     public override SkillTypes SkillType => SkillTypes.Special;

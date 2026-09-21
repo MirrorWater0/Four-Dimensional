@@ -259,6 +259,7 @@ public partial class Relic
         playerResourceState.RelicList.Add(relic);
         GameInfo.SetRelicCount(relicID, num);
         ApplyAcquireEffect(relicID);
+        playerResourceState.RefreshPartyLifeResource();
         if (relicID == RelicID.Toolbox)
             _ = RunToolboxSelectionAsync(playerResourceState);
     }
@@ -603,7 +604,7 @@ public partial class Relic
             RelicID.Blessing => $"战斗开始时对所有敌人造成{BlessingDamage}伤害。",
             RelicID.BattleBanner => $"拾起时全阵获得{BattleBannerPartyPower}点力量。",
             RelicID.GuardBadge => $"拾起时全阵获得{GuardBadgePartySurvivability}点生存。",
-            RelicID.VitalityCapsule => $"拾起时全阵获得{VitalityCapsulePartyMaxLife}点生命上限。",
+            RelicID.VitalityCapsule => $"拾起时全阵获得{VitalityCapsulePartyMaxLife}点生命上限，并恢复{VitalityCapsulePartyMaxLife}点生命。",
             RelicID.HealingBeacon => $"战斗结束时，为血量最低的角色回复{HealingBeaconBattleEndHeal}点生命。",
             RelicID.ArmorBreaker => "战斗开始时，敌方全阵获得1层易伤。",
             RelicID.WeakeningEye => "战斗开始时，敌方全阵获得1层虚弱。",
@@ -938,7 +939,10 @@ public partial class Relic
                 ApplyPartyAcquireStat(survivability: GuardBadgePartySurvivability);
                 break;
             case RelicID.VitalityCapsule:
-                ApplyPartyAcquireStat(maxLife: VitalityCapsulePartyMaxLife);
+                ApplyPartyAcquireStat(
+                    maxLife: VitalityCapsulePartyMaxLife,
+                    recoverByMaxLifeIncrease: true
+                );
                 break;
             case RelicID.KingsSword:
                 ApplyPartyAcquireStat(power: KingsSwordPartyPower);
@@ -946,19 +950,24 @@ public partial class Relic
         }
     }
 
-    private static void ApplyPartyAcquireStat(int power = 0, int survivability = 0, int maxLife = 0)
+    private static void ApplyPartyAcquireStat(
+        int power = 0,
+        int survivability = 0,
+        int maxLife = 0,
+        bool recoverByMaxLifeIncrease = false
+    )
     {
         if (GameInfo.PlayerCharacters == null)
             return;
+
+        if (maxLife != 0)
+            GameInfo.AdjustPartyMaxLife(maxLife, recoverByMaxLifeIncrease);
 
         for (int i = 0; i < GameInfo.PlayerCharacters.Length; i++)
         {
             var info = GameInfo.PlayerCharacters[i];
             info.Power += power;
             info.Survivability += survivability;
-            info.LifeMax = Math.Max(1, info.LifeMax + maxLife);
-            if (info.LifeInitialized)
-                info.Life = Math.Clamp(info.Life, 0, info.LifeMax);
             GameInfo.PlayerCharacters[i] = info;
         }
     }

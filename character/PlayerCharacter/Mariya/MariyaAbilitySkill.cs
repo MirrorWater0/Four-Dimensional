@@ -3,6 +3,7 @@ public partial class MariyaAbilitySkill { }
 public partial class Prediction : AbilitySkill
 {
     private const int PredictionStacks = 3;
+    public override int EnergyCost => Cost(1);
 
     public override string SkillName { get; set; } = "预测";
 
@@ -25,7 +26,7 @@ public partial class HolyOfHolies : AbilitySkill
     private const int SourceStacks = 1;
 
     public override string SkillName { get; set; } = "至圣";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -42,7 +43,7 @@ public partial class SanctuaryForm : AbilitySkill
     private const int SanctuaryStacks = 1;
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -59,7 +60,7 @@ public partial class Foresight : AbilitySkill
     private const int ForesightStacks = 1;
 
     public override string SkillName { get; set; } = "预见";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {

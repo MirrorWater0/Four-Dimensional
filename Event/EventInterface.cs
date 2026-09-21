@@ -8,6 +8,7 @@ using Godot;
 public partial class EventInterface : Control
 {
     private const int EventResourceRandomSalt = unchecked((int)0x75a0f19b);
+    private const float RelicGainPartyLifeCostPercent = 0.25f;
     private const float OptionPressPulseDuration = 0.11f;
     private const float OutcomeOverlayFadeDuration = 0.16f;
     private const float OutcomeBannerEnterDuration = 0.22f;
@@ -76,6 +77,7 @@ public partial class EventInterface : Control
     private bool _isTransitioning;
     private bool _assembled;
     private bool _isShowingOutcomeOverlay;
+    private bool _optionSelectionLocked;
     private string[] _optionTipTexts = Array.Empty<string>();
     private EventOption _pendingTargetOption;
     private EventOption _pendingRestSingleHealOption;
@@ -162,6 +164,7 @@ public partial class EventInterface : Control
     public void ApplyEventData(GameEvent gameEvent)
     {
         ThisEvent = gameEvent;
+        _optionSelectionLocked = false;
         if (ThisEvent == null)
             return;
 
@@ -200,7 +203,7 @@ public partial class EventInterface : Control
             bool exists = i < options.Length;
             button.Visible = exists;
             bool canUse = exists && CanUseOption(options[i]);
-            button.Disabled = !exists || !canUse;
+            button.Disabled = _optionSelectionLocked || !exists || !canUse;
             if (exists)
             {
                 button.Text = string.IsNullOrWhiteSpace(options[i].Text)
@@ -212,7 +215,8 @@ public partial class EventInterface : Control
                     GetRolledPartyHealPercent(options[i]),
                     GetRolledPropertyChangeCost(options[i]),
                     GetRolledRelicReward(options[i]),
-                    WhichNode
+                    WhichNode,
+                    ThisEvent?.IsBossRelicChoice != true && ThisEvent?.IsTreasureChest != true
                 );
             }
         }
@@ -226,6 +230,31 @@ public partial class EventInterface : Control
             OptionButtons[i].Pressed += () => OnOptionPressed(capturedIndex);
             OptionButtons[i].MouseEntered += () => ShowOptionTip(capturedIndex);
             OptionButtons[i].MouseExited += HideOptionTip;
+        }
+    }
+
+    private void LockOptionSelection()
+    {
+        _optionSelectionLocked = true;
+        foreach (Button button in OptionButtons)
+        {
+            if (GodotObject.IsInstanceValid(button))
+                button.Disabled = true;
+        }
+    }
+
+    private void UnlockOptionSelection()
+    {
+        _optionSelectionLocked = false;
+        var options = ThisEvent?.Options ?? Array.Empty<EventOption>();
+        for (int i = 0; i < OptionButtons.Count; i++)
+        {
+            Button button = OptionButtons[i];
+            if (!GodotObject.IsInstanceValid(button))
+                continue;
+
+            bool canUse = i < options.Length && CanUseOption(options[i]);
+            button.Disabled = !canUse;
         }
     }
 
@@ -330,6 +359,7 @@ public partial class EventInterface : Control
     {
         if (
             _isTransitioning
+            || _optionSelectionLocked
             || _isShowingOutcomeOverlay
             || ThisEvent?.IsStarterBonus == true
             || ThisEvent?.IsBossRelicChoice == true
@@ -347,6 +377,7 @@ public partial class EventInterface : Control
     {
         if (
             _isTransitioning
+            || _optionSelectionLocked
             || _isShowingOutcomeOverlay
             || TargetSelectOverlay.Visible
             || (_cardSelectOverlay?.Visible == true)
@@ -363,8 +394,13 @@ public partial class EventInterface : Control
         if (!CanUseOption(option))
             return;
 
-        if (optionIndex < OptionButtons.Count)
-            await PlayOptionPressFeedbackAsync(OptionButtons[optionIndex]);
+        Button optionButton = optionIndex < OptionButtons.Count ? OptionButtons[optionIndex] : null;
+        Vector2 clickPosition = GetViewport()?.GetMousePosition()
+            ?? optionButton?.GetGlobalRect().GetCenter()
+            ?? Vector2.Zero;
+        LockOptionSelection();
+        if (optionButton != null)
+            await PlayOptionPressFeedbackAsync(optionButton);
 
         if (option.PropertyChange != null && option.PropertyChange.Count > 0)
         {
@@ -408,6 +444,7 @@ public partial class EventInterface : Control
         }
 
         string actionOutcomeText = ApplyImmediateOptionAction(option);
+        _ = PlayOptionResourceAcquireAnimationAsync(option, clickPosition);
         await ResolveOptionOutcomeAsync(option, actionOutcomeText: actionOutcomeText);
     }
 
@@ -475,7 +512,10 @@ public partial class EventInterface : Control
         );
 
         if (selections == null || selections.Count == 0)
+        {
+            UnlockOptionSelection();
             return;
+        }
 
         overlay.DetachSelectionCardsForDeckOperations(this, selections);
         overlay.HideSelection();
@@ -535,11 +575,13 @@ public partial class EventInterface : Control
     {
         _pendingTargetOption = null;
         _pendingRestSingleHealOption = null;
+        UnlockOptionSelection();
     }
 
     private void OnCardSelectionCanceled()
     {
         _pendingCardOption = null;
+        UnlockOptionSelection();
     }
 
     private async void OnTargetCharacterSelected(int index)
@@ -821,6 +863,28 @@ public partial class EventInterface : Control
         };
     }
 
+    private Task PlayOptionResourceAcquireAnimationAsync(EventOption option, Vector2 sourcePosition)
+    {
+        var resourceState = GetResourceState();
+        if (option == null || resourceState == null)
+            return Task.CompletedTask;
+
+        RelicID? relicId = option.ActionType == EventOptionActionType.GainRelic
+            ? GetRolledRelicReward(option)
+            : option.ActionType == EventOptionActionType.StarterBonus
+                ? option.StarterBonusOption switch
+                {
+                    StarterBonusOption.Blessing => RelicID.Blessing,
+                    StarterBonusOption.RandomRelic => GameInfo.LastStarterBonusGrantedRelic,
+                    _ => null,
+                }
+                : null;
+
+        return relicId.HasValue
+            ? resourceState.PlayRelicAcquireAnimationAsync(relicId.Value, sourcePosition)
+            : Task.CompletedTask;
+    }
+
     private string ApplyRestSingleHeal(int playerIndex)
     {
         int percent = (int)Math.Round(LevelProgress.RestSingleHealPercent * 100f);
@@ -995,8 +1059,20 @@ public partial class EventInterface : Control
             GameInfo.PendingBossRelicChoice = false;
             SaveSystem.SaveRunCheckpoint(background: false);
         }
+        else if (ThisEvent?.IsTreasureChest != true)
+        {
+            GameInfo.DamagePartyByMaxLifePercent(RelicGainPartyLifeCostPercent);
+            RefreshPartyLifeResource();
+        }
 
-        return $"获得遗物：[b]{Relic.Create(relicId.Value).RelicName}[/b]";
+        string outcome = $"获得遗物：[b]{Relic.Create(relicId.Value).RelicName}[/b]";
+        if (ThisEvent?.IsBossRelicChoice != true && ThisEvent?.IsTreasureChest != true)
+        {
+            int costPercent = (int)MathF.Round(RelicGainPartyLifeCostPercent * 100f);
+            outcome += $"\n[color=#ff6b6b]全队扣除{costPercent}%最大生命[/color]";
+        }
+
+        return outcome;
     }
 
     private string GrantTalentPointReward(EventOption option)
@@ -1186,6 +1262,8 @@ public partial class EventInterface : Control
 
         if (option.Exit)
             await PlayCloseAnimationAsync(true);
+        else
+            UnlockOptionSelection();
     }
 
     private async Task ShowOutcomeOverlayAsync(string text)
@@ -1577,7 +1655,8 @@ public partial class EventInterface : Control
         int partyHealPercent,
         int propertyChangeCost,
         RelicID? relicReward,
-        LevelNode whichNode = null
+        LevelNode whichNode = null,
+        bool applyRelicLifeCost = false
     )
     {
         if (option == null)
@@ -1603,7 +1682,7 @@ public partial class EventInterface : Control
 
         if (option.ActionType != EventOptionActionType.None)
         {
-            AppendActionTipText(sb, option, relicReward, whichNode);
+            AppendActionTipText(sb, option, relicReward, whichNode, applyRelicLifeCost);
             hasAny = true;
         }
 
@@ -1637,7 +1716,8 @@ public partial class EventInterface : Control
         StringBuilder sb,
         EventOption option,
         RelicID? relicReward,
-        LevelNode whichNode = null
+        LevelNode whichNode = null,
+        bool applyRelicLifeCost = false
     )
     {
         switch (option.ActionType)
@@ -1661,6 +1741,11 @@ public partial class EventInterface : Control
                 }
                 else
                     sb.Append("获得遗物：无可获得遗物\n");
+                if (applyRelicLifeCost)
+                {
+                    int costPercent = (int)MathF.Round(RelicGainPartyLifeCostPercent * 100f);
+                    sb.Append($"[color=#ff6b6b]代价：全队扣除{costPercent}%最大生命[/color]\n");
+                }
                 break;
             case EventOptionActionType.GainTalentPoint:
                 int amount = Math.Max(1, option.TalentPointAmount);

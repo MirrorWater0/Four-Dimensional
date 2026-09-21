@@ -101,7 +101,7 @@ public static class NormalBattleEncounter
         Weak(() =>
             Formation([Slot<AlienBodyRegedit>(FrontLeft), Slot<AlienBodyRegedit>(FrontRight)])
         ),
-        Strong(() => Formation([Slot<EvilRegedit>(FrontLeft), Slot<FearWormRegedit>(BackRight)])),
+        Strong(() => Formation([Slot<EvilRegedit>(2), Slot<FearWormRegedit>(3)])),
         Strong(() => Formation([Slot<EvilRegedit>(FrontRight), Slot<EvilRegedit>(BackLeft)])),
         Strong(() => Formation([Slot<FerociouessRegedit>(FrontRight)])),
         Strong(() =>
@@ -117,15 +117,16 @@ public static class NormalBattleEncounter
     private static readonly EncounterDefinition[] RegionTwoEncounters =
     [
         Weak(() => Formation([Slot<RedHuskRegedit>(2)])),
-        Weak(() => Formation([Slot<HollowBulwarkRegedit>(2)])),
-        Weak(() => Formation([Slot<VoidRotorRegedit>(2)])),
+        Weak(() =>
+            Formation([Slot<ArmonRegedit>(1), Slot<ArmonRegedit>(2), Slot<ArmonRegedit>(3)])
+        ),
         Strong(() => Formation([Slot<GraveWraithRegedit>(2)])),
         Strong(() => Formation([Slot<MarrowReaverRegedit>(FrontRight)])),
         Strong(() =>
             Formation([Slot<HollowBulwarkRegedit>(FrontRight), Slot<VoidAcolyteRegedit>(BackRight)])
         ),
         Strong(() =>
-            Formation([Slot<VoidRotorRegedit>(FrontRight), Slot<VoidRotorRegedit>(BackRight)])
+            Formation([Slot<VoidAcolyteRegedit>(FrontRight), Slot<VoidRotorRegedit>(BackRight)])
         ),
     ];
 

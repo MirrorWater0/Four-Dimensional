@@ -299,4 +299,6 @@ public enum SkillID
     Prediction = 182,
     [PlayerSkill(PlayerCharacterKey.Nightingale)]
     Search = 183,
+    [PlayerSkill(PlayerCharacterKey.Mariya)]
+    SacredLink = 184,
 }

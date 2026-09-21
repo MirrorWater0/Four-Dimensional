@@ -17,11 +17,7 @@ border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(1, 0.70980394, 0, 0.8627451)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+border_color = Color(1, 1, 1, 1)
 
 [node name="RelicIcon" type="ColorRect" unique_id=1295094685]
 material = SubResource("ShaderMaterial_2gt0m")

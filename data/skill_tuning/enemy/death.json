@@ -2,7 +2,7 @@
     "skills":  {
                    "DeathAttack":  {
                                        "Name":  "双魂裁决",
-                                       "BaseDamage":  7,
+                                       "BaseDamage":  10,
                                        "HitCount":  2,
                                        "WeakenStacks":  1
                                    },
@@ -18,7 +18,7 @@
                                         "BaseBlock":  33,
                                         "Heal":  15,
                                         "Multiplier":  2,
-                                        "DazeCount":  1
+                                        "DazeCount":  3
                                     }
                }
 }

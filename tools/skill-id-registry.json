@@ -1400,6 +1400,14 @@
       "Colorless": false,
       "Managed": "generated",
       "ImplementationClass": "Search"
+    },
+    {
+      "EnumName": "SacredLink",
+      "Id": 184,
+      "Player": "Mariya",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "SacredLink"
     }
   ]
 }

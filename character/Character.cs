@@ -225,6 +225,19 @@ public partial class Character : Node2D
     private Line2D _curvedTrailPreviewLine;
     private ulong _lastIncreasePropertyEffectTickMsec;
     private bool _isHoverframeHovered;
+
+    // Captured from the scene material, not from the shader defaults: CharacterTemplate.tscn
+    // overrides the palette, so reverting to the shader's own defaults would change the look.
+    private static readonly Color HoverframeInspectLineColor = new(0.90f, 0.97f, 1f, 1f);
+    private static readonly Color HoverframeInspectAccentColor = new(0.42f, 0.87f, 1f, 1f);
+    private static readonly Color HoverframeInspectFillColor = new(0.05f, 0.2f, 0.3f, 0.14f);
+    private ShaderMaterial _hoverframeMaterial;
+    private Color _hoverframeBaseLineColor;
+    private Color _hoverframeBaseAccentColor;
+    private Color _hoverframeBaseFillColor;
+    private Tween _hoverframeLockTween;
+    private Tween _hoverframeAssembleTween;
+    private bool _hoverframeAssembled;
     private bool _isFramePreviewVisible;
     private bool _isTargetPreviewVisible;
     private Color _targetPreviewColor = Colors.White;
@@ -387,7 +400,7 @@ public partial class Character : Node2D
         if (
             @event is not InputEventMouseButton mouseButton
             || !mouseButton.Pressed
-            || mouseButton.ButtonIndex != MouseButton.Right
+            || mouseButton.ButtonIndex != MouseButton.Left
             || State == CharacterState.Dying
         )
         {
@@ -701,6 +714,7 @@ public partial class Character : Node2D
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Attack);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Survive);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Special);
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Ability);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Status);
     }
 
@@ -1419,6 +1433,14 @@ public partial class Character : Node2D
         );
     }
 
+    public void PlayAbilityCardActivationPulse()
+    {
+        if (State == CharacterState.Dying)
+            return;
+
+        PlayPositiveImpactTween(new Color(1.12f, 0.82f, 1.72f, 1f), 1.28f);
+    }
+
     public void PlayTargetLockPulse(Color? flashColor = null, float strength = 1f)
     {
         if (State == CharacterState.Dying)
@@ -1610,6 +1632,7 @@ public partial class Character : Node2D
         BattleNode?.SyncPlayerLifeToGameInfo();
         if (actualHeal > 0)
         {
+            ScreenEffectOverlay.PlayHeal(this, actualHeal);
             global::Number.Spawn(
                 this,
                 actualHeal.ToString("+0"),
@@ -1763,6 +1786,8 @@ public partial class Character : Node2D
     {
         if (State == CharacterState.Dying)
             return;
+
+        int previousBlock = Block;
         if (num > 0)
         {
             CharacterEffect.Spawn(this, "shield");
@@ -1784,6 +1809,9 @@ public partial class Character : Node2D
             PlayPositiveImpactTween(new Color(0.64f, 1.08f, 1.65f, 1f), num / 18f);
             if (record)
                 BattleNode?.RecordBlockGain(this, num, source);
+
+            int gainedBlock = Math.Max(0, Block - previousBlock);
+            SpecialBuff.TriggerBeaconBlockShare(this, gainedBlock);
         }
     }
 
@@ -1867,6 +1895,35 @@ public partial class Character : Node2D
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
     }
 
+    public async Task IncreaseMaxLifeFromPassive(int value, Character source = null)
+    {
+        if (value <= 0 || State == CharacterState.Dying)
+            return;
+
+        int appliedValue = Math.Min(value, Math.Max(0, 999 - BattleMaxLife));
+        if (appliedValue <= 0)
+            return;
+
+        BattleMaxLife += appliedValue;
+
+        // Passive max-life gains recover an amount equal to the granted maximum life.
+        Recover(appliedValue, source: source);
+        AnimateLifeBarCapacityChange();
+
+        TryPlayIncreasePropertyEffect();
+        BuffHintLabel.Spawn(
+            this,
+            $"{Skill.GetColoredPropertyLabel(PropertyType.MaxLife)} +{appliedValue}",
+            GlobalPosition + new Vector2(0, 150),
+            randomOffset: true
+        );
+        InvalidateSkillTooltipCache();
+        BattleNode?.RecordPropertyChange(this, PropertyType.MaxLife, appliedValue, source);
+        BattleNode?.RefreshEnemyIntentionPreviews();
+        BattleNode?.NotifyHandPreviewContextChanged();
+        await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
+    }
+
     public async Task IncreaseProperties(PropertyType type, int value, Character source = null)
     {
         int appliedValue = value;
@@ -1928,6 +1985,7 @@ public partial class Character : Node2D
         _lastIncreasePropertyEffectTickMsec = now;
 
         CharacterEffect.Spawn(this, "absorb");
+        AudioManager.PlayPropertyGain(this);
         // if (BattleNode != null && GodotObject.IsInstanceValid(BattleNode))
         // {
         //     BattleNode.BattleAnimationPlayer.Play("blue");
@@ -2255,23 +2313,193 @@ public partial class Character : Node2D
     {
         if (_isTargetPreviewVisible)
         {
-            Hoverframe.SelfModulate = _targetPreviewColor;
-            return;
-        }
-
-        if (_isHoverframeHovered)
-        {
+            // Tinting the whole frame through SelfModulate flattened the corner hardware into one
+            // flat outline. Drive the shader palette instead and keep the modulate neutral.
+            ApplyHoverframeTargetLock(_targetPreviewColor);
             Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
+            PlayHoverframeAssemble(true);
             return;
         }
 
-        if (_isFramePreviewVisible)
+        if (_isHoverframeHovered || _isFramePreviewVisible)
         {
+            ApplyHoverframeInspectPalette();
             Hoverframe.SelfModulate = new Color(1, 1, 1, 1);
+            PlayHoverframeAssemble(true);
             return;
         }
 
-        Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+        PlayHoverframeAssemble(false);
+    }
+
+    /// <summary>
+    /// Runs the corner brackets in or out. Hiding waits for the take-apart to finish before the
+    /// frame goes fully transparent, so the pieces are seen retracting rather than blinking off.
+    /// </summary>
+    private void PlayHoverframeAssemble(bool assembled)
+    {
+        ShaderMaterial material = EnsureHoverframeMaterial();
+        if (material == null)
+        {
+            if (!assembled)
+                Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+            return;
+        }
+
+        if (_hoverframeAssembled == assembled)
+        {
+            // Not a transition: only reassert the hidden modulate once the retract has finished,
+            // otherwise a redundant refresh would cut the animation short.
+            if (!assembled && _hoverframeAssembleTween == null)
+                Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+            return;
+        }
+
+        _hoverframeAssembled = assembled;
+        _hoverframeAssembleTween?.Kill();
+
+        float from = (float)material.GetShaderParameter("assemble");
+        float to = assembled ? 1f : 0f;
+        float duration = assembled ? 0.28f : 0.18f;
+
+        _hoverframeAssembleTween = CreateTween();
+        _hoverframeAssembleTween.SetTrans(Tween.TransitionType.Cubic);
+        _hoverframeAssembleTween.SetEase(
+            assembled ? Tween.EaseType.Out : Tween.EaseType.In
+        );
+        _hoverframeAssembleTween.TweenMethod(
+            Callable.From<float>(SetHoverframeAssembleAmount),
+            from,
+            to,
+            duration
+        );
+        _hoverframeAssembleTween.TweenCallback(
+            Callable.From(assembled ? FinishHoverframeAssemble : FinishHoverframeDisassemble)
+        );
+    }
+
+    private void SetHoverframeAssembleAmount(float value)
+    {
+        if (_hoverframeMaterial != null && GodotObject.IsInstanceValid(_hoverframeMaterial))
+            _hoverframeMaterial.SetShaderParameter("assemble", value);
+    }
+
+    private void FinishHoverframeAssemble()
+    {
+        _hoverframeAssembleTween = null;
+    }
+
+    private void FinishHoverframeDisassemble()
+    {
+        _hoverframeAssembleTween = null;
+        if (Hoverframe != null && GodotObject.IsInstanceValid(Hoverframe))
+            Hoverframe.SelfModulate = new Color(1, 1, 1, 0);
+        ClearHoverframeTargetLock();
+    }
+
+    private ShaderMaterial EnsureHoverframeMaterial()
+    {
+        if (Hoverframe == null || !GodotObject.IsInstanceValid(Hoverframe))
+            return null;
+
+        if (_hoverframeMaterial != null && GodotObject.IsInstanceValid(_hoverframeMaterial))
+            return _hoverframeMaterial;
+
+        // The template's ShaderMaterial is a shared sub-resource, so every character would show
+        // the same lock colour unless each one owns a copy.
+        if (Hoverframe.Material is not ShaderMaterial shared)
+            return null;
+
+        _hoverframeMaterial = (ShaderMaterial)shared.Duplicate();
+        _hoverframeMaterial.SetShaderParameter("assemble", 0f);
+        _hoverframeBaseLineColor = ReadHoverframeColor(shared, "line_color", new Color(0.90f, 0.97f, 1f, 1f));
+        _hoverframeBaseAccentColor = ReadHoverframeColor(shared, "accent_color", new Color(0.34f, 0.86f, 1f, 1f));
+        _hoverframeBaseFillColor = ReadHoverframeColor(shared, "fill_color", new Color(0.03f, 0.16f, 0.24f, 0.08f));
+        Hoverframe.Material = _hoverframeMaterial;
+        return _hoverframeMaterial;
+    }
+
+    private static Color ReadHoverframeColor(ShaderMaterial material, string name, Color fallback)
+    {
+        Variant value = material.GetShaderParameter(name);
+        return value.VariantType == Variant.Type.Color ? value.AsColor() : fallback;
+    }
+
+    /// <summary>
+    /// Plain mouse-hover / frame-preview look. The scene material overrides accent_color to solid
+    /// black, which collapses the shader's corner braces and inner line into an invisible mark and
+    /// leaves a flat white box — this restores the cool console palette the shader was built for.
+    /// </summary>
+    private void ApplyHoverframeInspectPalette()
+    {
+        _hoverframeLockTween?.Kill();
+        _hoverframeLockTween = null;
+
+        ShaderMaterial material = EnsureHoverframeMaterial();
+        if (material == null)
+            return;
+
+        material.SetShaderParameter("line_color", HoverframeInspectLineColor);
+        material.SetShaderParameter("accent_color", HoverframeInspectAccentColor);
+        material.SetShaderParameter("fill_color", HoverframeInspectFillColor);
+        material.SetShaderParameter("scan_color", HoverframeInspectAccentColor);
+        material.SetShaderParameter("lock_amount", 0.45f);
+        material.SetShaderParameter("pulse", 0.0f);
+    }
+
+    private void ApplyHoverframeTargetLock(Color color)
+    {
+        ShaderMaterial material = EnsureHoverframeMaterial();
+        if (material == null)
+            return;
+
+        // Two-layer read: the structural rails are lifted so they stay legible against dark art,
+        // while the secondary rails and rivets keep the saturated hue that carries the meaning.
+        Color line = color.Lerp(Colors.White, 0.45f) with { A = 1f };
+        Color accent = color with { A = 1f };
+        Color fill = color with { A = 0.13f };
+
+        material.SetShaderParameter("line_color", line);
+        material.SetShaderParameter("accent_color", accent);
+        material.SetShaderParameter("fill_color", fill);
+        material.SetShaderParameter("scan_color", line);
+        material.SetShaderParameter("lock_amount", 1.0f);
+
+        StartHoverframeLockPulse();
+    }
+
+    private void ClearHoverframeTargetLock()
+    {
+        _hoverframeLockTween?.Kill();
+        _hoverframeLockTween = null;
+
+        if (_hoverframeMaterial == null || !GodotObject.IsInstanceValid(_hoverframeMaterial))
+            return;
+
+        _hoverframeMaterial.SetShaderParameter("lock_amount", 0.0f);
+        _hoverframeMaterial.SetShaderParameter("pulse", 0.0f);
+        _hoverframeMaterial.SetShaderParameter("line_color", _hoverframeBaseLineColor);
+        _hoverframeMaterial.SetShaderParameter("accent_color", _hoverframeBaseAccentColor);
+        _hoverframeMaterial.SetShaderParameter("fill_color", _hoverframeBaseFillColor);
+    }
+
+    private void StartHoverframeLockPulse()
+    {
+        if (_hoverframeLockTween != null && _hoverframeLockTween.IsValid())
+            return;
+
+        if (_hoverframeMaterial == null || !GodotObject.IsInstanceValid(_hoverframeMaterial))
+            return;
+
+        _hoverframeLockTween = CreateTween();
+        _hoverframeLockTween.SetLoops();
+        _hoverframeLockTween.SetTrans(Tween.TransitionType.Sine);
+        _hoverframeLockTween
+            .TweenProperty(_hoverframeMaterial, "shader_parameter/pulse", 1.0f, 0.62f)
+            .SetEase(Tween.EaseType.InOut);
+        _hoverframeLockTween
+            .TweenProperty(_hoverframeMaterial, "shader_parameter/pulse", 0.0f, 0.62f)
+            .SetEase(Tween.EaseType.InOut);
     }
 
     private void CacheDefaultTrailGeometry()

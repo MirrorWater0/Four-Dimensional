@@ -124,7 +124,7 @@ public partial class Extract : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "萃取";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -160,7 +160,7 @@ public partial class DisasterImpact : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     private const int BaseDamage = 4;
     private const int WeakenStacksPerExtraDraw = 1;
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -232,7 +232,7 @@ public class SonicBoom : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "音爆";
-    public override int EnergyCost => 3;
+    public override int EnergyCost => Cost(3);
 
     protected override SkillPlan BuildPlan()
     {
@@ -253,7 +253,7 @@ public class PhaseEcho : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "相位回声";
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -273,7 +273,7 @@ public class ReverbChain : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回声连奏";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {

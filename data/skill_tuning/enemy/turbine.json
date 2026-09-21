@@ -2,7 +2,7 @@
     "skills":  {
                    "TurbineAttack":  {
                                          "Name":  "涡轮冲击",
-                                         "BaseDamage":  27,
+                                         "BaseDamage":  31,
                                          "AllySurvivabilityGain":  5
                                      },
                    "TurbineSpecial":  {
@@ -10,7 +10,8 @@
                                           "SelfPowerGain":  10,
                                           "ThornStacks":  8,
                                           "WoundCount":  1,
-                                          "BaseDamage":  19
+                                          "BaseDamage":  22,
+                                          "EnergyCost":  4
                                       },
                    "TurbineSurvive":  {
                                           "Name":  "循环",

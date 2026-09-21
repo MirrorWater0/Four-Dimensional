@@ -17,12 +17,12 @@ public partial class CharacterControl
 
         button.Text = string.Empty;
         button.TooltipText = text;
-        button.Flat = true;
+        button.Flat = false;
         button.FocusMode = FocusModeEnum.None;
         button.MouseFilter = MouseFilterEnum.Stop;
         button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
         button.AddThemeStyleboxOverride("normal", CreatePileButtonStyleBox());
-        button.AddThemeStyleboxOverride("hover", CreatePileButtonStyleBox());
+        button.AddThemeStyleboxOverride("hover", BattleHudChrome.Plate(new Color(0.10f, 0.16f, 0.19f, 0.96f), BattleHudChrome.Accent));
         button.AddThemeStyleboxOverride("pressed", CreatePileButtonStyleBox());
         button.AddThemeStyleboxOverride("disabled", CreatePileButtonStyleBox());
         button.AddThemeStyleboxOverride("focus", CreatePileButtonStyleBox());
@@ -67,7 +67,7 @@ public partial class CharacterControl
         if (size == Vector2.Zero)
             size = new Vector2(80f, 80f);
 
-        float iconEdge = Math.Min(size.X, size.Y) * 0.76f;
+        float iconEdge = Math.Min(size.X, size.Y) * 0.52f;
         Vector2 iconSize = new(iconEdge, iconEdge);
         icon.Position = (size - iconSize) * 0.5f;
         icon.Size = iconSize;
@@ -80,12 +80,12 @@ public partial class CharacterControl
     {
         return new StyleBoxFlat
         {
-            BgColor = new Color(1f, 1f, 1f, 0f),
-            BorderColor = new Color(1f, 1f, 1f, 0f),
-            BorderWidthLeft = 0,
-            BorderWidthTop = 0,
-            BorderWidthRight = 0,
-            BorderWidthBottom = 0,
+            BgColor = BattleHudChrome.Ink,
+            BorderColor = new Color(0.40f, 0.51f, 0.56f, 0.35f),
+            BorderWidthLeft = 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
             CornerRadiusTopLeft = 8,
             CornerRadiusTopRight = 8,
             CornerRadiusBottomRight = 8,
@@ -642,7 +642,7 @@ public partial class CharacterControl
             && GodotObject.IsInstanceValid(BattleNode);
         bool canOpenPile =
             canReadPile
-            && !IsPileLockedByCardResolution()
+            && (!IsPileLockedByCardResolution() || CanReadPileWhileCardSelectionIsHidden())
             && !IsManualTargetSelectionPending();
 
         if (canReadPile)

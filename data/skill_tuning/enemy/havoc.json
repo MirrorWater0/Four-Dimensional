@@ -2,17 +2,17 @@
     "skills":  {
                    "HavocAttack":  {
                                        "Name":  "裂壳横扫",
-                                       "BaseDamage":  8,
+                                       "BaseDamage":  11,
                                        "WeakenStacks":  1,
                                        "HitCount":  2
                                    },
                    "HavocSpecial":  {
                                         "Name":  "崩坏回响",
                                         "DisasterStacks":  7,
-                                        "SelfPowerGain":  2,
-                                        "BaseDamage":  13,
+                                        "SelfPowerGain":  4,
+                                        "BaseDamage":  16,
                                         "Multiplier":  1,
-                                        "PlagueCount":  3,
+                                        "PlagueCount":  2,
                                         "EnemySpecialIntentionCooldown":  3
                                     },
                    "HavocSurvive":  {

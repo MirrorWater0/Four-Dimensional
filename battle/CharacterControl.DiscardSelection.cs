@@ -5,7 +5,7 @@ using Godot;
 
 public partial class CharacterControl
 {
-    private const float DiscardSelectionMouseEnableProgress = 0.7f;
+    private const float DiscardSelectionMouseEnableProgress = 1f;
 
     private async Task HandleCardPressedAsync(int index, bool allowSuppressedPress = false)
     {
@@ -21,6 +21,7 @@ public partial class CharacterControl
         if (
             _endTurnQueued
             || _isPileCardSelectionActive
+            || _handLayoutSyncPending
             || IsHandInputBlockedByOverlay()
             || _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
@@ -37,10 +38,26 @@ public partial class CharacterControl
         if (skill == null || !skill.CanUseCurrentEnergy())
             return;
 
+        // The logical hand can compact one frame before the visual slots are
+        // remapped. Never execute a card from a stale visual index during
+        // that window; let the deferred hand refresh repair the mapping first.
+        SkillCard visualCard = _cards[index];
+        if (
+            visualCard != null
+            && GodotObject.IsInstanceValid(visualCard)
+            && visualCard.CurrentSkill != null
+            && !ReferenceEquals(visualCard.CurrentSkill, skill)
+        )
+        {
+            RequestTurnUiRefresh(refreshHover: true);
+            return;
+        }
+
         if (_liftedCardIndex != -1 && _liftedCardIndex != index)
             return;
 
-        bool shouldUseManualTargetArrowSelection = ShouldUseManualTargetArrowSelection(skill);
+        bool shouldUseManualTargetArrowSelection =
+            ShouldUseManualTargetArrowSelection(skill) && HasManualFriendlyTargetCandidates(skill);
         if (shouldUseManualTargetArrowSelection)
         {
             await SelectManualTargetFromHandAndQueueAsync(index, skill);
@@ -74,6 +91,7 @@ public partial class CharacterControl
         if (
             _endTurnQueued
             || _isPileCardSelectionActive
+            || _handLayoutSyncPending
             || IsHandInputBlockedByOverlay()
             || _manualTargetArrowSelectionActive
             || _activePlayer == null
@@ -90,6 +108,18 @@ public partial class CharacterControl
         if (skill == null || !skill.CanUseCurrentEnergy())
             return Task.CompletedTask;
 
+        SkillCard visualCard = _cards[index];
+        if (
+            visualCard != null
+            && GodotObject.IsInstanceValid(visualCard)
+            && visualCard.CurrentSkill != null
+            && !ReferenceEquals(visualCard.CurrentSkill, skill)
+        )
+        {
+            RequestTurnUiRefresh(refreshHover: true);
+            return Task.CompletedTask;
+        }
+
         if (_liftedCardIndex == index)
         {
             RequestTurnUiRefresh(refreshHover: true);
@@ -99,7 +129,7 @@ public partial class CharacterControl
         if (_liftedCardIndex != -1)
             ClearLiftedCard(instant: true);
 
-        if (ShouldUseManualTargetArrowSelection(skill))
+        if (ShouldUseManualTargetArrowSelection(skill) && HasManualFriendlyTargetCandidates(skill))
             return SelectManualTargetFromHandAndQueueAsync(index, skill);
 
         LiftCard(index);
@@ -178,7 +208,8 @@ public partial class CharacterControl
         _isDiscardSelectionCompleting = true;
         DisableDiscardSelectionCardInputForResolution();
         HideDiscardSelectionScreenMask();
-        RequestTurnUiRefresh();
+        if (!_discardSelectionExhaustMode)
+            RequestTurnUiRefresh();
 
         int selectedCount = _discardSelectionTransformMode
             ? await TransformSelectedHandCardsAsync()
@@ -212,6 +243,12 @@ public partial class CharacterControl
         foreach (SkillCard card in _discardSelectionCards.Values)
         {
             if (card == null || !GodotObject.IsInstanceValid(card))
+                continue;
+
+            // The exhaust preview is cloned from this exact visual state. Input is already
+            // rejected while the selection is completing, so do not mutate the source card
+            // before cloning it; disabling hover/input can emit MouseExited and reset scale.
+            if (_discardSelectionExhaustMode)
                 continue;
 
             KillDiscardSelectionArrangeTween(card);
@@ -277,6 +314,7 @@ public partial class CharacterControl
         card.StopBattleMotion();
         card.HoverHint.Visible = false;
         card.Modulate = SkillButton.EnabledModulate;
+        card.PointerHoverScaleMultiplier = CardHoverScaleMultiplier;
         card.ZIndex = DiscardSelectionSelectedCardZIndex + _discardSelectionSkills.Count;
     }
 
@@ -306,7 +344,7 @@ public partial class CharacterControl
     private SkillCard CreateDiscardSelectionActionPreviewCard(Skill skill, SkillCard sourceCard)
     {
         Control overlay = EnsureDiscardSelectionOverlay();
-        CanvasGroup sourceVisual = sourceCard?.CardVisualRoot;
+        Control sourceVisual = sourceCard?.CardVisualScaleHost;
         if (
             skill == null
             || sourceCard == null
@@ -320,9 +358,14 @@ public partial class CharacterControl
             return null;
         }
 
-        Vector2 previewScale = sourceVisual.GlobalScale;
-        Vector2 globalPosition = sourceVisual.GlobalPosition;
-        float globalRotation = sourceVisual.GlobalRotation;
+        // The selected hand card is rendered by VisualTransform while its root remains
+        // in the original hand slot. Transfer the rendered transform by its centre,
+        // rather than its top-left position, so the overlay preview does not shift when
+        // its own pivot and scale are applied.
+        Vector2 visualGlobalCenter =
+            sourceVisual.GetGlobalTransformWithCanvas() * sourceVisual.PivotOffset;
+        Vector2 previewScale = sourceCard.GetCenteredVisualTransformGlobalScale();
+        float globalRotation = sourceCard.GetCenteredVisualTransformGlobalRotation();
         SkillCard card = SkillCardScene.Instantiate<SkillCard>();
         card.Name = "DiscardSelectionActionCard";
         card.ConfigureDisplayScale(previewScale);
@@ -335,10 +378,10 @@ public partial class CharacterControl
         card.SetSkill(skill);
         card.CharacterName.Text = GetSkillOwnerDisplayName(skill);
         card.Visible = true;
-        card.GlobalPosition = globalPosition;
         card.Scale = previewScale;
         card.Rotation = globalRotation;
         card.PivotOffset = BattleCardBaseSize * 0.5f;
+        SetCardPivotCenterAt(card, visualGlobalCenter);
         card.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.MouseFilter = MouseFilterEnum.Ignore;
         card.Button.Disabled = true;
@@ -365,6 +408,21 @@ public partial class CharacterControl
                 count
             );
             card.Modulate = SkillButton.EnabledModulate;
+
+            int handIndex = _discardSelectionOriginalHandIndexes[skill];
+            bool usesOriginalHandVisual = _discardSelectionOriginalVisualHandIndexes.Contains(
+                handIndex
+            );
+            if (HasDiscardSelectionArrangeTarget(
+                card,
+                targetPosition,
+                targetScale,
+                usesOriginalHandVisual
+            ))
+            {
+                continue;
+            }
+
             if (
                 _discardSelectionArrangeTweens.TryGetValue(card, out Tween existingTween)
                 && existingTween != null
@@ -374,16 +432,20 @@ public partial class CharacterControl
                 existingTween.Kill();
             }
 
-            bool usesOriginalHandVisual = _discardSelectionOriginalVisualHandIndexes.Contains(
-                _discardSelectionOriginalHandIndexes[skill]
-            );
+            // The card root must remain in its hand slot. Move and scale the shared
+            // VisualTransform instead of the CanvasGroup so this path uses the same centred
+            // scale host as every other card interaction.
             CanvasItem movingVisual = usesOriginalHandVisual
-                ? card.CardVisualRoot
+                ? card.CardVisualScaleHost
                 : card;
             if (movingVisual == null || !GodotObject.IsInstanceValid(movingVisual))
                 continue;
 
-            SetDiscardSelectionCardMouseDetection(card, enabled: false);
+            // Original hand cards keep their root in the hand slot, so their Button follows
+            // VisualTransform safely while the selection layout tween runs. Do not disable
+            // hover/input here: RefreshTurnUi re-enters this method, and repeatedly clearing
+            // HoverUi made pointer hover wait for the full 0.32-second arrange animation.
+            SetDiscardSelectionCardMouseDetection(card, enabled: usesOriginalHandVisual);
 
             if (ReferenceEquals(movingVisual, card))
             {
@@ -394,32 +456,42 @@ public partial class CharacterControl
             {
                 card.SetHoverUiEnabled(true);
                 ApplyHandCardLayer(
-                    _discardSelectionOriginalHandIndexes[skill],
-                    GetHandOrderForSlotIndex(_discardSelectionOriginalHandIndexes[skill])
+                    handIndex,
+                    GetHandOrderForSlotIndex(handIndex)
                 );
             }
 
-            Tween tween = movingVisual.CreateTween();
-            _discardSelectionArrangeTweens[card] = tween;
-            tween.SetParallel(true);
-            tween
-                .TweenProperty(
-                    movingVisual,
-                    "global_position",
-                    targetPosition,
-                    CardPlayMoveDuration
-                )
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
-            tween
-                .TweenProperty(
-                    movingVisual,
-                    ReferenceEquals(movingVisual, card) ? "scale" : "global_scale",
+            Tween tween;
+            if (usesOriginalHandVisual)
+            {
+                Vector2 targetCenter = targetPosition + BattleCardBaseSize * targetScale * 0.5f;
+                tween = card.TweenCenteredVisualTransformLayout(
+                    card.GetCenteredVisualTransformLocalPosition(targetCenter),
                     targetScale,
-                    CardPlayMoveDuration
-                )
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
+                    CardPlayMoveDuration,
+                    Tween.TransitionType.Cubic,
+                    Tween.EaseType.Out
+                );
+            }
+            else
+            {
+                tween = movingVisual.CreateTween();
+                tween.SetParallel(true);
+                tween
+                    .TweenProperty(movingVisual, "global_position", targetPosition, CardPlayMoveDuration)
+                    .SetTrans(Tween.TransitionType.Cubic)
+                    .SetEase(Tween.EaseType.Out);
+                tween
+                    .TweenProperty(movingVisual, "scale", targetScale, CardPlayMoveDuration)
+                    .SetTrans(Tween.TransitionType.Cubic)
+                    .SetEase(Tween.EaseType.Out);
+            }
+            _discardSelectionArrangeTweens[card] = tween;
+            _discardSelectionArrangeTargets[card] = (
+                targetPosition,
+                targetScale,
+                usesOriginalHandVisual
+            );
             tween
                 .TweenCallback(
                     Callable.From(
@@ -440,6 +512,26 @@ public partial class CharacterControl
                 }
             };
         }
+    }
+
+    private bool HasDiscardSelectionArrangeTarget(
+        SkillCard card,
+        Vector2 position,
+        Vector2 scale,
+        bool usesOriginalHandVisual
+    )
+    {
+        if (
+            card == null
+            || !_discardSelectionArrangeTargets.TryGetValue(card, out var target)
+            || target.UsesOriginalHandVisual != usesOriginalHandVisual
+        )
+        {
+            return false;
+        }
+
+        return target.Position.DistanceSquaredTo(position) < 0.25f
+            && target.Scale.DistanceSquaredTo(scale) < 0.0001f;
     }
 
     private void TryEnableDiscardSelectionCardMouseDetection(
@@ -574,40 +666,46 @@ public partial class CharacterControl
                 card == null
                 || !GodotObject.IsInstanceValid(card)
                 || !IsCardIndexValid(handIndex)
-                || card.CardVisualRoot == null
-                || !GodotObject.IsInstanceValid(card.CardVisualRoot)
+                || card.CardVisualScaleHost == null
+                || !GodotObject.IsInstanceValid(card.CardVisualScaleHost)
             )
             {
                 return;
             }
 
             KillDiscardSelectionArrangeTween(card);
-            CanvasGroup visual = card.CardVisualRoot;
+            Control visual = card.CardVisualScaleHost;
             card.SetHoverUiEnabled(false);
-            Vector2 visualGlobalPosition = visual.GlobalPosition;
-            Vector2 visualGlobalScale = visual.GlobalScale;
-            float visualGlobalRotation = visual.GlobalRotation;
+            Vector2 visualGlobalCenter = visual.GetGlobalTransformWithCanvas() * visual.PivotOffset;
+            Vector2 visualGlobalScale = card.GetCenteredVisualTransformGlobalScale();
+            float visualGlobalRotation = card.GetCenteredVisualTransformGlobalRotation();
             SnapHandCardToBaseVisual(handIndex, card);
             _discardSelectionOriginalVisualHandIndexes.Remove(handIndex);
             LayoutActionCards(instant: false);
-            visual.GlobalPosition = visualGlobalPosition;
-            visual.GlobalScale = visualGlobalScale;
-            visual.GlobalRotation = visualGlobalRotation;
+            card.TweenCenteredVisualTransformLayout(
+                card.GetCenteredVisualTransformLocalPosition(visualGlobalCenter),
+                visualGlobalScale,
+                0f,
+                instant: true,
+                transition: Tween.TransitionType.Cubic,
+                ease: Tween.EaseType.Out
+            );
+            card.SetCenteredVisualTransformGlobalRotation(visualGlobalRotation);
             card.Button.Disabled = true;
             card.HoverHint.Visible = false;
             card.MouseFilter = MouseFilterEnum.Ignore;
             card.Button.MouseFilter = MouseFilterEnum.Ignore;
             ApplyHandCardLayer(handIndex, GetHandOrderForSlotIndex(handIndex));
 
-            Tween returnTween = visual.CreateTween();
+            Tween returnTween = card.TweenCenteredScale(
+                Vector2.One,
+                CardPlayMoveDuration,
+                Tween.TransitionType.Cubic,
+                Tween.EaseType.Out
+            );
             _discardSelectionArrangeTweens[card] = returnTween;
-            returnTween.SetParallel(true);
             returnTween
                 .TweenProperty(visual, "position", Vector2.Zero, CardPlayMoveDuration)
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
-            returnTween
-                .TweenProperty(visual, "scale", Vector2.One, CardPlayMoveDuration)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
             returnTween
@@ -639,16 +737,13 @@ public partial class CharacterControl
             return;
 
         KillDiscardSelectionArrangeTween(card);
-        CanvasGroup visual = card.CardVisualRoot;
+        Control visual = card.CardVisualScaleHost;
         if (visual != null && GodotObject.IsInstanceValid(visual))
-        {
-            visual.Position = Vector2.Zero;
-            visual.Scale = Vector2.One;
-            visual.Rotation = 0f;
-        }
+            card.ResetCenteredVisualTransformLayout();
 
         card.Visible = true;
         card.Modulate = SkillButton.EnabledModulate;
+        card.PointerHoverScaleMultiplier = 1.08f;
         card.SetHoverUiEnabled(true);
         card.MouseFilter = MouseFilterEnum.Stop;
         card.Button.MouseFilter = MouseFilterEnum.Stop;
@@ -1062,6 +1157,7 @@ public partial class CharacterControl
             tween.Kill();
         }
         _discardSelectionArrangeTweens.Remove(card);
+        _discardSelectionArrangeTargets.Remove(card);
     }
 
     private void HideDiscardedHandCardAfterSelection(int index, SkillCard card)
@@ -1204,8 +1300,13 @@ public partial class CharacterControl
 
             PlayerCharacter owner = skill.OwnerCharater as PlayerCharacter ?? _activePlayer;
             if (_discardSelectionOriginalHandIndexes.TryGetValue(skill, out int originalIndex))
+            {
                 _discardSelectionOriginalVisualHandIndexes.Remove(originalIndex);
+                _discardSelectionFlyingToDiscardHandIndexes.Add(originalIndex);
+            }
             sourceCard.Visible = false;
+            SetCardButtonInputEnabled(sourceCard, false);
+            sourceCard.HideHoverUi();
             actionCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
             entries.Add((skill, owner, actionCard));
         }
@@ -1252,6 +1353,7 @@ public partial class CharacterControl
             _skillRemovalBuffer.Clear();
             for (int i = 0; i < entries.Count; i++)
                 _skillRemovalBuffer.Add(entries[i].Skill);
+            _discardSelectionFlyingToDiscardHandIndexes.Clear();
             RemoveActiveHandSkillsForSelection(_skillRemovalBuffer);
 
             foreach (var entry in entries)
@@ -1273,6 +1375,7 @@ public partial class CharacterControl
         finally
         {
             _freezeHandLayout = previousFreezeHandLayout;
+            _discardSelectionFlyingToDiscardHandIndexes.Clear();
             flyTasks.Clear();
             entries.Clear();
         }
@@ -1429,16 +1532,11 @@ public partial class CharacterControl
                 continue;
             }
 
-            SkillCard actionCard = CreateDiscardSelectionActionPreviewCard(skill, sourceCard);
-            if (actionCard == null)
-                continue;
-
             PlayerCharacter owner = skill.OwnerCharater as PlayerCharacter ?? _activePlayer;
-            if (_discardSelectionOriginalHandIndexes.TryGetValue(skill, out int originalIndex))
-                _discardSelectionOriginalVisualHandIndexes.Remove(originalIndex);
-            sourceCard.Visible = false;
-            actionCard.ZIndex = PlayedCardZIndex + entries.Count + 1;
-            entries.Add((skill, owner, actionCard));
+            // Keep the source slot detached until the exhaust animation completes. The
+            // remaining hand has already filled this card's old position while it is
+            // selected; adding it back to the layout here causes a one-frame shove.
+            entries.Add((skill, owner, sourceCard));
         }
 
         if (entries.Count == 0)
@@ -1465,7 +1563,7 @@ public partial class CharacterControl
 
                 KillDiscardSelectionArrangeTween(entry.Card);
                 entry.Card.ZIndex = PlayedCardZIndex + order + 1;
-                entry.Card.PlayExhaustEffect(CardPlayVanishDuration);
+                entry.Card.PlayExhaustEffectAtCurrentVisualTransform(CardPlayVanishDuration);
                 playedAny = true;
                 order++;
             }
@@ -1485,15 +1583,6 @@ public partial class CharacterControl
             BattleNode?.ExhaustPlayerTeamBattleSkills(_skillRemovalBuffer, _activePlayer);
             _skillRemovalBuffer.Clear();
             CompactActiveHandAfterDiscardSelection();
-
-            foreach (var entry in entries)
-            {
-                if (entry.Card != null && GodotObject.IsInstanceValid(entry.Card))
-                {
-                    KillDiscardSelectionArrangeTween(entry.Card);
-                    entry.Card.QueueFree();
-                }
-            }
         }
         finally
         {

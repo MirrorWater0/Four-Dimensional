@@ -39,6 +39,7 @@ public partial class Reward : CanvasLayer
     private ColorRect BG => field ??= GetNode<ColorRect>("BG");
     private ColorRect SkillMask => field ??= GetNodeOrNull<ColorRect>("SkillMask");
     private Control PanelNode => field ??= GetNode<Control>("Panel");
+    private ColorRect FrameBG => field ??= GetNodeOrNull<ColorRect>("Panel/FrameBG");
     private Control DecorNode => field ??= GetNodeOrNull<Control>("Panel/Decor");
     private Button SkipButton => field ??= GetNodeOrNull<Button>("Panel/Decor/SkipButton");
     private Button SkillRewardSkipButton =>
@@ -48,8 +49,6 @@ public partial class Reward : CanvasLayer
     private Label HeaderHint => field ??= GetNodeOrNull<Label>("Panel/Decor/HeaderHint");
     private Control TalentOverlay =>
         field ??= GetNodeOrNull<Control>("TalentTreeOverlay");
-    private ColorRect TalentOverlayBackdrop =>
-        field ??= GetNodeOrNull<ColorRect>("TalentTreeOverlay/Backdrop");
     private Panel TalentPanel =>
         field ??= GetNodeOrNull<Panel>("TalentTreeOverlay/TalentPanel");
     private Label TalentCharacterLabel =>
@@ -88,8 +87,6 @@ public partial class Reward : CanvasLayer
     private bool _isTalentTreeClosing;
     private int _activeTalentCharacterIndex = -1;
     private const float RewardReflowDuration = 0.18f;
-    private const float TacticsButtonReserveWidth = 240f;
-    private const float TacticsButtonReserveHeight = 240f;
     private const float TalentPanelWidth = 840f;
     private const float TalentPanelHeight = 530f;
     private const int TacticsButtonRaisedZIndex = 32;
@@ -397,6 +394,38 @@ public partial class Reward : CanvasLayer
         if (button == null)
             return;
 
+        // This entry is created at runtime, so do not rely on the scene theme here.
+        // Explicitly override every state to prevent an inherited rounded button style
+        // from leaking into the reward list.
+        button.AddThemeStyleboxOverride(
+            "normal",
+            CreateRewardEntryButtonStyle(
+                new Color(0.035f, 0.04f, 0.05f, 0.78f),
+                new Color(0.62f, 0.65f, 0.7f, 0.5f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateRewardEntryButtonStyle(
+                new Color(0.1f, 0.11f, 0.13f, 0.92f),
+                new Color(0.9f, 0.92f, 0.96f, 0.8f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateRewardEntryButtonStyle(
+                new Color(0.13f, 0.14f, 0.16f, 0.96f),
+                new Color(0.96f, 0.97f, 0.99f, 0.92f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "disabled",
+            CreateRewardEntryButtonStyle(
+                new Color(0.025f, 0.03f, 0.04f, 0.42f),
+                new Color(0.45f, 0.47f, 0.52f, 0.26f)
+            )
+        );
+
         const string iconName = "SkillRewardIcon";
         const string labelName = "RewardLabel";
         var icon = button.GetNodeOrNull<ColorRect>(iconName);
@@ -454,10 +483,27 @@ public partial class Reward : CanvasLayer
         label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         label.ClipText = true;
         label.AddThemeFontSizeOverride("font_size", 18);
-        label.AddThemeColorOverride("font_color", new Color(0.9f, 0.96f, 1f, 1f));
-        label.AddThemeColorOverride("font_shadow_color", new Color(0f, 0.08f, 0.16f, 0.78f));
+        label.AddThemeColorOverride("font_color", new Color(0.9f, 0.91f, 0.95f, 1f));
+        label.AddThemeColorOverride("font_shadow_color", new Color(0f, 0f, 0f, 0.78f));
         label.AddThemeConstantOverride("shadow_offset_x", 1);
         label.AddThemeConstantOverride("shadow_offset_y", 1);
+    }
+
+    private static StyleBoxFlat CreateRewardEntryButtonStyle(Color background, Color border)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = background,
+            BorderColor = border,
+            BorderWidthLeft = 2,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomRight = 0,
+            CornerRadiusBottomLeft = 0,
+        };
     }
 
     private CardSlot CreateRewardCard(string title, string detail)
@@ -550,6 +596,8 @@ public partial class Reward : CanvasLayer
         if (!_rewardEntries.TryGetValue(control, out var entry))
             return;
 
+        Vector2 clickPosition = GetViewport()?.GetMousePosition()
+            ?? control.GetGlobalRect().GetCenter();
         if (control is CardSlot card)
             card.Unselect();
 
@@ -559,13 +607,29 @@ public partial class Reward : CanvasLayer
                 OpenSkillRewards(control);
                 break;
             case RewardKind.Relic:
+                if (control is CardSlot relicCard)
+                    relicCard.SetInteractable(false);
                 GrantRelicReward(entry.RelicId);
+                var relicResourceState = MapNode?.PlayerResourceState;
+                if (relicResourceState != null)
+                    _ = relicResourceState.PlayRelicAcquireAnimationAsync(
+                        entry.RelicId,
+                        clickPosition
+                    );
                 RemoveRewardControlWithReflow(control);
                 TryCloseIfDone();
                 break;
             case RewardKind.Item:
                 if (GrantItemReward(entry.ItemId))
                 {
+                    if (control is CardSlot itemCard)
+                        itemCard.SetInteractable(false);
+                    var itemResourceState = MapNode?.PlayerResourceState;
+                    if (itemResourceState != null)
+                        _ = itemResourceState.PlayItemAcquireAnimationAsync(
+                            entry.ItemId,
+                            clickPosition
+                        );
                     RemoveRewardControlWithReflow(control);
                     TryCloseIfDone();
                 }
@@ -974,8 +1038,17 @@ public partial class Reward : CanvasLayer
 
         Node parent = card.GetParent();
         AddSkillRewardFlyPlaceholder(card, parent);
-        parent?.RemoveChild(card);
-        AddChild(card);
+
+        // Move directly to the deck-operation animation layer. Previously this card moved
+        // from the reward container to Reward, then again to the map UI layer before flying;
+        // the two cross-layer handoffs could create a visible nudge at takeoff.
+        bool movedToAnimationLayer = BattleReady.TryDetachDeckOperationCard(this, card)
+            && !ReferenceEquals(card.GetParent(), parent);
+        if (!movedToAnimationLayer)
+        {
+            parent?.RemoveChild(card);
+            AddChild(card);
+        }
 
         card.GlobalPosition = globalPosition;
         card.Scale = scale;
@@ -1137,43 +1210,19 @@ public partial class Reward : CanvasLayer
         if (!ShouldReserveTacticsButtonArea())
             return;
 
-        Vector2 viewport = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920f, 1080f);
-        if (TalentOverlayBackdrop != null)
-        {
-            TalentOverlayBackdrop.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            TalentOverlayBackdrop.OffsetLeft = 0f;
-            TalentOverlayBackdrop.OffsetTop = 0f;
-            TalentOverlayBackdrop.OffsetRight = -TacticsButtonReserveWidth;
-            TalentOverlayBackdrop.OffsetBottom = -TacticsButtonReserveHeight;
-        }
-
-        if (BG != null && BG.Visible && _standaloneTalentTreeMode)
-        {
-            BG.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-            BG.OffsetLeft = 0f;
-            BG.OffsetTop = 0f;
-            BG.OffsetRight = -TacticsButtonReserveWidth;
-            BG.OffsetBottom = -TacticsButtonReserveHeight;
-        }
+        // The talent tree uses Reward's existing full-screen background instead of
+        // a separate backdrop, so its visual treatment is consistent with rewards.
+        ResetFullScreenOverlayRect(BG);
 
         if (TalentPanel != null)
         {
-            float safeWidth = viewport.X - TacticsButtonReserveWidth;
-            float safeHeight = viewport.Y - TacticsButtonReserveHeight;
-            float posX = Mathf.Clamp(
-                safeWidth * 0.5f - TalentPanelWidth * 0.5f - 72f,
-                28f,
-                safeWidth - TalentPanelWidth - 28f
-            );
-            float posY = Mathf.Clamp(
-                safeHeight * 0.5f - TalentPanelHeight * 0.5f,
-                28f,
-                safeHeight - TalentPanelHeight - 28f
-            );
-
-            TalentPanel.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-            TalentPanel.Position = new Vector2(posX, posY);
-            TalentPanel.Size = new Vector2(TalentPanelWidth, TalentPanelHeight);
+            TalentPanel.SetAnchorsPreset(Control.LayoutPreset.Center);
+            TalentPanel.OffsetLeft = -TalentPanelWidth * 0.5f;
+            TalentPanel.OffsetTop = -TalentPanelHeight * 0.5f;
+            TalentPanel.OffsetRight = TalentPanelWidth * 0.5f;
+            TalentPanel.OffsetBottom = TalentPanelHeight * 0.5f;
+            TalentPanel.GrowHorizontal = Control.GrowDirection.Both;
+            TalentPanel.GrowVertical = Control.GrowDirection.Both;
         }
 
         RaiseTacticsButtonAboveTalentOverlay();
@@ -1181,7 +1230,6 @@ public partial class Reward : CanvasLayer
 
     private void ResetTalentOverlayLayout()
     {
-        ResetFullScreenOverlayRect(TalentOverlayBackdrop);
         ResetFullScreenOverlayRect(BG);
         ResetFullScreenOverlayRect(SkillMask);
 
@@ -1441,9 +1489,9 @@ public partial class Reward : CanvasLayer
         };
 
         button.AddThemeFontSizeOverride("font_size", 30);
-        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
-        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
-        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
+        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.93f, 0.96f, 1f));
+        button.AddThemeColorOverride("font_hover_color", new Color(1f, 1f, 1f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.82f, 0.84f, 0.9f, 1f));
         button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
         button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
         button.AddThemeStyleboxOverride(
@@ -1467,9 +1515,9 @@ public partial class Reward : CanvasLayer
         progressLabel.AddThemeFontSizeOverride("font_size", 15);
         progressLabel.AddThemeColorOverride(
             "font_color",
-            unlocked ? new Color(1f, 0.88f, 0.54f, 1f)
-                : canUnlock ? new Color(0.82f, 0.94f, 1f, 0.95f)
-                : new Color(0.58f, 0.64f, 0.72f, 0.72f)
+            unlocked ? new Color(0.94f, 0.95f, 0.98f, 1f)
+                : canUnlock ? new Color(0.82f, 0.84f, 0.9f, 0.95f)
+                : new Color(0.58f, 0.6f, 0.66f, 0.72f)
         );
 
         wrapper.AddChild(button);
@@ -1511,7 +1559,7 @@ public partial class Reward : CanvasLayer
             ? I18n.Tr("ui.common.unlocked", "已点亮")
             : canUnlock ? I18n.Tr("ui.common.available_to_unlock", "可点亮")
             : reason;
-        string stateColor = unlocked ? "#ffd987" : canUnlock ? "#9ff5ff" : "#9aa3b5";
+        string stateColor = unlocked ? "#f0f2f8" : canUnlock ? "#d2d6e2" : "#9297a4";
         string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
             ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
             : node.EffectDescription;
@@ -1519,14 +1567,14 @@ public partial class Reward : CanvasLayer
         return $"[b]{node.DisplayName}[/b]\n"
             + I18n.Format(
                 "ui.common.talent_stage_cost_bbcode",
-                "[color=#cfd6e6]阶段 {stage} / 消耗 {cost} 点天赋点[/color]\n",
+                "[color=#cfd2dd]阶段 {stage} / 消耗 {cost} 点天赋点[/color]\n",
                 ("stage", node.Stage + 1),
                 ("cost", node.Cost)
             )
             + $"[color={stateColor}]{stateText}[/color]\n\n"
             + I18n.Format(
                 "ui.common.effect_bbcode",
-                "[color=#ffd987]效果[/color]\n{value}",
+                "[color=#eef0f6]效果[/color]\n{value}",
                 ("value", effect)
             );
     }
@@ -1538,26 +1586,26 @@ public partial class Reward : CanvasLayer
     )
     {
         Color borderColor =
-            unlocked ? new Color(1f, 0.78f, 0.38f, 0.88f)
-            : canUnlock ? new Color(0.56f, 0.82f, 1f, 0.72f)
-            : new Color(0.35f, 0.44f, 0.55f, 0.46f);
+            unlocked ? new Color(0.94f, 0.95f, 0.98f, 0.86f)
+            : canUnlock ? new Color(0.76f, 0.78f, 0.84f, 0.7f)
+            : new Color(0.4f, 0.42f, 0.48f, 0.42f);
         Color bgColor =
-            unlocked ? new Color(0.34f, 0.22f, 0.08f, 0.56f + hoverBoost)
-            : canUnlock ? new Color(0.08f, 0.17f, 0.25f, 0.54f + hoverBoost)
-            : new Color(0.05f, 0.08f, 0.12f, 0.38f);
+            unlocked ? new Color(0.14f, 0.145f, 0.16f, 0.52f + hoverBoost)
+            : canUnlock ? new Color(0.08f, 0.085f, 0.1f, 0.48f + hoverBoost)
+            : new Color(0.04f, 0.045f, 0.055f, 0.3f);
 
         return new StyleBoxFlat
         {
             BgColor = bgColor,
             BorderColor = borderColor,
-            BorderWidthLeft = 4,
-            BorderWidthTop = 4,
-            BorderWidthRight = 4,
-            BorderWidthBottom = 4,
-            CornerRadiusTopLeft = 38,
-            CornerRadiusTopRight = 38,
-            CornerRadiusBottomRight = 38,
-            CornerRadiusBottomLeft = 38,
+            BorderWidthLeft = 2,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomRight = 0,
+            CornerRadiusBottomLeft = 0,
             ContentMarginLeft = 6,
             ContentMarginRight = 6,
             ContentMarginTop = 6,
@@ -1581,8 +1629,8 @@ public partial class Reward : CanvasLayer
     private void AddTalentConnection(Vector2 fromPosition, Vector2 toPosition, bool active)
     {
         Color color = active
-            ? new Color(1f, 0.76f, 0.36f, 0.72f)
-            : new Color(0.48f, 0.62f, 0.78f, 0.28f);
+            ? new Color(0.9f, 0.91f, 0.95f, 0.68f)
+            : new Color(0.58f, 0.6f, 0.66f, 0.28f);
         Vector2 start = fromPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
         Vector2 end = toPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
         AddTalentLine(start, end, color);
@@ -1678,7 +1726,7 @@ public partial class Reward : CanvasLayer
         tween.SetEase(Tween.EaseType.Out);
         tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
         tween.TweenProperty(nodeControl, "scale", baseScale, 0.22f).SetDelay(0.12f);
-        tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
+        tween.TweenProperty(nodeControl, "modulate", new Color(1.16f, 1.17f, 1.22f, 1f), 0.08f);
         tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
         tween.TweenMethod(
             Callable.From<float>(value => SetTalentUnlockEffectProgress(shockWaveMaterial, value)),
@@ -1729,8 +1777,8 @@ public partial class Reward : CanvasLayer
         var material = new ShaderMaterial { Shader = shader, ResourceLocalToScene = true };
         if (shader == TalentUnlockShockWaveShader)
         {
-            material.SetShaderParameter("line_color", new Color(1f, 0.95f, 0.68f, 1f));
-            material.SetShaderParameter("glow_color", new Color(1f, 0.7f, 0.22f, 1f));
+            material.SetShaderParameter("line_color", new Color(0.94f, 0.95f, 0.99f, 1f));
+            material.SetShaderParameter("glow_color", new Color(0.78f, 0.8f, 0.88f, 1f));
             material.SetShaderParameter("progress", 1f);
             material.SetShaderParameter("base_thickness", 0.005f);
             material.SetShaderParameter("max_thickness", 0.0f);
@@ -1738,7 +1786,7 @@ public partial class Reward : CanvasLayer
         }
         else
         {
-            material.SetShaderParameter("main_color", new Color(1f, 0.72f, 0.24f, 1f));
+            material.SetShaderParameter("main_color", new Color(0.9f, 0.91f, 0.96f, 1f));
             material.SetShaderParameter("progress", 1f);
             material.SetShaderParameter("glow_intensity", 25.0f);
             material.SetShaderParameter("ray_count", 15.0f);
@@ -2094,6 +2142,9 @@ public partial class Reward : CanvasLayer
         if (PanelNode == null)
             return;
         PanelNode.PivotOffset = PanelNode.Size * 0.5f;
+        // Keep the HSR frame shader's pixel-space size in sync with the panel.
+        if (FrameBG?.Material is ShaderMaterial frameMaterial)
+            frameMaterial.SetShaderParameter("rect_size", PanelNode.Size);
     }
 
     private void TryCompleteNodeOnClose()

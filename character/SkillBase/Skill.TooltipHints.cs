@@ -51,7 +51,6 @@ public partial class Skill
             hints.AddKeyword(SkillTooltipKeyword.Voidness);
 
         GetPlan()?.CollectTooltipHints(this, hints);
-        CollectBuffHintsFromDescription(hints);
 
         foreach (SkillID skillId in hints.RelatedSkillIds)
         {
@@ -216,36 +215,6 @@ public partial class Skill
                 hints.AddStatVariable(StatX.Survivability);
                 break;
         }
-    }
-
-    private void CollectBuffHintsFromDescription(SkillTooltipHints hints)
-    {
-        if (hints == null || string.IsNullOrWhiteSpace(Description))
-            return;
-
-        string plainDescription = StripBbCodeTags(Description);
-        if (string.IsNullOrWhiteSpace(plainDescription))
-            return;
-
-        foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
-        {
-            if (ContainsBuffKeyword(plainDescription, Buff.GetBuffDisplayName(buffName))
-                || ContainsBuffKeyword(
-                    plainDescription,
-                    StripBbCodeTags(buffName.GetDescription())
-                ))
-            {
-                hints.AddBuff(buffName);
-            }
-        }
-    }
-
-    private static bool ContainsBuffKeyword(string text, string keyword)
-    {
-        if (string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(keyword))
-            return false;
-
-        return text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     private static T GetStepField<T>(SkillStep step, string fieldName)

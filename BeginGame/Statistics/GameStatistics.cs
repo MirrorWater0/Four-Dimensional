@@ -8,13 +8,16 @@ public partial class GameStatistics : CanvasLayer
 {
     private const int NodeRouteRows = 4;
     private const int NodeRouteColumns = 15;
-    private const float NodeDiamondSize = 30f;
+    private const float NodeDiamondSize = 23f;
     private const float NodeDiamondWrapperSize = 36f;
     private const float NodeGridCellMinWidth = 44f;
     private const float NodeGridCellHeight = 36f;
     private const int NodeRegionRowSeparation = 14;
     private const float NodeHoverScale = 1.25f;
-    private const float HistoryPageSwitchOffset = 64f;
+    private const float MinimumSkillColumnHeight = 170f;
+    private const float SkillColumnFixedHeight = 62f;
+    private const float SkillPillHeight = 36f;
+    private const float SkillPillSeparation = 8f;
     private static readonly Vector2 SkillCardPreviewScale = new(1.08f, 1.08f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(240f, 370f);
 
@@ -38,70 +41,71 @@ public partial class GameStatistics : CanvasLayer
 
     private ColorRect BG => field ??= GetNodeOrNull<ColorRect>("BG");
     private Control CenterPanel => field ??= GetNodeOrNull<Control>("CenterPanel");
+    private Control FrameDecor => field ??= GetNodeOrNull<Control>("FrameDecor");
     private Control VisualContent =>
         field ??= GetNodeOrNull<Control>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent"
+            "CenterPanel/Detail/Scroll/Content"
         );
     private Label DescriptionLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Description");
+        field ??= GetNodeOrNull<Label>("CenterPanel/Detail/Description");
     private Label EyebrowLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Eyebrow");
+        field ??= GetNodeOrNull<Label>("CenterPanel/Eyebrow");
     private Label TitleLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Title");
+        field ??= GetNodeOrNull<Label>("CenterPanel/Sidebar/Title");
     private Label RelicTitleLabel =>
         field ??=
             GetNodeOrNull<Label>(
-                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin/RelicVBox/RelicTitle"
+                "CenterPanel/Detail/Scroll/Content/RelicSection/RelicMargin/RelicVBox/RelicTitle"
             );
     private Label EquipmentTitleLabel =>
         field ??=
             GetNodeOrNull<Label>(
-                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentTitle"
+                "CenterPanel/Detail/Scroll/Content/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentTitle"
             );
     private Label CharacterSelectHeaderLabel =>
         field ??=
             GetNodeOrNull<Label>(
-                "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectHeader"
+                "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectHeader"
             );
-    private HBoxContainer SummaryRow =>
-        field ??= GetNodeOrNull<HBoxContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SummaryRow"
+    private GridContainer SummaryRow =>
+        field ??= GetNodeOrNull<GridContainer>(
+            "CenterPanel/Detail/Scroll/Content/SummaryRow"
         );
     private VBoxContainer NodeRows =>
         field ??= GetNodeOrNull<VBoxContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/NodeSection/NodeMargin/NodeRows"
+            "CenterPanel/Detail/Scroll/Content/NodeSection/NodeMargin/NodeVBox/RouteScroll/NodeRows"
         );
     private HFlowContainer RelicGrid =>
         field ??= GetNodeOrNull<HFlowContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/RelicSection/RelicMargin/RelicVBox/RelicGrid"
+            "CenterPanel/Detail/Scroll/Content/RelicSection/RelicMargin/RelicVBox/RelicGrid"
         );
     private HFlowContainer EquipmentGrid =>
         field ??= GetNodeOrNull<HFlowContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentGrid"
+            "CenterPanel/Detail/Scroll/Content/EquipmentSection/EquipmentMargin/EquipmentVBox/EquipmentGrid"
         );
     private Control EquipmentSection =>
         field ??= GetNodeOrNull<Control>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/EquipmentSection"
+            "CenterPanel/Detail/Scroll/Content/EquipmentSection"
         );
     private Control CharacterSelectorRoot =>
         field ??= GetNodeOrNull<Control>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"
+            "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch"
         );
     private Control CharacterSelectorThumb =>
         field ??= GetNodeOrNull<Control>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectThumb"
+            "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectThumb"
         );
     private Control CharacterSelectorFrame =>
         field ??= GetNodeOrNull<Control>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectFrame"
+            "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectFrame"
         );
     private HBoxContainer CharacterButtonList =>
         field ??= GetNodeOrNull<HBoxContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectPanel/CharacterButtonList"
+            "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/CharacterSwitch/CharacterSelectPanel/CharacterButtonList"
         );
     private HBoxContainer SkillColumns =>
         field ??= GetNodeOrNull<HBoxContainer>(
-            "CenterPanel/Margin/VBox/MainVisualBox/StatisticsMargin/VisualContent/SkillSection/SkillMargin/SkillVBox/SkillColumns"
+            "CenterPanel/Detail/Scroll/Content/SkillSection/SkillMargin/SkillVBox/SkillColumns"
         );
     private Button PreviousHistoryButton =>
         field ??= GetNodeOrNull<Button>("PreviousHistoryButton");
@@ -159,6 +163,7 @@ public partial class GameStatistics : CanvasLayer
         LocalizeStaticTexts();
 
         EnsureExitButtonAction();
+        LocalizeArchiveChrome();
 
         if (CharacterSelectorRoot != null)
             CharacterSelectorRoot.Resized += SnapCharacterSelector;
@@ -180,12 +185,11 @@ public partial class GameStatistics : CanvasLayer
 
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (_skillCardPreviewRoot == null || !_skillCardPreviewRoot.Visible)
-            return;
-
-        if (@event is InputEventKey { Pressed: true, Keycode: Key.Escape })
+        if (!Visible) return;
+        if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape })
         {
-            HideSkillCardPreview();
+            if (_skillCardPreviewRoot?.Visible == true) HideSkillCardPreview();
+            else Close();
             GetViewport()?.SetInputAsHandled();
         }
     }
@@ -195,6 +199,7 @@ public partial class GameStatistics : CanvasLayer
         EnsureExitButtonAction();
         ResetHistoryPageSwitchVisuals();
         SelectLatestHistoryRecord();
+        BuildArchiveDirectory();
         RefreshVisualStatistics();
         Visible = true;
         PlayIntro();
@@ -232,6 +237,7 @@ public partial class GameStatistics : CanvasLayer
         RefreshCharacterSkills();
         RefreshHistoryNavigationButtons();
         RefreshSeedCopyButton();
+        RefreshArchiveChrome();
     }
 
     private void SelectLatestHistoryRecord()
@@ -281,36 +287,28 @@ public partial class GameStatistics : CanvasLayer
         _isSwitchingHistoryPage = true;
         SetHistoryNavigationButtonsEnabled(false);
 
-        Vector2 basePosition = content.Position;
-        Vector2 exitPosition = basePosition + new Vector2(-direction * HistoryPageSwitchOffset, 0f);
-        Vector2 enterPosition = basePosition + new Vector2(direction * HistoryPageSwitchOffset, 0f);
         content.Modulate = content.Modulate with { A = 1f };
-        content.Position = basePosition;
 
         _historyPageTween = CreateTween();
         _historyPageTween.SetEase(Tween.EaseType.In);
         _historyPageTween.SetTrans(Tween.TransitionType.Cubic);
-        _historyPageTween.TweenProperty(content, "position", exitPosition, 0.12f);
-        _historyPageTween.Parallel().TweenProperty(content, "modulate:a", 0f, 0.10f);
+        _historyPageTween.TweenProperty(content, "modulate:a", 0f, 0.12f);
         _historyPageTween.TweenCallback(
             Callable.From(() =>
             {
                 _selectedHistoryIndex = targetIndex;
                 RefreshVisualStatistics();
                 SetHistoryNavigationButtonsEnabled(false);
-                content.Position = enterPosition;
                 content.Modulate = content.Modulate with { A = 0f };
             })
         );
         _historyPageTween.SetEase(Tween.EaseType.Out);
         _historyPageTween.SetTrans(Tween.TransitionType.Cubic);
-        _historyPageTween.TweenProperty(content, "position", basePosition, 0.18f);
-        _historyPageTween.Parallel().TweenProperty(content, "modulate:a", 1f, 0.16f);
+        _historyPageTween.TweenProperty(content, "modulate:a", 1f, 0.18f);
         _historyPageTween.Finished += () =>
         {
             if (content != null && GodotObject.IsInstanceValid(content))
             {
-                content.Position = basePosition;
                 content.Modulate = content.Modulate with { A = 1f };
             }
 
@@ -326,9 +324,9 @@ public partial class GameStatistics : CanvasLayer
         bool hasHistory = records.Count > 0 && _selectedHistoryIndex >= 0;
 
         if (PreviousHistoryButton != null)
-            PreviousHistoryButton.Visible = hasHistory && _selectedHistoryIndex > 0;
+            PreviousHistoryButton.Disabled = !hasHistory || _selectedHistoryIndex <= 0 || _isSwitchingHistoryPage;
         if (NextHistoryButton != null)
-            NextHistoryButton.Visible = hasHistory && _selectedHistoryIndex < records.Count - 1;
+            NextHistoryButton.Disabled = !hasHistory || _selectedHistoryIndex >= records.Count - 1 || _isSwitchingHistoryPage;
     }
 
     private void RefreshSeedCopyButton()
@@ -365,10 +363,11 @@ public partial class GameStatistics : CanvasLayer
 
     private void SetHistoryNavigationButtonsEnabled(bool enabled)
     {
-        if (PreviousHistoryButton != null)
-            PreviousHistoryButton.Disabled = !enabled;
-        if (NextHistoryButton != null)
-            NextHistoryButton.Disabled = !enabled;
+        RefreshHistoryNavigationButtons();
+        if (!enabled) {
+            if (PreviousHistoryButton != null) PreviousHistoryButton.Disabled = true;
+            if (NextHistoryButton != null) NextHistoryButton.Disabled = true;
+        }
     }
 
     private void ResetHistoryPageSwitchVisuals()
@@ -378,7 +377,6 @@ public partial class GameStatistics : CanvasLayer
 
         if (VisualContent != null)
         {
-            VisualContent.Position = Vector2.Zero;
             VisualContent.Modulate = VisualContent.Modulate with { A = 1f };
         }
 
@@ -409,111 +407,36 @@ public partial class GameStatistics : CanvasLayer
             SeedCopyButton.Text = I18n.Tr("ui.statistics.seed_placeholder", "Seed: -");
     }
 
-    private void RefreshSummary()
-    {
+    private void RefreshSummary() {
         ClearChildren(SummaryRow);
-
-        if (_currentRecord == null)
-        {
-            if (DescriptionLabel != null)
-                DescriptionLabel.Text = I18n.Tr(
-                    "ui.statistics.no_history_description",
-                    "暂无历史游戏记录。本局结束后会在这里留下路线、遗物和技能快照。"
-                );
-
-            AddSummaryChip(I18n.Tr("ui.statistics.no_records", "暂无记录"), Colors.White, new Color(0.20f, 0.25f, 0.32f, 0.88f));
+        if (_currentRecord == null) {
+            DescriptionLabel.Text = I18n.Tr("ui.statistics.no_history_description", "暂无历史游戏记录。本局结束后会在这里留下路线、遗物和技能快照。");
+            SummaryRow.AddChild(CreateEmptyLabel(I18n.Tr("ui.statistics.no_records", "暂无记录")));
             return;
         }
-
-        if (DescriptionLabel != null)
-        {
-            DescriptionLabel.Text = I18n.Format(
-                "ui.statistics.run_description",
-                "第 {run} 局 · {result} · 鼠标移到节点、遗物或技能上查看细节",
-                ("run", _currentRecord.RunIndex),
-                ("result", _currentRecord.Victory ? I18n.Tr("ui.common.victory", "胜利") : I18n.Tr("ui.common.defeat", "战败"))
-            );
-        }
-
-        AppendHistoryProgressToDescription();
-
-        AddSummaryChip(
-            _currentRecord.Victory ? I18n.Tr("ui.common.victory", "胜利") : I18n.Tr("ui.common.defeat", "战败"),
-            Colors.White,
-            _currentRecord.Victory
-                ? new Color(0.12f, 0.42f, 0.30f, 0.92f)
-                : new Color(0.48f, 0.18f, 0.16f, 0.92f)
-        );
-        AddSummaryChip(
-            I18n.Format("ui.common.difficulty_value", "难度 {value}", ("value", _currentRecord.Difficulty)),
-            Colors.White,
-            new Color(0.22f, 0.18f, 0.36f, 0.92f)
-        );
-        AddSummaryChip(
-            I18n.Format(
-                "ui.statistics.duration_chip",
-                "时长 {value}",
-                ("value", FormatRunDuration(_currentRecord.SessionPlaySeconds))
-            ),
-            Colors.White,
-            new Color(0.15f, 0.25f, 0.34f, 0.92f),
-            148f
-        );
-        AddSummaryChip(I18n.Format("ui.statistics.nodes_chip", "节点 {value}", ("value", _currentRecord.NodesVisited)), Colors.White, new Color(0.12f, 0.19f, 0.28f, 0.92f));
-        AddSummaryChip(I18n.Format("ui.statistics.enemies_chip", "敌人 {value}", ("value", _currentRecord.EnemiesDefeated)), Colors.White, new Color(0.28f, 0.16f, 0.14f, 0.92f));
-        AddSummaryChip(I18n.Format("ui.statistics.elites_chip", "精英 {value}", ("value", _currentRecord.EliteDefeated)), Colors.White, new Color(0.30f, 0.22f, 0.12f, 0.92f));
-        int bossNodes =
-            _currentRecord.NodeRecords?.Count(record => record?.NodeType == LevelNode.LevelType.Boss)
-            ?? 0;
-        AddSummaryChip(
-            bossNodes > _currentRecord.BossDefeated
-                ? I18n.Format(
-                    "ui.statistics.boss_chip_progress",
-                    "Boss {defeated}/{total}",
-                    ("defeated", _currentRecord.BossDefeated),
-                    ("total", bossNodes)
-                )
-                : I18n.Format(
-                    "ui.statistics.boss_chip",
-                    "Boss {value}",
-                    ("value", _currentRecord.BossDefeated)
-                ),
-            Colors.White,
-            new Color(0.34f, 0.14f, 0.26f, 0.92f)
-        );
-        AddSummaryChip(I18n.Format("ui.statistics.coins_chip", "电力币 {value}", ("value", _currentRecord.ElectricityCoinGained)), Colors.White, new Color(0.18f, 0.28f, 0.40f, 0.92f));
-        AddSummaryChip(I18n.Format("ui.statistics.relics_chip", "遗物 {value}", ("value", _currentRecord.RelicGained)), Colors.White, new Color(0.32f, 0.24f, 0.12f, 0.92f));
-        AddSummaryChip(I18n.Format("ui.statistics.talents_chip", "天赋 {value}", ("value", CountRunTalents(_currentRecord))), Colors.White, new Color(0.26f, 0.18f, 0.36f, 0.92f));
+        DescriptionLabel.Text = I18n.Tr("ui.archive.detail_hint", "每一次选择，都留下一条不同的轨迹。");
+        AddArchiveMetric(I18n.Tr("ui.archive.result", "结果"),
+            I18n.Tr(_currentRecord.Victory ? "ui.common.victory" : "ui.common.defeat", _currentRecord.Victory ? "胜利" : "战败"),
+            _currentRecord.Victory ? new Color(0.68f, 0.83f, 0.78f) : new Color(0.86f, 0.73f, 0.72f));
+        AddArchiveMetric(I18n.Tr("ui.archive.difficulty", "难度"), _currentRecord.Difficulty.ToString("00"));
+        AddArchiveMetric(I18n.Tr("ui.archive.duration", "航行时长"), FormatArchiveDuration(_currentRecord.SessionPlaySeconds));
+        AddArchiveMetric(I18n.Tr("ui.archive.nodes", "经过节点"), _currentRecord.NodesVisited.ToString());
+        AddArchiveMetric(I18n.Tr("ui.archive.enemies", "击败敌人"), _currentRecord.EnemiesDefeated.ToString());
+        AddArchiveMetric(I18n.Tr("ui.archive.elites", "击败精英"), _currentRecord.EliteDefeated.ToString());
+        int bossNodes = _currentRecord.NodeRecords?.Count(record => record?.NodeType == LevelNode.LevelType.Boss) ?? 0;
+        AddArchiveMetric("BOSS", bossNodes > _currentRecord.BossDefeated ? $"{_currentRecord.BossDefeated} / {bossNodes}" : _currentRecord.BossDefeated.ToString());
+        AddArchiveMetric(I18n.Tr("ui.archive.coins", "获得电力币"), _currentRecord.ElectricityCoinGained.ToString());
+        AddArchiveMetric(I18n.Tr("ui.common.relics", "遗物"), _currentRecord.RelicGained.ToString());
+        AddArchiveMetric(I18n.Tr("ui.archive.talents", "天赋"), CountRunTalents(_currentRecord).ToString());
     }
 
-    private void AddSummaryChip(string text, Color fontColor, Color bgColor, float minWidth = 104f)
-    {
-        if (SummaryRow == null)
-            return;
-
-        var label = CreateLabel(text, 19, fontColor, HorizontalAlignment.Center);
-        label.CustomMinimumSize = new Vector2(Math.Max(minWidth, EstimateSummaryChipWidth(text)), 34f);
-        label.VerticalAlignment = VerticalAlignment.Center;
-        SummaryRow.AddChild(label);
-    }
-
-    private static float EstimateSummaryChipWidth(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return 104f;
-
-        float width = 24f;
-        foreach (char c in text)
-        {
-            if (char.IsWhiteSpace(c))
-                width += 6f;
-            else if (c <= 0x7f)
-                width += 11f;
-            else
-                width += 19f;
-        }
-
-        return width;
+    private void AddArchiveMetric(string caption, string value, Color? color = null) {
+        var column = new VBoxContainer { CustomMinimumSize = new Vector2(150f, 66f), SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+        column.AddThemeConstantOverride("separation", 6);
+        column.AddChild(CreateLabel(caption, 14, new Color(0.64f, 0.70f, 0.75f)));
+        var number = CreateLabel(value, 27, color ?? new Color(0.88f, 0.93f, 0.96f));
+        column.AddChild(number);
+        SummaryRow.AddChild(column);
     }
 
     private void AppendHistoryProgressToDescription()
@@ -557,7 +480,7 @@ public partial class GameStatistics : CanvasLayer
             };
             row.AddThemeConstantOverride("separation", 14);
 
-            var regionLabel = CreateLabel(I18n.Format("ui.statistics.region", "区域 {index}", ("index", group.Key + 1)), 18, new Color(0.72f, 0.84f, 0.94f, 0.84f));
+            var regionLabel = CreateLabel(I18n.Format("ui.statistics.region", "区域 {index}", ("index", group.Key + 1)), 17, new Color(0.78f, 0.8f, 0.86f, 0.92f));
             regionLabel.CustomMinimumSize = new Vector2(72f, NodeGridCellHeight);
             regionLabel.VerticalAlignment = VerticalAlignment.Center;
             row.AddChild(regionLabel);
@@ -580,6 +503,14 @@ public partial class GameStatistics : CanvasLayer
 
         foreach (var record in records.Where(record => record != null))
         {
+            if (line.GetChildCount() > 0) {
+                line.AddChild(new ColorRect {
+                    CustomMinimumSize = new Vector2(12f, 1f),
+                    SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+                    MouseFilter = Control.MouseFilterEnum.Ignore,
+                    Color = new Color(0.73f, 0.80f, 0.84f, 0.25f),
+                });
+            }
             var cell = new CenterContainer
             {
                 CustomMinimumSize = new Vector2(NodeGridCellMinWidth, NodeGridCellHeight),
@@ -612,20 +543,30 @@ public partial class GameStatistics : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
 
-        Color color = GetNodeTypeColor(record.NodeType);
+        Color color = GetNodeTypeColor(record.NodeType).Lerp(new Color(0.79f, 0.84f, 0.87f), 0.58f);
         if (IsIncompleteNodeRecord(record))
             color = color.Lerp(Colors.White, 0.28f);
+
         panel.AddThemeStyleboxOverride(
             "panel",
             CreateStyleBox(
-                color,
+                new Color(0.15f, 0.17f, 0.19f, 0.4f),
                 IsIncompleteNodeRecord(record)
-                    ? new Color(1f, 0.82f, 0.35f, 0.95f)
-                    : new Color(1f, 1f, 1f, 0.66f),
-                4,
-                IsIncompleteNodeRecord(record) ? 3 : 2
+                    ? new Color(0.9f, 0.92f, 0.96f, 0.95f)
+                    : color with { A = 0.90f },
+                0,
+                IsIncompleteNodeRecord(record) ? 2 : 1
             )
         );
+
+        var innerDot = new ColorRect
+        {
+            Color = color with { A = 0.95f },
+            Size = new Vector2(5f, 5f),
+            Position = new Vector2((NodeDiamondSize - 5f) * 0.5f, (NodeDiamondSize - 5f) * 0.5f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddChild(innerDot);
 
         panel.MouseEntered += () =>
         {
@@ -694,6 +635,9 @@ public partial class GameStatistics : CanvasLayer
         if (countLabel != null)
             countLabel.Text = Relic.FormatCountLabel(record.Count);
 
+        if (icon.GetNodeOrNull<Panel>("Panel") is { } border) {
+            border.AddThemeStyleboxOverride("panel", CreateStyleBox(new Color(0, 0, 0, 0), new Color(0.76f, 0.82f, 0.87f, 0.5f), 0, 1));
+        }
         string tooltip = BuildRelicTooltip(record);
         icon.MouseEntered += () =>
         {
@@ -780,20 +724,20 @@ public partial class GameStatistics : CanvasLayer
     {
         var button = new Button
         {
-            CustomMinimumSize = new Vector2(0f, 35f),
+            CustomMinimumSize = new Vector2(0f, 46f),
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             ToggleMode = true,
             Flat = true,
-            FocusMode = Control.FocusModeEnum.None,
+            FocusMode = Control.FocusModeEnum.All,
             Text = string.IsNullOrWhiteSpace(character?.CharacterName)
                 ? I18n.Format("ui.common.character_n", "角色 {index}", ("index", index + 1))
                 : character.CharacterName,
         };
         button.AddThemeFontSizeOverride("font_size", 18);
-        button.AddThemeColorOverride("font_color", new Color(0.82f, 0.86f, 0.94f, 0.72f));
-        button.AddThemeColorOverride("font_hover_color", Colors.White);
-        button.AddThemeColorOverride("font_pressed_color", Colors.White);
-        button.AddThemeColorOverride("font_focus_color", Colors.White);
+        button.AddThemeColorOverride("font_color", new Color(0.58f, 0.66f, 0.78f, 0.85f));
+        button.AddThemeColorOverride("font_hover_color", new Color(0.95f, 0.97f, 1f));
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.88f, 0.96f, 0.96f));
+        button.AddThemeColorOverride("font_focus_color", new Color(0.95f, 0.97f, 1f));
 
         int capturedIndex = index;
         button.Pressed += () => SelectCharacter(capturedIndex);
@@ -824,7 +768,7 @@ public partial class GameStatistics : CanvasLayer
             var button = _characterButtons[i];
             bool active = i == _selectedCharacterIndex;
             button.SetPressedNoSignal(active);
-            button.Modulate = active ? Colors.White : new Color(0.82f, 0.86f, 0.94f, 0.68f);
+            button.Modulate = active ? Colors.White : new Color(0.85f, 0.89f, 0.93f, 0.85f);
         }
 
         UpdateCharacterSelectorPosition(animateSelector);
@@ -922,6 +866,9 @@ public partial class GameStatistics : CanvasLayer
         if (SkillColumns == null)
             return;
 
+        float columnMinHeight = GetSkillColumnMinimumHeight();
+        SkillColumns.CustomMinimumSize = new Vector2(0f, columnMinHeight);
+
         var characters = GetCharacterRecords();
         if (characters.Count == 0)
         {
@@ -932,31 +879,29 @@ public partial class GameStatistics : CanvasLayer
         _selectedCharacterIndex = Mathf.Clamp(_selectedCharacterIndex, 0, characters.Count - 1);
         var character = characters[_selectedCharacterIndex];
 
-        SkillColumns.AddChild(CreateCharacterSnapshotColumn(character));
+        SkillColumns.AddChild(CreateCharacterSnapshotColumn(character, columnMinHeight));
         foreach (var skillType in _skillTypes)
-            SkillColumns.AddChild(CreateSkillTypeColumn(character, skillType));
+            SkillColumns.AddChild(CreateSkillTypeColumn(character, skillType, columnMinHeight));
     }
 
-    private Control CreateCharacterSnapshotColumn(RunHistoryCharacterSkillRecord character)
+    private Control CreateCharacterSnapshotColumn(
+        RunHistoryCharacterSkillRecord character,
+        float columnMinHeight
+    )
     {
-        var column = new VBoxContainer
-        {
-            CustomMinimumSize = new Vector2(190f, 170f),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            MouseFilter = Control.MouseFilterEnum.Stop,
-        };
-        column.AddThemeConstantOverride("separation", 8);
+        var panel = CreateColumnCard(new Vector2(200f, columnMinHeight), out var column);
+        column.AddThemeConstantOverride("separation", 6);
 
         var title = CreateLabel(
             I18n.Tr("ui.statistics.final_state", "最终状态"),
-            22,
-            new Color(1.00f, 0.86f, 0.48f, 1f),
+            21,
+            new Color(0.85f, 0.90f, 0.93f),
             HorizontalAlignment.Center
         );
-        title.CustomMinimumSize = new Vector2(0f, 28f);
+        title.CustomMinimumSize = new Vector2(0f, 26f);
         title.VerticalAlignment = VerticalAlignment.Center;
         column.AddChild(title);
+        column.AddChild(CreateTitleUnderline(new Color(0.79f, 0.85f, 0.89f, 0.4f)));
 
         column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.life_line", "生命 {value}", ("value", character.MaxLife)), new Color(0.96f, 0.92f, 0.82f, 0.96f)));
         column.AddChild(CreateCharacterStatLine(I18n.Format("ui.statistics.power_line", "力量 {value}", ("value", character.Power)), new Color(1.00f, 0.56f, 0.42f, 0.96f)));
@@ -973,23 +918,70 @@ public partial class GameStatistics : CanvasLayer
         );
 
         string tooltip = BuildCharacterSnapshotTooltip(character);
-        column.MouseEntered += () =>
+        panel.MouseEntered += () =>
         {
-            TweenHover(column, 1.02f);
+            TweenHover(panel, 1.02f);
             ShowTooltip(tooltip);
         };
-        column.MouseExited += () =>
+        panel.MouseExited += () =>
         {
-            TweenHover(column, 1f);
+            TweenHover(panel, 1f);
             HideTooltip();
         };
 
-        return column;
+        return panel;
+    }
+
+    private PanelContainer CreateColumnCard(Vector2 minSize, out VBoxContainer column)
+    {
+        var panel = new PanelContainer
+        {
+            CustomMinimumSize = minSize,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Stop,
+        };
+        var columnStyle = CreateStyleBox(new Color(0, 0, 0, 0), new Color(0.72f, 0.78f, 0.82f, 0.20f), 0, 0);
+        columnStyle.BorderWidthLeft = 1;
+        panel.AddThemeStyleboxOverride("panel", columnStyle);
+
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", 12);
+        margin.AddThemeConstantOverride("margin_top", 10);
+        margin.AddThemeConstantOverride("margin_right", 12);
+        margin.AddThemeConstantOverride("margin_bottom", 12);
+        panel.AddChild(margin);
+
+        column = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        };
+        margin.AddChild(column);
+        return panel;
+    }
+
+    private static Control CreateTitleUnderline(Color color, float width = 40f)
+    {
+        var row = new HBoxContainer
+        {
+            Alignment = BoxContainer.AlignmentMode.Center,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        var bar = new ColorRect
+        {
+            Color = color,
+            CustomMinimumSize = new Vector2(width, 2f),
+            SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        row.AddChild(bar);
+        return row;
     }
 
     private static Label CreateCharacterStatLine(string text, Color color)
     {
-        var label = CreateLabel(text, 18, color, HorizontalAlignment.Center);
+        var label = CreateLabel(text, 17, color.Lerp(new Color(0.82f, 0.87f, 0.91f), 0.70f), HorizontalAlignment.Left);
         label.CustomMinimumSize = new Vector2(0f, 24f);
         label.VerticalAlignment = VerticalAlignment.Center;
         return label;
@@ -997,16 +989,13 @@ public partial class GameStatistics : CanvasLayer
 
     private Control CreateSkillTypeColumn(
         RunHistoryCharacterSkillRecord character,
-        Skill.SkillTypes skillType
+        Skill.SkillTypes skillType,
+        float columnMinHeight
     )
     {
-        var column = new VBoxContainer
-        {
-            CustomMinimumSize = new Vector2(0f, 170f),
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-        };
-        column.AddThemeConstantOverride("separation", 8);
+        var panel = CreateColumnCard(new Vector2(0f, columnMinHeight), out var column);
+        panel.MouseFilter = Control.MouseFilterEnum.Ignore;
+        column.AddThemeConstantOverride("separation", 6);
 
         var typeRecord = character
             .SkillTypeRecords?.FirstOrDefault(record => record != null && record.SkillType == skillType);
@@ -1014,18 +1003,20 @@ public partial class GameStatistics : CanvasLayer
         var skillIds = typeRecord?.SkillIds ?? new List<SkillID>();
         int skillCount = CountSkillTypeEntries(skillNames, skillIds);
 
-        var title = CreateLabel($"{GetSkillTypeLabel(skillType)} {skillCount}", 22, GetSkillTypeColor(skillType), HorizontalAlignment.Center);
-        title.CustomMinimumSize = new Vector2(0f, 28f);
+        Color typeColor = GetSkillTypeColor(skillType).Lerp(new Color(0.83f, 0.87f, 0.90f), 0.65f);
+        var title = CreateLabel($"{GetSkillTypeLabel(skillType)} {skillCount}", 21, typeColor, HorizontalAlignment.Center);
+        title.CustomMinimumSize = new Vector2(0f, 26f);
         title.VerticalAlignment = VerticalAlignment.Center;
         column.AddChild(title);
+        column.AddChild(CreateTitleUnderline(typeColor with { A = 0.55f }));
 
-        var flow = new VFlowContainer
+        var flow = new VBoxContainer
         {
             SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
         };
         flow.AddThemeConstantOverride("h_separation", 10);
-        flow.AddThemeConstantOverride("v_separation", 8);
+        flow.AddThemeConstantOverride("separation", 8);
 
         if (skillNames.Count == 0 && skillIds.Count == 0)
         {
@@ -1040,7 +1031,31 @@ public partial class GameStatistics : CanvasLayer
         }
 
         column.AddChild(flow);
-        return column;
+        return panel;
+    }
+
+    private float GetSkillColumnMinimumHeight()
+    {
+        int maximumSkillCount = 1;
+        foreach (var character in GetCharacterRecords())
+        {
+            foreach (var skillType in _skillTypes)
+            {
+                var typeRecord = character
+                    .SkillTypeRecords?
+                    .FirstOrDefault(record => record != null && record.SkillType == skillType);
+                int displayCount = BuildSkillDisplayEntries(
+                    typeRecord?.SkillNames ?? new List<string>(),
+                    typeRecord?.SkillIds ?? new List<SkillID>()
+                ).Count;
+                maximumSkillCount = Math.Max(maximumSkillCount, displayCount);
+            }
+        }
+
+        float skillListHeight =
+            maximumSkillCount * SkillPillHeight
+            + (maximumSkillCount - 1) * SkillPillSeparation;
+        return Math.Max(MinimumSkillColumnHeight, SkillColumnFixedHeight + skillListHeight);
     }
 
     private static int CountSkillTypeEntries(List<string> skillNames, List<SkillID> skillIds)
@@ -1099,36 +1114,66 @@ public partial class GameStatistics : CanvasLayer
         SkillID? skillId
     )
     {
-        var row = new HBoxContainer
+        Color typeColor = GetSkillTypeColor(type).Lerp(new Color(0.83f, 0.87f, 0.90f), 0.65f);
+
+        var style = CreateStyleBox(
+            new Color(0.78f, 0.84f, 0.88f, 0.025f),
+            new Color(0.58f, 0.6f, 0.66f, 0.22f),
+            0,
+            1
+        );
+        style.BorderWidthLeft = 0;
+        style.BorderWidthRight = 0;
+        style.BorderWidthTop = 0;
+        style.ContentMarginTop = 3f;
+        style.ContentMarginBottom = 3f;
+        style.ContentMarginRight = 10f;
+
+        var panel = new PanelContainer
         {
             CustomMinimumSize = new Vector2(150f, 36f),
             MouseFilter = Control.MouseFilterEnum.Stop,
         };
+        panel.AddThemeStyleboxOverride("panel", style);
+
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 8);
+        panel.AddChild(row);
+
+        var accent = new ColorRect
+        {
+            Color = typeColor with { A = 0.9f },
+            CustomMinimumSize = new Vector2(2f, 0f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        row.AddChild(accent);
 
         var label = CreateLabel(
             string.IsNullOrWhiteSpace(skillName) ? I18n.Tr("ui.common.unknown_skill", "未知技能") : skillName,
-            18,
-            new Color(0.92f, 0.96f, 1f, 0.94f)
+            17,
+            new Color(0.90f, 0.91f, 0.94f, 0.95f)
         );
-        label.CustomMinimumSize = new Vector2(142f, 34f);
+        label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.ClipText = false;
         label.VerticalAlignment = VerticalAlignment.Center;
         label.MouseFilter = Control.MouseFilterEnum.Ignore;
         row.AddChild(label);
 
         string tooltip = BuildSkillTooltip(type, skillName, skillId);
-        row.GuiInput += @event => OnSkillPillGuiInput(@event, character, skillName, skillId);
-        row.MouseEntered += () =>
+        panel.GuiInput += @event => OnSkillPillGuiInput(@event, character, skillName, skillId);
+        panel.MouseEntered += () =>
         {
-            TweenHover(row, 1.04f);
+            TweenHover(panel, 1.04f);
             ShowTooltip(tooltip);
         };
-        row.MouseExited += () =>
+        panel.MouseExited += () =>
         {
-            TweenHover(row, 1f);
+            TweenHover(panel, 1f);
             HideTooltip();
         };
 
-        return row;
+        return panel;
     }
 
     private void OnSkillPillGuiInput(
@@ -1244,8 +1289,6 @@ public partial class GameStatistics : CanvasLayer
         Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
         _skillCardPreviewRoot.Position = Vector2.Zero;
         _skillCardPreviewRoot.Size = viewportSize;
-        if (_skillCardPreviewDim != null && GodotObject.IsInstanceValid(_skillCardPreviewDim))
-            _skillCardPreviewDim.Size = viewportSize;
     }
 
     private Vector2 GetCenteredSkillCardPreviewPosition()
@@ -1593,7 +1636,7 @@ public partial class GameStatistics : CanvasLayer
 
     private static Label CreateEmptyLabel(string text)
     {
-        var label = CreateLabel(text, 18, new Color(0.74f, 0.82f, 0.90f, 0.62f), HorizontalAlignment.Center);
+        var label = CreateLabel(text, 17, new Color(0.67f, 0.73f, 0.79f, 0.86f), HorizontalAlignment.Center);
         label.CustomMinimumSize = new Vector2(160f, 42f);
         label.VerticalAlignment = VerticalAlignment.Center;
         return label;
@@ -1616,7 +1659,7 @@ public partial class GameStatistics : CanvasLayer
         label.AddThemeFontSizeOverride("font_size", fontSize);
         label.AddThemeColorOverride("font_color", color);
         label.AddThemeColorOverride("font_outline_color", new Color(0.01f, 0.02f, 0.04f, 0.75f));
-        label.AddThemeConstantOverride("outline_size", 2);
+        label.AddThemeConstantOverride("outline_size", 0);
         return label;
     }
 
@@ -1635,10 +1678,10 @@ public partial class GameStatistics : CanvasLayer
             BorderWidthTop = borderWidth,
             BorderWidthRight = borderWidth,
             BorderWidthBottom = borderWidth,
-            CornerRadiusTopLeft = radius,
-            CornerRadiusTopRight = radius,
-            CornerRadiusBottomRight = radius,
-            CornerRadiusBottomLeft = radius,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomRight = 0,
+            CornerRadiusBottomLeft = 0,
         };
     }
 
@@ -1750,13 +1793,20 @@ public partial class GameStatistics : CanvasLayer
     private void PlayIntro()
     {
         _transitionTween?.Kill();
+        AnimateArchiveChrome(true);
         if (BG != null)
             BG.Modulate = BG.Modulate with { A = 0f };
         if (CenterPanel != null)
         {
-            CenterPanel.Scale = new Vector2(0.96f, 0.96f);
+            CenterPanel.Scale = Vector2.One;
             CenterPanel.Modulate = CenterPanel.Modulate with { A = 0f };
             CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
+        }
+        if (FrameDecor != null)
+        {
+            FrameDecor.Scale = new Vector2(0.96f, 0.96f);
+            FrameDecor.Modulate = FrameDecor.Modulate with { A = 0f };
+            FrameDecor.PivotOffset = FrameDecor.Size * 0.5f;
         }
 
         _transitionTween = CreateTween();
@@ -1770,12 +1820,18 @@ public partial class GameStatistics : CanvasLayer
             _transitionTween.TweenProperty(CenterPanel, "scale", Vector2.One, 0.22f);
             _transitionTween.TweenProperty(CenterPanel, "modulate:a", 1f, 0.18f);
         }
+        if (FrameDecor != null)
+        {
+            _transitionTween.TweenProperty(FrameDecor, "scale", Vector2.One, 0.22f);
+            _transitionTween.TweenProperty(FrameDecor, "modulate:a", 1f, 0.18f);
+        }
     }
 
     private void Close()
     {
         HideTooltip();
         HideSkillCardPreview();
+        AnimateArchiveChrome(false);
         _transitionTween?.Kill();
         _characterSelectorTween?.Kill();
         _historyPageTween?.Kill();
@@ -1794,8 +1850,13 @@ public partial class GameStatistics : CanvasLayer
             _transitionTween.TweenProperty(BG, "modulate:a", 0f, 0.14f);
         if (CenterPanel != null)
         {
-            _transitionTween.TweenProperty(CenterPanel, "scale", new Vector2(0.98f, 0.98f), 0.14f);
+            _transitionTween.TweenProperty(CenterPanel, "scale", Vector2.One, 0.14f);
             _transitionTween.TweenProperty(CenterPanel, "modulate:a", 0f, 0.14f);
+        }
+        if (FrameDecor != null)
+        {
+            _transitionTween.TweenProperty(FrameDecor, "scale", new Vector2(0.98f, 0.98f), 0.14f);
+            _transitionTween.TweenProperty(FrameDecor, "modulate:a", 0f, 0.14f);
         }
         _transitionTween.Finished += QueueFree;
     }

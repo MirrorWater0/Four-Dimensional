@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class LevelProgress : Control
@@ -12,8 +13,8 @@ public partial class LevelProgress : Control
     private const int MaxMapHeight = 4; // Maximum vertical slots per stage
     private const int BossSlot = 1;
     private const int PathCount = 6;
-    private const int MinEliteNodes = 4;
-    private const int MaxEliteNodes = 6;
+    private const int MinEliteNodes = 5;
+    private const int MaxEliteNodes = 7;
     private const int MinShopNodes = 2;
     private const int MaxShopNodes = 5;
     private const int MinRestNodes = 2;
@@ -504,6 +505,19 @@ public partial class LevelProgress : Control
         _manualLockSawBlockingUi = false;
         RefreshNodeInteractivity();
         CallDeferred(nameof(RefreshNodeInteractivity));
+    }
+
+    /// <summary>
+    /// Passive diagnostic for map-node pointer routing. It injects only synthetic mouse-motion
+    /// events through the current viewport and never presses a node button.
+    /// </summary>
+    public Task<IReadOnlyList<MapNodePointerProbe.Result>> RunPointerInputProbeAsync()
+    {
+        IEnumerable<LevelNode> nodes = _mapNodes
+            .SelectMany(layer => layer)
+            .Where(node => node != null)
+            .ToArray();
+        return MapNodePointerProbe.RunAsync(this, nodes);
     }
 
     private void RefreshNodeInteractivity()

@@ -2,7 +2,7 @@
     "skills":  {
                    "WarThrallAttack":  {
                                            "Name":  "冲锋陷阵",
-                                           "BaseDamage":  5,
+                                           "BaseDamage":  7,
                                            "SelfPowerGain":  1
                                        }
                }

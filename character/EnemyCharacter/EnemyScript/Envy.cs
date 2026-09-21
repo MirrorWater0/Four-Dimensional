@@ -97,7 +97,7 @@ public partial class EnvyEliteRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Envy.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Envy.tscn");
 
-        MaxLife = 206;
+        MaxLife = 207;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -111,7 +111,7 @@ public partial class EnvyEliteRegedit : EnemyRegedit
 
 public partial class EnvyEliteAttack : Skill
 {
-    private const int BaseDamage = 9;
+    private const int BaseDamage = 14;
     private const int SurvivabilityDown = 2;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -147,17 +147,16 @@ public partial class EnvyEliteSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock),
             ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1), HostileTargetReference.All),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 1)),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2), BattleCardPileTarget.DiscardPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 3), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSpecial : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 18;
     private const int PowerDown = 2;
-    private const int SelfPowerGain = 2;
+    private const int SelfPowerGain = 3;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 

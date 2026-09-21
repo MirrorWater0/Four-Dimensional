@@ -263,7 +263,8 @@ public partial class Skill
 
     internal bool ShowsVoidnessKeyword => ResolvesExhaustsAtTurnEndInHand;
 
-    internal bool ShowsRetainKeyword => RetainsAtTurnEndInHand;
+    internal bool ShowsRetainKeyword =>
+        OwnerCharater?.BattleNode?.ShouldShowRetainKeyword(this) ?? RetainsAtTurnEndInHand;
 
     private int ConsumeQueuedExtraSkillExecutions()
     {
@@ -574,8 +575,8 @@ public partial class Skill
         {
             SkillTypes.Attack => 1,
             SkillTypes.Survive => 1,
-            SkillTypes.Special => 2,
-            SkillTypes.Ability => 2,
+            SkillTypes.Special => 1,
+            SkillTypes.Ability => 1,
             _ => 0,
         };
     }
@@ -1121,17 +1122,6 @@ public partial class Skill
             return;
 
         int count = Math.Min(Num, targets.Length);
-        int modifiedDamage = Math.Clamp(
-            AttackBuff.ApplyOutgoingDamageModifiers(
-                OwnerCharater,
-                damage,
-                null,
-                consumeStacks: true
-            ),
-            0,
-            9999
-        );
-
         List<Task> tasks = new();
         for (int hit = 0; hit < times; hit++)
         {
@@ -1142,12 +1132,11 @@ public partial class Skill
 
                 tasks.Add(
                     Attack(
-                        modifiedDamage,
+                        damage,
                         times: 1,
                         target: targets[i],
                         playHitEffectForFirstHit: true,
-                        delayAfterLastHit: true,
-                        applyAttackBuff: false
+                        delayAfterLastHit: true
                     )
                 );
 
@@ -1245,6 +1234,6 @@ public partial class Skill
             _ => SkillTypes.none,
         };
 
-        return skillIndex is >= 0 and <= 3;
+        return skillIndex is >= 0 and <= 4;
     }
 }

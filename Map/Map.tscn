@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
 [ext_resource type="Shader" uid="uid://dj1kegq0otds" path="res://shader/UI3.gdshader" id="8_vk5l4"]
+[ext_resource type="PackedScene" uid="uid://klvlhnk06eaa" path="res://Map/UI/Characterlife.tscn" id="9_7a0j3"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="10_svc60"]
 [ext_resource type="PackedScene" uid="uid://d3pac0pvnljwf" path="res://Map/Site/LevelProgress.tscn" id="11_vk5l4"]
 [ext_resource type="Shader" uid="uid://dsv3g87xfnouo" path="res://shader/Effect/ChangeScene.gdshader" id="12_cccvd"]
@@ -14,6 +15,7 @@
 [ext_resource type="PackedScene" uid="uid://bm2xlnsg38ttk" path="res://Map/ItemContainer.tscn" id="18_bl6si"]
 [ext_resource type="Shader" uid="uid://cinsfrhlgonxw" path="res://shader/Icon/MapPeekIcon.gdshader" id="19_mappeek"]
 [ext_resource type="Shader" uid="uid://dlgce0jik8xvd" path="res://shader/Icon/HourglassIcon.gdshader" id="20_hourglass"]
+[ext_resource type="PackedScene" uid="uid://hhmnnh1smok3" path="res://ScreenEffectOverlay.tscn" id="21_screen_effect"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
@@ -26,11 +28,7 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.44, 0.8, 1, 0.42)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+border_color = Color(0.94, 0.97900003, 1, 0.41960785)
 shadow_color = Color(0, 0, 0, 0.28)
 shadow_size = 8
 
@@ -86,7 +84,7 @@ corner_radius_bottom_left = 6
 shader = ExtResource("8_vk5l4")
 shader_parameter/rotation_speed = 3.0
 shader_parameter/scale = 1.90000002086168
-shader_parameter/color = Color(0.33599997, 0.5544, 0.84, 1)
+shader_parameter/color = Color(0.61380005, 0.66, 0.65615004, 1)
 shader_parameter/thickness = 0.01999999950874
 shader_parameter/dist2 = 0.5000000074506
 shader_parameter/dist1 = 0.70000001043084
@@ -114,32 +112,11 @@ Button/styles/normal = SubResource("StyleBoxTexture_hgu68")
 Button/styles/pressed = SubResource("StyleBoxTexture_7mxfi")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_hud_band"]
-bg_color = Color(0.007, 0.016, 0.027, 0.74)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.32, 0.68, 0.92, 0.28)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
+bg_color = Color(0.35, 0.35, 0.35, 0)
+border_width_bottom = 2
+border_color = Color(0.92, 0.92, 0.92, 1)
 shadow_color = Color(0, 0, 0, 0.26)
 shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status_panel"]
-bg_color = Color(0.018, 0.038, 0.058, 0.74)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.44, 0.82, 1, 0.45)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
-shadow_color = Color(0, 0, 0, 0.24)
-shadow_size = 4
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hourglass_icon"]
 resource_local_to_scene = true
@@ -175,41 +152,7 @@ ProgressBar/styles/background = SubResource("StyleBoxFlat_core_energy_bg")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_core_energy_fill")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_panel"]
-bg_color = Color(0.008, 0.018, 0.03, 0.78)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 0.76, 1, 0.52)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-shadow_color = Color(0, 0, 0, 0.18)
-shadow_size = 3
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_bg"]
-bg_color = Color(0.022, 0.034, 0.05, 0.92)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.52, 0.72, 0.86, 0.32)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_fill"]
-bg_color = Color(0.36, 0.93, 0.38, 0.96)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="Theme" id="Theme_party_life_bar"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_party_life_bar_bg")
-ProgressBar/styles/fill = SubResource("StyleBoxFlat_party_life_bar_fill")
+bg_color = Color(0, 0, 0, 0)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0g0qh"]
 shader = ExtResource("13_jq5q4")
@@ -306,6 +249,14 @@ script = ExtResource("1_exof5")
 InertiaStrength = 0.4
 metadata/_edit_lock_ = true
 
+[node name="ScreenEffectOverlay" parent="." unique_id=1669264291 instance=ExtResource("21_screen_effect")]
+
+[node name="DamageTint" parent="ScreenEffectOverlay" index="0"]
+visible = true
+
+[node name="HealTint" parent="ScreenEffectOverlay" index="1"]
+visible = true
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1386322302]
 environment = SubResource("Environment_cccvd")
 
@@ -319,7 +270,6 @@ metadata/_edit_lock_ = true
 
 [node name="LevelProgress" parent="." unique_id=102309754 instance=ExtResource("11_vk5l4")]
 layout_mode = 0
-mouse_filter = 1
 metadata/_edit_lock_ = true
 
 [node name="MapLabel" type="CanvasLayer" parent="." unique_id=1947191991]
@@ -711,7 +661,6 @@ offset_top = 7.0
 offset_right = 1864.0
 offset_bottom = 55.0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_status_panel")
 
 [node name="StatusMargin" type="MarginContainer" parent="PlayerResourceState/StatusPanel" unique_id=1795688238]
 layout_mode = 2
@@ -806,48 +755,8 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Body" type="VBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content" unique_id=728821303]
+[node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content" unique_id=336796229 instance=ExtResource("9_7a0j3")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 3
-
-[node name="LifeBar" type="ProgressBar" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content/Body" unique_id=1164673528]
-custom_minimum_size = Vector2(132, 11)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = SubResource("Theme_party_life_bar")
-value = 100.0
-show_percentage = false
-
-[node name="BottomRow" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content/Body" unique_id=2066754036]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="Name" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content/Body/BottomRow" unique_id=219981868]
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.92)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 14
-text = "P1"
-vertical_alignment = 1
-
-[node name="Value" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content/Body/BottomRow" unique_id=484947719]
-custom_minimum_size = Vector2(68, 0)
-layout_mode = 2
-size_flags_horizontal = 8
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.65, 1, 0.68, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 17
-text = "0/0"
-horizontal_alignment = 2
-vertical_alignment = 1
 
 [node name="PartyLifeSlot2" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=322386857]
 custom_minimum_size = Vector2(220, 58)
@@ -886,48 +795,8 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Body" type="VBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content" unique_id=1970404529]
+[node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content" unique_id=1020041966 instance=ExtResource("9_7a0j3")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 3
-
-[node name="LifeBar" type="ProgressBar" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content/Body" unique_id=776172856]
-custom_minimum_size = Vector2(132, 11)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = SubResource("Theme_party_life_bar")
-value = 100.0
-show_percentage = false
-
-[node name="BottomRow" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content/Body" unique_id=429969911]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="Name" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content/Body/BottomRow" unique_id=275300267]
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.92)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 14
-text = "P2"
-vertical_alignment = 1
-
-[node name="Value" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content/Body/BottomRow" unique_id=1625463836]
-custom_minimum_size = Vector2(68, 0)
-layout_mode = 2
-size_flags_horizontal = 8
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.65, 1, 0.68, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 17
-text = "0/0"
-horizontal_alignment = 2
-vertical_alignment = 1
 
 [node name="PartyLifeSlot3" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=186204161]
 custom_minimum_size = Vector2(220, 58)
@@ -966,48 +835,8 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Body" type="VBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content" unique_id=447296806]
+[node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content" unique_id=1310587314 instance=ExtResource("9_7a0j3")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 3
-
-[node name="LifeBar" type="ProgressBar" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content/Body" unique_id=55570215]
-custom_minimum_size = Vector2(132, 11)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = SubResource("Theme_party_life_bar")
-value = 100.0
-show_percentage = false
-
-[node name="BottomRow" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content/Body" unique_id=1804628941]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 5
-
-[node name="Name" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content/Body/BottomRow" unique_id=1525181330]
-layout_mode = 2
-size_flags_horizontal = 3
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.92)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 14
-text = "P3"
-vertical_alignment = 1
-
-[node name="Value" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content/Body/BottomRow" unique_id=361990611]
-custom_minimum_size = Vector2(68, 0)
-layout_mode = 2
-size_flags_horizontal = 8
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.65, 1, 0.68, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 17
-text = "0/0"
-horizontal_alignment = 2
-vertical_alignment = 1
 
 [node name="Difficulty" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=647921054]
 custom_minimum_size = Vector2(54, 58)
@@ -1057,14 +886,15 @@ offset_right = 50.0
 offset_bottom = 50.0
 mouse_filter = 1
 
-[node name="RelicContainer" type="GridContainer" parent="PlayerResourceState" unique_id=1026858854]
-custom_minimum_size = Vector2(50, 50)
-offset_left = 20.0
-offset_top = 84.0
-offset_right = 70.0
-offset_bottom = 134.0
+[node name="RelicContainer" type="VFlowContainer" parent="PlayerResourceState" unique_id=1026858854]
+custom_minimum_size = Vector2(310, 440)
+offset_left = 3.0
+offset_top = 75.0
+offset_right = 313.0
+offset_bottom = 625.0
+mouse_filter = 2
 theme_override_constants/h_separation = 15
-columns = 20
+theme_override_constants/v_separation = 15
 
 [node name="MapPeekButton" type="Button" parent="PlayerResourceState" unique_id=902117998]
 self_modulate = Color(1, 1, 1, 0)
@@ -1090,10 +920,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 1.0
-offset_top = 9.0
-offset_right = -15.0
-offset_bottom = -7.0
+offset_left = -15.0
+offset_top = 4.0
+offset_right = -12.0
+offset_bottom = 7.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
@@ -1140,3 +970,5 @@ position_smoothing_enabled = true
 script = ExtResource("15_dcam")
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]
+
+[editable path="ScreenEffectOverlay"]

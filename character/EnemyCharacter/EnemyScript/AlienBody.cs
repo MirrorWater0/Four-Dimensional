@@ -50,7 +50,7 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
 public partial class AlienBodyAttack : Skill
 {
-    private const int BaseDamage = 11;
+    private const int BaseDamage = 13;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -61,7 +61,11 @@ public partial class AlienBodyAttack : Skill
         return new SkillPlan(
             this,
             AttackStep(BaseDamage),
-            LowerTargetPropertyStep(PropertyType.Survivability, V("SurvivabilityLoss", 2), HostileTargetReference.AttackKey)
+            LowerTargetPropertyStep(
+                PropertyType.Survivability,
+                V("SurvivabilityLoss", 2),
+                HostileTargetReference.AttackKey
+            )
         );
     }
 }
@@ -80,7 +84,12 @@ public partial class AlienBodySurvive : Skill
         return new SkillPlan(
             this,
             BlockStep(baseBlock: BaseBlock),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2), BattleCardPileTarget.DiscardPileCards)
+            ModifyPropertyStep(PropertyType.Power, 2),
+            AddCardsStep(
+                SkillID.DazeStatus,
+                V("DazeCount", 2),
+                BattleCardPileTarget.DiscardPileCards
+            )
         );
     }
 }
@@ -93,13 +102,13 @@ public partial class AlienBodySpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "共生连携";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 13), target: HostileTargetReference.RandomPreview),
+            AttackStep(V("BaseDamage", 16), target: HostileTargetReference.RandomPreview),
             AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1)),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(

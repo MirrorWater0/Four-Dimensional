@@ -41,6 +41,25 @@ public readonly struct EventCardSelectionEntry(
 
 public partial class EventCardSelectOverlay : Control
 {
+    private static readonly Vector2 SelectionCardScale = new(0.76f, 0.76f);
+    private static readonly Vector2 SelectionCardPadding = new(9f, 12f);
+    private static readonly Vector2 SelectionCardDisplaySize =
+        CardPileOverlayUi.CardBaseSize * SelectionCardScale;
+    private static readonly Vector2 SelectionCardHolderSize =
+        SelectionCardDisplaySize + SelectionCardPadding * 2f;
+
+    private const int WideSelectionGridColumns = 6;
+    private const int MediumSelectionGridColumns = 4;
+    private const int NarrowSelectionGridColumns = 3;
+    private const int SelectionGridHSeparation = 14;
+    private const int SelectionGridVSeparation = 20;
+    private const float SelectionTopOffset = 108f;
+    private const float SelectionBottomOffset = 136f;
+    private const float SelectionActionWidth = 150f;
+    private const float SelectionActionHeight = 46f;
+    private const float SelectionActionGap = 12f;
+    private const float SelectionActionBottomOffset = 18f;
+
     public event Action<EventCardSelection> CardSelected;
     public event Action<IReadOnlyList<EventCardSelection>> CardsConfirmed;
     public event Action SelectionCanceled;
@@ -59,9 +78,19 @@ public partial class EventCardSelectOverlay : Control
     private Button _confirmButton;
     private Tween _fadeTween;
     private Tween _confirmRevealTween;
+    private Tween _scrollBounceTween;
     private bool _isAnimating;
     private bool _uiReady;
     private bool _confirmRevealReady;
+    private ScrollContainer _scrollInputTarget;
+    private VScrollBar _vScrollBar;
+    private bool _scrollBounceCheckPending;
+    private float _pendingBounceDirection;
+    private float _pendingBounceStrength;
+    private bool _smoothScrollActive;
+    private double _smoothScrollPosition;
+    private double _smoothScrollTarget;
+    private double _smoothScrollVelocity;
     private int _buildVersion;
     private int _selectionTargetCount = 1;
     private string _hintText = string.Empty;
@@ -71,18 +100,47 @@ public partial class EventCardSelectOverlay : Control
     private readonly Dictionary<SkillCard, Action> _cardPressHandlers = new();
     private readonly Dictionary<SkillCard, int> _cardEntryIndexes = new();
     private readonly Dictionary<int, SkillCard> _entryCards = new();
+    private ReadyButton _tacticsButton;
+    private bool _tacticsButtonWasVisible;
+    private bool _tacticsButtonWasDisabled;
+    private bool _tacticsButtonSuspended;
 
     public override void _Ready()
     {
+        SetProcessUnhandledInput(true);
+        SetProcess(false);
         BuildUi();
         Visible = false;
         GetViewport().SizeChanged += OnViewportSizeChanged;
+    }
+
+    public override void _Process(double delta)
+    {
+        UpdateSmoothScroll((float)delta);
+    }
+
+    public override void _UnhandledInput(InputEvent inputEvent)
+    {
+        if (!Visible || !MobilePlatform.IsCancelPress(inputEvent))
+            return;
+
+        OnCancelPressed();
+        GetViewport()?.SetInputAsHandled();
     }
 
     public override void _ExitTree()
     {
         if (GetViewport() != null)
             GetViewport().SizeChanged -= OnViewportSizeChanged;
+
+        if (_scrollInputTarget != null && GodotObject.IsInstanceValid(_scrollInputTarget))
+            _scrollInputTarget.GuiInput -= OnScrollGuiInput;
+        if (_vScrollBar != null && GodotObject.IsInstanceValid(_vScrollBar))
+            _vScrollBar.GuiInput -= OnScrollBarGuiInput;
+
+        CancelSmoothScroll();
+        CancelScrollBounce(resetOffsetTop: false);
+        RestoreTacticsButton();
         base._ExitTree();
     }
 
@@ -176,8 +234,10 @@ public partial class EventCardSelectOverlay : Control
         UpdateFillParent();
         MoveToFront();
         ZIndex = 20;
+        SuspendTacticsButton();
 
         int buildVersion = ++_buildVersion;
+        _fadeTween?.Kill();
         ClearCards();
         _ = PopulateCardsAsync(buildVersion);
 
@@ -186,8 +246,7 @@ public partial class EventCardSelectOverlay : Control
         Visible = true;
         _pileOverlayRoot.Visible = true;
         _pileOverlayRoot.Modulate = Colors.White;
-        if (_scroll != null)
-            _scroll.ScrollVertical = 0;
+        ResetScrollPosition();
 
         if (!wasVisible)
             PlayIntroAnimation();
@@ -263,7 +322,7 @@ public partial class EventCardSelectOverlay : Control
 
         _scroll.ZIndex = CardPileOverlayUi.ContentZIndex;
         CardPileOverlayUi.ConfigureCardScrollContainer(_scroll);
-        _scrollBaseOffsetTop = _scroll.OffsetTop;
+        ConfigureScrollInput();
 
         var margin = _scroll.GetNodeOrNull<MarginContainer>("Margin");
         CardPileOverlayUi.ConfigureScrollContentMargin(margin);
@@ -308,11 +367,11 @@ public partial class EventCardSelectOverlay : Control
         }
 
         if (_sectionTitle != null)
-            CardPileOverlayUi.ConfigureSectionLabel(_sectionTitle);
+            ConfigureSelectionLabel(_sectionTitle);
         if (_emptyLabel != null)
-            CardPileOverlayUi.ConfigureSectionLabel(_emptyLabel);
+            ConfigureSelectionLabel(_emptyLabel);
         if (_cardGrid != null)
-            CardPileOverlayUi.ConfigureCardGrid(_cardGrid);
+            ConfigureSelectionGrid(_cardGrid);
 
         _cancelButton =
             _pileOverlayRoot.GetNodeOrNull<Button>("PileHideButton")
@@ -365,6 +424,193 @@ public partial class EventCardSelectOverlay : Control
 
         _pileOverlayRoot.SetAnchorsPreset(LayoutPreset.FullRect);
         _pileOverlayRoot.SetOffsetsPreset(LayoutPreset.FullRect);
+        ConfigureSelectionLayout();
+    }
+
+    private void ConfigureSelectionLayout()
+    {
+        if (_scroll == null || !GodotObject.IsInstanceValid(_scroll))
+            return;
+
+        Vector2 viewportSize = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920f, 1080f);
+        float horizontalInset = Mathf.Clamp(viewportSize.X * 0.06f, 28f, 120f);
+        _scroll.OffsetLeft = horizontalInset;
+        _scroll.OffsetTop = SelectionTopOffset;
+        _scroll.OffsetRight = -horizontalInset;
+        _scroll.OffsetBottom = -SelectionBottomOffset;
+        _scrollBaseOffsetTop = _scroll.OffsetTop;
+
+        float availableWidth = Mathf.Max(1f, viewportSize.X - horizontalInset * 2f - 24f);
+        int columns = GetSelectionGridColumns(availableWidth);
+        float contentWidth = GetSelectionContentWidth(columns);
+
+        if (_pileSections != null)
+            _pileSections.CustomMinimumSize = new Vector2(contentWidth, 0f);
+        if (_selectionSection != null)
+            _selectionSection.CustomMinimumSize = new Vector2(contentWidth, 0f);
+        if (_sectionTitle != null)
+            ConfigureSelectionLabel(_sectionTitle, contentWidth);
+        if (_emptyLabel != null)
+            ConfigureSelectionLabel(_emptyLabel, contentWidth);
+        if (_cardGrid != null)
+            ConfigureSelectionGrid(_cardGrid, columns, contentWidth);
+
+        ConfigureSelectionActionButton(_cancelButton, confirm: false);
+        ConfigureSelectionActionButton(_confirmButton, confirm: true);
+    }
+
+    private static int GetSelectionGridColumns(float availableWidth)
+    {
+        float wideWidth = GetSelectionContentWidth(WideSelectionGridColumns);
+        float mediumWidth = GetSelectionContentWidth(MediumSelectionGridColumns);
+        return availableWidth >= wideWidth
+            ? WideSelectionGridColumns
+            : availableWidth >= mediumWidth ? MediumSelectionGridColumns : NarrowSelectionGridColumns;
+    }
+
+    private static float GetSelectionContentWidth(int columns)
+    {
+        return SelectionCardHolderSize.X * columns
+            + SelectionGridHSeparation * Mathf.Max(0, columns - 1);
+    }
+
+    private static void ConfigureSelectionLabel(Label label, float contentWidth = 0f)
+    {
+        if (label == null)
+            return;
+
+        float width = contentWidth > 0f
+            ? contentWidth
+            : GetSelectionContentWidth(WideSelectionGridColumns);
+        label.CustomMinimumSize = new Vector2(width, 32f);
+        label.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.AddThemeFontSizeOverride("font_size", 22);
+        label.AddThemeColorOverride("font_color", new Color(0.9f, 0.91f, 0.95f, 0.96f));
+        label.AddThemeColorOverride("font_outline_color", Colors.Transparent);
+        label.AddThemeConstantOverride("outline_size", 0);
+        label.MouseFilter = MouseFilterEnum.Ignore;
+    }
+
+    private static void ConfigureSelectionGrid(
+        GridContainer grid,
+        int columns = WideSelectionGridColumns,
+        float contentWidth = 0f
+    )
+    {
+        if (grid == null)
+            return;
+
+        float width = contentWidth > 0f ? contentWidth : GetSelectionContentWidth(columns);
+        grid.CustomMinimumSize = new Vector2(width, 0f);
+        grid.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
+        grid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        grid.MouseFilter = MouseFilterEnum.Ignore;
+        grid.ClipContents = false;
+        grid.Columns = columns;
+        grid.AddThemeConstantOverride("h_separation", SelectionGridHSeparation);
+        grid.AddThemeConstantOverride("v_separation", SelectionGridVSeparation);
+    }
+
+    private static void ConfigureSelectionActionButton(Button button, bool confirm)
+    {
+        if (button == null)
+            return;
+
+        float verticalOffset = confirm ? 0f : SelectionActionHeight + SelectionActionGap;
+        button.CustomMinimumSize = new Vector2(SelectionActionWidth, SelectionActionHeight);
+        button.SetAnchorsPreset(LayoutPreset.BottomWide);
+        button.AnchorLeft = 0.5f;
+        button.AnchorRight = 0.5f;
+        button.OffsetLeft = -SelectionActionWidth * 0.5f;
+        button.OffsetTop = -SelectionActionBottomOffset - SelectionActionHeight - verticalOffset;
+        button.OffsetRight = SelectionActionWidth * 0.5f;
+        button.OffsetBottom = -SelectionActionBottomOffset - verticalOffset;
+        button.AddThemeFontSizeOverride("font_size", 19);
+        button.AddThemeColorOverride("font_color", new Color(0.9f, 0.91f, 0.95f, 1f));
+        button.AddThemeColorOverride("font_hover_color", Colors.White);
+        button.AddThemeColorOverride("font_pressed_color", new Color(0.8f, 0.82f, 0.88f, 1f));
+        button.AddThemeColorOverride("font_disabled_color", new Color(0.5f, 0.52f, 0.58f, 0.64f));
+        button.AddThemeColorOverride("font_outline_color", Colors.Transparent);
+        button.AddThemeConstantOverride("outline_size", 0);
+        button.AddThemeStyleboxOverride(
+            "normal",
+            CreateSelectionButtonStyle(
+                new Color(0.045f, 0.05f, 0.06f, 0.9f),
+                new Color(0.64f, 0.66f, 0.72f, 0.5f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "hover",
+            CreateSelectionButtonStyle(
+                new Color(0.1f, 0.11f, 0.13f, 0.96f),
+                new Color(0.92f, 0.93f, 0.97f, 0.82f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "pressed",
+            CreateSelectionButtonStyle(
+                new Color(0.13f, 0.14f, 0.16f, 1f),
+                new Color(0.97f, 0.98f, 1f, 0.94f)
+            )
+        );
+        button.AddThemeStyleboxOverride(
+            "disabled",
+            CreateSelectionButtonStyle(
+                new Color(0.03f, 0.035f, 0.045f, 0.55f),
+                new Color(0.42f, 0.44f, 0.5f, 0.28f)
+            )
+        );
+    }
+
+    private static StyleBoxFlat CreateSelectionButtonStyle(Color background, Color border)
+    {
+        return new StyleBoxFlat
+        {
+            BgColor = background,
+            BorderColor = border,
+            BorderWidthLeft = 2,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomRight = 0,
+            CornerRadiusBottomLeft = 0,
+        };
+    }
+
+    private void SuspendTacticsButton()
+    {
+        if (_tacticsButtonSuspended)
+            return;
+
+        Node root = GetTree()?.Root;
+        _tacticsButton = root?.GetNodeOrNull<ReadyButton>("Map/UI/ReadyButton")
+            ?? root?.GetNodeOrNull<ReadyButton>("/root/Map/UI/ReadyButton");
+        if (_tacticsButton == null || !GodotObject.IsInstanceValid(_tacticsButton))
+            return;
+
+        _tacticsButtonWasVisible = _tacticsButton.Visible;
+        _tacticsButtonWasDisabled = _tacticsButton.Disabled;
+        _tacticsButton.Visible = false;
+        _tacticsButton.Disabled = true;
+        _tacticsButtonSuspended = true;
+    }
+
+    private void RestoreTacticsButton()
+    {
+        if (!_tacticsButtonSuspended)
+            return;
+
+        if (_tacticsButton != null && GodotObject.IsInstanceValid(_tacticsButton))
+        {
+            _tacticsButton.Visible = _tacticsButtonWasVisible;
+            _tacticsButton.Disabled = _tacticsButtonWasDisabled;
+        }
+
+        _tacticsButton = null;
+        _tacticsButtonSuspended = false;
     }
 
     private void EnsureDrawOrder()
@@ -422,6 +668,29 @@ public partial class EventCardSelectOverlay : Control
 
         _cardGrid?.QueueSort();
         _characterGroups?.QueueSort();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (buildVersion == _buildVersion)
+            ResetScrollPosition();
+    }
+
+    private void ConfigureScrollInput()
+    {
+        if (_scroll == null || !GodotObject.IsInstanceValid(_scroll))
+            return;
+
+        if (_scrollInputTarget != _scroll)
+        {
+            if (_scrollInputTarget != null && GodotObject.IsInstanceValid(_scrollInputTarget))
+                _scrollInputTarget.GuiInput -= OnScrollGuiInput;
+            if (_vScrollBar != null && GodotObject.IsInstanceValid(_vScrollBar))
+                _vScrollBar.GuiInput -= OnScrollBarGuiInput;
+
+            _scrollInputTarget = _scroll;
+            _scroll.GuiInput += OnScrollGuiInput;
+            _vScrollBar = _scroll.GetVScrollBar();
+            if (_vScrollBar != null)
+                _vScrollBar.GuiInput += OnScrollBarGuiInput;
+        }
     }
 
     private async System.Threading.Tasks.Task<int> PopulateFlatGridAsync(int buildVersion, int cardIndex)
@@ -429,12 +698,12 @@ public partial class EventCardSelectOverlay : Control
         if (_cardGrid == null)
             return cardIndex;
 
-        foreach (var entry in _entries)
+        for (int entryIndex = 0; entryIndex < _entries.Count; entryIndex++)
         {
             if (buildVersion != _buildVersion)
                 return cardIndex;
 
-            _cardGrid.AddChild(CreateCardHolder(entry, cardIndex));
+            _cardGrid.AddChild(CreateCardHolder(_entries[entryIndex], entryIndex, cardIndex));
             cardIndex++;
             if (cardIndex % 4 == 0)
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -451,13 +720,16 @@ public partial class EventCardSelectOverlay : Control
         if (_characterGroups == null)
             return cardIndex;
 
-        foreach (
-            var group in _entries.GroupBy(entry => entry.CharacterName ?? string.Empty)
-                .OrderBy(group => group.Key)
-        )
+        // Keep the grouping display in party order. More importantly, retain each entry's
+        // original index: the grouped layout does not have the same order as _entries.
+        foreach (var group in _entries.Select((entry, entryIndex) => (entry, entryIndex))
+            .GroupBy(item => item.entry.PlayerIndex)
+            .OrderBy(group => group.Key))
         {
             if (buildVersion != _buildVersion)
                 return cardIndex;
+
+            string characterName = group.First().entry.CharacterName ?? string.Empty;
 
             var groupRoot = new VBoxContainer
             {
@@ -470,10 +742,10 @@ public partial class EventCardSelectOverlay : Control
 
             var label = new Label
             {
-                Text = $"{group.Key}  {group.Count()}",
+                Text = $"{characterName}  {group.Count()}",
                 MouseFilter = MouseFilterEnum.Ignore,
             };
-            CardPileOverlayUi.ConfigureSectionLabel(label);
+            ConfigureSelectionLabel(label, GetCurrentSelectionContentWidth());
             groupRoot.AddChild(label);
 
             var grid = new GridContainer
@@ -482,15 +754,19 @@ public partial class EventCardSelectOverlay : Control
                 SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
                 SizeFlagsVertical = SizeFlags.ShrinkBegin,
             };
-            CardPileOverlayUi.ConfigureCardGrid(grid);
+            ConfigureSelectionGrid(
+                grid,
+                GetCurrentSelectionGridColumns(),
+                GetCurrentSelectionContentWidth()
+            );
             groupRoot.AddChild(grid);
 
-            foreach (var entry in group)
+            foreach (var item in group)
             {
                 if (buildVersion != _buildVersion)
                     return cardIndex;
 
-                grid.AddChild(CreateCardHolder(entry, cardIndex));
+                grid.AddChild(CreateCardHolder(item.entry, item.entryIndex, cardIndex));
                 cardIndex++;
                 if (cardIndex % 4 == 0)
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -502,9 +778,31 @@ public partial class EventCardSelectOverlay : Control
         return cardIndex;
     }
 
-    private Control CreateCardHolder(EventCardSelectionEntry entry, int cardIndex)
+    private Control CreateCardHolder(
+        EventCardSelectionEntry entry,
+        int entryIndex,
+        int cardIndex
+    )
     {
-        Control holder = CardPileOverlayUi.CreateCardHolder(out SkillCard card);
+        var holder = new Control
+        {
+            Name = "EventSelectionCardHolder",
+            CustomMinimumSize = SelectionCardHolderSize,
+            Size = SelectionCardHolderSize,
+            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
+            SizeFlagsVertical = SizeFlags.ShrinkCenter,
+            MouseFilter = MouseFilterEnum.Ignore,
+            ClipContents = false,
+            Visible = false,
+        };
+        SkillCard card = CardPileOverlayUi.SkillCardScene?.Instantiate<SkillCard>();
+        if (card == null)
+            return holder;
+
+        holder.AddChild(card);
+        card.Visible = true;
+        card.Modulate = Colors.Transparent;
+        card.PivotOffset = CardPileOverlayUi.CardBaseSize * 0.5f;
         CardPileOverlayUi.ApplyPreviewCard(
             card,
             entry.SkillId,
@@ -516,25 +814,100 @@ public partial class EventCardSelectOverlay : Control
         );
         card.ResetState();
         card.HoverHint.Visible = false;
-        card.CallDeferred(nameof(SkillCard.RestoreDisplayState));
+        card.ConfigureDisplayScale(SelectionCardScale);
+        card.PointerHoverScaleMultiplier = 1.05f;
+        card.Position = SelectionCardPadding
+            - 0.5f * (Vector2.One - SelectionCardScale) * CardPileOverlayUi.CardBaseSize;
 
         bool multiSelect = _selectionTargetCount > 1;
         card.Button.ToggleMode = multiSelect;
         card.Button.ButtonPressed = false;
         card.SetPlayableHighlight(false, instant: true);
 
-        Action handler = () => OnCardPressed(cardIndex, card);
+        Action handler = () => OnCardPressed(entryIndex, card);
         _cardPressHandlers[card] = handler;
         card.Button.Pressed += handler;
-        _cardEntryIndexes[card] = cardIndex;
-        _entryCards[cardIndex] = card;
+        _cardEntryIndexes[card] = entryIndex;
+        _entryCards[entryIndex] = card;
 
         if (entry.Count > 1)
-            holder.AddChild(CardPileOverlayUi.CreateCountBadge(entry.Count));
+            holder.AddChild(CreateSelectionCountBadge(entry.Count));
 
-        CardPileOverlayUi.PlayCardEntryAnimation(card, cardIndex);
+        PlaySelectionCardEntryAnimation(card, cardIndex);
         holder.Visible = true;
         return holder;
+    }
+
+    private int GetCurrentSelectionGridColumns()
+    {
+        Vector2 viewportSize = GetViewport()?.GetVisibleRect().Size ?? new Vector2(1920f, 1080f);
+        float horizontalInset = Mathf.Clamp(viewportSize.X * 0.06f, 28f, 120f);
+        float availableWidth = Mathf.Max(1f, viewportSize.X - horizontalInset * 2f - 24f);
+        return GetSelectionGridColumns(availableWidth);
+    }
+
+    private float GetCurrentSelectionContentWidth() =>
+        GetSelectionContentWidth(GetCurrentSelectionGridColumns());
+
+    private static Label CreateSelectionCountBadge(int count)
+    {
+        var badge = new Label
+        {
+            Text = $"x{count}",
+            OffsetLeft = SelectionCardHolderSize.X - 44f,
+            OffsetTop = SelectionCardHolderSize.Y - 38f,
+            OffsetRight = SelectionCardHolderSize.X - 4f,
+            OffsetBottom = SelectionCardHolderSize.Y - 10f,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        badge.AddThemeFontSizeOverride("font_size", 18);
+        badge.AddThemeColorOverride("font_color", new Color(0.92f, 0.93f, 0.97f, 0.96f));
+        badge.AddThemeColorOverride("font_outline_color", Colors.Transparent);
+        badge.AddThemeConstantOverride("outline_size", 0);
+        return badge;
+    }
+
+    private static void PlaySelectionCardEntryAnimation(SkillCard card, int cardIndex)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        Vector2 targetPosition = card.Position;
+        Vector2 targetScale = SelectionCardScale;
+        if (cardIndex >= CardPileOverlayUi.AnimatedCardCount)
+        {
+            card.Modulate = SkillButton.EnabledModulate;
+            card.Scale = targetScale;
+            return;
+        }
+
+        float delay = CardPileOverlayUi.CardEntryBaseDelay
+            + Math.Min(cardIndex, CardPileOverlayUi.AnimatedCardCount - 1)
+                * CardPileOverlayUi.CardEntryStagger;
+        card.Position = targetPosition + new Vector2(0f, 20f);
+        Color targetModulate = SkillButton.EnabledModulate;
+        card.Modulate = new Color(targetModulate.R, targetModulate.G, targetModulate.B, 0f);
+        card.Scale = targetScale * 0.9f;
+
+        Tween tween = card.CreateTween();
+        tween.SetParallel(true);
+        tween
+            .TweenProperty(card, "position", targetPosition, CardPileOverlayUi.CardEntryDuration)
+            .SetDelay(delay)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(card, "modulate", targetModulate, CardPileOverlayUi.CardEntryDuration)
+            .SetDelay(delay)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(card, "scale", targetScale, CardPileOverlayUi.CardEntryDuration)
+            .SetDelay(delay)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
     }
 
     private void OnCardPressed(int entryIndex, SkillCard card)
@@ -795,8 +1168,350 @@ public partial class EventCardSelectOverlay : Control
             child.QueueFree();
     }
 
+    private void OnScrollGuiInput(InputEvent @event)
+    {
+        if (@event is InputEventMouseButton mouseButton)
+        {
+            if (
+                !mouseButton.Pressed
+                || mouseButton.ButtonIndex is not MouseButton.WheelUp and not MouseButton.WheelDown
+            )
+            {
+                return;
+            }
+
+            float visualDirection = mouseButton.ButtonIndex == MouseButton.WheelUp ? 1f : -1f;
+            float scrollDirection = mouseButton.ButtonIndex == MouseButton.WheelUp ? -1f : 1f;
+            float wheelFactor = Math.Max(0.35f, Math.Abs(mouseButton.Factor));
+            if (
+                QueueSmoothScrollByDelta(
+                    scrollDirection * CardPileOverlayUi.SmoothWheelStep * wheelFactor,
+                    visualDirection,
+                    wheelFactor
+                )
+            )
+            {
+                GetViewport().SetInputAsHandled();
+            }
+
+            return;
+        }
+
+        if (@event is InputEventPanGesture panGesture)
+        {
+            float scrollDelta = panGesture.Delta.Y * CardPileOverlayUi.PanGestureMultiplier;
+            if (Mathf.Abs(scrollDelta) <= 0.01f)
+                return;
+
+            float visualDirection = scrollDelta < 0f ? 1f : -1f;
+            float bounceStrength = Mathf.Clamp(
+                Mathf.Abs(scrollDelta) / CardPileOverlayUi.SmoothWheelStep,
+                0.5f,
+                1.4f
+            );
+            if (QueueSmoothScrollByDelta(scrollDelta, visualDirection, bounceStrength))
+                GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        if (MobilePlatform.TryGetTouchScrollDelta(@event, out float touchDelta, 1.15f))
+        {
+            float visualDirection = touchDelta < 0f ? 1f : -1f;
+            float bounceStrength = Mathf.Clamp(
+                Mathf.Abs(touchDelta) / CardPileOverlayUi.SmoothWheelStep,
+                0.35f,
+                1.1f
+            );
+            if (QueueSmoothScrollByDelta(touchDelta, visualDirection, bounceStrength))
+                GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void OnScrollBarGuiInput(InputEvent @event)
+    {
+        if (
+            _smoothScrollActive
+            && @event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
+        )
+        {
+            CancelSmoothScroll();
+        }
+    }
+
+    private bool QueueSmoothScrollByDelta(
+        float scrollDelta,
+        float visualDirection,
+        float bounceStrength
+    )
+    {
+        if (!CanReceiveSmoothScroll())
+            return false;
+
+        double minValue = _vScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue();
+        double currentValue = _vScrollBar.Value;
+        if (!_smoothScrollActive)
+        {
+            _smoothScrollPosition = currentValue;
+            _smoothScrollTarget = currentValue;
+            _smoothScrollVelocity = 0d;
+        }
+
+        double requestedTarget = _smoothScrollTarget + scrollDelta;
+        double clampedTarget = Math.Clamp(requestedTarget, minValue, maxValue);
+        bool hitEdge = !Mathf.IsEqualApprox((float)requestedTarget, (float)clampedTarget);
+
+        _smoothScrollTarget = clampedTarget;
+        _smoothScrollActive =
+            Math.Abs(_smoothScrollTarget - _smoothScrollPosition)
+                > CardPileOverlayUi.SmoothScrollSnapDistance
+            || Math.Abs(_smoothScrollVelocity) > CardPileOverlayUi.SmoothScrollStopSpeed;
+        if (hitEdge)
+            QueueScrollBounceCheck(visualDirection, bounceStrength);
+
+        SetProcess(_smoothScrollActive);
+        return true;
+    }
+
+    private void UpdateSmoothScroll(float delta)
+    {
+        if (!_smoothScrollActive)
+            return;
+
+        if (!CanReceiveSmoothScroll())
+        {
+            CancelSmoothScroll();
+            return;
+        }
+
+        float frameDelta = Mathf.Clamp(delta, 0f, 0.05f);
+        if (frameDelta <= 0f)
+            return;
+
+        double minValue = _vScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue();
+        _smoothScrollTarget = Math.Clamp(_smoothScrollTarget, minValue, maxValue);
+        _smoothScrollPosition = Math.Clamp(_smoothScrollPosition, minValue, maxValue);
+
+        double distance = _smoothScrollTarget - _smoothScrollPosition;
+        if (
+            Math.Abs(distance) <= CardPileOverlayUi.SmoothScrollSnapDistance
+            && Math.Abs(_smoothScrollVelocity) <= CardPileOverlayUi.SmoothScrollStopSpeed
+        )
+        {
+            SetScrollValue(_smoothScrollTarget);
+            CancelSmoothScroll();
+            return;
+        }
+
+        _smoothScrollVelocity += distance * CardPileOverlayUi.SmoothScrollSpring * frameDelta;
+        _smoothScrollVelocity *= Math.Exp(-CardPileOverlayUi.SmoothScrollDamping * frameDelta);
+        _smoothScrollVelocity = Math.Clamp(
+            _smoothScrollVelocity,
+            -CardPileOverlayUi.SmoothScrollMaxVelocity,
+            CardPileOverlayUi.SmoothScrollMaxVelocity
+        );
+
+        double nextValue = _smoothScrollPosition + _smoothScrollVelocity * frameDelta;
+        if (nextValue <= minValue || nextValue >= maxValue)
+        {
+            nextValue = Math.Clamp(nextValue, minValue, maxValue);
+            _smoothScrollTarget = Math.Clamp(_smoothScrollTarget, minValue, maxValue);
+            _smoothScrollVelocity = 0d;
+        }
+
+        _smoothScrollPosition = nextValue;
+        SetScrollValue(_smoothScrollPosition);
+    }
+
+    private bool CanReceiveSmoothScroll()
+    {
+        return Visible
+            && _pileOverlayRoot != null
+            && GodotObject.IsInstanceValid(_pileOverlayRoot)
+            && _pileOverlayRoot.Visible
+            && _scroll != null
+            && GodotObject.IsInstanceValid(_scroll)
+            && _scroll.Modulate.A > 0.05f
+            && _vScrollBar != null
+            && GodotObject.IsInstanceValid(_vScrollBar)
+            && GetScrollMaxValue() > _vScrollBar.MinValue + 0.5d;
+    }
+
+    private void SetScrollValue(double value)
+    {
+        if (_scroll == null || !GodotObject.IsInstanceValid(_scroll))
+            return;
+
+        _scroll.ScrollVertical = Mathf.RoundToInt((float)value);
+    }
+
+    private void CancelSmoothScroll()
+    {
+        _smoothScrollActive = false;
+        _smoothScrollPosition =
+            _vScrollBar != null && GodotObject.IsInstanceValid(_vScrollBar)
+                ? _vScrollBar.Value
+                : 0d;
+        _smoothScrollTarget = _smoothScrollPosition;
+        _smoothScrollVelocity = 0d;
+        SetProcess(false);
+    }
+
+    private void ResetScrollPosition()
+    {
+        CancelSmoothScroll();
+        bool resetBounceOffset =
+            _scroll != null
+            && GodotObject.IsInstanceValid(_scroll)
+            && _scroll.Modulate.A > 0.95f;
+        CancelScrollBounce(resetBounceOffset);
+        if (_scroll == null || !GodotObject.IsInstanceValid(_scroll))
+            return;
+
+        _scroll.ScrollVertical = 0;
+        if (_vScrollBar != null && GodotObject.IsInstanceValid(_vScrollBar))
+            _vScrollBar.Value = _vScrollBar.MinValue;
+    }
+
+    private void QueueScrollBounceCheck(float visualDirection, float strength = 1f)
+    {
+        if (!CanReceiveScrollBounce())
+            return;
+
+        _pendingBounceDirection = visualDirection >= 0f ? 1f : -1f;
+        _pendingBounceStrength = Math.Max(
+            _pendingBounceStrength,
+            Math.Max(0.5f, strength)
+        );
+        if (_scrollBounceCheckPending)
+            return;
+
+        _scrollBounceCheckPending = true;
+        CallDeferred(MethodName.DeferredApplyScrollBounce);
+    }
+
+    private void DeferredApplyScrollBounce()
+    {
+        _scrollBounceCheckPending = false;
+        float visualDirection = _pendingBounceDirection;
+        float strength = _pendingBounceStrength;
+        _pendingBounceDirection = 0f;
+        _pendingBounceStrength = 0f;
+
+        if (
+            visualDirection == 0f
+            || !CanReceiveScrollBounce()
+            || !IsScrollAtEdge(visualDirection)
+        )
+        {
+            return;
+        }
+
+        PlayScrollBounce(visualDirection, strength);
+    }
+
+    private bool CanReceiveScrollBounce()
+    {
+        return Visible
+            && _pileOverlayRoot != null
+            && GodotObject.IsInstanceValid(_pileOverlayRoot)
+            && _pileOverlayRoot.Visible
+            && _scroll != null
+            && GodotObject.IsInstanceValid(_scroll)
+            && _scroll.Modulate.A > 0.05f
+            && _vScrollBar != null
+            && GodotObject.IsInstanceValid(_vScrollBar)
+            && GetScrollMaxValue() > _vScrollBar.MinValue + 0.5d;
+    }
+
+    private bool IsScrollAtEdge(float visualDirection)
+    {
+        if (_vScrollBar == null || !GodotObject.IsInstanceValid(_vScrollBar))
+            return false;
+
+        double value = _vScrollBar.Value;
+        double minValue = _vScrollBar.MinValue;
+        double maxValue = GetScrollMaxValue();
+        return visualDirection > 0f
+            ? value <= minValue + 0.5d
+            : value >= maxValue - 0.5d;
+    }
+
+    private double GetScrollMaxValue()
+    {
+        if (_vScrollBar == null || !GodotObject.IsInstanceValid(_vScrollBar))
+            return 0d;
+
+        return Math.Max(_vScrollBar.MinValue, _vScrollBar.MaxValue - _vScrollBar.Page);
+    }
+
+    private void PlayScrollBounce(float visualDirection, float strength)
+    {
+        if (_scroll == null || !GodotObject.IsInstanceValid(_scroll))
+            return;
+
+        float direction = visualDirection >= 0f ? 1f : -1f;
+        float currentOffset = _scroll.OffsetTop - _scrollBaseOffsetTop;
+        if (Math.Sign(currentOffset) != Math.Sign(direction))
+            currentOffset = 0f;
+
+        float targetOffset = Mathf.Clamp(
+            currentOffset
+                + direction
+                    * CardPileOverlayUi.ScrollBounceStep
+                    * Mathf.Clamp(strength, 0.5f, 2f),
+            -CardPileOverlayUi.ScrollBounceMaxOffset,
+            CardPileOverlayUi.ScrollBounceMaxOffset
+        );
+
+        _scrollBounceTween?.Kill();
+        _scrollBounceTween = _scroll.CreateTween();
+        _scrollBounceTween.SetParallel(false);
+        _scrollBounceTween
+            .TweenProperty(
+                _scroll,
+                "offset_top",
+                _scrollBaseOffsetTop + targetOffset,
+                CardPileOverlayUi.ScrollBounceOutDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _scrollBounceTween
+            .TweenProperty(
+                _scroll,
+                "offset_top",
+                _scrollBaseOffsetTop,
+                CardPileOverlayUi.ScrollBounceBackDuration
+            )
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        _scrollBounceTween.TweenCallback(Callable.From(() => _scrollBounceTween = null));
+    }
+
+    private void CancelScrollBounce(bool resetOffsetTop)
+    {
+        _scrollBounceCheckPending = false;
+        _pendingBounceDirection = 0f;
+        _pendingBounceStrength = 0f;
+        _scrollBounceTween?.Kill();
+        _scrollBounceTween = null;
+
+        if (
+            resetOffsetTop
+            && _scroll != null
+            && GodotObject.IsInstanceValid(_scroll)
+        )
+        {
+            _scroll.OffsetTop = _scrollBaseOffsetTop;
+        }
+    }
+
     private void ResetPresentation()
     {
+        CancelSmoothScroll();
+        CancelScrollBounce(resetOffsetTop: false);
+
         if (_mask != null)
         {
             Color maskColor = _mask.Color;
@@ -806,7 +1521,7 @@ public partial class EventCardSelectOverlay : Control
 
         if (_scroll != null)
         {
-            _scroll.Modulate = new Color(1f, 1f, 1f, 0f);
+            _scroll.Modulate = Colors.White;
             _scroll.OffsetTop = _scrollBaseOffsetTop + CardPileOverlayUi.ContentSlideOffset;
         }
 
@@ -819,6 +1534,8 @@ public partial class EventCardSelectOverlay : Control
 
     private void SetPresentationFullyVisible()
     {
+        CancelScrollBounce(resetOffsetTop: false);
+
         if (_mask != null)
         {
             Color maskColor = _mask.Color;
@@ -840,6 +1557,7 @@ public partial class EventCardSelectOverlay : Control
 
     private void PlayIntroAnimation()
     {
+        CancelScrollBounce(resetOffsetTop: false);
         _fadeTween?.Kill();
         _isAnimating = true;
         _fadeTween = _pileOverlayRoot.CreateTween();
@@ -847,22 +1565,22 @@ public partial class EventCardSelectOverlay : Control
 
         if (_mask != null)
         {
-            _fadeTween
-                .TweenProperty(_mask, "color:a", CardPileOverlayUi.MaskMaxAlpha, CardPileOverlayUi.MaskFadeInDuration)
-                .SetTrans(Tween.TransitionType.Sine)
-                .SetEase(Tween.EaseType.Out);
+            Color maskColor = _mask.Color;
+            maskColor.A = CardPileOverlayUi.MaskMaxAlpha;
+            _mask.Color = maskColor;
         }
 
         if (_scroll != null)
         {
+            _scroll.Modulate = Colors.White;
+            _scroll.OffsetTop = _scrollBaseOffsetTop + CardPileOverlayUi.ContentSlideOffset;
             _fadeTween
-                .TweenProperty(_scroll, "modulate:a", 1f, CardPileOverlayUi.ContentFadeInDuration)
-                .SetDelay(CardPileOverlayUi.ContentIntroDelay)
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
-            _fadeTween
-                .TweenProperty(_scroll, "offset_top", _scrollBaseOffsetTop, CardPileOverlayUi.ContentFadeInDuration)
-                .SetDelay(CardPileOverlayUi.ContentIntroDelay)
+                .TweenProperty(
+                    _scroll,
+                    "offset_top",
+                    _scrollBaseOffsetTop,
+                    CardPileOverlayUi.ContentMoveDuration
+                )
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.Out);
         }
@@ -882,6 +1600,8 @@ public partial class EventCardSelectOverlay : Control
     private void PlayOutroAnimation()
     {
         int hideVersion = ++_buildVersion;
+        CancelSmoothScroll();
+        CancelScrollBounce(resetOffsetTop: false);
         _fadeTween?.Kill();
         _isAnimating = true;
         _fadeTween = _pileOverlayRoot.CreateTween();
@@ -890,7 +1610,7 @@ public partial class EventCardSelectOverlay : Control
         if (_mask != null)
         {
             _fadeTween
-                .TweenProperty(_mask, "color:a", 0f, CardPileOverlayUi.MaskFadeOutDuration)
+                .TweenProperty(_mask, "color:a", 0f, CardPileOverlayUi.ContentMoveDuration)
                 .SetTrans(Tween.TransitionType.Sine)
                 .SetEase(Tween.EaseType.In);
         }
@@ -898,16 +1618,7 @@ public partial class EventCardSelectOverlay : Control
         if (_scroll != null)
         {
             _fadeTween
-                .TweenProperty(_scroll, "modulate:a", 0f, CardPileOverlayUi.ContentFadeOutDuration)
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.In);
-            _fadeTween
-                .TweenProperty(
-                    _scroll,
-                    "offset_top",
-                    _scrollBaseOffsetTop + CardPileOverlayUi.ContentSlideOffset * 0.5f,
-                    CardPileOverlayUi.ContentFadeOutDuration
-                )
+                .TweenProperty(_scroll, "modulate:a", 0f, CardPileOverlayUi.ContentMoveDuration)
                 .SetTrans(Tween.TransitionType.Cubic)
                 .SetEase(Tween.EaseType.In);
         }
@@ -951,6 +1662,7 @@ public partial class EventCardSelectOverlay : Control
     {
         _fadeTween = null;
         _isAnimating = false;
+        RestoreTacticsButton();
         Visible = false;
         _pileOverlayRoot.Visible = false;
         _selectionTargetCount = 1;

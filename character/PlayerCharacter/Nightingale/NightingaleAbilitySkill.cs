@@ -5,7 +5,6 @@ public partial class Search : AbilitySkill
     private const int SearchStacks = 1;
 
     public override string SkillName { get; set; } = "搜寻";
-
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
@@ -23,7 +22,7 @@ public partial class TempoSurge : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "疾奏";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -64,7 +63,7 @@ public partial class ShadowForm : AbilitySkill
     private const int ShadowStacks = 1;
 
     public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => 4;
+    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -84,7 +83,7 @@ public partial class EternalDarkSkill : AbilitySkill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     private const int EternalDarkStacks = 2;
     public override string SkillName { get; set; } = "永暗";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {

@@ -118,6 +118,7 @@ public partial class CharacterControl
     {
         return Visible
             && _uiBuilt
+            && !IsDebugConsoleOpen()
             && _activePlayer != null
             && GodotObject.IsInstanceValid(_activePlayer)
             && _endTurnButton != null

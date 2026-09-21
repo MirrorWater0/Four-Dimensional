@@ -3,12 +3,13 @@
 [ext_resource type="Script" uid="uid://bibl21bxys62g" path="res://battle/UIScene/Reward/Reward.cs" id="1_t3jtr"]
 [ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_f2bgc"]
 [ext_resource type="Script" uid="uid://bsmpg1cd6evq" path="res://Equipment/InventoryGrid.cs" id="3_f2bgc"]
+[ext_resource type="Shader" path="res://shader/UI/HSRPanel.gdshader" id="4_hsrpanel"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_f2bgc")
-shader_parameter/bg_color_top = Color(0.06, 0.08, 0.12, 1)
-shader_parameter/bg_color_bottom = Color(0.02, 0.02, 0.05, 1)
-shader_parameter/triangle_color = Color(0.2, 0.35, 0.6, 0.28)
+shader_parameter/bg_color_top = Color(0.16, 0.17, 0.19, 1)
+shader_parameter/bg_color_bottom = Color(0.012, 0.014, 0.018, 1)
+shader_parameter/triangle_color = Color(0.74, 0.76, 0.82, 0.12)
 shader_parameter/triangle_size_near = 0.26
 shader_parameter/triangle_size_far = 0.1
 shader_parameter/triangle_flatten_min = 0.52
@@ -17,77 +18,128 @@ shader_parameter/triangle_drift = 0.14
 shader_parameter/triangle_perspective = 0.18
 shader_parameter/edge_softness = 0.006
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frame"]
-bg_color = Color(0.06, 0.08, 0.12, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.56, 0.78, 0.96, 0.7)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_frame"]
+shader = ExtResource("4_hsrpanel")
+shader_parameter/bg_top = Color(0.065, 0.07, 0.08, 0.9)
+shader_parameter/bg_bottom = Color(0.028, 0.03, 0.036, 0.9)
+shader_parameter/border_color = Color(0.72, 0.74, 0.8, 0.22)
+shader_parameter/cut_color = Color(0.92, 0.93, 0.97, 0.8)
+shader_parameter/rect_size = Vector2(518, 929)
+shader_parameter/cut_size = 20.0
+shader_parameter/border_width = 1.0
+shader_parameter/sheen = 0.03
+shader_parameter/grid_color = Color(0.72, 0.74, 0.8, 1)
+shader_parameter/grid_spacing = 34.0
+shader_parameter/grid_alpha = 0.03
+shader_parameter/sweep_color = Color(0.9, 0.91, 0.95, 1)
+shader_parameter/sweep_alpha = 0.035
+shader_parameter/sweep_speed = 0.08
+shader_parameter/vignette_strength = 0.15
+shader_parameter/corner_accent = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_talent_frame"]
+shader = ExtResource("4_hsrpanel")
+shader_parameter/bg_top = Color(0.065, 0.07, 0.08, 0.9)
+shader_parameter/bg_bottom = Color(0.028, 0.03, 0.036, 0.9)
+shader_parameter/border_color = Color(0.72, 0.74, 0.8, 0.22)
+shader_parameter/cut_color = Color(0.92, 0.93, 0.97, 0.8)
+shader_parameter/rect_size = Vector2(840, 530)
+shader_parameter/cut_size = 18.0
+shader_parameter/border_width = 1.0
+shader_parameter/sheen = 0.03
+shader_parameter/grid_color = Color(0.72, 0.74, 0.8, 1)
+shader_parameter/grid_spacing = 34.0
+shader_parameter/grid_alpha = 0.03
+shader_parameter/sweep_color = Color(0.9, 0.91, 0.95, 1)
+shader_parameter/sweep_alpha = 0.035
+shader_parameter/sweep_speed = 0.08
+shader_parameter/vignette_strength = 0.15
+shader_parameter/corner_accent = 1.0
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner"]
-bg_color = Color(0.04, 0.06, 0.09, 0.7)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.3, 0.45, 0.6, 0.5)
+bg_color = Color(0, 0, 0, 0)
+border_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_disabled"]
-bg_color = Color(0.1, 0.12, 0.16, 0.5)
+bg_color = Color(0, 0, 0, 0)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.3, 0.4, 0.55, 0.5)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.5, 0.52, 0.58, 0.28)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(0.16, 0.24, 0.34, 0.85)
+bg_color = Color(0.12, 0.125, 0.14, 0.48)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.7, 0.9, 1, 0.9)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.93, 0.94, 0.98, 0.8)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
-bg_color = Color(0.12, 0.18, 0.26, 0.7)
+bg_color = Color(0.055, 0.06, 0.07, 0.36)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.52, 0.72, 0.92, 0.6)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.68, 0.7, 0.75, 0.42)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-bg_color = Color(0.08, 0.14, 0.22, 0.9)
+bg_color = Color(0.12, 0.125, 0.14, 0.6)
 border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.45, 0.65, 0.85, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+border_color = Color(0.88, 0.89, 0.93, 0.68)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_square_disabled"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_color = Color(0.5, 0.52, 0.58, 0.28)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_square_hover"]
+bg_color = Color(0.12, 0.125, 0.14, 0.48)
+border_width_left = 2
+border_color = Color(0.93, 0.94, 0.98, 0.8)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_square"]
+bg_color = Color(0.055, 0.06, 0.07, 0.36)
+border_width_left = 2
+border_color = Color(0.68, 0.7, 0.75, 0.42)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_square_pressed"]
+bg_color = Color(0.12, 0.125, 0.14, 0.6)
+border_width_left = 2
+border_color = Color(0.88, 0.89, 0.93, 0.68)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
 
 [sub_resource type="Theme" id="Theme_button"]
-Button/colors/font_color = Color(0.88, 0.94, 1, 1)
-Button/colors/font_disabled_color = Color(0.55, 0.65, 0.78, 0.7)
+Button/colors/font_color = Color(0.9, 0.91, 0.95, 0.9)
+Button/colors/font_disabled_color = Color(0.55, 0.57, 0.63, 0.5)
 Button/colors/font_hover_color = Color(1, 1, 1, 1)
-Button/colors/font_outline_color = Color(0.1, 0.2, 0.35, 0.5)
-Button/colors/font_pressed_color = Color(0.75, 0.9, 1, 1)
-Button/constants/outline_size = 2
+Button/colors/font_pressed_color = Color(0.84, 0.85, 0.9, 1)
+Button/constants/outline_size = 0
 Button/styles/disabled = SubResource("StyleBoxFlat_button_disabled")
 Button/styles/hover = SubResource("StyleBoxFlat_button_hover")
 Button/styles/normal = SubResource("StyleBoxFlat_button")
@@ -104,44 +156,27 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.98, 0.98, 0.99, 0.64)
+color = Color(1, 1, 1, 1)
 
 [node name="Panel" type="Panel" parent="." unique_id=356725601]
 anchors_preset = -1
-anchor_left = 0.38
-anchor_top = 0.08
-anchor_right = 0.62
-anchor_bottom = 0.92
-theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+anchor_left = 0.365
+anchor_top = 0.07
+anchor_right = 0.635
+anchor_bottom = 0.93
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
 
-[node name="Shadow" type="ColorRect" parent="Panel" unique_id=1754484886]
-z_index = -1
+[node name="FrameBG" type="ColorRect" parent="Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
-offset_top = 10.0
-offset_right = -8.0
-offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0.35)
-
-[node name="Inner" type="Panel" parent="Panel" unique_id=1789686245]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+material = SubResource("ShaderMaterial_frame")
+color = Color(1, 1, 1, 1)
 
 [node name="Inventory" type="Control" parent="Panel" unique_id=1347733859]
 clip_contents = true
@@ -160,7 +195,7 @@ CardHeight = 84.0
 CardSpacing = 12.0
 ScrollStep = 70.0
 HorizontalPadding = 26.0
-TopPadding = 96.0
+TopPadding = 104.0
 BottomPadding = 26.0
 metadata/_edit_lock_ = true
 
@@ -171,6 +206,10 @@ offset_top = 88.6
 offset_right = 413.40002
 offset_bottom = 142.6
 theme = SubResource("Theme_button")
+theme_override_styles/disabled = SubResource("StyleBoxFlat_button_square_disabled")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_square_hover")
+theme_override_styles/normal = SubResource("StyleBoxFlat_button_square")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_square_pressed")
 
 [node name="Decor" type="Control" parent="Panel" unique_id=1803058254]
 layout_mode = 1
@@ -181,54 +220,66 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Header" type="HBoxContainer" parent="Panel/Decor" unique_id=1083981846]
+[node name="MicroTitle" type="Label" parent="Panel/Decor"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 24.0
 offset_top = 18.0
 offset_right = -24.0
-offset_bottom = 50.0
+offset_bottom = 32.0
 grow_horizontal = 2
-theme_override_constants/separation = 12
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.45)
+theme_override_font_sizes/font_size = 11
+text = "BATTLE REWARD"
+horizontal_alignment = 1
+
+[node name="Header" type="HBoxContainer" parent="Panel/Decor" unique_id=1083981846]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 30.0
+offset_top = 34.0
+offset_right = -30.0
+offset_bottom = 64.0
+grow_horizontal = 2
+theme_override_constants/separation = 16
 alignment = 1
 
 [node name="HeaderLineLeft" type="ColorRect" parent="Panel/Decor/Header" unique_id=1650965803]
-custom_minimum_size = Vector2(0, 2)
+custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.58, 0.8, 1, 0.65)
+color = Color(0.72, 0.74, 0.8, 0.35)
 
 [node name="HeaderTitle" type="Label" parent="Panel/Decor/Header" unique_id=1850350095]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.95, 1, 1)
-theme_override_colors/font_shadow_color = Color(0.1, 0.2, 0.35, 0.6)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
+theme_override_colors/font_color = Color(0.92, 0.93, 0.96, 0.95)
 theme_override_font_sizes/font_size = 22
 text = "战斗奖励"
 
 [node name="HeaderLineRight" type="ColorRect" parent="Panel/Decor/Header" unique_id=1005716594]
-custom_minimum_size = Vector2(0, 2)
+custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.58, 0.8, 1, 0.65)
+color = Color(0.72, 0.74, 0.8, 0.35)
 
 [node name="HeaderHint" type="Label" parent="Panel/Decor" unique_id=1311998967]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 24.0
-offset_top = 52.0
+offset_top = 68.0
 offset_right = -24.0
-offset_bottom = 72.0
+offset_bottom = 84.0
 grow_horizontal = 2
-theme_override_colors/font_color = Color(0.75, 0.85, 0.95, 0.7)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.5)
+theme_override_font_sizes/font_size = 13
 text = "选择你的战斗奖励"
 horizontal_alignment = 1
 
@@ -237,25 +288,12 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 20.0
-offset_top = 80.0
+offset_top = 94.0
 offset_right = -20.0
-offset_bottom = 82.0
+offset_bottom = 95.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.42, 0.65, 0.88, 0.5)
-
-[node name="SkipButton" type="Button" parent="Panel/Decor" unique_id=1156214760]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -275.40002
-offset_top = 839.6
-offset_right = -175.40002
-offset_bottom = 869.6
-grow_horizontal = 0
-theme = SubResource("Theme_button")
-text = "跳过"
+color = Color(0.72, 0.74, 0.8, 0.28)
 
 [node name="BottomLine" type="ColorRect" parent="Panel/Decor" unique_id=1431859723]
 layout_mode = 1
@@ -264,110 +302,74 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 20.0
-offset_top = -28.0
+offset_top = -78.0
 offset_right = -20.0
-offset_bottom = -26.0
+offset_bottom = -77.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.42, 0.65, 0.88, 0.35)
+color = Color(0.72, 0.74, 0.8, 0.22)
 
-[node name="SideLineLeft" type="ColorRect" parent="Panel/Decor" unique_id=474247641]
+[node name="SkipButton" type="Button" parent="Panel/Decor" unique_id=1156214760]
 layout_mode = 1
-anchors_preset = 9
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 90.0
-offset_right = 18.0
-offset_bottom = -34.0
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.42, 0.65, 0.88, 0.35)
-
-[node name="SideLineRight" type="ColorRect" parent="Panel/Decor" unique_id=622351613]
-layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -18.0
-offset_top = 90.0
-offset_right = -16.0
-offset_bottom = -34.0
-grow_horizontal = 0
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.42, 0.65, 0.88, 0.35)
+offset_left = -80.0
+offset_top = -62.0
+offset_right = 80.0
+offset_bottom = -28.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = SubResource("Theme_button")
+theme_override_font_sizes/font_size = 15
+text = "跳过"
 
 [node name="CornerTL_H" type="ColorRect" parent="Panel/Decor" unique_id=318913950]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 44.0
-offset_bottom = 14.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 38.0
+offset_bottom = 15.0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.9)
+color = Color(0.74, 0.76, 0.82, 0.4)
 
 [node name="CornerTL_V" type="ColorRect" parent="Panel/Decor" unique_id=633905822]
 layout_mode = 0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = 14.0
-offset_bottom = 44.0
+offset_left = 14.0
+offset_top = 14.0
+offset_right = 15.0
+offset_bottom = 38.0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.9)
-
-[node name="CornerTR_H" type="ColorRect" parent="Panel/Decor" unique_id=6058333]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -44.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = 14.0
-grow_horizontal = 0
-mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.9)
-
-[node name="CornerTR_V" type="ColorRect" parent="Panel/Decor" unique_id=2087995625]
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -14.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = 44.0
-grow_horizontal = 0
-mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.9)
+color = Color(0.74, 0.76, 0.82, 0.4)
 
 [node name="CornerBL_H" type="ColorRect" parent="Panel/Decor" unique_id=548944679]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -28.0
-offset_right = 44.0
-offset_bottom = -26.0
+offset_left = 14.0
+offset_top = -15.0
+offset_right = 38.0
+offset_bottom = -14.0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.65)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBL_V" type="ColorRect" parent="Panel/Decor" unique_id=1649792962]
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -58.0
-offset_right = 14.0
-offset_bottom = -26.0
+offset_left = 14.0
+offset_top = -38.0
+offset_right = 15.0
+offset_bottom = -14.0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.65)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBR_H" type="ColorRect" parent="Panel/Decor" unique_id=419826509]
 layout_mode = 1
@@ -376,14 +378,14 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -44.0
-offset_top = -28.0
-offset_right = -12.0
-offset_bottom = -26.0
+offset_left = -38.0
+offset_top = -15.0
+offset_right = -14.0
+offset_bottom = -14.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.65)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="CornerBR_V" type="ColorRect" parent="Panel/Decor" unique_id=374172901]
 layout_mode = 1
@@ -392,14 +394,14 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -14.0
-offset_top = -58.0
-offset_right = -12.0
-offset_bottom = -26.0
+offset_left = -15.0
+offset_top = -38.0
+offset_right = -14.0
+offset_bottom = -14.0
 grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.62, 0.85, 1, 0.65)
+color = Color(0.64, 0.66, 0.72, 0.3)
 
 [node name="SkillMask" type="ColorRect" parent="." unique_id=513257457]
 visible = false
@@ -410,7 +412,52 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
-color = Color(0.02, 0.04, 0.08, 0.75)
+color = Color(0.01, 0.012, 0.016, 0.78)
+
+[node name="SkillRewardMicro" type="Label" parent="SkillMask"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -320.0
+offset_top = 208.0
+offset_right = 320.0
+offset_bottom = 222.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.45)
+theme_override_font_sizes/font_size = 11
+text = "SELECT A SKILL CARD"
+horizontal_alignment = 1
+
+[node name="SkillRewardTitle" type="Label" parent="SkillMask"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -320.0
+offset_top = 224.0
+offset_right = 320.0
+offset_bottom = 256.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.92, 0.93, 0.96, 0.95)
+theme_override_font_sizes/font_size = 24
+text = "选择一张技能卡"
+horizontal_alignment = 1
+
+[node name="SkillRewardTitleLine" type="ColorRect" parent="SkillMask"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -130.0
+offset_top = 264.0
+offset_right = 130.0
+offset_bottom = 265.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.72, 0.74, 0.8, 0.35)
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=1736903180]
 z_index = 2
@@ -453,16 +500,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Backdrop" type="ColorRect" parent="TalentTreeOverlay"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 1
-color = Color(0.02, 0.04, 0.08, 0.8)
-
 [node name="TalentPanel" type="Panel" parent="TalentTreeOverlay"]
 layout_mode = 1
 anchors_preset = 8
@@ -476,9 +513,22 @@ offset_right = 420.0
 offset_bottom = 265.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_frame")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
+
+[node name="FrameBG" type="ColorRect" parent="TalentTreeOverlay/TalentPanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("ShaderMaterial_talent_frame")
+color = Color(1, 1, 1, 1)
 
 [node name="Inner" type="Panel" parent="TalentTreeOverlay/TalentPanel"]
+visible = false
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -506,16 +556,13 @@ theme_override_constants/separation = 16
 [node name="Title" type="Label" parent="TalentTreeOverlay/TalentPanel/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.92, 0.96, 1, 1)
-theme_override_colors/font_shadow_color = Color(0.08, 0.14, 0.24, 0.6)
-theme_override_constants/shadow_offset_x = 2
-theme_override_constants/shadow_offset_y = 2
+theme_override_colors/font_color = Color(0.92, 0.93, 0.96, 0.95)
 theme_override_font_sizes/font_size = 22
 text = "天赋树"
 
 [node name="PointLabel" type="Label" parent="TalentTreeOverlay/TalentPanel/Header"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.86, 0.56, 1)
+theme_override_colors/font_color = Color(0.86, 0.87, 0.91, 0.9)
 theme_override_font_sizes/font_size = 18
 text = "剩余天赋点 0"
 horizontal_alignment = 2
@@ -527,10 +574,10 @@ anchor_right = 1.0
 offset_left = 24.0
 offset_top = 68.0
 offset_right = -24.0
-offset_bottom = 70.0
+offset_bottom = 69.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.42, 0.65, 0.88, 0.46)
+color = Color(0.72, 0.74, 0.8, 0.28)
 
 [node name="Hint" type="Label" parent="TalentTreeOverlay/TalentPanel"]
 layout_mode = 1
@@ -541,8 +588,8 @@ offset_top = 78.0
 offset_right = -26.0
 offset_bottom = 104.0
 grow_horizontal = 2
-theme_override_colors/font_color = Color(0.75, 0.85, 0.95, 0.72)
-theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.5)
+theme_override_font_sizes/font_size = 13
 text = "拾取后可立即点亮天赋"
 horizontal_alignment = 1
 

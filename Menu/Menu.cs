@@ -5,19 +5,12 @@ public partial class Menu : Control
 {
     private const float OpenDuration = 0.22f;
     private const float CloseDuration = 0.18f;
+    private const float ReturnToStartFadeDuration = 0.12f;
     private const float MainPanelOffsetLeft = -222f;
     private const float MainPanelOffsetRight = 214f;
     private const float SettingsPanelOffsetLeft = -470f;
     private const float SettingsPanelOffsetRight = 470f;
     private static readonly Vector2 ClosedPanelScale = new(0.92f, 0.92f);
-    private static readonly Vector2I[] ResolutionOptions =
-    {
-        new(1280, 720),
-        new(1366, 768),
-        new(1600, 900),
-        new(1920, 1080),
-        new(2560, 1440),
-    };
     private static readonly PackedScene EncyclopediaScene = GD.Load<PackedScene>(
         "res://Menu/Encyclopedia.tscn"
     );
@@ -62,10 +55,6 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<CheckBox>("GroupBattlePilesByCharacterCheckBox");
     private CheckBox ShowHandCardIndicesCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("ShowHandCardIndicesCheckBox");
-    private CheckBox KeepManualTargetCardVisibleCheckBox =>
-        field ??= GetSettingsPanelNode<CheckBox>("KeepManualTargetCardVisibleCheckBox");
-    private CheckBox ArrowManualTargetSelectionCheckBox =>
-        field ??= GetSettingsPanelNode<CheckBox>("ArrowManualTargetSelectionCheckBox");
     private SettingsDropdown TextSizeOptionButton =>
         field ??= GetSettingsPanelNode<SettingsDropdown>("TextSizeOptionButton");
     private SettingsDropdown BattleShakeOptionButton =>
@@ -98,6 +87,7 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<Button>("SettingsBackButton");
     private Tween _transitionTween;
     private bool _isAbandoningGame;
+    private bool _settingsOnlyMode;
 
     private T GetSettingsPanelNode<T>(string nodeName) where T : Node
     {
@@ -107,9 +97,12 @@ public partial class Menu : Control
     public override void _Ready()
     {
         MouseFilter = MouseFilterEnum.Stop;
+        SetProcessUnhandledInput(true);
         SetDeferred(Control.PropertyName.PivotOffset, Size * 0.5f);
         if (CenterPanel != null)
             CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
+
+        ApplyMobileTouchLayout();
 
         ApplyHiddenState();
         Visible = false;
@@ -153,12 +146,6 @@ public partial class Menu : Control
         if (ShowHandCardIndicesCheckBox != null)
             ShowHandCardIndicesCheckBox.Pressed += OnShowHandCardIndicesPressed;
 
-        if (KeepManualTargetCardVisibleCheckBox != null)
-            KeepManualTargetCardVisibleCheckBox.Pressed += OnKeepManualTargetCardVisiblePressed;
-
-        if (ArrowManualTargetSelectionCheckBox != null)
-            ArrowManualTargetSelectionCheckBox.Pressed += OnArrowManualTargetSelectionPressed;
-
         ConfigureTextSizeOptionButton();
         if (TextSizeOptionButton != null)
             TextSizeOptionButton.ItemSelected += OnTextSizeSelected;
@@ -168,6 +155,8 @@ public partial class Menu : Control
         ConfigureLanguageOptionButton();
         if (LanguageOptionButton != null)
             LanguageOptionButton.ItemSelected += OnLanguageSelected;
+        if (ResolutionLabel?.GetParent() is Control resolutionRow)
+            resolutionRow.Visible = !MobilePlatform.IsMobile;
         ConfigureResolutionOptionButton();
         if (ResolutionOptionButton != null)
             ResolutionOptionButton.ItemSelected += OnResolutionSelected;
@@ -184,6 +173,60 @@ public partial class Menu : Control
         RefreshSettingsPanel();
     }
 
+    private void ApplyMobileTouchLayout()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        if (MainButtons != null)
+        {
+            foreach (Node child in MainButtons.GetChildren())
+            {
+                if (child is Button button)
+                    MobilePlatform.EnsureContainerTouchTarget(button, minimumHeight: 76f);
+            }
+        }
+
+        ApplyMobileSettingsTouchLayout(SettingsPanel);
+    }
+
+    private static void ApplyMobileSettingsTouchLayout(Node root)
+    {
+        if (root == null)
+            return;
+
+        foreach (Node child in root.GetChildren())
+        {
+            if (child is BaseButton button)
+                MobilePlatform.EnsureContainerTouchTarget(button, minimumHeight: 60f);
+            else if (child is Slider slider)
+                MobilePlatform.EnsureContainerTouchTarget(slider, minimumHeight: 60f);
+
+            ApplyMobileSettingsTouchLayout(child);
+        }
+    }
+
+    public override void _UnhandledInput(InputEvent inputEvent)
+    {
+        if (!MobilePlatform.IsCancelPress(inputEvent) || !HandleBackRequest())
+            return;
+
+        GetViewport()?.SetInputAsHandled();
+    }
+
+    public bool HandleBackRequest()
+    {
+        if (!Visible)
+            return false;
+
+        if (SettingsPanel?.Visible == true)
+            ShowMainPanel();
+        else
+            Close();
+
+        return true;
+    }
+
     public void Toggle()
     {
         if (Visible)
@@ -197,12 +240,26 @@ public partial class Menu : Control
 
     public void Open()
     {
+        OpenInternal(settingsOnly: false);
+    }
+
+    public void OpenSettingsOnly()
+    {
+        OpenInternal(settingsOnly: true);
+    }
+
+    private void OpenInternal(bool settingsOnly)
+    {
         _transitionTween?.Kill();
+        _settingsOnlyMode = settingsOnly;
         Visible = true;
         FindActiveBattle(GetTree()?.Root)?.SetIncomingDamagePreviewSuppressed(true);
         if (CenterPanel != null)
             CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
-        ShowMainPanel();
+        if (_settingsOnlyMode)
+            ShowSettingsPanel();
+        else
+            ShowMainPanel();
 
         _transitionTween = CreateTween();
         _transitionTween.SetParallel(true);
@@ -264,7 +321,12 @@ public partial class Menu : Control
     private void OnSaveQuitPressed()
     {
         AbortActiveBattle();
-        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://BeginGame/StartInterface.tscn");
+        StartInterface.RequestFastEntrance();
+        SceneTransitionLayer.Ensure(this)?.SwitchScene(
+            "res://BeginGame/StartInterface.tscn",
+            ReturnToStartFadeDuration,
+            ReturnToStartFadeDuration
+        );
     }
 
     private async void OnAbandonGamePressed()
@@ -389,27 +451,6 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.CharacterControl?.RefreshCurrentTurnUi();
     }
 
-    private void OnKeepManualTargetCardVisiblePressed()
-    {
-        if (KeepManualTargetCardVisibleCheckBox == null)
-            return;
-
-        UserSettings.SetKeepManualTargetCardVisibleWhenHidden(
-            KeepManualTargetCardVisibleCheckBox.ButtonPressed
-        );
-        FindActiveBattle(GetTree()?.Root)?.RefreshManualTargetCardVisibilityFromSettings();
-    }
-
-    private void OnArrowManualTargetSelectionPressed()
-    {
-        if (ArrowManualTargetSelectionCheckBox == null)
-            return;
-
-        UserSettings.SetUseArrowManualTargetSelection(
-            ArrowManualTargetSelectionCheckBox.ButtonPressed
-        );
-    }
-
     private void OnTextSizeSelected(long index)
     {
         if (TextSizeOptionButton == null)
@@ -503,6 +544,12 @@ public partial class Menu : Control
     private void ShowMainPanel()
     {
         CloseAllDropdowns();
+        if (_settingsOnlyMode)
+        {
+            Close();
+            return;
+        }
+
         SetCenterPanelWide(false);
         if (SettingsPanel != null)
             SettingsPanel.Visible = false;
@@ -548,12 +595,6 @@ public partial class Menu : Control
                 UserSettings.GroupBattlePilesByCharacter;
         if (ShowHandCardIndicesCheckBox != null)
             ShowHandCardIndicesCheckBox.ButtonPressed = UserSettings.ShowHandCardIndices;
-        if (KeepManualTargetCardVisibleCheckBox != null)
-            KeepManualTargetCardVisibleCheckBox.ButtonPressed =
-                UserSettings.KeepManualTargetCardVisibleWhenHidden;
-        if (ArrowManualTargetSelectionCheckBox != null)
-            ArrowManualTargetSelectionCheckBox.ButtonPressed =
-                UserSettings.UseArrowManualTargetSelection;
         SelectResolutionOption(UserSettings.WindowWidth, UserSettings.WindowHeight);
         SelectTextSizeOption(UserSettings.TextSizeLevel);
         SelectBattleShakeOption(UserSettings.BattleShakeLevel);
@@ -670,7 +711,9 @@ public partial class Menu : Control
             return;
         }
 
-        ResolutionOptionButton.AddItem(GetResolutionLabel(new Vector2I(width, height)));
+        ResolutionOptionButton.AddItem(
+            UserSettings.GetFullscreenResolutionLabel(new Vector2I(width, height))
+        );
         int customIndex = ResolutionOptionButton.ItemCount - 1;
         ResolutionOptionButton.SetItemMetadata(customIndex, target);
         ResolutionOptionButton.Select(customIndex);
@@ -795,16 +838,6 @@ public partial class Menu : Control
                 "ui.settings.show_hand_card_indices",
                 "显示手牌序号（数字键出牌）"
             );
-        if (KeepManualTargetCardVisibleCheckBox != null)
-            KeepManualTargetCardVisibleCheckBox.Text = I18n.Tr(
-                "ui.settings.keep_manual_target_card_visible",
-                "隐藏选人界面时保留卡牌"
-            );
-        if (ArrowManualTargetSelectionCheckBox != null)
-            ArrowManualTargetSelectionCheckBox.Text = I18n.Tr(
-                "ui.settings.arrow_manual_target_selection",
-                "手动目标使用箭头选择"
-            );
         if (LanguageLabel != null)
             LanguageLabel.Text = I18n.Tr("ui.settings.language", "语言");
         if (ResolutionLabel != null)
@@ -876,9 +909,6 @@ public partial class Menu : Control
         }
     }
 
-    private static string GetResolutionLabel(Vector2I resolution) =>
-        $"{resolution.X} x {resolution.Y}";
-
     private static bool TryParseResolution(string value, out Vector2I resolution)
     {
         resolution = Vector2I.Zero;
@@ -931,17 +961,16 @@ public partial class Menu : Control
 
         ResolutionOptionButton.Clear();
         ResolutionOptionButton.AddItem(
-            I18n.Tr("ui.settings.resolution_default", "默认（全屏）"),
+            UserSettings.GetDefaultFullscreenResolutionLabel(GetWindow()),
             0,
             "default"
         );
 
-        for (int i = 0; i < ResolutionOptions.Length; i++)
+        foreach (Vector2I resolution in UserSettings.GetFullscreenResolutionOptions())
         {
-            Vector2I resolution = ResolutionOptions[i];
             ResolutionOptionButton.AddItem(
-                GetResolutionLabel(resolution),
-                i + 1,
+                UserSettings.GetFullscreenResolutionLabel(resolution),
+                ResolutionOptionButton.ItemCount,
                 $"{resolution.X}x{resolution.Y}"
             );
         }

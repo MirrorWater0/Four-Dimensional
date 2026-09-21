@@ -17,7 +17,8 @@
                                   },
                    "BasicSpecial":  {
                                         "Name":  "基础特殊",
-                                        "PowerGain":  1
+                                        "PowerGain":  1,
+                                        "EnergyCost":  2
                                     }
                }
 }

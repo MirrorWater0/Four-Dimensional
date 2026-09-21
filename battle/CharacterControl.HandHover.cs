@@ -23,7 +23,9 @@ public partial class CharacterControl
         _handHoverValidationTimer.Start();
     }
 
-    private void ValidateHandHoverUnderMouse()
+    private void ValidateHandHoverUnderMouse() => ValidateHandHoverUnderMouse(force: false);
+
+    private void ValidateHandHoverUnderMouse(bool force)
     {
         if (!_uiBuilt || !Visible)
             return;
@@ -31,7 +33,8 @@ public partial class CharacterControl
         Vector2 pointerPosition = GetHandCardPointerPosition();
         bool handMotionActive = IsAnyHandLayoutFollowerActive() || IsAnyCardDrawEntryBusy();
         if (
-            _handHoverValidationPointerInitialized
+            !force
+            && _handHoverValidationPointerInitialized
             && !handMotionActive
             && _lastHandHoverValidationPointerPosition.DistanceSquaredTo(pointerPosition) < 0.25f
         )
@@ -145,7 +148,18 @@ public partial class CharacterControl
             return false;
 
         if (hovered && _hoveredCardIndex == index)
+        {
+            if (
+                _isDiscardSelectionActive
+                && _discardSelectionOriginalVisualHandIndexes.Contains(index)
+            )
+            {
+                SkillCard trackedCard = _cards[index];
+                if (trackedCard != null && GodotObject.IsInstanceValid(trackedCard))
+                    trackedCard.EnsureCenteredPointerHoverState();
+            }
             return false;
+        }
 
         if (_suppressHandHoverUntilMouseMove && hovered)
             return false;
@@ -175,21 +189,21 @@ public partial class CharacterControl
                             previousHoveredIndex,
                             GetHandOrderForSlotIndex(previousHoveredIndex)
                         );
-                        ArrangeDiscardSelectionSelectedCards();
                     }
                 }
 
                 _hoveredCardIndex = index;
                 handCard.HoverHint.Visible = true;
                 handCard.ZIndex = HandCardHoverZIndex;
-                bool suppressLift = _discardSelectionOriginalVisualHandIndexes.Contains(index);
-                Vector2 targetScale = BattleCardScale * CardHoverScaleMultiplier;
-                handCard.TweenBattleMotion(
-                    suppressLift
-                        ? GetSelectionHoverScaleCompensation(handCard, targetScale)
-                        : new Vector2(0f, CardHoverLiftY),
-                    targetScale
-                );
+                AudioManager.PlayCardHover(handCard);
+                bool isSelectedCard = _discardSelectionOriginalVisualHandIndexes.Contains(index);
+                if (isSelectedCard)
+                    handCard.SetCenteredPointerHoverState(true);
+                else
+                    handCard.TweenBattleMotion(
+                        new Vector2(0f, CardHoverLiftY),
+                        BattleCardScale * CardHoverScaleMultiplier
+                    );
                 LayoutActionCards(instant: false);
                 ApplyHandCardHoverInputOrder();
                 return true;
@@ -200,9 +214,17 @@ public partial class CharacterControl
             else
                 return false;
 
-            ResetCardMotion(index, instant: false);
-            if (_discardSelectionOriginalVisualHandIndexes.Contains(index))
+            bool wasSelectedCard = _discardSelectionOriginalVisualHandIndexes.Contains(index);
+            if (wasSelectedCard)
+            {
+                handCard.SetCenteredPointerHoverState(false);
+                handCard.HideHoverUi();
                 ApplyHandCardLayer(index, GetHandOrderForSlotIndex(index));
+            }
+            else
+            {
+                ResetCardMotion(index, instant: false);
+            }
             LayoutActionCards(instant: false);
             ApplyHandCardHoverInputOrder();
             return true;
@@ -233,6 +255,7 @@ public partial class CharacterControl
             _hoveredCardIndex = index;
             card.HoverHint.Visible = true;
             card.ZIndex = HandCardHoverZIndex;
+            AudioManager.PlayCardHover(card);
             ShowCardEnergyPreview(GetHandSkill(index));
             card.TweenBattleMotion(
                 new Vector2(0f, CardHoverLiftY),
@@ -253,33 +276,6 @@ public partial class CharacterControl
         LayoutActionCards(instant: false);
         ApplyHandCardHoverInputOrder();
         return true;
-    }
-
-    private Vector2 GetSelectionHoverScaleCompensation(
-        SkillCard card,
-        Vector2 targetScale
-    )
-    {
-        if (
-            card == null
-            || !GodotObject.IsInstanceValid(card)
-            || card.CardVisualRoot == null
-            || !GodotObject.IsInstanceValid(card.CardVisualRoot)
-        )
-        {
-            return Vector2.Zero;
-        }
-
-        Vector2 visualGlobalCenter =
-            card.CardVisualRoot.GetGlobalTransformWithCanvas() * (BattleCardBaseSize * 0.5f);
-        Vector2 visualLocalCenter =
-            card.GetGlobalTransformWithCanvas().AffineInverse() * visualGlobalCenter;
-        Vector2 centerFromPivot = visualLocalCenter - card.PivotOffset;
-        Vector2 scaleDelta = BattleCardScale - targetScale;
-        return new Vector2(
-            scaleDelta.X * centerFromPivot.X,
-            scaleDelta.Y * centerFromPivot.Y
-        );
     }
 
     private void ScheduleCardHoverRefresh()
@@ -358,7 +354,6 @@ public partial class CharacterControl
     private void ClearOrphanedHandCardHoverVisuals(int preservedIndex)
     {
         bool clearedAny = false;
-        bool rearrangeSelectedCards = false;
         for (int i = 0; i < _cards.Length; i++)
         {
             if (i == preservedIndex || i == _liftedCardIndex)
@@ -378,10 +373,7 @@ public partial class CharacterControl
 
             ClearHandCardHoverMotion(i, instant: false);
             if (_discardSelectionOriginalVisualHandIndexes.Contains(i))
-            {
                 ApplyHandCardLayer(i, GetHandOrderForSlotIndex(i));
-                rearrangeSelectedCards = true;
-            }
             clearedAny = true;
         }
 
@@ -390,8 +382,6 @@ public partial class CharacterControl
 
         LayoutActionCards(instant: false);
         ApplyHandCardHoverInputOrder();
-        if (rearrangeSelectedCards)
-            ArrangeDiscardSelectionSelectedCards();
     }
 
     private int ResolveHandCardHoverIndex(Vector2 viewportPosition)
@@ -459,6 +449,7 @@ public partial class CharacterControl
             || !_uiBuilt
             || !Visible
             || _endTurnQueued
+            || _handLayoutSyncPending
             || IsHandInputBlockedByOverlay()
             || _manualTargetArrowSelectionActive
         )
@@ -641,6 +632,7 @@ public partial class CharacterControl
                     index,
                     GetHandSkill(index)?.OwnerCharater as PlayerCharacter
                 );
+                UpdateCardPreviewTriggeredBuffHighlights(index, GetHandSkill(index));
                 return;
             }
 
@@ -660,6 +652,7 @@ public partial class CharacterControl
 
         _cardHoverPreviewActive[index] = false;
         card.HideSkillPreview();
+        ClearCardPreviewTriggeredBuffHighlights(index);
         if (_cardFootMarkerHoverIndex == index)
             ClearCardFootMarkerHover();
     }
@@ -719,6 +712,7 @@ public partial class CharacterControl
         _cardHoverPreviewActive[index] = true;
         card.HoverHint.Visible = index != _liftedCardIndex;
         card.ShowSkillPreview();
+        UpdateCardPreviewTriggeredBuffHighlights(index, GetHandSkill(index));
         UpdateCardFootMarkerHover(index, GetHandSkill(index)?.OwnerCharater as PlayerCharacter);
     }
 
@@ -757,6 +751,7 @@ public partial class CharacterControl
         CancelPendingCardHoverPreview();
         ClearCardEnergyPreview();
         ClearCardFootMarkerHover();
+        ClearCardPreviewTriggeredBuffHighlights();
         for (int i = 0; i < _cards.Length; i++)
             HideCardHoverPreview(i);
     }
@@ -768,6 +763,8 @@ public partial class CharacterControl
         ClearCardEnergyPreview();
         if (_cardFootMarkerHoverIndex != preservedIndex)
             ClearCardFootMarkerHover();
+        if (_cardPreviewHighlightedBuffsIndex != preservedIndex)
+            ClearCardPreviewTriggeredBuffHighlights();
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -795,6 +792,9 @@ public partial class CharacterControl
 
         CancelPendingCardHoverPreview(index);
 
+        if (_cardPreviewHighlightedBuffsIndex == index)
+            ClearCardPreviewTriggeredBuffHighlights(index);
+
         if (!_cardHoverPreviewActive[index])
             return;
 
@@ -806,6 +806,49 @@ public partial class CharacterControl
         SkillCard card = _cards[index];
         if (card != null && GodotObject.IsInstanceValid(card))
             card.HideSkillPreview();
+    }
+
+    private void UpdateCardPreviewTriggeredBuffHighlights(int index, Skill skill)
+    {
+        if (!IsCardIndexValid(index) || !_cardHoverPreviewActive[index])
+        {
+            ClearCardPreviewTriggeredBuffHighlights(index);
+            return;
+        }
+
+        if (_cardPreviewHighlightedBuffsIndex != -1 && _cardPreviewHighlightedBuffsIndex != index)
+            ClearCardPreviewTriggeredBuffHighlights();
+
+        var nextHighlights = new HashSet<Buff>(
+            CardPreviewBuffHighlighter.FindTriggeredBuffs(skill)
+        );
+        foreach (Buff buff in _cardPreviewHighlightedBuffs)
+        {
+            if (!nextHighlights.Contains(buff))
+                buff.SetCardPreviewHighlight(false);
+        }
+        foreach (Buff buff in nextHighlights)
+        {
+            if (!_cardPreviewHighlightedBuffs.Contains(buff))
+                buff.SetCardPreviewHighlight(true);
+        }
+
+        _cardPreviewHighlightedBuffs.Clear();
+        _cardPreviewHighlightedBuffs.UnionWith(nextHighlights);
+        _cardPreviewHighlightedBuffsIndex =
+            _cardPreviewHighlightedBuffs.Count > 0 ? index : -1;
+    }
+
+    private void ClearCardPreviewTriggeredBuffHighlights(int index = -1)
+    {
+        if (index >= 0 && _cardPreviewHighlightedBuffsIndex != index)
+            return;
+
+        foreach (Buff buff in _cardPreviewHighlightedBuffs)
+            buff.SetCardPreviewHighlight(false);
+
+        _cardPreviewHighlightedBuffs.Clear();
+        _cardPreviewHighlightedBuffsIndex = -1;
     }
 
     private void ResetCardMotion(
@@ -864,6 +907,14 @@ public partial class CharacterControl
 
         ClearCardEnergyPreview();
         HideCardHoverPreview(index);
+        if (_isDiscardSelectionActive && _discardSelectionOriginalVisualHandIndexes.Contains(index))
+        {
+            card.SetCenteredPointerHoverState(false, instant);
+            card.HideHoverUi();
+            ApplyHandCardLayer(index, GetHandOrderForSlotIndex(index));
+            return;
+        }
+
         card.HideHoverUi();
         card.PivotOffset = BattleCardBaseSize * 0.5f;
         card.ZIndex = 0;

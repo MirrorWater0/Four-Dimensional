@@ -12,8 +12,14 @@ public enum HandCardEntryOrigin
 
 public partial class CharacterControl : Control
 {
+    private DebugConsole _debugConsole;
+
     public Battle BattleNode => field ??= FindBattleNode();
     public bool IsManualTargetArrowSelectionActive => _manualTargetArrowSelectionActive;
+    public bool IsInspectingBattlePresentation =>
+        _hoveredCardIndex >= 0 || _liftedCardIndex >= 0
+        || _manualTargetArrowSelectionActive || _isDiscardSelectionActive
+        || _isPileCardSelectionActive || IsPileOverlayVisible() || IsBlockingMenuOpen();
     public Frame CharaterFrame1 => field ??= GetNodeOrNull<Frame>("frame1");
     public Frame CharaterFrame2 => field ??= GetNodeOrNull<Frame>("frame2");
     public Frame CharaterFrame3 => field ??= GetNodeOrNull<Frame>("frame3");
@@ -53,11 +59,27 @@ public partial class CharacterControl : Control
         UpdateHandLayoutFollowers(frameDelta);
         UpdateLiftedCardPosition(frameDelta);
         UpdatePileOverlaySmoothScroll(frameDelta);
+        if (_isDiscardSelectionActive)
+            ValidateHandHoverUnderMouse(force: true);
         UpdateProcessState();
     }
 
     public override void _Input(InputEvent @event)
     {
+        if (IsBattleInputSuspended())
+        {
+            if (@event is InputEventMouseButton blockedMouseButton)
+                TrackCardLeftMouseButtonState(blockedMouseButton);
+            return;
+        }
+
+        if (IsDebugConsoleOpen())
+        {
+            if (@event is InputEventMouseButton blockedMouseButton)
+                TrackCardLeftMouseButtonState(blockedMouseButton);
+            return;
+        }
+
         if (@event is InputEventMouseButton trackedMouseButton)
         {
             TrackCardLeftMouseButtonState(trackedMouseButton);
@@ -170,8 +192,16 @@ public partial class CharacterControl : Control
             }
             else if (IsPileOverlayVisible())
             {
-                if (!_isPileCardSelectionActive)
+                if (_isPileCardSelectionActive)
+                {
+                    SetPileOverlayContentTemporarilyHidden(
+                        !_pileOverlayContentTemporarilyHidden
+                    );
+                }
+                else
+                {
                     HidePileOverlay();
+                }
             }
             else if (_liftedCardIndex != -1)
             {
@@ -190,6 +220,12 @@ public partial class CharacterControl : Control
 
     public override void _UnhandledInput(InputEvent @event)
     {
+        if (IsBattleInputSuspended())
+            return;
+
+        if (IsDebugConsoleOpen())
+            return;
+
         if (
             @event is InputEventKey handCardKey
             && handCardKey.Pressed
@@ -287,8 +323,29 @@ public partial class CharacterControl : Control
             && _pileOverlayRoot.Visible
             && !_pileOverlayContentTemporarilyHidden;
         return pileOverlayBlocksInput
+            || IsBattleInputSuspended()
             || IsManualTargetSelectionPending()
-            || IsBlockingMenuOpen();
+            || IsBlockingMenuOpen()
+            || IsDebugConsoleOpen();
+    }
+
+    private bool IsBattleInputSuspended()
+    {
+        return BattleNode?.MapNode?.IsMapPeekModeActive == true;
+    }
+
+    private bool IsDebugConsoleOpen()
+    {
+        if (_debugConsole != null && GodotObject.IsInstanceValid(_debugConsole))
+            return _debugConsole.IsOpen;
+
+        Battle battle = BattleNode;
+        if (battle == null || !GodotObject.IsInstanceValid(battle))
+            return false;
+
+        _debugConsole = battle.GetNodeOrNull<DebugConsole>("DebugConsole");
+        _debugConsole ??= battle.MapNode?.GetNodeOrNull<DebugConsole>("DebugConsole");
+        return _debugConsole?.IsOpen == true;
     }
 
     private static int GetHandCardShortcutNumber(InputEventKey key)
@@ -343,6 +400,7 @@ public partial class CharacterControl : Control
     public void Connect()
     {
         BuildActionAreaUi();
+        PrewarmPileOverlayCardPool();
         for (int i = 0; i < BattleNode.PlayersList.Count; i++)
         {
             RefreshSkillOwners(BattleNode.PlayersList[i]);
@@ -360,6 +418,7 @@ public partial class CharacterControl : Control
         _activePlayer = player;
         _isResolvingCard = false;
         _isProcessingCardQueue = false;
+        _handLayoutSyncPending = false;
         _endTurnQueued = false;
         _isResolvingEndTurn = false;
         _freezeHandLayout = false;
@@ -386,6 +445,7 @@ public partial class CharacterControl : Control
 
         _isResolvingCard = keepPanelVisible;
         _isProcessingCardQueue = false;
+        _handLayoutSyncPending = false;
         _endTurnQueued = false;
         _isResolvingEndTurn = keepPanelVisible;
         _freezeHandLayout = false;
@@ -446,6 +506,7 @@ public partial class CharacterControl : Control
                 continue;
 
             card.RefreshSkillPreviewIfStale();
+            UpdateCardPreviewTriggeredBuffHighlights(i, GetHandSkill(i));
         }
     }
 
@@ -481,6 +542,7 @@ public partial class CharacterControl : Control
             ["hoveredCardIndex"] = _hoveredCardIndex,
             ["liftedCardIndex"] = _liftedCardIndex,
             ["pendingPreviewIndex"] = _pendingCardHoverPreviewIndex,
+            ["previewHighlightedBuffCount"] = _cardPreviewHighlightedBuffs.Count,
             ["manualTargetArrowSelectionActive"] = _manualTargetArrowSelectionActive,
             ["manualTargetArrowCardIndex"] = _manualTargetArrowCardIndex,
             ["suppressHandHoverUntilMouseMove"] = _suppressHandHoverUntilMouseMove,
@@ -507,11 +569,6 @@ public partial class CharacterControl : Control
         RefreshTurnUi();
     }
 
-    public void RefreshManualTargetCardVisibilityFromSettings()
-    {
-        ApplyManualTargetPickerTemporaryHiddenState();
-    }
-
     public void QueueHandReorderAnimation(Skill[] oldHand, Skill[] newHand)
     {
         if (oldHand == null || newHand == null || _cardSlots == null)
@@ -536,7 +593,7 @@ public partial class CharacterControl : Control
             {
                 _pendingHandReorderStarts[skill] = (
                     drawEntryStart,
-                    0f,
+                    oldSlot.Rotation,
                     HandDrawEntryPixelsPerSecond
                 );
                 continue;
@@ -544,7 +601,7 @@ public partial class CharacterControl : Control
 
             _pendingHandReorderStarts[skill] = (
                 NormalizeHandReorderStartPosition(oldSlot.Position),
-                0f,
+                oldSlot.Rotation,
                 0f
             );
         }

@@ -2,12 +2,12 @@
     "skills":  {
                    "FearEliteAttack":  {
                                            "Name":  "惊惧凝视",
-                                           "BaseDamage":  10,
+                                           "BaseDamage":  13,
                                            "HitCount":  2
                                        },
                    "FearEliteSpecial":  {
                                             "Name":  "梦魇扩散",
-                                            "BaseDamage":  10,
+                                            "BaseDamage":  14,
                                             "FearStacks":  2,
                                             "BaseHeal":  15,
                                             "EnemySpecialIntentionCooldown":  2
@@ -15,7 +15,7 @@
                    "FearEliteSurvive":  {
                                             "Name":  "蜷缩异相",
                                             "BaseBlock":  21,
-                                            "PowerGain":  3
+                                            "PowerGain":  2
                                         }
                }
 }

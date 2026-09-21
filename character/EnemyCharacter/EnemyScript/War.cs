@@ -94,7 +94,7 @@ public partial class WarRegedit : EnemyRegedit
 
 public partial class WarAttack : Skill
 {
-    private const int BaseDamage = 10;
+    private const int BaseDamage = 13;
     private const int ThrallPowerGain = 2;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -110,8 +110,8 @@ public partial class WarAttack : Skill
 public partial class WarSurvive : Skill
 {
     private const int BaseBlock = 13;
-    private const int SelfSurvivabilityGain = 2;
-    private const int ThrallBlock = 0;
+    private const int SelfSurvivabilityGain = 3;
+    private const int ThrallBlock = 4;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -139,7 +139,7 @@ public partial class WarSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 12)),
+            AttackStep(baseDamage: V("BaseDamage", 17)),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
             ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2))

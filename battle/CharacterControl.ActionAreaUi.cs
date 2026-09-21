@@ -144,6 +144,7 @@ public partial class CharacterControl
 
         EnsureHandInputBlocker();
         WireActionButtonsFromScene();
+        ApplyMobileActionButtonLayout();
         LayoutActionCards(instant: true);
         CallDeferred(nameof(PositionStatusLabel));
         return true;
@@ -190,6 +191,17 @@ public partial class CharacterControl
         }
     }
 
+    private void ApplyMobileActionButtonLayout()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        MobilePlatform.EnsureMinimumTouchTarget(_endTurnButton, 168f, 88f);
+        MobilePlatform.EnsureMinimumTouchTarget(_drawPileButton, 80f, 80f);
+        MobilePlatform.EnsureMinimumTouchTarget(_discardPileButton, 80f, 80f);
+        MobilePlatform.EnsureMinimumTouchTarget(_exhaustedPileButton, 80f, 80f);
+    }
+
     private void WireBattleCard(SkillCard card, int index)
     {
         if (card == null)
@@ -199,6 +211,12 @@ public partial class CharacterControl
             card.ConfigureDisplayScale(BattleCardScale);
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = false;
+        if (card.OrnateFrame != null)
+            card.OrnateFrame.SelfModulate = new Color(0.68f, 0.68f, 0.68f, 1f);
+        if (card.GetNodeOrNull<Label>("VisualTransform/SubViewport/HandIndexLabel") is { } handIndex) {
+            handIndex.AddThemeFontSizeOverride("font_size", 20);
+            handIndex.AddThemeColorOverride("font_color", new Color(0.55f, 0.66f, 0.69f));
+        }
         card.Button.ActionMode = BaseButton.ActionModeEnum.Press;
         card.Button.SetMeta("suppress_ui_click_sfx", true);
         card.Button.SetMeta("suppress_ui_hover_sfx", true);
@@ -225,7 +243,6 @@ public partial class CharacterControl
                 && SetCardHovered(cardIndex, true)
             )
             {
-                AudioManager.PlayCardHover(card);
                 SetCardHoverPreviewActive(cardIndex, true);
                 return;
             }
@@ -595,54 +612,8 @@ public partial class CharacterControl
         if (button == null)
             return;
 
-        button.Text = "结束回合";
         button.FocusMode = FocusModeEnum.None;
         button.MouseFilter = MouseFilterEnum.Stop;
-        button.AddThemeFontSizeOverride("font_size", 22);
-        button.AddThemeColorOverride("font_color", new Color(0.96f, 0.98f, 1f, 1f));
-        button.AddThemeColorOverride("font_hover_color", Colors.White);
-        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.95f, 0.78f, 1f));
-        button.AddThemeColorOverride("font_disabled_color", new Color(0.68f, 0.74f, 0.78f, 0.62f));
-        button.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.05f, 0.08f, 0.9f));
-        button.AddThemeConstantOverride("outline_size", 3);
-        button.AddThemeStyleboxOverride(
-            "normal",
-            CreateEndTurnStyle(
-                new Color(0.07f, 0.16f, 0.22f, 0.9f),
-                new Color(0.35f, 0.82f, 0.92f, 0.88f)
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "hover",
-            CreateEndTurnStyle(
-                new Color(0.10f, 0.24f, 0.30f, 0.95f),
-                new Color(0.65f, 0.94f, 1f, 1f),
-                3
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "pressed",
-            CreateEndTurnStyle(
-                new Color(0.04f, 0.11f, 0.16f, 0.98f),
-                new Color(1f, 0.78f, 0.32f, 1f),
-                3
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "disabled",
-            CreateEndTurnStyle(
-                new Color(0.05f, 0.08f, 0.1f, 0.58f),
-                new Color(0.25f, 0.36f, 0.42f, 0.62f)
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "focus",
-            CreateEndTurnStyle(
-                new Color(0.10f, 0.24f, 0.30f, 0.95f),
-                new Color(0.65f, 0.94f, 1f, 1f),
-                3
-            )
-        );
     }
 
     private static void ConfigureStatusLabel(Label label)
@@ -654,7 +625,7 @@ public partial class CharacterControl
         label.TopLevel = true;
         label.MouseFilter = MouseFilterEnum.Ignore;
         label.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.03f, 0.06f, 0.95f));
-        label.AddThemeConstantOverride("outline_size", 4);
+        label.AddThemeConstantOverride("outline_size", 0);
     }
 
     public void PositionStatusLabel()
@@ -670,37 +641,10 @@ public partial class CharacterControl
             return;
         }
 
-        Rect2 rootRect = _root.GetGlobalRect();
-        float width = Math.Min(rootRect.Size.X, 760f);
-        _statusLabel.Size = new Vector2(width, Math.Max(_statusLabel.Size.Y, 34f));
-        _statusLabel.GlobalPosition =
-            rootRect.Position + new Vector2((rootRect.Size.X - width) * 0.5f, -StatusLabelLiftY);
+        _statusLabel.CustomMinimumSize = Vector2.Zero;
+        _statusLabel.Size = new Vector2(760f, 34f);
+        _statusLabel.HorizontalAlignment = HorizontalAlignment.Left;
+        _statusLabel.GlobalPosition = new Vector2(82f, 105f);
     }
-
-    private static StyleBoxFlat CreateEndTurnStyle(
-        Color background,
-        Color border,
-        int borderWidth = 2
-    )
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = background,
-            BorderColor = border,
-            BorderWidthLeft = borderWidth,
-            BorderWidthTop = borderWidth,
-            BorderWidthRight = borderWidth,
-            BorderWidthBottom = borderWidth,
-            CornerRadiusTopLeft = 6,
-            CornerRadiusTopRight = 6,
-            CornerRadiusBottomRight = 6,
-            CornerRadiusBottomLeft = 6,
-            ContentMarginLeft = 18,
-            ContentMarginTop = 12,
-            ContentMarginRight = 18,
-            ContentMarginBottom = 12,
-        };
-    }
-
 
 }

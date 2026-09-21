@@ -31,6 +31,23 @@ public partial class AimTarget : ColorRect
 
         void HandleInput(InputEvent @event)
         {
+            if (MobilePlatform.IsCancelPress(@event))
+            {
+                tcs.TrySetResult(null);
+                return;
+            }
+
+            if (@event is InputEventScreenTouch { Pressed: true } screenTouch)
+            {
+                Character touchTarget = FindCharacterAtPoint(battle, screenTouch.Position);
+                if (touchTarget != null)
+                {
+                    touchTarget.PlayTargetLockPulse(HoverColor, 1.1f);
+                    tcs.TrySetResult(touchTarget);
+                }
+                return;
+            }
+
             if (@event is not InputEventMouseButton mouseButton)
                 return;
             if (!mouseButton.Pressed)
@@ -54,10 +71,14 @@ public partial class AimTarget : ColorRect
         }
 
         aim.InputReceived += HandleInput;
+        aim.CancelRequested += HandleCancelRequested;
+
+        void HandleCancelRequested() => tcs.TrySetResult(null);
 
         var result = await tcs.Task;
 
         aim.InputReceived -= HandleInput;
+        aim.CancelRequested -= HandleCancelRequested;
         if (GodotObject.IsInstanceValid(aim))
         {
             aim.SetProcessInput(false);
@@ -75,6 +96,7 @@ public partial class AimTarget : ColorRect
         PivotOffset = Size / 2f;
         Modulate = new Color(Modulate.R, Modulate.G, Modulate.B, 0f);
         Scale = new Vector2(0.72f, 0.72f);
+        CreateMobileCancelButton();
     }
 
     public override void _Process(double delta)
@@ -85,10 +107,35 @@ public partial class AimTarget : ColorRect
     }
 
     public event Action<InputEvent> InputReceived;
+    public event Action CancelRequested;
 
     public override void _Input(InputEvent @event)
     {
         InputReceived?.Invoke(@event);
+    }
+
+    private void CreateMobileCancelButton()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        var layer = new CanvasLayer { Name = "MobileCancelLayer", Layer = 95 };
+        var button = new Button
+        {
+            Name = "CancelButton",
+            Text = I18n.Tr("ui.common.cancel", "取消"),
+            CustomMinimumSize = new Vector2(168f, 76f),
+            FocusMode = FocusModeEnum.None,
+        };
+        button.AnchorLeft = 1f;
+        button.AnchorRight = 1f;
+        button.OffsetLeft = -204f;
+        button.OffsetRight = -36f;
+        button.OffsetTop = 76f;
+        button.OffsetBottom = 152f;
+        button.Pressed += () => CancelRequested?.Invoke();
+        layer.AddChild(button);
+        AddChild(layer);
     }
 
     private void PlayAppear()

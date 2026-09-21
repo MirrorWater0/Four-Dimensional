@@ -1,27 +1,38 @@
 ﻿{
     "skills":  {
                    "Blade":  {
-                                 "Name":  "利刃"
+                                 "Name":  "利刃",
+                                 "BaseDamage":  0,
+                                 "Multiplier":  1,
+                                 "EnergyCost":  0
                              },
                    "Calmness":  {
-                                    "Name":  "宁静"
+                                    "Name":  "镇静",
+                                    "DrawCount":  2,
+                                    "EnergyCost":  0
                                 },
                    "DazeStatus":  {
-                                      "Name":  "晕眩"
+                                      "Name":  "晕眩",
+                                      "EnergyCost":  0
                                   },
                    "DefenceFocus":  {
-                                        "Name":  "防御专注"
+                                        "Name":  "防御专注",
+                                        "BaseBlock":  0,
+                                        "EnergyCost":  0
                                     },
                    "PlagueStatus":  {
                                         "Name":  "瘟疫",
-                                        "TeamDamageAtTurnEnd":  3
+                                        "TeamDamageAtTurnEnd":  3,
+                                        "EnergyCost":  1
                                     },
                    "VoidStatus":  {
                                       "Name":  "虚空之唤",
-                                      "EnergyLossOnDraw":  1
+                                      "EnergyLossOnDraw":  1,
+                                      "EnergyCost":  0
                                   },
                    "WoundStatus":  {
-                                       "Name":  "伤口"
+                                       "Name":  "伤口",
+                                       "EnergyCost":  0
                                    }
                }
 }

@@ -35,7 +35,7 @@ public partial class RedHuskRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
 
-        MaxLife = 93;
+        MaxLife = 136;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -49,7 +49,7 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private const int BaseDamage = 14;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -59,14 +59,17 @@ public partial class RedHuskAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), target: HostileTargetReference.All)
+            AttackStep(
+                baseDamage: BaseDamage,
+                multiplier: V("Multiplier", 1),
+                target: HostileTargetReference.All
+            )
         );
     }
 }
 
 public partial class RedHuskSurvive : Skill
 {
-    private const int BaseBlock = 20;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -76,8 +79,8 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 11)),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3))
+            AttackStep(baseDamage: V("BaseDamage", 21)),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 4))
         );
     }
 }
@@ -89,7 +92,6 @@ public partial class RedHuskSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "护壳重生";
-    public override int EnergyCost => 7;
 
     protected override SkillPlan BuildPlan()
     {

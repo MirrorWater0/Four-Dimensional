@@ -2,7 +2,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 3;
+    private const int DisasterStacks = 4;
 
     public const string PassiveNameText = "终末游行";
     public static string PassiveDescriptionText =>
@@ -55,7 +55,7 @@ public partial class DeathRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Death.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
 
-        MaxLife = 415;
+        MaxLife = 567;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -69,7 +69,7 @@ public partial class DeathRegedit : EnemyRegedit
 
 public partial class DeathAttack : Skill
 {
-    private const int BaseDamage = 7;
+    private const int BaseDamage = 10;
     private const int HitCount = 2;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -101,7 +101,7 @@ public partial class DeathSurvive : Skill
             this,
             BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
             HealStep(Heal, target: TargetReference.Self),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1), BattleCardPileTarget.DiscardPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 3), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }

@@ -211,7 +211,7 @@ public partial class CharacterControl
 
     private void HideMouseForManualTargetArrowSelection()
     {
-        if (_manualTargetArrowMouseHidden)
+        if (MobilePlatform.IsTouchPrimary || _manualTargetArrowMouseHidden)
             return;
 
         _manualTargetArrowPreviousMouseMode = Input.MouseMode;
@@ -308,12 +308,7 @@ public partial class CharacterControl
             return play.Skill.HasManualFriendlyTarget();
         }
 
-        bool shouldUseArrowSelection =
-            !play.ForceManualTargetCardPicker && ShouldUseManualTargetArrowSelection(play.Skill);
-
-        Character target = shouldUseArrowSelection
-            ? await ShowManualTargetArrowPickerAsync(play.Skill, play.Card)
-            : await ShowManualTargetPickerAsync(play.Skill, play.Card);
+        Character target = await ShowManualTargetArrowPickerAsync(play.Skill, play.Card);
         if (target == null || !GodotObject.IsInstanceValid(target))
             return false;
 
@@ -324,6 +319,11 @@ public partial class CharacterControl
     private bool HasManualFriendlyTargetCandidates(Skill skill)
     {
         return GetManualFriendlyTargetCandidates(skill).Length > 0;
+    }
+
+    private static bool ShouldUseManualTargetArrowSelection(Skill skill)
+    {
+        return skill?.RequiresManualFriendlyTarget() == true;
     }
 
     private Character[] GetManualFriendlyTargetCandidates(Skill skill)
@@ -354,6 +354,9 @@ public partial class CharacterControl
             if (IsValidManualFriendlyTargetCandidate(character, owner, excludeSelf, allowDying))
                 candidates[write++] = character;
         }
+
+        if (skill.TryGetManualFriendlyCarrySkillType(out Skill.SkillTypes carrySkillType))
+            candidates = GetDrawableManualFriendlyTargetCandidates(candidates, carrySkillType);
 
         Array.Sort(candidates, CompareTargetPosition);
         return candidates;
@@ -408,112 +411,6 @@ public partial class CharacterControl
         }
 
         return drawableCandidates;
-    }
-
-    private static bool ShouldUseManualTargetArrowSelection(Skill skill)
-    {
-        UserSettings.EnsureLoaded();
-        return UserSettings.UseArrowManualTargetSelection
-            && skill?.RequiresManualFriendlyTarget() == true;
-    }
-
-    private void EnsureManualTargetPickerUi()
-    {
-        if (_manualTargetPickerRoot != null && GodotObject.IsInstanceValid(_manualTargetPickerRoot))
-        {
-            EnsureManualTargetPickerToggleButtons();
-            return;
-        }
-
-        CanvasLayer overlay = EnsureCardPlayOverlay();
-        if (overlay == null)
-            return;
-
-        _manualTargetPickerRoot = new Control
-        {
-            Name = "ManualTargetPicker",
-            Visible = false,
-            ZIndex = ManualTargetPickerZIndex,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _manualTargetPickerRoot.SetAnchorsPreset(LayoutPreset.FullRect);
-        overlay.AddChild(_manualTargetPickerRoot);
-
-        _manualTargetPickerMask = new ColorRect
-        {
-            Name = "Mask",
-            Color = new Color(0f, 0f, 0f, 0.42f),
-            MouseFilter = MouseFilterEnum.Stop,
-            ZIndex = 0,
-        };
-        _manualTargetPickerMask.SetAnchorsPreset(LayoutPreset.FullRect);
-        _manualTargetPickerRoot.AddChild(_manualTargetPickerMask);
-
-        _manualTargetPickerRow = new HBoxContainer
-        {
-            Name = "Cards",
-            Alignment = BoxContainer.AlignmentMode.Center,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ZIndex = 1,
-        };
-        _manualTargetPickerRow.AnchorLeft = 0.5f;
-        _manualTargetPickerRow.AnchorRight = 0.5f;
-        _manualTargetPickerRow.AnchorTop = 0.5f;
-        _manualTargetPickerRow.AnchorBottom = 0.5f;
-        _manualTargetPickerRow.OffsetLeft = -452f;
-        _manualTargetPickerRow.OffsetTop = -130f;
-        _manualTargetPickerRow.OffsetRight = 452f;
-        _manualTargetPickerRow.OffsetBottom = 130f;
-        _manualTargetPickerRow.AddThemeConstantOverride("separation", 32);
-        _manualTargetPickerRoot.AddChild(_manualTargetPickerRow);
-
-        EnsureManualTargetPickerToggleButtons();
-    }
-
-    private void EnsureManualTargetPickerToggleButtons()
-    {
-        if (
-            _manualTargetPickerRoot == null
-            || !GodotObject.IsInstanceValid(_manualTargetPickerRoot)
-        )
-            return;
-
-        if (
-            _manualTargetPickerHideButton == null
-            || !GodotObject.IsInstanceValid(_manualTargetPickerHideButton)
-        )
-        {
-            _manualTargetPickerHideButton =
-                _manualTargetPickerRoot.GetNodeOrNull<Button>("HideButton")
-                ?? new Button { Name = "HideButton" };
-            if (_manualTargetPickerHideButton.GetParent() == null)
-                _manualTargetPickerRoot.AddChild(_manualTargetPickerHideButton);
-            _manualTargetPickerHideButton.Pressed += ToggleManualTargetPickerTemporaryHidden;
-        }
-
-        _manualTargetPickerRoot.GetNodeOrNull<Button>("RestoreButton")?.QueueFree();
-
-        _manualTargetPickerHideButton.MoveToFront();
-        ApplyManualTargetPickerTemporaryHiddenState();
-    }
-
-    private static void ConfigureManualTargetPickerToggleButton(Button button, bool hidden)
-    {
-        if (button == null)
-            return;
-
-        button.Text = hidden ? "继续选择目标" : "隐藏";
-        button.FocusMode = FocusModeEnum.None;
-        button.MouseFilter = MouseFilterEnum.Stop;
-        button.ZIndex = 1000;
-        button.AnchorLeft = 1f;
-        button.AnchorRight = 1f;
-        button.AnchorTop = 0.5f;
-        button.AnchorBottom = 0.5f;
-        button.OffsetLeft = -380f;
-        button.OffsetRight = -206f;
-        button.OffsetTop = -16f;
-        button.OffsetBottom = 28f;
     }
 
     private static void ConfigureManualTargetArrowScale(ManualTargetArrowView arrow)
@@ -606,6 +503,27 @@ public partial class CharacterControl
         _manualTargetArrowHintLabel.OffsetTop = 92f;
         _manualTargetArrowHintLabel.OffsetBottom = 132f;
         _manualTargetArrowRoot.AddChild(_manualTargetArrowHintLabel);
+
+        if (MobilePlatform.IsMobile)
+        {
+            var cancelButton = new Button
+            {
+                Name = "CancelButton",
+                Text = I18n.Tr("ui.common.cancel", "取消"),
+                CustomMinimumSize = new Vector2(168f, 76f),
+                FocusMode = FocusModeEnum.None,
+                MouseFilter = MouseFilterEnum.Stop,
+                ZIndex = 3,
+            };
+            cancelButton.AnchorLeft = 1f;
+            cancelButton.AnchorRight = 1f;
+            cancelButton.OffsetLeft = -204f;
+            cancelButton.OffsetRight = -36f;
+            cancelButton.OffsetTop = 76f;
+            cancelButton.OffsetBottom = 152f;
+            cancelButton.Pressed += () => HideManualTargetPicker();
+            _manualTargetArrowRoot.AddChild(cancelButton);
+        }
     }
 
     private async Task<Character> ShowManualTargetArrowPickerAsync(
@@ -640,7 +558,7 @@ public partial class CharacterControl
         _manualTargetArrowSourceTangent = null;
         _manualTargetArrowStatusText = "选择一名己方角色";
         _manualTargetArrowSelectionActive = true;
-        _manualTargetPickerPlayedCard = playedCard;
+        _manualTargetArrowPlayedCard = playedCard;
         SuppressHandInteractionForManualTargetSelection();
         _hoveredCardIndex = -1;
         ShowCardEnergyPreview(skill);
@@ -724,7 +642,7 @@ public partial class CharacterControl
         _manualTargetArrowSourceTangent = sourceTangent;
         _manualTargetArrowStatusText = statusText;
         _manualTargetArrowSelectionActive = true;
-        _manualTargetPickerPlayedCard = null;
+        _manualTargetArrowPlayedCard = null;
         SuppressHandInteractionForManualTargetSelection();
         _manualTargetArrowRoot.Visible = true;
         HideMouseForManualTargetArrowSelection();
@@ -754,113 +672,6 @@ public partial class CharacterControl
         }
     }
 
-    private async Task<Character> ShowManualTargetPickerAsync(
-        Skill skill,
-        SkillCard playedCard = null
-    )
-    {
-        if (skill?.OwnerCharater == null || BattleNode == null)
-            return null;
-
-        EnsureManualTargetPickerUi();
-        if (_manualTargetPickerRoot == null || _manualTargetPickerRow == null)
-            return null;
-
-        ClearManualTargetCards();
-        _manualTargetPickerTemporarilyHidden = false;
-        _manualTargetPickerPlayedCard = playedCard;
-        _statusLabel.Text = "选择一名己方角色";
-
-        var completion = new TaskCompletionSource<Character>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
-        _manualTargetCompletion = completion;
-        RefreshTurnUi();
-        ShowCardEnergyPreview(skill);
-
-        Character owner = skill.OwnerCharater;
-        Character[] targets = GetManualFriendlyTargetCandidates(skill);
-        ShowManualRebirthTargetPreviews(skill, targets);
-
-        AddManualTargetCards(
-            targets,
-            selectable: true,
-            onSelected: selected => completion.TrySetResult(selected)
-        );
-        ShowManualTargetPickerRoot(targets.Length);
-        if (targets.Length == 0)
-        {
-            HideManualTargetPicker();
-            return null;
-        }
-
-        try
-        {
-            while (!completion.Task.IsCompleted && IsManualTargetPickerContextValid(skill, owner))
-            {
-                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            }
-
-            return completion.Task.IsCompleted ? await completion.Task : null;
-        }
-        finally
-        {
-            if (_manualTargetCompletion == completion)
-                _manualTargetCompletion = null;
-            HideManualTargetPicker();
-        }
-    }
-
-    private void AddManualTargetCards(
-        Character[] targets,
-        bool selectable,
-        Action<Character> onSelected
-    )
-    {
-        for (int i = 0; i < (targets?.Length ?? 0); i++)
-        {
-            if (CharacterTargetCardScene?.Instantiate() is not CharacterTargetCard card)
-                continue;
-
-            Character target = targets[i];
-            card.SetTarget(target);
-            card.SetSelectable(selectable);
-            card.SetTooltipOnHover(!selectable);
-            if (selectable && onSelected != null)
-                card.Selected += selected => onSelected(selected);
-
-            var slot = new Control
-            {
-                Name = "TargetCardSlot",
-                CustomMinimumSize = card.CustomMinimumSize,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            _manualTargetPickerRow.AddChild(slot);
-            slot.AddChild(card);
-            AnimateManualTargetCard(card, i, targets.Length);
-        }
-    }
-
-    private void ShowManualTargetPickerRoot(int targetCount)
-    {
-        _manualTargetPickerRoot.Visible = targetCount > 0;
-        if (_manualTargetPickerMask != null)
-        {
-            _manualTargetPickerMask.Modulate = new Color(1f, 1f, 1f, 0f);
-        }
-
-        ApplyManualTargetPickerTemporaryHiddenState();
-        if (targetCount == 0 || _manualTargetPickerMask == null)
-            return;
-
-        if (_manualTargetPickerTemporarilyHidden)
-            return;
-
-        _manualTargetPickerMask
-            .CreateTween()
-            .TweenProperty(_manualTargetPickerMask, "modulate:a", 1f, 0.12f);
-    }
-
     private bool IsManualTargetSelectionPending()
     {
         return _manualTargetCompletion != null && !_manualTargetCompletion.Task.IsCompleted;
@@ -871,81 +682,6 @@ public partial class CharacterControl
         return _isProcessingCardQueue
             || _queuedCardPlays.Count > 0
             || _queuedFollowUpCardPlays.Count > 0;
-    }
-
-    private void SetManualTargetPickerTemporarilyHidden(bool hidden)
-    {
-        if (!IsManualTargetSelectionPending())
-            hidden = false;
-
-        _manualTargetPickerTemporarilyHidden = hidden;
-        ApplyManualTargetPickerTemporaryHiddenState();
-
-        if (_statusLabel != null && IsManualTargetSelectionPending())
-            _statusLabel.Text = hidden ? "选择一名己方角色（界面已隐藏）" : "选择一名己方角色";
-    }
-
-    private void ToggleManualTargetPickerTemporaryHidden()
-    {
-        SetManualTargetPickerTemporarilyHidden(!_manualTargetPickerTemporarilyHidden);
-    }
-
-    private void ApplyManualTargetPickerTemporaryHiddenState()
-    {
-        bool rootVisible =
-            _manualTargetPickerRoot != null
-            && GodotObject.IsInstanceValid(_manualTargetPickerRoot)
-            && _manualTargetPickerRoot.Visible;
-        bool canToggle = rootVisible && IsManualTargetSelectionPending();
-        bool hidden = canToggle && _manualTargetPickerTemporarilyHidden;
-
-        if (_manualTargetPickerMask != null && GodotObject.IsInstanceValid(_manualTargetPickerMask))
-        {
-            _manualTargetPickerMask.Visible = rootVisible && !hidden;
-            _manualTargetPickerMask.MouseFilter = hidden
-                ? MouseFilterEnum.Ignore
-                : MouseFilterEnum.Stop;
-        }
-
-        if (_manualTargetPickerRow != null && GodotObject.IsInstanceValid(_manualTargetPickerRow))
-            _manualTargetPickerRow.Visible = rootVisible && !hidden;
-
-        if (
-            _manualTargetPickerHideButton != null
-            && GodotObject.IsInstanceValid(_manualTargetPickerHideButton)
-        )
-        {
-            ConfigureManualTargetPickerToggleButton(_manualTargetPickerHideButton, hidden);
-            _manualTargetPickerHideButton.Visible = canToggle;
-            _manualTargetPickerHideButton.Disabled = !canToggle;
-            if (_manualTargetPickerHideButton.Visible)
-                _manualTargetPickerHideButton.MoveToFront();
-        }
-
-        if (
-            _manualTargetPickerPlayedCard != null
-            && GodotObject.IsInstanceValid(_manualTargetPickerPlayedCard)
-        )
-        {
-            UserSettings.EnsureLoaded();
-            _manualTargetPickerPlayedCard.Visible =
-                !hidden || UserSettings.KeepManualTargetCardVisibleWhenHidden;
-        }
-    }
-
-    private bool IsManualTargetPickerContextValid(Skill skill, Character owner)
-    {
-        return IsInsideTree()
-            && _manualTargetPickerRoot != null
-            && GodotObject.IsInstanceValid(_manualTargetPickerRoot)
-            && _manualTargetPickerRoot.Visible
-            && skill != null
-            && owner != null
-            && GodotObject.IsInstanceValid(owner)
-            && owner.State != Character.CharacterState.Dying
-            && BattleNode != null
-            && GodotObject.IsInstanceValid(BattleNode)
-            && BattleNode.ShouldAbortSkillResolution() != true;
     }
 
     private bool IsManualTargetArrowContextValid(Skill skill, Character owner)
@@ -978,7 +714,7 @@ public partial class CharacterControl
 
     private void UpdateManualTargetArrowVisual()
     {
-        UpdateManualTargetArrowVisual(_manualTargetArrowOwner, _manualTargetPickerPlayedCard);
+        UpdateManualTargetArrowVisual(_manualTargetArrowOwner, _manualTargetArrowPlayedCard);
     }
 
     private void UpdateManualTargetArrowVisual(Character owner, SkillCard playedCard)
@@ -1514,11 +1250,10 @@ public partial class CharacterControl
             }
 
             VBoxContainer panel = GetOrCreateManualTargetArrowDamagePanel(layer, panelIndex++);
-            PreviewEffectDisplay.ShowPanel(
+            PreviewEffectDisplay.ShowTargetEffectPanel(
                 panel,
                 group.Entries,
-                GetTargetScreenPosition(target),
-                ManualTargetDamagePreviewLabelOffset
+                GetTargetScreenPosition(target)
             );
         }
 
@@ -1903,44 +1638,6 @@ public partial class CharacterControl
         }
     }
 
-    private void AnimateManualTargetCard(Control card, int index, int count)
-    {
-        if (card == null)
-            return;
-
-        const float cardWidth = 190f;
-        const float cardSeparation = 32f;
-        float centerOffsetX = (count - 1) * (cardWidth + cardSeparation) * 0.5f;
-        float startOffsetX = centerOffsetX - index * (cardWidth + cardSeparation);
-        float normalizedIndex =
-            count <= 1 ? 0f : (index - (count - 1) * 0.5f) / ((count - 1) * 0.5f);
-        float finalRotation = Mathf.DegToRad(normalizedIndex * 4f);
-
-        card.Modulate = new Color(1f, 1f, 1f, 0f);
-        card.Position = new Vector2(startOffsetX, 72f);
-        card.PivotOffset = card.CustomMinimumSize * 0.5f;
-        card.Rotation = Mathf.DegToRad(normalizedIndex * -8f);
-        card.Scale = new Vector2(0.72f, 0.72f);
-
-        Tween tween = card.CreateTween();
-        if (index > 0)
-            tween.TweenInterval(index * 0.025f);
-        tween.SetParallel(true);
-        tween.TweenProperty(card, "modulate:a", 1f, 0.14f);
-        tween
-            .TweenProperty(card, "position", Vector2.Zero, 0.24f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        tween
-            .TweenProperty(card, "rotation", finalRotation, 0.28f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        tween
-            .TweenProperty(card, "scale", Vector2.One, 0.22f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-    }
-
     private void HideManualTargetPicker(bool resetArrowCardVisual = true)
     {
         ClearCardEnergyPreview();
@@ -1950,7 +1647,6 @@ public partial class CharacterControl
         _manualTargetArrowSelectionActive = false;
         _manualTargetCompletion?.TrySetResult(null);
         _manualTargetCompletion = null;
-        _manualTargetPickerTemporarilyHidden = false;
         HideManualRebirthTargetPreviews();
         HideManualTargetArrowPreviews();
         HideManualTargetArrowEffectPreview();
@@ -1979,13 +1675,13 @@ public partial class CharacterControl
             _manualTargetArrowLayer.QueueRedraw();
         }
         if (
-            _manualTargetPickerPlayedCard != null
-            && GodotObject.IsInstanceValid(_manualTargetPickerPlayedCard)
+            _manualTargetArrowPlayedCard != null
+            && GodotObject.IsInstanceValid(_manualTargetArrowPlayedCard)
         )
         {
-            _manualTargetPickerPlayedCard.Visible = true;
+            _manualTargetArrowPlayedCard.Visible = true;
         }
-        _manualTargetPickerPlayedCard = null;
+        _manualTargetArrowPlayedCard = null;
         if (wasArrowSelectionActive && resetArrowCardVisual)
             ResetManualTargetArrowCardVisual(arrowCardIndex);
 
@@ -1993,19 +1689,6 @@ public partial class CharacterControl
             (wasTargetSelectionPending || wasArrowSelectionActive)
             && !(wasArrowSelectionActive && !resetArrowCardVisual);
 
-        if (
-            _manualTargetPickerRoot == null
-            || !GodotObject.IsInstanceValid(_manualTargetPickerRoot)
-        )
-        {
-            if (shouldRefreshTurnUiAfterHide)
-                RequestTurnUiRefresh(refreshHover: true);
-            return;
-        }
-
-        _manualTargetPickerRoot.Visible = false;
-        ApplyManualTargetPickerTemporaryHiddenState();
-        ClearManualTargetCards();
         if (shouldRefreshTurnUiAfterHide)
             RequestTurnUiRefresh(refreshHover: true);
     }
@@ -2027,26 +1710,5 @@ public partial class CharacterControl
 
         ResetCardMotion(index, instant: false);
     }
-
-    private void ClearManualTargetCards()
-    {
-        if (_manualTargetPickerRow == null || !GodotObject.IsInstanceValid(_manualTargetPickerRow))
-            return;
-
-        foreach (Node child in _manualTargetPickerRow.GetChildren())
-        {
-            if (child is Control slot)
-            {
-                foreach (Node slotChild in slot.GetChildren())
-                {
-                    if (slotChild is CharacterTargetCard card)
-                        card.HideTargetTooltip();
-                }
-            }
-
-            child.QueueFree();
-        }
-    }
-
 
 }

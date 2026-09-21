@@ -5,31 +5,39 @@
                                             "BaseDamage":  7
                                         },
                    "CursePower":  {
-                                      "Name":  "咒力"
+                                      "Name":  "咒力",
+                                      "CursePowerStacks":  1,
+                                      "EnergyCost":  2
                                   },
                    "DeflectionShield":  {
                                             "Name":  "偏折之盾",
-                                            "BaseBlock":  6,
+                                            "BaseBlock":  7,
                                             "DamageImmuneStacks":  1,
-                                            "Multiplier":  1
+                                            "Multiplier":  1,
+                                            "EnergyCost":  1
                                         },
                    "DisasterImpact":  {
                                           "Name":  "灵魂汲取",
                                           "BaseDamage":  4,
-                                          "WeakenStacksPerExtraDraw":  1
+                                          "WeakenStacksPerExtraDraw":  1,
+                                          "EnergyCost":  0
                                       },
                    "DissonantField":  {
                                           "Name":  "失谐力场",
-                                          "BaseBlock":  6,
+                                          "BaseBlock":  7,
                                           "WeakenStacks":  2,
-                                          "Multiplier":  1
+                                          "Multiplier":  1,
+                                          "EnergyCost":  2
                                       },
                    "EchoBasicSpecial":  {
                                             "Name":  "解离",
-                                            "WeakenStacks":  1
+                                            "WeakenStacks":  1,
+                                            "EnergyCost":  0
                                         },
                    "EchoForm":  {
-                                    "Name":  "回响形态"
+                                    "Name":  "回响形态",
+                                    "EchoStacks":  1,
+                                    "EnergyCost":  4
                                 },
                    "EchonicResonance":  {
                                             "Name":  "回响共鸣",
@@ -44,40 +52,48 @@
                                         "HitCount":  2
                                     },
                    "EternalCore":  {
-                                       "Name":  "永恒核心"
+                                       "Name":  "永恒核心",
+                                       "EnergyStorageStacks":  3,
+                                       "EnergyCost":  1
                                    },
                    "Extract":  {
                                    "Name":  "萃取",
                                    "BaseDamage":  7,
-                                   "DrawCount":  2
+                                   "DrawCount":  2,
+                                   "EnergyCost":  1
                                },
                    "LingeringTone":  {
                                          "Name":  "留音",
-                                         "BaseBlock":  6,
+                                         "BaseBlock":  7,
                                          "HandKeywordCount":  1,
                                          "Multiplier":  1
                                      },
                    "Overdraw":  {
                                     "Name":  "透支",
                                     "NoDrawStacks":  1,
-                                    "DrawCount":  0
+                                    "DrawCount":  3,
+                                    "EnergyCost":  0
                                 },
                    "PhaseEcho":  {
-                                     "Name":  "相位回声"
+                                     "Name":  "相位回声",
+                                     "EnergyCost":  0
                                  },
                    "Purity":  {
                                   "Name":  "纯净",
-                                  "EnergyGain":  2
+                                  "EnergyGain":  2,
+                                  "EnergyCost":  0
                               },
                    "RelayShift":  {
                                       "Name":  "后撤步",
-                                      "BaseBlock":  6
+                                      "BaseBlock":  7,
+                                      "EnergyCost":  2
                                   },
                    "ResonanceShelter":  {
                                             "Name":  "护幕",
-                                            "BaseBlock":  4,
+                                            "BaseBlock":  5,
                                             "CardRefreshStacks":  1,
-                                            "Multiplier":  1
+                                            "Multiplier":  1,
+                                            "EnergyCost":  1
                                         },
                    "ResonantSlash":  {
                                          "Name":  "共振斩击",
@@ -87,13 +103,15 @@
                                      },
                    "ResonantWard":  {
                                         "Name":  "电磁排斥",
-                                        "DebuffImmunityStacks":  1,
-                                        "BaseBlock":  6
+                                        "DebuffImmunityStacks":  2,
+                                        "BaseBlock":  7,
+                                        "EnergyCost":  2
                                     },
                    "ReverbChain":  {
                                        "Name":  "回声连奏",
                                        "BaseDamage":  0,
-                                       "Multiplier":  1
+                                       "Multiplier":  1,
+                                       "EnergyCost":  2
                                    },
                    "SacredOnslaught":  {
                                            "Name":  "圣域冲击",
@@ -105,14 +123,15 @@
                    "SonicBoom":  {
                                      "Name":  "音爆",
                                      "BaseDamage":  1,
-                                     "LoopCount":  4
+                                     "LoopCount":  4,
+                                     "EnergyCost":  3
                                  },
                    "SonicDeflection":  {
                                            "Name":  "声波偏转",
                                            "DamageImmuneStacks":  2,
                                            "BaseBlock":  0,
-                                           "Multiplier":  1,
-                                           "SurvivabilityLoss":  3
+                                           "SurvivabilityLoss":  3,
+                                           "EnergyCost":  2
                                        },
                    "SoundBarrier":  {
                                         "Name":  "音墙",
@@ -120,19 +139,24 @@
                                     },
                    "SoundPickup":  {
                                        "Name":  "拾音",
-                                       "BaseBlock":  6,
+                                       "BaseBlock":  7,
                                        "DrawPilePickCount":  1,
                                        "Multiplier":  1
                                    },
                    "TuningStance":  {
                                         "Name":  "韵律",
-                                        "SelectDiscardCount":  2
+                                        "SelectDiscardCount":  2,
+                                        "EnergyCost":  1
                                     },
                    "VoidForm":  {
-                                    "Name":  "虚无形态"
+                                    "Name":  "虚无形态",
+                                    "VoidStacks":  1,
+                                    "EnergyCost":  4
                                 },
                    "WeakeningField":  {
-                                          "Name":  "虚弱立场"
+                                          "Name":  "虚弱立场",
+                                          "WeakeningFieldStacks":  3,
+                                          "EnergyCost":  1
                                       }
                }
 }

@@ -40,7 +40,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
 
-        MaxLife = 147;
+        MaxLife = 152;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -59,7 +59,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 30;
+    private const int BaseDamage = 28;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -113,7 +113,7 @@ public partial class GraveWraithSpecial : Skill
         return new SkillPlan(
             this,
             AttackStep(
-                baseDamage: V("BaseDamage", 13),
+                baseDamage: V("BaseDamage", 18),
                 multiplier: V("Multiplier", 1),
                 target: HostileTargetReference.All
             ),

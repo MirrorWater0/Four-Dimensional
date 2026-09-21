@@ -6,6 +6,7 @@
 [ext_resource type="Shader" uid="uid://dd5rulw85c75n" path="res://shader/Icon/EnergeStartIcon.gdshader" id="3_sitiv"]
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
 [ext_resource type="Shader" uid="uid://cqhlq7i8p42di" path="res://shader/Effect/PlayableCardCrystalBorder.gdshader" id="5_playable_highlight"]
+[ext_resource type="Texture2D" uid="uid://djywemb5bhgf3" path="res://asset/UI/CardFrame/SkillCardTrim.svg" id="5_tttt4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wi1bx"]
 shader = ExtResource("1_wi1bx")
@@ -15,7 +16,7 @@ shader_parameter/line_density = 80.0
 shader_parameter/line_speed = 8.0
 shader_parameter/line_strength = 0.7310000347225
 shader_parameter/aberration_amount = 0.002000000095
-shader_parameter/beam_color = Color(0.5, 0.7, 1, 1)
+shader_parameter/beam_color = Color(0.34, 0.37, 0.4, 1)
 
 [sub_resource type="FastNoiseLite" id="FastNoiseLite_playable_highlight"]
 seed = 918273
@@ -38,12 +39,12 @@ shader_parameter/width = 0.10000000149012
 shader_parameter/ripple_speed = 0.28000000119209
 shader_parameter/card_size = Vector2(240, 370)
 shader_parameter/effect_margin = Vector2(32, 32)
-shader_parameter/corner_radius_px = 0.0
+shader_parameter/corner_radius_px = 10.0
 shader_parameter/glow_radius_px = 46.0
 shader_parameter/noise_tex = SubResource("NoiseTexture2D_playable_highlight")
-shader_parameter/core_color = Color(0.72, 0.96, 1, 1)
-shader_parameter/accent_color = Color(0.08, 0.42, 1, 1)
-shader_parameter/spark_color = Color(0.58, 0.92, 1, 1)
+shader_parameter/core_color = Color(0.96, 0.97, 0.98, 1)
+shader_parameter/accent_color = Color(0.66, 0.69, 0.73, 1)
+shader_parameter/spark_color = Color(0.86, 0.88, 0.9, 1)
 shader_parameter/pulse_speed = 2.25
 shader_parameter/flame_height_px = 34.0
 shader_parameter/flame_scale = 7.0
@@ -51,12 +52,15 @@ shader_parameter/flame_speed = 0.85000002384186
 shader_parameter/flame_turbulence = 0.41999998688698
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
-bg_color = Color(0.009829684, 0.014048879, 0.02801943, 0.72156864)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.96862745, 0.972549, 1, 0.78)
+bg_color = Color(0.035, 0.046, 0.065, 1)
+corner_radius_top_left = 13
+corner_radius_top_right = 13
+corner_radius_bottom_right = 13
+corner_radius_bottom_left = 13
+corner_detail = 8
+shadow_color = Color(0, 0, 0, 0.48)
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_frame"]
 bg_color = Color(0, 0, 0, 0)
@@ -64,38 +68,53 @@ border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.627451, 0.81960785, 1, 0.18)
+border_color = Color(0.64, 0.72, 0.8, 0.12)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
+bg_color = Color(0.043, 0.056, 0.08, 1)
+corner_radius_bottom_right = 7
+corner_radius_bottom_left = 7
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_art_frame"]
-bg_color = Color(0.07350001, 0.09389999, 0.15, 0.4509804)
+bg_color = Color(0.075, 0.1, 0.15, 1)
+
+[sub_resource type="Gradient" id="Gradient_art_shade"]
+offsets = PackedFloat32Array(0, 0.32, 0.66, 1)
+colors = PackedColorArray(0.025, 0.04, 0.07, 0.28, 0.025, 0.04, 0.07, 0, 0.025, 0.04, 0.07, 0, 0.043, 0.056, 0.08, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_art_shade"]
+gradient = SubResource("Gradient_art_shade")
+width = 4
+height = 192
+fill_to = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_energy"]
+bg_color = Color(0.035, 0.052, 0.081, 0.96)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.7058824, 0.8392157, 1, 0.34)
+border_color = Color(0.81, 0.85, 0.9, 0.54)
+corner_radius_top_right = 4
+corner_radius_bottom_right = 6
+shadow_color = Color(0, 0, 0, 0.28)
+shadow_size = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_description"]
-content_margin_left = 5.0
-content_margin_right = 5.0
-bg_color = Color(0.06666667, 0.08627451, 0.13333334, 0.9490196)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0, 0, 0)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
-bg_color = Color(0.050980393, 0.07058824, 0.10980392, 0.972549)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0, 0, 0, 0)
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sitiv"]
 shader = ExtResource("3_sitiv")
-shader_parameter/color_start = Color(0.6, 0.9, 1, 1)
-shader_parameter/color_end = Color(0.6, 0.9, 1, 1)
+shader_parameter/color_start = Color(0.72, 0.66, 0.38, 1)
+shader_parameter/color_end = Color(0.72, 0.66, 0.38, 1)
 shader_parameter/size = 0.76900003326762
 shader_parameter/thickness = 0.1130000053675
 shader_parameter/curvature = 0.61500002595262
@@ -104,18 +123,26 @@ shader_parameter/pulse_speed = 0.0
 shader_parameter/edge_softness = 0.5
 
 [sub_resource type="Gradient" id="Gradient_sitiv"]
-colors = PackedColorArray(0.67631733, 0.81812185, 1, 1, 1, 1, 1, 0)
+colors = PackedColorArray(0.72, 0.66, 0.38, 1, 1, 1, 1, 0)
 
 [sub_resource type="GradientTexture1D" id="GradientTexture1D_xqx8h"]
 gradient = SubResource("Gradient_sitiv")
 width = 50
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover"]
-bg_color = Color(1, 1, 1, 0.03529412)
+bg_color = Color(0.75, 0.86, 1, 0.025)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
+border_color = Color(0.85, 0.9, 1, 0.86)
+corner_radius_top_left = 13
+corner_radius_top_right = 13
+corner_radius_bottom_right = 13
+corner_radius_bottom_left = 13
+corner_detail = 1
+shadow_color = Color(0.5, 0.7, 1, 0.16)
+shadow_size = 6
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_discard_sparks"]
 blend_mode = 1
@@ -197,7 +224,7 @@ hue_variation_min = -0.03
 hue_variation_max = 0.04
 
 [sub_resource type="Curve" id="Curve_discard_trail_width"]
-_data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8084291, 0.7125851), 0.30350965, 0.30350965, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
+_data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8292683, 1), -5.865096e-07, -5.865096e-07, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
 point_count = 3
 
 [sub_resource type="Gradient" id="Gradient_discard_trail"]
@@ -212,259 +239,325 @@ anchors_preset = 0
 offset_right = 240.0
 offset_bottom = 370.0
 script = ExtResource("1_td24b")
-metadata/_edit_lock_ = true
 
-[node name="SubViewport" type="CanvasGroup" parent="." unique_id=15917497]
+[node name="VisualTransform" type="Control" parent="." unique_id=2635845]
+custom_minimum_size = Vector2(240, 370)
+anchors_preset = 0
+offset_right = 240.0
+offset_bottom = 370.0
+mouse_filter = 2
+
+[node name="SubViewport" type="CanvasGroup" parent="VisualTransform" unique_id=15917497]
 material = SubResource("ShaderMaterial_wi1bx")
 fit_margin = 32.0
 clear_margin = 32.0
 
-[node name="PlayableHighlight" type="ColorRect" parent="SubViewport" unique_id=1878566179]
-visible = false
+[node name="PlayableHighlight" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=1878566179]
 material = SubResource("ShaderMaterial_playable_highlight")
 offset_left = -32.0
 offset_top = -32.0
 offset_right = 272.0
-offset_bottom = 400.0
+offset_bottom = 402.0
 mouse_filter = 2
 
-[node name="BackShade" type="ColorRect" parent="SubViewport" unique_id=577549818]
+[node name="BackShade" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=577549818]
+visible = false
 offset_left = 4.0
 offset_top = 4.0
 offset_right = 236.0
 offset_bottom = 366.0
-color = Color(0.0128999995, 0.017175, 0.03, 0.73333335)
+mouse_filter = 2
+color = Color(0.18, 0.2, 0.23, 0.28)
 
-[node name="BG" type="Panel" parent="SubViewport" unique_id=1048061845]
+[node name="BG" type="Panel" parent="VisualTransform/SubViewport" unique_id=1048061845]
 custom_minimum_size = Vector2(240, 370)
 offset_right = 240.0
 offset_bottom = 370.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_card_bg")
 
-[node name="InnerFrame" type="Panel" parent="SubViewport" unique_id=181530201]
-offset_left = 6.0
-offset_top = 6.0
-offset_right = 234.0
-offset_bottom = 364.0
+[node name="InnerFrame" type="Panel" parent="VisualTransform/SubViewport" unique_id=181530201]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 232.0
+offset_bottom = 352.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner_frame")
 
-[node name="ArtFrame" type="Panel" parent="SubViewport" unique_id=2113042584]
+[node name="BG2" type="Panel" parent="VisualTransform/SubViewport" unique_id=1143377559]
+offset_left = 10.0
+offset_top = 202.0
+offset_right = 230.0
+offset_bottom = 349.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_footer")
+
+[node name="NamePlate" type="Polygon2D" parent="VisualTransform/SubViewport/BG2" unique_id=489562878]
+color = Color(1, 1, 1, 0.1)
+antialiased = true
+polygon = PackedVector2Array(8, 14, 210, 14, 202, 16, 8, 16)
+
+[node name="CharacterPlate" type="Polygon2D" parent="VisualTransform/SubViewport/BG2" unique_id=1127487847]
+visible = false
+color = Color(1, 1, 1, 0.24)
+antialiased = true
+polygon = PackedVector2Array(8, 143, 82, 143, 86, 144, 8, 144)
+
+[node name="CharacterAccent" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=1938204411]
+offset_left = 19.0
+offset_top = 225.0
+offset_right = 22.0
+offset_bottom = 240.0
+mouse_filter = 2
+
+[node name="ArtFrame" type="Panel" parent="VisualTransform/SubViewport" unique_id=2113042584]
 clip_contents = true
-offset_left = 12.0
-offset_top = 116.0
-offset_right = 228.0
-offset_bottom = 230.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 230.0
+offset_bottom = 202.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_art_frame")
 
-[node name="ArtFill" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=215832661]
+[node name="ArtFill" type="ColorRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=215832661]
 layout_mode = 0
-offset_right = 216.0
-offset_bottom = 114.0
+offset_right = 220.0
+offset_bottom = 192.0
 mouse_filter = 2
-color = Color(0.0627451, 0.078431375, 0.12156863, 0.96)
+color = Color(0.095, 0.125, 0.18, 1)
 
-[node name="ArtBandTop" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=1996359254]
+[node name="ArtBandTop" type="ColorRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=1996359254]
 layout_mode = 0
 offset_left = 18.0
-offset_top = 18.0
-offset_right = 182.0
-offset_bottom = 20.0
+offset_top = 167.0
+offset_right = 202.0
+offset_bottom = 168.0
 mouse_filter = 2
-color = Color(0.6901961, 0.84313726, 1, 0.24)
+color = Color(0.84, 0.9, 1, 0.34)
 
-[node name="ArtDiamondOuter" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=374914252]
+[node name="ArtDiamondOuter" type="ColorRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=374914252]
 layout_mode = 0
-offset_left = 82.0
-offset_top = 18.0
-offset_right = 134.0
-offset_bottom = 70.0
+offset_left = 83.0
+offset_top = 65.0
+offset_right = 137.0
+offset_bottom = 119.0
 rotation = 0.7853982
-pivot_offset = Vector2(26, 26)
+pivot_offset = Vector2(27, 27)
 mouse_filter = 2
-color = Color(0.6901961, 0.84313726, 1, 0.28)
+color = Color(0.84, 0.9, 1, 0.2)
 
-[node name="ArtDiamondInner" type="ColorRect" parent="SubViewport/ArtFrame" unique_id=741467593]
+[node name="ArtDiamondInner" type="ColorRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=741467593]
 layout_mode = 0
-offset_left = 88.0
-offset_top = 24.0
-offset_right = 128.0
-offset_bottom = 64.0
+offset_left = 91.0
+offset_top = 73.0
+offset_right = 129.0
+offset_bottom = 111.0
 rotation = 0.7853982
-pivot_offset = Vector2(20, 20)
+pivot_offset = Vector2(19, 19)
 mouse_filter = 2
-color = Color(0.6901961, 0.84313726, 1, 0.12)
+color = Color(0.84, 0.9, 1, 0.11)
 
-[node name="SkillIcon" type="TextureRect" parent="SubViewport/ArtFrame" unique_id=429305689]
+[node name="SkillIcon" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=429305689]
 texture_filter = 4
 layout_mode = 0
 offset_left = 80.0
-offset_top = 18.0
-offset_right = 136.0
-offset_bottom = 74.0
+offset_top = 62.0
+offset_right = 140.0
+offset_bottom = 122.0
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="SkillPicture" type="TextureRect" parent="SubViewport/ArtFrame" unique_id=679889421]
+[node name="SkillPicture" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=679889421]
 texture_filter = 4
 layout_mode = 0
-offset_right = 216.0
-offset_bottom = 114.0
+offset_right = 220.0
+offset_bottom = 192.0
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="TypeBadge" type="Control" parent="SubViewport" unique_id=1653600046]
+[node name="ArtShadeBottom" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=679889422]
+layout_mode = 0
+offset_right = 220.0
+offset_bottom = 192.0
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_art_shade")
+expand_mode = 1
+
+[node name="TypeBadge" type="Control" parent="VisualTransform/SubViewport" unique_id=1653600046]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 175.83333
-offset_top = 94.166664
-offset_right = 251.83333
-offset_bottom = 118.166664
+offset_left = 151.0
+offset_top = 222.0
+offset_right = 222.0
+offset_bottom = 243.0
 mouse_filter = 2
 
-[node name="TypeLabel" type="Label" parent="SubViewport/TypeBadge" unique_id=1519905069]
+[node name="TypeLabel" type="Label" parent="VisualTransform/SubViewport/TypeBadge" unique_id=1519905069]
 layout_mode = 0
-offset_left = -3.8333232
-offset_top = -5.1666627
-offset_right = 72.16668
-offset_bottom = 20.833338
-theme_override_colors/font_color = Color(1, 1, 1, 0.95)
-theme_override_font_sizes/font_size = 18
-text = "type"
-horizontal_alignment = 1
+offset_right = 71.0
+offset_bottom = 21.0
+theme_override_colors/font_color = Color(0.69, 0.75, 0.81, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.8)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 13
+text = "生存"
+horizontal_alignment = 2
 vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
 
-[node name="EnergyBadge" type="Control" parent="SubViewport" unique_id=1300825066]
+[node name="EnergyBadge" type="Control" parent="VisualTransform/SubViewport" unique_id=1300825066]
 layout_mode = 3
 anchors_preset = 0
-offset_left = 8.333333
-offset_top = 84.166664
-offset_right = 90.333336
-offset_bottom = 119.166664
+offset_left = 14.0
+offset_top = 15.0
+offset_right = 117.0
+offset_bottom = 53.0
 mouse_filter = 2
 
-[node name="EnergyCost" type="RichTextLabel" parent="SubViewport/EnergyBadge" unique_id=1575399771]
+[node name="CostSurface" type="Panel" parent="VisualTransform/SubViewport/EnergyBadge" unique_id=81242350]
 layout_mode = 0
+offset_right = 103.0
+offset_bottom = 37.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_energy")
+
+[node name="EnergyCost" type="RichTextLabel" parent="VisualTransform/SubViewport/EnergyBadge" unique_id=1575399771]
+layout_mode = 0
+offset_left = 3.0
 offset_top = -1.0
-offset_right = 82.0
-offset_bottom = 30.833336
-theme_override_colors/default_color = Color(1, 1, 1, 0.95)
-theme_override_colors/font_outline_color = Color(0.01, 0.018, 0.035, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/normal_font_size = 17
+offset_right = 98.0
+offset_bottom = 39.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.94, 0.97, 1, 0.98)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.92)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/normal_font_size = 14
 bbcode_enabled = true
-text = "Energy"
+text = "[center]耗能 [font_size=28][b]1[/b][/font_size][/center]"
 scroll_active = false
 autowrap_mode = 0
+vertical_alignment = 1
 
-[node name="TopAccent" type="ColorRect" parent="SubViewport" unique_id=128579300]
-offset_left = 20.0
-offset_top = 227.49998
-offset_right = 220.0
-offset_bottom = 230.66667
-mouse_filter = 2
-color = Color(0.7058824, 0.87058824, 1, 0.38)
+[node name="EnergyPlate" type="Polygon2D" parent="VisualTransform/SubViewport" unique_id=1300825067]
+z_index = 3
+position = Vector2(14, 14.760982)
+scale = Vector2(1, 0.97997427)
+color = Color(1, 1, 1, 0.72)
+antialiased = true
+polygon = PackedVector2Array(0, 0.2439022, 3, 0.2439022, 3, 38, 1.405899, 38, 0, 38)
 
-[node name="Description" type="RichTextLabel" parent="SubViewport" unique_id=574232235]
-custom_minimum_size = Vector2(204, 98)
-offset_left = 13.333333
-offset_top = 234.16666
-offset_right = 226.66666
-offset_bottom = 359.16666
+[node name="RarityBadge" type="Control" parent="VisualTransform/SubViewport" unique_id=1938204414]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 201.0
+offset_top = 16.0
+offset_right = 225.0
+offset_bottom = 40.0
 mouse_filter = 2
-theme_override_colors/default_color = Color(0.9647059, 0.972549, 0.99215686, 0.96)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/normal_font_size = 17
+
+[node name="RaritySocket" type="Polygon2D" parent="VisualTransform/SubViewport/RarityBadge" unique_id=636714387]
+color = Color(0.035, 0.05, 0.075, 0.94)
+antialiased = true
+polygon = PackedVector2Array(12, 0, 24, 12, 12, 24, 0, 12)
+
+[node name="RarityPlate" type="Polygon2D" parent="VisualTransform/SubViewport/RarityBadge" unique_id=1938204413]
+position = Vector2(12, 12)
+color = Color(1, 1, 1, 0.95)
+antialiased = true
+polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+
+[node name="TopAccent" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=128579300]
+offset_left = 19.0
+offset_top = 247.0
+offset_right = 221.0
+offset_bottom = 248.0
+mouse_filter = 2
+color = Color(1, 1, 1, 0.65)
+
+[node name="Description" type="RichTextLabel" parent="VisualTransform/SubViewport" unique_id=574232235]
+offset_left = 18.0
+offset_top = 251.0
+offset_right = 222.0
+offset_bottom = 349.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.86, 0.89, 0.92, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.9)
+theme_override_constants/line_separation = 2
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/normal_font_size = 16
 theme_override_styles/normal = SubResource("StyleBoxFlat_description")
 bbcode_enabled = true
-text = "防御"
+text = "自身和下一位友军获得 [color=#8dcce8]7[/color] 点护盾。
+全体友军获得 [color=#8dcce8]1[/color] 层余影。"
 scroll_active = false
-autowrap_mode = 1
-
-[node name="BG2" type="Panel" parent="SubViewport" unique_id=1143377559]
-visible = false
-offset_left = 14.5
-offset_top = 17.0
-offset_right = 230.5
-offset_bottom = 89.0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_footer")
-
-[node name="NamePlate" type="Polygon2D" parent="SubViewport/BG2" unique_id=489562878]
-color = Color(0.6901961, 0.84313726, 1, 0.16)
-antialiased = true
-polygon = PackedVector2Array(8, 8, 208, 8, 208, 40.000004, 8, 40.000004)
-
-[node name="CharacterPlate" type="Polygon2D" parent="SubViewport/BG2" unique_id=1127487847]
-color = Color(0.6901961, 0.84313726, 1, 0.1)
-antialiased = true
-polygon = PackedVector2Array(7.9999924, 48, 107.625046, 48, 207.99998, 48, 200, 72, 16, 72)
-
-[node name="NameLabel" type="Label" parent="SubViewport" unique_id=359977757]
-custom_minimum_size = Vector2(204, 24)
-offset_left = 20.5
-offset_top = 27.0
-offset_right = 224.5
-offset_bottom = 54.0
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 1
-theme_override_font_sizes/font_size = 19
-text = "name"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="CharacterName" type="Label" parent="SubViewport" unique_id=803558591]
-custom_minimum_size = Vector2(168, 16)
-offset_left = 36.666664
-offset_top = 62.5
-offset_right = 204.66666
-offset_bottom = 85.5
-theme_override_colors/font_color = Color(1, 1, 1, 0.92)
-theme_override_font_sizes/font_size = 16
-text = "name"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="NativeFrame" type="Node2D" parent="SubViewport" unique_id=48530284]
 metadata/_edit_lock_ = true
 
-[node name="CornerDiamondTL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=51735338]
-color = Color(0.42, 0.86, 0.92, 0.74)
+[node name="NameLabel" type="Label" parent="VisualTransform/SubViewport" unique_id=359977757]
+custom_minimum_size = Vector2(0, 28)
+offset_left = 19.0
+offset_top = 191.0
+offset_right = 221.0
+offset_bottom = 223.0
+theme_override_colors/font_color = Color(0.95, 0.945, 0.92, 1)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.9)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 22
+text = "月落残影"
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="CharacterName" type="Label" parent="VisualTransform/SubViewport" unique_id=803558591]
+offset_left = 29.0
+offset_top = 222.0
+offset_right = 148.0
+offset_bottom = 243.0
+theme_override_colors/font_color = Color(0.68, 0.71, 0.74, 0.92)
+theme_override_colors/font_outline_color = Color(0.01, 0.02, 0.04, 0.86)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 13
+text = "夜莺"
+vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="NativeFrame" type="Node2D" parent="VisualTransform/SubViewport" unique_id=48530284]
+visible = false
+metadata/_edit_lock_ = true
+
+[node name="CornerDiamondTL" type="Polygon2D" parent="VisualTransform/SubViewport/NativeFrame" unique_id=51735338]
+color = Color(0.3, 0.33, 0.36, 0.74)
 antialiased = true
 polygon = PackedVector2Array(29, 25.8, 32.2, 29, 29, 32.2, 25.8, 29)
 
-[node name="CornerDiamondTR" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=799575946]
-color = Color(0.42, 0.86, 0.92, 0.74)
+[node name="CornerDiamondTR" type="Polygon2D" parent="VisualTransform/SubViewport/NativeFrame" unique_id=799575946]
+color = Color(0.3, 0.33, 0.36, 0.74)
 antialiased = true
 polygon = PackedVector2Array(211, 25.8, 214.2, 29, 211, 32.2, 207.8, 29)
 
-[node name="CornerDiamondBL" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=322484918]
+[node name="CornerDiamondBL" type="Polygon2D" parent="VisualTransform/SubViewport/NativeFrame" unique_id=322484918]
 position = Vector2(0.20000076, 2.2000122)
-color = Color(0.42, 0.86, 0.92, 0.74)
+color = Color(0.3, 0.33, 0.36, 0.74)
 antialiased = true
 polygon = PackedVector2Array(29, 337.8, 32.2, 341, 29, 344.2, 25.8, 341)
 
-[node name="CornerDiamondBR" type="Polygon2D" parent="SubViewport/NativeFrame" unique_id=344071293]
+[node name="CornerDiamondBR" type="Polygon2D" parent="VisualTransform/SubViewport/NativeFrame" unique_id=344071293]
 position = Vector2(0.20000076, 2.2000122)
-color = Color(0.42, 0.86, 0.92, 0.74)
+color = Color(0.3, 0.33, 0.36, 0.74)
 antialiased = true
 polygon = PackedVector2Array(211, 337.8, 214.2, 341, 211, 344.2, 207.8, 341)
 
-[node name="EnergeIcon" type="ColorRect" parent="SubViewport/NativeFrame" unique_id=1338420480]
-visible = false
+[node name="EnergeIcon" type="ColorRect" parent="VisualTransform/SubViewport/NativeFrame" unique_id=1338420480]
 material = SubResource("ShaderMaterial_sitiv")
 offset_left = 110.0
 offset_top = 3.333333
 offset_right = 134.16667
 offset_bottom = 27.5
 
-[node name="TextureRect" type="TextureRect" parent="SubViewport/NativeFrame/EnergeIcon" unique_id=147294065]
+[node name="TextureRect" type="TextureRect" parent="VisualTransform/SubViewport/NativeFrame/EnergeIcon" unique_id=147294065]
 layout_mode = 0
 offset_left = 25.833332
 offset_top = 9.999666
@@ -473,7 +566,7 @@ offset_bottom = 13.332666
 texture = SubResource("GradientTexture1D_xqx8h")
 metadata/_edit_use_anchors_ = true
 
-[node name="TextureRect2" type="TextureRect" parent="SubViewport/NativeFrame/EnergeIcon" unique_id=1656552174]
+[node name="TextureRect2" type="TextureRect" parent="VisualTransform/SubViewport/NativeFrame/EnergeIcon" unique_id=1656552174]
 layout_mode = 0
 offset_left = -1.6666628
 offset_top = 10.0
@@ -482,22 +575,44 @@ offset_bottom = 13.333
 scale = Vector2(-1, 1)
 texture = SubResource("GradientTexture1D_xqx8h")
 
-[node name="HoverHint" type="Panel" parent="SubViewport" unique_id=904079227]
+[node name="OrnateFrame" type="TextureRect" parent="VisualTransform/SubViewport" unique_id=1270462751]
+texture_filter = 4
+offset_right = 240.0
+offset_bottom = 370.0
+mouse_filter = 2
+texture = ExtResource("5_tttt4")
+expand_mode = 1
+metadata/_edit_lock_ = true
+
+[node name="HoverHint" type="Panel" parent="VisualTransform/SubViewport" unique_id=904079227]
 visible = false
-modulate = Color(18.892157, 18.892157, 18.892157, 1)
 offset_left = 2.0
 offset_top = 2.0
 offset_right = 238.0
 offset_bottom = 368.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_hover")
+metadata/_edit_lock_ = true
 
-[node name="Button" type="Button" parent="SubViewport" unique_id=1761752522]
+[node name="HandIndexLabel" type="Label" parent="VisualTransform/SubViewport" unique_id=178014718]
+visible = false
+z_index = 500
+offset_top = -48.0
+offset_right = 240.0
+offset_bottom = -10.0
+theme_override_colors/font_color = Color(0.72, 0.66, 0.38, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_constants/outline_size = 0
+theme_override_font_sizes/font_size = 30
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="VisualTransform/SubViewport" unique_id=1761752522]
 modulate = Color(1, 1, 1, 0)
 custom_minimum_size = Vector2(240, 370)
-offset_top = 1.0
 offset_right = 240.0
-offset_bottom = 371.0
+offset_bottom = 370.0
 metadata/_edit_lock_ = true
 
 [node name="DrawCardTrailTarget" type="Node2D" parent="." unique_id=1140895484]
@@ -551,7 +666,7 @@ process_material = SubResource("ParticleProcessMaterial_discard_sparks")
 visible = false
 top_level = true
 z_index = 99
-width = 20.0
+width = 30.0
 width_curve = SubResource("Curve_discard_trail_width")
 gradient = SubResource("Gradient_discard_trail")
 joint_mode = 2

@@ -3,6 +3,8 @@ using System.Globalization;
 
 public partial class Skill
 {
+    protected int Cost(int defaultValue) => V(nameof(EnergyCost), defaultValue);
+
     protected int V(string key, int defaultValue)
     {
         if (SkillId is SkillID skillId && SkillTuning.TryGetInt(skillId, key, out int idValue))

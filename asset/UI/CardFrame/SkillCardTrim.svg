@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="370" viewBox="0 0 240 370">
+  <defs>
+    <linearGradient id="silver" x1="0" y1="0" x2="0.7" y2="1">
+      <stop stop-color="#edf0ee"/>
+      <stop offset="0.3" stop-color="#7a858e"/>
+      <stop offset="0.66" stop-color="#4b5868"/>
+      <stop offset="1" stop-color="#b8c2ca"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#silver)">
+    <path d="M15 2H225L238 15V355L225 368H15L2 355V15Z" stroke-width="1.5"/>
+    <path d="M29 7H15L7 15V39M211 7H225L233 15V39M7 331V355L15 363H87M233 331V355L225 363H153" stroke-width="1"/>
+    <path d="M3 54V92M237 54V92M3 298V316M237 298V316" stroke-width="2.5"/>
+    <path d="M94 358H109L120 365L131 358H146" stroke-width="0.9"/>
+  </g>
+  <g fill="#bcc6ce">
+    <path d="M120 353L124 357L120 361L116 357Z"/>
+    <path d="M108 357L110 359L108 361L106 359ZM132 357L134 359L132 361L130 359Z" opacity="0.6"/>
+  </g>
+</svg>

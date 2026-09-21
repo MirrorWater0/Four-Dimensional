@@ -1,20 +1,20 @@
 shader_type canvas_item;
 
 // --- Colors ---
-uniform vec4 color_start : source_color = vec4(0.2, 0.3, 0.9, 1.0);
+uniform vec4 color_start : source_color = vec4(0.6, 0.89, 1., 1.0);
 uniform vec4 color_end : source_color = vec4(0.6, 0.9, 1.0, 1.0);
 
 // --- Shape Settings ---
-uniform float size : hint_range(0.1, 1.5) = 0.5;
-uniform float thickness : hint_range(0.0, 0.2) = 0.03;
-uniform float curvature : hint_range(0.1, 1.0) = 0.6;
+uniform float size : hint_range(0.1, 1.5) = 0.77;
+uniform float thickness : hint_range(0.0, 0.2) = 0.113;
+uniform float curvature : hint_range(0.1, 1.0) = 0.615;
 
 // --- Animation ---
 uniform float rotation_speed = 0.2;
 uniform float pulse_speed = 1.0;
 
 // --- Border Fade ---
-uniform float edge_softness : hint_range(0.0, 0.5) = 0.1; // How close to the edge to start fading
+uniform float edge_softness : hint_range(0.0, 0.5) = 0.5; // How close to the edge to start fading
 
 vec2 rotate(vec2 uv, float angle) {
     float c = cos(angle);

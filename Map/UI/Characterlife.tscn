@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://klvlhnk06eaa"]
+
+[ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_27l78"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_bg"]
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+skew = Vector2(0.22, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.96, 0.97, 0.98, 0.96)
+anti_aliasing_size = 3.305
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_fill"]
+bg_color = Color(0.94, 0.95, 0.96, 0.96)
+skew = Vector2(0.22, 0)
+
+[sub_resource type="Theme" id="Theme_party_life_bar"]
+ProgressBar/styles/background = SubResource("StyleBoxFlat_party_life_bar_bg")
+ProgressBar/styles/fill = SubResource("StyleBoxFlat_party_life_bar_fill")
+
+[node name="Body" type="VBoxContainer" unique_id=336796229]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 3
+
+[node name="LifeBar" type="ProgressBar" parent="." unique_id=108825647]
+custom_minimum_size = Vector2(132, 11)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = SubResource("Theme_party_life_bar")
+value = 80.0
+show_percentage = false
+
+[node name="BottomRow" type="HBoxContainer" parent="." unique_id=2109723277]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="Name" type="Label" parent="BottomRow" unique_id=1170030103]
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_27l78")
+theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.92)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 14
+text = "P1"
+vertical_alignment = 1
+
+[node name="Value" type="Label" parent="BottomRow" unique_id=1611471154]
+custom_minimum_size = Vector2(68, 0)
+layout_mode = 2
+size_flags_horizontal = 8
+theme = ExtResource("1_27l78")
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 17
+text = "0/0"
+horizontal_alignment = 2
+vertical_alignment = 1

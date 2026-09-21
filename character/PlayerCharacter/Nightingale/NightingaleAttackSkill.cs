@@ -119,7 +119,7 @@ public partial class ContinuousPierce : Skill
         OwnerCharater != null && OwnerCharater.Life >= OwnerCharater.BattleMaxLife;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
     public override string SkillName { get; set; } = "连续贯穿";
 
     protected override SkillPlan BuildPlan()
@@ -135,7 +135,7 @@ public partial class ContinuousPierce : Skill
 public partial class RuinBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 10;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -154,13 +154,13 @@ public partial class RuinBlade : Skill
 
 public partial class NightfallFlurry : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 7;
     private const int PowerMultiplier = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "夜幕连袭";
-    public override int EnergyCost => 2;
+    public override int EnergyCost => Cost(2);
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     protected override SkillPlan BuildPlan()
@@ -184,7 +184,7 @@ public partial class BladeSalvo : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "利刃齐发";
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {

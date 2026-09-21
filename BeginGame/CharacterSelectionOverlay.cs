@@ -17,17 +17,15 @@ public partial class CharacterSelectionOverlay : Control
     private const float MaskTransitionDuration = 0.22f;
     private const float PanelEnterSlideOffset = 28f;
     private const float PanelExitSlideOffset = 18f;
-    private const float PreviewSwitchFadeInDuration = 0.16f;
-    private const float PreviewSwitchImageOffset = 8f;
-    private const float PreviewSwitchStartAlpha = 0.88f;
+    private const float PreviewSwitchFadeInDuration = 0.18f;
+    private const float PreviewSwitchImageOffset = 10f;
+    private const float PreviewSwitchStartAlpha = 0.45f;
     private const string CharacterCardScenePath = "res://BeginGame/CharacterSelectButton.tscn";
     // Character selection spacing scale: sm=6, md=12, lg=24, xl=36.
     private const int SpaceSm = 6;
     private const int SpaceMd = 12;
     private const int SpaceLg = 24;
     private const int SpaceXl = 36;
-    private const int RadiusCard = 8;
-    private const int RadiusControl = 12;
 
     private sealed class CharacterOption
     {
@@ -81,21 +79,45 @@ public partial class CharacterSelectionOverlay : Control
         field ??= GetNodeOrNull<MarginContainer>("SafeArea/Center/Panel/Margin");
     private VBoxContainer ContentStack =>
         field ??= GetNodeOrNull<VBoxContainer>("SafeArea/Center/Panel/Margin/VBox");
-    private Label TitleLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Title");
+    private const string DossierPath = "SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn";
+    private const string DossierStackPath = DossierPath + "/Stack";
+
+    private Label TitleLabel => field ??= GetNodeOrNull<Label>(DossierStackPath + "/Title");
     private Label EyebrowLabel =>
-        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Eyebrow");
-    private Label HintLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/HintLabel");
-    private Label StatusLabel => field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/StatusLabel");
+        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Header/Eyebrow");
+    private Label ScreenTitleLabel =>
+        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/Header/ScreenTitle");
+    private Control HeaderBlock =>
+        field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel/Margin/VBox/Header");
+    private Control RosterColumn =>
+        field ??= GetNodeOrNull<Control>("SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn");
+    private Label RosterLabel =>
+        field ??= GetNodeOrNull<Label>(
+            "SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn/RosterLabel"
+        );
+    private Label DossierLabel =>
+        field ??= GetNodeOrNull<Label>(DossierStackPath + "/DossierLabel");
+    private Control DossierColumn => field ??= GetNodeOrNull<Control>(DossierPath);
+    private Label HintLabel =>
+        field ??= GetNodeOrNull<Label>(DossierStackPath + "/DossierScroll/DossierContent/HintLabel")
+            ?? GetNodeOrNull<Label>(DossierStackPath + "/HintLabel");
+    private Label StatusLabel => field ??= GetNodeOrNull<Label>(DossierStackPath + "/StatusLabel");
     private Label TeamLabel =>
-        field ??= GetNodeOrNull<Label>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamLabel");
-    private HBoxContainer TeamBar =>
-        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar");
+        field ??= GetNodeOrNull<Label>(DossierStackPath + "/TeamBar/TeamLabel");
+    private BoxContainer TeamBar =>
+        field ??= GetNodeOrNull<BoxContainer>(DossierStackPath + "/TeamBar");
     private HBoxContainer TeamSlotsContainer =>
-        field ??= GetNodeOrNull<HBoxContainer>("SafeArea/Center/Panel/Margin/VBox/TeamBar/TeamSlots");
+        field ??= GetNodeOrNull<HBoxContainer>(DossierStackPath + "/TeamBar/TeamSlots");
     private HFlowContainer CardGrid =>
-        field ??= GetNodeOrNull<HFlowContainer>("SafeArea/Center/Panel/Margin/VBox/CardGrid");
+        field ??= GetNodeOrNull<HFlowContainer>(
+            "SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn/CardGrid"
+        );
     private Button ConfirmButton =>
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/ConfirmButton");
+    private Button RandomStartButton =>
+        field ??= GetNodeOrNull<Button>(
+            "SafeArea/Center/Panel/Margin/VBox/Footer/RandomStartButton"
+        );
     private Button CancelButton =>
         field ??= GetNodeOrNull<Button>("SafeArea/Center/Panel/Margin/VBox/Footer/CancelButton");
     private HBoxContainer Footer =>
@@ -132,16 +154,26 @@ public partial class CharacterSelectionOverlay : Control
         ProcessMode = ProcessModeEnum.Always;
         LocalizeStaticTexts();
         ApplyLayoutStyle();
+        BuildChrome();
+        ApplyMobileTouchLayout();
 
         if (CancelButton != null)
         {
             CancelButton.ActionMode = BaseButton.ActionModeEnum.Press;
             CancelButton.Pressed += Close;
+            SetupButtonHoverAccent(CancelButton);
         }
         if (ConfirmButton != null)
         {
             ConfirmButton.ActionMode = BaseButton.ActionModeEnum.Press;
             ConfirmButton.Pressed += ConfirmSelection;
+            SetupButtonHoverAccent(ConfirmButton);
+        }
+        if (RandomStartButton != null)
+        {
+            RandomStartButton.ActionMode = BaseButton.ActionModeEnum.Press;
+            RandomStartButton.Pressed += RandomizeSelectionAndStart;
+            SetupButtonHoverAccent(RandomStartButton);
         }
         SetupDifficultyButton(DifficultyMinusButton, -1);
         SetupDifficultyButton(DifficultyPlusButton, 1);
@@ -174,15 +206,16 @@ public partial class CharacterSelectionOverlay : Control
     private void ApplyLayoutStyle()
     {
         ApplyMargin(SafeArea, SpaceLg, SpaceLg, SpaceLg, SpaceLg);
-        ApplyMargin(PanelMargin, SpaceXl, SpaceXl, SpaceXl, SpaceLg);
         ApplySeparation(ContentStack, SpaceMd);
 
-        ApplyMinimumSize(TeamBar, 0f, SpaceLg + SpaceXl);
-        ApplySeparation(TeamBar, SpaceMd);
-        ApplyMinimumSize(TeamLabel, SpaceXl * 3, SpaceLg + SpaceXl);
-        ApplySeparation(TeamSlotsContainer, SpaceMd);
+        // The team strip is a read-only summary inside the dossier column now, so it stacks
+        // its caption above the slots instead of sitting on one wide row.
+        ApplyMinimumSize(TeamBar, 0f, SpaceLg * 2 + SpaceSm);
+        ApplySeparation(TeamBar, SpaceSm);
+        ApplyMinimumSize(TeamLabel, 0f, 0f);
+        ApplySeparation(TeamSlotsContainer, SpaceSm);
 
-        ApplyFlowSeparation(CardGrid, SpaceLg, SpaceLg);
+        ApplyFlowSeparation(CardGrid, SpaceMd, SpaceMd);
         ApplyMinimumSize(HintLabel, 0f, SpaceLg * 5);
 
         ApplySeparation(Footer, SpaceMd);
@@ -197,7 +230,22 @@ public partial class CharacterSelectionOverlay : Control
         ApplyMinimumSize(DifficultyPlusButton, SpaceLg * 2, SpaceLg + SpaceMd);
 
         ApplyMinimumSize(CancelButton, SpaceMd * 16, SpaceMd * 5);
+        ApplyMinimumSize(RandomStartButton, SpaceMd * 18, SpaceMd * 5);
         ApplyMinimumSize(ConfirmButton, SpaceMd * 20, SpaceMd * 5);
+    }
+
+    private void ApplyMobileTouchLayout()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        MobilePlatform.EnsureContainerTouchTarget(DifficultyMinusButton, 72f, 60f);
+        MobilePlatform.EnsureContainerTouchTarget(DifficultyPlusButton, 72f, 60f);
+        MobilePlatform.EnsureContainerTouchTarget(CancelButton, minimumHeight: 72f);
+        MobilePlatform.EnsureContainerTouchTarget(RandomStartButton, minimumHeight: 72f);
+        MobilePlatform.EnsureContainerTouchTarget(ConfirmButton, minimumHeight: 72f);
+        if (SeedInput != null)
+            SeedInput.VirtualKeyboardType = LineEdit.VirtualKeyboardTypeEnum.Number;
     }
 
     private static void ApplyMargin(
@@ -282,6 +330,17 @@ public partial class CharacterSelectionOverlay : Control
         {
             GetViewport().SetInputAsHandled();
             Close();
+            return;
+        }
+
+        if (
+            IsButtonAtGlobalPosition(RandomStartButton, mouseEvent.GlobalPosition)
+            && RandomStartButton != null
+            && !RandomStartButton.Disabled
+        )
+        {
+            GetViewport().SetInputAsHandled();
+            RandomizeSelectionAndStart();
             return;
         }
 
@@ -487,25 +546,18 @@ public partial class CharacterSelectionOverlay : Control
 
             int selectedIndex = _selectedOptions.IndexOf(option);
             bool focused = option == _focusedOption;
+            // The roster row is wide enough to carry the marching order as one big numeral, which
+            // reads far faster than the old "入队 #1  查看" caption crammed into a small card.
             option.CardButton?.SetBadge(
                 selectedIndex >= 0 || focused,
-                selectedIndex >= 0
-                    ? focused
-                        ? I18n.Format(
-                            "ui.character_select.badge.selected_view",
-                            "入队 #{index}  查看",
-                            ("index", selectedIndex + 1)
-                        )
-                        : I18n.Format(
-                            "ui.character_select.badge.selected",
-                            "入队 #{index}",
-                            ("index", selectedIndex + 1)
-                        )
-                    : I18n.Tr("ui.character_select.badge.previewing", "预览中")
+                selectedIndex >= 0 ? (selectedIndex + 1).ToString() : "·"
             );
         }
 
         bool exactSelection = _selectedOptions.Count == _requiredSelectionCount;
+        if (RandomStartButton != null)
+            RandomStartButton.Disabled = _options.Count < _requiredSelectionCount;
+
         if (ConfirmButton != null)
         {
             ConfirmButton.Disabled = !exactSelection;
@@ -528,14 +580,14 @@ public partial class CharacterSelectionOverlay : Control
         if (StatusLabel == null)
             return;
 
+        // The dossier column already carries the character's name above and the squad strip
+        // below, so this line is only the previewed unit's stat block.
         if (_focusedOption == null)
             StatusLabel.Text = BuildSquadStatusText();
         else
             StatusLabel.Text = I18n.Format(
-                "ui.character_select.status.inspect",
-                "{squad}    |    查看 {name}：生命 {life}    力量 {power}    生存 {survivability}",
-                ("squad", BuildSquadStatusText()),
-                ("name", _focusedOption.Info.CharacterName),
+                "ui.character_select.status.stats",
+                "生命 {life}    力量 {power}    生存 {survivability}",
                 ("life", _focusedOption.Info.LifeMax),
                 ("power", _focusedOption.Info.Power),
                 ("survivability", _focusedOption.Info.Survivability)
@@ -640,7 +692,9 @@ public partial class CharacterSelectionOverlay : Control
         positionLabel.AddThemeFontSizeOverride("font_size", 15);
         positionLabel.AddThemeColorOverride(
             "font_color",
-            filled ? new Color(1f, 0.84f, 0.48f, 0.96f) : new Color(0.78f, 0.84f, 0.92f, 0.46f)
+            filled
+                ? new Color(0.9f, 0.91f, 0.95f, 0.96f)
+                : new Color(0.62f, 0.64f, 0.7f, 0.46f)
         );
         textStack.AddChild(positionLabel);
 
@@ -656,7 +710,7 @@ public partial class CharacterSelectionOverlay : Control
         nameLabel.AddThemeFontSizeOverride("font_size", 18);
         nameLabel.AddThemeColorOverride(
             "font_color",
-            filled ? new Color(0.96f, 0.98f, 1f, 0.96f) : new Color(0.78f, 0.84f, 0.92f, 0.56f)
+            filled ? new Color(0.94f, 0.95f, 0.97f, 0.96f) : new Color(0.66f, 0.68f, 0.74f, 0.56f)
         );
         textStack.AddChild(nameLabel);
 
@@ -687,30 +741,80 @@ public partial class CharacterSelectionOverlay : Control
     private static StyleBoxFlat CreateTeamSlotStyleBox(bool filled, bool focused, float alpha)
     {
         Color borderColor = focused
-            ? new Color(1.00f, 0.88f, 0.56f, 0.90f)
+            ? new Color(0.94f, 0.96f, 0.98f, 0.90f)
             : filled
-                ? new Color(0.78f, 0.88f, 1.00f, 0.34f)
-                : new Color(0.70f, 0.80f, 0.92f, 0.18f);
+                ? new Color(0.72f, 0.78f, 0.84f, 0.45f)
+                : new Color(0.55f, 0.58f, 0.65f, 0.20f);
 
         return new StyleBoxFlat
         {
             BgColor = filled
-                ? new Color(0.06f, 0.09f, 0.13f, alpha)
-                : new Color(0.05f, 0.07f, 0.10f, alpha),
+                ? new Color(0.06f, 0.075f, 0.09f, 0.25f)
+                : new Color(0.03f, 0.035f, 0.045f, 0.12f),
             BorderColor = borderColor,
-            BorderWidthLeft = focused ? 3 : 1,
-            BorderWidthTop = focused ? 3 : 1,
-            BorderWidthRight = focused ? 3 : 1,
-            BorderWidthBottom = focused ? 3 : 1,
-            CornerRadiusTopLeft = RadiusControl,
-            CornerRadiusTopRight = RadiusControl,
-            CornerRadiusBottomLeft = RadiusControl,
-            CornerRadiusBottomRight = RadiusControl,
+            BorderWidthLeft = focused ? 2 : 1,
+            BorderWidthTop = 1,
+            BorderWidthRight = 1,
+            BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomLeft = 0,
+            CornerRadiusBottomRight = 0,
             ContentMarginLeft = 0,
             ContentMarginTop = 0,
             ContentMarginRight = 0,
             ContentMarginBottom = 0,
         };
+    }
+
+    private static void SetupButtonHoverAccent(Button button)
+    {
+        if (button == null)
+            return;
+
+        var line = new ColorRect
+        {
+            Name = "HoverAccentLine",
+            AnchorTop = 1f,
+            AnchorBottom = 1f,
+            AnchorLeft = 0f,
+            AnchorRight = 0f,
+            OffsetTop = -1.5f,
+            OffsetBottom = 0f,
+            Color = new Color(0.91f, 0.98f, 0.97f, 0.90f),
+            MouseFilter = MouseFilterEnum.Ignore,
+        };
+        button.AddChild(line);
+
+        Tween activeTween = null;
+
+        void AnimateTo(float targetRight, float duration)
+        {
+            if (!GodotObject.IsInstanceValid(button) || !GodotObject.IsInstanceValid(line))
+                return;
+
+            if (activeTween != null && activeTween.IsValid())
+                activeTween.Kill();
+
+            if (button.Disabled)
+            {
+                line.AnchorRight = 0f;
+                return;
+            }
+
+            activeTween = button.CreateTween();
+            activeTween.SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
+            activeTween.TweenProperty(line, "anchor_right", targetRight, duration);
+        }
+
+        button.MouseEntered += () => AnimateTo(1f, 0.15f);
+        button.MouseExited += () =>
+        {
+            if (!button.HasFocus())
+                AnimateTo(0f, 0.12f);
+        };
+        button.FocusEntered += () => AnimateTo(1f, 0.15f);
+        button.FocusExited += () => AnimateTo(0f, 0.12f);
     }
 
     private void RefreshFocusedCharacterPreview(bool animate = true)
@@ -745,7 +849,8 @@ public partial class CharacterSelectionOverlay : Control
             SetCanvasItemAlpha(HeroImage, PreviewSwitchStartAlpha);
         }
 
-        SetCanvasItemAlpha(EyebrowLabel, PreviewSwitchStartAlpha);
+        // The eyebrow is the screen's own caption now, not the character's, so it no longer
+        // takes part in the per-character cross-fade.
         SetCanvasItemAlpha(TitleLabel, PreviewSwitchStartAlpha);
         SetCanvasItemAlpha(StatusLabel, PreviewSwitchStartAlpha);
         SetCanvasItemAlpha(HintLabel, PreviewSwitchStartAlpha);
@@ -781,21 +886,19 @@ public partial class CharacterSelectionOverlay : Control
 
         ApplyHeroTexture(option);
 
-        if (EyebrowLabel != null)
-            EyebrowLabel.Text = I18n.Tr("ui.character_select.profile", "角色档案");
-
         if (TitleLabel != null)
             TitleLabel.Text = option.Info.CharacterName ?? I18n.Tr("ui.common.character", "Character");
 
         if (HintLabel != null)
         {
+            string passiveTag = I18n.Tr("ui.common.passive_tag", "被动");
             string passiveName = string.IsNullOrWhiteSpace(option.Info.PassiveName)
-                ? I18n.Tr("ui.common.passive", "被动")
+                ? passiveTag
                 : option.Info.PassiveName;
             string passiveDesc = string.IsNullOrWhiteSpace(option.Info.PassiveDescription)
                 ? "-"
                 : option.Info.PassiveDescription;
-            HintLabel.Text = $"{passiveName}\n{StripBbcode(passiveDesc)}";
+            HintLabel.Text = $"{passiveName} ({passiveTag})\n\n{StripBbcode(passiveDesc)}";
         }
     }
 
@@ -807,7 +910,6 @@ public partial class CharacterSelectionOverlay : Control
         if (HeroImage != null)
             tween.TweenProperty(HeroImage, "modulate:a", alpha, duration);
 
-        TweenTextFade(tween, EyebrowLabel, alpha, duration);
         TweenTextFade(tween, TitleLabel, alpha, duration);
         TweenTextFade(tween, StatusLabel, alpha, duration);
         TweenTextFade(tween, HintLabel, alpha, duration);
@@ -830,7 +932,6 @@ public partial class CharacterSelectionOverlay : Control
             SetCanvasItemAlpha(HeroImage, 1f);
         }
 
-        SetCanvasItemAlpha(EyebrowLabel, 1f);
         SetCanvasItemAlpha(TitleLabel, 1f);
         SetCanvasItemAlpha(StatusLabel, 1f);
         SetCanvasItemAlpha(HintLabel, 1f);
@@ -851,10 +952,7 @@ public partial class CharacterSelectionOverlay : Control
             return;
 
         HeroImage.Texture = option.Hero ?? option.Portrait;
-        HeroImage.StretchMode =
-            option.Hero != null
-                ? TextureRect.StretchModeEnum.KeepAspectCovered
-                : TextureRect.StretchModeEnum.KeepAspectCentered;
+        HeroImage.StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered;
     }
 
     private static Texture2D LoadHeroTexture(PlayerInfoStructure info)
@@ -926,6 +1024,27 @@ public partial class CharacterSelectionOverlay : Control
         }
 
         _ = ConfirmSelectionAsync(selectedCharacters.ToArray(), ResolveSeed(), _selectedDifficulty);
+    }
+
+    private void RandomizeSelectionAndStart()
+    {
+        if (_isClosing || _options.Count < _requiredSelectionCount)
+            return;
+
+        var shuffledOptions = new List<CharacterOption>(_options);
+        for (int i = shuffledOptions.Count - 1; i > 0; i--)
+        {
+            int swapIndex = Random.Shared.Next(i + 1);
+            (shuffledOptions[i], shuffledOptions[swapIndex]) =
+                (shuffledOptions[swapIndex], shuffledOptions[i]);
+        }
+
+        _selectedOptions.Clear();
+        _selectedOptions.AddRange(shuffledOptions.Take(_requiredSelectionCount));
+        _focusedOption = _selectedOptions.FirstOrDefault();
+        RefreshSelectionState();
+        RefreshFocusedCharacterPreview(animate: false);
+        ConfirmSelection();
     }
 
     private void Close()
@@ -1111,6 +1230,8 @@ public partial class CharacterSelectionOverlay : Control
             CancelButton.Disabled = !enabled;
         if (ConfirmButton != null)
             ConfirmButton.Disabled = !enabled;
+        if (RandomStartButton != null)
+            RandomStartButton.Disabled = !enabled || _options.Count < _requiredSelectionCount;
         if (DifficultyMinusButton != null)
             DifficultyMinusButton.Disabled = !enabled || _selectedDifficulty <= MinDifficulty;
         if (DifficultyPlusButton != null)
@@ -1170,7 +1291,13 @@ public partial class CharacterSelectionOverlay : Control
     private void LocalizeStaticTexts()
     {
         if (TeamLabel != null)
-            TeamLabel.Text = I18n.Tr("ui.character_select.team", "TEAM");
+            TeamLabel.Text = I18n.Tr("ui.character_select.team", "TEAM // 出战顺序");
+        if (ScreenTitleLabel != null)
+            ScreenTitleLabel.Text = I18n.Tr("ui.character_select.screen_title", "选择出击小队");
+        if (RosterLabel != null)
+            RosterLabel.Text = I18n.Tr("ui.character_select.roster", "ROSTER // 可选干员");
+        if (DossierLabel != null)
+            DossierLabel.Text = I18n.Tr("ui.character_select.dossier", "DOSSIER // 干员档案");
         if (SeedLabel != null)
             SeedLabel.Text = I18n.Tr("ui.character_select.seed", "SEED");
         if (SeedInput != null)
@@ -1184,8 +1311,10 @@ public partial class CharacterSelectionOverlay : Control
             DifficultyLabel.Text = I18n.Tr("ui.character_select.difficulty", "DIFFICULTY");
         if (CancelButton != null)
             CancelButton.Text = I18n.Tr("ui.common.cancel", "返回");
+        if (RandomStartButton != null)
+            RandomStartButton.Text = I18n.Tr("ui.character_select.random_start", "随机并开始");
         if (EyebrowLabel != null)
-            EyebrowLabel.Text = I18n.Tr("ui.character_select.eyebrow", "SQUAD SELECTION");
+            EyebrowLabel.Text = I18n.Tr("ui.character_select.eyebrow", "SQUAD ASSEMBLY // 编队组建");
         if (HintLabel != null)
             HintLabel.Text = I18n.Tr("ui.common.passive", "被动");
     }
@@ -1338,6 +1467,7 @@ public partial class CharacterSelectionOverlay : Control
             UnlockedTalents = source.UnlockedTalents != null
                 ? new List<string>(source.UnlockedTalents)
                 : new List<string>(),
+            AppliedTalentMaxLifeBonus = source.AppliedTalentMaxLifeBonus,
             GainedSkills = source.GainedSkills != null
                 ? new List<SkillID>(source.GainedSkills)
                 : new List<SkillID>(),
@@ -1415,35 +1545,30 @@ public partial class CharacterSelectionOverlay : Control
     private static StyleBoxFlat CreateCardStyleBox(bool selected, bool focused, bool hovered, float alpha)
     {
         Color borderColor = selected
-            ? new Color(1.00f, 0.88f, 0.56f, hovered ? 1.00f : 0.90f)
+            ? new Color(0.94f, 0.96f, 0.98f, hovered ? 1f : 0.92f)
             : focused || hovered
-                ? new Color(0.78f, 0.93f, 1.00f, 0.92f)
-                : new Color(0.70f, 0.80f, 0.92f, 0.24f);
+                ? new Color(0.84f, 0.88f, 0.94f, 0.80f)
+                : new Color(0.62f, 0.66f, 0.72f, 0.25f);
 
         return new StyleBoxFlat
         {
             BgColor = selected
-                ? new Color(0.16f, 0.22f, 0.31f, alpha + (hovered ? 0.30f : 0.22f))
-                : focused
-                    ? new Color(0.10f, 0.16f, 0.22f, alpha + 0.18f)
-                    : new Color(0.07f, 0.10f, 0.14f, alpha + (hovered ? 0.24f : 0.0f)),
+                ? new Color(0.10f, 0.12f, 0.15f, 0.32f + (hovered ? 0.08f : 0f))
+                : focused || hovered
+                    ? new Color(0.10f, 0.12f, 0.16f, 0.26f)
+                    : new Color(0.045f, 0.052f, 0.062f, 0.16f),
             BorderColor = borderColor,
-            BorderWidthLeft = selected || focused || hovered ? 4 : 1,
-            BorderWidthTop = selected || focused || hovered ? 4 : 1,
-            BorderWidthRight = selected || focused || hovered ? 4 : 1,
-            BorderWidthBottom = selected || focused || hovered ? 4 : 1,
-            CornerRadiusTopLeft = RadiusCard,
-            CornerRadiusTopRight = RadiusCard,
-            CornerRadiusBottomLeft = RadiusCard,
-            CornerRadiusBottomRight = RadiusCard,
+            BorderWidthLeft = selected ? 3 : focused || hovered ? 2 : 1,
+            CornerRadiusTopLeft = 0,
+            CornerRadiusTopRight = 0,
+            CornerRadiusBottomLeft = 0,
+            CornerRadiusBottomRight = 0,
             ContentMarginLeft = 0,
             ContentMarginTop = 0,
             ContentMarginRight = 0,
             ContentMarginBottom = 0,
-            ShadowColor = hovered
-                ? new Color(0.72f, 0.86f, 1.00f, selected ? 0.28f : 0.20f)
-                : new Color(0f, 0f, 0f, 0.20f),
-            ShadowSize = hovered ? 20 : 10,
+            ShadowColor = new Color(0f, 0f, 0f, 0f),
+            ShadowSize = 0,
         };
     }
 }

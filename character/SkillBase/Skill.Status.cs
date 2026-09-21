@@ -11,7 +11,7 @@ public partial class VoidStatus : Skill
         get => I18n.Tr("skill.void_status.name", "虚空之唤");
         set { }
     }
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
     public override bool CanBePlayed => false;
     public override bool ExhaustsAtTurnEndInHand => true;
 
@@ -45,7 +45,7 @@ public partial class WoundStatus : Skill
         get => I18n.Tr("skill.wound_status.name", "伤口");
         set { }
     }
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
     public override bool CanBePlayed => false;
 
     public override void UpdateDescription()
@@ -66,7 +66,7 @@ public partial class DazeStatus : Skill
         get => I18n.Tr("skill.daze_status.name", "晕眩");
         set { }
     }
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
     public override bool CanBePlayed => false;
     public override bool ExhaustsAtTurnEndInHand => true;
 
@@ -91,7 +91,7 @@ public partial class PlagueStatus : Skill
         get => I18n.Tr("skill.plague_status.name", "瘟疫");
         set { }
     }
-    public override int EnergyCost => 1;
+    public override int EnergyCost => Cost(1);
     public override bool CanBePlayed => true;
     public override bool ExhaustsAfterUse => true;
     public override bool TriggersAtTurnEndInHand => true;

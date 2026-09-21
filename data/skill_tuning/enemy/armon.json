@@ -2,20 +2,18 @@
     "skills":  {
                    "ArmonAttack":  {
                                        "Name":  "矩阵斩击",
-                                       "BaseDamage":  19,
-                                       "AllyBaseBlock":  9
+                                       "BaseDamage":  7
                                    },
                    "ArmonSpecial":  {
                                         "Name":  "矩阵过载",
                                         "OverloadTimes":  3,
                                         "PowerGainPerLoop":  2,
-                                        "SurvivabilityGainPerLoop":  2,
-                                        "BaseDamage":  19
+                                        "BaseDamage":  9,
+                                        "EnergyCost":  0
                                     },
                    "ArmonSurvive":  {
                                         "Name":  "矩阵护盾",
-                                        "BaseBlock":  18,
-                                        "Multiplier":  2,
+                                        "BaseBlock":  10,
                                         "DazeCount":  1
                                     }
                }

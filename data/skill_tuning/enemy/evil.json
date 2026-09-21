@@ -2,20 +2,21 @@
     "skills":  {
                    "EvilAttack":  {
                                       "Name":  "流影二段",
-                                      "HitDamage":  5,
+                                      "HitDamage":  7,
                                       "HitCount":  2
                                   },
                    "EvilSurvive":  {
                                        "Name":  "扭曲",
-                                       "PowerGain":  3,
+                                       "PowerGain":  2,
                                        "BaseBlock":  6
                                    },
                    "EvilTermin":  {
                                       "Name":  "虚空终结",
                                       "AttackTimes":  5,
-                                      "BaseDamage":  7,
+                                      "BaseDamage":  9,
                                       "Multiplier":  1,
-                                      "ClampMax":  9999
+                                      "ClampMax":  9999,
+                                      "EnergyCost":  0
                                   }
                }
 }

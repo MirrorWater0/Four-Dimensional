@@ -27,21 +27,21 @@ public partial class CharacterControl
     private const int PileOverlayContentZIndex = 1;
     private const int PileOverlayConfirmZIndex = 2;
     private const float PileOverlayMaskMaxAlpha = 0.68f;
-    private const float PileOverlayContentMoveDuration = 0.18f;
-    private const float PileOverlayContentSlideOffset = 42f;
+    private const float PileOverlayContentMoveDuration = CardPileOverlayUi.ContentMoveDuration;
+    private const float PileOverlayContentSlideOffset = CardPileOverlayUi.ContentSlideOffset;
     private const float PileOverlayConfirmFadeDuration = 0.18f;
     private const float PileOverlayConfirmFadeDelay = 0.12f;
-    private const float PileOverlayScrollBounceStep = 18f;
-    private const float PileOverlayScrollBounceMaxOffset = 46f;
-    private const float PileOverlayScrollBounceOutDuration = 0.06f;
-    private const float PileOverlayScrollBounceBackDuration = 0.28f;
-    private const float PileOverlaySmoothWheelStep = 360f;
-    private const float PileOverlayPanGestureMultiplier = 18f;
-    private const float PileOverlaySmoothScrollSpring = 210f;
-    private const float PileOverlaySmoothScrollDamping = 24f;
-    private const float PileOverlaySmoothScrollMaxVelocity = 5200f;
-    private const float PileOverlaySmoothScrollSnapDistance = 0.6f;
-    private const float PileOverlaySmoothScrollStopSpeed = 12f;
+    private const float PileOverlayScrollBounceStep = CardPileOverlayUi.ScrollBounceStep;
+    private const float PileOverlayScrollBounceMaxOffset = CardPileOverlayUi.ScrollBounceMaxOffset;
+    private const float PileOverlayScrollBounceOutDuration = CardPileOverlayUi.ScrollBounceOutDuration;
+    private const float PileOverlayScrollBounceBackDuration = CardPileOverlayUi.ScrollBounceBackDuration;
+    private const float PileOverlaySmoothWheelStep = CardPileOverlayUi.SmoothWheelStep;
+    private const float PileOverlayPanGestureMultiplier = CardPileOverlayUi.PanGestureMultiplier;
+    private const float PileOverlaySmoothScrollSpring = CardPileOverlayUi.SmoothScrollSpring;
+    private const float PileOverlaySmoothScrollDamping = CardPileOverlayUi.SmoothScrollDamping;
+    private const float PileOverlaySmoothScrollMaxVelocity = CardPileOverlayUi.SmoothScrollMaxVelocity;
+    private const float PileOverlaySmoothScrollSnapDistance = CardPileOverlayUi.SmoothScrollSnapDistance;
+    private const float PileOverlaySmoothScrollStopSpeed = CardPileOverlayUi.SmoothScrollStopSpeed;
     private static readonly bool PileOverlayLayoutTraceEnabled = false;
 
     private const float PileButtonReceivePulseDuration = 0.20f;
@@ -80,6 +80,7 @@ public partial class CharacterControl
     private CanvasLayer _pileOverlayLayer;
     private Control _pileOverlayRoot;
     private ScrollContainer _pileOverlayScroll;
+    private Control.MouseFilterEnum _pileOverlayScrollMouseFilter = MouseFilterEnum.Stop;
     private VScrollBar _pileOverlayVScrollBar;
     private MarginContainer _pileOverlayMargin;
     private VBoxContainer _pileOverlaySections;
@@ -127,6 +128,10 @@ public partial class CharacterControl
     private readonly List<int> _pileCardSelectionIndexes = new();
     private readonly Dictionary<int, SkillCard> _pileCardSelectionCards = new();
     private TaskCompletionSource<int> _pileCardSelectionCompletion;
+    private PlayerCharacter _pileCardSelectionOverlayPlayer;
+    private Battle.BattleCardPileEntry[] _pileCardSelectionOverlayPile =
+        Array.Empty<Battle.BattleCardPileEntry>();
+    private PileOverlayOpenContext _pileCardSelectionOverlayOpenContext;
     private int _pileOverlayBuildVersion;
 
     private readonly struct BattlePileOverlaySection
@@ -381,6 +386,7 @@ public partial class CharacterControl
             prepMs,
             flowStartUsec
         );
+        CapturePileCardSelectionOverlaySnapshot(player, pile, openContext);
         BattleNode?.LogPilePerf(
             $"card-selection start trigger={FormatPilePerfTriggerSkill(openContext)}, "
             + $"pile={pile.Length}, select={_pileCardSelectionTargetCount}, "
@@ -427,6 +433,64 @@ public partial class CharacterControl
                 $"查看{GetPileTitle(kind)}顶部{count}张牌，选择任意张放入弃牌堆",
             _ => $"选择{count}张{GetPileTitle(kind)}加入手牌",
         };
+    }
+
+    private void CapturePileCardSelectionOverlaySnapshot(
+        PlayerCharacter player,
+        Battle.BattleCardPileEntry[] pile,
+        PileOverlayOpenContext openContext
+    )
+    {
+        _pileCardSelectionOverlayPlayer = player;
+        _pileCardSelectionOverlayPile = pile?.ToArray()
+            ?? Array.Empty<Battle.BattleCardPileEntry>();
+        _pileCardSelectionOverlayOpenContext = openContext;
+    }
+
+    private void RestorePileCardSelectionOverlay()
+    {
+        if (!_isPileCardSelectionActive)
+            return;
+
+        PlayerCharacter player = _pileCardSelectionOverlayPlayer;
+        if (player == null || !GodotObject.IsInstanceValid(player))
+        {
+            CancelPileCardSelection();
+            HidePileOverlay();
+            return;
+        }
+
+        var restoreContext = new PileOverlayOpenContext(
+            PileOverlayOpenSource.CardSelection,
+            _pileCardSelectionOverlayOpenContext.TriggerSkillId,
+            _pileCardSelectionOverlayOpenContext.TriggerSkillName,
+            flowStartUsec: Time.GetTicksUsec()
+        );
+        ShowPileOverlay(
+            player,
+            new[]
+            {
+                new BattlePileOverlaySection(
+                    _pileCardSelectionKind,
+                    BuildPileCardSelectionTitle(
+                        _pileCardSelectionKind,
+                        _pileCardSelectionAction,
+                        _pileCardSelectionTargetCount,
+                        _pileCardSelectionKeyword
+                    ),
+                    _pileCardSelectionOverlayPile
+                ),
+            },
+            restoreContext
+        );
+        RequestTurnUiRefresh();
+    }
+
+    private void ClearPileCardSelectionOverlaySnapshot()
+    {
+        _pileCardSelectionOverlayPlayer = null;
+        _pileCardSelectionOverlayPile = Array.Empty<Battle.BattleCardPileEntry>();
+        _pileCardSelectionOverlayOpenContext = default;
     }
 
     private Battle.BattleCardPileEntry[] GetPileEntriesForSelection(
@@ -500,7 +564,7 @@ public partial class CharacterControl
             || _activePlayer.State == Character.CharacterState.Dying
             || BattleNode == null
             || !GodotObject.IsInstanceValid(BattleNode)
-            || IsPileLockedByCardResolution()
+            || (IsPileLockedByCardResolution() && !CanReadPileWhileCardSelectionIsHidden())
             || IsManualTargetSelectionPending()
         )
         {
@@ -574,6 +638,9 @@ public partial class CharacterControl
     {
         return _isResolvingCard && !_isResolvingEndTurn;
     }
+
+    private bool CanReadPileWhileCardSelectionIsHidden() =>
+        _isPileCardSelectionActive && _pileOverlayContentTemporarilyHidden;
 
     private static string GetPileTitle(BattlePileKind kind)
     {

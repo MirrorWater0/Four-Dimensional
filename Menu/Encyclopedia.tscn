@@ -1,72 +1,145 @@
 [gd_scene format=3 uid="uid://cdci2et1afgcp"]
 
 [ext_resource type="Script" uid="uid://cobs3ofqku6jo" path="res://Menu/Encyclopedia.cs" id="1_encyclopedia"]
-[ext_resource type="Script" path="res://Menu/SettingsDropdown.cs" id="21_settings_dropdown"]
-[ext_resource type="Texture2D" path="res://asset/third_party/kenney_board_game_icons/Vector/Icons/book_open.svg" id="22_book_icon"]
+[ext_resource type="Shader" uid="uid://dy3v75hrfmq3v" path="res://shader/UI/StarRailBG.gdshader" id="2_starbg"]
+[ext_resource type="Shader" uid="uid://52d52hlea7ai" path="res://shader/UI/HSRPanel.gdshader" id="3_hsrpanel"]
+[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="4_serif"]
+[ext_resource type="Script" uid="uid://kssfc5b1jusw" path="res://Menu/SettingsDropdown.cs" id="21_settings_dropdown"]
 
-[sub_resource type="Gradient" id="Gradient_backdrop"]
-offsets = PackedFloat32Array(0, 0.42, 0.72, 1)
-colors = PackedColorArray(0.004, 0.012, 0.027, 1, 0.019, 0.055, 0.09, 1, 0.052, 0.035, 0.1, 1, 0.006, 0.012, 0.027, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_starbg"]
+shader = ExtResource("2_starbg")
+shader_parameter/bg_color_top = Color(0.06, 0.065, 0.075, 1)
+shader_parameter/bg_color_bottom = Color(0.012, 0.014, 0.018, 1)
+shader_parameter/triangle_color = Color(0.74, 0.76, 0.82, 0.12)
+shader_parameter/triangle_size_near = 0.26
+shader_parameter/triangle_size_far = 0.1
+shader_parameter/triangle_flatten_min = 0.52
+shader_parameter/triangle_flatten_max = 1.18
+shader_parameter/triangle_drift = 0.14
+shader_parameter/triangle_perspective = 0.18
+shader_parameter/edge_softness = 0.006
+shader_parameter/animation_speed = 0.35
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_backdrop"]
-gradient = SubResource("Gradient_backdrop")
+[sub_resource type="Gradient" id="Gradient_atmosphere"]
+offsets = PackedFloat32Array(0, 0.45, 0.75, 1)
+colors = PackedColorArray(0.04, 0.045, 0.055, 0.48, 0.07, 0.075, 0.09, 0.36, 0.055, 0.06, 0.07, 0.42, 0.012, 0.014, 0.018, 0.66)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_atmosphere"]
+gradient = SubResource("Gradient_atmosphere")
 width = 1920
 height = 1080
-fill_from = Vector2(0, 0)
 fill_to = Vector2(1, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_outer_panel"]
-bg_color = Color(0.018, 0.035, 0.059, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.36, 0.77, 0.94, 0.22)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-shadow_color = Color(0, 0, 0, 0.62)
-shadow_size = 18
-shadow_offset = Vector2(0, 8)
+[sub_resource type="Gradient" id="Gradient_line_l"]
+offsets = PackedFloat32Array(0, 0.75, 1)
+colors = PackedColorArray(0.78, 0.8, 0.85, 0, 0.78, 0.8, 0.85, 0.28, 0.78, 0.8, 0.85, 0.72)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_panel"]
-bg_color = Color(0.035, 0.065, 0.102, 0.86)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.45, 0.82, 0.96, 0.2)
-corner_radius_top_left = 16
-corner_radius_top_right = 16
-corner_radius_bottom_right = 16
-corner_radius_bottom_left = 16
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_line_l"]
+gradient = SubResource("Gradient_line_l")
+width = 512
+height = 2
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_badge"]
-bg_color = Color(0.08, 0.2, 0.28, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.38, 0.9, 0.94, 0.52)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
-shadow_color = Color(0.08, 0.7, 0.85, 0.18)
-shadow_size = 8
+[sub_resource type="Gradient" id="Gradient_line_r"]
+offsets = PackedFloat32Array(0, 0.25, 1)
+colors = PackedColorArray(0.78, 0.8, 0.85, 0.72, 0.78, 0.8, 0.85, 0.28, 0.78, 0.8, 0.85, 0)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_content_panel"]
-bg_color = Color(0.012, 0.027, 0.047, 0.72)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.38, 0.72, 0.9, 0.16)
-corner_radius_top_left = 18
-corner_radius_top_right = 18
-corner_radius_bottom_right = 18
-corner_radius_bottom_left = 18
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_line_r"]
+gradient = SubResource("Gradient_line_r")
+width = 512
+height = 2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_rail"]
+shader = ExtResource("3_hsrpanel")
+shader_parameter/bg_top = Color(0.12, 0.13, 0.15, 0.78)
+shader_parameter/bg_bottom = Color(0.055, 0.06, 0.07, 0.78)
+shader_parameter/border_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/cut_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/rect_size = Vector2(264, 700)
+shader_parameter/cut_size = 0.0
+shader_parameter/border_width = 0.0
+shader_parameter/sheen = 0.015
+shader_parameter/grid_color = Color(0.7, 0.72, 0.78, 1)
+shader_parameter/grid_spacing = 30.0
+shader_parameter/grid_alpha = 0.0
+shader_parameter/sweep_color = Color(0.82, 0.84, 0.9, 1)
+shader_parameter/sweep_alpha = 0.0
+shader_parameter/sweep_speed = 0.08
+shader_parameter/vignette_strength = 0.08
+shader_parameter/corner_accent = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grid"]
+shader = ExtResource("3_hsrpanel")
+shader_parameter/bg_top = Color(0.095, 0.105, 0.12, 0.76)
+shader_parameter/bg_bottom = Color(0.04, 0.045, 0.055, 0.76)
+shader_parameter/border_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/cut_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/rect_size = Vector2(1200, 800)
+shader_parameter/cut_size = 0.0
+shader_parameter/border_width = 0.0
+shader_parameter/sheen = 0.015
+shader_parameter/grid_color = Color(0.7, 0.72, 0.78, 1)
+shader_parameter/grid_spacing = 38.0
+shader_parameter/grid_alpha = 0.0
+shader_parameter/sweep_color = Color(0.82, 0.84, 0.9, 1)
+shader_parameter/sweep_alpha = 0.0
+shader_parameter/sweep_speed = 0.065
+shader_parameter/vignette_strength = 0.08
+shader_parameter/corner_accent = 0.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_detail"]
+shader = ExtResource("3_hsrpanel")
+shader_parameter/bg_top = Color(0.13, 0.14, 0.16, 0.82)
+shader_parameter/bg_bottom = Color(0.055, 0.06, 0.07, 0.82)
+shader_parameter/border_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/cut_color = Color(0.7, 0.72, 0.78, 0)
+shader_parameter/rect_size = Vector2(460, 800)
+shader_parameter/cut_size = 0.0
+shader_parameter/border_width = 0.0
+shader_parameter/sheen = 0.015
+shader_parameter/grid_color = Color(0.7, 0.72, 0.78, 1)
+shader_parameter/grid_spacing = 30.0
+shader_parameter/grid_alpha = 0.0
+shader_parameter/sweep_color = Color(0.82, 0.84, 0.9, 1)
+shader_parameter/sweep_alpha = 0.0
+shader_parameter/sweep_speed = 0.1
+shader_parameter/vignette_strength = 0.08
+shader_parameter/corner_accent = 0.0
+
+[sub_resource type="Gradient" id="Gradient_vignette"]
+offsets = PackedFloat32Array(0, 0.62, 1)
+colors = PackedColorArray(0, 0, 0, 0, 0.004, 0.008, 0.02, 0.12, 0.002, 0.005, 0.014, 0.62)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_vignette"]
+gradient = SubResource("Gradient_vignette")
+width = 960
+height = 540
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_tl"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 2
+border_width_top = 2
+border_color = Color(0.9, 0.76, 0.5, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_tr"]
+bg_color = Color(1, 1, 1, 0)
+border_width_top = 2
+border_width_right = 2
+border_color = Color(0.9, 0.76, 0.5, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_bl"]
+bg_color = Color(1, 1, 1, 0)
+border_width_left = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.76, 0.5, 0.8)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_br"]
+bg_color = Color(1, 1, 1, 0)
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.76, 0.5, 0.8)
 
 [node name="Encyclopedia" type="Control" unique_id=512219392]
 layout_mode = 3
@@ -84,9 +157,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 1
-color = Color(0.002, 0.006, 0.014, 0.9)
+color = Color(0.012, 0.014, 0.018, 0.94)
 
-[node name="Atmosphere" type="TextureRect" parent="."]
+[node name="StarBG" type="ColorRect" parent="." unique_id=961920246]
+material = SubResource("ShaderMaterial_starbg")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -94,240 +168,365 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = SubResource("GradientTexture2D_backdrop")
-expand_mode = 1
 
-[node name="TopSignal" type="ColorRect" parent="."]
-layout_mode = 0
-anchor_right = 1.0
-offset_bottom = 2.0
-grow_horizontal = 2
-mouse_filter = 2
-color = Color(0.24, 0.86, 0.95, 0.42)
-
-[node name="BottomSignal" type="ColorRect" parent="."]
-layout_mode = 0
-anchor_top = 1.0
+[node name="Atmosphere" type="TextureRect" parent="." unique_id=1145778472]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_atmosphere")
+expand_mode = 1
+
+[node name="ScreenMargin" type="MarginContainer" parent="." unique_id=1919223541]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 24
+
+[node name="Root" type="VBoxContainer" parent="ScreenMargin" unique_id=1392878166]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="ScreenMargin/Root" unique_id=2038018031]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="TitleBlock" type="VBoxContainer" parent="ScreenMargin/Root/Header" unique_id=1939630380]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 1
+
+[node name="Eyebrow" type="Label" parent="ScreenMargin/Root/Header/TitleBlock" unique_id=929723593]
+modulate = Color(0.68, 0.7, 0.75, 0.95)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("4_serif")
+theme_override_font_sizes/font_size = 16
+text = "INTERASTRAL ARCHIVE  ·  星 界 档 案 馆"
+
+[node name="TitleRow" type="HBoxContainer" parent="ScreenMargin/Root/Header/TitleBlock" unique_id=160222905]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SlashMark" type="Control" parent="ScreenMargin/Root/Header/TitleBlock/TitleRow" unique_id=1103261431]
+custom_minimum_size = Vector2(24, 38)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="A" type="ColorRect" parent="ScreenMargin/Root/Header/TitleBlock/TitleRow/SlashMark" unique_id=1419556040]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 2.0
+offset_right = 11.0
+offset_bottom = 36.0
+rotation = 0.31415927
+pivot_offset = Vector2(3.5, 17)
+mouse_filter = 2
+color = Color(0.86, 0.88, 0.93, 1)
+
+[node name="B" type="ColorRect" parent="ScreenMargin/Root/Header/TitleBlock/TitleRow/SlashMark" unique_id=620467807]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 2.0
+offset_right = 19.0
+offset_bottom = 36.0
+rotation = 0.31415927
+pivot_offset = Vector2(2, 17)
+mouse_filter = 2
+color = Color(0.86, 0.88, 0.93, 0.45)
+
+[node name="Title" type="Label" parent="ScreenMargin/Root/Header/TitleBlock/TitleRow" unique_id=1200563604]
+modulate = Color(0.97, 0.98, 1, 1)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "百科"
+
+[node name="Subtitle" type="Label" parent="ScreenMargin/Root/Header/TitleBlock" unique_id=1073715944]
+modulate = Color(0.7, 0.715, 0.76, 0.85)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "记录已发现的卡牌、遗物与战斗状态"
+
+[node name="CloseButton" type="Button" parent="ScreenMargin/Root/Header" unique_id=2118931169]
+custom_minimum_size = Vector2(46, 46)
+layout_mode = 2
+size_flags_vertical = 4
+text = "✕"
+clip_text = true
+
+[node name="HeaderLine" type="HBoxContainer" parent="ScreenMargin/Root" unique_id=1224308324]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="LineL" type="TextureRect" parent="ScreenMargin/Root/HeaderLine" unique_id=1124747363]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_line_l")
+expand_mode = 1
+
+[node name="Diamond" type="Control" parent="ScreenMargin/Root/HeaderLine" unique_id=2016496092]
+custom_minimum_size = Vector2(8, 8)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Shape" type="ColorRect" parent="ScreenMargin/Root/HeaderLine/Diamond" unique_id=1938647404]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 7.0
+offset_bottom = 7.0
+rotation = 0.7853982
+pivot_offset = Vector2(3, 3)
+mouse_filter = 2
+color = Color(0.78, 0.8, 0.85, 0.95)
+
+[node name="LineR" type="TextureRect" parent="ScreenMargin/Root/HeaderLine" unique_id=775937621]
+custom_minimum_size = Vector2(0, 2)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_line_r")
+expand_mode = 1
+
+[node name="Body" type="HBoxContainer" parent="ScreenMargin/Root" unique_id=788602678]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="Rail" type="Control" parent="ScreenMargin/Root/Body" unique_id=80833540]
+custom_minimum_size = Vector2(264, 0)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RailBG" type="ColorRect" parent="ScreenMargin/Root/Body/Rail" unique_id=2056083981]
+material = SubResource("ShaderMaterial_rail")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RailDeco" type="TextureRect" parent="ScreenMargin/Root/Body/Rail" unique_id=1500404050]
+modulate = Color(0.78, 0.8, 0.85, 0.025)
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -55.0
+offset_top = -135.0
+offset_right = 55.0
+offset_bottom = -25.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
-color = Color(0.47, 0.38, 0.9, 0.28)
+expand_mode = 1
+stretch_mode = 5
 
-[node name="CenterPanel" type="PanelContainer" parent="." unique_id=1493620159]
-layout_mode = 0
-anchor_left = 0.015
-anchor_top = 0.02
-anchor_right = 0.985
-anchor_bottom = 0.98
+[node name="RailMargin" type="MarginContainer" parent="ScreenMargin/Root/Body/Rail" unique_id=1546441035]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_outer_panel")
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel" unique_id=2061435302]
-layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 22
-
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin" unique_id=497572036]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Header" type="HBoxContainer" parent="CenterPanel/Margin/Root" unique_id=2038018031]
-layout_mode = 2
-theme_override_constants/separation = 18
-
-[node name="ArchiveMark" type="PanelContainer" parent="CenterPanel/Margin/Root/Header"]
-custom_minimum_size = Vector2(68, 68)
-layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_icon_badge")
-
-[node name="Icon" type="TextureRect" parent="CenterPanel/Margin/Root/Header/ArchiveMark"]
-custom_minimum_size = Vector2(38, 38)
+[node name="RailVBox" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin" unique_id=117910833]
 layout_mode = 2
 mouse_filter = 2
-texture = ExtResource("22_book_icon")
-expand_mode = 3
-stretch_mode = 5
-modulate = Color(0.66, 0.96, 1, 1)
+theme_override_constants/separation = 12
 
-[node name="TitleBox" type="VBoxContainer" parent="CenterPanel/Margin/Root/Header" unique_id=224044411]
+[node name="NavHeader" type="HBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox" unique_id=1717461524]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+alignment = 1
 
-[node name="Eyebrow" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
-modulate = Color(0.36, 0.82, 0.94, 0.9)
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "ASTRAL ARCHIVE  ·  星界档案馆"
-
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox" unique_id=1200563604]
-modulate = Color(0.96, 0.99, 1, 1)
-layout_mode = 2
-theme_override_font_sizes/font_size = 38
-text = "百科"
-
-[node name="Subtitle" type="Label" parent="CenterPanel/Margin/Root/Header/TitleBox"]
-modulate = Color(0.62, 0.72, 0.82, 0.88)
+[node name="Label" type="Label" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/NavHeader" unique_id=1177919878]
+modulate = Color(0.68, 0.7, 0.75, 0.95)
 layout_mode = 2
 theme_override_font_sizes/font_size = 15
-text = "记录已发现的卡牌、遗物与战斗状态"
+text = "图鉴入口"
 
-[node name="CloseButton" type="Button" parent="CenterPanel/Margin/Root/Header" unique_id=2118931169]
-custom_minimum_size = Vector2(128, 48)
-layout_mode = 2
-text = "关闭  ESC"
-clip_text = true
-
-[node name="Body" type="HBoxContainer" parent="CenterPanel/Margin/Root" unique_id=788602678]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 18
-
-[node name="ModulePanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body" unique_id=80833540]
-custom_minimum_size = Vector2(294, 0)
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
-
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel" unique_id=129822352]
+[node name="Line" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/NavHeader" unique_id=1184932869]
+custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 10
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.58, 0.6, 0.65, 0.16)
 
-[node name="SkillFilterPanel" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin" unique_id=2024345680]
+[node name="ModuleNavigationPanel" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox" unique_id=1739137728]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="RailDivider" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox" unique_id=172638174]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.58, 0.6, 0.65, 0.14)
+
+[node name="FilterScroll" type="ScrollContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox" unique_id=1554665357]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="SkillFilterPanel" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll" unique_id=2024345680]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="TypeSection" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel" unique_id=580352163]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="TypeSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=580352163]
+[node name="Header" type="HBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/TypeSection" unique_id=797436669]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection" unique_id=1126582020]
+[node name="Bar" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/TypeSection/Header" unique_id=130302694]
+custom_minimum_size = Vector2(3, 13)
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.82, 0.84, 0.9, 0.9)
 
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin" unique_id=1836602386]
+[node name="Title" type="Label" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/TypeSection/Header" unique_id=1330518719]
+modulate = Color(0.74, 0.76, 0.81, 0.95)
 layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin/Root" unique_id=1330518719]
-modulate = Color(0.9, 0.98, 1, 1)
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
+theme_override_font_sizes/font_size = 15
 text = "类型"
 
-[node name="TypeFilterGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/TypeSection/Margin/Root" unique_id=2028538111]
+[node name="TypeFilterGrid" type="GridContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/TypeSection" unique_id=2028538111]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 2
 
-[node name="RaritySection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=1674699401]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
-
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection" unique_id=885722946]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin" unique_id=1889081436]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin/Root" unique_id=258908791]
-modulate = Color(0.9, 0.98, 1, 1)
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "稀有度"
-
-[node name="RarityFilterList" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/RaritySection/Margin/Root" unique_id=1471174190]
+[node name="RaritySection" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel" unique_id=1674699401]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="CostSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=2093543855]
+[node name="Header" type="HBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/RaritySection" unique_id=529389088]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Bar" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/RaritySection/Header" unique_id=2033536022]
+custom_minimum_size = Vector2(3, 13)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.82, 0.84, 0.9, 0.9)
+
+[node name="Title" type="Label" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/RaritySection/Header" unique_id=258908791]
+modulate = Color(0.74, 0.76, 0.81, 0.95)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "稀有度"
+
+[node name="RarityFilterList" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/RaritySection" unique_id=1471174190]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+theme_override_constants/separation = 8
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection" unique_id=147422309]
+[node name="CostSection" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel" unique_id=2093543855]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin" unique_id=29291071]
+[node name="Header" type="HBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/CostSection" unique_id=1017470043]
 layout_mode = 2
-theme_override_constants/separation = 6
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin/Root" unique_id=1873020723]
-modulate = Color(0.9, 0.98, 1, 1)
-custom_minimum_size = Vector2(0, 30)
+[node name="Bar" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/CostSection/Header" unique_id=457226930]
+custom_minimum_size = Vector2(3, 13)
 layout_mode = 2
-theme_override_font_sizes/font_size = 19
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.82, 0.84, 0.9, 0.9)
+
+[node name="Title" type="Label" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/CostSection/Header" unique_id=1873020723]
+modulate = Color(0.74, 0.76, 0.81, 0.95)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
 text = "费用"
 
-[node name="CostFilterGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/CostSection/Margin/Root" unique_id=1854324044]
+[node name="CostFilterGrid" type="GridContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/CostSection" unique_id=1854324044]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 3
 
-[node name="SortSection" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel" unique_id=2130908693]
+[node name="SortSection" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel" unique_id=2130908693]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
+theme_override_constants/separation = 8
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection" unique_id=155844579]
+[node name="Header" type="HBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection" unique_id=1288366294]
 layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 6
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
 
-[node name="Root" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin" unique_id=1407447721]
+[node name="Bar" type="ColorRect" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection/Header" unique_id=2012576056]
+custom_minimum_size = Vector2(3, 13)
 layout_mode = 2
-theme_override_constants/separation = 6
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.82, 0.84, 0.9, 0.9)
 
-[node name="Title" type="Label" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root" unique_id=301693681]
-modulate = Color(0.9, 0.98, 1, 1)
-custom_minimum_size = Vector2(0, 30)
+[node name="Title" type="Label" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection/Header" unique_id=301693681]
+modulate = Color(0.74, 0.76, 0.81, 0.95)
 layout_mode = 2
-theme_override_font_sizes/font_size = 19
+theme_override_font_sizes/font_size = 15
 text = "排序"
 
-[node name="SkillSortOptionHost" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root" unique_id=407887535]
+[node name="SkillSortOptionHost" type="PanelContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection" unique_id=407887535]
 layout_mode = 2
 
-[node name="SkillSortOptionHostInner" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root/SkillSortOptionHost" unique_id=1739137728]
+[node name="SkillSortOptionHostInner" type="VBoxContainer" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection/SkillSortOptionHost" unique_id=1984864709]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SkillSortOption" type="Button" parent="CenterPanel/Margin/Root/Body/ModulePanel/Margin/SkillFilterPanel/SortSection/Margin/Root/SkillSortOptionHost/SkillSortOptionHostInner" unique_id=1984864709]
+[node name="SkillSortOption" type="Button" parent="ScreenMargin/Root/Body/Rail/RailMargin/RailVBox/FilterScroll/SkillFilterPanel/SortSection/SkillSortOptionHost/SkillSortOptionHostInner" unique_id=1739137727]
 custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -335,164 +534,286 @@ focus_mode = 0
 mouse_default_cursor_shape = 2
 script = ExtResource("21_settings_dropdown")
 
-[node name="Content" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body" unique_id=481712010]
+[node name="Content" type="VBoxContainer" parent="ScreenMargin/Root/Body" unique_id=481712010]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 14
+theme_override_constants/separation = 10
 
-[node name="SearchRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1676039092]
+[node name="SearchRow" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content" unique_id=1676039092]
 layout_mode = 2
 theme_override_constants/separation = 14
+alignment = 1
 
-[node name="Accent" type="ColorRect" parent="CenterPanel/Margin/Root/Body/Content/SearchRow"]
-custom_minimum_size = Vector2(4, 36)
+[node name="Accent" type="ColorRect" parent="ScreenMargin/Root/Body/Content/SearchRow" unique_id=2023753662]
+custom_minimum_size = Vector2(4, 34)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.24, 0.85, 0.94, 0.9)
+color = Color(0.82, 0.84, 0.9, 0.95)
 
-[node name="ModuleTitle" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=162253235]
-modulate = Color(0.92, 0.97, 1, 1)
-custom_minimum_size = Vector2(120, 0)
+[node name="ModuleTitle" type="Label" parent="ScreenMargin/Root/Body/Content/SearchRow" unique_id=162253235]
+modulate = Color(0.96, 0.97, 1, 1)
+custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 25
 text = "卡牌图鉴"
+vertical_alignment = 1
 
-[node name="SearchBox" type="LineEdit" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=775425656]
-custom_minimum_size = Vector2(0, 44)
+[node name="SearchBox" type="LineEdit" parent="ScreenMargin/Root/Body/Content/SearchRow" unique_id=775425656]
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "搜索卡牌名称、类型或描述"
 
-[node name="CountLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/SearchRow" unique_id=1180591402]
-modulate = Color(0.7, 0.82, 0.92, 0.82)
+[node name="CountLabel" type="Label" parent="ScreenMargin/Root/Body/Content/SearchRow" unique_id=1180591402]
+modulate = Color(0.78, 0.8, 0.85, 0.9)
 custom_minimum_size = Vector2(90, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "0/0"
+theme_override_fonts/font = ExtResource("4_serif")
+theme_override_font_sizes/font_size = 19
+text = "0 / 0"
 horizontal_alignment = 2
+vertical_alignment = 1
 
-[node name="CharacterFilterRow" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1310224283]
+[node name="CharacterFilterRow" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content" unique_id=1310224283]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 26
 
-[node name="CharacterFilterLabel" type="Label" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=2128639654]
-modulate = Color(0.76, 0.88, 0.98, 0.92)
-custom_minimum_size = Vector2(64, 0)
+[node name="CharacterFilterLabel" type="Label" parent="ScreenMargin/Root/Body/Content/CharacterFilterRow" unique_id=2128639654]
+modulate = Color(0.74, 0.76, 0.81, 0.95)
+custom_minimum_size = Vector2(48, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "角色"
 vertical_alignment = 1
 
-[node name="EchoButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=1392850629]
-custom_minimum_size = Vector2(0, 44)
+[node name="EchoButton" type="Button" parent="ScreenMargin/Root/Body/Content/CharacterFilterRow" unique_id=1392850629]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Echo"
-clip_text = true
 
-[node name="KasiyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=380175374]
-custom_minimum_size = Vector2(0, 44)
+[node name="KasiyaButton" type="Button" parent="ScreenMargin/Root/Body/Content/CharacterFilterRow" unique_id=380175374]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Kasiya"
-clip_text = true
 
-[node name="MariyaButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=868775161]
-custom_minimum_size = Vector2(0, 44)
+[node name="MariyaButton" type="Button" parent="ScreenMargin/Root/Body/Content/CharacterFilterRow" unique_id=868775161]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "玛瑞娅"
-clip_text = true
 
-[node name="NightingaleButton" type="Button" parent="CenterPanel/Margin/Root/Body/Content/CharacterFilterRow" unique_id=641557052]
-custom_minimum_size = Vector2(0, 44)
+[node name="NightingaleButton" type="Button" parent="ScreenMargin/Root/Body/Content/CharacterFilterRow" unique_id=641557052]
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Nightingale"
-clip_text = true
 
-[node name="Split" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content" unique_id=1862864668]
+[node name="Split" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content" unique_id=1862864668]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 0
+theme_override_constants/separation = 16
 
-[node name="SkillGridPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split" unique_id=1347687484]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_content_panel")
-
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel" unique_id=1222318233]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 12
-
-[node name="GridScroll" type="ScrollContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel/Margin" unique_id=886183611]
+[node name="SkillGridPanel" type="Control" parent="ScreenMargin/Root/Body/Content/Split" unique_id=1347687484]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="SkillGrid" type="GridContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/SkillGridPanel/Margin/GridScroll" unique_id=581039083]
+[node name="GridBG" type="ColorRect" parent="ScreenMargin/Root/Body/Content/Split/SkillGridPanel" unique_id=160208938]
+material = SubResource("ShaderMaterial_grid")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="GridMargin" type="MarginContainer" parent="ScreenMargin/Root/Body/Content/Split/SkillGridPanel" unique_id=356071951]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="GridScroll" type="ScrollContainer" parent="ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin" unique_id=886183611]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 30
-theme_override_constants/v_separation = 20
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="GridContentMargin" type="MarginContainer" parent="ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin/GridScroll" unique_id=136847195]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="SkillGrid" type="GridContainer" parent="ScreenMargin/Root/Body/Content/Split/SkillGridPanel/GridMargin/GridScroll/GridContentMargin" unique_id=581039083]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 24
 columns = 5
 
-[node name="DetailPanel" type="PanelContainer" parent="CenterPanel/Margin/Root/Body/Content/Split" unique_id=1987715101]
+[node name="DetailPanel" type="Control" parent="ScreenMargin/Root/Body/Content/Split" unique_id=1987715101]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner_panel")
 
-[node name="Margin" type="MarginContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel" unique_id=197939493]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 18
+[node name="DetailBG" type="ColorRect" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel" unique_id=1768190517]
+material = SubResource("ShaderMaterial_detail")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="DetailMargin" type="MarginContainer" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel" unique_id=1188915751]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 20
 theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 18
+theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 18
 
-[node name="DetailRoot" type="VBoxContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin" unique_id=1654433048]
+[node name="DetailRoot" type="VBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin" unique_id=1654433048]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
-[node name="DetailHeading" type="HBoxContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="Accent" type="ColorRect" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot/DetailHeading"]
-custom_minimum_size = Vector2(4, 28)
+[node name="DetailHeading" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot" unique_id=1831153781]
 layout_mode = 2
 mouse_filter = 2
-color = Color(0.84, 0.63, 0.25, 0.95)
+theme_override_constants/separation = 10
+alignment = 1
 
-[node name="Label" type="Label" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot/DetailHeading"]
+[node name="Accent" type="ColorRect" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailHeading" unique_id=1330183385]
+custom_minimum_size = Vector2(4, 22)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.94, 0.84, 0.62, 1)
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.82, 0.84, 0.9, 0.95)
+
+[node name="Label" type="Label" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailHeading" unique_id=624251757]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
 theme_override_font_sizes/font_size = 18
 text = "档案详情"
 
-[node name="DetailCardHost" type="CenterContainer" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot" unique_id=1314284169]
+[node name="Line" type="ColorRect" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot/DetailHeading" unique_id=1171190018]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.58, 0.6, 0.65, 0.26)
+
+[node name="DetailIconHost" type="CenterContainer" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot" unique_id=1599587855]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="DetailCardHost" type="CenterContainer" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot" unique_id=1314284169]
 visible = false
 custom_minimum_size = Vector2(0, 340)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="DetailLabel" type="RichTextLabel" parent="CenterPanel/Margin/Root/Body/Content/Split/DetailPanel/Margin/DetailRoot" unique_id=132591955]
+[node name="DetailLabel" type="RichTextLabel" parent="ScreenMargin/Root/Body/Content/Split/DetailPanel/DetailMargin/DetailRoot" unique_id=132591955]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_font_sizes/normal_font_size = 19
+theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
 text = "请选择一个条目。"
+
+[node name="Vignette" type="TextureRect" parent="." unique_id=1815377657]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_vignette")
+expand_mode = 1
+
+[node name="FrameDecor" type="Control" parent="." unique_id=1661016842]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CornerTL" type="Panel" parent="FrameDecor" unique_id=1056158594]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 1
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 44.0
+offset_bottom = 42.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_tl")
+
+[node name="CornerTR" type="Panel" parent="FrameDecor" unique_id=607204088]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -44.0
+offset_top = 12.0
+offset_right = -14.0
+offset_bottom = 42.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_tr")
+
+[node name="CornerBL" type="Panel" parent="FrameDecor" unique_id=702349048]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = -42.0
+offset_right = 44.0
+offset_bottom = -12.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_bl")
+
+[node name="CornerBR" type="Panel" parent="FrameDecor" unique_id=511316228]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -44.0
+offset_top = -42.0
+offset_right = -14.0
+offset_bottom = -12.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_corner_br")

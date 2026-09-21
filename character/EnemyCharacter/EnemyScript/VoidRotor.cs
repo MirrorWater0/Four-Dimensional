@@ -53,7 +53,7 @@ public partial class VoidRotorRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/VoidRotor.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidRotor.tscn");
 
-        MaxLife = 110;
+        MaxLife = 121;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -67,7 +67,7 @@ public partial class VoidRotorRegedit : EnemyRegedit
 
 public partial class VoidRotorAttack : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 8;
     private const int PowerMultiplier = 1;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
@@ -104,13 +104,13 @@ public partial class VoidRotorSurvive : Skill
 
 public partial class VoidRotorSpecial : Skill
 {
-    private const int BaseDamage = 6;
+    private const int BaseDamage = 8;
     private const int DazeCardsPerTarget = 3;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚界灌注";
-    public override int EnergyCost => 5;
+    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {

@@ -36,7 +36,7 @@ public partial class ArroganceRegedit : EnemyRegedit
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
 
-        MaxLife = 162;
+        MaxLife = 122;
         Power = 0;
         Survivability = 0;
         BasePowerContribution = 0;
@@ -56,7 +56,7 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 4;
+    private const int BaseDamage = 2;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -74,7 +74,7 @@ public partial class ArroganceAttack : Skill
 
 public partial class ArroganceSurvive : Skill
 {
-    private const int BaseBlock = 20;
+    private const int BaseBlock = 15;
     private const int VulnerableStacks = 2;
 
     public override SkillTypes SkillType => SkillTypes.Survive;
@@ -102,7 +102,7 @@ public partial class ArroganceSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚无追击";
-    public override int EnergyCost => 0;
+    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {

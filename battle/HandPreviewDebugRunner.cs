@@ -85,6 +85,7 @@ public partial class HandPreviewDebugRunner : Node
             UnlockedTalents = source.UnlockedTalents != null
                 ? new List<string>(source.UnlockedTalents)
                 : new List<string>(),
+            AppliedTalentMaxLifeBonus = source.AppliedTalentMaxLifeBonus,
             GainedSkills = source.GainedSkills != null
                 ? new List<SkillID>(source.GainedSkills)
                 : new List<SkillID>(),

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d4eb1dm87nbt"
-path="res://.godot/imported/Kasiya.png-2592e8aeef9301ee0f504cba3fbc2c24.ctex"
+uid="uid://ckruqxh8uhe04"
+path="res://.godot/imported/kasiya.png-57758b92bfb5bf74674d7eb990770a89.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://asset/PlayerCharater/Kasiya/Kasiya.png"
-dest_files=["res://.godot/imported/Kasiya.png-2592e8aeef9301ee0f504cba3fbc2c24.ctex"]
+source_file="res://asset/PlayerCharater/Kasiya/kasiya.png"
+dest_files=["res://.godot/imported/kasiya.png-57758b92bfb5bf74674d7eb990770a89.ctex"]
 
 [params]
 

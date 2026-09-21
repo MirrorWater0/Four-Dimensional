@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://hhmnnh1smok3"]
+
+[ext_resource type="Script" uid="uid://clhvm3dfrxxm1" path="res://ScreenEffectOverlay.cs" id="1_screen_effect"]
+
+[sub_resource type="Gradient" id="Gradient_damage"]
+offsets = PackedFloat32Array(0.7906404, 1)
+colors = PackedColorArray(1, 0.54, 0.54, 0, 1, 0, 0, 0.6784314)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture_damage"]
+gradient = SubResource("Gradient_damage")
+fill = 2
+fill_from = Vector2(0.490826, 0.5)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="Gradient" id="Gradient_heal"]
+offsets = PackedFloat32Array(0.70689654, 1)
+colors = PackedColorArray(0.42, 1, 0.62, 0, 0.11900001, 0.7, 0.32235008, 0.5764706)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture_heal"]
+gradient = SubResource("Gradient_heal")
+fill = 2
+fill_from = Vector2(0.490826, 0.5)
+fill_to = Vector2(0, 0.00458716)
+
+[node name="ScreenEffectOverlay" type="CanvasLayer" unique_id=1756313370]
+layer = 900
+script = ExtResource("1_screen_effect")
+
+[node name="DamageTint" type="NinePatchRect" parent="." unique_id=504523674]
+self_modulate = Color(1, 1, 1, 0)
+z_index = 4
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture_damage")
+
+[node name="HealTint" type="NinePatchRect" parent="." unique_id=1351292053]
+self_modulate = Color(1, 1, 1, 0)
+z_index = 4
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("GradientTexture_heal")

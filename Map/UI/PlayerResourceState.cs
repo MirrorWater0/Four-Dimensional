@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class PlayerResourceState : CanvasLayer
 {
     private static readonly PackedScene MenuScene = GD.Load<PackedScene>("res://Menu/Menu.tscn");
     private const long MaxDisplayHours = 99;
+    private const float AcquireFlightDuration = 0.42f;
+    private const float AcquireTargetPulseDuration = 0.1f;
     private static readonly Dictionary<string, Texture2D> PortraitCache = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, string> MapPortraitPaths = new(
         StringComparer.OrdinalIgnoreCase
@@ -101,10 +104,10 @@ public partial class PlayerResourceState : CanvasLayer
         : field = GetNodeOrNull<ColorRect>("ElectricityCoin");
 
     public List<Relic> RelicList = new();
-    public GridContainer RelicContainer => field is not null
+    public VFlowContainer RelicContainer => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
-        : field = GetNodeOrNull<GridContainer>("RelicContainer");
+        : field = GetNodeOrNull<VFlowContainer>("RelicContainer");
     public List<ConsumeItem> Items = new();
     public HBoxContainer ItemContainer => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -159,7 +162,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     public override void _Ready()
     {
-        SetProcessUnhandledInput(false);
+        SetProcessUnhandledInput(true);
         EnsureMenuOverlay();
         ElectricityCoin = GameInfo.ElectricityCoin;
         InitTransitionEnergyMax();
@@ -167,6 +170,7 @@ public partial class PlayerResourceState : CanvasLayer
         InitRelic();
         InitItems();
         RefreshStatusPanel();
+        ApplyMobileTouchLayout();
         if (MenuButton != null)
             MenuButton.Pressed += OnMenuButtonPressed;
         if (MapPeekButton != null)
@@ -194,18 +198,52 @@ public partial class PlayerResourceState : CanvasLayer
     public override void _UnhandledInput(InputEvent @event)
     {
         if (
-            MapNode?.IsMapPeekModeActive != true
-            || @event is not InputEventKey keyEvent
-            || !keyEvent.Pressed
-            || keyEvent.Echo
-            || keyEvent.Keycode != Key.Escape
+            @event is not InputEventKey
+            {
+                Pressed: true,
+                Echo: false,
+                Keycode: Key.Escape,
+            }
         )
+            return;
+
+        if (MapNode?.IsMapPeekModeActive == true)
         {
+            CloseMapPeekMode();
+            GetViewport().SetInputAsHandled();
             return;
         }
 
+        if (MenuOverlay?.HandleBackRequest() == true)
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+
+        MenuOverlay?.Open();
         GetViewport().SetInputAsHandled();
-        CloseMapPeekMode();
+    }
+
+    private void ApplyMobileTouchLayout()
+    {
+        if (!MobilePlatform.IsMobile)
+            return;
+
+        if (MenuButton != null)
+        {
+            MobilePlatform.EnsureMinimumTouchTarget(MenuButton);
+            Viewport viewport = GetViewport();
+            float viewportWidth = viewport != null ? viewport.GetVisibleRect().Size.X : 1920f;
+            MenuButton.Position = new Vector2(
+                Mathf.Max(12f, viewportWidth - MenuButton.Size.X - 12f),
+                Mathf.Max(4f, MenuButton.Position.Y)
+            );
+
+            if (MenuButton.GetNodeOrNull<Control>("ColorRect") is { } icon)
+                icon.Position = (MenuButton.Size - icon.Size) * 0.5f;
+        }
+
+        MobilePlatform.EnsureMinimumTouchTarget(MapPeekButton);
     }
 
     public void InitRelic()
@@ -245,6 +283,182 @@ public partial class PlayerResourceState : CanvasLayer
             if (itemContainer.GetChild(i) is ItemContainer container)
                 container.SetEnabled(enabled);
         }
+    }
+
+    public Task PlayRelicAcquireAnimationAsync(RelicID relicId, Vector2 sourcePosition)
+    {
+        return PlayResourceAcquireAnimationAsync(
+            sourcePosition,
+            () => FindRelicIcon(relicId),
+            () => CreateRelicAcquireIcon(relicId),
+            spin: -0.45f
+        );
+    }
+
+    public Task PlayItemAcquireAnimationAsync(ItemID itemId, Vector2 sourcePosition)
+    {
+        return PlayResourceAcquireAnimationAsync(
+            sourcePosition,
+            () => FindItemIcon(itemId),
+            () => CreateItemAcquireIcon(itemId),
+            spin: 0.45f
+        );
+    }
+
+    private async Task PlayResourceAcquireAnimationAsync(
+        Vector2 sourcePosition,
+        Func<Control> targetResolver,
+        Func<Control> iconFactory,
+        float spin
+    )
+    {
+        if (!IsInsideTree() || targetResolver == null || iconFactory == null)
+            return;
+
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (!GodotObject.IsInstanceValid(this) || !IsInsideTree())
+            return;
+
+        Control target = targetResolver();
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || !target.IsInsideTree()
+        )
+        {
+            return;
+        }
+
+        Control icon = iconFactory();
+        if (icon == null)
+        {
+            icon?.QueueFree();
+            return;
+        }
+
+        Vector2 iconSize = new(
+            Mathf.Max(42f, icon.CustomMinimumSize.X),
+            Mathf.Max(42f, icon.CustomMinimumSize.Y)
+        );
+        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+        icon.CustomMinimumSize = iconSize;
+        icon.Size = iconSize;
+        icon.PivotOffset = iconSize * 0.5f;
+        icon.Scale = Vector2.One * 0.72f;
+        icon.Modulate = Colors.White with { A = 0f };
+        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
+        icon.ZIndex = 100;
+        AddChild(icon);
+        icon.TopLevel = true;
+        icon.GlobalPosition = sourcePosition - iconSize * 0.5f;
+
+        Vector2 startCenter = sourcePosition;
+        Vector2 endCenter = target.GetGlobalRect().GetCenter();
+
+        Tween flightTween = icon.CreateTween();
+        flightTween.SetParallel(true);
+        flightTween
+            .TweenProperty(icon, "modulate:a", 1f, 0.06f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        flightTween
+            .TweenProperty(icon, "scale", Vector2.One * 0.84f, AcquireFlightDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        flightTween
+            .TweenProperty(icon, "rotation", spin, AcquireFlightDuration)
+            .SetTrans(Tween.TransitionType.Quad)
+            .SetEase(Tween.EaseType.Out);
+        flightTween
+            .TweenMethod(
+                Callable.From<float>(progress =>
+                {
+                    if (!GodotObject.IsInstanceValid(icon))
+                        return;
+
+                    float eased = progress * progress * (3f - 2f * progress);
+                    Vector2 center = startCenter.Lerp(endCenter, eased);
+                    icon.GlobalPosition = center - iconSize * 0.5f;
+                }),
+                0f,
+                1f,
+                AcquireFlightDuration
+            )
+            .SetTrans(Tween.TransitionType.Linear);
+        flightTween.SetParallel(false);
+        await ToSignal(flightTween, Tween.SignalName.Finished);
+
+        if (GodotObject.IsInstanceValid(icon))
+            icon.QueueFree();
+
+        if (GodotObject.IsInstanceValid(target) && target.IsInsideTree())
+            await PulseAcquireTargetAsync(target);
+    }
+
+    private Control FindRelicIcon(RelicID relicId)
+    {
+        if (RelicList == null)
+            return null;
+
+        for (int i = RelicList.Count - 1; i >= 0; i--)
+        {
+            Relic relic = RelicList[i];
+            if (relic?.ID == relicId && relic.IconNode != null)
+                return relic.IconNode;
+        }
+
+        return null;
+    }
+
+    private Control FindItemIcon(ItemID itemId)
+    {
+        if (Items == null)
+            return null;
+
+        for (int i = Items.Count - 1; i >= 0; i--)
+        {
+            ConsumeItem item = Items[i];
+            if (item?.ItemId == itemId && item.Icon != null)
+                return item.Icon;
+        }
+
+        return null;
+    }
+
+    private static Control CreateRelicAcquireIcon(RelicID relicId)
+    {
+        Control icon = Relic.IconScene?.Instantiate<Control>()
+            ?? new ColorRect { Color = Colors.White };
+        Relic.ApplyIconVisual(icon, relicId);
+        var countLabel = icon.GetNodeOrNull<Label>("Label");
+        if (countLabel != null)
+            countLabel.Visible = false;
+        return icon;
+    }
+
+    private static Control CreateItemAcquireIcon(ItemID itemId)
+    {
+        Control icon = ConsumeItem.IconSence?.Instantiate<Control>()
+            ?? new ColorRect { Color = Colors.White };
+        ConsumeItem.ConfigureIcon(icon as ColorRect, itemId);
+        return icon;
+    }
+
+    private async Task PulseAcquireTargetAsync(Control target)
+    {
+        Vector2 baseScale = target.Scale == Vector2.Zero ? Vector2.One : target.Scale;
+        target.PivotOffset = target.Size * 0.5f;
+
+        Tween tween = target.CreateTween();
+        tween
+            .TweenProperty(target, "scale", baseScale * 1.16f, AcquireTargetPulseDuration)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.Out);
+        tween
+            .TweenProperty(target, "scale", baseScale, AcquireTargetPulseDuration + 0.04f)
+            .SetTrans(Tween.TransitionType.Cubic)
+            .SetEase(Tween.EaseType.InOut);
+        await ToSignal(tween, Tween.SignalName.Finished);
     }
 
     public void InitTransitionEnergyMax(bool resetPreviousValue = true)
@@ -437,7 +651,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     public void SetMapPeekInputActive(bool active)
     {
-        SetProcessUnhandledInput(active);
+        SetProcessUnhandledInput(active || MobilePlatform.IsMobile);
     }
 
     public void SetBattleActive(bool active)

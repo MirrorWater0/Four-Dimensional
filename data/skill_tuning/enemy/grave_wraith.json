@@ -2,11 +2,11 @@
     "skills":  {
                    "GraveWraithAttack":  {
                                              "Name":  "蚀骨噬咬",
-                                             "BaseDamage":  30
+                                             "BaseDamage":  28
                                          },
                    "GraveWraithSpecial":  {
                                               "Name":  "冥骸觉醒",
-                                              "BaseDamage":  13,
+                                              "BaseDamage":  18,
                                               "Multiplier":  1,
                                               "PowerGain":  5,
                                               "EnemySpecialIntentionCooldown":  2

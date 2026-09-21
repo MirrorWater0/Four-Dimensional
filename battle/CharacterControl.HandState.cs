@@ -52,6 +52,7 @@ public partial class CharacterControl
             || _activePlayer.State == Character.CharacterState.Dying
         )
         {
+            _handLayoutSyncPending = false;
             ClearCardEnergyPreview();
             _statusLabel.Text = "等待行动";
             PositionStatusLabel();
@@ -105,6 +106,7 @@ public partial class CharacterControl
         Skill[] hand = GetActiveHandSkills();
         PruneHandCardsNotInHand(hand);
         SyncHandSlotIdentities(hand);
+        _handLayoutSyncPending = false;
         bool manualTargetSelectionPending = IsManualTargetSelectionPending();
         bool pileSelectionViewMode =
             _isPileCardSelectionActive && _pileOverlayContentTemporarilyHidden;
@@ -149,6 +151,7 @@ public partial class CharacterControl
             if (skill == null)
             {
                 _hiddenPendingDrawEntrySlotIndexes.Remove(i);
+                _discardSelectionFlyingToDiscardHandIndexes.Remove(i);
                 if (card != null)
                 {
                     card.Visible = false;
@@ -173,6 +176,7 @@ public partial class CharacterControl
                 skill
             );
             bool isDiscardReturnFlying = _discardSelectionFlyingReturnHandIndexes.Contains(i);
+            bool isDiscardFlightInProgress = _discardSelectionFlyingToDiscardHandIndexes.Contains(i);
             bool isDiscardReturnPending = IsDiscardSelectionReturnSlot(i);
             bool isOriginalSelectionVisual =
                 _isDiscardSelectionActive
@@ -189,6 +193,7 @@ public partial class CharacterControl
                 && !movedFromPendingReorder
                 && !movedFromAnotherSlot
                 && !hideForDiscardReturn
+                && !isDiscardFlightInProgress
                 && !isDiscardReturnPending;
             bool shouldResetDisplayState =
                 !isLiftedSkill
@@ -214,7 +219,7 @@ public partial class CharacterControl
                 SnapHandCardToBaseVisual(i, card);
             }
             if (!isLiftedSkill)
-                card.Visible = !hideForDrawEntry && !hideForDiscardReturn;
+                card.Visible = !hideForDrawEntry && !hideForDiscardReturn && !isDiscardFlightInProgress;
 
             card.SetSkill(skill);
             string ownerDisplayName = GetSkillOwnerDisplayName(skill);
@@ -234,9 +239,27 @@ public partial class CharacterControl
                 continue;
             }
 
+            if (isDiscardFlightInProgress)
+            {
+                card.Visible = false;
+                SetCardButtonInputEnabled(card, false);
+                card.HideHoverUi();
+                card.SetPlayableHighlight(false, instant: true);
+                continue;
+            }
+
             if (isOriginalSelectionVisual)
             {
+                bool isExhaustingSelectedCard =
+                    _isDiscardSelectionCompleting && _discardSelectionExhaustMode;
                 card.Visible = true;
+                if (isExhaustingSelectedCard)
+                {
+                    card.HideHoverUi();
+                    card.SetPlayableHighlight(false, instant: true);
+                    continue;
+                }
+
                 card.SetHoverUiEnabled(!_isDiscardSelectionCompleting);
                 SetCardButtonInputEnabled(card, !_isDiscardSelectionCompleting);
                 card.SetPlayableHighlight(false, instant: true);
@@ -523,6 +546,7 @@ public partial class CharacterControl
         SwapIndexReference(ref _hoveredCardIndex, a, b);
         SwapIndexReference(ref _liftedCardIndex, a, b);
         SwapIndexReference(ref _cardFootMarkerHoverIndex, a, b);
+        SwapIndexReference(ref _cardPreviewHighlightedBuffsIndex, a, b);
         SwapIndexReference(ref _manualTargetArrowCardIndex, a, b);
         SwapIndexSetMembership(_turnEndStatusTriggerCardIndexes, a, b);
         SwapIndexSetMembership(_pendingHandStatusExhaustIndexes, a, b);
@@ -602,6 +626,7 @@ public partial class CharacterControl
         _drawEntrySlotIndexes.Remove(index);
         _hiddenPendingDrawEntrySlotIndexes.Remove(index);
         _drawEntryFromPlayedCardOrigin.Remove(index);
+        ClearCardPreviewTriggeredBuffHighlights(index);
         _cardHoverPreviewActive[index] = false;
     }
 
@@ -654,7 +679,7 @@ public partial class CharacterControl
             && !_handCardsBySkill.ContainsValue(displaced)
         )
         {
-            displaced.Visible = false;
+            ReturnBattleCardToPool(displaced);
         }
 
         Node parent = card.GetParent();
@@ -768,6 +793,8 @@ public partial class CharacterControl
             _liftedCardIndex = newIndex;
         if (_cardFootMarkerHoverIndex == previousIndex)
             _cardFootMarkerHoverIndex = newIndex;
+        if (_cardPreviewHighlightedBuffsIndex == previousIndex)
+            _cardPreviewHighlightedBuffsIndex = newIndex;
         if (_manualTargetArrowCardIndex == previousIndex)
             _manualTargetArrowCardIndex = newIndex;
 
@@ -890,8 +917,7 @@ public partial class CharacterControl
         if (_isResolvingEndTurn)
             return "等待行动";
 
-        int playerEnergy = BattleNode?.PlayerEnergy ?? 0;
-        return $"玩家回合 | 能量 {playerEnergy}";
+        return I18n.Tr("ui.battle.hud.player_phase", "你的回合 · 选择下一步行动");
     }
 
     private static string GetSkillOwnerDisplayName(Skill skill)

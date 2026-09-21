@@ -3079,17 +3079,6 @@ public partial class Skill
                 return;
             }
 
-            int adjustedDamage = Math.Clamp(
-                AttackBuff.ApplyOutgoingDamageModifiers(
-                    skill.OwnerCharater,
-                    damage,
-                    null,
-                    consumeStacks: true
-                ),
-                0,
-                9999
-            );
-
             List<Task> tasks = new(targets.Length);
             for (int i = 0; i < targets.Length; i++)
             {
@@ -3100,9 +3089,8 @@ public partial class Skill
                     AttackTargetTimes(
                         skill,
                         targets[i],
-                        adjustedDamage,
-                        _times,
-                        applyAttackBuff: false
+                        damage,
+                        _times
                     )
                 );
 
@@ -5268,10 +5256,7 @@ public partial class Skill
             );
             for (int i = 0; i < targets.Length; i++)
             {
-                int previousBlock = targets[i].Block;
                 targets[i].UpdataBlock(block, source: skill?.OwnerCharater);
-                int gainedBlock = Math.Max(0, targets[i].Block - previousBlock);
-                SpecialBuff.TriggerBeaconBlockShare(targets[i], gainedBlock, skill?.OwnerCharater);
             }
 
             return Task.CompletedTask;
@@ -5394,7 +5379,7 @@ public partial class Skill
                 string skillText = GetCarrySkillText(skillIndex);
                 _descriptionLine = I18n.Format(
                     "skill.step.carry.target",
-                    "连携{target}角色随机打出1张{skill}。",
+                    "连携{target}1张{skill}",
                     ("target", FriendlyTargetText(target)),
                     ("skill", skillText)
                 );
@@ -5433,7 +5418,7 @@ public partial class Skill
             string relativeText = RelativeFriendlyTargetTextForDescription(_relativeIndex);
             yield return I18n.Format(
                 "skill.step.carry.target",
-                "连携{target}角色随机打出1张{skill}。",
+                "连携{target}1张{skill}",
                 ("target", relativeText),
                 ("skill", GetCarrySkillText(_skillIndex))
             );
@@ -5475,14 +5460,14 @@ public partial class Skill
         {
             return skillIndex switch
             {
-                0 => I18n.Tr("skill.step.skill_type.any", "任意技能"),
-                1 => I18n.Tr("skill.step.skill_type.attack", "攻击技能"),
-                2 => I18n.Tr("skill.step.skill_type.survive", "生存技能"),
-                3 => I18n.Tr("skill.step.skill_type.special", "特殊技能"),
-                4 => I18n.Tr("skill.step.skill_type.ability", "能力技能"),
+                0 => I18n.Tr("skill.step.skill_type.any", "任意卡"),
+                1 => I18n.Tr("skill.step.skill_type.attack", "攻击卡"),
+                2 => I18n.Tr("skill.step.skill_type.survive", "生存卡"),
+                3 => I18n.Tr("skill.step.skill_type.special", "特殊卡"),
+                4 => I18n.Tr("skill.step.skill_type.ability", "能力卡"),
                 _ => I18n.Format(
                     "skill.step.skill_type.indexed",
-                    "第{index}个技能",
+                    "第{index}张卡",
                     ("index", skillIndex + 1)
                 ),
             };

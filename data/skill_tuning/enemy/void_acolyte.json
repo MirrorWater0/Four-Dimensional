@@ -8,14 +8,14 @@
                    "VoidAcolyteSpecial":  {
                                               "Name":  "虚空灌注",
                                               "VoidCardsInserted":  2,
-                                              "BaseDamage":  7,
+                                              "BaseDamage":  9,
                                               "Multiplier":  1,
                                               "EnemySpecialIntentionCooldown":  2
                                           },
                    "VoidAcolyteSurvive":  {
                                               "Name":  "空壳蓄势",
                                               "BaseBlock":  10,
-                                              "PowerGain":  2
+                                              "PowerGain":  4
                                           }
                }
 }

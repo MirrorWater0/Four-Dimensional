@@ -9,9 +9,6 @@ public partial class CharacterControl
     private static readonly PackedScene SkillCardScene = GD.Load<PackedScene>(
         "res://battle/UIScene/Reward/SkillCard.tscn"
     );
-    private static readonly PackedScene CharacterTargetCardScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/ManualTarget/CharacterTargetCard.tscn"
-    );
     private static readonly PackedScene ManualTargetArrowScene = GD.Load<PackedScene>(
         "res://battle/UIScene/ManualTarget/ManualTargetArrowView.tscn"
     );
@@ -52,7 +49,7 @@ public partial class CharacterControl
     private const float StatusInsertFlyDuration = 0.34f;
     private const float StatusInsertStagger = 0.055f;
     private const int StatusInsertCardsCreatedPerFrame = 3;
-    private const float CardHoverLiftY = -48f;
+    private const float CardHoverLiftY = -104f;
     private const float CardHoverScaleMultiplier = 1.15f;
     private const float HandHoverResumeMouseMoveDistance = 8f;
     private const double HandHoverValidationIntervalSeconds = 0.1;
@@ -94,7 +91,6 @@ public partial class CharacterControl
     private const float ShufflePreviewDrawEntryDelayPadding = 0.08f;
     private const int HandCardHoverZIndex = 90;
     private const int StatusLabelZIndex = HandCardHoverZIndex + 8;
-    private const float StatusLabelLiftY = 62f;
     private const int PlayedCardZIndex = 100;
     private const int DiscardSelectionOverlayZIndex = PlayedCardZIndex + 8;
     private const int DiscardSelectionSelectedCardZIndex = PlayedCardZIndex + 20;
@@ -103,7 +99,6 @@ public partial class CharacterControl
     private const int BattleCardPoolPrewarmCount = HandCardCapacity;
     private const int BattleCardPoolMaxCount = HandCardCapacity * 2;
     private static readonly Vector2 DyingOwnedCardStackOffset = new(10f, 6f);
-    private const int ManualTargetPickerZIndex = 400;
     private const int LiftedCardOverlayLayer = 80;
     private const int LiftedCardZIndex = 0;
     private const int HandCardCapacity = PlayerCharacter.MaxBattleHandSize;
@@ -124,17 +119,11 @@ public partial class CharacterControl
     private static readonly Color ManualTargetEffectHostileColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color ManualTargetEffectFriendlyColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Color DiscardSelectionCardModulate = new(1f, 0.82f, 0.42f, 1f);
-    private static readonly Vector2 ManualTargetDamagePreviewLabelOffset = new(-50f, -130f);
-
     private VBoxContainer _root;
     private Label _statusLabel;
     private Control _cardRow;
     private Control _handInputBlocker;
-    private Control _manualTargetPickerRoot;
-    private ColorRect _manualTargetPickerMask;
-    private HBoxContainer _manualTargetPickerRow;
-    private Button _manualTargetPickerHideButton;
-    private SkillCard _manualTargetPickerPlayedCard;
+    private SkillCard _manualTargetArrowPlayedCard;
     private Control _manualTargetArrowRoot;
     private ColorRect _manualTargetArrowMask;
     private ManualTargetArrowView _manualTargetArrowLayer;
@@ -178,6 +167,8 @@ public partial class CharacterControl
         new(HandCardCapacity);
     private readonly List<Task> _discardSelectionFlyTasks = new(HandCardCapacity);
     private readonly Dictionary<SkillCard, Tween> _discardSelectionArrangeTweens = new();
+    private readonly Dictionary<SkillCard, (Vector2 Position, Vector2 Scale, bool UsesOriginalHandVisual)> _discardSelectionArrangeTargets =
+        new();
     private readonly List<(
         Character Target,
         Character Source,
@@ -243,6 +234,7 @@ public partial class CharacterControl
     private PlayerCharacter _activePlayer;
     private bool _isResolvingCard;
     private bool _isProcessingCardQueue;
+    private bool _handLayoutSyncPending;
     private int _deferredHoverRefreshVersion;
     private int _queuedHoverRefreshVersion;
     private Timer _handHoverValidationTimer;
@@ -266,6 +258,8 @@ public partial class CharacterControl
     private bool[] _cardHoverPreviewActive = new bool[HandCardCapacity];
     private int _pendingCardHoverPreviewIndex = -1;
     private int _cardHoverPreviewRequestVersion;
+    private readonly HashSet<Buff> _cardPreviewHighlightedBuffs = new();
+    private int _cardPreviewHighlightedBuffsIndex = -1;
     private PlayerCharacter _cardFootMarkerHoverPlayer;
     private int _cardFootMarkerHoverIndex = -1;
     private bool _suppressCardButtonPressUntilLeftRelease;
@@ -283,7 +277,6 @@ public partial class CharacterControl
     private bool _isResolvingEndTurn;
     private ulong _shuffleDrawEntryDelayUntilMsec;
     private int _shuffleDelayedLayoutRefreshVersion;
-    private bool _manualTargetPickerTemporarilyHidden;
     private TaskCompletionSource<Character> _manualTargetCompletion;
     private bool _isDiscardSelectionActive;
     private bool _isDiscardSelectionCompleting;
@@ -299,6 +292,7 @@ public partial class CharacterControl
     private readonly HashSet<int> _discardSelectionOriginalVisualHandIndexes = new();
     private readonly HashSet<int> _discardSelectionReturningHandIndexes = new();
     private readonly HashSet<int> _discardSelectionFlyingReturnHandIndexes = new();
+    private readonly HashSet<int> _discardSelectionFlyingToDiscardHandIndexes = new();
     private readonly Dictionary<int, SkillCard> _discardSelectionReturningPreviewCards = new();
     private Control _discardSelectionOverlay;
     private ColorRect _discardSelectionScreenMask;
@@ -355,12 +349,12 @@ public partial class CharacterControl
         public bool IsTemporaryCard { get; init; }
         public bool FlyToDiscardPileAfterUse { get; init; }
         public bool FreeEnergyCost { get; init; }
-        public bool ForceManualTargetCardPicker { get; init; }
         public bool MoveToCenterBeforeEffect { get; init; }
         public bool RemovedFromHand { get; set; }
         public bool PendingBattlePileResolution { get; set; }
         public bool ResolvedToBattlePile { get; set; }
         public bool AbilityVisualConsumed { get; set; }
+        public bool AbilityActivationVisualInProgress { get; set; }
         public Task MoveToCenterTask { get; set; }
         public Tween MoveToCenterTween { get; set; }
         public TaskCompletionSource<bool> MoveToCenterCompletion { get; set; }

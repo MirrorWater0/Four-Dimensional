@@ -9,8 +9,8 @@ public partial class Tip : Control
     public const int TipLayerOrder = 200;
 
     private static readonly Vector2 BackgroundPadding = new Vector2(28f, 24f);
-    private static readonly Color DefaultTextColor = new Color(0.9f, 0.95f, 1f, 0.9f);
-    private static readonly Color DefaultOutlineColor = new Color(0.01f, 0.02f, 0.05f, 0.64f);
+    private static readonly Color DefaultTextColor = new Color(0.88f, 0.9f, 0.92f, 0.96f);
+    private static readonly Color DefaultOutlineColor = new Color(0f, 0f, 0f, 0f);
     private const float FadeInDuration = 0.12f;
     private const float DefaultFadeOutDuration = 0.1f;
     private const string BuffIconTagPrefix = "[buff_icon=";
@@ -58,7 +58,7 @@ public partial class Tip : Control
     public int NormalFontSize = 19;
 
     [Export]
-    public int OutlineSize = 2;
+    public int OutlineSize = 0;
 
     [Export]
     public Color DefaultColor = DefaultTextColor;
@@ -90,6 +90,7 @@ public partial class Tip : Control
     }
 
     public Panel bg => field ??= GetNode<Panel>("bg");
+    private ColorRect PlateOuter => field ??= GetNodeOrNull<ColorRect>("bg/PlateOuter");
     public RichTextLabel Description => field ??= GetNode<RichTextLabel>("Description");
 
     public override void _Ready()
@@ -103,6 +104,7 @@ public partial class Tip : Control
 
         if (bg != null)
             bg.Position = Vector2.Zero;
+        SetPlateOuterOpacity(1f);
 
         Visible = false;
 
@@ -246,10 +248,12 @@ public partial class Tip : Control
         }
 
         _fadeTween = CreateTween();
+        _fadeTween.SetParallel(true);
         _fadeTween.TweenProperty(this, "modulate:a", 0f, FadeOutDuration)
             .SetEase(Tween.EaseType.In)
             .SetTrans(Tween.TransitionType.Quad);
-        _fadeTween.TweenCallback(
+        TweenPlateOuterOpacity(_fadeTween, 0f, FadeOutDuration, Tween.EaseType.In);
+        _fadeTween.Chain().TweenCallback(
             Callable.From(() =>
             {
                 Visible = false;
@@ -276,11 +280,14 @@ public partial class Tip : Control
         UpdateTooltipPosition();
         _fadeTween?.Kill();
         Modulate = new Color(1f, 1f, 1f, 0f);
+        SetPlateOuterOpacity(0f);
         Visible = true;
         _fadeTween = CreateTween();
+        _fadeTween.SetParallel(true);
         _fadeTween.TweenProperty(this, "modulate:a", 1f, FadeInDuration)
             .SetEase(Tween.EaseType.Out)
             .SetTrans(Tween.TransitionType.Quad);
+        TweenPlateOuterOpacity(_fadeTween, 1f, FadeInDuration);
     }
 
     private void ShowTooltip(string text, bool followMouse, Vector2 manualAnchorPosition)
@@ -310,11 +317,14 @@ public partial class Tip : Control
         UpdateTooltipPosition();
         _fadeTween?.Kill();
         Modulate = new Color(1f, 1f, 1f, 0f);
+        SetPlateOuterOpacity(0f);
         Visible = true;
         _fadeTween = CreateTween();
+        _fadeTween.SetParallel(true);
         _fadeTween.TweenProperty(this, "modulate:a", 1f, FadeInDuration)
             .SetEase(Tween.EaseType.Out)
             .SetTrans(Tween.TransitionType.Quad);
+        TweenPlateOuterOpacity(_fadeTween, 1f, FadeInDuration);
         if (needsLayoutRefresh)
             CallDeferred(nameof(RefreshTooltipAfterShow));
     }
@@ -605,6 +615,31 @@ public partial class Tip : Control
     {
         _layoutDirty = true;
         _positionDirty = true;
+    }
+
+    private void SetPlateOuterOpacity(float opacity)
+    {
+        if (PlateOuter == null)
+            return;
+
+        Color modulate = PlateOuter.SelfModulate;
+        modulate.A = Mathf.Clamp(opacity, 0f, 1f);
+        PlateOuter.SelfModulate = modulate;
+    }
+
+    private void TweenPlateOuterOpacity(
+        Tween tween,
+        float opacity,
+        float duration,
+        Tween.EaseType ease = Tween.EaseType.Out
+    )
+    {
+        if (tween == null || PlateOuter == null)
+            return;
+
+        tween.TweenProperty(PlateOuter, "self_modulate:a", opacity, duration)
+            .SetEase(ease)
+            .SetTrans(Tween.TransitionType.Quad);
     }
 
     private void EnsureTipLayerOrder()

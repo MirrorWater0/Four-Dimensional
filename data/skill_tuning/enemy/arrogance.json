@@ -2,18 +2,19 @@
     "skills":  {
                    "ArroganceAttack":  {
                                            "Name":  "双重压制",
-                                           "BaseDamage":  4,
+                                           "BaseDamage":  2,
                                            "SurvivabilityLoss":  4
                                        },
                    "ArroganceSpecial":  {
                                             "Name":  "虚无追击",
                                             "PursuitStacks":  3,
                                             "BaseHeal":  30,
-                                            "PowerGain":  10
+                                            "PowerGain":  10,
+                                            "EnergyCost":  0
                                         },
                    "ArroganceSurvive":  {
                                             "Name":  "暗黑吞噬",
-                                            "BaseBlock":  20,
+                                            "BaseBlock":  15,
                                             "VulnerableStacks":  2
                                         }
                }

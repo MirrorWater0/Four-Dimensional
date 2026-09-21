@@ -5,6 +5,32 @@ using Godot;
 
 public partial class CharacterControl
 {
+    private readonly struct PileCardDiscardAnimationEntry
+    {
+        public PileCardDiscardAnimationEntry(SkillCard sourceCard, Skill skill)
+        {
+            Skill = skill;
+            CharacterName = sourceCard.CharacterName.Text;
+            GlobalPosition = sourceCard.GlobalPosition;
+            Scale = sourceCard.Scale;
+            Rotation = GetCanvasRotation(sourceCard);
+            PivotOffset = sourceCard.PivotOffset;
+            Modulate = sourceCard.Modulate;
+        }
+
+        public Skill Skill { get; }
+        public string CharacterName { get; }
+        public Vector2 GlobalPosition { get; }
+        public Vector2 Scale { get; }
+        public float Rotation { get; }
+        public Vector2 PivotOffset { get; }
+        public Color Modulate { get; }
+    }
+
+    private readonly List<PileCardDiscardAnimationEntry> _pileCardDiscardAnimationEntries =
+        new();
+    private readonly List<Task> _pileCardDiscardAnimationTasks = new();
+
     private void ConfigurePileSelectionCard(SkillCard card, BattlePileKind kind, int pileIndex)
     {
         if (card == null || !GodotObject.IsInstanceValid(card))
@@ -13,6 +39,7 @@ public partial class CharacterControl
         ClearPileSelectionCardBinding(card);
         bool selectable =
             _isPileCardSelectionActive
+            && !_pileOverlayContentTemporarilyHidden
             && kind == _pileCardSelectionKind
             && pileIndex >= 0;
         if (!selectable)
@@ -22,7 +49,7 @@ public partial class CharacterControl
         card.Button.ToggleMode = true;
         bool selected = _pileCardSelectionIndexes.Contains(pileIndex);
         card.Button.ButtonPressed = selected;
-        card.Button.Disabled = false;
+        SetPileSelectionCardPointerInputEnabled(card, enabled: true);
         card.Modulate = SkillButton.EnabledModulate;
         card.SetPlayableHighlight(selected);
         Action handler = () => _ = HandlePileCardSelectionPressedAsync(pileIndex);
@@ -53,8 +80,35 @@ public partial class CharacterControl
 
         card.Button.ToggleMode = false;
         card.Button.ButtonPressed = false;
+        SetPileSelectionCardPointerInputEnabled(card, enabled: true);
         card.Modulate = SkillButton.EnabledModulate;
         card.SetPlayableHighlight(false, instant: true);
+    }
+
+    private void SetPileSelectionCardPointerInputEnabled(SkillCard card, bool enabled)
+    {
+        if (card == null || !GodotObject.IsInstanceValid(card))
+            return;
+
+        MouseFilterEnum mouseFilter = enabled
+            ? MouseFilterEnum.Stop
+            : MouseFilterEnum.Ignore;
+        card.MouseFilter = mouseFilter;
+        if (card.Button != null && GodotObject.IsInstanceValid(card.Button))
+            card.Button.MouseFilter = mouseFilter;
+
+        card.SetTransientPointerInputDisabled(!enabled, refreshHoverWhenEnabled: enabled);
+        if (!enabled)
+            card.HideHoverUi();
+    }
+
+    private void SetPileSelectionCardPointerInputEnabled(bool enabled)
+    {
+        foreach (SkillCard card in _pileCardSelectionPressHandlers.Keys)
+            SetPileSelectionCardPointerInputEnabled(card, enabled);
+
+        foreach (SkillCard card in _pileCardSelectionCards.Values)
+            SetPileSelectionCardPointerInputEnabled(card, enabled);
     }
 
     private Task HandlePileCardSelectionPressedAsync(int pileIndex)
@@ -114,6 +168,8 @@ public partial class CharacterControl
         List<int> selectedIndexes = CopySortedUniquePileSelectionIndexes();
         BattlePileKind selectedKind = _pileCardSelectionKind;
         PlayerCharacter selectingPlayer = _activePlayer;
+        if (filterSelected)
+            CaptureSelectedDrawPileDiscardAnimationEntries(selectedIndexes);
 
         _isPileCardSelectionActive = false;
         _pileCardSelectionAction = PileCardSelectionAction.MoveToHand;
@@ -125,11 +181,12 @@ public partial class CharacterControl
         _pileCardSelectionCards.Clear();
         _pileCardSelectionCompletion = null;
         ClearAllPileSelectionCardBindings();
+        ClearPileCardSelectionOverlaySnapshot();
         HidePileOverlay();
         RequestTurnUiRefresh(refreshHover: true);
 
         int selectedCount = filterSelected
-            ? MoveSelectedDrawPileCardsToDiscard(selectedIndexes)
+            ? await MoveSelectedDrawPileCardsToDiscardWithAnimationAsync(selectedIndexes)
             : transformSelected
                 ? TransformSelectedPileCards(
                     selectingPlayer,
@@ -370,6 +427,111 @@ public partial class CharacterControl
         return movedCount;
     }
 
+    private void CaptureSelectedDrawPileDiscardAnimationEntries(
+        IReadOnlyList<int> selectedIndexes
+    )
+    {
+        _pileCardDiscardAnimationEntries.Clear();
+        if (selectedIndexes == null)
+            return;
+
+        for (int i = 0; i < selectedIndexes.Count; i++)
+        {
+            if (
+                !_pileCardSelectionCards.TryGetValue(selectedIndexes[i], out SkillCard sourceCard)
+                || sourceCard == null
+                || !GodotObject.IsInstanceValid(sourceCard)
+                || !sourceCard.Visible
+                || sourceCard.CurrentSkill == null
+            )
+            {
+                continue;
+            }
+
+            _pileCardDiscardAnimationEntries.Add(
+                new PileCardDiscardAnimationEntry(sourceCard, sourceCard.CurrentSkill)
+            );
+        }
+    }
+
+    private async Task<int> MoveSelectedDrawPileCardsToDiscardWithAnimationAsync(
+        IReadOnlyList<int> selectedIndexes
+    )
+    {
+        int movedCount = MoveSelectedDrawPileCardsToDiscard(selectedIndexes);
+        List<PileCardDiscardAnimationEntry> animationEntries =
+            _pileCardDiscardAnimationEntries;
+        if (movedCount <= 0 || animationEntries.Count == 0 || !IsInsideTree())
+        {
+            animationEntries.Clear();
+            return movedCount;
+        }
+
+        try
+        {
+            await ToSignal(
+                GetTree().CreateTimer(PileOverlayContentMoveDuration),
+                SceneTreeTimer.SignalName.Timeout
+            );
+
+            List<Task> animationTasks = _pileCardDiscardAnimationTasks;
+            animationTasks.Clear();
+            for (int i = 0; i < animationEntries.Count; i++)
+            {
+                SkillCard card = CreatePileCardDiscardAnimationCard(
+                    animationEntries[i],
+                    PlayedCardZIndex + i + 1
+                );
+                if (card != null)
+                    animationTasks.Add(PlayCardDiscardFlyAndFreeAsync(card));
+            }
+
+            for (int i = 0; i < animationTasks.Count; i++)
+                await animationTasks[i];
+            animationTasks.Clear();
+        }
+        finally
+        {
+            _pileCardDiscardAnimationTasks.Clear();
+            animationEntries.Clear();
+        }
+
+        return movedCount;
+    }
+
+    private SkillCard CreatePileCardDiscardAnimationCard(
+        PileCardDiscardAnimationEntry entry,
+        int zIndex
+    )
+    {
+        CanvasLayer overlay = EnsureCardPlayOverlay();
+        if (overlay == null || !GodotObject.IsInstanceValid(overlay) || entry.Skill == null)
+            return null;
+
+        SkillCard card = SkillCardScene.Instantiate<SkillCard>();
+        card.Name = "PileDiscardCard";
+        card.AutoPressEffect = false;
+        card.UseDefaultHoverEffect = false;
+        card.HoverUiEnabled = false;
+        card.ConfigureDisplayScale(PileCardScale);
+        overlay.AddChild(card);
+        card.ResetState();
+        card.SetSkill(entry.Skill);
+        card.CharacterName.Text = entry.CharacterName ?? string.Empty;
+        card.ConfigurePilePreviewVisuals();
+        card.Visible = true;
+        card.GlobalPosition = entry.GlobalPosition;
+        card.Scale = entry.Scale;
+        card.Rotation = entry.Rotation;
+        card.PivotOffset = entry.PivotOffset;
+        card.Modulate = entry.Modulate;
+        card.MouseFilter = MouseFilterEnum.Ignore;
+        card.Button.Disabled = true;
+        card.HoverHint.Visible = false;
+        card.ZIndex = zIndex;
+        return card;
+    }
+
     private int MoveSelectedDrawPileCardsToDiscard(IReadOnlyList<int> selectedIndexes)
     {
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
@@ -487,6 +649,7 @@ public partial class CharacterControl
         _pileCardSelectionCompletion = null;
         _pileOverlayContentTemporarilyHidden = false;
         ClearAllPileSelectionCardBindings();
+        ClearPileCardSelectionOverlaySnapshot();
         SyncPileOverlaySelectionButtons();
         completion?.TrySetResult(0);
     }
@@ -500,6 +663,7 @@ public partial class CharacterControl
                 card.Button.Pressed -= handler;
                 card.Button.ToggleMode = false;
                 card.Button.ButtonPressed = false;
+                SetPileSelectionCardPointerInputEnabled(card, enabled: true);
                 card.Modulate = SkillButton.EnabledModulate;
                 card.SetPlayableHighlight(false, instant: true);
             }

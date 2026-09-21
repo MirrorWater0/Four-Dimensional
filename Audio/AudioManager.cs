@@ -11,6 +11,7 @@ public partial class AudioManager : Node
         BlockGain,
         BlockImpact,
         BuffGain,
+        PropertyGain,
         UiHover,
         UiClick,
         UiButtonDown,
@@ -38,6 +39,7 @@ public partial class AudioManager : Node
     private const ulong CardDealCueCooldownMsec = 40;
     private const ulong CardHoverCueCooldownMsec = 55;
     private const ulong CardPickupCueCooldownMsec = 45;
+    private const ulong CardExhaustCueCooldownMsec = 250;
 
     private readonly List<AudioStreamPlayer> _runtimeSfxPlayers = new();
     private readonly Dictionary<AudioCue, AudioStreamPlayer> _cuePlayers = new();
@@ -119,6 +121,15 @@ public partial class AudioManager : Node
     )
     {
         Instance?.PlayCue(AudioCue.BuffGain, source, volumeDbOffset, pitchScale);
+    }
+
+    public static void PlayPropertyGain(
+        Node source = null,
+        float volumeDbOffset = 0f,
+        float pitchScale = 1f
+    )
+    {
+        Instance?.PlayCue(AudioCue.PropertyGain, source, volumeDbOffset, pitchScale);
     }
 
     public static void PlayUiHover(Node source = null, float volumeDbOffset = 0f, float pitchScale = 1f)
@@ -232,6 +243,7 @@ public partial class AudioManager : Node
         BindCuePlayer(AudioCue.BlockGain, "BlockGainPlayer");
         BindCuePlayer(AudioCue.BlockImpact, "BlockImpactPlayer");
         BindCuePlayer(AudioCue.BuffGain, "BuffGainPlayer");
+        BindCuePlayer(AudioCue.PropertyGain, "PropertyGainPlayer");
         BindCuePlayer(AudioCue.UiHover, "UiHoverPlayer");
         BindCuePlayer(AudioCue.UiClick, "UiClickPlayer");
         BindCuePlayer(AudioCue.UiButtonDown, "UiButtonDownPlayer");
@@ -326,6 +338,7 @@ public partial class AudioManager : Node
             AudioCue.CardDeal => CardDealCueCooldownMsec,
             AudioCue.CardHover => CardHoverCueCooldownMsec,
             AudioCue.CardPickup => CardPickupCueCooldownMsec,
+            AudioCue.CardExhaust => CardExhaustCueCooldownMsec,
             _ => 0,
         };
     }

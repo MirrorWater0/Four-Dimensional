@@ -23,7 +23,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         0.62f,
         0.82f
     );
-    private static readonly Vector2 IntentionDamageLabelOffset = new(-50f, -130f);
     private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
     private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 58f);
     private static readonly Color IntentionDamageColor = new(1f, 0.84f, 0.63f, 1f);
@@ -130,7 +129,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         return Math.Max(1, maxLife);
     }
 
-    public bool RefreshTuning()
+    public virtual bool RefreshTuning()
     {
         if (Registry == null)
             return false;
@@ -812,11 +811,10 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             var group = groupedEntries[i];
             var panel = GetOrCreateIntentionDamagePanel(layer, i);
             ulong showStartUsec = Time.GetTicksUsec();
-            PreviewEffectDisplay.ShowPanel(
+            PreviewEffectDisplay.ShowTargetEffectPanel(
                 panel,
                 group.ToArray(),
-                GetTargetScreenPosition(group.Key),
-                IntentionDamageLabelOffset
+                GetTargetScreenPosition(group.Key)
             );
             BattleNode?.LogHoverPerfWork(this, "enemy-intention-single-label", showStartUsec);
         }
@@ -1023,31 +1021,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     private static string FormatPowerMultiplierText(int powerMultiplier)
     {
         return powerMultiplier >= 2 ? $"（{powerMultiplier}倍）" : string.Empty;
-    }
-
-    private void ShowDamageLabel(
-        Label label,
-        Skill.PreviewDamageEntry entry,
-        Vector2 targetScreenPosition
-    )
-    {
-        label.Text =
-            entry.HitCount > 1
-                ? $"{entry.Damage}({entry.HitCount}次){FormatPowerMultiplierText(entry.PowerMultiplier)}"
-                : $"{entry.Damage}{FormatPowerMultiplierText(entry.PowerMultiplier)}";
-        label.AddThemeColorOverride("font_color", IntentionDamageColor);
-        label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
-        label.Modulate = Colors.White;
-        label.Scale = Vector2.One;
-        label.Visible = true;
-
-        Vector2 size = label.GetCombinedMinimumSize();
-        if (size == Vector2.Zero)
-            size = new Vector2(120f, 44f);
-        label.Size = size;
-
-        Vector2 anchor = targetScreenPosition + IntentionDamageLabelOffset;
-        label.Position = anchor - size / 2f;
     }
 
     private CanvasLayer EnsureTipLayer()

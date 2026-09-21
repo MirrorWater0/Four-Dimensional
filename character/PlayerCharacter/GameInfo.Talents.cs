@@ -26,6 +26,8 @@ public readonly struct TalentNodeDefinition(
 
 public static class TalentTree
 {
+    private const int EarlyStageTalentMaxLifeBonus = 4;
+
     public const string CoreNodeSuffix = ".Core";
     public const string TempoNodeSuffix = ".Attack1";
     public const string PowerBranchNodeSuffix = ".Survive1";
@@ -170,6 +172,7 @@ public static class TalentTree
 
         info.TalentPoints -= node.Cost;
         info.UnlockedTalents.Add(node.Id);
+        ApplyMaxLifeBonus(ref info);
         message = $"点亮天赋：{node.DisplayName}";
         return true;
     }
@@ -177,6 +180,18 @@ public static class TalentTree
     public static void AddTalentPoints(ref PlayerInfoStructure info, int amount)
     {
         info.TalentPoints = Math.Max(0, info.TalentPoints + amount);
+    }
+
+    public static void ApplyMaxLifeBonus(ref PlayerInfoStructure info)
+    {
+        int targetBonus = GetMaxLifeBonus(info);
+        int bonusDelta = targetBonus - info.AppliedTalentMaxLifeBonus;
+        if (bonusDelta == 0)
+            return;
+
+        info.LifeMax = Math.Max(1, info.LifeMax + bonusDelta);
+        info.Life = Math.Clamp(info.Life + Math.Max(0, bonusDelta), 0, info.LifeMax);
+        info.AppliedTalentMaxLifeBonus = targetBonus;
     }
 
     public static int GetEffectivePower(PlayerInfoStructure info) =>
@@ -249,6 +264,13 @@ public static class TalentTree
         return bonus;
     }
 
+    private static int GetMaxLifeBonus(PlayerInfoStructure info)
+    {
+        return GetNodes(info)
+            .Count(node => node.Stage <= 1 && HasUnlocked(info, node.Id))
+            * EarlyStageTalentMaxLifeBonus;
+    }
+
     private static TalentNodeDefinition[] BuildCharacterNodes(
         string characterName,
         string coreName,
@@ -270,7 +292,7 @@ public static class TalentTree
                 coreId,
                 coreName,
                 "第一阶段天赋节点，后续天赋需要从这里展开。",
-                "+1 力量，+1 生存。",
+                "+1 力量，+1 生存，+4 生命上限。",
                 0,
                 1,
                 new Vector2(330f, 304f)
@@ -279,7 +301,7 @@ public static class TalentTree
                 tempoId,
                 tempoName,
                 "第二阶段天赋节点，进一步提升基础能力。",
-                "+1 力量，+1 生存。",
+                "+1 力量，+1 生存，+4 生命上限。",
                 1,
                 1,
                 new Vector2(330f, 184f),
@@ -333,7 +355,7 @@ public static class TalentTree
             ),
             "Kasiya" => I18n.Tr(
                 "character.kasiya.passive.upgrade",
-                "被动强化：自己打出攻击牌时，其他角色获得1点格挡。"
+                "被动强化：战斗开始时，我方全阵获得1点生命上限，并恢复1点生命。"
             ),
             _ => "被动强化。",
         };

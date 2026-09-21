@@ -191,7 +191,7 @@ public partial class Battle
             ["manualFriendlyExcludesSelf"] = skill.ManualFriendlyTargetExcludesSelf(),
             ["manualFriendlyAllowsDying"] = skill.ManualFriendlyTargetAllowsDying(),
             ["exhaustsAfterUse"] = skill.ExhaustsAfterUse,
-            ["retainsAtTurnEnd"] = skill.RetainsAtTurnEndInHand,
+            ["retainsAtTurnEnd"] = ShouldShowRetainKeyword(skill),
             ["preview"] = BuildSkillPreviewAutomationState(skill),
         };
     }

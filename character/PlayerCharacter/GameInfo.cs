@@ -82,16 +82,106 @@ public static partial class GameInfo
         AdjustPartyLife(clampedTarget - currentLife);
     }
 
+    /// <summary>
+    /// Changes every party member's life maximum. Optional recovery is routed
+    /// through <see cref="AdjustPartyLife"/>, which remains the single entry
+    /// point for map-life feedback and actual life restoration.
+    /// </summary>
+    public static int AdjustPartyMaxLife(int delta, bool recoverByAppliedIncrease = false)
+    {
+        NormalizePlayerCharacters();
+        if (delta == 0 || PlayerCharacters == null || PlayerCharacters.Length == 0)
+            return 0;
+
+        int lifeBefore = GetPartyLife();
+        int[] recoveryByPlayer = new int[PlayerCharacters.Length];
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int previousMaxLife = Math.Max(1, info.LifeMax);
+            int previousLife = Math.Clamp(info.Life, 0, previousMaxLife);
+            int nextMaxLife = Math.Max(1, previousMaxLife + delta);
+
+            info.LifeMax = nextMaxLife;
+            // This clamp belongs to the state owner. Callers must never write
+            // PlayerInfoStructure.Life directly when changing max life.
+            info.Life = Math.Min(previousLife, nextMaxLife);
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+
+            if (recoverByAppliedIncrease && nextMaxLife > previousMaxLife)
+                recoveryByPlayer[i] = nextMaxLife - previousMaxLife;
+        }
+
+        int requestedRecovery = recoveryByPlayer.Sum();
+        if (requestedRecovery > 0)
+            AdjustPartyLife(requestedRecovery, recoveryByPlayer);
+
+        return GetPartyLife() - lifeBefore;
+    }
+
     public static void AdjustPartyLife(int delta)
+    {
+        AdjustPartyLife(delta, null);
+    }
+
+    private static void AdjustPartyLife(int delta, int[] recoveryByPlayer)
     {
         NormalizePlayerCharacters();
         if (delta == 0 || PlayerCharacters == null || PlayerCharacters.Length == 0)
             return;
 
+        int lifeBefore = GetPartyLife();
         if (delta > 0)
-            HealPartyLife(delta);
+        {
+            if (recoveryByPlayer == null)
+                HealPartyLife(delta);
+            else
+                HealPartyLifeByMember(recoveryByPlayer);
+            PlayMapLifeFeedback(GetPartyLife() - lifeBefore, delta, isHealingAction: true);
+        }
         else
+        {
             DamagePartyLife(-delta);
+            PlayMapLifeFeedback(GetPartyLife() - lifeBefore);
+        }
+    }
+
+    /// <summary>
+    /// Changes one party member's life through the GameInfo life entry point.
+    /// </summary>
+    public static int AdjustPlayerLife(int playerIndex, int delta)
+    {
+        NormalizePlayerCharacters();
+        if (
+            delta == 0
+            || PlayerCharacters == null
+            || playerIndex < 0
+            || playerIndex >= PlayerCharacters.Length
+        )
+        {
+            return 0;
+        }
+
+        var info = PlayerCharacters[playerIndex];
+        int maxLife = Math.Max(info.LifeMax, 1);
+        int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+        int afterLife = Math.Clamp(beforeLife + delta, 0, maxLife);
+        int actualDelta = afterLife - beforeLife;
+        if (actualDelta == 0)
+        {
+            if (delta > 0)
+                PlayMapLifeFeedback(actualDelta, delta, isHealingAction: true);
+            return 0;
+        }
+
+        info.Life = afterLife;
+        info.LifeInitialized = true;
+        PlayerCharacters[playerIndex] = info;
+
+        PlayMapLifeFeedback(actualDelta, delta, isHealingAction: delta > 0);
+
+        return actualDelta;
     }
 
     public static int HealPartyByMaxLifePercent(float percent)
@@ -123,7 +213,77 @@ public static partial class GameInfo
             totalHealed += afterLife - beforeLife;
         }
 
+        PlayMapLifeFeedback(totalHealed, totalHealed, isHealingAction: true);
         return totalHealed;
+    }
+
+    public static int HealPartyByMissingLifePercent(float percent)
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0 || percent <= 0f)
+            return 0;
+
+        int totalHealed = 0;
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 0);
+            if (maxLife <= 0)
+                continue;
+
+            int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+            int missingLife = maxLife - beforeLife;
+            if (missingLife <= 0)
+                continue;
+
+            int recoverAmount = (int)MathF.Ceiling(missingLife * percent);
+            if (recoverAmount <= 0)
+                continue;
+
+            int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
+            if (afterLife == beforeLife)
+                continue;
+
+            info.Life = afterLife;
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+            totalHealed += afterLife - beforeLife;
+        }
+
+        PlayMapLifeFeedback(totalHealed, totalHealed, isHealingAction: true);
+        return totalHealed;
+    }
+
+    public static int DamagePartyByMaxLifePercent(float percent)
+    {
+        NormalizePlayerCharacters();
+        if (PlayerCharacters == null || PlayerCharacters.Length == 0 || percent <= 0f)
+            return 0;
+
+        int totalDamaged = 0;
+        for (int i = 0; i < PlayerCharacters.Length; i++)
+        {
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 0);
+            if (maxLife <= 0)
+                continue;
+
+            int damageAmount = (int)MathF.Ceiling(maxLife * percent);
+            if (damageAmount <= 0)
+                continue;
+
+            int beforeLife = Math.Clamp(info.Life, 0, maxLife);
+            int afterLife = Math.Clamp(beforeLife - damageAmount, 0, maxLife);
+            if (afterLife == beforeLife)
+                continue;
+
+            info.Life = afterLife;
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
+            totalDamaged += beforeLife - afterLife;
+        }
+
+        return totalDamaged;
     }
 
     public static int HealPlayerByMaxLifePercent(int playerIndex, float percent)
@@ -145,15 +305,7 @@ public static partial class GameInfo
         if (recoverAmount <= 0)
             return 0;
 
-        int beforeLife = Math.Clamp(info.Life, 0, maxLife);
-        int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
-        if (afterLife == beforeLife)
-            return 0;
-
-        info.Life = afterLife;
-        info.LifeInitialized = true;
-        PlayerCharacters[playerIndex] = info;
-        return afterLife - beforeLife;
+        return AdjustPlayerLife(playerIndex, recoverAmount);
     }
 
     public static int SetPartyLifeToMaxLifePercent(float percent)
@@ -163,6 +315,7 @@ public static partial class GameInfo
             return 0;
 
         int totalAdjusted = 0;
+        int totalDelta = 0;
         for (int i = 0; i < PlayerCharacters.Length; i++)
         {
             var info = PlayerCharacters[i];
@@ -176,8 +329,10 @@ public static partial class GameInfo
             info.LifeInitialized = true;
             PlayerCharacters[i] = info;
             totalAdjusted += Math.Abs(targetLife - beforeLife);
+            totalDelta += targetLife - beforeLife;
         }
 
+        PlayMapLifeFeedback(totalDelta);
         return totalAdjusted;
     }
 
@@ -202,7 +357,23 @@ public static partial class GameInfo
             totalHealed += maxLife - beforeLife;
         }
 
+        PlayMapLifeFeedback(totalHealed, totalHealed, isHealingAction: true);
         return totalHealed;
+    }
+
+    private static void PlayMapLifeFeedback(
+        int actualDelta,
+        int requestedHealing = 0,
+        bool isHealingAction = false
+    )
+    {
+        if (isHealingAction)
+        {
+            ScreenEffectOverlay.PlayMapHeal(Math.Max(0, requestedHealing));
+            return;
+        }
+
+        ScreenEffectOverlay.PlayMapPartyLifeChange(actualDelta);
     }
 
     private static void HealPartyLife(int amount)
@@ -222,6 +393,23 @@ public static partial class GameInfo
             info.LifeInitialized = true;
             PlayerCharacters[targetIndex] = info;
             amount -= applied;
+        }
+    }
+
+    private static void HealPartyLifeByMember(int[] recoveryByPlayer)
+    {
+        int length = Math.Min(PlayerCharacters.Length, recoveryByPlayer?.Length ?? 0);
+        for (int i = 0; i < length; i++)
+        {
+            int amount = Math.Max(0, recoveryByPlayer[i]);
+            if (amount == 0)
+                continue;
+
+            var info = PlayerCharacters[i];
+            int maxLife = Math.Max(info.LifeMax, 1);
+            info.Life = Math.Clamp(info.Life + amount, 0, maxLife);
+            info.LifeInitialized = true;
+            PlayerCharacters[i] = info;
         }
     }
 
@@ -575,6 +763,7 @@ public struct PlayerInfoStructure
     public int Survivability;
     public int TalentPoints;
     public List<string> UnlockedTalents = new();
+    public int AppliedTalentMaxLifeBonus;
     public List<SkillID> GainedSkills = new();
     public SkillID[] TakenSkills = new SkillID[3];
     public SkillID[] AllSkills;

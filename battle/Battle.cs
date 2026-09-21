@@ -21,6 +21,18 @@ public partial class Battle : Node2D
     [Export]
     public bool TestBattleTutorial { get; set; }
 
+    [ExportGroup("Background Color")]
+    [Export(PropertyHint.Range, "0.0,1.0,0.01")]
+    public float BackgroundSaturation
+    {
+        get => _backgroundSaturation;
+        set
+        {
+            _backgroundSaturation = Mathf.Clamp(value, 0.0f, 1.0f);
+            ApplyBackgroundSaturation();
+        }
+    }
+
     [ExportGroup("Standalone Test Party")]
     [Export]
     public PlayerCharacterKey StandaloneTestPlayer1 { get; set; } = PlayerCharacterKey.Echo;
@@ -44,20 +56,17 @@ public partial class Battle : Node2D
     private ulong _nextBattleCardInstanceId;
     private bool _retreating;
     private bool _battleOverCheckQueued;
+    private bool _battleOverCheckPendingAfterEffect;
     private bool _allowBattleEndRevive;
     private bool _standaloneTestBattleContext;
     private TaskCompletionSource<bool> _presentationReadyTcs;
     private Tween _screenShakeTween;
-    private Tween _hitScreenFlashTween;
     private Vector2 _battleBasePosition;
     private bool _battleBasePositionInitialized;
-    private Color _hitScreenFlashBaseModulate;
-    private bool _hitFeedbackBaseColorsInitialized;
     private int _hitStopVersion;
     private bool _hitStopActive;
     private double _hitStopOriginalTimeScale = 1.0;
-    private const float HitFlashBaseAlpha = 0.34f;
-    private const float HitFlashMaxAlpha = 0.78f;
+    private float _backgroundSaturation = 0.08f;
     private const float HitBackgroundDimBase = 0.78f;
     private const float HitStopMinTimeScale = 0.12f;
 
@@ -124,15 +133,22 @@ public partial class Battle : Node2D
         field ??= GetNode<AnimationPlayer>("BattlePlayer");
     public CharacterControl CharacterControl =>
         field ??= GetNode<CharacterControl>("CharacterControlLayer/CharacterControl");
-    private NinePatchRect HitScreenFlash =>
-        field ??= GetNode<NinePatchRect>("CanvasLayer/ColorRect");
-
+    private BattleAtmosphere Atmosphere =>
+        field ??= GetNodeOrNull<BattleAtmosphere>("bg/BattleAtmosphere");
     public void PlayHitEffect(int actualDamage = 1, int blockedDamage = 0)
     {
         float impact = ResolveHitImpact(actualDamage, blockedDamage);
-        PlayHitScreenFlash(impact, actualDamage, blockedDamage);
+        if (actualDamage >= 14)
+            Atmosphere?.Pulse((impact - 0.75f) * 0.7f);
+        ScreenEffectOverlay.PlayHit(this, impact, actualDamage, blockedDamage);
         PlayCameraShake(impact);
         PlayHitStop(ResolveHitStopDuration(impact, actualDamage), ResolveHitStopScale(impact));
+    }
+
+    public void PlayAbilityCardImpact(float impact = 0.68f)
+    {
+        Atmosphere?.Pulse(impact * 0.6f);
+        PlayCameraShake(Mathf.Clamp(impact, 0.45f, 1.1f));
     }
 
     private static float ResolveHitImpact(int actualDamage, int blockedDamage)
@@ -151,52 +167,6 @@ public partial class Battle : Node2D
             damageImpact *= 0.76f;
 
         return Mathf.Clamp(damageImpact, 0.45f, 1.8f);
-    }
-
-    private void PlayHitScreenFlash(float impact, int actualDamage, int blockedDamage)
-    {
-        if (HitScreenFlash != null && GodotObject.IsInstanceValid(HitScreenFlash))
-        {
-            CacheHitFeedbackBaseColors();
-            _hitScreenFlashTween?.Kill();
-            float alpha = Mathf.Clamp(HitFlashBaseAlpha * impact, HitFlashBaseAlpha, HitFlashMaxAlpha);
-            Color flashColor = actualDamage > 0
-                ? new Color(1f, 0.92f, 0.86f, alpha)
-                : blockedDamage > 0
-                    ? new Color(0.62f, 0.88f, 1f, alpha * 0.86f)
-                    : new Color(0.9f, 0.96f, 1f, alpha * 0.7f);
-            HitScreenFlash.SelfModulate = flashColor;
-            _hitScreenFlashTween = CreateTween();
-            _hitScreenFlashTween.TweenInterval(0.025f + 0.045f * impact);
-            _hitScreenFlashTween.TweenProperty(
-                HitScreenFlash,
-                "self_modulate",
-                _hitScreenFlashBaseModulate,
-                0.08f + 0.05f * impact
-            )
-                .SetTrans(Tween.TransitionType.Cubic)
-                .SetEase(Tween.EaseType.Out);
-            Tween activeTween = _hitScreenFlashTween;
-            _hitScreenFlashTween.Finished += () =>
-            {
-                if (_hitScreenFlashTween != activeTween)
-                    return;
-
-                _hitScreenFlashTween = null;
-            };
-        }
-    }
-
-    private void CacheHitFeedbackBaseColors()
-    {
-        if (_hitFeedbackBaseColorsInitialized)
-            return;
-
-        _hitScreenFlashBaseModulate =
-            HitScreenFlash != null && GodotObject.IsInstanceValid(HitScreenFlash)
-                ? HitScreenFlash.SelfModulate
-                : new Color(1, 1, 1, 0);
-        _hitFeedbackBaseColorsInitialized = true;
     }
 
     private void CacheBattleBasePosition()
@@ -297,18 +267,6 @@ public partial class Battle : Node2D
 
         Engine.TimeScale = _hitStopOriginalTimeScale;
         _hitStopActive = false;
-    }
-
-    private void ClearHitFeedbackTweens()
-    {
-        _hitScreenFlashTween?.Kill();
-        _hitScreenFlashTween = null;
-
-        if (_hitFeedbackBaseColorsInitialized)
-        {
-            if (HitScreenFlash != null && GodotObject.IsInstanceValid(HitScreenFlash))
-                HitScreenFlash.SelfModulate = _hitScreenFlashBaseModulate;
-        }
     }
 
     private void OnCameraShakeFinished()
@@ -545,7 +503,7 @@ public partial class Battle : Node2D
     private void RefreshEnemyTuningInstances()
     {
         int refreshed = 0;
-        foreach (EnemyCharacter enemy in EnemiesList)
+        foreach (EnemyCharacter enemy in EnumerateBattleCharacters().OfType<EnemyCharacter>())
         {
             if (enemy?.RefreshTuning() == true)
                 refreshed++;
@@ -556,7 +514,7 @@ public partial class Battle : Node2D
             RefreshTurnOrderPreview();
         }
 
-        GD.Print($"[EnemyTuning] refreshed active enemy instances: {refreshed}");
+        GD.Print($"[EnemyTuning] refreshed active enemy and summon instances: {refreshed}");
     }
 
     private IEnumerable<Character> EnumerateBattleCharacters()
@@ -623,7 +581,6 @@ public partial class Battle : Node2D
     {
         _retreating = true;
         RestoreHitStopTimeScale();
-        ClearHitFeedbackTweens();
         ClearTurnOrderGroundPreviewCharacter();
         FreeIncomingDamagePreviewLabels();
         TryCancelLifetime();
@@ -637,10 +594,10 @@ public partial class Battle : Node2D
 
     public override async void _Ready()
     {
+        ApplyBackgroundSaturation();
         _presentationReadyTcs = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
-
         if (WarmupMode)
         {
             DisableBattleProcessing();
@@ -687,17 +644,24 @@ public partial class Battle : Node2D
             MarkPresentationReady(true);
             GetNodeOrNull<MouseTrail>("/root/MouseTrail")?.ResetPointerTrackingDeferred();
 
-            if (!await ShowFirstBattleTutorialIfNeeded(token))
-            {
-                return;
-            }
-
             await BattleBegin1(token);
         }
         catch (Exception e)
         {
             GD.PushError($"Battle initialization failed: {e.Message}");
             MarkPresentationReady(false);
+        }
+    }
+
+    private void ApplyBackgroundSaturation()
+    {
+        var backgroundNeutralizer = GetNodeOrNull<ColorRect>("bg/BackgroundHueNeutralizer");
+        if (
+            backgroundNeutralizer?.Material is ShaderMaterial material
+            && GodotObject.IsInstanceValid(material)
+        )
+        {
+            material.SetShaderParameter("max_saturation", _backgroundSaturation);
         }
     }
 
@@ -859,6 +823,7 @@ public partial class Battle : Node2D
                 source.UnlockedTalents != null
                     ? new List<string>(source.UnlockedTalents)
                     : new List<string>(),
+            AppliedTalentMaxLifeBonus = source.AppliedTalentMaxLifeBonus,
             GainedSkills =
                 source.GainedSkills != null
                     ? new List<SkillID>(source.GainedSkills)
@@ -1426,6 +1391,9 @@ public partial class Battle : Node2D
         if (piles == null)
             return false;
 
+        // Card effects can draw while queued plays are still resolving. Normalize the
+        // shared hand first so a recycled card cannot fill a hole ahead of later cards.
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
         Skill[] hand = GetPlayerTeamBattleHand();
         int handIndex = Array.FindIndex(hand, skill => skill == null);
         if (handIndex < 0)
@@ -1454,6 +1422,7 @@ public partial class Battle : Node2D
 
     private bool DrawOnePlayerTeamBattleCard()
     {
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
         Skill[] hand = GetPlayerTeamBattleHand();
         int handIndex = Array.FindIndex(hand, skill => skill == null);
         if (handIndex < 0)
@@ -1586,6 +1555,7 @@ public partial class Battle : Node2D
         )
             return false;
 
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
         Skill[] hand = GetPlayerTeamBattleHand();
         int beforeCount = GetPlayerTeamBattleHandCardCount();
         var filledIndexes = new List<int>();
@@ -1676,6 +1646,7 @@ public partial class Battle : Node2D
         if (sourcePile == null || pileIndex >= sourcePile.Count)
             return false;
 
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
         Skill[] hand = GetPlayerTeamBattleHand();
         int handIndex = Array.FindIndex(hand, skill => skill == null);
         if (handIndex < 0)
@@ -1702,14 +1673,17 @@ public partial class Battle : Node2D
         return true;
     }
 
-    public void RemovePlayerTeamBattleHandCardAt(int skillIndex)
+    public void RemovePlayerTeamBattleHandCardAt(
+        int skillIndex,
+        bool queueReorderAnimation = true
+    )
     {
         Skill[] hand = GetPlayerTeamBattleHand();
         if (skillIndex < 0 || skillIndex >= hand.Length)
             return;
 
         hand[skillIndex] = null;
-        CompactPlayerTeamBattleHand();
+        CompactPlayerTeamBattleHand(queueReorderAnimation);
         InvalidatePlayerTeamSkillTooltips();
     }
 
@@ -1736,7 +1710,7 @@ public partial class Battle : Node2D
         return true;
     }
 
-    private bool CompactPlayerTeamBattleHand()
+    private bool CompactPlayerTeamBattleHand(bool queueReorderAnimation = true)
     {
         Skill[] hand = GetPlayerTeamBattleHand();
         Skill[] oldHand = hand.ToArray();
@@ -1766,7 +1740,8 @@ public partial class Battle : Node2D
         if (!changed)
             return false;
 
-        CharacterControl?.QueueHandReorderAnimation(oldHand, compacted);
+        if (queueReorderAnimation)
+            CharacterControl?.QueueHandReorderAnimation(oldHand, compacted);
         _playerTeamBattleHand = compacted;
         return true;
     }
@@ -1791,6 +1766,11 @@ public partial class Battle : Node2D
     {
         foreach (PlayerCharacter player in GetPlayerPhaseActionOrder())
             player?.InvalidateSkillTooltipCache();
+
+        // Carry availability is derived from the shared draw pile. Updating only the
+        // character tooltip cache leaves a hovered card's preview revision unchanged,
+        // so messages such as "无可用牌" survive a shuffle or draw-pile mutation.
+        NotifyHandPreviewContextChanged();
     }
 
     private static int PickDrawableCardIndex(
@@ -1920,6 +1900,7 @@ public partial class Battle : Node2D
         if (count <= 0)
             return 0;
 
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
         Skill[] hand = GetPlayerTeamBattleHand();
         if (hand == null)
             return 0;
@@ -1964,7 +1945,8 @@ public partial class Battle : Node2D
         Character actor,
         Skill skill,
         bool atTurnEnd = false,
-        bool forceDiscard = false
+        bool forceDiscard = false,
+        bool triggerExhaustEffects = true
     )
     {
         if (actor is not PlayerCharacter player || skill == null || !skill.SkillId.HasValue)
@@ -1997,7 +1979,8 @@ public partial class Battle : Node2D
         if (exhausted)
         {
             piles.Exhausted.Add(entry);
-            RecordPlayerBattleCardsExhausted(1);
+            if (triggerExhaustEffects)
+                RecordPlayerBattleCardsExhausted(1);
         }
         else
             piles.DiscardPile.Add(entry);
@@ -2741,6 +2724,7 @@ public partial class Battle : Node2D
         var discardIndexes = new HashSet<int>();
         var toolboxRetainedCounts = new Dictionary<(int PlayerIndex, SkillID SkillId), int>();
         bool handChanged = false;
+        int exhaustedAtTurnEndCount = 0;
         for (int i = 0; i < hand.Length; i++)
         {
             Skill skill = hand[i];
@@ -2797,15 +2781,27 @@ public partial class Battle : Node2D
             if (skill == null)
                 continue;
 
-            DiscardBattleSkill(GetBattlePileOwner(skill, teamContext), skill, atTurnEnd: true);
+            bool exhaustsAtTurnEnd = skill.ResolvesExhaustsAtTurnEndInHand;
+            DiscardBattleSkill(
+                GetBattlePileOwner(skill, teamContext),
+                skill,
+                atTurnEnd: true,
+                triggerExhaustEffects: false
+            );
             hand[index] = null;
             handChanged = true;
+            if (exhaustsAtTurnEnd)
+                exhaustedAtTurnEndCount++;
         }
 
         bool compactedAfterDiscard = CompactPlayerTeamBattleHand();
         if (handChanged || compactedAfterDiscard)
             CharacterControl?.RefreshCurrentTurnUi();
         InvalidatePlayerTeamSkillTooltips();
+        // A Recycling draw refreshes the hand UI. Clear and compact the real hand first,
+        // so that refresh cannot introduce a new card into a slot that is still moving.
+        if (exhaustedAtTurnEndCount > 0)
+            RecordPlayerBattleCardsExhausted(exhaustedAtTurnEndCount);
     }
 
     private bool ShouldRetainSkillAtTurnEnd(
@@ -2833,6 +2829,30 @@ public partial class Battle : Node2D
 
         toolboxRetainedCounts[toolboxKey] = toolboxRetainedCount + 1;
         return true;
+    }
+
+    internal bool ShouldShowRetainKeyword(Skill skill)
+    {
+        if (skill == null)
+            return false;
+
+        Skill[] hand = GetPlayerTeamBattleHand();
+        if (hand == null)
+            return skill.RetainsAtTurnEndInHand;
+
+        var toolboxRetainedCounts = new Dictionary<(int PlayerIndex, SkillID SkillId), int>();
+        for (int i = 0; i < hand.Length; i++)
+        {
+            Skill handSkill = hand[i];
+            if (handSkill == null)
+                continue;
+
+            bool retainsAtTurnEnd = ShouldRetainSkillAtTurnEnd(handSkill, toolboxRetainedCounts);
+            if (ReferenceEquals(handSkill, skill))
+                return retainsAtTurnEnd;
+        }
+
+        return skill.RetainsAtTurnEndInHand;
     }
 
     private static bool IsBattleStatusCard(SkillID skillId)
@@ -3473,7 +3493,7 @@ public partial class Battle : Node2D
             pickedSkill.OwnerCharater = picked.Owner ?? player;
             pickedSkill.BattleCardInstanceId = picked.InstanceId;
         }
-        player.InvalidateSkillTooltipCache();
+        InvalidatePlayerTeamSkillTooltips();
         return pickedSkill;
     }
 
@@ -3618,9 +3638,6 @@ public partial class Battle : Node2D
 
     public void RefreshTurnOrderPreviewFromSettings() => RefreshTurnOrderPreview();
 
-    public void RefreshManualTargetCardVisibilityFromSettings() =>
-        CharacterControl?.RefreshManualTargetCardVisibilityFromSettings();
-
     public void RefreshEnemyIntentionPreviews()
     {
         RefreshEnemyIntentionPreviewSurfaces();
@@ -3666,6 +3683,49 @@ public partial class Battle : Node2D
             if (!targetsInvisible)
                 continue;
 
+            skill.LockPreviewTargetsForExecution();
+        }
+
+        RefreshEnemyIntentionPreviews();
+    }
+
+    public void RetargetEnemyDamageIntentionsAfterInvisibleEnds(Character target)
+    {
+        if (
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || !target.IsPlayer
+            || EnemiesList == null
+        )
+        {
+            return;
+        }
+
+        foreach (var source in GetEnemyIntentionPreviewSources())
+        {
+            Character sourceCharacter = source?.SourceCharacter;
+            if (
+                sourceCharacter == null
+                || !GodotObject.IsInstanceValid(sourceCharacter)
+                || sourceCharacter.State == Character.CharacterState.Dying
+            )
+            {
+                continue;
+            }
+
+            Skill skill = source.CurrentIntentionSkill;
+            if (skill == null)
+                continue;
+
+            skill.OwnerCharater = sourceCharacter;
+            bool hasHostileDamage = skill
+                .GetPreviewHostileDamageEntries(includeTargetVulnerable: false)
+                .Any(entry => entry.Damage > 0);
+            if (!hasHostileDamage)
+                continue;
+
+            // The old intention may have been locked while this character was hidden.
+            // Re-lock after visibility returns so area attacks include the new valid target.
             skill.LockPreviewTargetsForExecution();
         }
 
@@ -4148,6 +4208,7 @@ public partial class Battle : Node2D
         character.Position = GetFormationPosition(character.PositionIndex, side);
         character.OriginalPosition = character.Position;
         character.ZIndex = Math.Max(character.PositionIndex, 0);
+        BattleHudChrome.StyleCharacter(character);
     }
 
     public T AddSummon<T>(
@@ -5295,13 +5356,14 @@ public partial class Battle : Node2D
     private bool CanAct<T>(List<T> characters, CancellationToken token)
         where T : Character => characters is { Count: > 0 } && CanContinue(token);
 
-    public bool ShouldAbortSkillResolution() => _retreating || HasBattleEnded() || !IsBattleAlive();
+    public bool ShouldAbortSkillResolution() => _retreating || !IsBattleAlive();
 
     public async Task<bool> ResolveBattleOverAfterSkillAsync()
     {
         if (!IsBattleAlive())
             return true;
 
+        _battleOverCheckPendingAfterEffect = false;
         return await HandleBattleOver(_lifetimeCts.Token, delayAfterHandling: false);
     }
 
@@ -5468,7 +5530,16 @@ public partial class Battle : Node2D
 
     public void QueueBattleOverCheck()
     {
-        if (_battleOverCheckQueued || _retreating || !IsBattleInstanceValid())
+        if (_retreating || !IsBattleInstanceValid())
+            return;
+
+        if (HasEffectSourceContext)
+        {
+            _battleOverCheckPendingAfterEffect = true;
+            return;
+        }
+
+        if (_battleOverCheckQueued)
             return;
 
         _battleOverCheckQueued = true;
@@ -5481,11 +5552,26 @@ public partial class Battle : Node2D
         if (_retreating || !IsBattleInstanceValid())
             return;
 
+        if (HasEffectSourceContext)
+        {
+            _battleOverCheckPendingAfterEffect = true;
+            return;
+        }
+
         SceneTree tree = GetTree();
         if (tree != null)
             await ToSignal(tree, SceneTree.SignalName.ProcessFrame);
 
-        if (_retreating || !IsBattleInstanceValid() || !HasBattleEnded())
+        if (_retreating || !IsBattleInstanceValid())
+            return;
+
+        if (HasEffectSourceContext)
+        {
+            _battleOverCheckPendingAfterEffect = true;
+            return;
+        }
+
+        if (!HasBattleEnded())
             return;
 
         await HandleBattleOver(CancellationToken.None, delayAfterHandling: false);
@@ -5558,7 +5644,7 @@ public partial class Battle : Node2D
         bool allowRareSkillRewards =
             GameInfo.GetNodeRegionBattleQueueIndex(CurrentLevelNode) >= 2;
         reward.AllowRareSkillRewards = allowRareSkillRewards;
-        int skillRewardGroups = GameInfo.GetBattleSkillRewardGroupCount(CurrentLevelNode);
+        int skillRewardGroups = GameInfo.GetBattleSkillRewardGroupCount();
         for (int i = 0; i < skillRewardGroups; i++)
             reward.AddSkillRewardEntry(
                 forceRare: allowRareSkillRewards && levelType == LevelNode.LevelType.Boss

@@ -2,7 +2,7 @@
     "enemies":  {
                     "RedHusk":  {
                                     "Name":  "RedHusk",
-                                    "MaxLife":  93
+                                    "MaxLife":  136
                                 }
                 }
 }

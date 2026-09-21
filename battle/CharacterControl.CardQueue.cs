@@ -19,7 +19,11 @@ public partial class CharacterControl
 
         if (!HasManualFriendlyTargetCandidates(skill))
         {
-            QueueCardPlay(index, skill);
+            // A manual-target card with no valid ally is still playable, but its manual part
+            // has no target to resolve. Keep the normal lift-then-click-outside interaction
+            // instead of treating the first click as a confirmed play.
+            if (_liftedCardIndex != index)
+                LiftCard(index);
             return;
         }
 
@@ -120,7 +124,7 @@ public partial class CharacterControl
 
     private bool TryStartHandCardPress(int index, bool allowSuppressedPress = false)
     {
-        if (!IsCardIndexValid(index))
+        if (!IsCardIndexValid(index) || _handLayoutSyncPending)
             return false;
 
         if (IsLeftMouseButtonPressActive())
@@ -149,6 +153,7 @@ public partial class CharacterControl
         if (
             skill == null
             || _endTurnQueued
+            || _handLayoutSyncPending
             || _activePlayer == null
             || !GodotObject.IsInstanceValid(_activePlayer)
             || !IsCardIndexValid(index)
@@ -156,6 +161,22 @@ public partial class CharacterControl
             || IsCardDrawEntryInputBlocked(index)
         )
         {
+            return;
+        }
+
+        Skill currentHandSkill = GetHandSkill(index);
+        SkillCard currentVisualCard = _cards[index];
+        if (
+            !ReferenceEquals(currentHandSkill, skill)
+            || (
+                currentVisualCard != null
+                && GodotObject.IsInstanceValid(currentVisualCard)
+                && currentVisualCard.CurrentSkill != null
+                && !ReferenceEquals(currentVisualCard.CurrentSkill, skill)
+            )
+        )
+        {
+            RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
@@ -220,6 +241,7 @@ public partial class CharacterControl
         }
 
         ResolveHandSlotAfterQueuedPlay(play);
+        _handLayoutSyncPending = true;
         RestoreStableHandInputAfterQueuedPlay();
         RefreshQueuedPlayCardLayers();
         RequestTurnUiRefresh();
@@ -670,7 +692,10 @@ public partial class CharacterControl
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
-        BattleNode.RemovePlayerTeamBattleHandCardAt(play.Index);
+        // Lifting the card has already arranged the remaining hand. Do not
+        // enqueue a second card-play-specific reorder here; any later hand
+        // change flows through the normal layout path.
+        BattleNode.RemovePlayerTeamBattleHandCardAt(play.Index, queueReorderAnimation: false);
         ResetCardDisplayTracking(play.Index);
         play.RemovedFromHand = true;
     }
@@ -681,6 +706,7 @@ public partial class CharacterControl
             !_uiBuilt
             || _endTurnQueued
             || _isPileCardSelectionActive
+            || _handLayoutSyncPending
             || IsManualTargetSelectionPending()
             || _manualTargetArrowSelectionActive
             || _liftedCardIndex != -1
@@ -871,43 +897,68 @@ public partial class CharacterControl
 
         card.Button.Disabled = true;
         card.HoverHint.Visible = false;
+        play.AbilityActivationVisualInProgress = true;
 
-        bool flew = false;
-        var options = new CardTrailMoveOptions
+        try
         {
-            CompressDuration = 0.12f,
-            FlyDuration = 0.34f,
-            TrailFadeDuration = 0.12f,
-            CompressedScaleFactor = 0.34f,
-            TargetScaleFactor = 0.08f,
-            CenterVanish = 0.98f,
-            GlowMultiplier = 1.46f,
-            HideCardVisualOnArrival = true,
-            RotateWithVelocity = true,
-        };
+            bool flew = false;
+            var options = new CardTrailMoveOptions
+            {
+                CompressDuration = 0.10f,
+                FlyDuration = 0.30f,
+                TrailFadeDuration = 0.12f,
+                CompressedScaleFactor = 0.30f,
+                TargetScaleFactor = 0.035f,
+                CenterVanish = 1f,
+                GlowMultiplier = 1.78f,
+                HideCardVisualOnArrival = true,
+                RotateWithVelocity = true,
+                RotationSpinTurns = 1.35f,
+                OnArrival = () => PlayAbilityCardArrivalImpact(actor),
+            };
 
-        if (actor.IsInsideTree())
-            flew = await card.FlyWithTrailToPointAsync(
-                actor.GetVisualCenterGlobalPosition(),
-                options
-            );
+            if (actor.IsInsideTree())
+                flew = await card.FlyWithTrailToPointAsync(
+                    actor.GetVisualCenterGlobalPosition(),
+                    options
+                );
 
-        if (!flew && GodotObject.IsInstanceValid(card))
+            if (!flew && GodotObject.IsInstanceValid(card))
+            {
+                card.PressEffectPartial(
+                    centerVanish: 1f,
+                    glowMultiplier: 1.46f,
+                    duration: CardPlayVanishDuration
+                );
+                await ToSignal(
+                    GetTree().CreateTimer(CardPlayVanishDuration),
+                    SceneTreeTimer.SignalName.Timeout
+                );
+                if (GodotObject.IsInstanceValid(card))
+                    card.SetCardVisualVisible(false);
+            }
+        }
+        finally
         {
-            card.PressEffectPartial(
-                centerVanish: 1f,
-                glowMultiplier: 1.46f,
-                duration: CardPlayVanishDuration
-            );
-            await ToSignal(
-                GetTree().CreateTimer(CardPlayVanishDuration),
-                SceneTreeTimer.SignalName.Timeout
-            );
-            if (GodotObject.IsInstanceValid(card))
-                card.SetCardVisualVisible(false);
+            play.AbilityActivationVisualInProgress = false;
+            play.AbilityVisualConsumed = true;
+        }
+    }
+
+    private static void PlayAbilityCardArrivalImpact(Character actor)
+    {
+        if (
+            actor == null
+            || !GodotObject.IsInstanceValid(actor)
+            || actor.State == Character.CharacterState.Dying
+        )
+        {
+            return;
         }
 
-        play.AbilityVisualConsumed = true;
+        actor.PlayAbilityCardActivationPulse();
+        CharacterEffect.Spawn(actor, "transition", new Vector2(0f, -42f));
+        actor.BattleNode?.PlayAbilityCardImpact();
     }
 
     public async Task PlayEndTurnHandDiscardAnimationsAsync(
@@ -1648,6 +1699,8 @@ public partial class CharacterControl
                 || play.Card == null
                 || !GodotObject.IsInstanceValid(play.Card)
                 || play.ResolvedToBattlePile
+                || play.AbilityActivationVisualInProgress
+                || play.AbilityVisualConsumed
             )
             {
                 continue;

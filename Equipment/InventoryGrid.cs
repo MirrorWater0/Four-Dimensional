@@ -77,8 +77,10 @@ public partial class InventoryGrid : Control
             return;
 
         Rect2 scrollRect = ScrollViewport.GetGlobalRect();
-        Vector2 mousePos = GetViewport().GetMousePosition();
-        if (!scrollRect.HasPoint(mousePos))
+        Vector2 pointerPosition = MobilePlatform.TryGetPointerPosition(@event, out Vector2 eventPosition)
+            ? eventPosition
+            : GetViewport().GetMousePosition();
+        if (!scrollRect.HasPoint(pointerPosition))
             return;
 
         if (TryHandleScrollInput(@event))
@@ -175,6 +177,11 @@ public partial class InventoryGrid : Control
                 ScrollBy(panGesture.Delta.Y * PanGestureMultiplier);
                 return true;
             }
+        }
+        else if (MobilePlatform.TryGetTouchScrollDelta(@event, out float touchDelta, 1.15f))
+        {
+            ScrollBy(touchDelta);
+            return true;
         }
 
         return false;
