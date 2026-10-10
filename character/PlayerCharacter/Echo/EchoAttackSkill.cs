@@ -168,11 +168,15 @@ public partial class DisasterImpact : Skill
 
     protected override SkillPlan BuildPlan()
     {
+        int drawCount = 0;
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            TextStep(GetExtraDrawFromTargetWeakenText()),
-            DrawCardsStep(_ => GetExtraDrawStacksFromAttackTarget())
+            AttackStep(
+                baseDamage: BaseDamage,
+                onTargetsResolved: targets =>
+                    drawCount = GetTargetWeakenStacks(targets.FirstOrDefault()) / WeakenStacksPerExtraDraw
+            ),
+            DrawCardsStep(_ => drawCount, description: GetExtraDrawFromTargetWeakenText())
         );
     }
 
@@ -183,13 +187,11 @@ public partial class DisasterImpact : Skill
         return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，抽{1}张。";
     }
 
-    private int GetExtraDrawStacksFromAttackTarget() =>
-        GetAttackTargetWeakenStacks() / WeakenStacksPerExtraDraw;
-
-    private int GetAttackTargetWeakenStacks()
+    private static int GetTargetWeakenStacks(Character target)
     {
-        Character target = ChosetargetByOrder(byBehindRow: false, applyTaunt: true)
-            .FirstOrDefault();
+        if (target == null || !GodotObject.IsInstanceValid(target))
+            return 0;
+
         return target
                 ?.AttackBuffs?.FirstOrDefault(buff =>
                     buff != null && buff.ThisBuffName == Buff.BuffName.Weaken && buff.Stack > 0

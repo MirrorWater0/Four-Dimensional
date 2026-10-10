@@ -1570,57 +1570,13 @@ public partial class CharacterControl
     private CanvasLayer EnsureCardPlayOverlay()
     {
         Node parent = BattleNode ?? FindBattleNode() ?? GetParent();
-        if (parent == null)
-            return null;
-
-        const string overlayName = "CardPlayOverlay";
-        CanvasLayer overlay = parent.GetNodeOrNull<CanvasLayer>(overlayName);
-        if (overlay != null)
-            return overlay;
-
-        var root = GetTree()?.Root;
-        overlay = root?.GetNodeOrNull<CanvasLayer>(overlayName);
-        if (overlay != null && overlay.GetParent() != parent)
-        {
-            overlay.Reparent(parent);
-            return overlay;
-        }
-
-        overlay = new CanvasLayer { Name = overlayName };
-        parent.AddChild(overlay);
-        return overlay;
+        return parent?.GetNode<CanvasLayer>("CardPlayOverlay");
     }
 
     private CanvasLayer EnsureLiftedCardOverlay()
     {
         Node parent = BattleNode ?? FindBattleNode() ?? GetParent();
-        if (parent == null)
-            return null;
-
-        const string overlayName = "LiftedCardOverlay";
-        CanvasLayer overlay = parent.GetNodeOrNull<CanvasLayer>(overlayName);
-        if (overlay != null)
-        {
-            overlay.Layer = LiftedCardOverlayLayer;
-            return overlay;
-        }
-
-        var root = GetTree()?.Root;
-        overlay = root?.GetNodeOrNull<CanvasLayer>(overlayName);
-        if (overlay != null && overlay.GetParent() != parent)
-        {
-            overlay.Reparent(parent);
-            overlay.Layer = LiftedCardOverlayLayer;
-            return overlay;
-        }
-
-        overlay = new CanvasLayer
-        {
-            Name = overlayName,
-            Layer = LiftedCardOverlayLayer,
-        };
-        parent.AddChild(overlay);
-        return overlay;
+        return parent?.GetNode<CanvasLayer>("LiftedCardOverlay");
     }
 
     private static float GetCanvasRotation(CanvasItem item)

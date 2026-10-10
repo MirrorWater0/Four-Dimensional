@@ -851,8 +851,8 @@ public partial class Skill
         second.PositionIndex = tempIndex;
 
         SwapBattleOrder(battle, first, second);
-        Vector2 firstTarget = ComputeBattlePosition(first.PositionIndex, first.IsPlayer);
-        Vector2 secondTarget = ComputeBattlePosition(second.PositionIndex, second.IsPlayer);
+        Vector2 firstTarget = battle.GetFormationPosition(first.PositionIndex, first.IsPlayer ? -1 : 1);
+        Vector2 secondTarget = battle.GetFormationPosition(second.PositionIndex, second.IsPlayer ? -1 : 1);
         UpdateZIndexByPosition(first);
         UpdateZIndexByPosition(second);
 
@@ -920,12 +920,6 @@ public partial class Skill
         await character.ToSignal(tween, "finished");
     }
 
-    private static Vector2 ComputeBattlePosition(int positionIndex, bool isPlayer)
-    {
-        int slot = positionIndex > 0 ? positionIndex - 1 : 0;
-        int side = isPlayer ? -1 : 1;
-        return new Vector2(slot * Battle.FormationGapX * side, 0f);
-    }
 
     private static void UpdateZIndexByPosition(Character character)
     {

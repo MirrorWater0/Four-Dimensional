@@ -2,7 +2,7 @@ using Godot;
 
 public partial class CharacterControl
 {
-    private const float DiscardSelectionScreenMaskMaxAlpha = 0.46f;
+    private Color _discardSelectionScreenMaskColor;
     private const float DiscardSelectionContentFadeDuration = 0.14f;
 
     private bool _discardSelectionContentTemporarilyHidden;
@@ -31,17 +31,6 @@ public partial class CharacterControl
             return;
 
         _discardSelectionHideButton = overlay.GetNodeOrNull<Button>("DiscardSelectionHideButton");
-        if (_discardSelectionHideButton == null)
-        {
-            _discardSelectionHideButton = new Button
-            {
-                Name = "DiscardSelectionHideButton",
-                Visible = false,
-                Text = "隐藏",
-            };
-            overlay.AddChild(_discardSelectionHideButton);
-        }
-
         if (_discardSelectionHideButtonInputTarget != _discardSelectionHideButton)
         {
             if (
@@ -56,24 +45,8 @@ public partial class CharacterControl
             _discardSelectionHideButtonInputTarget = _discardSelectionHideButton;
         }
 
-        ConfigureDiscardSelectionHideButtonLayout(_discardSelectionHideButton);
     }
 
-    private static void ConfigureDiscardSelectionHideButtonLayout(Button button)
-    {
-        if (button == null)
-            return;
-
-        button.CustomMinimumSize = new Vector2(170f, 58f);
-        button.SetAnchorsPreset(LayoutPreset.BottomRight);
-        button.OffsetLeft = -406f;
-        button.OffsetTop = -86f;
-        button.OffsetRight = -236f;
-        button.OffsetBottom = -28f;
-        button.MouseFilter = MouseFilterEnum.Stop;
-        button.FocusMode = FocusModeEnum.None;
-        ConfigureEndTurnButton(button);
-    }
 
     private void SyncDiscardSelectionHideButton()
     {
@@ -187,7 +160,7 @@ public partial class CharacterControl
             .TweenProperty(
                 _discardSelectionScreenMask,
                 "color:a",
-                DiscardSelectionScreenMaskMaxAlpha,
+                _discardSelectionScreenMaskColor.A,
                 DiscardSelectionContentFadeDuration
             )
             .SetTrans(Tween.TransitionType.Sine)
@@ -207,17 +180,14 @@ public partial class CharacterControl
         _discardSelectionScreenMask.Visible = true;
         if (_discardSelectionContentTemporarilyHidden)
         {
-            _discardSelectionScreenMask.Color = new Color(0f, 0f, 0f, 0f);
+            Color transparent = _discardSelectionScreenMaskColor;
+            transparent.A = 0f;
+            _discardSelectionScreenMask.Color = transparent;
             _discardSelectionScreenMask.MouseFilter = MouseFilterEnum.Ignore;
             return;
         }
 
-        _discardSelectionScreenMask.Color = new Color(
-            0f,
-            0f,
-            0f,
-            DiscardSelectionScreenMaskMaxAlpha
-        );
+        _discardSelectionScreenMask.Color = _discardSelectionScreenMaskColor;
         _discardSelectionScreenMask.MouseFilter = MouseFilterEnum.Stop;
     }
 }

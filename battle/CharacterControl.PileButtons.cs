@@ -6,38 +6,18 @@ using Godot;
 
 public partial class CharacterControl
 {
-    private static readonly Color PileButtonIconEnabledModulate = new(0.90f, 0.98f, 1f, 0.90f);
-    private static readonly Color PileButtonIconHoverModulate = Colors.White;
-    private static readonly Color PileButtonIconDisabledModulate = new(0.58f, 0.66f, 0.72f, 0.46f);
+    private readonly Dictionary<Button, Vector2> _pileButtonIconBaseScales = new();
 
     private void ConfigurePileButton(Button button, string text)
     {
         if (button == null)
             return;
 
+        if (GetPileButtonIcon(button) is { } icon)
+            _pileButtonIconBaseScales.TryAdd(button, icon.Scale);
         button.Text = string.Empty;
         button.TooltipText = text;
-        button.Flat = false;
-        button.FocusMode = FocusModeEnum.None;
-        button.MouseFilter = MouseFilterEnum.Stop;
-        button.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
-        button.AddThemeStyleboxOverride("normal", CreatePileButtonStyleBox());
-        button.AddThemeStyleboxOverride("hover", BattleHudChrome.Plate(new Color(0.10f, 0.16f, 0.19f, 0.96f), BattleHudChrome.Accent));
-        button.AddThemeStyleboxOverride("pressed", CreatePileButtonStyleBox());
-        button.AddThemeStyleboxOverride("disabled", CreatePileButtonStyleBox());
-        button.AddThemeStyleboxOverride("focus", CreatePileButtonStyleBox());
         EnsurePileButtonCountLabel(button);
-        ConfigurePileButtonIcon(button);
-        button.PivotOffset = button.Size / 2f;
-        button.Resized += () =>
-        {
-            if (button == null || !GodotObject.IsInstanceValid(button))
-                return;
-
-            ConfigurePileButtonIcon(button);
-            button.PivotOffset = button.Size / 2f;
-            PositionPileButtonCountLabel(button);
-        };
         button.MouseEntered += () => AnimatePileButtonHover(button, true);
         button.MouseExited += () => AnimatePileButtonHover(button, false);
         button.FocusEntered += () => AnimatePileButtonHover(button, true);
@@ -55,78 +35,11 @@ public partial class CharacterControl
         SyncPileButtonVisualState(button);
     }
 
-    private static void ConfigurePileButtonIcon(Button button)
-    {
-        Control icon = GetPileButtonIcon(button);
-        if (button == null || icon == null || !GodotObject.IsInstanceValid(icon))
-            return;
 
-        Vector2 size = button.Size;
-        if (size == Vector2.Zero)
-            size = button.CustomMinimumSize;
-        if (size == Vector2.Zero)
-            size = new Vector2(80f, 80f);
-
-        float iconEdge = Math.Min(size.X, size.Y) * 0.52f;
-        Vector2 iconSize = new(iconEdge, iconEdge);
-        icon.Position = (size - iconSize) * 0.5f;
-        icon.Size = iconSize;
-        icon.CustomMinimumSize = iconSize;
-        icon.PivotOffset = iconSize * 0.5f;
-        icon.MouseFilter = MouseFilterEnum.Ignore;
-    }
-
-    private static StyleBoxFlat CreatePileButtonStyleBox()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = BattleHudChrome.Ink,
-            BorderColor = new Color(0.40f, 0.51f, 0.56f, 0.35f),
-            BorderWidthLeft = 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 8,
-            CornerRadiusTopRight = 8,
-            CornerRadiusBottomRight = 8,
-            CornerRadiusBottomLeft = 8,
-            ContentMarginLeft = 0,
-            ContentMarginTop = 0,
-            ContentMarginRight = 0,
-            ContentMarginBottom = 0,
-            ExpandMarginLeft = 1,
-            ExpandMarginTop = 1,
-            ExpandMarginRight = 1,
-            ExpandMarginBottom = 1,
-        };
-    }
 
     private static Label EnsurePileButtonCountLabel(Button button)
     {
-        if (button == null || !GodotObject.IsInstanceValid(button))
-            return null;
-
-        Label label = button.GetNodeOrNull<Label>(PileButtonCountLabelName);
-        if (label == null)
-        {
-            label = new Label
-            {
-                Name = PileButtonCountLabelName,
-                MouseFilter = MouseFilterEnum.Ignore,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                ZIndex = 12,
-            };
-            label.AddThemeFontSizeOverride("font_size", 18);
-            label.AddThemeColorOverride("font_color", new Color(0.96f, 0.98f, 1f, 1f));
-            label.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.04f, 0.06f, 0.95f));
-            label.AddThemeConstantOverride("outline_size", 3);
-            button.AddChild(label);
-        }
-
-        EnsurePileButtonCountBackground(button);
-        PositionPileButtonCountLabel(button);
-        return label;
+        return button?.GetNodeOrNull<Label>(PileButtonCountLabelName);
     }
 
     private static void SetPileButtonCount(Button button, int count)
@@ -137,8 +50,8 @@ public partial class CharacterControl
 
         label.Text = Math.Max(0, count).ToString();
         Color modulate = button.Disabled
-            ? new Color(0.70f, 0.78f, 0.84f, 0.62f)
-            : Colors.White;
+            ? button.GetThemeColor("pile_count_disabled")
+            : button.GetThemeColor("pile_count_enabled");
         label.Modulate = modulate;
         ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
         if (background != null)
@@ -149,49 +62,7 @@ public partial class CharacterControl
         label.Visible = true;
     }
 
-    private static void PositionPileButtonCountLabel(Button button)
-    {
-        if (button == null || !GodotObject.IsInstanceValid(button))
-            return;
 
-        Label label = button.GetNodeOrNull<Label>(PileButtonCountLabelName);
-        if (label == null)
-            return;
-
-        Vector2 size = button.Size;
-        if (size == Vector2.Zero)
-            size = button.CustomMinimumSize;
-
-        const float badgeSize = 26f;
-        Vector2 badgePosition = new(size.X - badgeSize + 2f, size.Y - badgeSize + 2f);
-        label.Size = new Vector2(badgeSize, badgeSize);
-        label.Position = badgePosition;
-
-        ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
-        if (background != null)
-        {
-            background.Size = new Vector2(badgeSize, badgeSize);
-            background.Position = badgePosition;
-        }
-    }
-
-    private static ColorRect EnsurePileButtonCountBackground(Button button)
-    {
-        ColorRect background = button.GetNodeOrNull<ColorRect>(PileButtonCountBackgroundName);
-        if (background != null)
-            return background;
-
-        Shader shader = GD.Load<Shader>("res://shader/UI/PileCountBadge.gdshader");
-        background = new ColorRect
-        {
-            Name = PileButtonCountBackgroundName,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ZIndex = 11,
-            Material = shader == null ? null : new ShaderMaterial { Shader = shader },
-        };
-        button.AddChild(background);
-        return background;
-    }
 
     private void SyncPileButtonVisualState(Button button)
     {
@@ -200,13 +71,13 @@ public partial class CharacterControl
             return;
 
         icon.Modulate = button.Disabled
-            ? PileButtonIconDisabledModulate
-            : PileButtonIconEnabledModulate;
+            ? button.GetThemeColor("pile_icon_disabled")
+            : button.GetThemeColor("pile_icon_enabled");
 
         if (icon.Material is not ShaderMaterial shader)
         {
             if (button.Disabled)
-                icon.Scale = Vector2.One;
+                icon.Scale = GetPileButtonBaseScale(button);
             return;
         }
 
@@ -216,7 +87,7 @@ public partial class CharacterControl
             shader.SetShaderParameter("hover_amount", 0f);
             shader.SetShaderParameter("pressed_amount", 0f);
             shader.SetShaderParameter("receive_amount", 0f);
-            icon.Scale = Vector2.One;
+            icon.Scale = GetPileButtonBaseScale(button);
         }
     }
 
@@ -241,12 +112,12 @@ public partial class CharacterControl
             return;
 
         icon.PivotOffset = icon.Size / 2f;
-        Vector2 targetScale = hovered ? new Vector2(1.10f, 1.10f) : Vector2.One;
+        Vector2 targetScale = GetPileButtonBaseScale(button) * (hovered ? 1.10f : 1f);
         Color targetModulate = hovered
-            ? PileButtonIconHoverModulate
+            ? button.GetThemeColor("pile_icon_hover")
             : button.Disabled
-                ? PileButtonIconDisabledModulate
-                : PileButtonIconEnabledModulate;
+                ? button.GetThemeColor("pile_icon_disabled")
+                : button.GetThemeColor("pile_icon_enabled");
         Tween newHoverTween = icon.CreateTween();
         newHoverTween.SetParallel(true);
         newHoverTween
@@ -330,7 +201,7 @@ public partial class CharacterControl
         Tween scaleTween = icon.CreateTween();
         scaleTween.SetParallel(false);
         scaleTween
-            .TweenProperty(icon, "scale", new Vector2(1.07f, 1.07f), PileButtonReceivePulseDuration * 0.38f)
+            .TweenProperty(icon, "scale", GetPileButtonBaseScale(button) * 1.07f, PileButtonReceivePulseDuration * 0.38f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         scaleTween
@@ -387,15 +258,15 @@ public partial class CharacterControl
         icon.PivotOffset = icon.Size / 2f;
         Tween scaleTween = icon.CreateTween();
         scaleTween
-            .TweenProperty(icon, "scale", new Vector2(0.94f, 0.94f), 0.045f)
+            .TweenProperty(icon, "scale", GetPileButtonBaseScale(button) * 0.94f, 0.045f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         scaleTween
-            .TweenProperty(icon, "scale", new Vector2(1.08f, 1.08f), 0.10f)
+            .TweenProperty(icon, "scale", GetPileButtonBaseScale(button) * 1.08f, 0.10f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
         scaleTween
-            .TweenProperty(icon, "scale", Vector2.One, 0.13f)
+            .TweenProperty(icon, "scale", GetPileButtonRestScale(button), 0.13f)
             .SetTrans(Tween.TransitionType.Cubic)
             .SetEase(Tween.EaseType.Out);
 
@@ -556,6 +427,9 @@ public partial class CharacterControl
         return true;
     }
 
+    private Vector2 GetPileButtonBaseScale(Button button) =>
+        _pileButtonIconBaseScales.TryGetValue(button, out Vector2 scale) ? scale : Vector2.One;
+
     private Vector2 GetPileButtonRestScale(Button button)
     {
         if (
@@ -565,10 +439,10 @@ public partial class CharacterControl
             && button.GetGlobalRect().HasPoint(GetGlobalMousePosition())
         )
         {
-            return new Vector2(1.10f, 1.10f);
+            return GetPileButtonBaseScale(button) * 1.10f;
         }
 
-        return Vector2.One;
+        return GetPileButtonBaseScale(button);
     }
 
     private Tween GetPileButtonReceiveScaleTween(Button button)

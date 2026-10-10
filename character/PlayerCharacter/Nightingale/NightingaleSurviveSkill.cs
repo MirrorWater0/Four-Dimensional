@@ -93,7 +93,7 @@ public partial class BladeDance : Skill
         return new SkillPlan(
             this,
             BlockStep(V("BaseBlock", 5)),
-            AddCardsToHandStep(SkillID.Blade, BladeCount, TargetReference.ManualFriendly)
+            ModifyAttackCountStep(BladeCount, temporary: true, target: TargetReference.ManualFriendly)
         );
     }
 }
@@ -146,7 +146,7 @@ public partial class ShadowBladeWard : Skill
     public override int EnergyCost => Cost(0);
     protected override SkillPlan BuildPlan()
     {
-        string bladeName = Skill.GetSkill(SkillID.Blade)?.SkillName ?? "利刃";
+        string attackName = Buff.GetBuffDisplayName(Buff.BuffName.TemporaryAttackCount);
         string invisibleName = Buff.BuffName.Invisible.GetDescription();
 
         return new SkillPlan(
@@ -160,7 +160,6 @@ public partial class ShadowBladeWard : Skill
                     if (battle == null)
                         return Task.CompletedTask;
 
-                    bool addedAny = false;
                     foreach (
                         Character ally in battle.GetOrderedTeamCharacters(
                             isPlayer: true,
@@ -175,25 +174,15 @@ public partial class ShadowBladeWard : Skill
                         )
                             continue;
 
-                        battle.AddPlayerBattleStatusCards(
-                            player,
-                            SkillID.Blade,
-                            1,
-                            BattleCardPileTarget.HandCards,
-                            caster
-                        );
-                        addedAny = true;
+                        AttackCountBuff.Modify(player, 1, temporary: true, source: caster);
                     }
-
-                    if (addedAny)
-                        battle.NotifyPlayerTeamBattleCardsGeneratedByFriendlySkill();
 
                     return Task.CompletedTask;
                 },
                 _ =>
                     new[]
                     {
-                        $"每一位拥有{invisibleName}的角色在手牌中获得1张{bladeName}。",
+                        $"每一位拥有{invisibleName}的角色获得1次{attackName}（仅本回合生效）。",
                     }
             )
         );

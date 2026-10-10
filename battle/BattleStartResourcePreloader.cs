@@ -134,8 +134,6 @@ public static class BattleStartResourcePreloader
             return;
 
         await PrewarmTextureUploadsAsync(owner, effectTextures);
-        if (!await StarfieldBackground3D.PrewarmBattleBackgroundTexturesAsync(owner))
-            return;
         if (!await YieldFrame(owner))
             return;
 

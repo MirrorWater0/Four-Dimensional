@@ -14,6 +14,7 @@ public static class UserSettings
     private const string ShowIntentionTargetNamesKey = "ShowIntentionTargetNames";
     private const string HideEnemySkillsKey = "HideEnemySkills";
     private const string GroupBattlePilesByCharacterKey = "GroupBattlePilesByCharacter";
+    private const string GroupHandCardsByCharacterKey = "GroupHandCardsByCharacter";
     private const string ShowHandCardIndicesKey = "ShowHandCardIndices";
     private const string TextSizeLevelKey = "TextSizeLevel";
     private const string BattleShakeLevelKey = "BattleShakeLevel";
@@ -51,6 +52,7 @@ public static class UserSettings
     public static bool ShowIntentionTargetNames { get; private set; }
     public static bool HideEnemySkills { get; private set; } = true;
     public static bool GroupBattlePilesByCharacter { get; private set; }
+    public static bool GroupHandCardsByCharacter { get; private set; }
     public static bool ShowHandCardIndices { get; private set; } = true;
     public static int TextSizeLevel { get; private set; } = TextSizeLevelStandard;
     public static int BattleShakeLevel { get; private set; } = BattleShakeLevelStandard;
@@ -110,6 +112,9 @@ public static class UserSettings
                     GroupBattlePilesByCharacterKey,
                     GroupBattlePilesByCharacter
                 )
+                .AsBool();
+            GroupHandCardsByCharacter = config
+                .GetValue(SectionName, GroupHandCardsByCharacterKey, GroupHandCardsByCharacter)
                 .AsBool();
             ShowHandCardIndices = config
                 .GetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices)
@@ -198,6 +203,13 @@ public static class UserSettings
     {
         EnsureLoaded();
         ShowHandCardIndices = value;
+        Save();
+    }
+
+    public static void SetGroupHandCardsByCharacter(bool value)
+    {
+        EnsureLoaded();
+        GroupHandCardsByCharacter = value;
         Save();
     }
 
@@ -400,6 +412,7 @@ public static class UserSettings
             GroupBattlePilesByCharacterKey,
             GroupBattlePilesByCharacter
         );
+        config.SetValue(SectionName, GroupHandCardsByCharacterKey, GroupHandCardsByCharacter);
         config.SetValue(SectionName, ShowHandCardIndicesKey, ShowHandCardIndices);
         config.SetValue(SectionName, TextSizeLevelKey, TextSizeLevel);
         config.SetValue(SectionName, BattleShakeLevelKey, BattleShakeLevel);

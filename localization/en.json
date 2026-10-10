@@ -528,6 +528,8 @@
   "ui.settings.intention_target_names": "Show character names on intention targets",
   "skill.preview.all_formation": "All",
   "ui.settings.group_battle_piles_by_character": "Group battle piles by character",
+  "ui.settings.group_hand_cards_by_character": "Group drawn hand cards by character",
+  "ui.settings.group_hand_cards_by_character_tooltip": "Arrange character groups from right to left in party formation order, with the first character on the right. Insert new cards after their owner's last hand card.",
   "ui.settings.show_hand_card_indices": "Show hand card numbers (number keys play cards)",
   "ui.settings.language": "Language",
   "ui.settings.resolution": "Resolution",

@@ -2137,7 +2137,8 @@ public partial class Skill
         Func<Character, bool> targetCondition = null,
         string conditionText = null,
         string storeAs = null,
-        [CallerArgumentExpression(nameof(baseDamage))] string baseDamageExpression = null
+        [CallerArgumentExpression(nameof(baseDamage))] string baseDamageExpression = null,
+        Action<Character[]> onTargetsResolved = null
     )
     {
         Func<Skill, int> baseDamageProvider = VFromExpression(baseDamageExpression, baseDamage);
@@ -2152,7 +2153,8 @@ public partial class Skill
             storeAs,
             baseDamageProvider,
             targetCondition,
-            conditionText
+            conditionText,
+            onTargetsResolved
         );
     }
 
@@ -2167,7 +2169,8 @@ public partial class Skill
         HostileTargetReference? target = null,
         Func<Character, bool> targetCondition = null,
         string conditionText = null,
-        string storeAs = null
+        string storeAs = null,
+        Action<Character[]> onTargetsResolved = null
     ) =>
         AttackStepCore(
             0,
@@ -2180,7 +2183,8 @@ public partial class Skill
             storeAs,
             baseDamage,
             targetCondition,
-            conditionText
+            conditionText,
+            onTargetsResolved
         );
 
     private SkillStep AttackStepCore(
@@ -2194,7 +2198,8 @@ public partial class Skill
         string storeAs,
         Func<Skill, int> baseDamageFunc,
         Func<Character, bool> targetCondition,
-        string conditionText
+        string conditionText,
+        Action<Character[]> onTargetsResolved
     ) =>
         new HostileAttackSkillStep(
             baseDamage,
@@ -2207,7 +2212,8 @@ public partial class Skill
             storeAs,
             baseDamageFunc,
             targetCondition,
-            conditionText
+            conditionText,
+            onTargetsResolved
         );
 
     protected SkillStep DoubleStrikeStep(
@@ -3036,6 +3042,7 @@ public partial class Skill
         private readonly string _storeAs;
         private readonly Func<Character, bool> _targetCondition;
         private readonly string _conditionText;
+        private readonly Action<Character[]> _onTargetsResolved;
 
         public HostileAttackSkillStep(
             int baseDamage,
@@ -3048,7 +3055,8 @@ public partial class Skill
             string storeAs,
             Func<Skill, int> baseDamageFunc,
             Func<Character, bool> targetCondition,
-            string conditionText
+            string conditionText,
+            Action<Character[]> onTargetsResolved
         )
         {
             _baseDamage = baseDamage;
@@ -3062,12 +3070,16 @@ public partial class Skill
             _storeAs = storeAs;
             _targetCondition = targetCondition;
             _conditionText = conditionText;
+            _onTargetsResolved = onTargetsResolved;
         }
 
         public override async Task Execute(Skill skill)
         {
             Character[] targets = SelectTargets(skill);
             StoreResolvedTargets(skill, targets);
+            // Capture values needed after damage, before a killed summon can be freed.
+            // Preview target selection must not invoke this execution-only callback.
+            _onTargetsResolved?.Invoke(targets);
             if (targets.Length == 0)
                 return;
 
@@ -3613,6 +3625,10 @@ public partial class Skill
 
         switch (buffName)
         {
+            case Buff.BuffName.AttackCount:
+            case Buff.BuffName.TemporaryAttackCount:
+                AttackCountBuff.Modify(target, stacks, buffName == Buff.BuffName.TemporaryAttackCount, source);
+                return true;
             case Buff.BuffName.RebirthI:
                 DyingBuff.BuffAdd(buffName, target, stacks, source);
                 return true;

@@ -1,49 +1,37 @@
 [gd_scene format=3 uid="uid://d0hwex3fc1sp4"]
 
 [ext_resource type="Script" uid="uid://dr7wgiscwtyg2" path="res://MouseTrail/MouseTrail.cs" id="1_bf3sd"]
-[ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="1_umtsf"]
+[ext_resource type="Script" uid="uid://b6qpy5dt0oiub" path="res://MouseTrail/MouseTrailVisual.cs" id="2_trail"]
 [ext_resource type="Shader" uid="uid://bo8yjtdm15jy2" path="res://shader/UI/CursorIcon.gdshader" id="3_ecg7h"]
 
-[sub_resource type="Curve" id="Curve_42och"]
-_data = [Vector2(0, 0.14598536), 0.0, 0.0, 0, 0, Vector2(0.8084291, 0.7125851), 0.30350965, 0.30350965, 0, 0, Vector2(1, 0.28832114), 0.0, 0.0, 0, 0]
-point_count = 3
-
-[sub_resource type="Gradient" id="Gradient_x7o5h"]
-colors = PackedColorArray(10.811581, 10.811581, 10.811581, 0.7294118, 0.47435445, 0.59966856, 0.9999998, 1)
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cpg7l"]
+resource_local_to_scene = true
 shader = ExtResource("3_ecg7h")
-shader_parameter/color_left = Color(0.92, 0.82309335, 0.19319998, 1)
-shader_parameter/color_right = Color(0.92, 0.82309335, 0.19319998, 1)
-shader_parameter/color_rim = Color(0, 0, 0, 1)
-shader_parameter/tilt_angle = -0.6129999578675
-shader_parameter/rim_width = 0.0150000007125
-shader_parameter/shape_width = 0.4
-shader_parameter/shape_length = 0.7
+shader_parameter/face_color = Color(0.93, 0.96, 0.98, 1)
+shader_parameter/facet_color = Color(0.45, 0.7, 0.82, 1)
+shader_parameter/edge_color = Color(0.08, 0.14, 0.2, 1)
+shader_parameter/accent_color = Color(0.93, 0.82, 0.59, 1)
 
 [node name="MouseTrail" type="CanvasLayer" unique_id=695303506]
+process_mode = 3
 layer = 1000
 script = ExtResource("1_bf3sd")
+_cursorHotspot = Vector2(8, 8)
 
-[node name="Node2D" type="Node2D" parent="." unique_id=375777724]
-
-[node name="Line2D" type="Line2D" parent="." unique_id=1008460198 node_paths=PackedStringArray("Target")]
-modulate = Color(1, 1, 1, 0.5058824)
-top_level = true
+[node name="TrailVisual" type="Node2D" parent="."]
 z_index = 10
-position = Vector2(134.68222, 10.6154785)
-scale = Vector2(1.3269181, 1.3269181)
-width_curve = SubResource("Curve_42och")
-gradient = SubResource("Gradient_x7o5h")
-end_cap_mode = 2
-script = ExtResource("1_umtsf")
-Target = NodePath("../Node2D")
+script = ExtResource("2_trail")
+TrailLifetime = 0.22
+MaxTrailLength = 150.0
+PointSpacing = 4.0
+TrailColor = Color(0.58, 0.82, 0.94, 1)
+HighlightColor = Color(0.93, 0.97, 1, 1)
+ClickColor = Color(0.93, 0.82, 0.59, 1)
 
 [node name="Cursor" type="ColorRect" parent="." unique_id=1465019521]
 top_level = true
 z_index = 20
 material = SubResource("ShaderMaterial_cpg7l")
-offset_top = -1.0
-offset_right = 72.0
-offset_bottom = 71.0
+offset_right = 48.0
+offset_bottom = 48.0
 mouse_filter = 2

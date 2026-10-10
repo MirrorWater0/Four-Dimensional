@@ -23,10 +23,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         0.62f,
         0.82f
     );
-    private static readonly Vector2 IntentionDamageSummaryOffset = new(38f, -18f);
-    private static readonly Vector2 IntentionDamageSummaryFallbackSize = new(150f, 58f);
-    private static readonly Color IntentionDamageColor = new(1f, 0.84f, 0.63f, 1f);
-    private static readonly Color IntentionDamageOutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
 
     public EnemyRegedit Registry;
     public Character SourceCharacter => this;
@@ -35,7 +31,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     public ColorRect AttackIntention => field ??= GetNode<ColorRect>("Intention/Attack");
     public ColorRect SurviveIntention => field ??= GetNode<ColorRect>("Intention/Survive");
     public ColorRect SpecialIntention => field ??= GetNode<ColorRect>("Intention/Special");
-    public ColorRect StunIntention => field ??= GetOrCreateStunIntention();
+    public ColorRect StunIntention => field ??= GetNode<ColorRect>("Intention/Stun");
     private ProgressBar _lifebar;
     public Battle Battle => field ??= GetNode("/root/Battle") as Battle;
     Label label => field ??= GetNode<Label>("Label");
@@ -59,8 +55,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
     {
         base._Ready();
         IsPlayer = false;
-        if (FootMarker != null && GodotObject.IsInstanceValid(FootMarker))
-            FootMarker.Visible = false;
         Hoverframe.MouseEntered += OnIntentionPreviewHoverEntered;
         Hoverframe.MouseExited += OnIntentionPreviewHoverExited;
         IntentionContorl.MouseEntered += OnIntentionPreviewHoverEntered;
@@ -111,11 +105,39 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             _lastSingleTargetIntentionLock = null;
         }
         base.Initialize();
+        ConfigureCharacterShadow();
         if (Registry != null)
         {
             Life = Math.Clamp(Registry.CurrentLife, 0, BattleMaxLife);
             SyncLifeBarsToCurrent(syncBufferValue: true);
         }
+    }
+
+    private void ConfigureCharacterShadow()
+    {
+        if (CharacterShadow == null || !GodotObject.IsInstanceValid(CharacterShadow))
+            return;
+
+        // Preserve the projection that BattleAtmosphere drew for enemies and
+        // summons before it moved into the shared character scene.
+        if (this is SummonCharacter summon && summon.Summoner?.CharacterShadow is { } ownerShadow
+            && GodotObject.IsInstanceValid(ownerShadow))
+        {
+            CharacterShadow.ApplyCharacterColor(ownerShadow.FillColor);
+        }
+        else if (BattleNode?.GetNodeOrNull<BattleAtmosphere>("bg/BattleAtmosphere") is { } atmosphere)
+        {
+            Color tint = BattleNode.CurrentLevelNode?.Type switch
+            {
+                LevelNode.LevelType.Elite => atmosphere.EliteTint,
+                LevelNode.LevelType.Boss => atmosphere.BossTint,
+                _ => atmosphere.NormalTint,
+            };
+            CharacterShadow.ApplyCharacterColor(tint);
+        }
+
+        CharacterShadow.Visible = true;
+        CharacterShadow.SetCardHoverHighlight(false, instant: true);
     }
 
     public static int GetEffectiveMaxLife(EnemyRegedit regedit, LevelNode.LevelType? levelType)
@@ -417,33 +439,6 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
             ) == true;
     }
 
-    private ColorRect GetOrCreateStunIntention()
-    {
-        var existing = IntentionContorl.GetNodeOrNull<ColorRect>("Stun");
-        if (existing != null)
-            return existing;
-
-        var stun = Buff.CreateBuffTooltipIcon(Buff.BuffName.Stun);
-        if (stun == null)
-        {
-            stun = new ColorRect { Color = new Color(0.94f, 0.87f, 0.13f, 1f) };
-        }
-
-        stun.Name = "Stun";
-        stun.Visible = false;
-        stun.MouseFilter = Control.MouseFilterEnum.Ignore;
-        stun.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        stun.CustomMinimumSize = Vector2.Zero;
-        stun.Position = new Vector2(-30f, -30f);
-        stun.Size = new Vector2(60f, 60f);
-        Buff.RefreshTextureIconOverrideLayout(stun);
-        if (stun.GetChildOrNull<Label>(0) is Label label)
-            label.Visible = false;
-
-        IntentionContorl.AddChild(stun);
-        return stun;
-    }
-
     public async Task DisappearIntention()
     {
         HideIntentionTargetPreview();
@@ -587,11 +582,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
         label.Text = text;
         label.Visible = true;
 
-        Vector2 size = label.GetCombinedMinimumSize();
-        if (size == Vector2.Zero)
-            size = IntentionDamageSummaryFallbackSize;
-        label.Size = size;
-        label.Position = IntentionDamageSummaryOffset;
+        label.Size = label.GetCombinedMinimumSize();
 
         if (_intentionPreviewHoverDepth > 0)
             ShowIntentionTargetPreview();
@@ -865,32 +856,7 @@ public partial class EnemyCharacter : Character, IIntentionPreviewSource
 
     private Label GetOrCreateIntentionDamageSummaryLabel()
     {
-        if (GodotObject.IsInstanceValid(_intentionDamageSummaryLabel))
-        {
-            ConfigureIntentionDamageSummaryLabel(_intentionDamageSummaryLabel);
-            return _intentionDamageSummaryLabel;
-        }
-
-        _intentionDamageSummaryLabel = new Label { Name = "DamageSummary", Visible = false };
-        ConfigureIntentionDamageSummaryLabel(_intentionDamageSummaryLabel);
-        IntentionContorl.AddChild(_intentionDamageSummaryLabel);
-        return _intentionDamageSummaryLabel;
-    }
-
-    private static void ConfigureIntentionDamageSummaryLabel(Label label)
-    {
-        if (label == null)
-            return;
-
-        label.MouseFilter = Control.MouseFilterEnum.Ignore;
-        label.HorizontalAlignment = HorizontalAlignment.Left;
-        label.VerticalAlignment = VerticalAlignment.Center;
-        label.ClipText = false;
-        label.ZIndex = 2;
-        label.AddThemeFontSizeOverride("font_size", 22);
-        label.AddThemeConstantOverride("outline_size", 4);
-        label.AddThemeColorOverride("font_color", IntentionDamageColor);
-        label.AddThemeColorOverride("font_outline_color", IntentionDamageOutlineColor);
+        return _intentionDamageSummaryLabel ??= IntentionContorl.GetNode<Label>("DamageSummary");
     }
 
     private string BuildIntentionDamageSummaryText(Skill skill)

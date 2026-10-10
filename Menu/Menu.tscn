@@ -4,88 +4,49 @@
 [ext_resource type="Script" uid="uid://y1lgn0dp5ouu" path="res://Menu/Menu.cs" id="2_menu_script"]
 [ext_resource type="Script" path="res://Menu/SettingsDropdown.cs" id="3_settings_dropdown"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
-bg_color = Color(0.055, 0.06, 0.07, 0.97)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.68, 0.7, 0.75, 0.58)
-shadow_color = Color(0, 0, 0, 0.62)
-shadow_size = 18
-shadow_offset = Vector2(0, 8)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_panel"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.09, 0.1, 0.12, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.48, 0.5, 0.55, 0.58)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.04, 0.055, 0.065, 0.0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.15, 0.16, 0.19, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.86, 0.88, 0.93, 0.8)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.42, 0.72, 0.75, 0.12)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.18, 0.19, 0.23, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.82, 0.84, 0.9, 0.85)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.42, 0.72, 0.75, 0.055)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_danger_normal"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.08, 0.09, 0.11, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.44, 0.46, 0.51, 0.58)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.04, 0.055, 0.065, 0.0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_danger_pressed"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.14, 0.15, 0.18, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.82, 0.84, 0.9, 0.78)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.42, 0.72, 0.75, 0.12)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_danger_hover"]
-content_margin_left = 20.0
-content_margin_top = 14.0
-content_margin_right = 20.0
-content_margin_bottom = 14.0
-bg_color = Color(0.18, 0.19, 0.23, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.82, 0.84, 0.9, 0.85)
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.42, 0.72, 0.75, 0.055)
 
 [node name="Menu" type="Control" unique_id=1182958742]
 layout_mode = 3
@@ -102,7 +63,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.012, 0.014, 0.018, 0.58)
+color = Color(0.012, 0.014, 0.018, 0.82)
 metadata/_edit_lock_ = true
 
 [node name="GlowTopRight" type="ColorRect" parent="." unique_id=1591534101]
@@ -112,7 +73,7 @@ offset_top = -120.0
 offset_right = 1880.0
 offset_bottom = 430.0
 rotation = 0.165806
-color = Color(0.6, 0.62, 0.68, 0.045)
+color = Color(0.32, 0.5, 0.58, 0.04)
 
 [node name="GlowBottomLeft" type="ColorRect" parent="." unique_id=1301851490]
 layout_mode = 0
@@ -121,7 +82,7 @@ offset_top = 700.0
 offset_right = 680.0
 offset_bottom = 1280.0
 rotation = -0.169297
-color = Color(0.5, 0.52, 0.58, 0.035)
+color = Color(0.28, 0.44, 0.52, 0.03)
 
 [node name="CenterPanel" type="PanelContainer" parent="." unique_id=604941250]
 layout_mode = 1
@@ -130,37 +91,37 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -222.0
+offset_left = -270.0
 offset_top = -414.0
-offset_right = 214.0
+offset_right = 270.0
 offset_bottom = 316.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_panel")
 
 [node name="Margin" type="MarginContainer" parent="CenterPanel" unique_id=1258359670]
 layout_mode = 2
-theme_override_constants/margin_left = 34
-theme_override_constants/margin_top = 28
-theme_override_constants/margin_right = 34
-theme_override_constants/margin_bottom = 28
+theme_override_constants/margin_left = 46
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 46
+theme_override_constants/margin_bottom = 30
 
 [node name="VBox" type="VBoxContainer" parent="CenterPanel/Margin" unique_id=958684834]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 18
 
 [node name="Tag" type="Label" parent="CenterPanel/Margin/VBox" unique_id=1628010052]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.62, 0.64, 0.7, 0.86)
+theme_override_colors/font_color = Color(0.67, 0.78, 0.81, 0.92)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 22
-text = "SYSTEM MENU"
+theme_override_font_sizes/font_size = 16
+text = "SYSTEM MENU   /   01"
 
 [node name="Title" type="Label" parent="CenterPanel/Margin/VBox" unique_id=1435186224]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.94, 0.95, 0.98, 0.98)
+theme_override_colors/font_color = Color(0.91, 0.95, 0.95, 0.98)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 54
+theme_override_font_sizes/font_size = 52
 text = "菜单"
 
 [node name="Description" type="Label" parent="CenterPanel/Margin/VBox" unique_id=1865875845]
@@ -173,20 +134,20 @@ autowrap_mode = 3
 [node name="Divider" type="ColorRect" parent="CenterPanel/Margin/VBox" unique_id=659286884]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
-color = Color(0.68, 0.7, 0.75, 0.32)
+color = Color(0.55, 0.72, 0.75, 0.35)
 
 [node name="Buttons" type="VBoxContainer" parent="CenterPanel/Margin/VBox" unique_id=505516140]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 7
 
 [node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1415863781]
-custom_minimum_size = Vector2(0, 66)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -194,13 +155,13 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "返回"
 
 [node name="SaveQuitButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=734518770]
-custom_minimum_size = Vector2(0, 66)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -208,13 +169,13 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "退出"
 
 [node name="SettingsButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=173383107]
-custom_minimum_size = Vector2(0, 66)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -222,13 +183,13 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "设置"
 
 [node name="EncyclopediaButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons"]
-custom_minimum_size = Vector2(0, 66)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
@@ -236,18 +197,25 @@ theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "百科"
 
 [node name="AbandonGameButton" type="Button" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1702612736]
-custom_minimum_size = Vector2(0, 66)
+custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 24
 theme_override_styles/normal = SubResource("StyleBoxFlat_danger_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_danger_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_danger_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_danger_hover")
 text = "放弃游戏"
+
+[node name="OptionsUnderline" type="ColorRect" parent="CenterPanel/Margin/VBox/Buttons" unique_id=1702612737]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.92, 0.95, 0.95, 0.86)
+
 [node name="SettingsPanel" type="VBoxContainer" parent="CenterPanel/Margin/VBox" unique_id=2053167101]
 visible = false
 layout_mode = 2
@@ -255,7 +223,7 @@ theme_override_constants/separation = 18
 
 [node name="SettingsTitle" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=1068247423]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.94, 0.95, 0.98, 0.98)
+theme_override_colors/font_color = Color(0.91, 0.95, 0.95, 0.98)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 36
 text = "设置"
@@ -278,51 +246,59 @@ theme_override_constants/separation = 12
 [node name="DescriptionModeCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=1676570052]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "数值公式化"
 
 [node name="HideStatXKeywordTooltipsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "隐藏X变量说明"
 
 [node name="TurnOrderPreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=865591210]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示战斗出手顺序"
 
 [node name="IncomingDamagePreviewCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示角色即将承受的伤害"
 
 [node name="IntentionTargetNamesCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn" unique_id=146422513]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "意图目标直接显示角色名称"
 
 [node name="HideEnemySkillsCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "隐藏敌人技能"
 
 [node name="GroupBattlePilesByCharacterCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "牌堆查看按角色分类"
+
+[node name="GroupHandCardsByCharacterCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/LeftColumn"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+tooltip_text = "角色按队伍站位从右往左排列，第一个角色的牌在最右侧；新牌插入所属角色最后一张手牌之后。"
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
+theme_override_font_sizes/font_size = 22
+text = "抽牌时按角色整理手牌"
 
 [node name="LanguageRow" type="HBoxContainer" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
@@ -332,7 +308,7 @@ theme_override_constants/separation = 14
 [node name="LanguageLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/LanguageRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "语言"
@@ -344,9 +320,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 mouse_default_cursor_shape = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
@@ -363,7 +339,7 @@ theme_override_constants/separation = 14
 [node name="ResolutionLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/ResolutionRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "分辨率"
@@ -375,9 +351,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 mouse_default_cursor_shape = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
@@ -394,7 +370,7 @@ theme_override_constants/separation = 14
 [node name="TextSizeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/TextSizeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "文本大小"
@@ -406,9 +382,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 mouse_default_cursor_shape = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
@@ -425,7 +401,7 @@ theme_override_constants/separation = 14
 [node name="BattleShakeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/BattleShakeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "战斗震动"
@@ -437,9 +413,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 mouse_default_cursor_shape = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
@@ -451,7 +427,7 @@ script = ExtResource("3_settings_dropdown")
 [node name="ShowHandCardIndicesCheckBox" type="CheckBox" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn"]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_font_sizes/font_size = 22
 text = "显示手牌序号（数字键出牌）"
 
@@ -463,7 +439,7 @@ theme_override_constants/separation = 14
 [node name="MasterVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/MasterVolumeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "主音量"
@@ -482,7 +458,7 @@ rounded = true
 [node name="MasterVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/MasterVolumeRow"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "100%"
@@ -497,7 +473,7 @@ theme_override_constants/separation = 14
 [node name="SfxVolumeLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/SfxVolumeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "音效音量"
@@ -516,7 +492,7 @@ rounded = true
 [node name="SfxVolumeValueLabel" type="Label" parent="CenterPanel/Margin/VBox/SettingsPanel/SettingsColumns/RightColumn/SfxVolumeRow"]
 custom_minimum_size = Vector2(70, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.79, 0.84, 0.96)
+theme_override_colors/font_color = Color(0.72, 0.81, 0.83, 0.96)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 22
 text = "100%"
@@ -526,9 +502,9 @@ vertical_alignment = 1
 [node name="SettingsBackButton" type="Button" parent="CenterPanel/Margin/VBox/SettingsPanel" unique_id=2047571245]
 custom_minimum_size = Vector2(0, 60)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.91, 0.94, 1)
-theme_override_colors/font_pressed_color = Color(0.74, 0.76, 0.81, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_color = Color(0.82, 0.88, 0.89, 0.96)
+theme_override_colors/font_pressed_color = Color(0.63, 0.83, 0.84, 1)
+theme_override_colors/font_hover_color = Color(0.92, 0.98, 0.98, 1)
 theme_override_fonts/font = ExtResource("1_font")
 theme_override_font_sizes/font_size = 26
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")

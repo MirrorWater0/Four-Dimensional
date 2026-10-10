@@ -20,54 +20,12 @@ public partial class CharacterControl
         if (parent == null)
             return;
 
-        _pileOverlayLayer = parent.GetNodeOrNull<CanvasLayer>("BattlePileOverlayLayer");
-        if (_pileOverlayLayer == null)
-        {
-            _pileOverlayLayer = new CanvasLayer
-            {
-                Name = "BattlePileOverlayLayer",
-                Layer = BattlePileOverlayLayer,
-            };
-            parent.AddChild(_pileOverlayLayer);
-        }
-
-        _pileOverlayRoot = _pileOverlayLayer.GetNodeOrNull<Control>("PileOverlayRoot");
-        if (
-            _pileOverlayRoot != null
-            && GodotObject.IsInstanceValid(_pileOverlayRoot)
-            && _pileOverlayRoot.GetNodeOrNull<VBoxContainer>("Scroll/Margin/PileSections") == null
-        )
-        {
-            _pileOverlayRoot.Name = "RetiredPileOverlayRoot";
-            _pileOverlayRoot.QueueFree();
-            _pileOverlayRoot = null;
-        }
-
-        if (_pileOverlayRoot == null)
-        {
-            _pileOverlayRoot =
-                BattlePileOverlayScene?.Instantiate<Control>() ?? CreateFallbackPileOverlayRoot();
-            _pileOverlayLayer.AddChild(_pileOverlayRoot);
-        }
-        ConfigurePileOverlayRoot(_pileOverlayRoot);
-
-        var mask = _pileOverlayRoot.GetNodeOrNull<ColorRect>("Mask");
-        if (mask == null)
-        {
-            mask = new ColorRect
-            {
-                Name = "Mask",
-                Color = new Color(0f, 0f, 0f, 0.68f),
-                MouseFilter = MouseFilterEnum.Stop,
-            };
-            _pileOverlayRoot.AddChild(mask);
-        }
-        ConfigurePileOverlayMask(mask);
-        _pileOverlayMask = mask;
-
-        var scroll = _pileOverlayRoot.GetNodeOrNull<ScrollContainer>("Scroll");
-        if (scroll == null)
-            scroll = CreateFallbackPileOverlayScroll(_pileOverlayRoot);
+        _pileOverlayLayer = parent.GetNode<CanvasLayer>("BattlePileOverlayLayer");
+        _pileOverlayRoot = _pileOverlayLayer.GetNode<Control>("PileOverlayRoot");
+        _pileOverlayMask = _pileOverlayRoot.GetNode<ColorRect>("Mask");
+        PileOverlayMaskMaxAlpha = _pileOverlayMask.Color.A;
+        ConfigurePileOverlayMask(_pileOverlayMask);
+        var scroll = _pileOverlayRoot.GetNode<ScrollContainer>("Scroll");
         if (_pileOverlayScroll != scroll)
         {
             if (
@@ -100,30 +58,23 @@ public partial class CharacterControl
         if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
         {
             _pileOverlayScrollBaseOffsetTop = _pileOverlayScroll.OffsetTop;
-            CardPileOverlayUi.ConfigureCardScrollContainer(_pileOverlayScroll);
         }
 
-        _pileOverlayMargin = scroll.GetNodeOrNull<MarginContainer>("Margin");
-        if (_pileOverlayMargin == null)
-            _pileOverlayMargin = CreateFallbackPileOverlayMargin(scroll);
-        CardPileOverlayUi.ConfigureScrollContentMargin(_pileOverlayMargin);
-
-        _pileOverlaySections = _pileOverlayMargin.GetNodeOrNull<VBoxContainer>("PileSections");
-        if (_pileOverlaySections == null)
+        _pileOverlayMargin = scroll.GetNode<MarginContainer>("Margin");
+        _pileOverlaySections = _pileOverlayMargin.GetNode<VBoxContainer>("PileSections");
+        GridContainer sceneGrid = _pileOverlaySections.GetNode<GridContainer>("DrawSection/Grid");
+        PileOverlayContentWidth = sceneGrid.CustomMinimumSize.X;
+        PileOverlayGridColumns = sceneGrid.Columns;
+        PileOverlayGridHSeparation = sceneGrid.GetThemeConstant("h_separation");
+        PileOverlayGridVSeparation = sceneGrid.GetThemeConstant("v_separation");
+        using (Control template = GD.Load<PackedScene>("res://battle/UIScene/PileCardHolder.tscn").Instantiate<Control>())
         {
-            _pileOverlaySections = new VBoxContainer
-            {
-                Name = "PileSections",
-                MouseFilter = MouseFilterEnum.Ignore,
-                SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-            };
-            _pileOverlayMargin.AddChild(_pileOverlaySections);
+            PileCardHolderSize = template.CustomMinimumSize;
+            SkillCard templateCard = template.GetNode<SkillCard>("Card");
+            _pileCardRestPosition = templateCard.Position;
+            PileCardScale = templateCard.Scale;
+            template.Free();
         }
-        _pileOverlaySections.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
-        _pileOverlaySections.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-        _pileOverlaySections.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-        _pileOverlaySections.AddThemeConstantOverride("separation", PileOverlaySectionSeparation);
         EnsurePileOverlaySelectionButtons();
         EnsurePileOverlayDrawOrder();
         SyncPileOverlaySelectionButtons();
@@ -136,12 +87,8 @@ public partial class CharacterControl
 
         if (_pileOverlayMask != null && GodotObject.IsInstanceValid(_pileOverlayMask))
         {
-            _pileOverlayMask.ZIndex = PileOverlayMaskZIndex;
             _pileOverlayRoot.MoveChild(_pileOverlayMask, 0);
         }
-
-        if (_pileOverlayScroll != null && GodotObject.IsInstanceValid(_pileOverlayScroll))
-            _pileOverlayScroll.ZIndex = PileOverlayContentZIndex;
 
         EnsurePileOverlaySelectionButtonsOnTop();
     }
@@ -155,8 +102,6 @@ public partial class CharacterControl
             && GodotObject.IsInstanceValid(_pileOverlayLayer)
         )
         {
-            _pileOverlayHideButton.ZIndex = PileOverlayConfirmZIndex + 1;
-            _pileOverlayHideButton.ZAsRelative = true;
             _pileOverlayLayer.MoveChild(
                 _pileOverlayHideButton,
                 _pileOverlayLayer.GetChildCount() - 1
@@ -171,8 +116,6 @@ public partial class CharacterControl
             && GodotObject.IsInstanceValid(_pileOverlayConfirmButton)
         )
         {
-            _pileOverlayConfirmButton.ZIndex = PileOverlayConfirmZIndex;
-            _pileOverlayConfirmButton.ZAsRelative = true;
             _pileOverlayRoot.MoveChild(
                 _pileOverlayConfirmButton,
                 _pileOverlayRoot.GetChildCount() - 1
@@ -191,24 +134,7 @@ public partial class CharacterControl
         if (_pileOverlayLayer == null || !GodotObject.IsInstanceValid(_pileOverlayLayer))
             return;
 
-        _pileOverlayHideButton =
-            _pileOverlayLayer.GetNodeOrNull<Button>("PileHideButton")
-            ?? _pileOverlayRoot?.GetNodeOrNull<Button>("PileHideButton")
-            ?? _pileOverlayRoot?.GetNodeOrNull<Button>("PileCancelButton");
-        if (_pileOverlayHideButton == null)
-        {
-            _pileOverlayHideButton = new Button
-            {
-                Name = "PileHideButton",
-                Visible = false,
-            };
-            _pileOverlayLayer.AddChild(_pileOverlayHideButton);
-        }
-        else if (_pileOverlayHideButton.GetParent() != _pileOverlayLayer)
-        {
-            _pileOverlayHideButton.Reparent(_pileOverlayLayer);
-        }
-
+        _pileOverlayHideButton = _pileOverlayLayer.GetNode<Button>("PileHideButton");
         if (_pileOverlayHideButtonInputTarget != _pileOverlayHideButton)
         {
             if (
@@ -223,24 +149,7 @@ public partial class CharacterControl
             _pileOverlayHideButtonInputTarget = _pileOverlayHideButton;
         }
 
-        ConfigurePileOverlayHideButtonLayout(_pileOverlayHideButton);
         EnsurePileOverlaySelectionButtonsOnTop();
-    }
-
-    private static void ConfigurePileOverlayHideButtonLayout(Button button)
-    {
-        if (button == null)
-            return;
-
-        button.CustomMinimumSize = new Vector2(170f, 58f);
-        button.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-        button.OffsetLeft = -406f;
-        button.OffsetTop = -86f;
-        button.OffsetRight = -236f;
-        button.OffsetBottom = -28f;
-        button.MouseFilter = MouseFilterEnum.Stop;
-        button.FocusMode = FocusModeEnum.None;
-        ConfigureEndTurnButton(button);
     }
 
     private void EnsurePileOverlayConfirmButton()
@@ -249,16 +158,6 @@ public partial class CharacterControl
             return;
 
         _pileOverlayConfirmButton = _pileOverlayRoot.GetNodeOrNull<Button>("PileConfirmButton");
-        if (_pileOverlayConfirmButton == null)
-        {
-            _pileOverlayConfirmButton = new Button
-            {
-                Name = "PileConfirmButton",
-                Visible = false,
-            };
-            _pileOverlayRoot.AddChild(_pileOverlayConfirmButton);
-        }
-
         if (_pileOverlayConfirmButtonInputTarget != _pileOverlayConfirmButton)
         {
             if (
@@ -273,15 +172,6 @@ public partial class CharacterControl
             _pileOverlayConfirmButtonInputTarget = _pileOverlayConfirmButton;
         }
 
-        _pileOverlayConfirmButton.CustomMinimumSize = new Vector2(170f, 58f);
-        _pileOverlayConfirmButton.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
-        _pileOverlayConfirmButton.OffsetLeft = -236f;
-        _pileOverlayConfirmButton.OffsetTop = -86f;
-        _pileOverlayConfirmButton.OffsetRight = -66f;
-        _pileOverlayConfirmButton.OffsetBottom = -28f;
-        _pileOverlayConfirmButton.MouseFilter = MouseFilterEnum.Stop;
-        _pileOverlayConfirmButton.FocusMode = FocusModeEnum.None;
-        ConfigureEndTurnButton(_pileOverlayConfirmButton);
         _pileOverlayConfirmButton.Text = "确认";
         EnsurePileOverlaySelectionButtonsOnTop();
     }
@@ -534,78 +424,11 @@ public partial class CharacterControl
         _ = CompletePileCardSelectionAsync();
     }
 
-    private void ConfigurePileOverlayRoot(Control root)
-    {
-        if (root == null)
-            return;
-
-        root.SetAnchorsPreset(LayoutPreset.FullRect);
-        root.MouseFilter = MouseFilterEnum.Ignore;
-        if (
-            _pileOverlayRootInputTarget != null
-            && GodotObject.IsInstanceValid(_pileOverlayRootInputTarget)
-        )
-        {
-            _pileOverlayRootInputTarget.GuiInput -= OnPileOverlayBackgroundGuiInput;
-            _pileOverlayRootInputTarget = null;
-        }
-    }
-
-    private static Control CreateFallbackPileOverlayRoot()
-    {
-        return new Control
-        {
-            Name = "PileOverlayRoot",
-            Visible = false,
-            MouseFilter = MouseFilterEnum.Stop,
-        };
-    }
-
-    private static ScrollContainer CreateFallbackPileOverlayScroll(Control root)
-    {
-        var scroll = new ScrollContainer
-        {
-            Name = "Scroll",
-            MouseFilter = MouseFilterEnum.Pass,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
-            VerticalScrollMode = ScrollContainer.ScrollMode.ShowNever,
-        };
-        scroll.SetAnchorsPreset(LayoutPreset.FullRect);
-        scroll.OffsetLeft = 160f;
-        scroll.OffsetTop = 86f;
-        scroll.OffsetRight = -160f;
-        scroll.OffsetBottom = CardPileOverlayUi.ScrollBottomOffset;
-        root.AddChild(scroll);
-        return scroll;
-    }
-
-    private static MarginContainer CreateFallbackPileOverlayMargin(ScrollContainer scroll)
-    {
-        var margin = new MarginContainer
-        {
-            Name = "Margin",
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ShrinkBegin,
-        };
-        margin.AddThemeConstantOverride("margin_left", 12);
-        margin.AddThemeConstantOverride("margin_top", 12);
-        margin.AddThemeConstantOverride("margin_right", 12);
-        margin.AddThemeConstantOverride("margin_bottom", 12);
-        scroll.AddChild(margin);
-        return margin;
-    }
-
     private void ConfigurePileOverlayMask(ColorRect mask)
     {
         if (mask == null)
             return;
 
-        mask.SetAnchorsPreset(LayoutPreset.FullRect);
-        if (mask.Color.A <= 0f)
-            mask.Color = new Color(0f, 0f, 0f, 0.68f);
-        mask.MouseFilter = MouseFilterEnum.Stop;
-        mask.ZIndex = PileOverlayMaskZIndex;
         if (_pileOverlayMaskInputTarget != mask)
         {
             if (
@@ -637,6 +460,5 @@ public partial class CharacterControl
             GetViewport().SetInputAsHandled();
         }
     }
-
 
 }

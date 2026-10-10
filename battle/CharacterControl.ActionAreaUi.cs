@@ -61,7 +61,7 @@ public partial class CharacterControl
 
     private bool TryBindActionAreaUiFromScene()
     {
-        _root = GetNodeOrNull<VBoxContainer>("ActionAreaRoot");
+        _root = GetNodeOrNull<Control>("ActionAreaRoot");
         _statusLabel = GetNodeOrNull<Label>("ActionAreaRoot/StatusLabel");
         _cardRow = GetNodeOrNull<Control>("ActionAreaRoot/CardRow");
         Control actionButtonsRoot = GetActionButtonsRootFromScene();
@@ -93,27 +93,9 @@ public partial class CharacterControl
                 "../../CharacterControlLayer/BattleActionButtons/ExhaustedPileButton"
             );
 
-        if (_root == null || _statusLabel == null)
-            return false;
+        if (_root == null || _statusLabel == null || _cardRow == null)
+            throw new InvalidOperationException("Battle.tscn must contain ActionAreaRoot, StatusLabel and CardRow.");
 
-        if (_cardRow == null)
-        {
-            _cardRow = new Control
-            {
-                Name = "CardRow",
-                SizeFlagsHorizontal = SizeFlags.ExpandFill,
-                SizeFlagsVertical = SizeFlags.ExpandFill,
-                MouseFilter = MouseFilterEnum.Ignore,
-                ClipContents = false,
-            };
-            _root.AddChild(_cardRow);
-        }
-
-        _root.MouseFilter = MouseFilterEnum.Ignore;
-        _statusLabel.MouseFilter = MouseFilterEnum.Ignore;
-        ConfigureStatusLabel(_statusLabel);
-        _cardRow.MouseFilter = MouseFilterEnum.Ignore;
-        _cardRow.ClipContents = false;
         _cardRow.Resized += LayoutActionCards;
 
         for (int i = 0; i < _cards.Length; i++)
@@ -135,6 +117,8 @@ public partial class CharacterControl
             }
 
             _cardSlots[i] = cardSlot;
+            // Editor preview may hide unused slots; gameplay controls card visibility.
+            cardSlot.Visible = true;
             cardSlot.CustomMinimumSize = BattleCardBaseSize * BattleCardScale;
             cardSlot.MouseFilter = MouseFilterEnum.Ignore;
             cardSlot.ClipContents = false;
@@ -146,7 +130,6 @@ public partial class CharacterControl
         WireActionButtonsFromScene();
         ApplyMobileActionButtonLayout();
         LayoutActionCards(instant: true);
-        CallDeferred(nameof(PositionStatusLabel));
         return true;
     }
 
@@ -211,12 +194,6 @@ public partial class CharacterControl
             card.ConfigureDisplayScale(BattleCardScale);
         card.AutoPressEffect = false;
         card.UseDefaultHoverEffect = false;
-        if (card.OrnateFrame != null)
-            card.OrnateFrame.SelfModulate = new Color(0.68f, 0.68f, 0.68f, 1f);
-        if (card.GetNodeOrNull<Label>("VisualTransform/SubViewport/HandIndexLabel") is { } handIndex) {
-            handIndex.AddThemeFontSizeOverride("font_size", 20);
-            handIndex.AddThemeColorOverride("font_color", new Color(0.55f, 0.66f, 0.69f));
-        }
         card.Button.ActionMode = BaseButton.ActionModeEnum.Press;
         card.Button.SetMeta("suppress_ui_click_sfx", true);
         card.Button.SetMeta("suppress_ui_hover_sfx", true);
@@ -459,77 +436,17 @@ public partial class CharacterControl
     {
         if (_uiBuilt)
             return;
-
-        if (TryBindActionAreaUiFromScene())
-        {
-            _uiBuilt = true;
-            PrewarmBattleCardPool();
-            return;
-        }
-
-        _root = new VBoxContainer
-        {
-            Name = "ActionAreaRoot",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _root.AddThemeConstantOverride("separation", 12);
-        AddChild(_root);
-
-        _statusLabel = new Label
-        {
-            Name = "StatusLabel",
-            HorizontalAlignment = HorizontalAlignment.Center,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            Text = "等待行动",
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _statusLabel.AddThemeFontSizeOverride("font_size", 24);
-        ConfigureStatusLabel(_statusLabel);
-        _root.AddChild(_statusLabel);
-
-        _cardRow = new Control
-        {
-            Name = "CardRow",
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ClipContents = false,
-        };
-        _cardRow.Resized += LayoutActionCards;
-        _root.AddChild(_cardRow);
-        for (int i = 0; i < _cards.Length; i++)
-        {
-            Control cardSlot = CreateCardSlot(i);
-            _cardRow.AddChild(cardSlot);
-            _cardSlots[i] = cardSlot;
-
-            SkillCard card = CreateBattleCard(i);
-            cardSlot.AddChild(card);
-
-            WireBattleCard(card, i);
-            _cards[i] = card;
-        }
-
-        EnsureHandInputBlocker();
-        LayoutActionCards(instant: true);
-        CallDeferred(nameof(PositionStatusLabel));
-        PrewarmBattleCardPool();
-
+        TryBindActionAreaUiFromScene();
         _uiBuilt = true;
+        PrewarmBattleCardPool();
     }
 
     private Control CreateCardSlot(int index)
     {
-        return new Control
-        {
-            Name = $"CardSlot{index}",
-            CustomMinimumSize = BattleCardBaseSize * BattleCardScale,
-            PivotOffset = BattleCardBaseSize * BattleCardScale * 0.5f,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ClipContents = false,
-        };
+        Control slot = HandSlotScene.Instantiate<Control>();
+        slot.Name = $"CardSlot{index}";
+        slot.GetNode<SkillCard>("Card").Name = $"Card{index}";
+        return slot;
     }
 
     private SkillCard CreateBattleCard(int index)
@@ -545,42 +462,8 @@ public partial class CharacterControl
 
     private void EnsureHandInputBlocker()
     {
-        if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
-            return;
-
-        if (_handInputBlocker == null || !GodotObject.IsInstanceValid(_handInputBlocker))
-            _handInputBlocker = _cardRow.GetNodeOrNull<Control>("HandInputBlocker");
-
-        if (_handInputBlocker == null || !GodotObject.IsInstanceValid(_handInputBlocker))
-        {
-            _handInputBlocker = new Control
-            {
-                Name = "HandInputBlocker",
-                MouseFilter = MouseFilterEnum.Ignore,
-                Visible = false,
-                ZIndex = PlayedCardZIndex - 1,
-            };
-            _cardRow.AddChild(_handInputBlocker);
-        }
-
-        _handInputBlocker.ZIndex = PlayedCardZIndex - 1;
-        SyncHandInputBlockerRect();
-    }
-
-    private void SyncHandInputBlockerRect()
-    {
-        if (
-            _handInputBlocker == null
-            || !GodotObject.IsInstanceValid(_handInputBlocker)
-            || _cardRow == null
-            || !GodotObject.IsInstanceValid(_cardRow)
-        )
-        {
-            return;
-        }
-
-        _handInputBlocker.Position = Vector2.Zero;
-        _handInputBlocker.Size = _cardRow.Size;
+        if (_cardRow != null && GodotObject.IsInstanceValid(_cardRow))
+            _handInputBlocker = _cardRow.GetNode<Control>("HandInputBlocker");
     }
 
     private void SetHandInputBlockerVisible(bool visible)
@@ -589,7 +472,6 @@ public partial class CharacterControl
         if (_handInputBlocker == null || !GodotObject.IsInstanceValid(_handInputBlocker))
             return;
 
-        SyncHandInputBlockerRect();
         _handInputBlocker.Visible = visible;
         _handInputBlocker.MouseFilter = visible ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
     }
@@ -614,37 +496,6 @@ public partial class CharacterControl
 
         button.FocusMode = FocusModeEnum.None;
         button.MouseFilter = MouseFilterEnum.Stop;
-    }
-
-    private static void ConfigureStatusLabel(Label label)
-    {
-        if (label == null)
-            return;
-
-        label.ZIndex = StatusLabelZIndex;
-        label.TopLevel = true;
-        label.MouseFilter = MouseFilterEnum.Ignore;
-        label.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.03f, 0.06f, 0.95f));
-        label.AddThemeConstantOverride("outline_size", 0);
-    }
-
-    public void PositionStatusLabel()
-    {
-        if (
-            _statusLabel == null
-            || !GodotObject.IsInstanceValid(_statusLabel)
-            || _root == null
-            || !GodotObject.IsInstanceValid(_root)
-            || !_root.IsInsideTree()
-        )
-        {
-            return;
-        }
-
-        _statusLabel.CustomMinimumSize = Vector2.Zero;
-        _statusLabel.Size = new Vector2(760f, 34f);
-        _statusLabel.HorizontalAlignment = HorizontalAlignment.Left;
-        _statusLabel.GlobalPosition = new Vector2(82f, 105f);
     }
 
 }

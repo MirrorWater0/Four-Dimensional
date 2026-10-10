@@ -1,36 +1,7 @@
 [gd_scene format=3 uid="uid://dsc653nnxgi8y"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button"]
-bg_color = Color(0.9, 0.91, 0.92, 0.96)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.14, 0.16, 0.18, 0.72)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_pressed"]
-bg_color = Color(0.92, 0.87, 0.54, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.14, 0.16, 0.18, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_hover"]
-bg_color = Color(0.97, 0.97, 0.91, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.14, 0.16, 0.18, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pile_button_disabled"]
-bg_color = Color(0.56, 0.58, 0.61, 0.68)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2, 0.22, 0.24, 0.42)
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="SceneTheme"]
+[ext_resource type="PackedScene" path="res://battle/UIScene/PileSection.tscn" id="Section"]
 
 [node name="PileOverlayRoot" type="Control" unique_id=744976890]
 layout_mode = 3
@@ -39,6 +10,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("SceneTheme")
 
 [node name="Mask" type="ColorRect" parent="." unique_id=664807773]
 layout_mode = 1
@@ -47,7 +20,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.09, 0.11, 0.13, 0.62)
+color = Color(0, 0, 0, 0.68)
 
 [node name="Scroll" type="ScrollContainer" parent="." unique_id=1524131821]
 layout_mode = 1
@@ -62,6 +35,8 @@ grow_horizontal = 2
 grow_vertical = 2
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 3
+clip_contents = false
+z_index = 1
 
 [node name="Margin" type="MarginContainer" parent="Scroll" unique_id=315212803]
 layout_mode = 2
@@ -81,174 +56,54 @@ size_flags_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 48
 
-[node name="DrawSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=722994115]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Scroll/Margin/PileSections/DrawSection" unique_id=971907194]
-custom_minimum_size = Vector2(1412, 0)
+[node name="DrawSection" parent="Scroll/Margin/PileSections" instance=ExtResource("Section")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 28
+
+[node name="Title" parent="Scroll/Margin/PileSections/DrawSection"]
 text = "抽牌堆  0"
-horizontal_alignment = 1
 
-[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/DrawSection" unique_id=1995552593]
-visible = false
-custom_minimum_size = Vector2(1412, 0)
+[node name="DiscardSection" parent="Scroll/Margin/PileSections" instance=ExtResource("Section")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 22
-text = "空"
-horizontal_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/DrawSection" unique_id=848867329]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/h_separation = 18
-theme_override_constants/v_separation = 26
-columns = 5
-
-[node name="DiscardSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=2110271464]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Title" type="Label" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=1684043370]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 28
+[node name="Title" parent="Scroll/Margin/PileSections/DiscardSection"]
 text = "弃牌堆  0"
-horizontal_alignment = 1
 
-[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=805755445]
-visible = false
-custom_minimum_size = Vector2(1412, 0)
+[node name="ExhaustedSection" parent="Scroll/Margin/PileSections" instance=ExtResource("Section")]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 22
-text = "空"
-horizontal_alignment = 1
 
-[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/DiscardSection" unique_id=843187529]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/h_separation = 18
-theme_override_constants/v_separation = 26
-columns = 5
-
-[node name="ExhaustedSection" type="VBoxContainer" parent="Scroll/Margin/PileSections" unique_id=260655227]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Title" type="Label" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=2105738838]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 28
+[node name="Title" parent="Scroll/Margin/PileSections/ExhaustedSection"]
 text = "消耗牌堆  0"
-horizontal_alignment = 1
-
-[node name="Empty" type="Label" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=1027934713]
-visible = false
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.22, 0.25, 0.28, 0.9)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/outline_size = 0
-theme_override_font_sizes/font_size = 22
-text = "空"
-horizontal_alignment = 1
-
-[node name="Grid" type="GridContainer" parent="Scroll/Margin/PileSections/ExhaustedSection" unique_id=1167296610]
-custom_minimum_size = Vector2(1412, 0)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 0
-mouse_filter = 2
-theme_override_constants/h_separation = 18
-theme_override_constants/v_separation = 26
-columns = 5
-
 [node name="PileHideButton" type="Button" parent="." unique_id=1303077467]
 visible = false
+custom_minimum_size = Vector2(170, 58)
 layout_mode = 1
-anchors_preset = 3
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
+anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = -406.0
-offset_top = -86.0
 offset_right = -236.0
+offset_top = -86.0
 offset_bottom = -28.0
-grow_horizontal = 0
-grow_vertical = 0
+z_index = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_pressed_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_hover_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_disabled_color = Color(0.18, 0.2, 0.22, 0.62)
 theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_pile_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_pile_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_pile_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_pile_button_disabled")
 text = "隐藏"
 
 [node name="PileConfirmButton" type="Button" parent="." unique_id=1316220136]
 visible = false
+custom_minimum_size = Vector2(170, 58)
 layout_mode = 1
-anchors_preset = 3
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
+anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = -236.0
-offset_top = -86.0
 offset_right = -66.0
+offset_top = -86.0
 offset_bottom = -28.0
-grow_horizontal = 0
-grow_vertical = 0
+z_index = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_pressed_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_hover_color = Color(0.1, 0.12, 0.14, 1)
-theme_override_colors/font_disabled_color = Color(0.18, 0.2, 0.22, 0.62)
 theme_override_font_sizes/font_size = 22
-theme_override_styles/normal = SubResource("StyleBoxFlat_pile_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_pile_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_pile_button_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_pile_button_disabled")
 text = "确认"

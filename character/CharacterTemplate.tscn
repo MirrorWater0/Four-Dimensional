@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://blf13rry43san" path="res://character/Character.cs" id="1_4ikhs"]
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_kvlfx"]
-[ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="3_lucsw"]
 [ext_resource type="Shader" uid="uid://g6impjte5rnh" path="res://shader/Charater.gdshader" id="5_yic7g"]
 [ext_resource type="Texture2D" uid="uid://dr7iijyjgvhe1" path="res://asset/particle/particle1.png" id="7_5ewuv"]
 [ext_resource type="Texture2D" uid="uid://bkhpahg1835kf" path="res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png" id="7_lyi1f"]
@@ -14,8 +13,11 @@
 [ext_resource type="Shader" uid="uid://kjsfn7cmaayt" path="res://shader/UI/CharacterHoverFrame.gdshader" id="17_hover"]
 [ext_resource type="Script" uid="uid://db2ks3q2o7ema" path="res://battle/Effect/EllipsePathGenerator.cs" id="19_oexsw"]
 [ext_resource type="Script" uid="uid://dns18hb3n8rq8" path="res://battle/Effect/Line.cs" id="21_oexsw"]
-[ext_resource type="Shader" uid="uid://c071jeypirae5" path="res://shader/UI/CharacterFootMarker.gdshader" id="22_foot_shader"]
-[ext_resource type="Script" uid="uid://bxo3ef6s111bm" path="res://character/CharacterFootMarker.cs" id="23_foot_script"]
+[ext_resource type="Shader" path="res://shader/UI/CharacterShadow.gdshader" id="22_shadow_shader"]
+[ext_resource type="Script" uid="uid://bgjbxyrvjpudf" path="res://character/CharacterShadow.cs" id="23_shadow_script"]
+[ext_resource type="SystemFont" path="res://battle/UIScene/BattleUiFont.tres" id="BattleNameFont"]
+[ext_resource type="Script" uid="uid://de2mfjfnsmb2t" path="res://battle/BattleUnitName.cs" id="BattleNameScript"]
+[ext_resource type="PackedScene" path="res://battle/buff/StateIcon/Stun.tscn" id="StunIcon"]
 
 [sub_resource type="Shader" id="Shader_n42br"]
 code = "shader_type canvas_item;
@@ -25,7 +27,7 @@ void vertex() {
 }
 
 void fragment() {
-	if(COLOR.r > 0.9){
+	if(COLOR.r > 0.9 && COLOR.g > 0.9 && COLOR.b > 0.9){
 		COLOR.a = 0.;
 	}
 }
@@ -39,44 +41,32 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_igmo8"]
 shader = SubResource("Shader_n42br")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_eq06d"]
-bg_color = Color(0.14, 0.16, 0.18, 0.62)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.92, 0.94, 0.96, 0.62)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_life_track"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_faub5"]
-bg_color = Color(0.72, 0.3, 0.31, 0.94)
+bg_color = Color(1, 0.18, 0.24, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.96, 0.97, 0.98, 0.16)
+border_color = Color(1, 0.62, 0.66, 0.95)
 
 [sub_resource type="Theme" id="Theme_eq06d"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_eq06d")
+ProgressBar/styles/background = SubResource("StyleBoxEmpty_life_track")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_faub5")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ek3d4"]
-bg_color = Color(0.14, 0.16, 0.18, 0.3)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.92, 0.94, 0.96, 0.26)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_buffer_track"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yic7g"]
-bg_color = Color(0.9, 0.92, 0.94, 0.82)
+bg_color = Color(0.92, 0.95, 0.98, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
-border_color = Color(0.96, 0.97, 0.98, 0.18)
+border_color = Color(1, 1, 1, 0.95)
 
 [sub_resource type="Theme" id="Theme_yic7g"]
-ProgressBar/styles/background = SubResource("StyleBoxFlat_ek3d4")
+ProgressBar/styles/background = SubResource("StyleBoxEmpty_buffer_track")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_yic7g")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_yic7g"]
@@ -232,6 +222,13 @@ shader_parameter/line_speed = 10.0
 shader_parameter/aberration_amount = 0.02
 shader_parameter/beam_color = Color(0, 0.8, 1, 1)
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_n13y5"]
+shader = ExtResource("15_3q742")
+shader_parameter/character_height = 2500.0
+shader_parameter/progress = 0.0
+shader_parameter/line_density = 80.0
+shader_parameter/beam_color = Color(0, 1, 1, 1)
+
 [sub_resource type="Animation" id="Animation_oexsw"]
 length = 0.001
 tracks/0/type = "value"
@@ -335,26 +332,65 @@ _data = {
 &"intention": SubResource("Animation_yic7g")
 }
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_foot_marker"]
-shader = ExtResource("22_foot_shader")
-shader_parameter/fill_color = Color(0.96, 0.36, 0.32, 0.92)
-shader_parameter/frame_color = Color(0.94, 0.88, 0.72, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_character_shadow"]
+resource_local_to_scene = true
+shader = ExtResource("22_shadow_shader")
+shader_parameter/fill_color = Color(0.62, 0.63, 0.66, 0.6)
+shader_parameter/wall_color = Color(0.62, 0.63, 0.66, 1)
 shader_parameter/hover_amount = 0.0
-shader_parameter/body_top = 0.3
-shader_parameter/body_bottom = 0.7
-shader_parameter/end_cap_width = 0.09
-shader_parameter/rail_thickness = 0.026
-shader_parameter/step_height = 0.05
-shader_parameter/core_band_height = 0.36
-shader_parameter/cap_glow_width = 0.055
-shader_parameter/shadow_offset = 0.05
+shader_parameter/ring_center = Vector2(0.5, 0.8956044)
+shader_parameter/ring_radius = Vector2(0.325, 0.05714286)
+shader_parameter/projection_size = Vector2(400, 364)
+shader_parameter/ring_thickness = 2.0
+shader_parameter/ring_glow_width = 4.0
+shader_parameter/ring_phase = 0.0
+shader_parameter/ring_arc_length = 2.25
+shader_parameter/depth_layer = -1.0
+shader_parameter/near_ring_alpha = 1.0
+shader_parameter/far_ring_alpha = 0.36
+shader_parameter/highlight_phase = 0.8
+shader_parameter/highlight_arc_length = 0.2
+shader_parameter/highlight_alpha = 0.46
+shader_parameter/outer_ring_scale = Vector2(1.18, 1.375)
+shader_parameter/outer_ring_phase = 3.1415927
+shader_parameter/outer_ring_arc_length = 2.25
+shader_parameter/outer_ring_alpha = 0.28
+shader_parameter/projection_glow_alpha = 0.2
+shader_parameter/wall_height = 0.8
+shader_parameter/wall_edge_softness = 0.012
+shader_parameter/wall_fade_power = 1.4
+shader_parameter/wall_alpha = 0.52
+shader_parameter/wall_glow = 0.42
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_n13y5"]
-shader = ExtResource("15_3q742")
-shader_parameter/character_height = 2500.0
-shader_parameter/progress = 0.0
-shader_parameter/line_density = 80.0
-shader_parameter/beam_color = Color(0, 1, 1, 1)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_character_shadow_front"]
+resource_local_to_scene = true
+shader = ExtResource("22_shadow_shader")
+shader_parameter/fill_color = Color(0.62, 0.63, 0.66, 0.6)
+shader_parameter/wall_color = Color(0.62, 0.63, 0.66, 1)
+shader_parameter/hover_amount = 0.0
+shader_parameter/ring_center = Vector2(0.5, 0.8956044)
+shader_parameter/ring_radius = Vector2(0.325, 0.05714286)
+shader_parameter/projection_size = Vector2(400, 364)
+shader_parameter/ring_thickness = 2.0
+shader_parameter/ring_glow_width = 4.0
+shader_parameter/ring_phase = 0.0
+shader_parameter/ring_arc_length = 2.25
+shader_parameter/depth_layer = 1.0
+shader_parameter/near_ring_alpha = 1.0
+shader_parameter/far_ring_alpha = 0.36
+shader_parameter/highlight_phase = 0.8
+shader_parameter/highlight_arc_length = 0.2
+shader_parameter/highlight_alpha = 0.46
+shader_parameter/outer_ring_scale = Vector2(1.18, 1.375)
+shader_parameter/outer_ring_phase = 3.1415927
+shader_parameter/outer_ring_arc_length = 2.25
+shader_parameter/outer_ring_alpha = 0.28
+shader_parameter/projection_glow_alpha = 0.2
+shader_parameter/wall_height = 0.8
+shader_parameter/wall_edge_softness = 0.012
+shader_parameter/wall_fade_power = 1.4
+shader_parameter/wall_alpha = 0.52
+shader_parameter/wall_glow = 0.42
 
 [sub_resource type="Shader" id="Shader_difk4"]
 code = "shader_type canvas_item;
@@ -443,7 +479,6 @@ offset_right = 72.19998
 offset_bottom = -212.50003
 scale = Vector2(1.2, 1.2)
 theme = SubResource("Theme_eq06d")
-value = 50.0
 show_percentage = false
 
 [node name="BufferBar" type="ProgressBar" parent="LifeBar" unique_id=2029478116]
@@ -481,27 +516,29 @@ offset_bottom = 54.88095
 
 [node name="Life" type="Label" parent="LifeBar" unique_id=1787646224]
 z_index = 2
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -36.399994
-offset_top = -24.374977
-offset_right = 35.600006
-offset_bottom = 37.625023
-grow_horizontal = 2
-grow_vertical = 2
-scale = Vector2(0.7, 0.7)
-pivot_offset_ratio = Vector2(0.5, 0)
+layout_mode = 0
+offset_top = -31.0
+offset_right = 175.0
+offset_bottom = -3.0
+theme_override_colors/font_color = Color(0.88, 0.91, 0.91, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
-theme_override_fonts/font = ExtResource("3_lucsw")
-theme_override_font_sizes/font_size = 50
+theme_override_constants/outline_size = 2
+theme_override_fonts/font = ExtResource("BattleNameFont")
+theme_override_font_sizes/font_size = 24
 text = "100"
-horizontal_alignment = 1
+horizontal_alignment = 2
 vertical_alignment = 1
+
+[node name="BattleUnitName" type="Label" parent="LifeBar" unique_id=1316087377]
+layout_mode = 0
+offset_top = -31.0
+offset_right = 88.0
+offset_bottom = -3.0
+theme_override_fonts/font = ExtResource("BattleNameFont")
+theme_override_font_sizes/font_size = 19
+text = "角色"
+clip_text = true
+script = ExtResource("BattleNameScript")
 
 [node name="Hit" type="GPUParticles2D" parent="." unique_id=397376148]
 self_modulate = Color(25.946, 45.946, 64.324, 1)
@@ -621,6 +658,10 @@ material = SubResource("ShaderMaterial_gvqk1")
 scale = Vector2(0.16, 0.16)
 texture = ExtResource("7_lyi1f")
 
+[node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]
+normal_material = SubResource("ShaderMaterial_n13y5")
+scale = Vector2(0.99999976, 0.99999976)
+
 [node name="TrailAnimation" type="AnimationPlayer" parent="." unique_id=877706381]
 libraries/ = SubResource("AnimationLibrary_oexsw")
 
@@ -655,24 +696,58 @@ offset_top = -29.999996
 offset_right = 30.0
 offset_bottom = 30.000004
 
+[node name="DamageSummary" type="Label" parent="Intention" unique_id=821396048]
+visible = false
+z_index = 2
+layout_mode = 0
+offset_left = 38.0
+offset_top = -18.0
+offset_right = 188.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(1, 0.84, 0.63, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.95)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 22
+text = "14 × 2"
+vertical_alignment = 1
+
+[node name="Stun" parent="Intention" unique_id=1058813280 instance=ExtResource("StunIcon")]
+visible = false
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 0
+offset_left = -30.0
+offset_top = -30.0
+offset_right = 30.0
+offset_bottom = 30.0
+mouse_filter = 2
+
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=605015123]
 libraries/ = SubResource("AnimationLibrary_faub5")
 autoplay = &"intention"
 
-[node name="FootMarker" type="ColorRect" parent="." unique_id=1983746502]
-visible = false
-z_index = 1
-material = SubResource("ShaderMaterial_foot_marker")
-offset_left = -117.5
-offset_top = 208.75
-offset_right = 123.74997
-offset_bottom = 232.75
-pivot_offset_ratio = Vector2(0.5, 0.5)
+[node name="CharacterShadow" type="ColorRect" parent="." unique_id=1983746502]
+show_behind_parent = false
+z_index = -1
+z_as_relative = true
+material = SubResource("ShaderMaterial_character_shadow")
+offset_left = -200.0
+offset_top = -88.0
+offset_right = 200.0
+offset_bottom = 276.0
 mouse_filter = 2
-script = ExtResource("23_foot_script")
+script = ExtResource("23_shadow_script")
+RingThickness = 2.0
 
-[node name="SpineSprite" type="SpineSprite" parent="." unique_id=313145576]
-normal_material = SubResource("ShaderMaterial_n13y5")
+[node name="CharacterShadowFront" type="ColorRect" parent="CharacterShadow"]
+z_index = 3
+material = SubResource("ShaderMaterial_character_shadow_front")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="GPUParticles2D" type="GPUParticles2D" parent="." unique_id=914609816]
 visible = false

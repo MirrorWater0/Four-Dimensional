@@ -147,62 +147,16 @@ public partial class CharacterControl
         if (sectionRoot.GetParent() == null)
             stack.AddChild(sectionRoot);
         sectionRoot.Visible = true;
-        ConfigurePileOverlayFixedWidthContainer(sectionRoot, SizeFlags.ShrinkCenter);
 
         var title = sectionRoot.GetNodeOrNull<Label>("Title");
-        if (title == null)
-        {
-            title = new Label
-            {
-                Name = "Title",
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            sectionRoot.AddChild(title);
-        }
-        ConfigurePileOverlayLabel(title);
+
         title.Text = $"{section.Title}  {section.Pile.Length}";
 
         var emptyLabel = sectionRoot.GetNodeOrNull<Label>("Empty");
-        if (emptyLabel == null)
-        {
-            emptyLabel = new Label
-            {
-                Name = "Empty",
-                Text = "空",
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            sectionRoot.AddChild(emptyLabel);
-        }
-        ConfigurePileOverlayLabel(emptyLabel);
 
         var grid = sectionRoot.GetNodeOrNull<GridContainer>("Grid");
-        if (grid == null)
-        {
-            grid = new GridContainer
-            {
-                Name = "Grid",
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-                MouseFilter = MouseFilterEnum.Ignore,
-            };
-            sectionRoot.AddChild(grid);
-        }
-        ConfigurePileOverlayGrid(grid);
 
         var groups = sectionRoot.GetNodeOrNull<VBoxContainer>("Groups");
-        if (groups == null)
-        {
-            groups = new VBoxContainer
-            {
-                Name = "Groups",
-                MouseFilter = MouseFilterEnum.Ignore,
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-            };
-            groups.AddThemeConstantOverride("separation", 22);
-            sectionRoot.AddChild(groups);
-        }
-        ConfigurePileOverlayFixedWidthContainer(groups, SizeFlags.ShrinkBegin);
 
         ClearGridChildren(grid);
         ClearGridChildren(groups);
@@ -302,19 +256,6 @@ public partial class CharacterControl
             return;
 
         var virtualGrid = sectionRoot.GetNodeOrNull<Control>("VirtualGrid");
-        if (virtualGrid == null)
-        {
-            virtualGrid = new Control
-            {
-                Name = "VirtualGrid",
-                MouseFilter = MouseFilterEnum.Ignore,
-                SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                SizeFlagsVertical = SizeFlags.ShrinkBegin,
-            };
-            sectionRoot.AddChild(virtualGrid);
-        }
-        virtualGrid.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
-        virtualGrid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         ClearGridChildren(virtualGrid);
 
         int rows = Mathf.CeilToInt(indexedPile.Length / (float)PileOverlayGridColumns);
@@ -364,32 +305,11 @@ public partial class CharacterControl
                 if (entries.Count == 0)
                     continue;
 
-                var groupRoot = new VBoxContainer
-                {
-                    MouseFilter = MouseFilterEnum.Ignore,
-                    SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                    SizeFlagsVertical = SizeFlags.ShrinkBegin,
-                };
-                ConfigurePileOverlayFixedWidthContainer(groupRoot, SizeFlags.ShrinkBegin);
-                groupRoot.AddThemeConstantOverride("separation", 8);
+                var groupRoot = GD.Load<PackedScene>("res://battle/UIScene/PileCharacterGroup.tscn").Instantiate<VBoxContainer>();
                 groups.AddChild(groupRoot);
-
-                var label = new Label
-                {
-                    Text = $"{GetPileGroupDisplayName(owner)}  {entries.Count}",
-                    MouseFilter = MouseFilterEnum.Ignore,
-                };
-                ConfigurePileOverlayLabel(label);
-                groupRoot.AddChild(label);
-
-                var grid = new GridContainer
-                {
-                    SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
-                    SizeFlagsVertical = SizeFlags.ShrinkBegin,
-                    MouseFilter = MouseFilterEnum.Ignore,
-                };
-                ConfigurePileOverlayGrid(grid);
-                groupRoot.AddChild(grid);
+                var label = groupRoot.GetNode<Label>("Title");
+                label.Text = $"{GetPileGroupDisplayName(owner)}  {entries.Count}";
+                var grid = groupRoot.GetNode<GridContainer>("Grid");
                 _pileOverlayGrid = grid;
 
                 if (forceVirtualizedGroups || entries.Count >= PileOverlayVirtualizationThreshold)
@@ -969,7 +889,7 @@ public partial class CharacterControl
         return true;
     }
 
-    private static void CalculatePileOverlayVirtualWindow(
+    private void CalculatePileOverlayVirtualWindow(
         int totalCards,
         float rowHeight,
         float visibleTop,
@@ -1025,55 +945,11 @@ public partial class CharacterControl
         return _pileOverlaySections.GetNodeOrNull<VBoxContainer>(GetPileOverlaySectionName(kind));
     }
 
-    private static void ConfigurePileOverlayLabel(Label label)
-    {
-        if (label == null)
-            return;
-
-        label.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
-        label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        label.HorizontalAlignment = HorizontalAlignment.Center;
-        label.MouseFilter = MouseFilterEnum.Ignore;
-    }
-
-    private static void ConfigurePileOverlayGrid(GridContainer grid)
-    {
-        if (grid == null)
-            return;
-
-        grid.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
-        grid.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
-        grid.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-        grid.MouseFilter = MouseFilterEnum.Ignore;
-        grid.Columns = PileOverlayGridColumns;
-        grid.AddThemeConstantOverride("h_separation", PileOverlayGridHSeparation);
-        grid.AddThemeConstantOverride("v_separation", PileOverlayGridVSeparation);
-    }
-
     private VBoxContainer CreatePileOverlaySectionRoot(BattlePileKind kind)
     {
-        return new VBoxContainer
-        {
-            Name = GetPileOverlaySectionName(kind),
-            MouseFilter = MouseFilterEnum.Ignore,
-            CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f),
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-            SizeFlagsVertical = SizeFlags.ShrinkBegin,
-        };
-    }
-
-    private static void ConfigurePileOverlayFixedWidthContainer(
-        Control control,
-        SizeFlags horizontalFlags
-    )
-    {
-        if (control == null)
-            return;
-
-        control.CustomMinimumSize = new Vector2(PileOverlayContentWidth, 0f);
-        control.SizeFlagsHorizontal = horizontalFlags;
-        control.SizeFlagsVertical = SizeFlags.ShrinkBegin;
-        control.MouseFilter = MouseFilterEnum.Ignore;
+        var section = GD.Load<PackedScene>("res://battle/UIScene/PileSection.tscn").Instantiate<VBoxContainer>();
+        section.Name = GetPileOverlaySectionName(kind);
+        return section;
     }
 
     private static string GetPileOverlaySectionName(BattlePileKind kind)

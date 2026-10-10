@@ -33,8 +33,8 @@ public partial class Skill
             ["Nightingale"] = PlayerCharacterKey.Nightingale,
         };
 
-    private static readonly Dictionary<PlayerCharacterKey, SkillID[]> PlayerSkillPools =
-        BuildPlayerSkillPools();
+    private static readonly Lazy<Dictionary<PlayerCharacterKey, SkillID[]>> PlayerSkillPools =
+        new(BuildPlayerSkillPools);
 
     public static SkillID[] GetPlayerSkillPool(string characterName)
     {
@@ -90,14 +90,14 @@ public partial class Skill
 
     public static SkillID[] GetPlayerSkillPool(PlayerCharacterKey characterKey)
     {
-        return PlayerSkillPools.TryGetValue(characterKey, out var pool)
+        return PlayerSkillPools.Value.TryGetValue(characterKey, out var pool)
             ? pool
             : Array.Empty<SkillID>();
     }
 
     public static bool TryGetPlayerCharacterKey(SkillID skillId, out PlayerCharacterKey characterKey)
     {
-        foreach (var pair in PlayerSkillPools)
+        foreach (var pair in PlayerSkillPools.Value)
         {
             if (pair.Value.Contains(skillId))
             {
@@ -117,7 +117,7 @@ public partial class Skill
         {
             var field = typeof(SkillID).GetField(skillId.ToString());
             var attribute = field?.GetCustomAttribute<PlayerSkillAttribute>();
-            if (attribute == null)
+            if (attribute == null || !IsSkillRegistered(skillId))
             {
                 continue;
             }

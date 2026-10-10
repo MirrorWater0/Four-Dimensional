@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://battle/UIScene/EffectPreviewRow.tscn" id="Row"]
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[node name="EffectPreviewPlainRow" instance=ExtResource("Row")]
+theme_override_styles/panel = SubResource("Empty")

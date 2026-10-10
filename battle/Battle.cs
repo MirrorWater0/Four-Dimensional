@@ -552,7 +552,6 @@ public partial class Battle : Node2D
     }
     public LevelNode CurrentLevelNode;
     public Character dummy => field ??= GetNode<Character>("Dummy");
-    public const float FormationGapX = 230f;
     public const int MaxFormationSlots = 5;
     public const int CenterFormationSlot = (MaxFormationSlots + 1) / 2;
     public const int MaxEnemyFormationSlots = 4;
@@ -583,6 +582,7 @@ public partial class Battle : Node2D
         RestoreHitStopTimeScale();
         ClearTurnOrderGroundPreviewCharacter();
         FreeIncomingDamagePreviewLabels();
+        FreeTurnEndAttackPreview();
         TryCancelLifetime();
         if (_mapResourceState != null && GodotObject.IsInstanceValid(_mapResourceState))
         {
@@ -1413,7 +1413,7 @@ public partial class Battle : Node2D
         drawnSkill.BattleCardInstanceId = picked.InstanceId;
         PlayerCharacter contextPlayer = ResolveTeamCardContextPlayer(picked.Owner);
         drawnSkill.UpdateDescription();
-        hand[handIndex] = drawnSkill;
+        InsertPlayerTeamBattleHandCard(drawnSkill);
         contextPlayer?.InvalidateSkillTooltipCache();
         drawnSkill.OnDrawnToHand(contextPlayer);
         AudioManager.PlayCardDeal(this);
@@ -1434,7 +1434,7 @@ public partial class Battle : Node2D
 
         PlayerCharacter owner = drawnSkill.OwnerCharater as PlayerCharacter;
         drawnSkill.UpdateDescription();
-        hand[handIndex] = drawnSkill;
+        InsertPlayerTeamBattleHandCard(drawnSkill);
         owner?.InvalidateSkillTooltipCache();
         drawnSkill.OnDrawnToHand(owner);
         AudioManager.PlayCardDeal(this);
@@ -1556,22 +1556,18 @@ public partial class Battle : Node2D
             return false;
 
         CompactPlayerTeamBattleHand(queueReorderAnimation: false);
-        Skill[] hand = GetPlayerTeamBattleHand();
         int beforeCount = GetPlayerTeamBattleHandCardCount();
-        var filledIndexes = new List<int>();
-        for (int i = 0; i < hand.Length && count > 0; i++)
+        var drawnSkills = new List<Skill>();
+        while (GetPlayerTeamBattleHandEmptySlotCount() > 0 && count > 0)
         {
-            if (hand[i] != null)
-                continue;
-
             Skill drawnSkill = DrawPlayerBattleSkill(player);
             if (drawnSkill == null)
                 break;
 
             drawnSkill.OwnerCharater = player;
             drawnSkill.UpdateDescription();
-            hand[i] = drawnSkill;
-            filledIndexes.Add(i);
+            InsertPlayerTeamBattleHandCard(drawnSkill);
+            drawnSkills.Add(drawnSkill);
             drawnSkill.OnDrawnToHand(player);
             AudioManager.PlayCardDeal(this);
             count--;
@@ -1584,7 +1580,7 @@ public partial class Battle : Node2D
             if (refreshUi)
             {
                 CharacterControl?.PrepareHandCardDrawEntry(
-                    filledIndexes,
+                    GetPlayerTeamBattleHandEntryIndexes(drawnSkills),
                     HandCardEntryOrigin.DrawPile
                 );
                 CharacterControl?.RefreshCurrentTurnUi();
@@ -1662,7 +1658,7 @@ public partial class Battle : Node2D
         skill.OwnerCharater = entry.Owner;
         skill.BattleCardInstanceId = entry.InstanceId;
         skill.UpdateDescription();
-        hand[handIndex] = skill;
+        InsertPlayerTeamBattleHandCard(skill);
         skill.OnDrawnToHand(contextPlayer);
         AudioManager.PlayCardDeal(this);
         contextPlayer?.InvalidateSkillTooltipCache();
@@ -1708,6 +1704,59 @@ public partial class Battle : Node2D
         skill.UpdateDescription();
         hand[skillIndex] = skill;
         return true;
+    }
+
+    private int InsertPlayerTeamBattleHandCard(Skill skill)
+    {
+        if (skill == null)
+            return -1;
+
+        CompactPlayerTeamBattleHand(queueReorderAnimation: false);
+        Skill[] hand = GetPlayerTeamBattleHand();
+        int emptyIndex = Array.FindIndex(hand, card => card == null);
+        if (emptyIndex < 0)
+            return -1;
+
+        UserSettings.EnsureLoaded();
+        int insertIndex = emptyIndex;
+        if (UserSettings.GroupHandCardsByCharacter)
+        {
+            Character owner = skill.OwnerCharater;
+            int lastOwnerIndex = Array.FindLastIndex(
+                hand,
+                card => card != null && ReferenceEquals(card.OwnerCharater, owner)
+            );
+            if (lastOwnerIndex >= 0)
+            {
+                insertIndex = lastOwnerIndex + 1;
+            }
+            else if (owner is PlayerCharacter player)
+            {
+                int nextOwnerIndex = Array.FindIndex(hand, card =>
+                    card != null
+                    && (card.OwnerCharater is not PlayerCharacter other
+                        || other.PositionIndex < player.PositionIndex
+                        || (other.PositionIndex == player.PositionIndex
+                            && other.CharacterIndex < player.CharacterIndex))
+                );
+                if (nextOwnerIndex >= 0)
+                    insertIndex = nextOwnerIndex;
+            }
+        }
+
+        for (int i = emptyIndex; i > insertIndex; i--)
+            hand[i] = hand[i - 1];
+        hand[insertIndex] = skill;
+        return insertIndex;
+    }
+
+    private int[] GetPlayerTeamBattleHandEntryIndexes(IReadOnlyList<Skill> skills)
+    {
+        Skill[] hand = GetPlayerTeamBattleHand();
+        return skills
+            .Select(skill => Array.FindIndex(hand, card => ReferenceEquals(card, skill)))
+            .Where(index => index >= 0)
+            .ToArray();
     }
 
     private bool CompactPlayerTeamBattleHand(bool queueReorderAnimation = true)
@@ -1907,21 +1956,18 @@ public partial class Battle : Node2D
 
         PlayerCharacter contextPlayer = ResolveTeamCardContextPlayer(cardOwner);
         int added = 0;
-        var filledIndexes = new List<int>(count);
-        for (int i = 0; i < hand.Length && added < count; i++)
+        var addedSkills = new List<Skill>(Math.Min(count, hand.Length));
+        while (GetPlayerTeamBattleHandEmptySlotCount() > 0 && added < count)
         {
-            if (hand[i] != null)
-                continue;
-
             Skill skill = Skill.GetSkill(skillId);
             if (skill == null)
-                continue;
+                break;
 
             skill.OwnerCharater = cardOwner;
             skill.BattleCardInstanceId = CreateBattleCardInstanceId();
             skill.UpdateDescription();
-            hand[i] = skill;
-            filledIndexes.Add(i);
+            InsertPlayerTeamBattleHandCard(skill);
+            addedSkills.Add(skill);
             skill.OnDrawnToHand(contextPlayer);
             added++;
         }
@@ -1934,7 +1980,10 @@ public partial class Battle : Node2D
                 InvalidatePlayerTeamSkillTooltips();
 
             RecordStatusCardInsert(cardOwner, skillId, added, toHand: true, source: source);
-            CharacterControl?.PrepareHandCardDrawEntry(filledIndexes, entryOrigin);
+            CharacterControl?.PrepareHandCardDrawEntry(
+                GetPlayerTeamBattleHandEntryIndexes(addedSkills),
+                entryOrigin
+            );
             CharacterControl?.RefreshCurrentTurnUi();
         }
 
@@ -4174,10 +4223,11 @@ public partial class Battle : Node2D
         character.PrepareHoverTooltipInstances();
     }
 
-    private static Vector2 GetFormationPosition(int positionIndex, int side)
+    public Vector2 GetFormationPosition(int positionIndex, int side)
     {
-        int slot = Math.Max(positionIndex - 1, 0);
-        return new Vector2(slot * FormationGapX * side, 0f);
+        Node2D container = side < 0 ? Left : Right;
+        int maxSlot = side < 0 ? MaxFormationSlots : MaxEnemyFormationSlots;
+        return container.GetNode<Marker2D>($"Slot{Math.Clamp(positionIndex, 1, maxSlot)}").Position;
     }
 
     public static int ResolveEnemyFormationPositionIndex(
@@ -4200,7 +4250,7 @@ public partial class Battle : Node2D
         return Math.Clamp(positionIndex, 1, MaxEnemyFormationSlots);
     }
 
-    private static void ApplyFormationPosition(Character character, int side)
+    private void ApplyFormationPosition(Character character, int side)
     {
         if (character == null)
             return;
@@ -4208,7 +4258,6 @@ public partial class Battle : Node2D
         character.Position = GetFormationPosition(character.PositionIndex, side);
         character.OriginalPosition = character.Position;
         character.ZIndex = Math.Max(character.PositionIndex, 0);
-        BattleHudChrome.StyleCharacter(character);
     }
 
     public T AddSummon<T>(
@@ -4644,6 +4693,13 @@ public partial class Battle : Node2D
                 () => GetNextEnemyPhaseCharacter()
             );
 
+            // End-turn attacks happen before hand discard and end-turn buffs.
+            await ResolvePlayerTurnEndAttacksAsync(token);
+            if (!CanContinue(token) || await HandleBattleOver(token))
+                return;
+
+            await DiscardPlayerTeamBattleHandAtTurnEndAsync(teamActingPlayer);
+
             if (!await DelayOrCancel(PlayerPostActionDelayMs, token) || await HandleBattleOver(token))
                 return;
 
@@ -4660,6 +4716,8 @@ public partial class Battle : Node2D
         finally
         {
             _isResolvingPlayerTeamActionPhase = false;
+            foreach (PlayerCharacter player in PlayersList.ToArray())
+                AttackCountBuff.ClearTemporary(player);
             _activePlayerPhaseOrder = new List<PlayerCharacter>();
             _activePlayerPhaseIndex = -1;
         }

@@ -1016,7 +1016,6 @@ public partial class Reward : CanvasLayer
         }
 
         SkillCard pickedCard = PreparePickedSkillRewardCardForFly(slotIndex);
-        await PlayPickedSkillRewardPulseAsync(pickedCard);
         var result = await BattleReady.AcquireDeckCardAsync(this, playerIndex, skillId, pickedCard);
         if (!result.Changed && pickedCard != null && GodotObject.IsInstanceValid(pickedCard))
             pickedCard.QueueFree();
@@ -1031,6 +1030,10 @@ public partial class Reward : CanvasLayer
         if (card == null || !GodotObject.IsInstanceValid(card) || !card.Visible)
             return null;
 
+        // Stop the hover transform before detaching the card. Otherwise its hover tween can
+        // continue while the card is reparented and create a visible nudge before takeoff.
+        card.SetCenteredPointerHoverState(false, instant: true);
+        card.SetHoverUiEnabled(false);
         Vector2 globalPosition = card.GlobalPosition;
         Vector2 scale = card.Scale;
         float rotation = card.Rotation;
@@ -1062,28 +1065,6 @@ public partial class Reward : CanvasLayer
         card.MoveToFront();
         card.HideMoveTrail();
         return card;
-    }
-
-    private async Task PlayPickedSkillRewardPulseAsync(SkillCard card)
-    {
-        if (card == null || !GodotObject.IsInstanceValid(card) || !card.IsInsideTree())
-            return;
-
-        card.HideHoverUi();
-        card.PressEffectPartial(centerVanish: 0.34f, glowMultiplier: 1.28f, duration: 0.16f);
-        Vector2 baseScale = card.Scale == Vector2.Zero ? Vector2.One : card.Scale;
-        Tween tween = card.CreateTween();
-        tween.SetParallel(false);
-        tween
-            .TweenProperty(card, "scale", baseScale * 1.08f, 0.075f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-        tween
-            .TweenProperty(card, "scale", baseScale, 0.085f)
-            .SetTrans(Tween.TransitionType.Cubic)
-            .SetEase(Tween.EaseType.Out);
-
-        await ToSignal(tween, Tween.SignalName.Finished);
     }
 
     private void AddSkillRewardFlyPlaceholder(SkillCard card, Node parent)

@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/UIScene/SkillRelatedCardPreview.cs" id="Script"]
+
+[node name="RelatedCardPreview" type="Control"]
+visible = false
+mouse_filter = 2
+z_index = 25
+script = ExtResource("Script")
+PreviewScaleFactor = 0.9
+PreviewHoverScaleInfluence = 1.0
+HostGap = 14.0
+ViewportMargin = 10.0
+
+[node name="CardColumn" type="VBoxContainer" parent="."]
+mouse_filter = 2
+theme_override_constants/separation = 6

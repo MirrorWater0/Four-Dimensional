@@ -1,0 +1,14 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://asset/svg/SkillIcon/HealPreview.svg" id="Texture"]
+
+[node name="HealIcon" type="TextureRect"]
+custom_minimum_size = Vector2(40, 40)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+texture = ExtResource("Texture")
+expand_mode = 4
+stretch_mode = 5
+pivot_offset = Vector2(20, 20)
+rotation = 0

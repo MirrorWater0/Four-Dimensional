@@ -6,8 +6,8 @@ public partial class Menu : Control
     private const float OpenDuration = 0.22f;
     private const float CloseDuration = 0.18f;
     private const float ReturnToStartFadeDuration = 0.12f;
-    private const float MainPanelOffsetLeft = -222f;
-    private const float MainPanelOffsetRight = 214f;
+    private const float MainPanelOffsetLeft = -270f;
+    private const float MainPanelOffsetRight = 270f;
     private const float SettingsPanelOffsetLeft = -470f;
     private const float SettingsPanelOffsetRight = 470f;
     private static readonly Vector2 ClosedPanelScale = new(0.92f, 0.92f);
@@ -53,6 +53,8 @@ public partial class Menu : Control
         field ??= GetSettingsPanelNode<CheckBox>("HideEnemySkillsCheckBox");
     private CheckBox GroupBattlePilesByCharacterCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("GroupBattlePilesByCharacterCheckBox");
+    private CheckBox GroupHandCardsByCharacterCheckBox =>
+        field ??= GetSettingsPanelNode<CheckBox>("GroupHandCardsByCharacterCheckBox");
     private CheckBox ShowHandCardIndicesCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("ShowHandCardIndicesCheckBox");
     private SettingsDropdown TextSizeOptionButton =>
@@ -142,6 +144,9 @@ public partial class Menu : Control
 
         if (GroupBattlePilesByCharacterCheckBox != null)
             GroupBattlePilesByCharacterCheckBox.Pressed += OnGroupBattlePilesByCharacterPressed;
+
+        if (GroupHandCardsByCharacterCheckBox != null)
+            GroupHandCardsByCharacterCheckBox.Pressed += OnGroupHandCardsByCharacterPressed;
 
         if (ShowHandCardIndicesCheckBox != null)
             ShowHandCardIndicesCheckBox.Pressed += OnShowHandCardIndicesPressed;
@@ -451,6 +456,14 @@ public partial class Menu : Control
         FindActiveBattle(GetTree()?.Root)?.CharacterControl?.RefreshCurrentTurnUi();
     }
 
+    private void OnGroupHandCardsByCharacterPressed()
+    {
+        if (GroupHandCardsByCharacterCheckBox == null)
+            return;
+
+        UserSettings.SetGroupHandCardsByCharacter(GroupHandCardsByCharacterCheckBox.ButtonPressed);
+    }
+
     private void OnTextSizeSelected(long index)
     {
         if (TextSizeOptionButton == null)
@@ -593,6 +606,8 @@ public partial class Menu : Control
         if (GroupBattlePilesByCharacterCheckBox != null)
             GroupBattlePilesByCharacterCheckBox.ButtonPressed =
                 UserSettings.GroupBattlePilesByCharacter;
+        if (GroupHandCardsByCharacterCheckBox != null)
+            GroupHandCardsByCharacterCheckBox.ButtonPressed = UserSettings.GroupHandCardsByCharacter;
         if (ShowHandCardIndicesCheckBox != null)
             ShowHandCardIndicesCheckBox.ButtonPressed = UserSettings.ShowHandCardIndices;
         SelectResolutionOption(UserSettings.WindowWidth, UserSettings.WindowHeight);
@@ -838,6 +853,17 @@ public partial class Menu : Control
                 "ui.settings.show_hand_card_indices",
                 "显示手牌序号（数字键出牌）"
             );
+        if (GroupHandCardsByCharacterCheckBox != null)
+        {
+            GroupHandCardsByCharacterCheckBox.Text = I18n.Tr(
+                "ui.settings.group_hand_cards_by_character",
+                "抽牌时按角色整理手牌"
+            );
+            GroupHandCardsByCharacterCheckBox.TooltipText = I18n.Tr(
+                "ui.settings.group_hand_cards_by_character_tooltip",
+                "角色按队伍站位从右往左排列，第一个角色的牌在最右侧；新牌插入所属角色最后一张手牌之后。"
+            );
+        }
         if (LanguageLabel != null)
             LanguageLabel.Text = I18n.Tr("ui.settings.language", "语言");
         if (ResolutionLabel != null)

@@ -7,10 +7,11 @@ using Godot;
 public partial class SkillRelatedCardPreview : Control
 {
     public const float PreviewScale = 0.9f;
-    private const float PreviewHoverScaleInfluence = 1f;
-    private const float CardSeparation = 6f;
-    private const float HostGap = 14f;
-    private const float ViewportMargin = 10f;
+    [Export] public float PreviewScaleFactor { get; set; } = PreviewScale;
+    [Export] public float PreviewHoverScaleInfluence { get; set; } = 1f;
+    private float CardSeparation => _cardColumn.GetThemeConstant("separation");
+    [Export] public float HostGap { get; set; } = 14f;
+    [Export] public float ViewportMargin { get; set; } = 10f;
 
     private VBoxContainer _cardColumn;
     private SkillCard _hostCard;
@@ -20,16 +21,7 @@ public partial class SkillRelatedCardPreview : Control
 
     public override void _Ready()
     {
-        MouseFilter = MouseFilterEnum.Ignore;
-        ZIndex = 25;
-
-        _cardColumn = new VBoxContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _cardColumn.AddThemeConstantOverride("separation", (int)CardSeparation);
-        AddChild(_cardColumn);
-        Visible = false;
+        _cardColumn = GetNode<VBoxContainer>("CardColumn");
     }
 
     public override void _Process(double delta)
@@ -160,14 +152,14 @@ public partial class SkillRelatedCardPreview : Control
         return new Rect2(min, max - min);
     }
 
-    private static float GetPreviewScaleForHost(SkillCard hostCard)
+    private float GetPreviewScaleForHost(SkillCard hostCard)
     {
         Vector2 baseScale = hostCard.ConfiguredDisplayScale;
         float baseMagnitude = Mathf.Max(0.001f, (Mathf.Abs(baseScale.X) + Mathf.Abs(baseScale.Y)) * 0.5f);
         float currentMagnitude =
             (Mathf.Abs(hostCard.Scale.X) + Mathf.Abs(hostCard.Scale.Y)) * 0.5f;
         float hoverMultiplier = Mathf.Max(0.01f, currentMagnitude / baseMagnitude);
-        return PreviewScale * Mathf.Lerp(1f, hoverMultiplier, PreviewHoverScaleInfluence);
+        return PreviewScaleFactor * Mathf.Lerp(1f, hoverMultiplier, PreviewHoverScaleInfluence);
     }
 
     private void ApplyPreviewScale(float previewScale)
@@ -198,19 +190,19 @@ public partial class SkillRelatedCardPreview : Control
         return Size;
     }
 
-    private static bool HasRightSpace(Rect2 hostRect, float previewWidth, float viewportWidth) =>
+    private bool HasRightSpace(Rect2 hostRect, float previewWidth, float viewportWidth) =>
         hostRect.End.X + HostGap + previewWidth <= viewportWidth - ViewportMargin;
 
-    private static bool HasLeftSpace(Rect2 hostRect, float previewWidth) =>
+    private bool HasLeftSpace(Rect2 hostRect, float previewWidth) =>
         hostRect.Position.X - HostGap - previewWidth >= ViewportMargin;
 
-    private static float ClampVertical(float y, float height, float viewportHeight)
+    private float ClampVertical(float y, float height, float viewportHeight)
     {
         float maxY = viewportHeight - height - ViewportMargin;
         return Mathf.Clamp(y, ViewportMargin, Mathf.Max(ViewportMargin, maxY));
     }
 
-    private static float ClampHorizontal(float x, float width, float viewportWidth)
+    private float ClampHorizontal(float x, float width, float viewportWidth)
     {
         float maxX = viewportWidth - width - ViewportMargin;
         return Mathf.Clamp(x, ViewportMargin, Mathf.Max(ViewportMargin, maxX));

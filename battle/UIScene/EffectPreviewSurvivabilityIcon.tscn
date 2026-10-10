@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shader/Icon/Rhomboid.gdshader" id="Shader"]
+[sub_resource type="ShaderMaterial" id="Material"]
+shader = ExtResource("Shader")
+shader_parameter/color = Color(0.52, 0.95, 1, 1)
+
+[node name="SurvivabilityIcon" type="ColorRect"]
+custom_minimum_size = Vector2(40, 40)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+material = SubResource("Material")

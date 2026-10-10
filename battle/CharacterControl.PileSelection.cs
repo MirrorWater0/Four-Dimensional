@@ -394,6 +394,7 @@ public partial class CharacterControl
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return 0;
 
+        Skill[] oldHand = (Skill[])GetActiveHandSkills().Clone();
         int movedCount = 0;
         int removedBefore = 0;
         int count = selectedIndexes?.Count ?? 0;
@@ -401,7 +402,6 @@ public partial class CharacterControl
         {
             int originalIndex = selectedIndexes[i];
             int currentIndex = originalIndex - removedBefore;
-            int handIndex = GetActiveHandFirstEmptyIndex();
             bool moved = kind switch
             {
                 BattlePileKind.Draw => BattleNode.TryMoveDrawPileCardToTeamHand(
@@ -419,9 +419,19 @@ public partial class CharacterControl
             if (!moved)
                 continue;
 
-            SetHandEntryStartPositionFromPileKind(handIndex, kind);
             movedCount++;
             removedBefore++;
+        }
+
+        if (movedCount > 0)
+        {
+            Skill[] hand = GetActiveHandSkills();
+            SyncHandSlotIdentities(hand);
+            for (int i = 0; i < hand.Length; i++)
+            {
+                if (hand[i] != null && !ContainsSkillReference(oldHand, hand[i]))
+                    SetHandEntryStartPositionFromPileKind(i, kind);
+            }
         }
 
         return movedCount;
@@ -553,12 +563,6 @@ public partial class CharacterControl
         if (movedCount > 0)
             RequestTurnUiRefresh(refreshHover: true);
         return movedCount;
-    }
-
-    private int GetActiveHandFirstEmptyIndex()
-    {
-        Skill[] hand = GetActiveHandSkills();
-        return hand == null ? -1 : Array.FindIndex(hand, skill => skill == null);
     }
 
     private Vector2? GetPlayedCardDrawEntryStartGlobalCenter()

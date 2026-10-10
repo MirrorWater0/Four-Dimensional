@@ -1,149 +1,59 @@
 [gd_scene format=3 uid="uid://bxjt1bxews34d"]
 
-[ext_resource type="Script" path="res://BeginGame/StartInterface.cs" id="1_script"]
+[ext_resource type="Script" uid="uid://dj55ag06dkgry" path="res://BeginGame/StartInterface.cs" id="1_script"]
+[ext_resource type="Shader" uid="uid://bwsr1kt1xmgjy" path="res://shader/UI/Start/DimensionalField.gdshader" id="5_atmosphere"]
+[ext_resource type="Script" uid="uid://dqfpq3q1131t7" path="res://BeginGame/StartAtmosphere.cs" id="6_geometry"]
+[ext_resource type="Script" uid="uid://byi7md40rchur" path="res://BeginGame/StartFlowCurves.cs" id="7_flow"]
 
-[ext_resource type="Shader" path="res://shader/UI/Start/DimensionalField.gdshader" id="5_atmosphere"]
-[ext_resource type="Script" path="res://BeginGame/StartAtmosphere.cs" id="6_geometry"]
-[ext_resource type="Script" path="res://BeginGame/StartFlowCurves.cs" id="7_flow"]
+[sub_resource type="ShaderMaterial" id="Material_atmosphere"]
+resource_local_to_scene = true
+shader = ExtResource("5_atmosphere")
+shader_parameter/emphasis = 1.0
 
 [sub_resource type="SystemFont" id="Font_ui"]
 font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
-font_weight = 400
-
-[sub_resource type="FontVariation" id="Font_label"]
-base_font = SubResource("Font_ui")
-spacing_glyph = 0
-
-[sub_resource type="FontVariation" id="Font_micro"]
-base_font = SubResource("Font_ui")
-spacing_glyph = 0
-
-[sub_resource type="SystemFont" id="Font_technical"]
-font_names = PackedStringArray("Bahnschrift", "Arial", "Noto Sans")
-font_weight = 600
-font_stretch = 90
-
-[sub_resource type="FontVariation" id="Font_title"]
-base_font = SubResource("Font_technical")
-spacing_glyph = 0
 
 [sub_resource type="Theme" id="Theme_start_console"]
 default_font = SubResource("Font_ui")
 default_font_size = 20
 
-[sub_resource type="ShaderMaterial" id="Material_atmosphere"]
-resource_local_to_scene = true
-shader = ExtResource("5_atmosphere")
-shader_parameter/emphasis = 0.0
+[sub_resource type="FontVariation" id="Font_micro"]
+base_font = SubResource("Font_ui")
 
-[sub_resource type="StyleBoxFlat" id="Primary_normal"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 16.0
-content_margin_bottom = 16.0
-bg_color = Color(0, 0, 0, 0)
-border_width_bottom = 1
-border_color = Color(0.78, 0.80, 0.82, 0.65)
-
-[sub_resource type="StyleBoxFlat" id="Primary_hover"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 16.0
-content_margin_bottom = 16.0
-bg_color = Color(0.8, 0.82, 0.84, 0.025)
-border_width_bottom = 1
-border_color = Color(0.94, 0.96, 0.98, 1)
-
-[sub_resource type="StyleBoxFlat" id="Primary_pressed"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 16.0
-content_margin_bottom = 16.0
-bg_color = Color(0.02, 0.025, 0.03, 0.07)
-border_width_bottom = 2
-border_color = Color(0.80, 0.83, 0.86, 1)
-
-[sub_resource type="StyleBoxFlat" id="Secondary_normal"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0, 0, 0, 0)
-border_width_bottom = 1
-border_color = Color(0.74, 0.77, 0.80, 0.3)
-
-[sub_resource type="StyleBoxFlat" id="Secondary_hover"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0.8, 0.82, 0.84, 0.025)
-border_width_bottom = 1
-border_color = Color(0.94, 0.96, 0.98, 1)
-
-[sub_resource type="StyleBoxFlat" id="Secondary_pressed"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0.02, 0.025, 0.03, 0.07)
-border_width_bottom = 2
-border_color = Color(0.80, 0.83, 0.86, 1)
-
-[sub_resource type="StyleBoxFlat" id="Secondary_disabled"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-content_margin_top = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0.16, 0.20, 0.25, 0)
-border_width_bottom = 1
-border_color = Color(0.74, 0.77, 0.80, 0.15)
+[sub_resource type="FontVariation" id="Font_label"]
+base_font = SubResource("Font_ui")
 
 [sub_resource type="StyleBoxFlat" id="Utility_normal"]
 content_margin_left = 12.0
-content_margin_right = 20.0
 content_margin_top = 10.0
+content_margin_right = 20.0
 content_margin_bottom = 10.0
 bg_color = Color(0.39, 0.56, 0.67, 0)
-
-[sub_resource type="StyleBoxFlat" id="Utility_hover"]
-content_margin_left = 12.0
-content_margin_right = 20.0
-content_margin_top = 10.0
-content_margin_bottom = 10.0
-bg_color = Color(0, 0, 0, 0)
-border_width_bottom = 1
-border_color = Color(0.88, 0.90, 0.92, 0.75)
 
 [sub_resource type="StyleBoxFlat" id="Utility_pressed"]
 content_margin_left = 12.0
-content_margin_right = 20.0
 content_margin_top = 10.0
+content_margin_right = 20.0
 content_margin_bottom = 10.0
 bg_color = Color(0, 0, 0, 0.04)
 border_width_bottom = 2
-border_color = Color(0.88, 0.90, 0.92, 1)
+border_color = Color(0.88, 0.9, 0.92, 1)
+
+[sub_resource type="StyleBoxFlat" id="Utility_hover"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 20.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.88, 0.9, 0.92, 0.75)
 
 [sub_resource type="StyleBoxFlat" id="Utility_disabled"]
 content_margin_left = 12.0
-content_margin_right = 20.0
 content_margin_top = 10.0
+content_margin_right = 20.0
 content_margin_bottom = 10.0
 bg_color = Color(0.39, 0.56, 0.67, 0)
-
-[sub_resource type="StyleBoxFlat" id="Focus_primary"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-bg_color = Color(0, 0, 0, 0)
-border_width_bottom = 2
-border_color = Color(0.88, 0.91, 0.94, 1)
-
-[sub_resource type="StyleBoxFlat" id="Focus_secondary"]
-content_margin_left = 0.0
-content_margin_right = 88.0
-bg_color = Color(0, 0, 0, 0)
-border_width_bottom = 2
-border_color = Color(0.88, 0.91, 0.94, 1)
 
 [sub_resource type="StyleBoxFlat" id="Focus_utility"]
 content_margin_left = 12.0
@@ -152,19 +62,110 @@ bg_color = Color(0, 0, 0, 0)
 border_width_bottom = 2
 border_color = Color(0.88, 0.91, 0.94, 1)
 
-[node name="StartInterface" type="CanvasLayer"]
+[sub_resource type="SystemFont" id="Font_technical"]
+font_names = PackedStringArray("Bahnschrift", "Arial", "Noto Sans")
+font_weight = 600
+font_stretch = 90
+
+[sub_resource type="FontVariation" id="Font_title"]
+base_font = SubResource("Font_technical")
+variation_opentype = {
+2003072104: 90,
+2003265652: 600
+}
+
+[sub_resource type="StyleBoxFlat" id="Primary_normal"]
+content_margin_left = 0.0
+content_margin_top = 16.0
+content_margin_right = 88.0
+content_margin_bottom = 16.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.78, 0.8, 0.82, 0.65)
+
+[sub_resource type="StyleBoxFlat" id="Primary_pressed"]
+content_margin_left = 0.0
+content_margin_top = 16.0
+content_margin_right = 88.0
+content_margin_bottom = 16.0
+bg_color = Color(0.02, 0.025, 0.03, 0.07)
+border_width_bottom = 2
+border_color = Color(0.8, 0.83, 0.86, 1)
+
+[sub_resource type="StyleBoxFlat" id="Primary_hover"]
+content_margin_left = 0.0
+content_margin_top = 16.0
+content_margin_right = 88.0
+content_margin_bottom = 16.0
+bg_color = Color(0.8, 0.82, 0.84, 0.025)
+border_width_bottom = 1
+border_color = Color(0.94, 0.96, 0.98, 1)
+
+[sub_resource type="StyleBoxFlat" id="Secondary_disabled"]
+content_margin_left = 0.0
+content_margin_top = 10.0
+content_margin_right = 88.0
+content_margin_bottom = 10.0
+bg_color = Color(0.16, 0.2, 0.25, 0)
+border_width_bottom = 1
+border_color = Color(0.74, 0.77, 0.8, 0.15)
+
+[sub_resource type="StyleBoxFlat" id="Focus_primary"]
+content_margin_left = 0.0
+content_margin_right = 88.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 2
+border_color = Color(0.88, 0.91, 0.94, 1)
+
+[sub_resource type="StyleBoxFlat" id="Secondary_normal"]
+content_margin_left = 0.0
+content_margin_top = 10.0
+content_margin_right = 88.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.74, 0.77, 0.8, 0.3)
+
+[sub_resource type="StyleBoxFlat" id="Secondary_pressed"]
+content_margin_left = 0.0
+content_margin_top = 10.0
+content_margin_right = 88.0
+content_margin_bottom = 10.0
+bg_color = Color(0.02, 0.025, 0.03, 0.07)
+border_width_bottom = 2
+border_color = Color(0.8, 0.83, 0.86, 1)
+
+[sub_resource type="StyleBoxFlat" id="Secondary_hover"]
+content_margin_left = 0.0
+content_margin_top = 10.0
+content_margin_right = 88.0
+content_margin_bottom = 10.0
+bg_color = Color(0.8, 0.82, 0.84, 0.025)
+border_width_bottom = 1
+border_color = Color(0.94, 0.96, 0.98, 1)
+
+[sub_resource type="StyleBoxFlat" id="Focus_secondary"]
+content_margin_left = 0.0
+content_margin_right = 88.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 2
+border_color = Color(0.88, 0.91, 0.94, 1)
+
+[node name="StartInterface" type="CanvasLayer" unique_id=633248501]
 script = ExtResource("1_script")
 
-[node name="Space" type="ColorRect" parent="."]
+[node name="Space" type="ColorRect" parent="." unique_id=344191396]
+material = SubResource("Material_atmosphere")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-material = SubResource("Material_atmosphere")
+color = Color(0.77, 0.77, 0.77, 1)
 
-[node name="FlowCurves" type="Control" parent="."]
+[node name="FlowCurves" type="Control" parent="." unique_id=1934606641]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -173,7 +174,8 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("7_flow")
 
-[node name="DimensionField" type="Control" parent="."]
+[node name="DimensionField" type="Control" parent="." unique_id=1560861625]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -182,7 +184,8 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("6_geometry")
 
-[node name="Layout" type="Control" parent="."]
+[node name="Layout" type="Control" parent="." unique_id=255415296]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -191,196 +194,48 @@ grow_vertical = 2
 mouse_filter = 2
 theme = SubResource("Theme_start_console")
 
-[node name="Masthead" type="Control" parent="Layout"]
-layout_mode = 0
+[node name="Masthead" type="Control" parent="Layout" unique_id=2019264906]
+anchors_preset = 0
+anchor_right = 1.0
 offset_left = 128.0
 offset_top = 48.0
 offset_right = -128.0
 offset_bottom = 104.0
 mouse_filter = 2
-anchor_right = 1.0
 
-[node name="Emblem" type="Line2D" parent="Layout/Masthead"]
+[node name="Emblem" type="Line2D" parent="Layout/Masthead" unique_id=155143008]
 position = Vector2(18, 22)
 points = PackedVector2Array(0, -18, 16, -9, 16, 9, 0, 18, -16, 9, -16, -9, 0, -18, 0, 0, 16, 9, 0, 0, -16, 9)
 width = 1.2
 default_color = Color(0.68, 0.82, 0.91, 0.8)
 antialiased = true
 
-[node name="Brand" type="Label" parent="Layout/Masthead"]
+[node name="Brand" type="Label" parent="Layout/Masthead" unique_id=1254376396]
 layout_mode = 0
 offset_left = 58.0
 offset_top = 8.0
 offset_right = 498.0
 offset_bottom = 38.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
 theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 16
 text = "FOUR-DIMENSIONAL"
 
-[node name="Edition" type="Label" parent="Layout/Masthead"]
+[node name="Edition" type="Label" parent="Layout/Masthead" unique_id=1367594316]
 visible = false
 layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
 offset_left = -502.0
 offset_top = 8.0
-offset_right = 0.0
 offset_bottom = 38.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
 theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 12
 text = "DIMENSION // 04"
 horizontal_alignment = 2
-anchor_left = 1.0
-anchor_right = 1.0
 
-[node name="TitleBlock" type="Control" parent="Layout"]
-layout_mode = 0
-offset_left = 128.0
-offset_top = 226.0
-offset_right = 958.0
-offset_bottom = 462.0
-mouse_filter = 2
-
-[node name="Eyebrow" type="Label" parent="Layout/TitleBlock"]
-visible = false
-layout_mode = 0
-offset_left = 3.0
-offset_top = 0.0
-offset_right = 803.0
-offset_bottom = 30.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.58, 0.70, 0.80, 1)
-theme_override_fonts/font = SubResource("Font_micro")
-theme_override_font_sizes/font_size = 15
-text = "STRATEGIC COMMAND / 战术指挥"
-
-[node name="Title" type="Label" parent="Layout/TitleBlock"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 870.0
-offset_bottom = 180.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.91, 0.95, 0.98, 1)
-theme_override_fonts/font = SubResource("Font_title")
-theme_override_font_sizes/font_size = 80
-text = "FOUR\nDIMENSIONAL"
-theme_override_constants/line_spacing = 0
-
-[node name="Rule" type="ColorRect" parent="Layout/TitleBlock"]
-visible = false
-layout_mode = 0
-offset_left = 3.0
-offset_top = 262.0
-offset_right = 45.0
-offset_bottom = 264.0
-mouse_filter = 2
-color = Color(0.70, 0.84, 0.92, 0.85)
-
-[node name="Subtitle" type="Label" parent="Layout/TitleBlock"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 207.0
-offset_right = 830.0
-offset_bottom = 240.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 16
-text = "组建队伍 · 构筑牌组 · 探索未知"
-
-[node name="Menu" type="Control" parent="Layout"]
-layout_mode = 0
-offset_left = 128.0
-offset_top = 534.0
-offset_right = 688.0
-offset_bottom = 788.0
-mouse_filter = 2
-
-[node name="NewGame" type="Button" parent="Layout/Menu"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 560.0
-offset_bottom = 84.0
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 26
-theme_override_colors/font_color = Color(0.91, 0.98, 0.97, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.78, 0.90, 0.88, 1)
-theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
-text = "开始新游戏"
-alignment = 0
-theme_override_styles/normal = SubResource("Primary_normal")
-theme_override_styles/hover = SubResource("Primary_hover")
-theme_override_styles/pressed = SubResource("Primary_pressed")
-theme_override_styles/disabled = SubResource("Secondary_disabled")
-theme_override_styles/focus = SubResource("Focus_primary")
-
-[node name="Arrow" type="Line2D" parent="Layout/Menu/NewGame"]
-position = Vector2(522, 42)
-points = PackedVector2Array(0, 0, 28, 0, 20, -7, 28, 0, 20, 7)
-width = 1.4
-default_color = Color(0.91, 0.98, 0.97, 1)
-antialiased = true
-
-[node name="Continue" type="Button" parent="Layout/Menu"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 84.0
-offset_right = 560.0
-offset_bottom = 168.0
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 22
-theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
-theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
-theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
-text = "继续游戏"
-alignment = 0
-theme_override_styles/normal = SubResource("Secondary_normal")
-theme_override_styles/hover = SubResource("Secondary_hover")
-theme_override_styles/pressed = SubResource("Secondary_pressed")
-theme_override_styles/disabled = SubResource("Secondary_disabled")
-theme_override_styles/focus = SubResource("Focus_secondary")
-
-[node name="Arrow" type="Line2D" parent="Layout/Menu/Continue"]
-position = Vector2(522, 42)
-points = PackedVector2Array(0, 0, 28, 0, 20, -7, 28, 0, 20, 7)
-width = 1.2
-default_color = Color(0.40, 0.37, 0.45, 1)
-antialiased = true
-
-[node name="Status" type="HBoxContainer" parent="Layout/Menu"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 188.0
-offset_right = 560.0
-offset_bottom = 234.0
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Dot" type="ColorRect" parent="Layout/Menu/Status"]
-layout_mode = 2
-custom_minimum_size = Vector2(4, 4)
-size_flags_vertical = 4
-mouse_filter = 2
-color = Color(0.40, 0.37, 0.45, 1)
-
-[node name="Text" type="Label" parent="Layout/Menu/Status"]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-autowrap_mode = 3
-text = "正在校验自动存档..."
-theme_override_font_sizes/font_size = 15
-theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-
-[node name="Utilities" type="HBoxContainer" parent="Layout/Masthead"]
+[node name="Utilities" type="HBoxContainer" parent="Layout/Masthead" unique_id=2070895075]
 layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
@@ -390,215 +245,339 @@ offset_right = 12.0
 offset_bottom = 47.0
 theme_override_constants/separation = 20
 
-[node name="Statistics" type="Button" parent="Layout/Masthead/Utilities"]
+[node name="Statistics" type="Button" parent="Layout/Masthead/Utilities" unique_id=1633612117]
+custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 54)
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 17
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
+theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("Utility_normal")
+theme_override_styles/pressed = SubResource("Utility_pressed")
+theme_override_styles/hover = SubResource("Utility_hover")
+theme_override_styles/disabled = SubResource("Utility_disabled")
+theme_override_styles/focus = SubResource("Focus_utility")
 text = "统计"
 alignment = 0
-theme_override_styles/normal = SubResource("Utility_normal")
-theme_override_styles/hover = SubResource("Utility_hover")
-theme_override_styles/pressed = SubResource("Utility_pressed")
-theme_override_styles/disabled = SubResource("Utility_disabled")
-theme_override_styles/focus = SubResource("Focus_utility")
 
-[node name="Encyclopedia" type="Button" parent="Layout/Masthead/Utilities"]
+[node name="Encyclopedia" type="Button" parent="Layout/Masthead/Utilities" unique_id=1023039047]
+custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 54)
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 17
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
+theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("Utility_normal")
+theme_override_styles/pressed = SubResource("Utility_pressed")
+theme_override_styles/hover = SubResource("Utility_hover")
+theme_override_styles/disabled = SubResource("Utility_disabled")
+theme_override_styles/focus = SubResource("Focus_utility")
 text = "百科"
 alignment = 0
-theme_override_styles/normal = SubResource("Utility_normal")
-theme_override_styles/hover = SubResource("Utility_hover")
-theme_override_styles/pressed = SubResource("Utility_pressed")
-theme_override_styles/disabled = SubResource("Utility_disabled")
-theme_override_styles/focus = SubResource("Focus_utility")
 
-[node name="Settings" type="Button" parent="Layout/Masthead/Utilities"]
+[node name="Settings" type="Button" parent="Layout/Masthead/Utilities" unique_id=1120856634]
+custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 54)
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 17
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
+theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("Utility_normal")
+theme_override_styles/pressed = SubResource("Utility_pressed")
+theme_override_styles/hover = SubResource("Utility_hover")
+theme_override_styles/disabled = SubResource("Utility_disabled")
+theme_override_styles/focus = SubResource("Focus_utility")
 text = "设置"
 alignment = 0
-theme_override_styles/normal = SubResource("Utility_normal")
-theme_override_styles/hover = SubResource("Utility_hover")
-theme_override_styles/pressed = SubResource("Utility_pressed")
-theme_override_styles/disabled = SubResource("Utility_disabled")
-theme_override_styles/focus = SubResource("Focus_utility")
 
-[node name="Exit" type="Button" parent="Layout/Masthead/Utilities"]
+[node name="Exit" type="Button" parent="Layout/Masthead/Utilities" unique_id=243752719]
+custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 54)
-theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 17
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
-theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
+theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
 theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
-text = "退出游戏"
-alignment = 0
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("Utility_normal")
-theme_override_styles/hover = SubResource("Utility_hover")
 theme_override_styles/pressed = SubResource("Utility_pressed")
+theme_override_styles/hover = SubResource("Utility_hover")
 theme_override_styles/disabled = SubResource("Utility_disabled")
 theme_override_styles/focus = SubResource("Focus_utility")
+text = "退出游戏"
+alignment = 0
 
-[node name="Archive" type="VBoxContainer" parent="Layout"]
+[node name="TitleBlock" type="Control" parent="Layout" unique_id=930560728]
+anchors_preset = 0
+offset_left = 128.0
+offset_top = 226.0
+offset_right = 958.0
+offset_bottom = 462.0
+mouse_filter = 2
+
+[node name="Eyebrow" type="Label" parent="Layout/TitleBlock" unique_id=1285913751]
+visible = false
 layout_mode = 0
+offset_left = 3.0
+offset_right = 803.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.58, 0.7, 0.8, 1)
+theme_override_fonts/font = SubResource("Font_micro")
+theme_override_font_sizes/font_size = 15
+text = "STRATEGIC COMMAND / 战术指挥"
+
+[node name="Title" type="Label" parent="Layout/TitleBlock" unique_id=688649384]
+layout_mode = 0
+offset_right = 870.0
+offset_bottom = 180.0
+theme_override_colors/font_color = Color(0.91, 0.95, 0.98, 1)
+theme_override_constants/line_spacing = 0
+theme_override_fonts/font = SubResource("Font_title")
+theme_override_font_sizes/font_size = 80
+text = "FOUR
+DIMENSIONAL"
+
+[node name="Rule" type="ColorRect" parent="Layout/TitleBlock" unique_id=1778695106]
+visible = false
+layout_mode = 0
+offset_left = 3.0
+offset_top = 262.0
+offset_right = 45.0
+offset_bottom = 264.0
+mouse_filter = 2
+color = Color(0.7, 0.84, 0.92, 0.85)
+
+[node name="Subtitle" type="Label" parent="Layout/TitleBlock" unique_id=1968036867]
+layout_mode = 0
+offset_top = 207.0
+offset_right = 830.0
+offset_bottom = 240.0
+theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 16
+text = "组建队伍 · 构筑牌组 · 探索未知"
+
+[node name="Menu" type="Control" parent="Layout" unique_id=1723339276]
+anchors_preset = 0
+offset_left = 128.0
+offset_top = 534.0
+offset_right = 688.0
+offset_bottom = 788.0
+mouse_filter = 2
+
+[node name="NewGame" type="Button" parent="Layout/Menu" unique_id=1806879232]
+layout_mode = 0
+offset_right = 560.0
+offset_bottom = 84.0
+theme_override_colors/font_color = Color(0.91, 0.98, 0.97, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.78, 0.9, 0.88, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("Primary_normal")
+theme_override_styles/pressed = SubResource("Primary_pressed")
+theme_override_styles/hover = SubResource("Primary_hover")
+theme_override_styles/disabled = SubResource("Secondary_disabled")
+theme_override_styles/focus = SubResource("Focus_primary")
+text = "开始新游戏"
+alignment = 0
+
+[node name="Arrow" type="Line2D" parent="Layout/Menu/NewGame" unique_id=427543435]
+position = Vector2(522, 42)
+points = PackedVector2Array(0, 0, 28, 0, 20, -7, 28, 0, 20, 7)
+width = 1.4
+default_color = Color(0.91, 0.98, 0.97, 1)
+antialiased = true
+
+[node name="Continue" type="Button" parent="Layout/Menu" unique_id=1770452280]
+layout_mode = 0
+offset_top = 84.0
+offset_right = 560.0
+offset_bottom = 168.0
+theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
+theme_override_colors/font_focus_color = Color(0.93, 0.97, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.64, 0.76, 0.86, 1)
+theme_override_colors/font_hover_color = Color(0.93, 0.97, 1, 1)
+theme_override_colors/font_disabled_color = Color(0.33, 0.37, 0.43, 1)
+theme_override_fonts/font = SubResource("Font_label")
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("Secondary_normal")
+theme_override_styles/pressed = SubResource("Secondary_pressed")
+theme_override_styles/hover = SubResource("Secondary_hover")
+theme_override_styles/disabled = SubResource("Secondary_disabled")
+theme_override_styles/focus = SubResource("Focus_secondary")
+text = "继续游戏"
+alignment = 0
+
+[node name="Arrow" type="Line2D" parent="Layout/Menu/Continue" unique_id=2106829371]
+position = Vector2(522, 42)
+points = PackedVector2Array(0, 0, 28, 0, 20, -7, 28, 0, 20, 7)
+width = 1.2
+default_color = Color(0.4, 0.37, 0.45, 1)
+antialiased = true
+
+[node name="Status" type="HBoxContainer" parent="Layout/Menu" unique_id=501655547]
+layout_mode = 0
+offset_top = 188.0
+offset_right = 560.0
+offset_bottom = 234.0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Dot" type="ColorRect" parent="Layout/Menu/Status" unique_id=1751880096]
+custom_minimum_size = Vector2(4, 4)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.4, 0.37, 0.45, 1)
+
+[node name="Text" type="Label" parent="Layout/Menu/Status" unique_id=1236054176]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
+theme_override_font_sizes/font_size = 15
+text = "正在校验自动存档..."
+autowrap_mode = 3
+
+[node name="Archive" type="VBoxContainer" parent="Layout" unique_id=138674512]
+layout_mode = 0
+anchor_top = 1.0
+anchor_bottom = 1.0
 offset_left = 128.0
 offset_top = -192.0
 offset_right = 1368.0
 offset_bottom = -101.0
 mouse_filter = 2
 theme_override_constants/separation = 20
-anchor_top = 1.0
-anchor_bottom = 1.0
 
-[node name="Heading" type="Label" parent="Layout/Archive"]
+[node name="Heading" type="Label" parent="Layout/Archive" unique_id=1880215273]
 layout_mode = 2
-text = "旅程记录"
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
 theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 13
+text = "旅程记录"
 
-[node name="Rows" type="HBoxContainer" parent="Layout/Archive"]
+[node name="Rows" type="HBoxContainer" parent="Layout/Archive" unique_id=217491344]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 30
 
-[node name="DimensionCaption" type="Control" parent="Layout"]
-layout_mode = 0
+[node name="DimensionCaption" type="Control" parent="Layout" unique_id=2078416228]
+anchors_preset = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = -400.0
 offset_top = -205.0
 offset_right = -128.0
 offset_bottom = -85.0
 mouse_filter = 2
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_top = 1.0
-anchor_bottom = 1.0
 
-[node name="Index" type="Label" parent="Layout/DimensionCaption"]
+[node name="Index" type="Label" parent="Layout/DimensionCaption" unique_id=92286121]
 visible = false
 layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
 offset_right = 276.0
 offset_bottom = 26.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
 theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 12
 text = "DIMENSION // 04"
 horizontal_alignment = 2
 
-[node name="Name" type="Label" parent="Layout/DimensionCaption"]
+[node name="Name" type="Label" parent="Layout/DimensionCaption" unique_id=1891095020]
 layout_mode = 0
-offset_left = 0.0
 offset_top = 32.0
 offset_right = 276.0
 offset_bottom = 82.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.88, 0.94, 0.97, 1)
 theme_override_fonts/font = SubResource("Font_title")
 theme_override_font_sizes/font_size = 20
 text = "TESSERACT"
 horizontal_alignment = 2
 
-[node name="LocalizedName" type="Label" parent="Layout/DimensionCaption"]
+[node name="LocalizedName" type="Label" parent="Layout/DimensionCaption" unique_id=34834225]
 layout_mode = 0
-offset_left = 0.0
 offset_top = 84.0
 offset_right = 276.0
 offset_bottom = 116.0
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
 theme_override_fonts/font = SubResource("Font_label")
 theme_override_font_sizes/font_size = 16
 text = "四维空间"
 horizontal_alignment = 2
 
-[node name="Footer" type="HBoxContainer" parent="Layout"]
+[node name="Footer" type="HBoxContainer" parent="Layout" unique_id=1925507113]
 layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
 offset_left = 127.0
 offset_top = -79.0
 offset_right = -124.0
 offset_bottom = -45.0
 mouse_filter = 2
 theme_override_constants/separation = 24
-anchor_top = 1.0
-anchor_bottom = 1.0
-anchor_right = 1.0
 
-[node name="BuildLabel" type="Label" parent="Layout/Footer"]
+[node name="BuildLabel" type="Label" parent="Layout/Footer" unique_id=2083031875]
 layout_mode = 2
-mouse_filter = 2
-text = "测试版本"
-theme_override_fonts/font = SubResource("Font_micro")
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
+theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 12
+text = "测试版本"
 
-[node name="Rule" type="ColorRect" parent="Layout/Footer"]
+[node name="Rule" type="ColorRect" parent="Layout/Footer" unique_id=1241833602]
+custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
-custom_minimum_size = Vector2(0, 1)
-color = Color(0.60, 0.70, 0.80, 0.22)
+color = Color(0.6, 0.7, 0.8, 0.22)
 
-[node name="Signature" type="Label" parent="Layout/Footer"]
+[node name="Signature" type="Label" parent="Layout/Footer" unique_id=682106547]
 layout_mode = 2
-mouse_filter = 2
-text = "FOUR-DIMENSIONAL"
-theme_override_fonts/font = SubResource("Font_micro")
 theme_override_colors/font_color = Color(0.73, 0.78, 0.84, 1)
+theme_override_fonts/font = SubResource("Font_micro")
 theme_override_font_sizes/font_size = 11
+text = "FOUR-DIMENSIONAL"
 
-[node name="ConsoleGuides" type="Node2D" parent="Layout"]
+[node name="ConsoleGuides" type="Node2D" parent="Layout" unique_id=445963062]
 
-[node name="MenuRail" type="Line2D" parent="Layout/ConsoleGuides"]
+[node name="MenuRail" type="Line2D" parent="Layout/ConsoleGuides" unique_id=1162353727]
 points = PackedVector2Array(832, 220, 832, 790)
 width = 1.0
 default_color = Color(0.72, 0.74, 0.77, 0.12)
 antialiased = true
 
-[node name="TopRule" type="Line2D" parent="Layout/ConsoleGuides"]
+[node name="TopRule" type="Line2D" parent="Layout/ConsoleGuides" unique_id=2108170381]
 points = PackedVector2Array(128, 122, 1792, 122)
 width = 1.0
 default_color = Color(0.72, 0.74, 0.77, 0.25)
 antialiased = true
 
-[node name="BottomRule" type="Line2D" parent="Layout/ConsoleGuides"]
+[node name="BottomRule" type="Line2D" parent="Layout/ConsoleGuides" unique_id=1211932372]
 points = PackedVector2Array(128, 852, 1792, 852)
 width = 1.0
 default_color = Color(0.72, 0.74, 0.77, 0.25)
 antialiased = true
 
-[node name="WarpFlash" type="ColorRect" parent="."]
+[node name="WarpFlash" type="ColorRect" parent="." unique_id=1671886618]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -606,5 +585,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0.965, 0.957, 0.945, 0)
+metadata/_edit_lock_ = true
 
 [connection signal="pressed" from="Layout/Menu/Continue" to="." method="continueGame"]

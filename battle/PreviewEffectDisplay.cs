@@ -5,53 +5,19 @@ using Godot;
 
 public static class PreviewEffectDisplay
 {
-    // Tightened alongside the row plate: a 60px slot left a visible gap between the glyph and
-    // the number once both sat inside a chip.
-    private const float IconSize = 50f;
-    private const float IconVerticalOffset = 6f;
-    private const float ActionIconVerticalOffset = 1f;
-    private const float StatIconSourceSize = 40f;
-    private const float StatIconVisualScale = 0.92f;
-    private const float ActionIconSourceSize = 40f;
-    private const float ActionIconVisualScale = 1.0f;
-    private const float BuffIconSourceSize = 40f;
-    private const float BuffIconVisualScale = 1.0f;
     private const float PreviewAppearFadeDuration = 0.12f;
     private const float PreviewAppearScaleFactor = 1.8f;
-    private const int PreviewFontSize = 33;
-    private const int PreviewOutlineSize = 4;
-    private const int PlateAccentWidth = 4;
-    private const string SwordShaderPath = "res://shader/Icon/sword.gdshader";
-    private const string RhomboidShaderPath = "res://shader/Icon/Rhomboid.gdshader";
-    private const string DamagePreviewIconPath = "res://asset/svg/SkillIcon/attack.svg";
-    private const string HealPreviewIconPath = "res://asset/svg/SkillIcon/HealPreview.svg";
-    private const string BlockPreviewIconPath = "res://asset/svg/SkillIcon/survive.svg";
-    private const string MaxLifePreviewIconPath = "res://asset/svg/SkillIcon/MaxLife.svg";
-    private const float DamagePreviewIconRotation = Mathf.Pi / 4f;
-    private static Texture2D _damagePreviewIconTexture;
-    private static Texture2D _healPreviewIconTexture;
-    private static Texture2D _blockPreviewIconTexture;
-    private static Texture2D _maxLifePreviewIconTexture;
-    private static Shader _swordShader;
-    private static Shader _rhomboidShader;
-    private static readonly Color OutlineColor = new(0.02f, 0.03f, 0.06f, 0.95f);
-    private static readonly Color PlateFillColor = new(0.035f, 0.05f, 0.092f, 0.92f);
-    private static readonly Color PlateBorderColor = new(0.624f, 0.702f, 0.851f, 0.35f);
-    private static readonly Color PlateShadowColor = new(0f, 0f, 0f, 0.72f);
-    private static readonly Color DamageColor = new(1f, 0.6f, 0.45f, 1f);
-    private static readonly Color HealColor = new(0.46f, 1f, 0.68f, 1f);
-    private static readonly Color BlockColor = new(0.56f, 0.92f, 1f, 1f);
-    private static readonly Color PowerColor = new(1f, 0.23f, 0.2f, 1f);
-    private static readonly Color SurvivabilityColor = new(0.52f, 0.95f, 1f, 1f);
-    private static readonly Color MaxLifeColor = new(1f, 0.9f, 0.58f, 1f);
-    private static readonly Color BuffColor = new(0.9f, 0.96f, 1f, 1f);
-    private static readonly Color MessageColor = new(1f, 0.86f, 0.48f, 1f);
+    private static readonly Theme PreviewPalette = GD.Load<Theme>("res://battle/UIScene/EffectPreviewPalette.tres");
+    private static Color DamageColor => PreviewPalette.GetColor("font_color", "Damage");
+    private static Color HealColor => PreviewPalette.GetColor("font_color", "Heal");
+    private static Color BlockColor => PreviewPalette.GetColor("font_color", "Block");
+    private static Color PowerColor => PreviewPalette.GetColor("font_color", "Power");
+    private static Color SurvivabilityColor => PreviewPalette.GetColor("font_color", "Survivability");
+    private static Color MaxLifeColor => PreviewPalette.GetColor("font_color", "MaxLife");
+    private static Color BuffColor => PreviewPalette.GetColor("font_color", "Buff");
+    private static Color MessageColor => PreviewPalette.GetColor("font_color", "Message");
     private static readonly ConditionalWeakTable<VBoxContainer, PanelPoolState> PanelStates =
         new();
-
-    // All target-effect readouts use this shared placement.  The right side is reserved for
-    // tooltips, so labels always grow out from the target's left edge instead.
-    private static readonly Vector2 TargetEffectPreviewOffset = new(8f, 0f);
 
     /// <param name="showRowBackground">
     /// Whether each effect row receives its chip background. Incoming-damage readouts sit above
@@ -59,15 +25,7 @@ public static class PreviewEffectDisplay
     /// </param>
     public static VBoxContainer CreatePanel(bool showRowBackground = true)
     {
-        var panel = new VBoxContainer
-        {
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            ClipContents = false,
-            ZIndex = 80,
-            ZAsRelative = false,
-        };
-        panel.AddThemeConstantOverride("separation", 5);
+        var panel = GD.Load<PackedScene>("res://battle/UIScene/EffectPreviewPanel.tscn").Instantiate<VBoxContainer>();
         PanelStates.Add(panel, new PanelPoolState(panel, showRowBackground));
         return panel;
     }
@@ -162,12 +120,10 @@ public static class PreviewEffectDisplay
             panel,
             effects,
             targetScreenPosition,
-            TargetEffectPreviewOffset,
+            ((EffectPreviewLayout)panel).TargetOffset,
             anchor: PreviewAnchor.Left
         );
     }
-
-    private const float PanelViewportMargin = 12f;
 
     private static Vector2 ResolvePanelPosition(
         Control panel,
@@ -190,10 +146,11 @@ public static class PreviewEffectDisplay
         float leftSide = targetScreenPosition.X - offset.X - size.X;
 
         Rect2 viewport = panel.GetViewportRect();
-        float minX = viewport.Position.X + PanelViewportMargin;
-        float maxX = viewport.End.X - PanelViewportMargin - size.X;
-        float minY = viewport.Position.Y + PanelViewportMargin;
-        float maxY = viewport.End.Y - PanelViewportMargin - size.Y;
+        float viewportMargin = ((EffectPreviewLayout)panel).ViewportMargin;
+        float minX = viewport.Position.X + viewportMargin;
+        float maxX = viewport.End.X - viewportMargin - size.X;
+        float minY = viewport.Position.Y + viewportMargin;
+        float maxY = viewport.End.Y - viewportMargin - size.Y;
 
         float x = anchor switch
         {
@@ -428,8 +385,8 @@ public static class PreviewEffectDisplay
         PreviewIconKey iconKey,
         string text,
         Color color,
-        int fontSize = PreviewFontSize,
-        int outlineSize = PreviewOutlineSize
+        int fontSize = -1,
+        int outlineSize = -1
     )
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -464,245 +421,71 @@ public static class PreviewEffectDisplay
         AddRow(panel, PreviewIconKey.Damage, damageText, DamageColor);
     }
 
-    private static Label CreatePreviewLabel(string text, Color color, int fontSize, int outlineSize)
-    {
-        var label = new Label
-        {
-            Text = text,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = false,
-        };
-        label.AddThemeFontSizeOverride("font_size", fontSize);
-        label.AddThemeConstantOverride("outline_size", outlineSize);
-        label.AddThemeColorOverride("font_color", color);
-        label.AddThemeColorOverride("font_outline_color", OutlineColor);
-        return label;
-    }
-
     private static Control CreateStatIcon(Character character, PropertyType type)
     {
         Control icon = CreatePreviewStatIcon(type) ?? CreateFallbackStatIcon(type);
-        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
-        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        ApplyPreviewIconLayout(icon, StatIconSourceSize, StatIconVisualScale);
-        if (icon.GetChildOrNull<Label>(0) is Label label)
-            label.Visible = false;
-        return CreateIconHolder(icon);
+        return CreateIconHolder(icon, "StatLayout");
     }
 
     private static Control CreateDamagePreviewIcon()
     {
-        Control icon = CreateSvgActionIcon(DamagePreviewIconPath, DamagePreviewIconRotation)
-            ?? CreateFallbackActionIcon(DamageColor);
-        return CreateActionIconHolder(icon);
+        return CreateActionIconHolder(LoadPreviewIcon("Damage"));
     }
 
     private static Control CreateBlockPreviewIcon()
     {
-        Control icon = CreateSvgActionIcon(BlockPreviewIconPath)
-            ?? CreateFallbackActionIcon(BlockColor);
-        return CreateActionIconHolder(icon);
+        return CreateActionIconHolder(LoadPreviewIcon("Block"));
     }
 
     private static Control CreateHealPreviewIcon()
     {
-        Control icon = CreateSvgActionIcon(HealPreviewIconPath)
-            ?? CreateFallbackActionIcon(HealColor);
-        return CreateActionIconHolder(icon);
+        return CreateActionIconHolder(LoadPreviewIcon("Heal"));
     }
 
     private static Control CreateMessagePreviewIcon()
     {
-        var label = new Label
-        {
-            Text = "!",
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            CustomMinimumSize = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-            Size = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-        };
-        label.AddThemeFontSizeOverride("font_size", 34);
-        label.AddThemeConstantOverride("outline_size", 6);
-        label.AddThemeColorOverride("font_color", MessageColor);
-        label.AddThemeColorOverride("font_outline_color", OutlineColor);
-        return CreateActionIconHolder(label);
+        return CreateActionIconHolder(LoadPreviewIcon("Message"));
     }
 
     private static Control CreatePreviewStatIcon(PropertyType type)
     {
-        if (type == PropertyType.MaxLife)
-            return CreateSvgStatIcon(MaxLifePreviewIconPath);
-
-        Shader shader = GetStatShader(type);
-        if (shader == null)
-            return null;
-
-        var material = new ShaderMaterial { Shader = shader };
-        ApplyStatIconShaderParameters(material, type);
-        return new ColorRect
-        {
-            Color = Colors.White,
-            Material = material,
-            CustomMinimumSize = new Vector2(StatIconSourceSize, StatIconSourceSize),
-            Size = new Vector2(StatIconSourceSize, StatIconSourceSize),
-        };
-    }
-
-    private static void ApplyStatIconShaderParameters(ShaderMaterial material, PropertyType type)
-    {
-        if (material == null)
-            return;
-
-        switch (type)
-        {
-            case PropertyType.Power:
-                material.SetShaderParameter("sword_color", PowerColor);
-                material.SetShaderParameter("blade_color", new Color(1f, 0.2f, 0.2f, 1f));
-                material.SetShaderParameter("handle_color", new Color(0.38f, 0.14f, 0.14f, 1f));
-                material.SetShaderParameter("glow_intensity", 0.73f);
-                material.SetShaderParameter("angle", 0.0f);
-                break;
-            case PropertyType.Survivability:
-                material.SetShaderParameter("color", SurvivabilityColor);
-                break;
-        }
-    }
-
-    private static Control CreateSvgActionIcon(string iconPath, float rotation = 0f)
-    {
-        Texture2D texture = GetActionIconTexture(iconPath);
-        if (texture == null)
-            return null;
-
-        return new TextureRect
-        {
-            CustomMinimumSize = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-            Size = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-            Texture = texture,
-            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-            PivotOffset = new Vector2(ActionIconSourceSize, ActionIconSourceSize) * 0.5f,
-            Rotation = rotation,
-        };
-    }
-
-    private static Control CreateSvgStatIcon(string iconPath)
-    {
-        Texture2D texture = GetStatIconTexture(iconPath);
-        if (texture == null)
-            return null;
-
-        return new TextureRect
-        {
-            CustomMinimumSize = new Vector2(StatIconSourceSize, StatIconSourceSize),
-            Size = new Vector2(StatIconSourceSize, StatIconSourceSize),
-            Texture = texture,
-            ExpandMode = TextureRect.ExpandModeEnum.FitWidthProportional,
-            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-        };
-    }
-
-    private static Texture2D GetActionIconTexture(string iconPath)
-    {
-        return iconPath switch
-        {
-            DamagePreviewIconPath => _damagePreviewIconTexture ??=
-                GD.Load<Texture2D>(DamagePreviewIconPath),
-            HealPreviewIconPath => _healPreviewIconTexture ??=
-                GD.Load<Texture2D>(HealPreviewIconPath),
-            BlockPreviewIconPath => _blockPreviewIconTexture ??=
-                GD.Load<Texture2D>(BlockPreviewIconPath),
-            _ => string.IsNullOrWhiteSpace(iconPath) ? null : GD.Load<Texture2D>(iconPath),
-        };
-    }
-
-    private static Texture2D GetStatIconTexture(string iconPath)
-    {
-        return iconPath switch
-        {
-            MaxLifePreviewIconPath => _maxLifePreviewIconTexture ??=
-                GD.Load<Texture2D>(MaxLifePreviewIconPath),
-            _ => string.IsNullOrWhiteSpace(iconPath) ? null : GD.Load<Texture2D>(iconPath),
-        };
-    }
-
-    private static Shader GetStatShader(PropertyType type)
-    {
-        return type switch
-        {
-            PropertyType.Power => _swordShader ??= GD.Load<Shader>(SwordShaderPath),
-            PropertyType.Survivability => _rhomboidShader ??= GD.Load<Shader>(RhomboidShaderPath),
+        return type switch {
+            PropertyType.Power => LoadPreviewIcon("Power"),
+            PropertyType.Survivability => LoadPreviewIcon("Survivability"),
+            PropertyType.MaxLife => LoadPreviewIcon("MaxLife"),
             _ => null,
         };
     }
 
     private static Control CreateActionIconHolder(Control icon)
     {
-        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
-        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        ApplyPreviewIconLayout(
-            icon,
-            ActionIconSourceSize,
-            ActionIconVisualScale,
-            ActionIconVerticalOffset
-        );
-        return CreateIconHolder(icon);
+        return CreateIconHolder(icon, "ActionLayout");
     }
 
     private static Control CreateBuffPreviewIcon(Buff.BuffName buffName)
     {
         ColorRect icon = Buff.CreateBuffTooltipIcon(buffName);
-        if (icon == null)
-            return CreateIconHolder(null);
-
-        icon.MouseFilter = Control.MouseFilterEnum.Ignore;
-        icon.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
-        ApplyPreviewIconLayout(icon, BuffIconSourceSize, BuffIconVisualScale);
-        icon.Visible = true;
-        if (icon.GetChildOrNull<Label>(0) is Label stackLabel)
+        if (icon?.GetChildOrNull<Label>(0) is Label stackLabel)
             stackLabel.Visible = false;
-
-        return CreateIconHolder(icon);
+        return CreateIconHolder(icon, "BuffLayout");
     }
 
-    private static void ApplyPreviewIconLayout(
-        Control icon,
-        float sourceSize,
-        float visualScale,
-        float verticalOffset = IconVerticalOffset
-    )
+    private static Control CreateIconHolder(Control icon, string layout = "ActionLayout")
     {
-        if (icon == null)
-            return;
-
-        float visualSize = IconSize * visualScale;
-        icon.Position = new Vector2(
-            (IconSize - visualSize) / 2f,
-            verticalOffset + (IconSize - visualSize) / 2f
-        );
-        icon.CustomMinimumSize = new Vector2(sourceSize, sourceSize);
-        icon.Size = new Vector2(sourceSize, sourceSize);
-        icon.Scale = Vector2.One * (visualSize / sourceSize);
-    }
-
-    private static Control CreateIconHolder(Control icon)
-    {
-        var holder = new Control
-        {
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            CustomMinimumSize = new Vector2(IconSize, IconSize),
-            Size = new Vector2(IconSize, IconSize),
-            ClipContents = false,
-        };
-
-        if (icon != null)
+        var holder = GD.Load<PackedScene>("res://battle/UIScene/EffectPreviewIconHolder.tscn").Instantiate<Control>();
+        if (icon != null) {
+            Control sceneLayout = holder.GetNode<Control>(layout);
+            icon.Position = sceneLayout.Position;
+            icon.Size = sceneLayout.Size;
+            icon.Scale = sceneLayout.Scale;
+            icon.MouseFilter = Control.MouseFilterEnum.Ignore;
             holder.AddChild(icon);
-
+        }
         return holder;
     }
+
+    private static Control LoadPreviewIcon(string kind) =>
+        GD.Load<PackedScene>($"res://battle/UIScene/EffectPreview{kind}Icon.tscn").Instantiate<Control>();
 
     private static Control CreateIconForKey(PreviewIconKey key)
     {
@@ -741,59 +524,25 @@ public static class PreviewEffectDisplay
         private readonly bool _showRowBackground;
         private Control _icon;
         private PreviewIconKey _iconKey;
-        private int _fontSize = PreviewFontSize;
-        private int _outlineSize = PreviewOutlineSize;
+        private int _fontSize;
+        private int _outlineSize;
         private Color _plateAccent = Colors.Transparent;
+        private Color _plateFill;
 
         public PreviewEffectRow(bool showRowBackground)
         {
             _showRowBackground = showRowBackground;
-            if (_showRowBackground)
+            string path = showRowBackground ? "EffectPreviewRow" : "EffectPreviewPlainRow";
+            Row = GD.Load<PackedScene>($"res://battle/UIScene/{path}.tscn").Instantiate<PanelContainer>();
+            _content = Row.GetNode<HBoxContainer>("Content");
+            _label = _content.GetNode<Label>("Value");
+            _fontSize = _label.GetThemeFontSize("font_size");
+            _outlineSize = _label.GetThemeConstant("outline_size");
+            if (showRowBackground)
             {
-                // Effect previews on a card or target need a chip to stay readable over art.
-                _plate = new StyleBoxFlat
-                {
-                    BgColor = PlateFillColor,
-                    BorderColor = PlateBorderColor,
-                    BorderWidthLeft = PlateAccentWidth,
-                    BorderWidthTop = 1,
-                    BorderWidthRight = 1,
-                    BorderWidthBottom = 1,
-                    CornerRadiusTopLeft = 0,
-                    CornerRadiusTopRight = 0,
-                    CornerRadiusBottomRight = 0,
-                    CornerRadiusBottomLeft = 0,
-                    ContentMarginLeft = 8f,
-                    ContentMarginRight = 14f,
-                    ContentMarginTop = 2f,
-                    ContentMarginBottom = 2f,
-                    ShadowColor = PlateShadowColor,
-                    ShadowSize = 10,
-                    ShadowOffset = new Vector2(0f, 3f),
-                };
+                _plate = (StyleBoxFlat)Row.GetThemeStylebox("panel");
+                _plateFill = _plate.BgColor;
             }
-
-            Row = new PanelContainer
-            {
-                MouseFilter = Control.MouseFilterEnum.Ignore,
-                SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter,
-                ClipContents = false,
-            };
-            Row.AddThemeStyleboxOverride(
-                "panel",
-                _showRowBackground ? _plate : new StyleBoxEmpty()
-            );
-
-            _content = new HBoxContainer
-            {
-                MouseFilter = Control.MouseFilterEnum.Ignore,
-                ClipContents = false,
-            };
-            _content.AddThemeConstantOverride("separation", 2);
-            Row.AddChild(_content);
-
-            _label = CreatePreviewLabel(string.Empty, Colors.White, _fontSize, _outlineSize);
-            _content.AddChild(_label);
         }
 
         public void Configure(
@@ -806,24 +555,23 @@ public static class PreviewEffectDisplay
         {
             ConfigureIcon(iconKey);
             _label.Text = text ?? string.Empty;
-            if (_fontSize != fontSize)
+            if (fontSize > 0 && _fontSize != fontSize)
             {
                 _fontSize = fontSize;
                 _label.AddThemeFontSizeOverride("font_size", fontSize);
             }
-            if (_outlineSize != outlineSize)
+            if (outlineSize >= 0 && _outlineSize != outlineSize)
             {
                 _outlineSize = outlineSize;
                 _label.AddThemeConstantOverride("outline_size", outlineSize);
             }
             _label.AddThemeColorOverride("font_color", color);
-            _label.AddThemeColorOverride("font_outline_color", OutlineColor);
 
             if (_showRowBackground && _plateAccent != color)
             {
                 _plateAccent = color;
                 _plate.BorderColor = color with { A = 0.85f };
-                _plate.BgColor = PlateFillColor.Lerp(color, 0.07f) with { A = PlateFillColor.A };
+                _plate.BgColor = _plateFill.Lerp(color, 0.07f) with { A = _plateFill.A };
             }
         }
 
@@ -899,22 +647,16 @@ public static class PreviewEffectDisplay
 
     private static ColorRect CreateFallbackStatIcon(PropertyType type)
     {
-        return new ColorRect
-        {
-            Color = GetPropertyColor(type),
-            CustomMinimumSize = new Vector2(IconSize, IconSize),
-            Size = new Vector2(IconSize, IconSize),
-        };
+        var icon = (ColorRect)LoadPreviewIcon("Fallback");
+        icon.Color = GetPropertyColor(type);
+        return icon;
     }
 
     private static ColorRect CreateFallbackActionIcon(Color color)
     {
-        return new ColorRect
-        {
-            Color = color,
-            CustomMinimumSize = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-            Size = new Vector2(ActionIconSourceSize, ActionIconSourceSize),
-        };
+        var icon = (ColorRect)LoadPreviewIcon("Fallback");
+        icon.Color = color;
+        return icon;
     }
 
     private static string FormatDamageText(Skill.PreviewEffectEntry effect)

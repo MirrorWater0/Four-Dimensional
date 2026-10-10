@@ -5,6 +5,9 @@ using Godot;
 
 public partial class BattleTutorialOverlay : CanvasLayer
 {
+    [Export] public float HighlightPadding { get; set; } = 12f;
+    [Export] public float CardScreenMargin { get; set; } = 34f;
+
     private const string TutorialSavePath = "user://tutorial.cfg";
     private const string TutorialSection = "Tutorial";
     private const string BattleTutorialSeenKey = "BattleTutorialSeenV5";
@@ -51,7 +54,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
         if (battle == null || !GodotObject.IsInstanceValid(battle))
             return;
 
-        var overlay = new BattleTutorialOverlay();
+        var overlay = GD.Load<PackedScene>("res://battle/UIScene/BattleTutorialOverlay.tscn").Instantiate<BattleTutorialOverlay>();
         battle.AddChild(overlay);
         await overlay.RunAsync(battle);
     }
@@ -173,7 +176,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
                 ),
                 new TutorialStep(
                     "结束回合",
-                    "如果手牌没有合适的选择，可以点击结束回合，或按 E 快捷结束。\n\n结束回合会弃掉当前手牌，并进入敌方阵营行动。",
+                    "点击结束回合，或按 E 快捷结束。\n\n我方角色会按站位依次普通攻击，每人默认1次。基础攻击牌会增加本回合的临时攻击次数；两种次数会显示在角色状态栏。攻击结算后，临时次数清零，弃掉手牌，再进入敌方行动。",
                     battle => battle.CharacterControl?.EndTurnButton
                 ),
                 new TutorialStep(
@@ -228,111 +231,20 @@ public partial class BattleTutorialOverlay : CanvasLayer
 
     private void BuildUi()
     {
-        Layer = 100;
-        Name = "BattleTutorialOverlay";
-
-        _root = new Control
-        {
-            Name = "Root",
-            MouseFilter = Control.MouseFilterEnum.Stop,
-        };
-        _root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        AddChild(_root);
-
-        _scrimTop = CreateScrimRect();
-        _scrimBottom = CreateScrimRect();
-        _scrimLeft = CreateScrimRect();
-        _scrimRight = CreateScrimRect();
-        _root.AddChild(_scrimTop);
-        _root.AddChild(_scrimBottom);
-        _root.AddChild(_scrimLeft);
-        _root.AddChild(_scrimRight);
-
-        _highlight = new Panel
-        {
-            Visible = false,
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-        };
-        var highlightStyle = new StyleBoxFlat
-        {
-            BgColor = new Color(0.5f, 0.78f, 1f, 0.06f),
-            BorderColor = new Color(0.65f, 0.95f, 1f, 0.95f),
-            BorderWidthLeft = 3,
-            BorderWidthTop = 3,
-            BorderWidthRight = 3,
-            BorderWidthBottom = 3,
-            CornerRadiusTopLeft = 14,
-            CornerRadiusTopRight = 14,
-            CornerRadiusBottomLeft = 14,
-            CornerRadiusBottomRight = 14,
-        };
-        _highlight.AddThemeStyleboxOverride("panel", highlightStyle);
-        _root.AddChild(_highlight);
-
-        _card = new PanelContainer
-        {
-            CustomMinimumSize = new Vector2(620, 0),
-            MouseFilter = Control.MouseFilterEnum.Stop,
-        };
-        var cardStyle = new StyleBoxFlat
-        {
-            BgColor = new Color(0.035f, 0.055f, 0.1f, 0.96f),
-            BorderColor = new Color(0.55f, 0.8f, 1f, 0.9f),
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            CornerRadiusTopLeft = 18,
-            CornerRadiusTopRight = 18,
-            CornerRadiusBottomLeft = 18,
-            CornerRadiusBottomRight = 18,
-            ContentMarginLeft = 24,
-            ContentMarginRight = 24,
-            ContentMarginTop = 20,
-            ContentMarginBottom = 18,
-        };
-        _card.AddThemeStyleboxOverride("panel", cardStyle);
-        _root.AddChild(_card);
-
-        var layout = new VBoxContainer();
-        layout.AddThemeConstantOverride("separation", 12);
-        _card.AddChild(layout);
-
-        _titleLabel = new Label();
-        _titleLabel.AddThemeFontSizeOverride("font_size", 34);
-        _titleLabel.AddThemeColorOverride("font_color", new Color(0.75f, 0.94f, 1f, 1f));
-        layout.AddChild(_titleLabel);
-
-        _bodyLabel = new RichTextLabel
-        {
-            CustomMinimumSize = new Vector2(560, 165),
-            FitContent = true,
-            BbcodeEnabled = true,
-            ScrollActive = false,
-        };
-        _bodyLabel.AddThemeFontSizeOverride("normal_font_size", 22);
-        _bodyLabel.AddThemeColorOverride("default_color", new Color(0.9f, 0.96f, 1f, 0.96f));
-        layout.AddChild(_bodyLabel);
-
-        var footer = new HBoxContainer();
-        footer.AddThemeConstantOverride("separation", 12);
-        layout.AddChild(footer);
-
-        _progressLabel = new Label
-        {
-            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
-        };
-        _progressLabel.AddThemeFontSizeOverride("font_size", 18);
-        _progressLabel.AddThemeColorOverride("font_color", new Color(0.65f, 0.78f, 0.88f, 1f));
-        footer.AddChild(_progressLabel);
-
-        _skipButton = new Button { Text = "跳过" };
+        _root = GetNode<Control>("Root");
+        _scrimTop = _root.GetNode<ColorRect>("ScrimTop");
+        _scrimBottom = _root.GetNode<ColorRect>("ScrimBottom");
+        _scrimLeft = _root.GetNode<ColorRect>("ScrimLeft");
+        _scrimRight = _root.GetNode<ColorRect>("ScrimRight");
+        _highlight = _root.GetNode<Panel>("Highlight");
+        _card = _root.GetNode<PanelContainer>("Card");
+        _titleLabel = _card.GetNode<Label>("Layout/Title");
+        _bodyLabel = _card.GetNode<RichTextLabel>("Layout/Body");
+        _progressLabel = _card.GetNode<Label>("Layout/Footer/Progress");
+        _skipButton = _card.GetNode<Button>("Layout/Footer/Skip");
+        _nextButton = _card.GetNode<Button>("Layout/Footer/Next");
         _skipButton.Pressed += Finish;
-        footer.AddChild(_skipButton);
-
-        _nextButton = new Button { Text = "下一步" };
         _nextButton.Pressed += NextStep;
-        footer.AddChild(_nextButton);
     }
 
     private void ShowStep(int index)
@@ -349,13 +261,6 @@ public partial class BattleTutorialOverlay : CanvasLayer
         PositionCard(targetRect);
     }
 
-    private static ColorRect CreateScrimRect() =>
-        new()
-        {
-            Color = new Color(0.02f, 0.03f, 0.07f, 0.72f),
-            MouseFilter = Control.MouseFilterEnum.Stop,
-        };
-
     private void PositionHighlight(Rect2? targetRect)
     {
         UpdateScrim(targetRect);
@@ -366,7 +271,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
             return;
         }
 
-        Rect2 rect = targetRect.Value.Grow(12);
+        Rect2 rect = targetRect.Value.Grow(HighlightPadding);
         _highlight.Visible = true;
         _highlight.Position = rect.Position;
         _highlight.Size = rect.Size;
@@ -384,7 +289,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
             return;
         }
 
-        Rect2 rect = targetRect.Value.Grow(12);
+        Rect2 rect = targetRect.Value.Grow(HighlightPadding);
         rect.Position = new Vector2(
             Mathf.Clamp(rect.Position.X, 0f, viewportSize.X),
             Mathf.Clamp(rect.Position.Y, 0f, viewportSize.Y)
@@ -418,8 +323,8 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private void PositionCard(Rect2? targetRect)
     {
         Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
-        Vector2 cardSize = new(620, 270);
-        const float margin = 34f;
+        Vector2 cardSize = _card.Size;
+        float margin = CardScreenMargin;
 
         if (targetRect == null)
         {

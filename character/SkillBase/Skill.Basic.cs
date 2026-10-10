@@ -1,9 +1,7 @@
 public partial class BasicAttack : Skill
 {
-    private const int BaseDamage = 4;
-    private const int PowerMultiplier = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Attack;
+    public override SkillTypes SkillType => SkillTypes.Special;
+    public override int EnergyCost => Cost(0);
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_attack.name", "基础攻击");
 
@@ -11,10 +9,7 @@ public partial class BasicAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(
-                baseDamage: V(nameof(BaseDamage), BaseDamage),
-                multiplier: V(nameof(PowerMultiplier), PowerMultiplier)
-            )
+            ModifyAttackCountStep(V("TemporaryAttackCount", 1), temporary: true)
         );
     }
 }
@@ -78,7 +73,7 @@ public partial class BasicSpecial : Skill
         return new SkillPlan(
             this,
             ModifyPropertyStep(PropertyType.Power, V(nameof(PowerGain), PowerGain)),
-            CarryStep(target: TargetReference.Next, skillIndex: 1)
+            ModifyAttackCountStep(1, temporary: true, target: TargetReference.Next)
         );
     }
 }
@@ -98,7 +93,7 @@ public partial class KasiyaBasicSpecial : Skill
         return new SkillPlan(
             this,
             ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 2)),
-            CarryStep(target: TargetReference.Next, skillIndex: 1)
+            ModifyAttackCountStep(1, temporary: true, target: TargetReference.Next)
         );
     }
 }

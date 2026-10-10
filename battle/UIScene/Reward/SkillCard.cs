@@ -22,10 +22,12 @@ public sealed class CardTrailMoveOptions
 public partial class SkillCard : Control
 {
     private const int DefaultDescriptionFontSize = 17;
-    private const int MinDescriptionFontSize = 8;
-    private const string EnergyCostNumberColor = "#e8ebee";
-    private const string EnergyCostInsufficientNumberColor = "#858b92";
-    private const float OrnateFrameBrightness = 1.56f;
+    [ExportGroup("Card Appearance")]
+    [Export] public int MinDescriptionFontSize { get; set; } = 8;
+    [Export] public int EnergyCostNumberFontSize { get; set; } = 28;
+    [Export] public Color EnergyCostNumberTint { get; set; } = new(0.91f, 0.92f, 0.93f);
+    [Export] public Color EnergyCostInsufficientNumberTint { get; set; } = new(0.52f, 0.55f, 0.57f);
+    [Export] public float OrnateFrameBrightness { get; set; } = 1.56f;
     private static readonly Vector2 CardBaseSize = new(240f, 370f);
 
     public Control CardVisualScaleHost => field ??= GetNode<Control>("VisualTransform");
@@ -94,11 +96,12 @@ public partial class SkillCard : Control
     public string PreviewCharacterName { get; set; }
     public string PreviewCharacterKey { get; set; }
     public string DisplayNameOverride { get; set; }
-    public bool AutoPressEffect { get; set; } = true;
-    public bool UseDefaultHoverEffect { get; set; } = true;
+    [ExportGroup("Card Behavior")]
+    [Export] public bool AutoPressEffect { get; set; } = true;
+    [Export] public bool UseDefaultHoverEffect { get; set; } = true;
     public bool HoverUiEnabled { get; set; } = true;
     public bool SuppressRelatedCardPreview { get; private set; }
-    public bool AutoAdjustDescriptionTextSize { get; set; } = true;
+    [Export] public bool AutoAdjustDescriptionTextSize { get; set; } = true;
     public bool IsPlayableHighlightEnabled => _playableHighlightEnabled;
     public Vector2 ConfiguredDisplayScale => _configuredDisplayScale;
     public float PointerHoverScaleMultiplier { get; set; } = 1.08f;
@@ -209,7 +212,9 @@ public partial class SkillCard : Control
         ApplySkillToUi();
         HoverHint.Visible = false;
         ApplyConfiguredDisplayScale();
-        PivotOffsetRatio = new Vector2(0.5f, 0.5f);
+        // Godot adds the ratio-based pivot to PivotOffset; use only the pixel centre.
+        PivotOffsetRatio = Vector2.Zero;
+        PivotOffset = CardBaseSize * 0.5f;
         ResetCardVisualHoverTransform();
         Button.MouseEntered += () => ApplyPointerHoverState(true);
         Button.MouseExited += () => ApplyPointerHoverState(false);
@@ -673,7 +678,7 @@ public partial class SkillCard : Control
         );
     }
 
-    private static Color GetOrnateFrameColor(Color rarityColor)
+    private Color GetOrnateFrameColor(Color rarityColor)
     {
         return new Color(
             rarityColor.R * OrnateFrameBrightness,
@@ -728,7 +733,7 @@ public partial class SkillCard : Control
     public void SetEnergyCostCostText(string costText)
     {
         string coloredCost =
-            $"[font_size=28][b][color={EnergyCostNumberColor}]{costText}[/color][/b][/font_size]";
+            $"[font_size={EnergyCostNumberFontSize}][b][color=#{EnergyCostNumberTint.ToHtml()}]{costText}[/color][/b][/font_size]";
         SetEnergyCostText(
             I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", coloredCost))
         );
@@ -745,7 +750,7 @@ public partial class SkillCard : Control
             EnergyCost.Text = energyText;
     }
 
-    private static string BuildEnergyCostText(Skill skill, bool affordable)
+    private string BuildEnergyCostText(Skill skill, bool affordable)
     {
         if (skill == null)
             return string.Empty;
@@ -753,9 +758,9 @@ public partial class SkillCard : Control
         string energyText;
         if (skill.CanBePlayed)
         {
-            string color = affordable ? EnergyCostNumberColor : EnergyCostInsufficientNumberColor;
+            string color = (affordable ? EnergyCostNumberTint : EnergyCostInsufficientNumberTint).ToHtml();
             string coloredCost =
-                $"[font_size=28][b][color={color}]{skill.CardEnergyCostText}[/color][/b][/font_size]";
+                $"[font_size={EnergyCostNumberFontSize}][b][color=#{color}]{skill.CardEnergyCostText}[/color][/b][/font_size]";
             energyText = I18n.Format("ui.reward.energy_cost", "耗能:{cost}", ("cost", coloredCost));
         }
         else
@@ -2720,7 +2725,7 @@ public partial class SkillCard : Control
         if (preview != null)
             return preview;
 
-        preview = new SkillRelatedCardPreview { Name = "RelatedCardPreview" };
+        preview = GD.Load<PackedScene>("res://battle/UIScene/SkillRelatedCardPreview.tscn").Instantiate<SkillRelatedCardPreview>();
         layer.AddChild(preview);
         return preview;
     }

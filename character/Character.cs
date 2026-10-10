@@ -50,7 +50,10 @@ public partial class Character : Node2D
             bool changed = _state != value;
             _state = value;
             if (_state == CharacterState.Dying)
+            {
+                AttackCountBuff.ClearTemporary(this);
                 BattleNode?.ClearNextActionPreviewCharacter(this);
+            }
             if (changed)
                 BattleNode?.RefreshTurnOrderPreview();
         }
@@ -113,7 +116,7 @@ public partial class Character : Node2D
         field ??= GetNodeOrNull<ColorRect>("TurnOrderPreview/Circle");
     public Label TurnOrderPreviewLabel => field ??= GetNodeOrNull<Label>("TurnOrderPreview/Value");
     public TextureRect Hoverframe => field ??= GetNode<TextureRect>("Hoverframe");
-    public CharacterFootMarker FootMarker => field ??= GetNodeOrNull<CharacterFootMarker>("FootMarker");
+    public CharacterShadow CharacterShadow => field ??= GetNodeOrNull<CharacterShadow>("CharacterShadow");
     public AnimatedSprite2D absorb => field ??= GetNode<AnimatedSprite2D>("Effect/absorb");
     public AnimatedSprite2D shield => field ??= GetNode<AnimatedSprite2D>("Effect/shield");
 
@@ -944,7 +947,7 @@ public partial class Character : Node2D
 
         if (SpecialBuffs != null)
         {
-            foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
+            foreach (var buff in SpecialBuffs.Where(x => x != null && (x.Stack > 0 || x.ThisBuffName == Buff.BuffName.AttackCount)))
             {
                 AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
@@ -1726,48 +1729,7 @@ public partial class Character : Node2D
 
     private Control EnsureEnergyUsePreviewFrame()
     {
-        Control icon = EnergeIcon;
-        if (icon == null || !GodotObject.IsInstanceValid(icon))
-            return null;
-
-        if (_energyUsePreviewFrame != null && GodotObject.IsInstanceValid(_energyUsePreviewFrame))
-            return _energyUsePreviewFrame;
-
-        var frame = new Panel
-        {
-            Name = "EnergyUsePreviewFrame",
-            MouseFilter = Control.MouseFilterEnum.Ignore,
-            Visible = false,
-            ZIndex = 1,
-        };
-        frame.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        frame.OffsetLeft = -7f;
-        frame.OffsetTop = -7f;
-        frame.OffsetRight = 7f;
-        frame.OffsetBottom = 7f;
-
-        var style = new StyleBoxFlat
-        {
-            BgColor = new Color(1f, 1f, 1f, 0f),
-            BorderColor = new Color(0.62f, 0.96f, 1f, 1f),
-            BorderWidthLeft = 3,
-            BorderWidthTop = 3,
-            BorderWidthRight = 3,
-            BorderWidthBottom = 3,
-            CornerRadiusTopLeft = 4,
-            CornerRadiusTopRight = 4,
-            CornerRadiusBottomLeft = 4,
-            CornerRadiusBottomRight = 4,
-            ShadowColor = new Color(0.28f, 0.92f, 1f, 0.42f),
-            ShadowSize = 8,
-        };
-        frame.AddThemeStyleboxOverride("panel", style);
-
-        icon.AddChild(frame);
-        EnergeIconLabel.ZIndex = 2;
-        EnergeIconLabel.MoveToFront();
-        _energyUsePreviewFrame = frame;
-        return _energyUsePreviewFrame;
+        return _energyUsePreviewFrame ??= GetNodeOrNull<Control>("State/EnergeIcon/EnergyUsePreviewFrame");
     }
 
     private void RefreshCombatStatIconVisibility()
@@ -2301,12 +2263,12 @@ public partial class Character : Node2D
         RefreshHoverframeVisual();
     }
 
-    public void SetFootMarkerCardHover(bool hovered, bool instant = false)
+    public void SetCharacterShadowCardHover(bool hovered, bool instant = false)
     {
-        if (!IsPlayer || FootMarker == null || !GodotObject.IsInstanceValid(FootMarker))
+        if (!IsPlayer || CharacterShadow == null || !GodotObject.IsInstanceValid(CharacterShadow))
             return;
 
-        FootMarker.SetCardHoverHighlight(hovered, instant);
+        CharacterShadow.SetCardHoverHighlight(hovered, instant);
     }
 
     private void RefreshHoverframeVisual()

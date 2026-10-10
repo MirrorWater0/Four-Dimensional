@@ -14,7 +14,6 @@ public static partial class GameInfo
         SkillID.BasicGuard,
         SkillID.BasicDefense,
         SkillID.BasicAttack,
-        SkillID.BasicAttack,
     ];
 
     private static readonly HashSet<SkillID> BasicSkillIds =

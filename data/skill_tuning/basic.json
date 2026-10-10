@@ -2,8 +2,8 @@
     "skills":  {
                    "BasicAttack":  {
                                        "Name":  "基础攻击",
-                                       "BaseDamage":  4,
-                                       "PowerMultiplier":  1
+                                       "EnergyCost":  0,
+                                       "TemporaryAttackCount":  1
                                    },
                    "BasicDefense":  {
                                         "Name":  "基础防御",

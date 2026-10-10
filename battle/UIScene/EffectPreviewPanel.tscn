@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/UIScene/EffectPreviewLayout.cs" id="Layout"]
+
+[node name="EffectPreviewPanel" type="VBoxContainer"]
+script = ExtResource("Layout")
+TargetOffset = Vector2(8, 0)
+ViewportMargin = 12.0
+visible = false
+mouse_filter = 2
+z_index = 80
+z_as_relative = false
+theme_override_constants/separation = 5

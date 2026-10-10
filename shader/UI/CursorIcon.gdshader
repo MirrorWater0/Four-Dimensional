@@ -1,58 +1,55 @@
 shader_type canvas_item;
+render_mode unshaded;
 
-uniform vec4 color_left : source_color = vec4(0.0, 0.5, 0.8, 1.0);
-uniform vec4 color_right : source_color = vec4(0.0, 0.8, 1.0, 1.0);
-uniform vec4 color_rim : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform float tilt_angle : hint_range(-1.5, 1.5) = -0.5;
-uniform float rim_width : hint_range(0.0, 0.1) = 0.02;
-uniform float shape_width : hint_range(0.1, 1.0) = 0.4;
-uniform float shape_length : hint_range(0.1, 1.0) = 0.7;
+uniform vec4 face_color : source_color = vec4(0.93, 0.96, 0.98, 1.0);
+uniform vec4 facet_color : source_color = vec4(0.45, 0.7, 0.82, 1.0);
+uniform vec4 edge_color : source_color = vec4(0.08, 0.14, 0.2, 1.0);
+uniform vec4 accent_color : source_color = vec4(0.93, 0.82, 0.59, 1.0);
+uniform float press_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float burst_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float motion_amount : hint_range(0.0, 1.0) = 0.0;
+
+float cross_2d(vec2 a, vec2 b) {
+    return a.x * b.y - a.y * b.x;
+}
+
+float segment_distance(vec2 p, vec2 a, vec2 b) {
+    vec2 edge = b - a;
+    return length(p - a - edge * clamp(dot(p - a, edge) / dot(edge, edge), 0.0, 1.0));
+}
+
+float triangle_distance(vec2 p, vec2 a, vec2 b, vec2 c) {
+    float distance_to_edge = min(segment_distance(p, a, b),
+        min(segment_distance(p, b, c), segment_distance(p, c, a)));
+    float orientation = sign(cross_2d(b - a, c - a));
+    float inside = min(orientation * cross_2d(b - a, p - a),
+        min(orientation * cross_2d(c - b, p - b), orientation * cross_2d(a - c, p - c)));
+    return inside >= 0.0 ? -distance_to_edge : distance_to_edge;
+}
 
 void fragment() {
-    // 1. 坐标变换与旋转（1.5倍缩放防止切边）
-    vec2 uv = (UV - 0.36) * 0.6;
-	uv.x += 0.05;
-    float s = sin(tilt_angle);
-    float c = cos(tilt_angle);
-    uv = mat2(vec2(c, -s), vec2(s, c)) * uv;
+    // All geometry is measured in the 48px control. (8, 8) is the exact hotspot.
+    vec2 tip = vec2(8.0, 8.0);
+    vec2 p = tip + (UV * 48.0 - tip) / (1.0 - press_amount * 0.07);
+    vec2 heel = vec2(10.5, 33.0);
+    vec2 notch = vec2(17.0, 25.0);
+    vec2 wing = vec2(29.0, 26.0);
+    float d = min(triangle_distance(p, tip, heel, notch), triangle_distance(p, tip, notch, wing));
+    float aa = max(fwidth(d), 0.65);
+    float mask = 1.0 - smoothstep(-aa * 0.5, aa * 0.5, d);
+    float edge = smoothstep(-1.4 - aa, -1.4 + aa, d);
 
-    // 2. 构造“前大后小”的硬朗几何体 (SDF)
-    // 利用绝对值实现对称
-    vec2 p = vec2(abs(uv.x), uv.y);
-    
-    // 我们用两条相交的直线定义边缘：
-    // line_top: 顶部的锐角边缘 (前大)
-    // line_bottom: 尾部的收缩边缘 (后小)
-    float line_top = p.x * 1.5 + p.y * 0.8 - 0.2; 
-    float line_bottom = p.x * 2.5 - p.y * 0.8 - 0.2;
-    
-    // d 是当前点到形状边缘的距离：d < 0 表示在形状内，d > 0 表示在形状外
-    float d = max(line_top, line_bottom);
+    float split = cross_2d(notch - tip, p - tip) / length(notch - tip);
+    vec3 face = mix(facet_color.rgb, face_color.rgb, smoothstep(-0.6, 0.6, split));
+    face = mix(face, accent_color.rgb, press_amount * 0.24);
+    float seam = (1.0 - smoothstep(0.15, 0.8, abs(split)))
+        * smoothstep(9.0, 15.0, p.y) * (1.0 - smoothstep(23.0, 26.0, p.y));
+    face = mix(face, accent_color.rgb, seam * (0.6 + burst_amount * 0.3));
+    face += motion_amount * 0.035;
 
-    // 3. 极高质量抗锯齿计算
-    // 利用 fwidth 获取像素变化率，实现无论缩放多少都只有 1 像素平滑
-    float fw = fwidth(d);
-    float mask = smoothstep(fw, -fw, d);
-    
-    // 4. 计算边框 (Rim) 和 脊线 (Spine)
-    // 边框逻辑：在距离边缘 rim_width 的范围内显示
-    float rim_mask = smoothstep(fw, -fw, d) * smoothstep(-fw, fw, d + rim_width);
-    
-    // 脊线逻辑：在中心线左右一个小范围内显示
-    float spine_fw = fwidth(uv.x);
-    float spine_mask = smoothstep(0.00 + spine_fw, 0.00 - spine_fw, abs(uv.x)) * mask;
-
-    // 5. 颜色合成
-    // 左右切面使用纯色，中心线处进行 1 像素平滑防止中心线锯齿
-    float side_split = smoothstep(-spine_fw, spine_fw, uv.x);
-    vec3 base_color = mix(color_left.rgb, color_right.rgb, side_split);
-    
-    // 叠加顺序：基础填充 -> 脊线 -> 边框
-    vec3 final_rgb = base_color;
-    final_rgb = mix(final_rgb, color_rim.rgb, spine_mask);
-    final_rgb = mix(final_rgb, color_rim.rgb, rim_mask);
-
-    // 6. 输出结果
-    // 使用 mask 作为 Alpha 彻底消除外边缘锯齿
-    COLOR = vec4(final_rgb, mask * color_left.a);
+    float halo = exp(-max(d, 0.0) * 1.0) * (1.0 - mask) * (0.09 + burst_amount * 0.08);
+    vec3 ink = mix(face, edge_color.rgb, edge);
+    float alpha = mask * face_color.a + halo;
+    vec3 color = (ink * mask * face_color.a + facet_color.rgb * halo) / max(alpha, 0.001);
+    COLOR = vec4(color, alpha);
 }

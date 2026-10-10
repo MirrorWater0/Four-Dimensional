@@ -628,7 +628,7 @@ public partial class CharacterControl
         {
             if (_cardHoverPreviewActive[index])
             {
-                UpdateCardFootMarkerHover(
+                UpdateCardCharacterShadowHover(
                     index,
                     GetHandSkill(index)?.OwnerCharater as PlayerCharacter
                 );
@@ -653,8 +653,8 @@ public partial class CharacterControl
         _cardHoverPreviewActive[index] = false;
         card.HideSkillPreview();
         ClearCardPreviewTriggeredBuffHighlights(index);
-        if (_cardFootMarkerHoverIndex == index)
-            ClearCardFootMarkerHover();
+        if (_cardCharacterShadowHoverIndex == index)
+            ClearCardCharacterShadowHover();
     }
 
     private async Task ShowCardHoverPreviewDelayed(int index, int version)
@@ -713,7 +713,7 @@ public partial class CharacterControl
         card.HoverHint.Visible = index != _liftedCardIndex;
         card.ShowSkillPreview();
         UpdateCardPreviewTriggeredBuffHighlights(index, GetHandSkill(index));
-        UpdateCardFootMarkerHover(index, GetHandSkill(index)?.OwnerCharater as PlayerCharacter);
+        UpdateCardCharacterShadowHover(index, GetHandSkill(index)?.OwnerCharater as PlayerCharacter);
     }
 
     private void CancelPendingCardHoverPreview(int index = -1)
@@ -728,29 +728,29 @@ public partial class CharacterControl
         _cardHoverPreviewRequestVersion++;
     }
 
-    private void UpdateCardFootMarkerHover(int index, PlayerCharacter player)
+    private void UpdateCardCharacterShadowHover(int index, PlayerCharacter player)
     {
-        if (_cardFootMarkerHoverIndex == index && _cardFootMarkerHoverPlayer == player)
+        if (_cardCharacterShadowHoverIndex == index && _cardCharacterShadowHoverPlayer == player)
             return;
 
-        ClearCardFootMarkerHover();
-        _cardFootMarkerHoverIndex = index;
-        _cardFootMarkerHoverPlayer = player;
-        player?.SetFootMarkerCardHover(true);
+        ClearCardCharacterShadowHover();
+        _cardCharacterShadowHoverIndex = index;
+        _cardCharacterShadowHoverPlayer = player;
+        player?.SetCharacterShadowCardHover(true);
     }
 
-    private void ClearCardFootMarkerHover()
+    private void ClearCardCharacterShadowHover()
     {
-        _cardFootMarkerHoverPlayer?.SetFootMarkerCardHover(false);
-        _cardFootMarkerHoverPlayer = null;
-        _cardFootMarkerHoverIndex = -1;
+        _cardCharacterShadowHoverPlayer?.SetCharacterShadowCardHover(false);
+        _cardCharacterShadowHoverPlayer = null;
+        _cardCharacterShadowHoverIndex = -1;
     }
 
     private void HideAllCardHoverPreviews()
     {
         CancelPendingCardHoverPreview();
         ClearCardEnergyPreview();
-        ClearCardFootMarkerHover();
+        ClearCardCharacterShadowHover();
         ClearCardPreviewTriggeredBuffHighlights();
         for (int i = 0; i < _cards.Length; i++)
             HideCardHoverPreview(i);
@@ -761,8 +761,8 @@ public partial class CharacterControl
         if (_pendingCardHoverPreviewIndex != preservedIndex)
             CancelPendingCardHoverPreview();
         ClearCardEnergyPreview();
-        if (_cardFootMarkerHoverIndex != preservedIndex)
-            ClearCardFootMarkerHover();
+        if (_cardCharacterShadowHoverIndex != preservedIndex)
+            ClearCardCharacterShadowHover();
         if (_cardPreviewHighlightedBuffsIndex != preservedIndex)
             ClearCardPreviewTriggeredBuffHighlights();
 
@@ -798,8 +798,8 @@ public partial class CharacterControl
         if (!_cardHoverPreviewActive[index])
             return;
 
-        if (_cardFootMarkerHoverIndex == index)
-            ClearCardFootMarkerHover();
+        if (_cardCharacterShadowHoverIndex == index)
+            ClearCardCharacterShadowHover();
 
         _cardHoverPreviewActive[index] = false;
 

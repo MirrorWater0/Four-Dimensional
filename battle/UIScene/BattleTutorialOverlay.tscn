@@ -1,0 +1,142 @@
+[gd_scene format=3]
+
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="Theme"]
+
+[ext_resource type="Script" path="res://battle/BattleTutorialOverlay.cs" id="Script"]
+
+[sub_resource type="StyleBoxFlat" id="Highlight"]
+bg_color = Color(0.5, 0.78, 1, 0.06)
+border_color = Color(0.65, 0.95, 1, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_left = 14
+corner_radius_bottom_right = 14
+content_margin_left = 0.0
+content_margin_right = 0.0
+content_margin_top = 20.0
+content_margin_bottom = 18.0
+
+[sub_resource type="StyleBoxFlat" id="Card"]
+bg_color = Color(0.035, 0.055, 0.1, 0.96)
+border_color = Color(0.55, 0.8, 1, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_left = 18
+corner_radius_bottom_right = 18
+content_margin_left = 24.0
+content_margin_right = 24.0
+content_margin_top = 20.0
+content_margin_bottom = 18.0
+
+[node name="BattleTutorialOverlay" type="CanvasLayer"]
+layer = 100
+script = ExtResource("Script")
+HighlightPadding = 12.0
+CardScreenMargin = 34.0
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("Theme")
+
+[node name="ScrimTop" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0.02, 0.03, 0.07, 0.72)
+
+[node name="ScrimBottom" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1920.0
+offset_bottom = 0.0
+color = Color(0.02, 0.03, 0.07, 0.72)
+
+[node name="ScrimLeft" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1920.0
+offset_bottom = 0.0
+color = Color(0.02, 0.03, 0.07, 0.72)
+
+[node name="ScrimRight" type="ColorRect" parent="Root"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 1920.0
+offset_bottom = 0.0
+color = Color(0.02, 0.03, 0.07, 0.72)
+
+[node name="Highlight" type="Panel" parent="Root"]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 720.0
+offset_right = 230.0
+offset_bottom = 920.0
+visible = false
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Highlight")
+
+[node name="Card" type="PanelContainer" parent="Root"]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 730.0
+offset_right = 1270.0
+offset_bottom = 1030.0
+custom_minimum_size = Vector2(620, 270)
+theme_override_styles/panel = SubResource("Card")
+
+[node name="Layout" type="VBoxContainer" parent="Root/Card"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Root/Card/Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+theme_override_colors/font_color = Color(0.75, 0.94, 1, 1)
+text = "战斗教程"
+
+[node name="Body" type="RichTextLabel" parent="Root/Card/Layout"]
+layout_mode = 2
+custom_minimum_size = Vector2(560, 165)
+fit_content = true
+bbcode_enabled = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 22
+theme_override_colors/default_color = Color(0.9, 0.96, 1, 0.96)
+text = "观察敌人，选择卡牌，制定行动。"
+
+[node name="Footer" type="HBoxContainer" parent="Root/Card/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Progress" type="Label" parent="Root/Card/Layout/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.65, 0.78, 0.88, 1)
+text = "1/5"
+
+[node name="Skip" type="Button" parent="Root/Card/Layout/Footer"]
+layout_mode = 2
+text = "跳过"
+
+[node name="Next" type="Button" parent="Root/Card/Layout/Footer"]
+layout_mode = 2
+text = "下一步"

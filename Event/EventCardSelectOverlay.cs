@@ -302,7 +302,6 @@ public partial class EventCardSelectOverlay : Control
             CardPileOverlayUi.OverlayScene?.Instantiate<Control>()
             ?? new Control { Name = "PileOverlayRoot" };
         AddChild(_pileOverlayRoot);
-        CardPileOverlayUi.ConfigureOverlayRoot(_pileOverlayRoot);
 
         _mask = _pileOverlayRoot.GetNodeOrNull<ColorRect>("Mask");
         if (_mask == null)
@@ -310,7 +309,6 @@ public partial class EventCardSelectOverlay : Control
             _mask = new ColorRect { Name = "Mask" };
             _pileOverlayRoot.AddChild(_mask);
         }
-        CardPileOverlayUi.ConfigureMask(_mask);
         _mask.GuiInput += OnMaskGuiInput;
 
         _scroll = _pileOverlayRoot.GetNodeOrNull<ScrollContainer>("Scroll");
@@ -321,11 +319,9 @@ public partial class EventCardSelectOverlay : Control
         }
 
         _scroll.ZIndex = CardPileOverlayUi.ContentZIndex;
-        CardPileOverlayUi.ConfigureCardScrollContainer(_scroll);
         ConfigureScrollInput();
 
         var margin = _scroll.GetNodeOrNull<MarginContainer>("Margin");
-        CardPileOverlayUi.ConfigureScrollContentMargin(margin);
         _pileSections = margin?.GetNodeOrNull<VBoxContainer>("PileSections");
         if (_pileSections == null)
         {

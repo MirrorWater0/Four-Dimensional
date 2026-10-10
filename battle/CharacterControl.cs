@@ -27,6 +27,8 @@ public partial class CharacterControl : Control
     public Frame[] CharactersControl =>
         new[] { CharaterFrame1, CharaterFrame2, CharaterFrame3, CharaterFrame4 };
     public Button EndTurnButton => _endTurnButton;
+    internal bool CanShowTurnEndAttackPreview => _activePlayer != null && !_isResolvingCard
+        && !_isResolvingEndTurn && !_endTurnQueued;
     public Control ActionCardContainer => _cardRow;
 
     private Battle FindBattleNode()
@@ -612,10 +614,11 @@ public partial class CharacterControl : Control
         if (oldHand == null || newHand == null)
             return;
 
+        SyncHandSlotIdentities(newHand);
         int length = Math.Min(oldHand.Length, newHand.Length);
         for (int i = 0; i < length; i++)
         {
-            if (newHand[i] != null && oldHand[i] == null)
+            if (newHand[i] != null && !ContainsSkillReference(oldHand, newHand[i]))
                 MarkHandDrawEntryFromDrawPile(i);
         }
     }

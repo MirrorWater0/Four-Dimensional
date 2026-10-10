@@ -15,7 +15,6 @@ public partial class CharacterControl
         if (_cardRow == null || !GodotObject.IsInstanceValid(_cardRow))
             return;
 
-        SyncHandInputBlockerRect();
         if (_manualTargetArrowSelectionActive)
             return;
 
@@ -54,6 +53,7 @@ public partial class CharacterControl
             bool isWaitingForDrawEntry = IsHandCardWaitingForDrawEntry(i);
             slot.Size = cardSize;
             slot.CustomMinimumSize = cardSize;
+            slot.PivotOffsetRatio = Vector2.Zero;
             slot.PivotOffset = cardSize * 0.5f;
             bool preservesHandLayer = _discardSelectionOriginalVisualHandIndexes.Contains(i);
             if (!preservesHandLayer)
@@ -139,23 +139,16 @@ public partial class CharacterControl
         if (visibleSlotIndexes == null || handCount <= 0)
             return;
 
-        float preferredStep =
-            handCount > 1 ? cardSize.X * HandCardOverlapStepRatio : cardSize.X + HandCardGap;
-        float minStep = cardSize.X * HandCardMinStepRatio;
-        // Reserve room for the enlarged end cards and the neighboring-card spread.
-        float usableWidth = Math.Max(cardSize.X, rowWidth - 80f);
-        float cardStep =
-            handCount > 1
-                ? Mathf.Clamp((usableWidth - cardSize.X) / (handCount - 1), minStep, preferredStep)
-                : 0f;
+        float cardStep = HandLayout.GetCardStep(handCount, cardSize, rowWidth);
         float totalWidth =
             handCount > 1 ? cardSize.X + cardStep * (handCount - 1) : handCount * cardSize.X;
         float x = (rowWidth - totalWidth) / 2f;
         float cardY = GetHandCardY(rowHeight, cardSize);
         int hoveredOrder = FindVisibleHandOrder(visibleSlotIndexes, handCount, _hoveredCardIndex);
         float overlapWidth = Math.Max(0f, cardSize.X - cardStep);
+        // A baseline push keeps hover noticeable even when cards barely overlap.
         float hoverSpread = Mathf.Clamp(
-            overlapWidth * HandCardHoverSpreadRatio,
+            HandCardHoverSpreadBase + overlapWidth * HandCardHoverSpreadRatio,
             0f,
             HandCardMaxHoverSpread
         );
@@ -171,11 +164,7 @@ public partial class CharacterControl
             }
 
             _handLayoutTargetPositionValid[slotIndex] = true;
-            // A shallow fan keeps the lower edge cropped while exposing each cost.
-            float fan = handCount > 1 ? (order - (handCount - 1) * 0.5f) / Math.Max(1f, (handCount - 1) * 0.5f) : 0f;
-            bool hovered = order == hoveredOrder;
-            _handLayoutTargetPositions[slotIndex] = new Vector2(targetX, cardY + fan * fan * 18f);
-            _handLayoutTargetRotations[slotIndex] = hovered ? 0f : fan * 0.045f;
+            _handLayoutTargetPositions[slotIndex] = new Vector2(targetX, cardY);
         }
     }
 
@@ -1139,31 +1128,13 @@ public partial class CharacterControl
         if (entryOrder < 0 || logicalCount <= 0)
             return new Vector2((rowWidth - cardSize.X) * 0.5f, GetHandCardY(rowHeight, cardSize));
 
-        float preferredStep =
-            logicalCount > 1
-                ? cardSize.X * HandCardOverlapStepRatio
-                : cardSize.X + HandCardGap;
-        float minStep = cardSize.X * HandCardMinStepRatio;
-        float usableWidth = Math.Max(cardSize.X, rowWidth - 80f);
-        float cardStep =
-            logicalCount > 1
-                ? Mathf.Clamp(
-                    (usableWidth - cardSize.X) / (logicalCount - 1),
-                    minStep,
-                    preferredStep
-                )
-                : 0f;
+        float cardStep = HandLayout.GetCardStep(logicalCount, cardSize, rowWidth);
         float totalWidth =
             logicalCount > 1
                 ? cardSize.X + cardStep * (logicalCount - 1)
                 : cardSize.X;
         float x = (rowWidth - totalWidth) * 0.5f + cardStep * entryOrder;
-        float fan =
-            logicalCount > 1
-                ? (entryOrder - (logicalCount - 1) * 0.5f) / Math.Max(1f, (logicalCount - 1) * 0.5f)
-                : 0f;
-        targetRotation = fan * 0.045f;
-        return new Vector2(x, GetHandCardY(rowHeight, cardSize) + fan * fan * 18f);
+        return new Vector2(x, GetHandCardY(rowHeight, cardSize));
     }
 
     private bool IsCardDetachedFromHandLayout(int index)

@@ -9,24 +9,19 @@ public partial class CharacterControl
     private static readonly PackedScene BattlePileOverlayScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattlePileOverlay.tscn"
     );
-    private static readonly Vector2 PileCardScale = new(1f, 1f);
-    private static Vector2 PileCardHolderPadding => CardPileOverlayUi.CardHolderPadding;
-    private Vector2 PileCardDisplaySize => BattleCardBaseSize * PileCardScale;
-    private Vector2 PileCardHolderSize => PileCardDisplaySize + PileCardHolderPadding * 2f;
-    private const float PileOverlayContentWidth = 1412f;
-    private const int PileOverlayGridColumns = 5;
-    private const int PileOverlayGridHSeparation = 18;
-    private const int PileOverlayGridVSeparation = 34;
-    private const int PileOverlaySectionSeparation = 48;
+    private Vector2 PileCardScale = Vector2.One;
+    private Vector2 _pileCardRestPosition;
+    private Vector2 PileCardHolderSize;
+    private float PileOverlayContentWidth;
+    private int PileOverlayGridColumns;
+    private int PileOverlayGridHSeparation;
+    private int PileOverlayGridVSeparation;
     private const int PileOverlayCardsCreatedPerFrame = 3;
     private const double PileOverlayBuildFrameBudgetMs = 4.5d;
     private const int PileOverlayVirtualizationThreshold = 36;
     private const int PileOverlayVirtualizationBufferRows = 1;
     private const int PileOverlayMaxPooledCardHolders = 96;
-    private const int PileOverlayMaskZIndex = 0;
-    private const int PileOverlayContentZIndex = 1;
-    private const int PileOverlayConfirmZIndex = 2;
-    private const float PileOverlayMaskMaxAlpha = 0.68f;
+    private float PileOverlayMaskMaxAlpha;
     private const float PileOverlayContentMoveDuration = CardPileOverlayUi.ContentMoveDuration;
     private const float PileOverlayContentSlideOffset = CardPileOverlayUi.ContentSlideOffset;
     private const float PileOverlayConfirmFadeDuration = 0.18f;

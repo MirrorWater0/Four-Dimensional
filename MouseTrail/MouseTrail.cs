@@ -29,7 +29,7 @@ public partial class MouseTrail : CanvasLayer
     private bool _enableStutterMonitor = true;
 
     [Export]
-    private bool _showStutterOverlay = true;
+    private bool _showStutterOverlay = false;
 
     [Export(PropertyHint.Range, "8,120,1")]
     private float _stutterThresholdMs = 24.0f;
@@ -47,10 +47,10 @@ public partial class MouseTrail : CanvasLayer
     private const float CursorRotationSpeed = 9.0f;
     private const float LeftPressCursorRotation = -0.24f;
     private const float BurstDecaySpeed = 2.8f;
-    private const float MotionResponse = 0.02f;
+    private const float MotionResponse = 0.0008f;
 
-    private Node2D _targetNode;
-    private Line2D _trailLine;
+    private MouseTrailVisual _trailVisual;
+    private bool _useSystemCursor;
     private Control _cursor;
     private ShaderMaterial _cursorMaterial;
     private Label _stutterLabel;
@@ -88,8 +88,7 @@ public partial class MouseTrail : CanvasLayer
             return;
         }
 
-        _targetNode = GetNodeOrNull<Node2D>("Node2D");
-        _trailLine = GetNodeOrNull<Line2D>("Line2D");
+        _trailVisual = GetNodeOrNull<MouseTrailVisual>("TrailVisual");
         _cursor = GetNodeOrNull<Control>("Cursor");
         _cursorMaterial = _cursor?.Material as ShaderMaterial;
         if (_cursor != null)
@@ -141,6 +140,7 @@ public partial class MouseTrail : CanvasLayer
         Vector2 mousePosition = GetResponsiveMousePosition();
         _previousMousePosition = mousePosition;
         _motionAmount = 0f;
+        _trailVisual?.ResetTrail();
         _ignoreNextTimingSample = true;
         UpdateCursorPosition(mousePosition);
         if (_cursorMaterial != null)
@@ -154,14 +154,14 @@ public partial class MouseTrail : CanvasLayer
 
     public void SetUseSystemCursor(bool useSystemCursor)
     {
-        if (_targetNode != null)
-            _targetNode.Visible = !useSystemCursor;
-        if (_trailLine != null)
-            _trailLine.Visible = !useSystemCursor;
+        _useSystemCursor = useSystemCursor || MobilePlatform.IsMobile;
+        _trailVisual?.ResetTrail();
+        if (_trailVisual != null)
+            _trailVisual.Visible = !_useSystemCursor;
         if (_cursor != null)
-            _cursor.Visible = !useSystemCursor;
+            _cursor.Visible = !_useSystemCursor;
 
-        Input.MouseMode = useSystemCursor
+        Input.MouseMode = _useSystemCursor
             ? Input.MouseModeEnum.Visible
             : Input.MouseModeEnum.Hidden;
     }
@@ -178,7 +178,12 @@ public partial class MouseTrail : CanvasLayer
         if (@event is not InputEventMouseButton mouseButton || !mouseButton.Pressed)
             return;
 
+        if (_useSystemCursor || !Visible || GetWindow()?.HasFocus() != true
+            || mouseButton.ButtonIndex is not (MouseButton.Left or MouseButton.Right or MouseButton.Middle))
+            return;
+
         _burstAmount = 1.0f;
+        _trailVisual?.EmitClick(mouseButton.Position);
     }
 
     public override void _Process(double delta)
@@ -187,6 +192,14 @@ public partial class MouseTrail : CanvasLayer
         UpdateCursorPosition(mousePosition);
 
         float deltaF = (float)delta;
+        bool pointerActive = !_useSystemCursor && Visible && GetWindow()?.HasFocus() == true
+            && GetViewport().GetVisibleRect().HasPoint(mousePosition);
+        if (_cursor != null)
+            _cursor.Visible = pointerActive;
+        if (pointerActive)
+            _trailVisual?.Advance(deltaF, mousePosition);
+        else
+            _trailVisual?.ResetTrail();
         float speed = deltaF > 0f ? mousePosition.DistanceTo(_previousMousePosition) / deltaF : 0f;
         bool pressed =
             Input.IsMouseButtonPressed(MouseButton.Left)
@@ -195,7 +208,8 @@ public partial class MouseTrail : CanvasLayer
 
         _pressAmount = Mathf.MoveToward(_pressAmount, pressed ? 1.0f : 0.0f, deltaF * PressLerpSpeed);
         _burstAmount = Mathf.MoveToward(_burstAmount, 0.0f, deltaF * BurstDecaySpeed);
-        _motionAmount = Mathf.Lerp(_motionAmount, Mathf.Clamp(speed * MotionResponse, 0.0f, 1.0f), 0.18f);
+        _motionAmount = Mathf.Lerp(_motionAmount, Mathf.Clamp(speed * MotionResponse, 0.0f, 1.0f),
+            1.0f - Mathf.Exp(-12.0f * deltaF));
         UpdateCursorRotation(deltaF);
 
         if (_cursorMaterial != null)
@@ -406,9 +420,6 @@ public partial class MouseTrail : CanvasLayer
 
     private void UpdateCursorPosition(Vector2 mousePosition)
     {
-        if (_targetNode != null)
-            _targetNode.GlobalPosition = mousePosition;
-
         if (_cursor != null)
             _cursor.GlobalPosition = mousePosition - _cursorHotspot;
     }
@@ -418,7 +429,8 @@ public partial class MouseTrail : CanvasLayer
         if (_cursor == null)
             return;
 
-        _cursor.PivotOffset = _cursor.Size * 0.5f;
+        // Rotation stays anchored to the visible tip, which is also the GUI hit position.
+        _cursor.PivotOffset = _cursorHotspot;
     }
 
     private void UpdateCursorRotation(float deltaSeconds)

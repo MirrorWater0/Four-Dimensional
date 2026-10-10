@@ -413,117 +413,22 @@ public partial class CharacterControl
         return drawableCandidates;
     }
 
-    private static void ConfigureManualTargetArrowScale(ManualTargetArrowView arrow)
-    {
-        if (arrow == null)
-            return;
-
-        float segmentScale = (ManualTargetArrowSegmentScaleStart + ManualTargetArrowSegmentScaleEnd)
-            * 0.5f;
-        arrow.ArrowWidth = 30f * segmentScale;
-        arrow.ShadowWidth = arrow.ArrowWidth * 1.75f;
-        arrow.CurveLift = 118f;
-        arrow.PointCount = 19;
-        arrow.HeadSize = new Vector2(48f, 42f);
-        arrow.TailSize = new Vector2(30f, 20f);
-        arrow.HeadShaftInset = 29f;
-        arrow.TailShaftInset = 16f;
-        arrow.TipOutlineWidth = 0.12f;
-        arrow.HeadDefaultScale = ManualTargetArrowHeadDefaultScale;
-        arrow.HeadHoverScale = ManualTargetArrowHeadHoverScale;
-        arrow.SetHeadHighlighted(false);
-    }
-
     private void EnsureManualTargetArrowUi()
     {
         if (_manualTargetArrowRoot != null && GodotObject.IsInstanceValid(_manualTargetArrowRoot))
             return;
-
         CanvasLayer overlay = EnsureLiftedCardOverlay();
         if (overlay == null)
             return;
-
-        _manualTargetArrowRoot = new Control
-        {
-            Name = "ManualTargetArrowPicker",
-            Visible = false,
-            ZIndex = LiftedCardZIndex + 10,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        _manualTargetArrowRoot.SetAnchorsPreset(LayoutPreset.FullRect);
-        overlay.AddChild(_manualTargetArrowRoot);
-
-        _manualTargetArrowMask = new ColorRect
-        {
-            Name = "InputMask",
-            Color = new Color(0f, 0f, 0f, 0.10f),
-            MouseFilter = MouseFilterEnum.Ignore,
-            ZIndex = 0,
-        };
-        _manualTargetArrowMask.SetAnchorsPreset(LayoutPreset.FullRect);
+        _manualTargetArrowRoot = overlay.GetNode<Control>("ManualTargetArrowPicker");
+        _manualTargetArrowMask = _manualTargetArrowRoot.GetNode<ColorRect>("InputMask");
+        _manualTargetArrowLayer = _manualTargetArrowRoot.GetNode<ManualTargetArrowView>("Arrow");
+        _manualTargetArrowHintLabel = _manualTargetArrowRoot.GetNode<Label>("Hint");
         _manualTargetArrowMask.GuiInput += OnManualTargetArrowMaskGuiInput;
-        _manualTargetArrowRoot.AddChild(_manualTargetArrowMask);
-
-        _manualTargetArrowLayer =
-            ManualTargetArrowScene?.Instantiate<ManualTargetArrowView>()
-            ?? new ManualTargetArrowView();
-        _manualTargetArrowLayer.Name = "Arrow";
-        _manualTargetArrowLayer.MouseFilter = MouseFilterEnum.Ignore;
-        _manualTargetArrowLayer.ZIndex = 1;
-        ConfigureManualTargetArrowScale(_manualTargetArrowLayer);
-        _manualTargetArrowLayer.SetAnchorsPreset(LayoutPreset.FullRect);
-        _manualTargetArrowRoot.AddChild(_manualTargetArrowLayer);
-
-        _manualTargetArrowHintLabel = new Label
-        {
-            Name = "Hint",
-            Text = "选择目标",
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            MouseFilter = MouseFilterEnum.Ignore,
-            ZIndex = 2,
-        };
-        _manualTargetArrowHintLabel.AddThemeColorOverride(
-            "font_color",
-            new Color(0.86f, 0.97f, 1f, 0.96f)
-        );
-        _manualTargetArrowHintLabel.AddThemeColorOverride(
-            "font_shadow_color",
-            new Color(0f, 0f, 0f, 0.72f)
-        );
-        _manualTargetArrowHintLabel.AddThemeConstantOverride("shadow_offset_x", 2);
-        _manualTargetArrowHintLabel.AddThemeConstantOverride("shadow_offset_y", 2);
-        _manualTargetArrowHintLabel.AddThemeFontSizeOverride("font_size", 26);
-        _manualTargetArrowHintLabel.AnchorLeft = 0.5f;
-        _manualTargetArrowHintLabel.AnchorRight = 0.5f;
-        _manualTargetArrowHintLabel.AnchorTop = 0f;
-        _manualTargetArrowHintLabel.AnchorBottom = 0f;
-        _manualTargetArrowHintLabel.OffsetLeft = -140f;
-        _manualTargetArrowHintLabel.OffsetRight = 140f;
-        _manualTargetArrowHintLabel.OffsetTop = 92f;
-        _manualTargetArrowHintLabel.OffsetBottom = 132f;
-        _manualTargetArrowRoot.AddChild(_manualTargetArrowHintLabel);
-
-        if (MobilePlatform.IsMobile)
-        {
-            var cancelButton = new Button
-            {
-                Name = "CancelButton",
-                Text = I18n.Tr("ui.common.cancel", "取消"),
-                CustomMinimumSize = new Vector2(168f, 76f),
-                FocusMode = FocusModeEnum.None,
-                MouseFilter = MouseFilterEnum.Stop,
-                ZIndex = 3,
-            };
-            cancelButton.AnchorLeft = 1f;
-            cancelButton.AnchorRight = 1f;
-            cancelButton.OffsetLeft = -204f;
-            cancelButton.OffsetRight = -36f;
-            cancelButton.OffsetTop = 76f;
-            cancelButton.OffsetBottom = 152f;
-            cancelButton.Pressed += () => HideManualTargetPicker();
-            _manualTargetArrowRoot.AddChild(cancelButton);
-        }
+        var cancelButton = _manualTargetArrowRoot.GetNode<Button>("CancelButton");
+        cancelButton.Visible = MobilePlatform.IsMobile;
+        cancelButton.Text = I18n.Tr("ui.common.cancel", "取消");
+        cancelButton.Pressed += () => HideManualTargetPicker();
     }
 
     private async Task<Character> ShowManualTargetArrowPickerAsync(

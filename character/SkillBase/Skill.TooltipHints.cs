@@ -94,6 +94,7 @@ public partial class Skill
             case ApplyBuffHostileSkillStep:
             case ApplyBuffFriendlySkillStep:
             case ApplyBuffSummonsSkillStep:
+            case ModifyAttackCountSkillStep:
                 CollectBuffStepHints(skill, step, hints);
                 break;
             case CarrySkillStepImpl:

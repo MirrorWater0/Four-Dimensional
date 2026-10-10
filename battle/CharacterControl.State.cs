@@ -7,18 +7,13 @@ public partial class CharacterControl
 {
     private static readonly NodePath BlockingMenuNodePath = "/root/Map/MenuLayer/Menu";
     private static readonly PackedScene SkillCardScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/Reward/SkillCard.tscn"
-    );
-    private static readonly PackedScene ManualTargetArrowScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/ManualTarget/ManualTargetArrowView.tscn"
+        "res://battle/UIScene/BattleHandCard.tscn"
     );
     private static readonly Vector2 BattleCardBaseSize = new(240f, 370f);
 
-    [Export(PropertyHint.Range, "0.5,1.5,0.01")]
-    public float BattleCardScaleFactor = 1f;
+    public float BattleCardScaleFactor => HandLayout.CardScale;
 
-    [Export(PropertyHint.Range, "-160,160,1")]
-    public float HandCardYOffset = 40f;
+    public float HandCardYOffset => HandLayout.CardYOffset;
 
     [Export(PropertyHint.Range, "-160,160,1")]
     public float HandDrawEntryLandingYOffset = 0f;
@@ -49,20 +44,20 @@ public partial class CharacterControl
     private const float StatusInsertFlyDuration = 0.34f;
     private const float StatusInsertStagger = 0.055f;
     private const int StatusInsertCardsCreatedPerFrame = 3;
-    private const float CardHoverLiftY = -104f;
-    private const float CardHoverScaleMultiplier = 1.15f;
+    // Make the hovered card stand out clearly above the rest of the hand.
+    private float CardHoverLiftY => HandLayout.HoverLift;
+    private float CardHoverScaleMultiplier => HandLayout.HoverScale;
     private const float HandHoverResumeMouseMoveDistance = 8f;
     private const double HandHoverValidationIntervalSeconds = 0.1;
     private const float TemporaryCardSpawnScaleMultiplier = 0.72f;
-    private const float DiscardSelectionSelectedVerticalOffset = -80f;
-    private const float DiscardSelectionSelectedMaxStep = 280f;
-    private const float DiscardSelectionSelectedGap = 24f;
-    private const float HandAreaPadding = 18f;
-    private const float HandCardGap = 14f;
-    private const float HandCardMinStepRatio = 0.42f;
-    private const float HandCardOverlapStepRatio = 5f / 6f;
-    private const float HandCardHoverSpreadRatio = 0.55f;
-    private const float HandCardMaxHoverSpread = 36f;
+    [ExportGroup("Selection Layout")]
+    [Export] public float DiscardSelectionSelectedVerticalOffset = -80f;
+    [Export] public float DiscardSelectionSelectedMaxStep = 280f;
+    [Export] public float DiscardSelectionSelectedGap = 24f;
+    private float HandAreaPadding => HandLayout.AreaPadding;
+    private float HandCardHoverSpreadRatio => HandLayout.HoverSpreadRatio;
+    private float HandCardHoverSpreadBase => HandLayout.HoverSpreadBase;
+    private float HandCardMaxHoverSpread => HandLayout.MaxHoverSpread;
     private const float HandCardResetMotionDuration = 0.16f;
     private const float LiftedCardMouseFollowSharpness = 34f;
     private const float LiftedCardMouseFollowSnapDistance = 1.2f;
@@ -90,9 +85,7 @@ public partial class CharacterControl
     private const float ShufflePreviewCardStagger = 0.045f;
     private const float ShufflePreviewDrawEntryDelayPadding = 0.08f;
     private const int HandCardHoverZIndex = 90;
-    private const int StatusLabelZIndex = HandCardHoverZIndex + 8;
     private const int PlayedCardZIndex = 100;
-    private const int DiscardSelectionOverlayZIndex = PlayedCardZIndex + 8;
     private const int DiscardSelectionSelectedCardZIndex = PlayedCardZIndex + 20;
     private const int TemporaryCardZIndex = 300;
     private const int DyingOwnedCardExhaustDisplayMax = 8;
@@ -105,7 +98,7 @@ public partial class CharacterControl
     private const int QueuedPlayedCardVisibleLayers = 4;
     private const float QueuedPlayedCardLayerScaleStep = 0.075f;
     private const float QueuedPlayedCardVerticalOffset = -100f;
-    private const float ManualTargetCenteredCardScaleMultiplier = CardHoverScaleMultiplier;
+    private float ManualTargetCenteredCardScaleMultiplier => CardHoverScaleMultiplier;
     private const float ManualTargetCenteredCardMoveDuration = 0.32f;
     private const float ManualTargetArrowSegmentScaleStart = 0.28f;
     private const float ManualTargetArrowSegmentScaleEnd = 0.42f;
@@ -119,9 +112,11 @@ public partial class CharacterControl
     private static readonly Color ManualTargetEffectHostileColor = new(1f, 0.32f, 0.32f, 1f);
     private static readonly Color ManualTargetEffectFriendlyColor = new(0.48f, 0.82f, 0.62f, 0.82f);
     private static readonly Color DiscardSelectionCardModulate = new(1f, 0.82f, 0.42f, 1f);
-    private VBoxContainer _root;
+    private Control _root;
     private Label _statusLabel;
     private Control _cardRow;
+    private BattleHandLayout HandLayout => (BattleHandLayout)(_cardRow ?? GetNode<Control>("ActionAreaRoot/CardRow"));
+    private static readonly PackedScene HandSlotScene = GD.Load<PackedScene>("res://battle/UIScene/BattleHandSlot.tscn");
     private Control _handInputBlocker;
     private SkillCard _manualTargetArrowPlayedCard;
     private Control _manualTargetArrowRoot;
@@ -260,8 +255,8 @@ public partial class CharacterControl
     private int _cardHoverPreviewRequestVersion;
     private readonly HashSet<Buff> _cardPreviewHighlightedBuffs = new();
     private int _cardPreviewHighlightedBuffsIndex = -1;
-    private PlayerCharacter _cardFootMarkerHoverPlayer;
-    private int _cardFootMarkerHoverIndex = -1;
+    private PlayerCharacter _cardCharacterShadowHoverPlayer;
+    private int _cardCharacterShadowHoverIndex = -1;
     private bool _suppressCardButtonPressUntilLeftRelease;
     private int _suppressCardButtonPressSerial = -1;
     private int _leftMouseButtonPressSerial;

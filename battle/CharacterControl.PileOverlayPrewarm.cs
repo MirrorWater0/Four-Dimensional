@@ -13,8 +13,7 @@ public partial class CharacterControl
 
         while (_pileCardHolderPool.Count < PileOverlayCardPoolPrewarmCount)
         {
-            var holder = new Control();
-            holder.AddChild(SkillCardScene.Instantiate<SkillCard>());
+            var holder = GD.Load<PackedScene>("res://battle/UIScene/PileCardHolder.tscn").Instantiate<Control>();
             _pileCardHolderPool.Push(holder);
         }
 

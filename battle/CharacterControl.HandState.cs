@@ -54,8 +54,7 @@ public partial class CharacterControl
         {
             _handLayoutSyncPending = false;
             ClearCardEnergyPreview();
-            _statusLabel.Text = "等待行动";
-            PositionStatusLabel();
+            _statusLabel.Text = string.Empty;
             ClearLiftedCard(instant: true);
             ClearCardQueue(resetCards: false);
             ResetCardDisplayTracking();
@@ -101,7 +100,6 @@ public partial class CharacterControl
         }
 
         _statusLabel.Text = BuildPlayerTeamTurnStatusText();
-        PositionStatusLabel();
 
         Skill[] hand = GetActiveHandSkills();
         PruneHandCardsNotInHand(hand);
@@ -494,6 +492,10 @@ public partial class CharacterControl
 
         Skill previousOccupant = _displayedSkills[newIndex];
 
+        // Entry coroutines capture a slot index. Stop them before that index starts
+        // referring to another card, then resume pending entries at their new slots.
+        PrepareDrawEntryForSlotIdentityMove(previousIndex);
+        PrepareDrawEntryForSlotIdentityMove(newIndex);
         SwapHandSlotArrays(previousIndex, newIndex);
 
         _handSlotsBySkill[skill] = _cardSlots[newIndex];
@@ -508,6 +510,24 @@ public partial class CharacterControl
 
         WireBattleCard(_cards[newIndex], newIndex);
         WireBattleCard(_cards[previousIndex], previousIndex);
+    }
+
+    private void PrepareDrawEntryForSlotIdentityMove(int index)
+    {
+        if (!IsCardDrawEntryBusy(index))
+            return;
+
+        if (_drawEntryPreviewCards.ContainsKey(index))
+        {
+            // A flying card continues from its current position using the layout follower.
+            TryDetachDrawEntryStateForHandReorder(index, out _);
+        }
+        else
+        {
+            // Keep the shuffle delay and entry origin, but invalidate the old timer.
+            // LayoutActionCards will start a new entry coroutine after the slot swap.
+            CancelDrawEntryPreview(index);
+        }
     }
 
     private void SwapHandSlotArrays(int a, int b)
@@ -545,7 +565,7 @@ public partial class CharacterControl
 
         SwapIndexReference(ref _hoveredCardIndex, a, b);
         SwapIndexReference(ref _liftedCardIndex, a, b);
-        SwapIndexReference(ref _cardFootMarkerHoverIndex, a, b);
+        SwapIndexReference(ref _cardCharacterShadowHoverIndex, a, b);
         SwapIndexReference(ref _cardPreviewHighlightedBuffsIndex, a, b);
         SwapIndexReference(ref _manualTargetArrowCardIndex, a, b);
         SwapIndexSetMembership(_turnEndStatusTriggerCardIndexes, a, b);
@@ -791,8 +811,8 @@ public partial class CharacterControl
             _liftedCardIndex = newIndex;
         if (ReferenceEquals(_liftedCardSkill, skill))
             _liftedCardIndex = newIndex;
-        if (_cardFootMarkerHoverIndex == previousIndex)
-            _cardFootMarkerHoverIndex = newIndex;
+        if (_cardCharacterShadowHoverIndex == previousIndex)
+            _cardCharacterShadowHoverIndex = newIndex;
         if (_cardPreviewHighlightedBuffsIndex == previousIndex)
             _cardPreviewHighlightedBuffsIndex = newIndex;
         if (_manualTargetArrowCardIndex == previousIndex)
@@ -914,10 +934,7 @@ public partial class CharacterControl
             return remaining > 0 ? $"从{pileName}选择{remaining}张牌加入手牌" : "正在加入手牌";
         }
 
-        if (_isResolvingEndTurn)
-            return "等待行动";
-
-        return I18n.Tr("ui.battle.hud.player_phase", "你的回合 · 选择下一步行动");
+        return string.Empty;
     }
 
     private static string GetSkillOwnerDisplayName(Skill skill)

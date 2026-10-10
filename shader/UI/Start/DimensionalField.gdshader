@@ -24,5 +24,5 @@ void fragment() {
 
     // Static subpixel grain prevents visible bands without adding moving texture.
     color += (grain_hash(floor(FRAGCOORD.xy)) - 0.5) / 255.0;
-    COLOR = vec4(color, 1.0);
+    COLOR *= vec4(color, 1.0);
 }

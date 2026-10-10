@@ -68,6 +68,16 @@ public partial class Buff
 
     private static readonly Dictionary<BuffName, TextureIconOverride> TextureIconOverrides = new()
     {
+        [BuffName.AttackCount] = new(
+            "res://asset/svg/BuffIcon/Kenney/sword.svg",
+            new Godot.Color(1f, 0.72f, 0.3f, 1f),
+            8f
+        ),
+        [BuffName.TemporaryAttackCount] = new(
+            "res://asset/svg/BuffIcon/Kenney/dice_sword.svg",
+            new Godot.Color(0.4f, 0.9f, 1f, 1f),
+            8f
+        ),
         [BuffName.DamageImmune] = new(
             "res://asset/svg/BuffIcon/Kenney/shield.svg",
             new Godot.Color(0.22f, 0.95f, 0.65f, 1f)
@@ -187,6 +197,8 @@ public partial class Buff
     {
         string fallback = name switch
         {
+            BuffName.AttackCount => "回合结束时，按层数进行普通攻击；默认1次，持续至本场战斗结束。",
+            BuffName.TemporaryAttackCount => "本回合结束时，每层额外进行1次普通攻击；攻击结算后清零。",
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%；阵营回合开始时减少1层。",
@@ -578,6 +590,12 @@ public partial class Buff
 
         [Description("预测")]
         Prediction,
+
+        [Description("攻击次数")]
+        AttackCount,
+
+        [Description("临时攻击")]
+        TemporaryAttackCount,
     }
 
     public Character Owner;
@@ -598,6 +616,8 @@ public partial class Buff
     {
         return name switch
         {
+            BuffName.AttackCount => Nature.positive,
+            BuffName.TemporaryAttackCount => Nature.positive,
             BuffName.RebirthI => Nature.positive,
             BuffName.DamageImmune => Nature.positive,
             BuffName.Vulnerable => Nature.negative,

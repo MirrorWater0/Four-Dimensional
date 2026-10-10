@@ -103,7 +103,8 @@ public partial class Battle
     private const string RecordDamageColor = "#ff7b7b";
     private const string RecordHealColor = "#6bff8f";
     private const string RecordNeutralColor = "#d9e2f2";
-    private static readonly Vector2 IncomingDamagePreviewOffset = new(0f, -300f);
+    [ExportGroup("Preview Layout")]
+    [Export] public Vector2 IncomingDamagePreviewOffset = new(0f, -300f);
     private const float IncomingDamagePreviewFloatAmplitude = 20f;
     private const float IncomingDamagePreviewFloatHalfDuration = 1.5f;
     private bool _recordInitialized;
@@ -455,6 +456,7 @@ public partial class Battle
     public override void _Process(double delta)
     {
         PollSkillTuningAutoReload(delta);
+        PollTurnEndAttackPreview(delta);
 
         if (!HoverPerfLogEnabled || WarmupMode)
             return;

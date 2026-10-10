@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[ext_resource type="Shader" path="res://shader/Icon/sword.gdshader" id="Shader"]
+[sub_resource type="ShaderMaterial" id="Material"]
+shader = ExtResource("Shader")
+shader_parameter/sword_color = Color(1, 0.23, 0.2, 1)
+shader_parameter/blade_color = Color(1, 0.2, 0.2, 1)
+shader_parameter/handle_color = Color(0.38, 0.14, 0.14, 1)
+shader_parameter/glow_intensity = 0.73
+shader_parameter/angle = 0.0
+
+[node name="PowerIcon" type="ColorRect"]
+custom_minimum_size = Vector2(40, 40)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+material = SubResource("Material")

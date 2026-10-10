@@ -1180,78 +1180,19 @@ public partial class CharacterControl
 
     private Control EnsureDiscardSelectionOverlay()
     {
-        Node parent = GetParent();
-        if (parent == null || !GodotObject.IsInstanceValid(parent))
-            return null;
-
-        const string overlayName = "DiscardSelectionOverlay";
-        Control overlay =
-            _discardSelectionOverlay != null
-            && GodotObject.IsInstanceValid(_discardSelectionOverlay)
-                ? _discardSelectionOverlay
-                : parent.GetNodeOrNull<Control>(overlayName);
-
-        if (overlay == null)
-        {
-            overlay = new Control
-            {
-                Name = overlayName,
-                MouseFilter = MouseFilterEnum.Ignore,
-                ZIndex = DiscardSelectionOverlayZIndex,
-                TopLevel = false,
-            };
-            overlay.SetAnchorsPreset(LayoutPreset.FullRect);
-            if (parent is Control parentControl)
-                overlay.Size = parentControl.Size;
-            else
-                overlay.Size = GetViewport().GetVisibleRect().Size;
-            parent.AddChild(overlay);
-        }
-
-        overlay.Visible = true;
-        overlay.ZIndex = DiscardSelectionOverlayZIndex;
-        overlay.MouseFilter = MouseFilterEnum.Ignore;
-        overlay.SetAnchorsPreset(LayoutPreset.FullRect);
-        overlay.Size = GetViewport().GetVisibleRect().Size;
-        if (
-            _endTurnButton != null
-            && GodotObject.IsInstanceValid(_endTurnButton)
-            && _endTurnButton.GetParent() is Node actionButtonsRoot
-            && actionButtonsRoot.GetParent() == parent
-        )
-        {
-            int buttonIndex = actionButtonsRoot.GetIndex();
-            parent.MoveChild(overlay, Math.Max(0, buttonIndex));
-        }
-        _discardSelectionOverlay = overlay;
-        return overlay;
+        _discardSelectionOverlay ??= GetParent().GetNode<Control>("DiscardSelectionOverlay");
+        _discardSelectionOverlay.Visible = true;
+        return _discardSelectionOverlay;
     }
 
     private void EnsureDiscardSelectionScreenMask()
     {
-        if (
-            _discardSelectionScreenMask != null
-            && GodotObject.IsInstanceValid(_discardSelectionScreenMask)
-        )
+        if (!GodotObject.IsInstanceValid(_discardSelectionScreenMask))
         {
-            ApplyDiscardSelectionScreenMaskVisibleState();
-            return;
+            _discardSelectionScreenMask = EnsureCardPlayOverlay()?.GetNode<ColorRect>("DiscardSelectionScreenMask");
+            if (_discardSelectionScreenMask != null)
+                _discardSelectionScreenMaskColor = _discardSelectionScreenMask.Color;
         }
-
-        Node parent = EnsureCardPlayOverlay();
-        if (parent == null || !GodotObject.IsInstanceValid(parent))
-            return;
-
-        _discardSelectionScreenMask = new ColorRect
-        {
-            Name = "DiscardSelectionScreenMask",
-            Color = new Color(0f, 0f, 0f, DiscardSelectionScreenMaskMaxAlpha),
-            MouseFilter = MouseFilterEnum.Stop,
-            ZIndex = DiscardSelectionOverlayZIndex - 1,
-        };
-        _discardSelectionScreenMask.SetAnchorsPreset(LayoutPreset.FullRect);
-        _discardSelectionScreenMask.Size = GetViewport().GetVisibleRect().Size;
-        parent.AddChild(_discardSelectionScreenMask);
         ApplyDiscardSelectionScreenMaskVisibleState();
     }
 
@@ -1264,10 +1205,8 @@ public partial class CharacterControl
         )
         {
             _discardSelectionScreenMask.Visible = false;
-            _discardSelectionScreenMask.QueueFree();
         }
 
-        _discardSelectionScreenMask = null;
     }
 
     private async Task<int> DiscardSelectedHandCardsAsync()

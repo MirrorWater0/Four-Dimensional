@@ -168,6 +168,7 @@ public partial class CharacterControl
         ClearLiftedCard(instant: false);
         _isResolvingCard = true;
         _isResolvingEndTurn = true;
+        BattleNode?.RefreshTurnEndAttackPreview();
         _freezeHandLayout = true;
         _suppressNextRefreshLayout = true;
         RefreshTurnUi();

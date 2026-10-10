@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
 [ext_resource type="Shader" uid="uid://cqhlq7i8p42di" path="res://shader/Effect/PlayableCardCrystalBorder.gdshader" id="5_playable_highlight"]
 [ext_resource type="Texture2D" uid="uid://djywemb5bhgf3" path="res://asset/UI/CardFrame/SkillCardTrim.svg" id="5_tttt4"]
+[ext_resource type="Shader" path="res://shader/UI/ChamferedRect.gdshader" id="6_chamfered_rect"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wi1bx"]
 shader = ExtResource("1_wi1bx")
@@ -53,14 +54,27 @@ shader_parameter/flame_turbulence = 0.41999998688698
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
 bg_color = Color(0.035, 0.046, 0.065, 1)
-corner_radius_top_left = 13
-corner_radius_top_right = 13
-corner_radius_bottom_right = 13
-corner_radius_bottom_left = 13
-corner_detail = 8
 shadow_color = Color(0, 0, 0, 0.48)
 shadow_size = 10
 shadow_offset = Vector2(0, 4)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_card_chamfer"]
+shader = ExtResource("6_chamfered_rect")
+shader_parameter/rect_size = Vector2(240, 370)
+shader_parameter/cut_size_px = 14.0
+shader_parameter/anti_alias_strength = 1.25
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_inner_chamfer"]
+shader = ExtResource("6_chamfered_rect")
+shader_parameter/rect_size = Vector2(224, 344)
+shader_parameter/cut_size_px = 10.0
+shader_parameter/anti_alias_strength = 1.25
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_art_chamfer"]
+shader = ExtResource("6_chamfered_rect")
+shader_parameter/rect_size = Vector2(220, 192)
+shader_parameter/cut_size_px = 10.0
+shader_parameter/anti_alias_strength = 1.25
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inner_frame"]
 bg_color = Color(0, 0, 0, 0)
@@ -73,6 +87,7 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+corner_detail = 1
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_footer"]
 bg_color = Color(0.043, 0.056, 0.08, 1)
@@ -239,6 +254,11 @@ anchors_preset = 0
 offset_right = 240.0
 offset_bottom = 370.0
 script = ExtResource("1_td24b")
+MinDescriptionFontSize = 8
+EnergyCostNumberFontSize = 28
+EnergyCostNumberTint = Color(0.9098039, 0.9215686, 0.9333333, 1)
+EnergyCostInsufficientNumberTint = Color(0.5215686, 0.545098, 0.572549, 1)
+OrnateFrameBrightness = 1.56
 
 [node name="VisualTransform" type="Control" parent="." unique_id=2635845]
 custom_minimum_size = Vector2(240, 370)
@@ -270,6 +290,7 @@ mouse_filter = 2
 color = Color(0.18, 0.2, 0.23, 0.28)
 
 [node name="BG" type="Panel" parent="VisualTransform/SubViewport" unique_id=1048061845]
+material = SubResource("ShaderMaterial_card_chamfer")
 custom_minimum_size = Vector2(240, 370)
 offset_right = 240.0
 offset_bottom = 370.0
@@ -277,6 +298,7 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_card_bg")
 
 [node name="InnerFrame" type="Panel" parent="VisualTransform/SubViewport" unique_id=181530201]
+material = SubResource("ShaderMaterial_inner_chamfer")
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 232.0
@@ -311,6 +333,7 @@ offset_bottom = 240.0
 mouse_filter = 2
 
 [node name="ArtFrame" type="Panel" parent="VisualTransform/SubViewport" unique_id=2113042584]
+material = SubResource("ShaderMaterial_art_chamfer")
 clip_contents = true
 offset_left = 10.0
 offset_top = 10.0
@@ -320,6 +343,7 @@ mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_art_frame")
 
 [node name="ArtFill" type="ColorRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=215832661]
+material = SubResource("ShaderMaterial_art_chamfer")
 layout_mode = 0
 offset_right = 220.0
 offset_bottom = 192.0
@@ -369,6 +393,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="SkillPicture" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=679889421]
+material = SubResource("ShaderMaterial_art_chamfer")
 texture_filter = 4
 layout_mode = 0
 offset_right = 220.0
@@ -378,6 +403,7 @@ expand_mode = 1
 stretch_mode = 6
 
 [node name="ArtShadeBottom" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=679889422]
+material = SubResource("ShaderMaterial_art_chamfer")
 layout_mode = 0
 offset_right = 220.0
 offset_bottom = 192.0

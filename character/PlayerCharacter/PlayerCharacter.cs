@@ -10,8 +10,8 @@ public partial class PlayerCharacter : Character
     public const int TeamTurnStartDrawBase = 3;
     public const int TeamTurnStartDrawPerAlivePlayer = 1;
     public const int TeamTurnStartDrawContribution = 2;
-    public const int TeamTurnStartEnergyBase = 1;
-    public const int TeamTurnStartEnergyPerAlivePlayer = 1;
+    public const int TeamTurnStartEnergyBase = 3;
+    public const int TeamTurnStartEnergyPerAlivePlayer = 0;
 
     public Frame SelfFrame;
     public Control SkillButtonControl;
@@ -43,6 +43,7 @@ public partial class PlayerCharacter : Character
             info.LifeMax
         );
         base.Initialize();
+        AttackCountBuff.Initialize(this);
         Life = Math.Clamp(info.LifeInitialized ? info.Life : BattleMaxLife, 0, BattleMaxLife);
         if (Life <= 0)
         {
@@ -52,23 +53,25 @@ public partial class PlayerCharacter : Character
         SyncLifeBarsToCurrent(syncBufferValue: true);
         SyncPersistentLife();
         RefreshEnergyIconVisibility();
-        ConfigureFootMarker();
+        ConfigureCharacterShadow();
     }
 
-    private void ConfigureFootMarker()
+    private void ConfigureCharacterShadow()
     {
-        if (FootMarker == null || !GodotObject.IsInstanceValid(FootMarker))
+        if (CharacterShadow == null || !GodotObject.IsInstanceValid(CharacterShadow))
             return;
 
         if (CharacterPlateColors.TryGetColor(CharacterKey, out Color color))
         {
-            FootMarker.ApplyCharacterColor(color);
-            FootMarker.Visible = true;
-            FootMarker.SetCardHoverHighlight(false, instant: true);
+            CharacterShadow.ApplyCharacterColor(color);
+            CharacterShadow.Visible = true;
+            CharacterShadow.SetCardHoverHighlight(false, instant: true);
             return;
         }
 
-        FootMarker.Visible = false;
+        CharacterShadow.ApplyCharacterColor(CharacterPlateColors.ColorlessColor);
+        CharacterShadow.Visible = true;
+        CharacterShadow.SetCardHoverHighlight(false, instant: true);
     }
 
     public void SyncPersistentLife()
@@ -494,9 +497,7 @@ public partial class PlayerCharacter : Character
             return;
 
         bool isTeamActionPhase = battleNode.IsResolvingPlayerTeamActionPhase;
-        if (isTeamActionPhase)
-            await battleNode.DiscardPlayerTeamBattleHandAtTurnEndAsync(this);
-        else
+        if (!isTeamActionPhase)
             await DiscardBattleHandAtTurnEndAsync();
         OnActionEnd();
         if (!isTeamActionPhase)

@@ -8,14 +8,14 @@ public sealed class ColorlessSkillAttribute : Attribute { }
 
 public partial class Skill
 {
-    private static readonly SkillID[] ColorlessSkillPool = BuildColorlessSkillPool();
+    private static readonly Lazy<SkillID[]> ColorlessSkillPool = new(BuildColorlessSkillPool);
 
     public virtual bool IsColorless => false;
 
-    public static SkillID[] GetColorlessSkillPool() => ColorlessSkillPool;
+    public static SkillID[] GetColorlessSkillPool() => ColorlessSkillPool.Value;
 
     public static bool IsColorlessSkill(SkillID skillId) =>
-        ColorlessSkillPool.Contains(skillId);
+        ColorlessSkillPool.Value.Contains(skillId);
 
     private static SkillID[] BuildColorlessSkillPool()
     {
@@ -23,7 +23,7 @@ public partial class Skill
         foreach (SkillID skillId in Enum.GetValues<SkillID>())
         {
             FieldInfo field = typeof(SkillID).GetField(skillId.ToString());
-            if (field?.GetCustomAttribute<ColorlessSkillAttribute>() == null)
+            if (field?.GetCustomAttribute<ColorlessSkillAttribute>() == null || !IsSkillRegistered(skillId))
                 continue;
 
             pool.Add(skillId);

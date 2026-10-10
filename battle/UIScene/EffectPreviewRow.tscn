@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[sub_resource type="StyleBoxFlat" id="Plate"]
+resource_local_to_scene = true
+bg_color = Color(0.035, 0.05, 0.092, 0.92)
+border_color = Color(0.624, 0.702, 0.851, 0.35)
+border_width_left = 4
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 8.0
+content_margin_right = 14.0
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+shadow_color = Color(0, 0, 0, 0.72)
+shadow_size = 10
+shadow_offset = Vector2(0, 3)
+
+[node name="EffectPreviewRow" type="PanelContainer"]
+mouse_filter = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("Plate")
+
+[node name="Content" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="Value" type="Label" parent="Content"]
+layout_mode = 2
+mouse_filter = 2
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 33
+theme_override_constants/outline_size = 4
+theme_override_colors/font_outline_color = Color(0.02, 0.03, 0.06, 0.95)
+text = "14"

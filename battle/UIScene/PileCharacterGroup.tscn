@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="Theme"]
+
+[node name="PileCharacterGroup" type="VBoxContainer"]
+theme = ExtResource("Theme")
+custom_minimum_size = Vector2(1412, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(1412, 0)
+size_flags_horizontal = 3
+size_flags_vertical = 0
+mouse_filter = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+text = "角色  0"
+
+[node name="Grid" type="GridContainer" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(1412, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 34
+columns = 5
+
+[node name="VirtualGrid" type="Control" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(1412, 0)
+size_flags_horizontal = 0
+size_flags_vertical = 0
+mouse_filter = 2
+visible = false

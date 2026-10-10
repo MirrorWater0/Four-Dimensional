@@ -54,20 +54,8 @@ public partial class Tip : Control
     [Export]
     public Vector2 ContentPadding = BackgroundPadding;
 
-    [Export]
-    public int NormalFontSize = 19;
-
-    [Export]
-    public int OutlineSize = 0;
-
-    [Export]
-    public Color DefaultColor = DefaultTextColor;
-
-    [Export]
-    public Color OutlineColor = DefaultOutlineColor;
-
-    [Export]
-    public TextServer.AutowrapMode WrapMode = TextServer.AutowrapMode.WordSmart;
+    private int _sceneFontSize;
+    private int NormalFontSize => _sceneFontSize;
 
     private Vector2 _manualAnchorPosition = Vector2.Zero;
     private bool _layoutDirty = true;
@@ -95,6 +83,7 @@ public partial class Tip : Control
 
     public override void _Ready()
     {
+        _sceneFontSize = Description.GetThemeFontSize("normal_font_size");
         EnsureTipLayerOrder();
 
         if (Description != null)
@@ -375,18 +364,9 @@ public partial class Tip : Control
 
     private void ApplyDescriptionTheme()
     {
-        if (Description == null)
-            return;
-
-        Description.AutowrapMode = WrapMode;
         Description.CustomMinimumSize = new Vector2(GetPreferredContentWidth(), 0);
-        Description.AddThemeFontSizeOverride(
-            "normal_font_size",
-            UserSettings.ScaleTextFontSize(NormalFontSize)
-        );
-        Description.AddThemeConstantOverride("outline_size", OutlineSize);
-        Description.AddThemeColorOverride("default_color", DefaultColor);
-        Description.AddThemeColorOverride("font_outline_color", OutlineColor);
+        // Accessibility text scaling is the only runtime font adjustment.
+        Description.AddThemeFontSizeOverride("normal_font_size", UserSettings.ScaleTextFontSize(_sceneFontSize));
     }
 
     private float GetPreferredContentWidth()

@@ -681,6 +681,8 @@
   "ui.settings.intention_target_names": "意图目标直接显示角色名称",
   "skill.preview.all_formation": "全阵",
   "ui.settings.group_battle_piles_by_character": "牌堆查看按角色分类",
+  "ui.settings.group_hand_cards_by_character": "抽牌时按角色整理手牌",
+  "ui.settings.group_hand_cards_by_character_tooltip": "角色按队伍站位从右往左排列，第一个角色的牌在最右侧；新牌插入所属角色最后一张手牌之后。",
   "ui.settings.show_hand_card_indices": "显示手牌序号（数字键出牌）",
   "ui.settings.language": "语言",
   "ui.settings.resolution": "分辨率",

@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://e646xemt1y23"]
+
+[ext_resource type="Script" path="res://battle/Effect/MagicCircleUnfoldVfx.cs" id="1_script"]
+[ext_resource type="Shader" path="res://shader/MagicCircleUnfold.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_circle"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+shader_parameter/primary_color = Color(0.32, 0.78, 1, 1)
+shader_parameter/accent_color = Color(0.72, 0.48, 1, 1)
+shader_parameter/effect_time = 0.0
+shader_parameter/unfold_seconds = 1.05
+shader_parameter/hold_seconds = 1.25
+shader_parameter/fade_seconds = 0.65
+shader_parameter/brightness = 1.0
+shader_parameter/rotation_speed = 0.12
+
+[node name="MagicCircleUnfoldVfx" type="Node2D" unique_id=91537071]
+z_index = 4
+position = Vector2(253, 193)
+script = ExtResource("1_script")
+
+[node name="Surface" type="ColorRect" parent="." unique_id=313490849]
+material = SubResource("ShaderMaterial_circle")
+offset_left = -256.0
+offset_top = -123.0
+offset_right = 256.0
+offset_bottom = 123.0
+mouse_filter = 2

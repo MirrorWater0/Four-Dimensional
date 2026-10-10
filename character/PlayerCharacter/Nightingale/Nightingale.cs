@@ -7,9 +7,9 @@ public partial class Nightingale : PlayerCharacter
     public const string PassiveNameText = "夜光";
     public static string PassiveDescriptionText =>
         I18n.Format(
-            "character.nightingale.passive.description",
-            "回合开始时：在手牌中加入1张{blade}。",
-            ("blade", Skill.GetSkill(SkillID.Blade)?.SkillName ?? "利刃")
+            "character.nightingale.passive.turn_end_attack_description",
+            "回合开始时：获得1次{attack}。",
+            ("attack", Buff.GetBuffDisplayName(Buff.BuffName.TemporaryAttackCount))
         );
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Nightingale;
@@ -30,7 +30,7 @@ public partial class Nightingale : PlayerCharacter
             return;
 
         using var _ = BeginEffectSource(PassiveNameText);
-        BattleNode.AddPlayerBattleStatusCardsToHand(this, SkillID.Blade, 1, this);
+        AttackCountBuff.Modify(this, 1, temporary: true, source: this);
     }
 
     public override int GetSkillAttackDamageBonus(Skill skill)

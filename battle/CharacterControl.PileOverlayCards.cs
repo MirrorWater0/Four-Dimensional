@@ -27,18 +27,11 @@ public partial class CharacterControl
         card = GetPileHolderCard(holder);
         if (card == null)
         {
-            card = SkillCardScene.Instantiate<SkillCard>();
-            holder.AddChild(card);
+            throw new InvalidOperationException("PileCardHolder.tscn must contain Card.");
         }
 
         holder.Name = "PileCardHolder";
         holder.Position = Vector2.Zero;
-        holder.CustomMinimumSize = PileCardHolderSize;
-        holder.Size = PileCardHolderSize;
-        holder.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-        holder.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-        holder.MouseFilter = MouseFilterEnum.Ignore;
-        holder.ClipContents = false;
         holder.Visible = false;
         card.Visible = true;
         card.Modulate = Colors.Transparent;
@@ -48,8 +41,7 @@ public partial class CharacterControl
         return holder;
     }
 
-    private static Vector2 GetPilePreviewCardRestPosition() =>
-        PileCardHolderPadding - 0.5f * (Vector2.One - PileCardScale) * BattleCardBaseSize;
+    private Vector2 GetPilePreviewCardRestPosition() => _pileCardRestPosition;
 
     private Control RentPileCardHolder()
     {
@@ -60,7 +52,7 @@ public partial class CharacterControl
                 return holder;
         }
 
-        return new Control();
+        return GD.Load<PackedScene>("res://battle/UIScene/PileCardHolder.tscn").Instantiate<Control>();
     }
 
     private void PlayPileOverlayCardEntryAnimation(

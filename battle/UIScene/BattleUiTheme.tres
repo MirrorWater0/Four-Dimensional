@@ -1,0 +1,87 @@
+[gd_resource type="Theme" format=3 uid="uid://uq4qji5d8gxp"]
+
+[ext_resource type="SystemFont" path="res://battle/UIScene/BattleUiFont.tres" id="Font"]
+
+[sub_resource type="StyleBoxFlat" id="Disabled"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.065, 0.085, 0.1, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.38, 0.42, 0.3)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="Hover"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.1, 0.15, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.79, 0.66, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="Normal"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.045, 0.058, 0.078, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.47, 0.51, 0.55)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="Pressed"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.045, 0.058, 0.078, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.79, 0.66, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[resource]
+default_font = ExtResource("Font")
+default_font_size = 18
+Button/colors/font_color = Color(0.88, 0.91, 0.91, 1)
+Button/colors/font_disabled_color = Color(0.58, 0.57, 0.62, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(0.48, 0.79, 0.66, 1)
+Button/colors/pile_count_disabled = Color(0.7, 0.78, 0.84, 0.62)
+Button/colors/pile_count_enabled = Color(1, 1, 1, 1)
+Button/colors/pile_icon_disabled = Color(0.58, 0.66, 0.72, 0.46)
+Button/colors/pile_icon_enabled = Color(0.9, 0.98, 1, 0.9)
+Button/colors/pile_icon_hover = Color(1, 1, 1, 1)
+Button/constants/outline_size = 0
+Button/styles/disabled = SubResource("Disabled")
+Button/styles/focus = SubResource("Hover")
+Button/styles/hover = SubResource("Hover")
+Button/styles/normal = SubResource("Normal")
+Button/styles/pressed = SubResource("Pressed")
+Label/colors/font_color = Color(0.88, 0.91, 0.91, 1)

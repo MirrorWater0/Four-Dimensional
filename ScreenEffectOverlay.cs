@@ -45,28 +45,61 @@ public partial class ScreenEffectOverlay : CanvasLayer
     /// </summary>
     public static ScreenEffectOverlay EnsureMounted(Node caller)
     {
-        if (_activeInstance != null && GodotObject.IsInstanceValid(_activeInstance))
+        if (IsLiveMapOverlay(_activeInstance))
         {
             GD.Print($"{LogPrefix} RESOLVE active path={_activeInstance.GetPath()}");
             return _activeInstance;
         }
+
+        // Warmup instantiates a Map under PreloadeScene. Its overlay also calls
+        // _Ready, but it must not receive feedback intended for the live /root/Map.
+        _activeInstance = null;
 
         if (caller is Map callerMap)
         {
             ScreenEffectOverlay overlay = callerMap.GetNodeOrNull<ScreenEffectOverlay>(
                 "ScreenEffectOverlay"
             );
-            if (overlay != null)
+            if (IsLiveMapOverlay(overlay))
                 _activeInstance = overlay;
             GD.Print(
                 $"{LogPrefix} RESOLVE via Map path={callerMap.GetPath()} "
-                    + $"overlay={(overlay == null ? "NULL" : overlay.GetPath())}"
+                    + $"overlay={(IsLiveMapOverlay(overlay) ? overlay.GetPath() : "NULL")}"
             );
-            return overlay;
+            return IsLiveMapOverlay(overlay) ? overlay : null;
         }
+
+        ScreenEffectOverlay liveOverlay = GetLiveMapOverlay();
+        if (liveOverlay != null)
+        {
+            _activeInstance = liveOverlay;
+            GD.Print($"{LogPrefix} RESOLVE root map path={liveOverlay.GetPath()}");
+            return liveOverlay;
+        }
+
+        // Map feedback can be requested while a new run is still on the start
+        // screen. There is no visible overlay to animate at that point, so this
+        // is an expected no-op rather than an engine error.
+        if (caller == null)
+            return null;
 
         GD.PushError("ScreenEffectOverlay: no active Map/ScreenEffectOverlay instance is registered.");
         return null;
+    }
+
+    private static ScreenEffectOverlay GetLiveMapOverlay()
+    {
+        SceneTree tree = Engine.GetMainLoop() as SceneTree;
+        Map map = tree?.Root?.GetNodeOrNull<Map>("/root/Map");
+        return map?.GetNodeOrNull<ScreenEffectOverlay>("ScreenEffectOverlay");
+    }
+
+    private static bool IsLiveMapOverlay(ScreenEffectOverlay overlay)
+    {
+        return overlay != null
+            && GodotObject.IsInstanceValid(overlay)
+            && overlay.IsInsideTree()
+            && GetLiveMapOverlay() == overlay;
     }
 
     public static void PlayHit(Node caller, float impact, int actualDamage, int blockedDamage)
@@ -113,7 +146,7 @@ public partial class ScreenEffectOverlay : CanvasLayer
         ScreenEffectOverlay overlay = EnsureMounted(null);
         if (overlay == null)
         {
-            GD.PushError($"{LogPrefix} MAP_HEAL_ABORT no registered map overlay.");
+            GD.Print($"{LogPrefix} MAP_HEAL_SKIP map scene is not mounted yet.");
             return;
         }
 
@@ -134,7 +167,7 @@ public partial class ScreenEffectOverlay : CanvasLayer
         ScreenEffectOverlay overlay = EnsureMounted(null);
         if (overlay == null)
         {
-            GD.PushError($"{LogPrefix} MAP_LIFE_ABORT no registered map overlay.");
+            GD.Print($"{LogPrefix} MAP_LIFE_SKIP map scene is not mounted yet.");
             return;
         }
 

@@ -194,6 +194,8 @@ public partial class CharacterControl
         if (handIndexes == null || handIndexes.Count == 0 || !CanAnimateHandCardsFor(_activePlayer))
             return;
 
+        // Move existing card identities before attaching entry origins to the new slots.
+        SyncHandSlotIdentities(GetActiveHandSkills());
         switch (origin)
         {
             case HandCardEntryOrigin.PlayedCard:
