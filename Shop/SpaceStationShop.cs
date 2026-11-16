@@ -265,7 +265,7 @@ public partial class SpaceStationShop : Control
     private Task _statBuildTask;
     private Task _singlePageRevealTask;
 
-    public static SpaceStationShop Show(Node caller)
+    public static SpaceStationShop Show(Node caller, LevelNode whichNode = null)
     {
         var root = caller.GetTree().Root;
         var existing =
@@ -273,6 +273,7 @@ public partial class SpaceStationShop : Control
             ?? root.GetNodeOrNull<SpaceStationShop>("SpaceStationShop");
         if (existing != null)
         {
+            existing.WhichNode = whichNode ?? existing.WhichNode;
             if (existing._isHidden || !existing.Visible)
                 existing.ReopenFromHidden();
             return existing;
@@ -280,6 +281,7 @@ public partial class SpaceStationShop : Control
 
         var shop = ShopScene.Instantiate<SpaceStationShop>();
         shop.Name = "SpaceStationShop";
+        shop.WhichNode = whichNode;
         var siteUi = root.GetNodeOrNull<Node>("Map/SiteUI");
         if (siteUi != null)
             siteUi.AddChild(shop);

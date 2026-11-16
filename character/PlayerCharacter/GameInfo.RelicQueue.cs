@@ -7,6 +7,7 @@ public static partial class GameInfo
 {
     public const int ShopRelicQueueSlots = 3;
     private const int RelicQueueShuffleSalt = unchecked((int)0x8E11C0DE);
+    private const int RelicQueueRegionKeyStride = 1000;
 
     public static List<RelicID> RelicQueue = new();
     /// <summary>下一段遗物内容将从队列的该下标开始分配。</summary>
@@ -137,12 +138,17 @@ public static partial class GameInfo
         if (shopNode == null)
             return RelicQueueNextIndex;
 
-        if (NodeRelicQueueStarts.TryGetValue(shopNode.SelfCoordinate, out int start))
+        Vector2I queueKey = GetRelicQueueNodeKey(shopNode);
+        if (NodeRelicQueueStarts.TryGetValue(queueKey, out int start))
+        {
+            shopNode.RelicQueueStart = start;
             return start;
+        }
 
         start = RelicQueueNextIndex;
         RelicQueueNextIndex += ShopRelicQueueSlots;
-        NodeRelicQueueStarts[shopNode.SelfCoordinate] = start;
+        shopNode.RelicQueueStart = start;
+        NodeRelicQueueStarts[queueKey] = start;
         return start;
     }
 
@@ -151,12 +157,26 @@ public static partial class GameInfo
         if (node == null)
             return -1;
 
-        if (NodeRelicQueueSlots.TryGetValue(node.SelfCoordinate, out int slot))
+        Vector2I queueKey = GetRelicQueueNodeKey(node);
+        if (NodeRelicQueueSlots.TryGetValue(queueKey, out int slot))
+        {
+            node.RelicQueueSlot = slot;
             return slot;
+        }
 
         slot = RelicQueueNextIndex;
         RelicQueueNextIndex++;
-        NodeRelicQueueSlots[node.SelfCoordinate] = slot;
+        node.RelicQueueSlot = slot;
+        NodeRelicQueueSlots[queueKey] = slot;
         return slot;
+    }
+
+    private static Vector2I GetRelicQueueNodeKey(LevelNode node)
+    {
+        int region = Math.Max(0, CurrentLevel);
+        return new Vector2I(
+            node.SelfCoordinate.X + region * RelicQueueRegionKeyStride,
+            node.SelfCoordinate.Y
+        );
     }
 }

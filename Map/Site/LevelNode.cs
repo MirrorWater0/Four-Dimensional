@@ -544,8 +544,7 @@ public partial class LevelNode : ColorRect
             .TweenCallback(
                 Callable.From(() =>
                 {
-                    var shop = SpaceStationShop.Show(this);
-                    shop.WhichNode = this;
+                    SpaceStationShop.Show(this, this);
                 })
             );
     }
