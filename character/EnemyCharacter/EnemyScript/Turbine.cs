@@ -4,9 +4,9 @@ using Godot;
 
 public partial class Turbine : EnemyCharacter
 {
-    private const int StartThornStacks = 7;
-    private const int ActionTriggerCount = 2;
-    private const int TriggerThornStacks = 5;
+    private static int StartThornStacks => EnemyTuning.GetRequiredInt("Turbine", nameof(StartThornStacks));
+    private static int ActionTriggerCount => EnemyTuning.GetRequiredInt("Turbine", nameof(ActionTriggerCount));
+    private static int TriggerThornStacks => EnemyTuning.GetRequiredInt("Turbine", nameof(TriggerThornStacks));
 
     public const string PassiveNameText = "棘轮增压";
     public static string PassiveDescriptionText =>
@@ -75,16 +75,11 @@ public partial class TurbineRegedit : EnemyRegedit
     public TurbineRegedit()
     {
         CharacterName = "Turbine";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/Turbine.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Turbine.tscn");
-
-        MaxLife = 105;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.TurbineAttack, SkillID.TurbineSurvive, SkillID.TurbineSpecial];
+        // 支援邻位，冲击强化，随机调整后以超压额外打出攻击卡。
+        IntentionCycle = [SkillID.TurbineSurvive, SkillID.TurbineAttack, random, SkillID.TurbineSpecial, SkillID.TurbineAttack];
 
         PassiveName = global::Turbine.PassiveNameText;
         PassiveDescription = global::Turbine.PassiveDescriptionText;
@@ -93,8 +88,8 @@ public partial class TurbineRegedit : EnemyRegedit
 
 public partial class TurbineAttack : Skill
 {
-    private const int BaseDamage = 31;
-    private const int AllySurvivabilityGain = 5;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int AllySurvivabilityGain => V(nameof(AllySurvivabilityGain));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -104,7 +99,7 @@ public partial class TurbineAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(BaseDamage),
+            AttackStep(BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             ModifyPropertyStep(
                 PropertyType.Survivability,
                 AllySurvivabilityGain,
@@ -116,9 +111,9 @@ public partial class TurbineAttack : Skill
 
 public partial class TurbineSurvive : Skill
 {
-    private const int BaseSurvivabilityGain = 23;
-    private const int SurvivabilityMultiplier = 2;
-    private const int AllyPowerGain = 5;
+    private int BaseSurvivabilityGain => V(nameof(BaseSurvivabilityGain));
+    private int SurvivabilityMultiplier => V(nameof(SurvivabilityMultiplier));
+    private int AllyPowerGain => V(nameof(AllyPowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -139,21 +134,19 @@ public partial class TurbineSurvive : Skill
 
 public partial class TurbineSpecial : Skill
 {
-    private const int SelfPowerGain = 10;
-    private const int ThornStacks = 8;
-    private const int WoundCount = 1;
+
+    private int WoundCount => V(nameof(WoundCount));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "超压模式";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 22)),
-            CarryStep(target: TargetReference.Previous, skillIndex: 1),
+            AttackStep(V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount")),
+            PlayDrawPileCardStep(SkillTypes.Attack),
             AddCardsStep(SkillID.WoundStatus, WoundCount)
         );
     }

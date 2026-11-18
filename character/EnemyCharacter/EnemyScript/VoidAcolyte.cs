@@ -3,7 +3,7 @@ using Godot;
 
 public partial class VoidAcolyte : EnemyCharacter
 {
-    private const int StartRebirthStacks = 3;
+    private static int StartRebirthStacks => EnemyTuning.GetRequiredInt("VoidAcolyte", nameof(StartRebirthStacks));
 
     public const string PassiveNameText = "虚壳复苏";
     public static string PassiveDescriptionText =>
@@ -32,20 +32,15 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
     public VoidAcolyteRegedit()
     {
         CharacterName = "虚空侍从";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/VoidAcolyte.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidAcolyte.tscn");
-
-        MaxLife = 30;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
         SkillIDs =
         [
             SkillID.VoidAcolyteAttack,
-            SkillID.VoidAcolyteSurvive,
             SkillID.VoidAcolyteSpecial,
         ];
+        // 第三轮蓄势随机施加脆弱，第四轮全阵虚空灌注兑现压力。
+        IntentionCycle = [SkillID.VoidAcolyteSurvive, random, SkillID.VoidAcolyteAttack, SkillID.VoidAcolyteSpecial];
 
         PassiveName = global::VoidAcolyte.PassiveNameText;
         PassiveDescription = global::VoidAcolyte.PassiveDescriptionText;
@@ -54,7 +49,7 @@ public partial class VoidAcolyteRegedit : EnemyRegedit
 
 public partial class VoidAcolyteAttack : Skill
 {
-    private const int BaseDamage = 8;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -62,14 +57,14 @@ public partial class VoidAcolyteAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount", 2)));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount"), multiplier: V("Multiplier")));
     }
 }
 
 public partial class VoidAcolyteSurvive : Skill
 {
-    private const int BaseBlock = 10;
-    private const int PowerGain = 4;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int PowerGain => V(nameof(PowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -79,26 +74,26 @@ public partial class VoidAcolyteSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.RandomPreview)
         );
     }
 }
 
 public partial class VoidAcolyteSpecial : Skill
 {
-    private const int VoidCardsInserted = 2;
+    private int VoidCardsInserted => V(nameof(VoidCardsInserted));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚空灌注";
-    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 9), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+            AttackStep(V("BaseDamage"), multiplier: V("Multiplier"), target: HostileTargetReference.All, times: V("HitCount")),
             AddCardsStep(
                 SkillID.VoidStatus,
                 VoidCardsInserted,

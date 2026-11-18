@@ -75,7 +75,7 @@ public static partial class GameInfo
         if (candidateIndices.Count == 0)
             return default;
 
-        var rng = GameInfo.CreateRunRng(node, BattleTalentPointRewardSeedSalt);
+        var rng = CreateTalentPointRewardRng(node);
         int characterIndex = candidateIndices[rng.Next(candidateIndices.Count)];
         var info = PlayerCharacters[characterIndex];
         if (grant)
@@ -108,24 +108,30 @@ public static partial class GameInfo
             .ToList();
     }
 
-    private static bool HasReachedTalentPointRewardLimit(PlayerInfoStructure info)
+    private static bool HasReachedTalentPointRewardLimit(PlayerInfoStructure info) => !TalentTree.CanGainChoice(info);
+
+    internal static Random CreateTalentPointRewardRng(LevelNode node)
     {
-        var nodes = TalentTree.GetNodes(info);
-        if (nodes.Count == 0)
-            return true;
+        int seed = node == null
+            ? Seed ^ BattleTalentPointRewardSeedSalt
+            : CreateRunRngSeed(
+                GetStreamForNodeType(node.Type),
+                GetBattleRngQueueIndex(node),
+                BattleTalentPointRewardSeedSalt
+            );
 
-        int totalCost = nodes.Sum(node => node.Cost);
-        if (totalCost <= 0)
-            return true;
-
-        var unlockedTalentIds = new HashSet<string>(
-            info.UnlockedTalents ?? [],
-            StringComparer.Ordinal
-        );
-        int spentCost = nodes
-            .Where(node => unlockedTalentIds.Contains(node.Id))
-            .Sum(node => node.Cost);
-        int earnedTalentPoints = Math.Max(0, info.TalentPoints) + spentCost;
-        return earnedTalentPoints >= totalCost;
+        // Adjacent FNV-derived seeds correlate when only the first Random
+        // sample is used. MurmurHash3's finalizer disperses those seeds while
+        // keeping previews, grants and reloaded saves deterministic.
+        unchecked
+        {
+            uint hash = (uint)seed;
+            hash ^= hash >> 16;
+            hash *= 0x85EBCA6Bu;
+            hash ^= hash >> 13;
+            hash *= 0xC2B2AE35u;
+            hash ^= hash >> 16;
+            return new Random((int)hash);
+        }
     }
 }

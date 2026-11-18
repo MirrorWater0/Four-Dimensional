@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Inexorability : EnemyCharacter
 {
-    private const int HurtPowerDown = 1;
+    private static int HurtPowerDown => EnemyTuning.GetRequiredInt("Inexorability", nameof(HurtPowerDown));
 
     public const string PassiveNameText = "不可违逆";
     public static string PassiveDescriptionText => $"受到攻击时：攻击者失去{HurtPowerDown}点力量。";
@@ -18,7 +18,16 @@ public partial class Inexorability : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override async Task GetHurt(
+    public override Task GetHurt(
+        float damage,
+        Character source = null,
+        DamageKind damageKind = DamageKind.Other,
+        bool ignoreBlock = false
+    ) => BattleNode is Battle battle
+        ? battle.ExecuteBattleEffectAsync(() => GetHurtAndPassiveAsync(damage, source, damageKind, ignoreBlock), "不可违逆：受伤与被动")
+        : GetHurtAndPassiveAsync(damage, source, damageKind, ignoreBlock);
+
+    private async Task GetHurtAndPassiveAsync(
         float damage,
         Character source = null,
         DamageKind damageKind = DamageKind.Other,
@@ -48,21 +57,16 @@ public partial class InexorabilityRegedit : EnemyRegedit
     public InexorabilityRegedit()
     {
         CharacterName = "Inexorability";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/Inexorability.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Inexorability.tscn");
-
-        MaxLife = 117;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs =
         [
             SkillID.InexorabilityAttack,
             SkillID.InexorabilitySurvive,
             SkillID.InexorabilitySpecial,
         ];
+        // 防御成长后压制，以全阵律令结束一轮。
+        IntentionCycle = [SkillID.InexorabilitySurvive, SkillID.InexorabilityAttack, random, SkillID.InexorabilitySpecial];
 
         PassiveName = global::Inexorability.PassiveNameText;
         PassiveDescription = global::Inexorability.PassiveDescriptionText;
@@ -71,7 +75,7 @@ public partial class InexorabilityRegedit : EnemyRegedit
 
 public partial class InexorabilityAttack : Skill
 {
-    private const int BaseDamage = 21;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -81,15 +85,15 @@ public partial class InexorabilityAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1))
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount"))
         );
     }
 }
 
 public partial class InexorabilitySurvive : Skill
 {
-    private const int BaseBlock = 10;
-    private const int PowerGain = 3;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int PowerGain => V(nameof(PowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -99,7 +103,7 @@ public partial class InexorabilitySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ModifyPropertyStep(PropertyType.Power, PowerGain)
         );
     }
@@ -107,13 +111,12 @@ public partial class InexorabilitySurvive : Skill
 
 public partial class InexorabilitySpecial : Skill
 {
-    private const int BaseDamage = 12;
-    private const int PowerMultiplier = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int PowerMultiplier => V(nameof(PowerMultiplier));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "终局律令";
-    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {
@@ -122,7 +125,8 @@ public partial class InexorabilitySpecial : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 multiplier: PowerMultiplier,
-                target: HostileTargetReference.All
+                target: HostileTargetReference.All,
+                times: V("HitCount")
             )
         );
     }

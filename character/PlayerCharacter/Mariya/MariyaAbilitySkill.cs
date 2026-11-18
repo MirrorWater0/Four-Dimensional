@@ -2,8 +2,7 @@ public partial class MariyaAbilitySkill { }
 
 public partial class Prediction : AbilitySkill
 {
-    private const int PredictionStacks = 3;
-    public override int EnergyCost => Cost(1);
+    private int PredictionStacks => V(nameof(PredictionStacks));
 
     public override string SkillName { get; set; } = "预测";
 
@@ -23,10 +22,9 @@ public partial class Prediction : AbilitySkill
 public partial class HolyOfHolies : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int SourceStacks = 1;
+    private int SourceStacks => V(nameof(SourceStacks));
 
     public override string SkillName { get; set; } = "至圣";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -40,10 +38,9 @@ public partial class HolyOfHolies : AbilitySkill
 public partial class SanctuaryForm : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int SanctuaryStacks = 1;
+    private int SanctuaryStacks => V(nameof(SanctuaryStacks));
 
     public override string SkillName { get; set; } = "圣域形态";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -57,16 +54,14 @@ public partial class SanctuaryForm : AbilitySkill
 public partial class Foresight : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int ForesightStacks = 1;
 
     public override string SkillName { get; set; } = "预见";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(buffName: Buff.BuffName.Foresight, stacks: ForesightStacks)
+            ApplyBuffFriendly(buffName: Buff.BuffName.Foresight, stacks: 1)
         );
     }
 }

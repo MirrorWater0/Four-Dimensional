@@ -64,6 +64,10 @@ Four-Dimensional/
 
 > The project relies on Godot 4.6 with .NET support. The VS Code workspace setting points to `Godot_v4.5.1-stable_mono_win64` but the csproj targets `Godot.NET.Sdk/4.6.0`.
 
+## 测试约定
+*   用户没有明确要求测试时，不主动编写或运行测试，也不为了验证改动而运行构建、回归脚本或启动 Godot 场景。
+*   默认通过阅读代码和检查修改内容完成工作；仅在用户明确要求时执行相应测试，并遵守用户指定的范围。用户要求停止测试时，立即停止，不追加验证。
+
 ## CODING STANDARDS
 *   **Language**: C# 12 (preview) on .NET 8.0
 *   **Style**:

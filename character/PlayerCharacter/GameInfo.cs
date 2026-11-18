@@ -44,6 +44,7 @@ public static partial class GameInfo
         PendingBossRelicChoice = false;
         PendingStarterBonusChoice = true;
         SelectedStarterBonus = StarterBonusOption.None;
+        ResetWorldLineState();
         RunHistoryRecords ??= new List<RunHistoryRecord>();
         FirstLevelState.Clear();
         ResetLevelNodeCompletionRecords();
@@ -166,7 +167,7 @@ public static partial class GameInfo
         var info = PlayerCharacters[playerIndex];
         int maxLife = Math.Max(info.LifeMax, 1);
         int beforeLife = Math.Clamp(info.Life, 0, maxLife);
-        int afterLife = Math.Clamp(beforeLife + delta, 0, maxLife);
+        int afterLife = Math.Clamp(beforeLife + (delta > 0 ? ApplyTalentMapHealingBonus(delta) : delta), 0, maxLife);
         int actualDelta = afterLife - beforeLife;
         if (actualDelta == 0)
         {
@@ -203,7 +204,7 @@ public static partial class GameInfo
                 continue;
 
             int beforeLife = Math.Clamp(info.Life, 0, maxLife);
-            int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
+            int afterLife = Math.Clamp(beforeLife + ApplyTalentMapHealingBonus(recoverAmount), 0, maxLife);
             if (afterLife == beforeLife)
                 continue;
 
@@ -240,7 +241,7 @@ public static partial class GameInfo
             if (recoverAmount <= 0)
                 continue;
 
-            int afterLife = Math.Clamp(beforeLife + recoverAmount, 0, maxLife);
+            int afterLife = Math.Clamp(beforeLife + ApplyTalentMapHealingBonus(recoverAmount), 0, maxLife);
             if (afterLife == beforeLife)
                 continue;
 
@@ -389,7 +390,7 @@ public static partial class GameInfo
 
             var info = PlayerCharacters[targetIndex];
             int applied = Math.Min(amount, info.LifeMax - info.Life);
-            info.Life += applied;
+            info.Life = Math.Min(info.LifeMax, info.Life + ApplyTalentMapHealingBonus(applied));
             info.LifeInitialized = true;
             PlayerCharacters[targetIndex] = info;
             amount -= applied;
@@ -407,7 +408,7 @@ public static partial class GameInfo
 
             var info = PlayerCharacters[i];
             int maxLife = Math.Max(info.LifeMax, 1);
-            info.Life = Math.Clamp(info.Life + amount, 0, maxLife);
+            info.Life = Math.Clamp(info.Life + ApplyTalentMapHealingBonus(amount), 0, maxLife);
             info.LifeInitialized = true;
             PlayerCharacters[i] = info;
         }
@@ -585,7 +586,7 @@ public static partial class GameInfo
         return skill != null && skill.SkillType != Skill.SkillTypes.none && !skill.IsStatusCard;
     }
 
-    public static SkillID[] GetOwnedBattleCardPool(PlayerCharacter player)
+    public static SkillID[] GetRandomGenerationCardPool(PlayerCharacter player)
     {
         if (
             player == null
@@ -597,19 +598,22 @@ public static partial class GameInfo
             return Array.Empty<SkillID>();
         }
 
-        return (PlayerCharacters[player.CharacterIndex].GainedSkills ?? new List<SkillID>())
-            .Where(IsSelectableDeckCard)
+        var info = PlayerCharacters[player.CharacterIndex];
+        // The catalog already contains registered player cards only. Instantiating
+        // every candidate here repeats constructors/description work on every draw.
+        return Skill.GetPlayerSkillPool(info.CharacterName, info.CharacterScenePath)
+            .Where(skillId => !IsBasicSkill(skillId))
             .Distinct()
             .ToArray();
     }
 
-    public static SkillID? PickRandomOwnedBattleSkillId(PlayerCharacter player, Random rng)
+    public static SkillID? PickRandomGeneratedBattleSkillId(PlayerCharacter player, Random rng)
     {
-        SkillID[] pool = GetOwnedBattleCardPool(player);
+        SkillID[] pool = GetRandomGenerationCardPool(player);
         if (pool.Length == 0)
             return null;
 
-        rng ??= new Random();
+        rng ??= Random.Shared;
         return pool[rng.Next(pool.Length)];
     }
 
@@ -651,7 +655,7 @@ public static partial class GameInfo
         return skill?.SkillType switch
         {
             Skill.SkillTypes.Attack => 0,
-            Skill.SkillTypes.Survive => 1,
+            Skill.SkillTypes.Permanent => 1,
             Skill.SkillTypes.Special => 2,
             Skill.SkillTypes.Ability => 3,
             _ => 4,
@@ -763,6 +767,7 @@ public struct PlayerInfoStructure
     public int Survivability;
     public int TalentPoints;
     public List<string> UnlockedTalents = new();
+    public List<string> TalentOffer = new();
     public int AppliedTalentMaxLifeBonus;
     public List<SkillID> GainedSkills = new();
     public SkillID[] TakenSkills = new SkillID[3];
@@ -1032,6 +1037,7 @@ public static class GlobalFunction
         AddKeywordVariants(entries, "keyword.colorless", "无色", "#b8bcc6");
         AddKeywordVariants(entries, "keyword.retain", "保留", "#ffd98f");
         AddKeywordVariants(entries, "keyword.voidness", "虚无", "#b9a6ff");
+        AddKeywordVariants(entries, "keyword.immediate", "即时", "#8fe3ff");
         AddKeywordVariants(
             entries,
             "keyword.rebirth",
@@ -1039,7 +1045,6 @@ public static class GlobalFunction
             "#a8f0ad",
             useRebirthValidation: true
         );
-        AddKeywordVariants(entries, "keyword.carry", "连携", "#a8f0ad");
 
         foreach (Buff.BuffName buffName in Enum.GetValues(typeof(Buff.BuffName)))
         {

@@ -13,7 +13,7 @@ public partial class Relic
     private const int EnergyStorageTankStacks = 1;
     private const int FusionCoreActionInterval = 3;
     private const int FusionCoreEnergy = 1;
-    private const int SpiralAcceleratorTurnInterval = 3;
+    private const int SpiralAcceleratorTurnInterval = 2;
     private const int SpiralAcceleratorDrawCount = 1;
     private const int MechanicalEnergyConverterEnergy = 1;
     private const int PhilosophersStoneEnergyBonus = 1;
@@ -357,25 +357,25 @@ public partial class Relic
         }
     }
 
-    public static void ApplyCarryRelicEffects(Character carriedCharacter)
+    public static void ApplyDrawPilePlayRelicEffects(Character cardOwner)
     {
         if (
-            carriedCharacter is not PlayerCharacter
-            || carriedCharacter.State == Character.CharacterState.Dying
+            cardOwner is not PlayerCharacter
+            || cardOwner.State == Character.CharacterState.Dying
             || !HasRelic(RelicID.MechanicalEnergyConverter)
         )
         {
             return;
         }
 
-        using var _ = carriedCharacter.BeginEffectSource(
+        using var _ = cardOwner.BeginEffectSource(
             GetRelicName(RelicID.MechanicalEnergyConverter)
         );
-        ShowRelicTriggerPopup(carriedCharacter, RelicID.MechanicalEnergyConverter);
-        carriedCharacter.BattleNode?.UpdataEnergy(
-            carriedCharacter,
+        ShowRelicTriggerPopup(cardOwner, RelicID.MechanicalEnergyConverter);
+        cardOwner.BattleNode?.UpdataEnergy(
+            cardOwner,
             MechanicalEnergyConverterEnergy,
-            carriedCharacter
+            cardOwner
         );
     }
 
@@ -473,6 +473,7 @@ public partial class Relic
     {
         var icon = IconScene.Instantiate() as ColorRect;
         ApplyIconVisual(icon, ID);
+        icon.GetNodeOrNull<Control>("Panel")?.Hide();
         icon.GetNode<Label>("Label").Text = GetIconCountText();
         WireRelicTip(icon, playerResourceState);
         playerResourceState.RelicContainer.AddChild(icon);
@@ -486,13 +487,11 @@ public partial class Relic
             case RelicID.Blessing:
                 if (Num <= 0)
                     return;
-                List<Task> list = new();
                 for (int i = 0; i < battle.EnemiesList.Count; i++)
                 {
                     ShowRelicTriggerPopup(battle.EnemiesList[i], ID);
-                    list.Add(battle.EnemiesList[i].GetHurt(BlessingDamage));
+                    await battle.EnemiesList[i].GetHurt(BlessingDamage);
                 }
-                await Task.WhenAll(list);
                 Num--;
                 break;
             case RelicID.BattleBanner:
@@ -617,8 +616,8 @@ public partial class Relic
             RelicID.EnergyStorageTank => $"战斗开始时全阵获得{EnergyStorageTankStacks}层{Buff.BuffName.EnergyStorage.GetDescription()}。",
             RelicID.FusionCore => $"己方行动每{FusionCoreActionInterval}次行动当前角色获得{FusionCoreEnergy}点能量。",
             RelicID.SpiralAccelerator => $"每{SpiralAcceleratorTurnInterval}个己方阵营回合开始时，抽{SpiralAcceleratorDrawCount}张牌。",
-            RelicID.MechanicalEnergyConverter => $"角色被连携时获得{MechanicalEnergyConverterEnergy}点能量。",
-            RelicID.Refractometer => $"战斗开始时随机一名角色获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
+            RelicID.MechanicalEnergyConverter => $"角色通过抽牌堆打出卡牌时获得{MechanicalEnergyConverterEnergy}点能量。",
+            RelicID.Refractometer => $"战斗开始时全阵获得{RefractometerDamageImmuneStacks}层{Buff.BuffName.DamageImmune.GetDescription()}。",
             RelicID.Purifier => $"战斗开始时全阵获得{PurifierDebuffImmunityStacks}层{Buff.BuffName.DebuffImmunity.GetDescription()}。",
             RelicID.KnightHelmet => $"每当角色打出{KnightHelmetMinimumCost}费及以上的卡牌时，获得{KnightHelmetBlock}点格挡。",
             RelicID.IonizedVoice => $"每使用{IonizedVoiceSpecialSkillInterval}张特殊卡牌，抽{IonizedVoiceDrawCount}张牌。",
@@ -831,34 +830,26 @@ public partial class Relic
         if (battle?.PlayersList == null)
             return;
 
-        Character[] candidates = battle
-            .PlayersList.Where(player =>
-                player != null
-                && GodotObject.IsInstanceValid(player)
-                && player.State != Character.CharacterState.Dying
+        for (int i = 0; i < battle.PlayersList.Count; i++)
+        {
+            var player = battle.PlayersList[i];
+            if (
+                player == null
+                || !GodotObject.IsInstanceValid(player)
+                || player.State == Character.CharacterState.Dying
             )
-            .Cast<Character>()
-            .ToArray();
-        if (candidates.Length == 0)
-            return;
+            {
+                continue;
+            }
 
-        int seed =
-            battle.CurrentLevelNode != null
-                ? GameInfo.CreateRunRngSeed(
-                    GameInfo.GetStreamForNodeType(battle.CurrentLevelNode.Type),
-                    GameInfo.GetNodeContentQueueIndex(battle.CurrentLevelNode),
-                    unchecked((int)0x4EF1AC70)
-                )
-                : GameInfo.Seed ^ unchecked((int)0x4EF1AC70);
-        var rng = new Random(seed);
-        Character target = candidates[rng.Next(candidates.Length)];
-        ShowRelicTriggerPopup(target, RelicID.Refractometer);
-        HurtBuff.BuffAdd(
-            Buff.BuffName.DamageImmune,
-            target,
-            RefractometerDamageImmuneStacks,
-            target
-        );
+            ShowRelicTriggerPopup(player, RelicID.Refractometer);
+            HurtBuff.BuffAdd(
+                Buff.BuffName.DamageImmune,
+                player,
+                RefractometerDamageImmuneStacks,
+                player
+            );
+        }
     }
 
     private static void ApplyDebuffImmunityToPlayers(Battle battle, int stacks)

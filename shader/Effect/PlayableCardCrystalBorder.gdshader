@@ -1,120 +1,109 @@
 shader_type canvas_item;
-render_mode blend_add;
+// Write alpha as well as color so the rectangular backing fills transparent card corners.
+render_mode blend_mix;
 
-uniform float ease = 0.005;
-uniform float modulo_width :hint_range(0.0, 0.1, 0.01) = 0.02;
-uniform float width :hint_range(0.0, 1.0, 0.1) = 0.0;
-uniform float ripple_speed = 0.28;
+// Keep width as the visibility control used by SkillCard.SetPlayableHighlight.
+uniform float width : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 card_size = vec2(240.0, 370.0);
-uniform vec2 effect_margin = vec2(32.0, 32.0);
-uniform float corner_radius_px = 8.0;
-uniform float glow_radius_px = 46.0;
-uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
-uniform vec4 core_color : source_color = vec4(0.72, 0.96, 1.0, 1.0);
-uniform vec4 accent_color : source_color = vec4(0.08, 0.42, 1.0, 1.0);
-uniform vec4 spark_color : source_color = vec4(0.58, 0.92, 1.0, 1.0);
-uniform float pulse_speed = 2.25;
-uniform float flame_height_px = 34.0;
-uniform float flame_scale = 7.0;
-uniform float flame_speed = 0.85;
-uniform float flame_turbulence = 0.42;
+uniform vec2 effect_margin = vec2(96.0, 96.0);
+uniform vec2 ray_length_px = vec2(84.0, 76.0);
+uniform float line_width_px : hint_range(0.5, 4.0) = 1.1;
+uniform float ray_width_px : hint_range(1.0, 10.0) = 4.5;
+uniform float glow_radius_px : hint_range(2.0, 32.0) = 12.0;
+uniform vec2 fill_extent_px = vec2(72.0, 68.0);
+uniform float fill_strength : hint_range(0.0, 1.0) = 0.65;
+uniform float inner_fill_strength : hint_range(0.0, 1.0) = 1.0;
+uniform vec4 inner_fill_color : source_color = vec4(0.32, 0.68, 0.9, 1.0);
+uniform vec4 inner_center_color : source_color = vec4(0.14, 0.3, 0.55, 1.0);
+uniform vec4 core_color : source_color = vec4(0.88, 0.97, 1.0, 1.0);
+uniform vec4 accent_color : source_color = vec4(0.32, 0.68, 0.9, 1.0);
+uniform vec4 fill_outer_color : source_color = vec4(0.16, 0.36, 0.7, 1.0);
+uniform vec4 spark_color : source_color = vec4(0.68, 0.9, 1.0, 1.0);
+uniform float flow_speed : hint_range(0.0, 3.0) = 0.65;
+uniform float pulse_speed : hint_range(0.0, 6.0) = 2.0;
+uniform float intensity : hint_range(0.0, 3.0) = 1.0;
 
-float rounded_box_sdf(vec2 p, vec2 half_size, float radius) {
-	vec2 q = abs(p) - half_size + radius;
-	return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - radius;
+// One card edge and its two tapered extensions. Swapping axes gives the other pair.
+vec3 edge_light(float along, float across, float half_length, float extension) {
+    float beyond_corner = abs(along) - half_length;
+    float tail = clamp(max(beyond_corner, 0.0) / max(extension, 1.0), 0.0, 1.0);
+    float taper = pow(1.0 - tail, 1.4);
+    // Fade along the entire extension, keeping the root bright and the tip transparent.
+    float tip_opacity = pow(1.0 - smoothstep(0.0, 1.0, tail), 1.25);
+    float aa = max(fwidth(across), 0.65);
+    float line = 1.0 - smoothstep(line_width_px * taper,
+        line_width_px * taper + aa, abs(across));
+
+    // The wider ray starts at the corner and narrows to a point along the edge axis.
+    float ray_radius = max(ray_width_px * taper, 0.15);
+    float ray = exp(-2.0 * across * across / (ray_radius * ray_radius));
+    ray *= smoothstep(-4.0, 1.0, beyond_corner) * taper;
+    float halo = exp(-abs(across) / max(glow_radius_px, 1.0));
+    halo *= exp(-max(beyond_corner, 0.0) / max(extension * 0.45, 1.0));
+    return vec3(line, ray, halo) * tip_opacity;
 }
 
-float edge_flow_coord(vec2 p, vec2 half_size) {
-	vec2 safe_half = max(half_size, vec2(1.0));
-	vec2 q = abs(p) / safe_half;
-	float vertical_side = step(q.x, q.y);
-	float top_bottom_coord = p.x / max(safe_half.x, 1.0);
-	float left_right_coord = -p.y / max(safe_half.y, 1.0);
-	float side_coord = mix(left_right_coord, top_bottom_coord, vertical_side);
-	float y_positive = step(0.0, p.y);
-	float x_positive = step(0.0, p.x);
-	float y_side_id = 0.5 * (1.0 - y_positive);
-	float x_side_id = mix(0.75, 0.25, x_positive);
-	float side_id = mix(x_side_id, y_side_id, vertical_side);
-	return fract(side_id + side_coord * 0.125 + 0.5);
-}
-
-float noise_sample(vec2 uv) {
-	return texture(noise_tex, uv).r;
-}
-
-float texture_fbm(vec2 uv) {
-	float value = noise_sample(uv) * 0.52;
-	value += noise_sample(uv * 2.03 + vec2(0.31, 0.17)) * 0.26;
-	value += noise_sample(uv * 4.11 + vec2(0.67, 0.43)) * 0.15;
-	value += noise_sample(uv * 8.07 + vec2(0.11, 0.79)) * 0.07;
-	return value;
+float outward_wave(float distance_from_edge, float phase) {
+    float envelope = smoothstep(0.0, 0.16, phase)
+        * (1.0 - smoothstep(0.65, 1.0, phase));
+    float front_distance = (distance_from_edge - phase * 88.0) / 9.0;
+    return exp(-front_distance * front_distance) * envelope;
 }
 
 void fragment() {
-	vec2 effect_size = card_size + effect_margin * 2.0;
-	vec2 card_px = UV * effect_size - effect_margin;
-	vec2 center = card_size * 0.5;
-	vec2 p = card_px - center;
-	vec2 half_size = max(card_size * 0.5 - vec2(corner_radius_px), vec2(1.0));
+    vec4 tint = COLOR;
+    vec2 effect_size = card_size + effect_margin * 2.0;
+    vec2 p = UV * effect_size - effect_margin - card_size * 0.5;
+    vec2 half_size = max(card_size * 0.5, vec2(1.0));
+    vec2 edge_delta = abs(p) - half_size;
+    float outside_distance = max(max(edge_delta.x, edge_delta.y), 0.0);
+    float outside_mask = smoothstep(-0.8, 0.8, max(edge_delta.x, edge_delta.y));
+    float visible = smoothstep(0.0, 0.1, width);
 
-	float sdf = rounded_box_sdf(p, half_size, corner_radius_px);
-	float outside_dist = max(sdf, 0.0);
-	float edge_dist = abs(sdf);
-	float outside_mask = smoothstep(-10.0, 2.0, sdf);
+    vec3 horizontal = edge_light(p.x, edge_delta.y, half_size.x, ray_length_px.x);
+    vec3 vertical = edge_light(p.y, edge_delta.x, half_size.y, ray_length_px.y);
+    float line = max(horizontal.x, vertical.x);
+    float rays = horizontal.y + vertical.y;
+    float edge_halo = max(horizontal.z, vertical.z);
 
-	float visible = smoothstep(0.001, 0.18, width);
-	float pulse = 0.86 + 0.14 * sin(TIME * pulse_speed);
-	float hot_rim = 1.0 - smoothstep(0.0, 2.2, edge_dist);
-	float soft_rim = 1.0 - smoothstep(0.0, 8.0, edge_dist);
-	float inner_rim = (1.0 - smoothstep(0.0, 6.0, -sdf)) * step(sdf, 0.0);
+    // Negative components lie along the card edge, so they must not reduce the fill.
+    // This covers the FULL top/bottom/left/right strips, including their midpoints.
+    vec2 fill_uv = max(edge_delta, vec2(0.0)) / max(fill_extent_px, vec2(1.0));
+    float fill_gradient = clamp(length(fill_uv), 0.0, 1.0);
+    float area_fill = pow(1.0 - smoothstep(0.0, 1.0, fill_gradient), 1.1);
+    vec4 fill_color = mix(accent_color, fill_outer_color,
+        smoothstep(0.0, 1.0, fill_gradient));
 
-	float flow_coord = edge_flow_coord(p, half_size);
-	vec2 flame_uv = vec2(flow_coord * flame_scale, outside_dist / max(flame_height_px, 1.0));
-	vec2 flame_warp = vec2(
-		texture_fbm(flame_uv * 0.72 + vec2(TIME * 0.10, -TIME * flame_speed * 0.34)),
-		texture_fbm(flame_uv * 0.91 + vec2(-TIME * 0.08, TIME * flame_speed * 0.22))
-	) - vec2(0.5);
-	float flame_field = texture_fbm(
-		flame_uv + flame_warp * flame_turbulence + vec2(TIME * 0.06, -TIME * flame_speed)
-	);
-	float flame_lift = texture_fbm(vec2(flow_coord * flame_scale * 1.7, -TIME * flame_speed * 1.35));
-	float tongue_height = flame_height_px * mix(0.34, 1.18, flame_field);
-	tongue_height *= mix(0.78, 1.28, flame_lift);
-	float flame_body = 1.0 - smoothstep(tongue_height * 0.20, tongue_height, outside_dist);
-	flame_body *= outside_mask;
-	float flame_tip = smoothstep(0.42, 0.86, flame_field) * (1.0 - smoothstep(tongue_height * 0.45, tongue_height * 1.08, outside_dist));
-	flame_tip *= outside_mask;
-	float outer_glow = pow(1.0 - smoothstep(0.0, glow_radius_px, outside_dist), 1.55) * outside_mask;
-	float wide_halo = pow(1.0 - smoothstep(0.0, glow_radius_px * 1.65, outside_dist), 2.2) * outside_mask;
+    // Two overlapping fronts travel outward from the card without flickering noise.
+    float phase = fract(TIME * flow_speed);
+    float wave = outward_wave(outside_distance, phase)
+        + outward_wave(outside_distance, fract(phase + 0.5));
+    float ray_flow = 0.82 + wave * 0.35;
+    float pulse = 0.94 + 0.06 * sin(TIME * pulse_speed);
 
-	float modulo_safe = max(modulo_width, 0.001);
-	float ripple_phase = mod(flow_coord - TIME * ripple_speed + flame_field * 0.18, modulo_safe);
-	float front_ease = smoothstep(0.0, max(ease, 0.0001), ripple_phase);
-	float ease_amount = front_ease * modulo_safe;
-	float brightness = flame_body - ripple_phase + ease_amount;
-	float ripple = smoothstep(1.0 - width, width + (1.0 - width), brightness);
+    float core_energy = line * 0.8 * core_color.a;
+    float fill_energy = (area_fill * fill_strength * (0.94 + wave * 0.12)
+        + edge_halo * 0.07) * fill_color.a;
+    float ray_energy = (rays * 0.46 * ray_flow + edge_halo * 0.12) * spark_color.a;
 
-	float ember_noise = texture_fbm(vec2(flow_coord * 24.0, outside_dist * 0.045 - TIME * 1.6));
-	float ember_gate = texture_fbm(vec2(flow_coord * 51.0 + TIME * 0.7, outside_dist * 0.12));
-	float spark = smoothstep(0.86, 0.98, ember_noise) * smoothstep(0.78, 0.96, ember_gate);
-	spark *= (flame_body + soft_rim * 0.45) * (1.0 - smoothstep(0.0, flame_height_px * 1.15, outside_dist));
+    // A full rectangular backing, independent of the chamfered card silhouette.
+    // Keep its opacity constant through the interior, including all four cut-off corners.
+    vec2 inner_uv = abs(p) / half_size;
+    float inner_gradient = pow(clamp(max(inner_uv.x, inner_uv.y), 0.0, 1.0), 1.5);
+    vec4 inner_color = mix(inner_center_color, inner_fill_color, inner_gradient);
+    float outer_energy = core_energy + fill_energy + ray_energy;
+    vec3 outer_color = (core_color.rgb * core_energy + fill_color.rgb * fill_energy
+        + spark_color.rgb * ray_energy) / max(outer_energy, 0.0001);
+    float outer_alpha = clamp(outer_energy * intensity * pulse, 0.0, 1.0) * outside_mask;
+    float inner_alpha = clamp(inner_fill_strength * inner_color.a * intensity, 0.0, 1.0)
+        * (1.0 - outside_mask);
+    float coverage = outer_alpha + inner_alpha;
+    vec3 rgb = (outer_color * outer_alpha + inner_color.rgb * inner_alpha)
+        / max(coverage, 0.0001);
 
-	float energy = (
-		wide_halo * 0.16 +
-		outer_glow * 0.34 +
-		flame_body * 0.56 +
-		flame_tip * 0.72 +
-		soft_rim * 0.20 +
-		hot_rim * 0.82 +
-		inner_rim * 0.16 +
-		ripple * 0.42 +
-		spark * 1.25
-	) * visible * pulse;
-
-	vec3 ember_color = mix(accent_color.rgb * 0.45, accent_color.rgb, clamp(flame_body + flame_tip, 0.0, 1.0));
-	vec3 energy_color = mix(ember_color, core_color.rgb, clamp(hot_rim + flame_tip * 0.6 + ripple * 0.25, 0.0, 1.0));
-	energy_color = mix(energy_color, spark_color.rgb, clamp(spark * 1.25, 0.0, 1.0));
-	COLOR.rgb = energy_color;
-	COLOR.a = clamp(energy, 0.0, 1.0);
+    // Fade before the ColorRect boundary even when material lengths are enlarged.
+    vec2 boundary_fade = vec2(1.0) - smoothstep(half_size + effect_margin - vec2(8.0),
+        half_size + effect_margin, abs(p));
+    float alpha = coverage * visible * boundary_fade.x * boundary_fade.y;
+    COLOR = vec4(rgb, alpha) * tint;
 }

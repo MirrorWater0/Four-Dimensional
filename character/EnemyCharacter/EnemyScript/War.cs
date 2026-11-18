@@ -5,13 +5,15 @@ using Godot;
 
 public partial class War : EnemyCharacter
 {
+    private static int TurnEndSummonCount =>
+        EnemyTuning.GetRequiredInt("War", nameof(TurnEndSummonCount));
     internal static readonly PackedScene ThrallScene = GD.Load<PackedScene>(
         "res://character/EnemyCharacter/WarThrall.tscn"
     );
 
     public const string PassiveNameText = "战争号令";
     public static string PassiveDescriptionText =>
-        "阵营回合结束时：优先在有存活玩家角色的排随机召唤1个召唤物。";
+        $"阵营回合结束时：优先在有存活玩家角色的排随机召唤{TurnEndSummonCount}个召唤物。";
 
     public override string CharacterName { get; set; } = "War";
 
@@ -25,7 +27,7 @@ public partial class War : EnemyCharacter
     public override void OnTurnEnd()
     {
         base.OnTurnEnd();
-        _ = SummonAtRandomEmptySlot();
+        BattleNode?.QueueBattleEffect(SummonAtRandomEmptySlot, "战争号令");
     }
 
     private Task SummonAtRandomEmptySlot()
@@ -34,8 +36,12 @@ public partial class War : EnemyCharacter
             return Task.CompletedTask;
 
         using var _ = BeginEffectSource("被动");
-        var thrall = ThrallScene.Instantiate<WarThrall>();
-        BattleNode.AddSummon(thrall, this, SummonPositionMode.RandomHasEnemy);
+        for (int i = 0; i < TurnEndSummonCount; i++)
+        {
+            var thrall = ThrallScene.Instantiate<WarThrall>();
+            if (BattleNode.AddSummon(thrall, this, SummonPositionMode.RandomHasEnemy) == null)
+                break;
+        }
         return Task.CompletedTask;
     }
 
@@ -75,17 +81,20 @@ public partial class WarRegedit : EnemyRegedit
     public WarRegedit()
     {
         CharacterName = "War";
-        PType = EnemyPositionType.BackRow;
         PositionIndex = Battle.MaxEnemyFormationSlots;
         PortaitPath = "res://asset/EnemyCharater/War.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/War.tscn");
-
-        MaxLife = 256;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive, SkillID.WarSpecial];
+        SkillIDs = [SkillID.WarAttack, SkillID.WarSurvive];
+        // 先建立战仆与成长，第五轮死亡行军施加覆盖四轮的全阵脆弱。
+        IntentionCycle =
+        [
+            SkillID.WarAttack,
+            SkillID.WarSurvive,
+            random,
+            SkillID.WarAttack,
+            SkillID.WarSpecial,
+            SkillID.WarSurvive,
+        ];
 
         PassiveName = global::War.PassiveNameText;
         PassiveDescription = global::War.PassiveDescriptionText;
@@ -94,8 +103,7 @@ public partial class WarRegedit : EnemyRegedit
 
 public partial class WarAttack : Skill
 {
-    private const int BaseDamage = 13;
-    private const int ThrallPowerGain = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -103,15 +111,18 @@ public partial class WarAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount", 2)));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, times: V("HitCount"), multiplier: V("Multiplier"))
+        );
     }
 }
 
 public partial class WarSurvive : Skill
 {
-    private const int BaseBlock = 13;
-    private const int SelfSurvivabilityGain = 3;
-    private const int ThrallBlock = 4;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int SelfSurvivabilityGain => V(nameof(SelfSurvivabilityGain));
+    private int ThrallBlock => V(nameof(ThrallBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -121,9 +132,10 @@ public partial class WarSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            BlockSummonsStep(baseBlock: ThrallBlock),
-            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            BlockSummonsStep(baseBlock: ThrallBlock, multiplier: V("ThrallBlockMultiplier")),
+            ModifyPropertyStep(PropertyType.Survivability, SelfSurvivabilityGain),
+            ModifyPropertyStep(PropertyType.Power, V("Spower"))
         );
     }
 }
@@ -133,16 +145,19 @@ public partial class WarSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "死亡行军";
-    public override int EnemySpecialIntentionCooldown => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 17)),
-            SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
-            SummonStep(SummonPositionMode.RandomHasEnemy, War.ThrallScene),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2))
+            AttackStep(
+                baseDamage: V("BaseDamage"),
+                multiplier: V("Multiplier"),
+                times: V("HitCount")
+            ),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain")),
+            ModifySummonPropertyStep(PropertyType.Power, 2),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.All)
         );
     }
 }

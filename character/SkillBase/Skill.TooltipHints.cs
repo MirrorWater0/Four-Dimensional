@@ -6,7 +6,6 @@ public partial class Skill
 {
     public enum SkillTooltipKeyword
     {
-        Carry,
         Voidness,
         Rebirth,
     }
@@ -88,17 +87,16 @@ public partial class Skill
             case AddCardsSkillStep addCardsStep:
                 CollectAddCardsHints(addCardsStep, hints);
                 break;
+            case PlayCardsSkillStep:
+                hints.AddRelatedSkillId(GetStepField<SkillID>(step, "_skillId"));
+                break;
             case TransformCardsSkillStep transformCardsStep:
                 CollectTransformCardsHints(skill, transformCardsStep, hints);
                 break;
             case ApplyBuffHostileSkillStep:
             case ApplyBuffFriendlySkillStep:
             case ApplyBuffSummonsSkillStep:
-            case ModifyAttackCountSkillStep:
                 CollectBuffStepHints(skill, step, hints);
-                break;
-            case CarrySkillStepImpl:
-                hints.AddKeyword(SkillTooltipKeyword.Carry);
                 break;
             case HealFriendlySkillStep:
                 if (GetStepField<bool>(step, "_rebirth"))
@@ -197,6 +195,9 @@ public partial class Skill
 
     private static int ResolveStepStacksForTooltip(Skill skill, SkillStep step)
     {
+        if (step is ApplyBuffHostileSkillStep hostile)
+            return hostile.ResolveStacks(skill);
+
         int stacks = GetStepField<int>(step, "_stacks");
         Func<Skill, int> stacksFunc = GetStepField<Func<Skill, int>>(step, "_stacksFunc");
         return ResolveStepBaseValue(skill, stacks, stacksFunc);

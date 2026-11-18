@@ -301,4 +301,13 @@ public enum SkillID
     Search = 183,
     [PlayerSkill(PlayerCharacterKey.Mariya)]
     SacredLink = 184,
+    DeathDisarm = 185,
+    [PlayerSkill(PlayerCharacterKey.Kasiya)]
+    BattleCommand = 186,
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    FinalResonance = 187,
+    [PlayerSkill(PlayerCharacterKey.Echo)]
+    HarmonicBarrier = 188,
+    RedHuskAttack2 = 189,
+    DeathFortify = 190,
 }

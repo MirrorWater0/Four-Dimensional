@@ -6,42 +6,14 @@ using Godot;
 
 public partial class LevelProgress : Control
 {
-    private const int RegionOneMapLength = 13; // Number of stages
-    private const int RegionTwoMapLength = RegionOneMapLength - 1;
+    private const int RegionOneMapLength = 13;
+    private const int RegionTwoMapLength = 12;
     private static int MapLength => GameInfo.CurrentLevel > 0 ? RegionTwoMapLength : RegionOneMapLength;
-    private static int PreBossRestStage => MapLength - 2;
-    private const int MaxMapHeight = 4; // Maximum vertical slots per stage
-    private const int BossSlot = 1;
-    private const int PathCount = 6;
-    private const int MinEliteNodes = 5;
-    private const int MaxEliteNodes = 7;
-    private const int MinShopNodes = 2;
-    private const int MaxShopNodes = 5;
-    private const int MinRestNodes = 2;
-    private const int MaxRestNodes = 4;
-    private const int RegionTwoMaxEliteNodes = MaxEliteNodes - 1;
-    private const int RegionTwoMaxShopNodes = MaxShopNodes - 1;
-    private const int RegionTwoMaxRestNodes = MaxRestNodes - 1;
-    private const int FirstEliteStage = 3;
-    private const int FirstShopStage = 1;
-    private const int FirstRestStage = 2;
-    private const int EventChancePercent = 24;
-    private const float NodeSpacingX = 250f; // Distance between stages
-    private const float NodeSpacingY = 290f; // Vertical distance between slots
+    private const float NodeSpacingX = 250f;
     private const float MapLeftMargin = 200f;
+    private const int RoadSamplesPerStage = 24;
     public const float RestHealPercent = 0.3f;
     public const float RestSingleHealPercent = 0.6f;
-
-    [Export]
-    public float JitterAmount = 90f;
-
-    // Legacy tuning fields kept for scene compatibility.
-    // The current path-first generator does not use them directly.
-    [Export]
-    public int TwoBranchPercentage = 30; // % of nodes with 2 branches
-
-    [Export]
-    public int ThreeBranchPercentage = 10; // % of nodes with 3 branches
 
     [ExportGroup("Node Colors")]
     [Export]
@@ -78,396 +50,79 @@ public partial class LevelProgress : Control
             _ => NormalNodeColor,
         };
     }
+    private static readonly LevelNode.LevelType[] ProbabilityDisplayTypes =
+    [
+        LevelNode.LevelType.Normal,
+        LevelNode.LevelType.Event,
+        LevelNode.LevelType.Shop,
+        LevelNode.LevelType.Rest,
+        LevelNode.LevelType.Elite,
+        LevelNode.LevelType.Treasure,
+    ];
 
-    // Remaining nodes will have 1 branch
     private PackedScene _nodeScene => GD.Load<PackedScene>("res://Map/Site/LevelNode.tscn");
-    private PackedScene _accessWayScene => GD.Load<PackedScene>("res://Map/Site/AccessWay.tscn");
-    private List<List<LevelNode>> _mapNodes = new List<List<LevelNode>>();
-    private Dictionary<(LevelNode, LevelNode), ProgressBar> _paths =
-        new Dictionary<(LevelNode, LevelNode), ProgressBar>();
-
-    // Using a separate container for nodes to separate them from other potential children
+    private readonly List<List<LevelNode>> _mapNodes = new();
+    private readonly Dictionary<(LevelNode, LevelNode), Line2D> _paths = new();
     private Control _nodeContainer;
     private Control _connectionContainer;
-    private Random rng = new Random(GameInfo.Seed);
     private CanvasLayer _siteUiLayer;
     private Map _map;
     private bool _manualLock;
     private bool _manualLockSawBlockingUi;
     private bool _interactionBlocked;
 
-    private Vector2[] GetStageNodePositions(int stageIndex, int nodeCount, bool isBoss = false)
+    public int RoadStageCount => MapLength;
+    public LevelNode NextRoadNode
     {
-        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
-        float startY = (1080 - totalMapHeight) / 2f;
-        float baseX = MapLeftMargin + stageIndex * NodeSpacingX;
-        Vector2[] positions = new Vector2[nodeCount];
-
-        if (nodeCount <= 1)
+        get
         {
-            positions[0] = new Vector2(baseX, startY + totalMapHeight / 2f);
-            return positions;
-        }
-
-        float edgeInset = MathF.Min(NodeSpacingY * 0.18f, JitterAmount * 0.45f);
-        float usableHeight = MathF.Max(totalMapHeight - edgeInset * 2f, totalMapHeight * 0.6f);
-        float maxStageYOffset = isBoss ? 0f : MathF.Min(JitterAmount * 0.22f, (totalMapHeight - usableHeight) / 2f);
-        float stageYOffset = isBoss ? 0f : RandomRange(-maxStageYOffset, maxStageYOffset);
-        float stageStartY = startY + (totalMapHeight - usableHeight) / 2f + stageYOffset;
-
-        float[] segmentWeights = new float[nodeCount - 1];
-        float weightSum = 0f;
-        float spacingVariance = Mathf.Clamp(JitterAmount / NodeSpacingY * 0.75f, 0.12f, 0.4f);
-        for (int i = 0; i < segmentWeights.Length; i++)
-        {
-            float randomOffset = ((float)rng.NextDouble() * 2f - 1f) * spacingVariance;
-            segmentWeights[i] = 1f + randomOffset;
-            weightSum += segmentWeights[i];
-        }
-
-        float segmentScale = usableHeight / weightSum;
-        float stageXOffset = isBoss ? 0f : RandomRange(-JitterAmount * 0.08f, JitterAmount * 0.08f);
-        float maxXJitter = isBoss ? 0f : MathF.Min(32f, JitterAmount * 0.35f);
-        float currentY = stageStartY;
-        positions[0] = new Vector2(baseX + stageXOffset + RandomRange(-maxXJitter, maxXJitter), currentY);
-
-        for (int i = 1; i < nodeCount; i++)
-        {
-            currentY += segmentWeights[i - 1] * segmentScale;
-            positions[i] = new Vector2(
-                baseX + stageXOffset + RandomRange(-maxXJitter, maxXJitter),
-                currentY
-            );
-        }
-
-        return positions;
-    }
-
-    private float RandomRange(float minValue, float maxValue)
-    {
-        return minValue + (float)rng.NextDouble() * (maxValue - minValue);
-    }
-
-    private bool[,] GeneratePathDrivenNodes(out bool[,,] edges)
-    {
-        bool[,] activeNodes = new bool[MapLength, MaxMapHeight];
-        edges = new bool[MapLength - 1, MaxMapHeight, MaxMapHeight];
-
-        List<int> startSlots = new List<int>(PathCount);
-        for (int y = 0; y < MaxMapHeight; y++)
-            startSlots.Add(y);
-
-        while (startSlots.Count < PathCount)
-            startSlots.Add(rng.Next(MaxMapHeight));
-
-        Shuffle(startSlots);
-
-        foreach (int startY in startSlots)
-            GenerateSinglePath(startY, activeNodes, edges);
-
-        ForcePreBossRestStage(activeNodes, edges);
-        activeNodes[MapLength - 1, BossSlot] = true;
-        return activeNodes;
-    }
-
-    private void ForcePreBossRestStage(bool[,] activeNodes, bool[,,] edges)
-    {
-        int restStage = PreBossRestStage;
-        int previousStage = restStage - 1;
-        int[] previousSlots = Enumerable
-            .Range(0, MaxMapHeight)
-            .Where(y => activeNodes[previousStage, y])
-            .ToArray();
-
-        if (previousSlots.Length == 0)
-        {
-            activeNodes[previousStage, BossSlot] = true;
-            previousSlots = new[] { BossSlot };
-        }
-
-        for (int y = 0; y < MaxMapHeight; y++)
-        {
-            int fromY = previousSlots.OrderBy(slot => Math.Abs(slot - y)).First();
-            activeNodes[restStage, y] = true;
-            edges[previousStage, fromY, y] = true;
-            edges[restStage, y, BossSlot] = true;
+            foreach (var layer in _mapNodes)
+                foreach (var node in layer)
+                    if (node.State == LevelNode.LevelState.Unlocked)
+                        return node;
+            return null;
         }
     }
-
-    private void GenerateSinglePath(int startY, bool[,] activeNodes, bool[,,] edges)
+    public int NextRoadStage => NextRoadNode?.SelfCoordinate.X ?? MapLength;
+    public bool IsNextEncounterCommitted
     {
-        int currentY = startY;
-        activeNodes[0, currentY] = true;
-
-        for (int x = 0; x < MapLength - 1; x++)
+        get
         {
-            int nextY = x == MapLength - 2 ? BossSlot : ChooseNextPathSlot(x, currentY, activeNodes, edges);
-            edges[x, currentY, nextY] = true;
-            activeNodes[x + 1, nextY] = true;
-            currentY = nextY;
+            LevelNode next = NextRoadNode;
+            return next != null && GameInfo.WorldLineNodeTypes.ContainsKey(next.SelfCoordinate);
         }
     }
-
-    private int ChooseNextPathSlot(int stageIndex, int currentY, bool[,] activeNodes, bool[,,] edges)
-    {
-        var preferred = new List<(int nextY, int weight)>(3);
-        var fallback = new List<(int nextY, int weight)>(3);
-
-        for (
-            int nextY = Math.Max(0, currentY - 1);
-            nextY <= Math.Min(MaxMapHeight - 1, currentY + 1);
-            nextY++
-        )
-        {
-            int weight = CalculatePathCandidateWeight(stageIndex, currentY, nextY, activeNodes);
-            if (!WouldCrossExistingEdge(stageIndex, currentY, nextY, edges))
-                preferred.Add((nextY, weight));
-            else
-                fallback.Add((nextY, Math.Max(1, weight / 3)));
-        }
-
-        return ChooseWeightedNextSlot(preferred.Count > 0 ? preferred : fallback);
-    }
-
-    private int CalculatePathCandidateWeight(
-        int stageIndex,
-        int currentY,
-        int nextY,
-        bool[,] activeNodes
-    )
-    {
-        int weight = 1;
-
-        // Prefer unused nodes in the next stage so full layers appear more often.
-        weight += activeNodes[stageIndex + 1, nextY] ? 2 : 9;
-
-        // Favor straighter paths, but still allow adjacent drift.
-        weight += nextY == currentY ? 4 : 2;
-
-        // Gently pull paths toward the centered boss lane near the end.
-        int distanceToBoss = Math.Abs(BossSlot - nextY);
-        weight += Math.Max(0, 3 - distanceToBoss);
-        if (stageIndex >= MapLength - 5)
-            weight += Math.Max(0, 4 - distanceToBoss * 2);
-
-        return weight;
-    }
-
-    private int ChooseWeightedNextSlot(List<(int nextY, int weight)> candidates)
-    {
-        int totalWeight = 0;
-        foreach (var candidate in candidates)
-            totalWeight += candidate.weight;
-
-        int roll = rng.Next(totalWeight);
-        foreach (var candidate in candidates)
-        {
-            roll -= candidate.weight;
-            if (roll < 0)
-                return candidate.nextY;
-        }
-
-        return candidates[candidates.Count - 1].nextY;
-    }
-
-    private bool WouldCrossExistingEdge(int stageIndex, int fromY, int toY, bool[,,] edges)
-    {
-        for (int otherFrom = 0; otherFrom < MaxMapHeight; otherFrom++)
-        {
-            for (int otherTo = 0; otherTo < MaxMapHeight; otherTo++)
-            {
-                if (!edges[stageIndex, otherFrom, otherTo])
-                    continue;
-
-                if ((fromY - otherFrom) * (toY - otherTo) < 0)
-                    return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void Shuffle<T>(IList<T> items)
-    {
-        for (int i = items.Count - 1; i > 0; i--)
-        {
-            int swapIndex = rng.Next(i + 1);
-            (items[i], items[swapIndex]) = (items[swapIndex], items[i]);
-        }
-    }
-
-    private void ApplyConnectionAwareLayout()
-    {
-        var basePositions = new Dictionary<LevelNode, Vector2>();
-        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
-        float startY = (1080 - totalMapHeight) / 2f;
-        float minY = startY;
-        float maxY = startY + totalMapHeight;
-
-        for (int x = 0; x < MapLength; x++)
-        {
-            var orderedNodes = _mapNodes[x].Where(node => node != null).OrderBy(node => node.SelfCoordinate.Y).ToList();
-            if (orderedNodes.Count == 0)
-                continue;
-
-            Vector2[] stagePositions = GetStageNodePositions(x, orderedNodes.Count, x == MapLength - 1);
-            for (int i = 0; i < orderedNodes.Count; i++)
-            {
-                orderedNodes[i].Position = stagePositions[i];
-                basePositions[orderedNodes[i]] = stagePositions[i];
-            }
-        }
-
-        for (int pass = 0; pass < 3; pass++)
-        {
-            for (int x = 0; x < MapLength; x++)
-            {
-                var orderedNodes = _mapNodes[x].Where(node => node != null).OrderBy(node => node.SelfCoordinate.Y).ToList();
-                if (orderedNodes.Count == 0)
-                    continue;
-
-                float[] desiredY = new float[orderedNodes.Count];
-                for (int i = 0; i < orderedNodes.Count; i++)
-                {
-                    LevelNode node = orderedNodes[i];
-                    float baseY = basePositions[node].Y;
-                    List<float> neighborY = new List<float>(node.ParentNodes.Count + node.NextNodes.Count);
-
-                    foreach (var parent in node.ParentNodes)
-                        neighborY.Add(parent.Position.Y);
-
-                    foreach (var next in node.NextNodes)
-                        neighborY.Add(next.Position.Y);
-
-                    if (neighborY.Count == 0)
-                    {
-                        desiredY[i] = baseY;
-                        continue;
-                    }
-
-                    float connectionCenter = neighborY.Average();
-                    float pull = GetConnectionPull(x, node);
-                    desiredY[i] = Mathf.Lerp(baseY, connectionCenter, pull);
-                }
-
-                RelaxStageNodePositions(orderedNodes, desiredY, minY, maxY);
-            }
-        }
-    }
-
-    private float GetConnectionPull(int stageIndex, LevelNode node)
-    {
-        if (stageIndex == MapLength - 1)
-            return 0f;
-
-        if (stageIndex == 0)
-            return 0.28f;
-
-        int connectionCount = node.ParentNodes.Count + node.NextNodes.Count;
-        if (connectionCount >= 3)
-            return 0.55f;
-
-        if (node.ParentNodes.Count > 0 && node.NextNodes.Count > 0)
-            return 0.48f;
-
-        return 0.38f;
-    }
-
-    private void RelaxStageNodePositions(List<LevelNode> orderedNodes, float[] desiredY, float minY, float maxY)
-    {
-        if (orderedNodes.Count == 1)
-        {
-            orderedNodes[0].Position = new Vector2(
-                orderedNodes[0].Position.X,
-                Mathf.Clamp(desiredY[0], minY, maxY)
-            );
-            return;
-        }
-
-        float availableHeight = maxY - minY;
-        float minSpacing = MathF.Min(
-            NodeSpacingY * 0.64f,
-            availableHeight / (orderedNodes.Count - 1) * 0.92f
-        );
-        float[] adjusted = (float[])desiredY.Clone();
-
-        adjusted[0] = Mathf.Clamp(
-            adjusted[0],
-            minY,
-            maxY - minSpacing * (orderedNodes.Count - 1)
-        );
-
-        for (int i = 1; i < adjusted.Length; i++)
-            adjusted[i] = MathF.Max(adjusted[i], adjusted[i - 1] + minSpacing);
-
-        float overflow = adjusted[adjusted.Length - 1] - maxY;
-        if (overflow > 0f)
-        {
-            for (int i = 0; i < adjusted.Length; i++)
-                adjusted[i] -= overflow;
-        }
-
-        if (adjusted[0] < minY)
-        {
-            float underflow = minY - adjusted[0];
-            for (int i = 0; i < adjusted.Length; i++)
-                adjusted[i] += underflow;
-        }
-
-        for (int i = 1; i < adjusted.Length; i++)
-            adjusted[i] = MathF.Max(adjusted[i], adjusted[i - 1] + minSpacing);
-
-        overflow = adjusted[adjusted.Length - 1] - maxY;
-        if (overflow > 0f)
-        {
-            for (int i = 0; i < adjusted.Length; i++)
-                adjusted[i] -= overflow;
-        }
-
-        for (int i = 0; i < orderedNodes.Count; i++)
-            orderedNodes[i].Position = new Vector2(orderedNodes[i].Position.X, adjusted[i]);
-    }
-
-    private void BuildAccessWays()
-    {
-        _paths.Clear();
-        foreach (Node child in _connectionContainer.GetChildren())
-            child.QueueFree();
-
-        foreach (var layer in _mapNodes)
-        {
-            foreach (var node in layer)
-            {
-                if (node == null)
-                    continue;
-
-                foreach (var next in node.NextNodes)
-                    CreateAccessWay(node, next);
-            }
-        }
-    }
+    public bool CanAdvanceAlongRoad() => !GameInfo.RunFinished && !_manualLock && !IsWorldLineTransitioning
+        && !IsInteractionBlockedByUi() && NextRoadNode != null;
+    public bool CanSwitchWorldLine => CanAdvanceAlongRoad() && !IsNextEncounterCommitted
+        && GameInfo.WorldLineSwitchesRemaining > 0;
 
     public override void _Ready()
     {
+        _map = GetParent() as Map;
+        if (_map?.WarmupMode == true)
+        {
+            SetProcess(false);
+            return;
+        }
+
         // Allow mouse events to pass through empty space to the underlying Map DragButton
         MouseFilter = MouseFilterEnum.Ignore;
 
-        _connectionContainer = new Control();
+        _connectionContainer = new Control { Name = "RoadConnections" };
         _connectionContainer.SetAnchorsPreset(LayoutPreset.FullRect);
         _connectionContainer.MouseFilter = MouseFilterEnum.Ignore; // Pass events through
         AddChild(_connectionContainer);
 
-        _nodeContainer = new Control();
+        _nodeContainer = new Control { Name = "RoadNodes" };
         _nodeContainer.SetAnchorsPreset(LayoutPreset.FullRect);
         _nodeContainer.MouseFilter = MouseFilterEnum.Ignore; // Pass events through
         AddChild(_nodeContainer);
 
-        _map = GetParent() as Map;
         _siteUiLayer = GetTree().Root.GetNodeOrNull<CanvasLayer>("Map/SiteUI");
         EnsureRegionAdvancedFromCompletedBoss();
         GenerateMap();
         RefreshNodeInteractivity();
-        // CallDeferred("StartAnimation");
     }
 
     public override void _Process(double delta)
@@ -503,6 +158,7 @@ public partial class LevelProgress : Control
     {
         _manualLock = false;
         _manualLockSawBlockingUi = false;
+        RefreshRoadPresentations();
         RefreshNodeInteractivity();
         CallDeferred(nameof(RefreshNodeInteractivity));
     }
@@ -536,7 +192,7 @@ public partial class LevelProgress : Control
 
         _interactionBlocked = interactionBlocked;
 
-        bool shouldDisable = _manualLock || interactionBlocked;
+        bool shouldDisable = _manualLock || interactionBlocked || IsWorldLineTransitioning;
         foreach (var layer in _mapNodes)
         {
             foreach (var node in layer)
@@ -550,7 +206,7 @@ public partial class LevelProgress : Control
 
     private bool HasStaleNodeInteractivity(bool interactionBlocked)
     {
-        bool shouldDisable = _manualLock || interactionBlocked;
+        bool shouldDisable = _manualLock || interactionBlocked || IsWorldLineTransitioning;
         foreach (var layer in _mapNodes)
         {
             foreach (var node in layer)
@@ -610,95 +266,227 @@ public partial class LevelProgress : Control
 
     private void GenerateMap()
     {
-        rng = new Random(BuildMapSeed());
+        GameInfo.PrepareWorldLineMap(MapLength);
+        ResetRoadTransition();
         _mapNodes.Clear();
         _paths.Clear();
-
+        _roadSegments.Clear();
         foreach (Node child in _nodeContainer.GetChildren())
+        {
+            _nodeContainer.RemoveChild(child);
             child.QueueFree();
-
+        }
         foreach (Node child in _connectionContainer.GetChildren())
+        {
+            _connectionContainer.RemoveChild(child);
             child.QueueFree();
-
-        bool[,,] topologyEdges;
-        bool[,] activeNodes = GeneratePathDrivenNodes(out topologyEdges);
-
-        // 1. Generate Nodes (Left to Right)
-        for (int x = 0; x < MapLength; x++)
-        {
-            List<LevelNode> currentLayer = new List<LevelNode>();
-            LevelNode[] layerNodes = new LevelNode[MaxMapHeight];
-
-            for (int y = 0; y < MaxMapHeight; y++)
-            {
-                bool shouldCreate = x == MapLength - 1 ? y == BossSlot : activeNodes[x, y];
-                if (shouldCreate)
-                    layerNodes[y] = CreateNode(x, y, 0);
-            }
-
-            currentLayer.AddRange(layerNodes);
-            _mapNodes.Add(currentLayer);
         }
 
-        // 2. Build topology from full paths first, then position nodes from those connections.
-        for (int x = 0; x < MapLength - 1; x++)
+        for (int stage = 0; stage < MapLength; stage++)
         {
-            for (int fromY = 0; fromY < MaxMapHeight; fromY++)
+            var coordinate = new Vector2I(stage, 0);
+            var node = _nodeScene.Instantiate<LevelNode>();
+            node.SelfCoordinate = coordinate;
+            node.ConcealEncounterType = true;
+            var fixedType = GetFixedRoadNodeType(stage);
+            node.IsFixedEncounterType = fixedType.HasValue;
+            if (fixedType.HasValue)
+                node.Type = fixedType.Value;
+            node.RandomNum = GameInfo.CreateWorldLineRng(stage, 0).Next();
+            node.State = GameInfo.FirstLevelState.TryGetValue(coordinate, out var state)
+                ? state : LevelNode.LevelState.Locked;
+            if (GameInfo.WorldLineNodeTypes.TryGetValue(coordinate, out var resolvedType))
             {
-                for (int toY = 0; toY < MaxMapHeight; toY++)
-                {
-                    if (!topologyEdges[x, fromY, toY])
-                        continue;
+                // Apply fixed encounters and opening protection to unfinished encounters from older saves.
+                node.Type = node.State == LevelNode.LevelState.Completed
+                    ? resolvedType : ResolveRoadNodeType(stage, resolvedType);
+                GameInfo.WorldLineNodeTypes[coordinate] = node.Type;
+            }
+            node.Position = GetRoadPosition(stage) - node.Size * 0.5f;
+            _nodeContainer.AddChild(node);
+            GameInfo.FirstLevelState[coordinate] = node.State;
+            _mapNodes.Add(new List<LevelNode> { node });
+            node.ApplyLoadedState();
 
-                    LevelNode from = _mapNodes[x][fromY];
-                    LevelNode to = _mapNodes[x + 1][toY];
-                    if (from != null && to != null)
-                        ConnectNodes(from, to);
-                }
+            if (stage > 0)
+            {
+                LevelNode previous = _mapNodes[stage - 1][0];
+                previous.NextNodes.Add(node);
+                node.ParentNodes.Add(previous);
+                CreateRoadSegment(previous, node);
             }
         }
 
-        ApplyConnectionAwareLayout();
-        BuildAccessWays();
-
-        // 3. Assign Types
-        AssignNodeTypes(rng);
+        // Only the first unfinished stage can be entered, including after reload.
+        bool foundNext = false;
+        foreach (LevelNode node in _mapNodes.SelectMany(layer => layer))
+        {
+            if (node.State == LevelNode.LevelState.Completed)
+                continue;
+            if (!foundNext)
+            {
+                node.Unlock();
+                foundNext = true;
+            }
+            else
+            {
+                node.State = LevelNode.LevelState.Locked;
+                GameInfo.FirstLevelState[node.SelfCoordinate] = node.State;
+                node.ApplyLockedVisuals();
+            }
+        }
         AssignContentQueueIndices();
+        RefreshRoadColors();
+        RefreshRoadPresentations();
+    }
 
-        // 4. Unlock Start (only if this is a new game, not loading from save)
-        bool isNewGame =
-            GameInfo.FirstLevelState.Count == 0
-            || !GameInfo.FirstLevelState.Values.Any(state => state != LevelNode.LevelState.Locked);
+    private void CreateRoadSegment(LevelNode from, LevelNode to)
+    {
+        var points = new Vector2[RoadSamplesPerStage + 1];
+        for (int sample = 0; sample <= RoadSamplesPerStage; sample++)
+            points[sample] = GetRoadPosition(from.SelfCoordinate.X + sample / (float)RoadSamplesPerStage);
 
-        if (isNewGame)
+        var road = new Line2D
         {
-            foreach (var node in _mapNodes[0])
-            {
-                if (node != null)
-                    node.Unlock();
-            }
-        }
-        else
+            Name = $"Road{from.SelfCoordinate.X}",
+            Points = points,
+            Width = 4f,
+            Antialiased = true,
+            BeginCapMode = Line2D.LineCapMode.Round,
+            EndCapMode = Line2D.LineCapMode.Round,
+        };
+        _connectionContainer.AddChild(road);
+        var travelled = new Line2D
         {
-            foreach (var kvp in _paths)
-            {
-                LevelNode from = kvp.Key.Item1;
-                LevelNode to = kvp.Key.Item2;
-                ProgressBar accessWay = kvp.Value;
+            Name = $"Travelled{from.SelfCoordinate.X}",
+            Width = 5f,
+            Antialiased = true,
+            BeginCapMode = Line2D.LineCapMode.Round,
+            EndCapMode = Line2D.LineCapMode.Round,
+        };
+        _connectionContainer.AddChild(travelled);
+        _paths[(from, to)] = travelled;
+        _roadSegments.Add(new RoadSegment(from.SelfCoordinate.X, road, travelled,
+            to.State == LevelNode.LevelState.Completed ? 1f : 0f));
+        if (to.State == LevelNode.LevelState.Completed)
+            travelled.Points = points;
+    }
 
-                // Only show paths originating from a Completed node (the path we took)
-                if (from.State == LevelNode.LevelState.Completed)
-                {
-                    // Case 1: Past history - Both nodes are completed
-                    // Case 2: Current options - From Completed to Unlocked (available next steps)
-                    if (to.State == LevelNode.LevelState.Completed)
-                    {
-                        accessWay.Value = 100;
-                    }
-                }
-            }
+    private void RefreshRoadColors()
+    {
+        Color color = WorldLineVisuals.GetColor(_roadFromLine).Lerp(
+            WorldLineVisuals.GetColor(GameInfo.CurrentWorldLine), _roadMorphProgress);
+        foreach (RoadSegment segment in _roadSegments)
+        {
+            segment.Road.DefaultColor = new Color(color, 0.45f);
+            segment.Travelled.DefaultColor = color;
         }
     }
+
+    public bool TryPrepareNodeEntry(LevelNode node)
+    {
+        if (node != NextRoadNode || !CanAdvanceAlongRoad())
+            return false;
+
+        bool hasSavedType = GameInfo.WorldLineNodeTypes.TryGetValue(node.SelfCoordinate, out var savedType);
+        node.Type = ResolveRoadNodeType(node.SelfCoordinate.X, hasSavedType ? savedType : null);
+        GameInfo.WorldLineNodeTypes[node.SelfCoordinate] = node.Type;
+        AssignContentQueueIndices();
+        LockAllNodes();
+        // Commit the encounter and switch budget together before opening any content.
+        SaveSystem.SaveRunCheckpoint(background: false);
+        return true;
+    }
+
+    public void AdvanceAlongRoad()
+    {
+        if (CanAdvanceAlongRoad())
+            NextRoadNode?.PressButton();
+    }
+
+    public bool SwitchWorldLine(int worldLine)
+    {
+        int previousLine = GameInfo.CurrentWorldLine;
+        if (!CanSwitchWorldLine || !GameInfo.TrySwitchWorldLine(worldLine))
+            return false;
+
+        BeginRoadTransition(previousLine);
+        RefreshRoadPresentations();
+        SaveSystem.SaveRunCheckpoint(background: false);
+        return true;
+    }
+
+    private void RefreshRoadPresentations()
+    {
+        LevelNode next = NextRoadNode;
+        if (next != null)
+        {
+            bool hasSavedType = GameInfo.WorldLineNodeTypes.TryGetValue(next.SelfCoordinate, out var savedType);
+            // Revealing the next encounter must not commit it or disable worldline switching.
+            next.Type = ResolveRoadNodeType(next.SelfCoordinate.X, hasSavedType ? savedType : null);
+        }
+        foreach (LevelNode node in _mapNodes.SelectMany(layer => layer))
+            node.RefreshRoadPresentation();
+    }
+
+    private static LevelNode.LevelType? GetFixedRoadNodeType(int stage) => stage switch
+    {
+        0 => LevelNode.LevelType.Normal,
+        _ when stage == MapLength - 1 => LevelNode.LevelType.Boss,
+        // For even-length roads, use the later of the two central nodes.
+        _ when stage == MapLength / 2 => LevelNode.LevelType.Rest,
+        _ => null,
+    };
+
+    private static LevelNode.LevelType ResolveRoadNodeType(int stage, LevelNode.LevelType? savedType = null)
+    {
+        var fixedType = GetFixedRoadNodeType(stage);
+        if (fixedType.HasValue)
+            return fixedType.Value;
+        if (savedType.HasValue && (savedType.Value != LevelNode.LevelType.Elite
+            || stage >= GameInfo.FirstEliteRoadStage))
+            return savedType.Value;
+        return GameInfo.RollWorldLineNodeType(GameInfo.CurrentWorldLine,
+            GameInfo.CreateWorldLineRng(stage), stage);
+    }
+
+    public int GetRoadNodeProbability(int stage, int worldLine, LevelNode.LevelType type)
+    {
+        if (stage < 0 || stage >= MapLength)
+            return 0;
+        var fixedType = GetFixedRoadNodeType(stage);
+        if (fixedType.HasValue)
+            return type == fixedType.Value ? 100 : 0;
+        return GameInfo.GetWorldLineProbability(worldLine, type, stage);
+    }
+
+    public string GetNextNodeProbabilityText(int worldLine = -1) =>
+        GetNodeProbabilityText(NextRoadStage, worldLine);
+
+    public string GetNodeProbabilityText(int stage, int worldLine = -1)
+    {
+        if (stage >= MapLength)
+            return "道路已完成";
+        if (stage == MapLength - 1)
+            return "终点 · 首领\n所有世界线的终点固定为首领";
+        int line = worldLine < 0 ? GameInfo.CurrentWorldLine : worldLine;
+        return string.Join("\n", ProbabilityDisplayTypes.Select(type =>
+            $"{GetNodeTypeDisplayName(type)}  {GetRoadNodeProbability(stage, line, type)}%"));
+    }
+
+    public string GetRoadAdvanceText() => NextRoadNode == null
+        ? "道路已完成" : IsNextEncounterCommitted ? "继续当前遭遇" : "向前探索";
+
+    internal static string GetNodeTypeDisplayName(LevelNode.LevelType type) => type switch
+    {
+        LevelNode.LevelType.Event => "事件",
+        LevelNode.LevelType.Shop => "商店",
+        LevelNode.LevelType.Rest => "休息",
+        LevelNode.LevelType.Elite => "精英",
+        LevelNode.LevelType.Treasure => "宝箱",
+        LevelNode.LevelType.Boss => "首领",
+        _ => "普通战斗",
+    };
 
     public async void AdvanceToNextRegion()
     {
@@ -764,6 +552,8 @@ public partial class LevelProgress : Control
         if (offerBossRelicChoice)
             GameInfo.PendingBossRelicChoice = true;
         GameInfo.FirstLevelState.Clear();
+        GameInfo.NodeRelicQueueStarts.Clear();
+        GameInfo.NodeRelicQueueSlots.Clear();
         ResetMapInteractionLocks();
         return offerBossRelicChoice;
     }
@@ -782,493 +572,59 @@ public partial class LevelProgress : Control
 
         BossRelicChoice.Show(this);
     }
-
-    private static int BuildMapSeed()
-    {
-        if (GameInfo.CurrentLevel <= 0)
-            return GameInfo.Seed;
-
-        unchecked
-        {
-            return (GameInfo.Seed * 397) ^ (GameInfo.CurrentLevel * 7919);
-        }
-    }
-
-    private bool HasCompletedBossNode()
-    {
-        if (_mapNodes == null || _mapNodes.Count == 0)
-            return false;
-
-        foreach (var layer in _mapNodes)
-        {
-            foreach (var node in layer)
-            {
-                if (
-                    node != null
-                    && node.Type == LevelNode.LevelType.Boss
-                    && node.State == LevelNode.LevelState.Completed
-                )
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void ConnectNodes(LevelNode from, LevelNode to)
-    {
-        if (!from.NextNodes.Contains(to))
-        {
-            from.NextNodes.Add(to);
-            to.ParentNodes.Add(from);
-        }
-    }
-
-    private void CreateAccessWay(LevelNode from, LevelNode to)
-    {
-        var accessWay = _accessWayScene.Instantiate<ProgressBar>();
-        _connectionContainer.AddChild(accessWay);
-
-        Vector2 nodeCenterOffset = from.Size * 0.5f;
-        Vector2 fromCenter = from.Position + nodeCenterOffset;
-        Vector2 toCenter = to.Position + nodeCenterOffset;
-        Vector2 startPos = fromCenter;
-        Vector2 endPos = toCenter;
-
-        float distance = startPos.DistanceTo(endPos);
-        float angle = startPos.AngleToPoint(endPos);
-
-        accessWay.Size = new Vector2(distance, accessWay.Size.Y);
-        accessWay.Position = startPos;
-        accessWay.Rotation = angle;
-        accessWay.PivotOffset = new Vector2(0, accessWay.Size.Y / 2);
-        accessWay.Value = 0;
-
-        _paths[(from, to)] = accessWay;
-    }
-
     public void OnNodeSelected(LevelNode selectedNode)
     {
-        LockSiblings(selectedNode);
-        AnimatePathTo(selectedNode);
+        foreach (LevelNode parent in selectedNode.ParentNodes)
+        {
+            if (parent.State != LevelNode.LevelState.Completed
+                || !_paths.TryGetValue((parent, selectedNode), out var path))
+                continue;
+
+            RoadSegment segment = _roadSegments[parent.SelfCoordinate.X];
+            segment.TravelTween?.Kill();
+            segment.TravelTween = CreateTween();
+            segment.TravelTween.TweenMethod(Callable.From<float>(progress =>
+            {
+                if (!GodotObject.IsInstanceValid(path))
+                    return;
+                segment.Progress = progress;
+                UpdateTravelledSegment(segment);
+            }), segment.Progress, 1f, 0.45f).SetEase(Tween.EaseType.Out);
+        }
     }
 
     public void SetNodeTypeLegendHighlight(LevelNode.LevelType? highlightedType)
     {
-        foreach (var layer in _mapNodes)
-        {
-            foreach (var node in layer)
-            {
-                if (node == null || !GodotObject.IsInstanceValid(node))
-                    continue;
-
-                node.SetTypeLegendHighlighted(highlightedType.HasValue && node.Type == highlightedType.Value);
-            }
-        }
-    }
-
-    private void AnimatePathTo(LevelNode node)
-    {
-        // Find the parent node that is Completed (the one we came from)
-        foreach (var parent in node.ParentNodes)
-        {
-            if (parent.State == LevelNode.LevelState.Completed)
-            {
-                if (_paths.TryGetValue((parent, node), out ProgressBar path))
-                {
-                    Tween tween = CreateTween();
-                    tween
-                        .TweenProperty(path, "value", 100, 0.5f)
-                        .SetTrans(Tween.TransitionType.Cubic)
-                        .SetEase(Tween.EaseType.Out);
-                }
-                // Assuming only one valid path from the previous layer in a standard run
-                break;
-            }
-        }
-    }
-
-    private void LockSiblings(LevelNode selectedNode)
-    {
-        int x = selectedNode.SelfCoordinate.X;
-        if (x >= _mapNodes.Count)
-            return;
-
-        var layer = _mapNodes[x];
-        foreach (var node in layer)
-        {
-            if (node != null && node != selectedNode && node.State == LevelNode.LevelState.Unlocked)
-            {
-                node.State = LevelNode.LevelState.Locked;
-                node.ApplyLockedVisuals();
-                GameInfo.FirstLevelState[node.SelfCoordinate] = LevelNode.LevelState.Locked;
-            }
-        }
-    }
-
-    private LevelNode CreateNode(int x, int y, float jitterY = 0)
-    {
-        var node = _nodeScene.Instantiate<LevelNode>();
-        node.RandomNum = rng.Next();
-        _nodeContainer.AddChild(node);
-
-        float totalMapHeight = (MaxMapHeight - 1) * NodeSpacingY;
-        float startY = (1080 - totalMapHeight) / 2;
-
-        node.Position = new Vector2(
-            MapLeftMargin + x * NodeSpacingX,
-            startY + y * NodeSpacingY + jitterY
-        );
-        node.SelfCoordinate = new Vector2I(x, y);
-
-        if (GameInfo.FirstLevelState.ContainsKey(node.SelfCoordinate))
-        {
-            node.State = GameInfo.FirstLevelState[node.SelfCoordinate];
-
-            // Apply the loaded state to the node's visual appearance
-            // This needs to be called deferred because the node's _Ready hasn't been called yet
-            node.CallDeferred("ApplyLoadedState");
-        }
-        else
-        {
-            node.State = LevelNode.LevelState.Locked;
-            GameInfo.FirstLevelState[node.SelfCoordinate] = LevelNode.LevelState.Locked;
-        }
-
-        // node.Button.Pressed += () => OnNodeSelected(node);
-        return node;
-    }
-
-    private void AssignNodeTypes(Random rng)
-    {
-        foreach (var layer in _mapNodes)
-        {
-            foreach (var node in layer)
-            {
-                if (node == null)
-                    continue;
-
-                int x = node.SelfCoordinate.X;
-                if (x == 0)
-                    node.Type = LevelNode.LevelType.Normal;
-                else if (x == PreBossRestStage)
-                    node.Type = LevelNode.LevelType.Rest;
-                else if (x == MapLength - 1)
-                    node.Type = LevelNode.LevelType.Boss;
-                else
-                    node.Type =
-                        rng.Next(100) < EventChancePercent
-                            ? LevelNode.LevelType.Event
-                            : LevelNode.LevelType.Normal;
-            }
-        }
-
-        int maxShopNodes = GetMaxShopNodesForCurrentRegion();
-        int maxEliteNodes = GetMaxEliteNodesForCurrentRegion();
-        int maxRestNodes = GetMaxRestNodesForCurrentRegion();
-        int shopCount = rng.Next(MinShopNodes, maxShopNodes + 1);
-        int eliteCount = rng.Next(MinEliteNodes, maxEliteNodes + 1);
-        int restCount = rng.Next(MinRestNodes, maxRestNodes + 1);
-        int lastRandomSpecialStage = PreBossRestStage - 1;
-        AssignDistributedNodeType(
-            LevelNode.LevelType.Shop,
-            shopCount,
-            FirstShopStage,
-            lastRandomSpecialStage,
-            rng
-        );
-        AssignDistributedNodeType(
-            LevelNode.LevelType.Rest,
-            restCount,
-            FirstRestStage,
-            lastRandomSpecialStage,
-            rng
-        );
-        AssignDistributedNodeType(
-            LevelNode.LevelType.Elite,
-            eliteCount,
-            FirstEliteStage,
-            lastRandomSpecialStage,
-            rng
-        );
-        AssignTreasureStage();
-
-        for (int x = 0; x < MapLength; x++)
-        {
-            var layer = _mapNodes[x];
-            foreach (var node in layer)
-            {
-                if (node == null)
-                    continue;
-
-                node.ColorChose();
-            }
-        }
-    }
-
-    private static int GetTreasureStage()
-    {
-        return Mathf.Clamp(MapLength - 7, 2, PreBossRestStage - 1);
-    }
-
-    private void AssignTreasureStage()
-    {
-        int stage = GetTreasureStage();
-        if (stage <= 0 || stage >= _mapNodes.Count)
-            return;
-
-        foreach (var node in _mapNodes[stage])
-        {
-            if (node == null)
-                continue;
-
-            if (node.Type == LevelNode.LevelType.Boss)
-                continue;
-
-            node.Type = LevelNode.LevelType.Treasure;
-        }
+        // Legacy callers may only highlight encounters already completed.
+        foreach (LevelNode node in _mapNodes.SelectMany(layer => layer))
+            node.SetTypeLegendHighlighted(node.State == LevelNode.LevelState.Completed
+                && highlightedType.HasValue && node.Type == highlightedType.Value);
     }
 
     private void AssignContentQueueIndices()
     {
         GameInfo.ResetRunRngState();
-        int normalIndex = 0;
-        int eliteIndex = 0;
-        int bossIndex = 0;
-        int eventIndex = 0;
-        int shopIndex = 0;
-        int restIndex = 0;
-        int treasureIndex = 0;
+        var contentCounts = new Dictionary<LevelNode.LevelType, int>();
         int regionBattleIndex = 0;
-
-        for (int x = 0; x < _mapNodes.Count; x++)
+        foreach (LevelNode node in _mapNodes.SelectMany(layer => layer))
         {
-            var layer = _mapNodes[x];
-            for (int y = 0; y < layer.Count; y++)
+            // Unknown stages must not reserve rewards or affect encounter queues.
+            if (!GameInfo.WorldLineNodeTypes.ContainsKey(node.SelfCoordinate))
+                continue;
+            contentCounts.TryGetValue(node.Type, out int queueIndex);
+            contentCounts[node.Type] = queueIndex + 1;
+            node.ContentQueueIndex = queueIndex;
+            GameInfo.RegisterNodeContentQueueIndex(node.SelfCoordinate, queueIndex);
+            if (GameInfo.NodeNormalBattleVisitIndices.TryGetValue(node.SelfCoordinate, out int normalIndex))
+                node.NormalBattleVisitIndex = normalIndex;
+            if (GameInfo.NodeEliteBattleVisitIndices.TryGetValue(node.SelfCoordinate, out int eliteIndex))
+                node.EliteBattleVisitIndex = eliteIndex;
+            if (GameInfo.IsBattleNodeType(node.Type))
             {
-                LevelNode node = layer[y];
-                if (node == null)
-                    continue;
-
-                int queueIndex = node.Type switch
-                {
-                    LevelNode.LevelType.Normal => normalIndex++,
-                    LevelNode.LevelType.Elite => eliteIndex++,
-                    LevelNode.LevelType.Boss => bossIndex++,
-                    LevelNode.LevelType.Event => eventIndex++,
-                    LevelNode.LevelType.Shop => shopIndex++,
-                    LevelNode.LevelType.Rest => restIndex++,
-                    LevelNode.LevelType.Treasure => treasureIndex++,
-                    _ => -1,
-                };
-
-                if (queueIndex >= 0)
-                {
-                    node.ContentQueueIndex = queueIndex;
-                    GameInfo.RegisterNodeContentQueueIndex(node.SelfCoordinate, queueIndex);
-                }
-
-                if (GameInfo.NodeNormalBattleVisitIndices.TryGetValue(
-                        node.SelfCoordinate,
-                        out int normalBattleVisitIndex
-                    ))
-                {
-                    node.NormalBattleVisitIndex = normalBattleVisitIndex;
-                }
-
-                if (GameInfo.NodeEliteBattleVisitIndices.TryGetValue(
-                        node.SelfCoordinate,
-                        out int eliteBattleVisitIndex
-                    ))
-                {
-                    node.EliteBattleVisitIndex = eliteBattleVisitIndex;
-                }
-
-                if (GameInfo.IsBattleNodeType(node.Type))
-                {
-                    node.RegionBattleQueueIndex = regionBattleIndex;
-                    GameInfo.RegisterNodeRegionBattleQueueIndex(
-                        node.SelfCoordinate,
-                        regionBattleIndex
-                    );
-                    regionBattleIndex++;
-                }
+                node.RegionBattleQueueIndex = regionBattleIndex;
+                GameInfo.RegisterNodeRegionBattleQueueIndex(node.SelfCoordinate, regionBattleIndex++);
             }
         }
-
         GameInfo.RefreshBattleItemDropChancePreview();
-    }
-
-    private static int GetMaxEliteNodesForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxEliteNodes : MaxEliteNodes;
-    }
-
-    private static int GetMaxShopNodesForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxShopNodes : MaxShopNodes;
-    }
-
-    private static int GetMaxRestNodesForCurrentRegion()
-    {
-        return GameInfo.CurrentLevel > 0 ? RegionTwoMaxRestNodes : MaxRestNodes;
-    }
-
-    private void AssignDistributedNodeType(
-        LevelNode.LevelType type,
-        int targetCount,
-        int minStage,
-        int maxStage,
-        Random rng
-    )
-    {
-        if (targetCount <= 0)
-            return;
-
-        minStage = Mathf.Clamp(minStage, 1, MapLength - 2);
-        maxStage = Mathf.Clamp(maxStage, minStage, MapLength - 2);
-
-        var stageCounts = new Dictionary<int, int>();
-        for (int i = 0; i < targetCount; i++)
-        {
-            LevelNode picked = PickDistributedNodeTypeCandidate(
-                type,
-                targetCount,
-                i,
-                minStage,
-                maxStage,
-                stageCounts,
-                rng,
-                enforceConnectionSpacing: true
-            ) ?? PickDistributedNodeTypeCandidate(
-                type,
-                targetCount,
-                i,
-                minStage,
-                maxStage,
-                stageCounts,
-                rng,
-                enforceConnectionSpacing: false
-            );
-
-            if (picked == null)
-                return;
-
-            picked.Type = type;
-            int stage = picked.SelfCoordinate.X;
-            stageCounts[stage] = stageCounts.GetValueOrDefault(stage) + 1;
-        }
-    }
-
-    private LevelNode PickDistributedNodeTypeCandidate(
-        LevelNode.LevelType type,
-        int targetCount,
-        int targetIndex,
-        int minStage,
-        int maxStage,
-        Dictionary<int, int> stageCounts,
-        Random rng,
-        bool enforceConnectionSpacing
-    )
-    {
-        var candidates = GetNodeTypeCandidates(type, minStage, maxStage, enforceConnectionSpacing);
-        if (candidates.Count == 0)
-            return null;
-
-        float desiredStage =
-            minStage + (maxStage - minStage) * ((targetIndex + 0.5f) / Math.Max(1, targetCount));
-
-        return candidates
-            .OrderBy(node =>
-            {
-                int stage = node.SelfCoordinate.X;
-                int usedInStage = stageCounts.GetValueOrDefault(stage);
-                float stageDistance = MathF.Abs(stage - desiredStage);
-                int sameStagePenalty = usedInStage * 100;
-                int typeNeighborPenalty = CountNeighborType(node, type) * 30;
-                return stageDistance * 12f + sameStagePenalty + typeNeighborPenalty + rng.Next(8);
-            })
-            .FirstOrDefault();
-    }
-
-    private List<LevelNode> GetNodeTypeCandidates(
-        LevelNode.LevelType type,
-        int minStage,
-        int maxStage,
-        bool enforceConnectionSpacing
-    )
-    {
-        var candidates = new List<LevelNode>();
-        for (int x = minStage; x <= maxStage && x < _mapNodes.Count; x++)
-        {
-            foreach (var node in _mapNodes[x])
-            {
-                if (node == null)
-                    continue;
-
-                if (
-                    node.Type == LevelNode.LevelType.Boss
-                    || node.Type == LevelNode.LevelType.Elite
-                    || node.Type == LevelNode.LevelType.Shop
-                    || node.Type == LevelNode.LevelType.Rest
-                    || node.Type == LevelNode.LevelType.Treasure
-                )
-                    continue;
-
-                if (enforceConnectionSpacing && !CanAssignNodeType(node, type))
-                    continue;
-
-                candidates.Add(node);
-            }
-        }
-
-        return candidates;
-    }
-
-    private static int CountNeighborType(LevelNode node, LevelNode.LevelType type)
-    {
-        if (node == null)
-            return 0;
-
-        int count = 0;
-        foreach (var parent in node.ParentNodes)
-        {
-            if (parent.Type == type)
-                count++;
-        }
-
-        foreach (var next in node.NextNodes)
-        {
-            if (next.Type == type)
-                count++;
-        }
-
-        return count;
-    }
-
-    private static bool CanAssignNodeType(LevelNode node, LevelNode.LevelType type)
-    {
-        if (
-            type != LevelNode.LevelType.Shop
-            && type != LevelNode.LevelType.Elite
-            && type != LevelNode.LevelType.Rest
-        )
-            return true;
-
-        foreach (var parent in node.ParentNodes)
-        {
-            if (parent.Type == type)
-                return false;
-        }
-
-        foreach (var next in node.NextNodes)
-        {
-            if (next.Type == type)
-                return false;
-        }
-
-        return true;
     }
 }

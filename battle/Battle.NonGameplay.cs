@@ -93,6 +93,13 @@ public partial class Battle
     public Control BattleRecordPlate =>
         field ??= GetNodeOrNull<Control>("UI/BattleRecordPlate");
     public Button RecordButton => field ??= GetNodeOrNull<Button>("UI/RecordButton");
+    private Label RoundLabel => field ??= GetNodeOrNull<Label>("UI/RoundLabel");
+
+    private void RefreshRoundLabel()
+    {
+        if (RoundLabel != null)
+            RoundLabel.Text = I18n.Format("ui.battle.round_number", "第 {value} 回合", ("value", Math.Max(1, ElapsedTurnCount)));
+    }
 
     private const float RecordSlideDuration = 0.2f;
     private const float RecordHideMargin = 18f;
@@ -144,6 +151,7 @@ public partial class Battle
 
         InitializeBattleAutomationLog();
         InitRecordButton();
+        RefreshRoundLabel();
     }
 
     public void RefreshIncomingDamagePreviewFromSettings() => RefreshIncomingDamagePreview();
@@ -228,6 +236,9 @@ public partial class Battle
             StopIncomingDamagePreviewFloat(panel);
         }
     }
+
+    private bool CanShowActionDamagePreview() => IsBattleAlive() && !HasBattleEnded()
+        && IsResolvingPlayerTeamActionPhase && CharacterControl?.CanShowTurnEndAttackPreview == true;
 
     private Skill.PreviewEffectEntry[] BuildIncomingDamagePreviewEntries()
     {
@@ -690,9 +701,9 @@ public partial class Battle
         );
     }
 
-    public void NotifyAllyAttackExecuted(Character attacker)
+    public void NotifyCharacterGainedStealth(Character target)
     {
-        _ = TriggerShadowOnAllyAttackAsync(attacker);
+        QueueBattleEffect(() => TriggerShadowOnStealthGainedAsync(target), "影：获得隐身触发");
     }
 
     public void RecordDamage(
@@ -740,7 +751,7 @@ public partial class Battle
 
         AppendRecordLine(line, indent: true);
         if (actualDamage > 0)
-            _ = TriggerSanctuaryOnLifeChangedAsync(target);
+            QueueBattleEffect(() => TriggerSanctuaryOnLifeChangedAsync(target), "圣域：生命变化");
     }
 
     private void RecordPlayerDamageTotal(Character target, int totalDamage)
@@ -835,7 +846,7 @@ public partial class Battle
                 ["actualHeal"] = actualHeal,
             }
         );
-        _ = TriggerSanctuaryOnLifeChangedAsync(target);
+        QueueBattleEffect(() => TriggerSanctuaryOnLifeChangedAsync(target), "圣域：生命变化");
     }
 
     public void RecordBlockGain(Character target, int blockGain, Character source = null)
@@ -1078,8 +1089,11 @@ public partial class Battle
 
     private void OnSkillUsed(Skill skill)
     {
-        Relic.ApplySkillUsedRelicEffects(skill);
-        _ = TriggerVoidOnSurviveSkillUsedAsync(skill);
+        QueueBattleEffect(() => {
+            if (skill?.OwnerCharater != null && GodotObject.IsInstanceValid(skill.OwnerCharater))
+                Relic.ApplySkillUsedRelicEffects(skill);
+            return Task.CompletedTask;
+        }, "出牌触发遗物");
 
         var record = BattleRecord;
         if (skill == null || record == null)
@@ -1108,66 +1122,44 @@ public partial class Battle
         );
     }
 
-    private async Task TriggerVoidOnSurviveSkillUsedAsync(Skill skill)
+    private void TriggerVoidOnEnergyGained(int gainedEnergy)
     {
-        Character owner = skill?.OwnerCharater;
-        if (
-            skill == null
-            || skill.SkillType != Skill.SkillTypes.Survive
-            || owner == null
-            || !GodotObject.IsInstanceValid(owner)
-            || owner.State == Character.CharacterState.Dying
-            || owner.BattleNode != this
-            || HasBattleEnded()
-            || !IsBattleAlive()
-        )
-        {
+        if (gainedEnergy <= 0 || HasBattleEnded() || !IsBattleAlive())
             return;
-        }
 
-        Character[] team = GetTeamCharacters(owner.IsPlayer, includeSummons: true)
-            .Where(character =>
-                character != null
-                && GodotObject.IsInstanceValid(character)
-                && character.State != Character.CharacterState.Dying
-            )
-            .ToArray();
-        Character[] formOwners = team
-            .Where(character =>
-                character.EndActionBuffs?.Any(buff =>
-                    buff != null
-                    && buff.ThisBuffName == Buff.BuffName.Void
-                    && buff.Stack > 0
-                ) == true
-            )
-            .ToArray();
-
-        for (int i = 0; i < formOwners.Length; i++)
+        foreach (Character formOwner in GetTeamCharacters(isPlayer: true, includeSummons: true)
+            .Where(character => GodotObject.IsInstanceValid(character) && IsCharacterAlive(character)).ToArray())
         {
-            Character formOwner = formOwners[i];
-            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner))
-                continue;
+            foreach (EndActionBuff buff in formOwner.EndActionBuffs?.Where(activeBuff =>
+                activeBuff != null && activeBuff.ThisBuffName == Buff.BuffName.Void && activeBuff.Stack > 0)
+                .ToArray() ?? Array.Empty<EndActionBuff>())
+            {
+                int triggers = buff.AccumulateVoidEnergy(gainedEnergy);
+                int powerGain = buff.Stack;
+                if (triggers > 0)
+                    QueueBattleEffect(() => TriggerVoidPowerAsync(formOwner, triggers, powerGain),
+                        "虚空：获得能量增力");
+            }
+        }
+    }
 
-            int voidStacks =
-                formOwner
-                    .EndActionBuffs?.Where(buff =>
-                        buff != null
-                        && buff.ThisBuffName == Buff.BuffName.Void
-                        && buff.Stack > 0
-                    )
-                    .Sum(buff => buff.Stack) ?? 0;
-            if (voidStacks <= 0)
-                continue;
+    private async Task TriggerVoidPowerAsync(Character formOwner, int triggers, int powerGain)
+    {
+        for (int i = 0; i < triggers; i++)
+        {
+            if (!GodotObject.IsInstanceValid(formOwner) || !IsCharacterAlive(formOwner)
+                || HasBattleEnded() || !IsBattleAlive())
+                return;
 
             Buff.FlashTriggersOnOwner(formOwner, Buff.BuffName.Void);
             using var _ = formOwner.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Void));
-            for (int j = 0; j < team.Length; j++)
+            foreach (Character ally in GetTeamCharacters(isPlayer: true, includeSummons: true)
+                .Where(character => GodotObject.IsInstanceValid(character) && IsCharacterAlive(character)).ToArray())
             {
-                Character ally = team[j];
-                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                if (!GodotObject.IsInstanceValid(ally) || !IsCharacterAlive(ally))
                     continue;
 
-                await ally.IncreaseProperties(PropertyType.Power, voidStacks, formOwner);
+                await ally.IncreaseProperties(PropertyType.Power, powerGain, formOwner);
             }
 
             if (HasBattleEnded() || !IsBattleAlive())
@@ -1175,14 +1167,12 @@ public partial class Battle
         }
     }
 
-    private async Task TriggerShadowOnAllyAttackAsync(Character attacker)
+    private async Task TriggerShadowOnStealthGainedAsync(Character target)
     {
         if (
-            attacker == null
-            || !GodotObject.IsInstanceValid(attacker)
-            || !attacker.IsPlayer
-            || attacker.State == Character.CharacterState.Dying
-            || attacker.BattleNode != this
+            target == null
+            || !GodotObject.IsInstanceValid(target)
+            || target.BattleNode != this
             || HasBattleEnded()
             || !IsBattleAlive()
         )
@@ -1190,17 +1180,15 @@ public partial class Battle
             return;
         }
 
-        Character[] team = GetTeamCharacters(attacker.IsPlayer, includeSummons: true)
+        Character[] formOwners = GetTeamCharacters(true, includeSummons: true)
+            .Concat(GetTeamCharacters(false, includeSummons: true))
             .Where(character =>
                 character != null
                 && GodotObject.IsInstanceValid(character)
-                && character.State != Character.CharacterState.Dying
+                && IsCharacterAlive(character)
             )
-            .ToArray();
-        Character[] formOwners = team
             .Where(character =>
-                character != attacker
-                && character.AttackBuffs?.Any(buff =>
+                character.AttackBuffs?.Any(buff =>
                     buff != null
                     && buff.ThisBuffName == Buff.BuffName.Shadow
                     && buff.Stack > 0
@@ -1211,7 +1199,7 @@ public partial class Battle
         for (int i = 0; i < formOwners.Length; i++)
         {
             Character formOwner = formOwners[i];
-            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner))
+            if (formOwner == null || !GodotObject.IsInstanceValid(formOwner) || !IsCharacterAlive(formOwner))
                 continue;
 
             int shadowStacks =
@@ -1227,10 +1215,11 @@ public partial class Battle
 
             Buff.FlashTriggersOnOwner(formOwner, Buff.BuffName.Shadow);
             using var _ = formOwner.BeginEffectSource(Buff.GetBuffDisplayName(Buff.BuffName.Shadow));
+            Character[] team = GetTeamCharacters(formOwner.IsPlayer, includeSummons: true).ToArray();
             for (int j = 0; j < team.Length; j++)
             {
                 Character ally = team[j];
-                if (ally == null || !GodotObject.IsInstanceValid(ally))
+                if (ally == null || !GodotObject.IsInstanceValid(ally) || !IsCharacterAlive(ally))
                     continue;
 
                 await ally.IncreaseProperties(PropertyType.Power, shadowStacks, formOwner);

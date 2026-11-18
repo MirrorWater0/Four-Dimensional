@@ -152,7 +152,7 @@ public partial class HistoryScreenShotRunner : Node {
             record.NodeRecords.Add(new LevelNodeCompletionRecord { MapLevel = i / 35, CompletionOrder = i, NodeType = i % 7 == 0 ? LevelNode.LevelType.Boss : LevelNode.LevelType.Normal });
         foreach (string name in new[] { "回声", "卡西娅", "玛瑞娅", "夜莺" }) {
             var character = new RunHistoryCharacterSkillRecord { CharacterName = name, MaxLife = 180, Power = 35, Survivability = 22, TalentPoints = 4 };
-            foreach (var type in new[] { Skill.SkillTypes.Attack, Skill.SkillTypes.Survive, Skill.SkillTypes.Special, Skill.SkillTypes.Ability }) {
+            foreach (var type in new[] { Skill.SkillTypes.Attack, Skill.SkillTypes.Permanent, Skill.SkillTypes.Special, Skill.SkillTypes.Ability }) {
                 var skills = new RunHistorySkillTypeRecord { SkillType = type };
                 for (int i = 0; i < 9; i++) skills.SkillNames.Add($"A long archived skill name / 技能 {i + 1}");
                 character.SkillTypeRecords.Add(skills);

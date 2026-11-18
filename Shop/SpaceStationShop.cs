@@ -35,14 +35,14 @@ public partial class SpaceStationShop : Control
     private const float ModuleItemExitOffsetY = 8f;
     private const float StatPanelHoverDuration = 0.14f;
     private const float CatalogOfferHoverDuration = 0.12f;
-    private const float CatalogOfferHoverScale = 1.12f;
+    private const float CatalogOfferHoverScale = 1.06f;
     private const float PriceFeedbackPulseScale = 1.06f;
     private const float PriceFeedbackPulseDuration = 0.12f;
     private const float OfferPurchasePulseDuration = 0.18f;
     private const float OfferRejectPulseDuration = 0.16f;
-    private static readonly Vector2 CompactCatalogTileSize = new(118f, 138f);
-    private static readonly Vector2 CompactCatalogIconFrameSize = new(82f, 82f);
-    private static readonly Vector2 CardRemovalServiceTileSize = new(140f, 286f);
+    private static readonly Vector2 CompactCatalogTileSize = new(92f, 118f);
+    private static readonly Vector2 CompactCatalogIconFrameSize = new(72f, 72f);
+    private static readonly Vector2 CardRemovalServiceTileSize = new(296f, 68f);
     private static readonly Vector2 SkillCardBaseDisplaySize = new(250f, 400f);
     private static readonly Color PriceFeedbackColor = new(1f, 0.16f, 0.12f, 1f);
     private static readonly Color OfferPurchasePulseColor = new(0.72f, 1.24f, 0.92f, 1f);
@@ -64,7 +64,7 @@ public partial class SpaceStationShop : Control
     ];
 
     [Export(PropertyHint.Range, "0.35,0.80,0.01")]
-    public float ShopSkillCardScale { get; set; } = 0.80f;
+    public float ShopSkillCardScale { get; set; } = 0.70f;
 
     [Export]
     public bool EnableBackgroundOfferWarmup { get; set; } = false;
@@ -147,7 +147,7 @@ public partial class SpaceStationShop : Control
 
     private Button CloseButton => field ??= GetNode<Button>("Panel/Decor/CloseButton");
     private ColorRect BG => field ??= GetNode<ColorRect>("BG");
-    private PanelContainer PanelNode => field ??= GetNode<PanelContainer>("Panel");
+    private Control PanelNode => field ??= GetNode<Control>("Panel");
     private Control ModulePanelNode => field ??= GetNode<Control>("Panel/MainLayout/ModulePanel");
     private Control MainLayoutNode => field ??= GetNode<Control>("Panel/MainLayout");
     private Control DecorNode => field ??= GetNode<Control>("Panel/Decor");
@@ -209,11 +209,15 @@ public partial class SpaceStationShop : Control
         );
     private GridContainer InlineCatalogGrid =>
         field ??= GetNode<GridContainer>(
-            "Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent/InlineCatalogGrid"
+            "Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent/InlineCatalogGrid"
+        );
+    private GridContainer InlinePotionGrid =>
+        field ??= GetNode<GridContainer>(
+            "Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent/InlinePotionGrid"
         );
     private Control InlineCardRemovalServiceSlot =>
         field ??= GetNode<Control>(
-            "Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent/CardRemovalServiceSlot"
+            "Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent/CardRemovalServiceSlot"
         );
     private Control CatalogViewport => RelicViewport;
     private Control RelicViewport =>
@@ -295,6 +299,7 @@ public partial class SpaceStationShop : Control
         PanelNode.ItemRectChanged += UpdatePanelPivot;
         MainLayoutNode.ItemRectChanged += UpdateModuleTransitionBlockerLayout;
         ContentAreaNode.ItemRectChanged += NormalizeModuleContentLayouts;
+        SkillPanel.Resized += UpdateSkillOfferColumns;
         NormalizeModuleContentLayouts();
         UpdateModuleTransitionBlockerLayout();
         UpdatePanelPivot();
@@ -372,7 +377,7 @@ public partial class SpaceStationShop : Control
         NormalizeModuleContentLayouts();
         SetModule(ShopModule.Skill, animateSelector: false);
         SnapModuleContentVisualState();
-        SetStatus("浏览空间站补给目录。");
+        SetStatus(string.Empty);
         RefreshShopState();
         if (EnableBackgroundOfferWarmup)
             CallDeferred(nameof(BeginOfferWarmup));
@@ -443,6 +448,7 @@ public partial class SpaceStationShop : Control
         SkillOffersContainer.QueueSort();
         BottomSkillOffersContainer.QueueSort();
         InlineCatalogGrid.QueueSort();
+        InlinePotionGrid.QueueSort();
 
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -559,10 +565,26 @@ public partial class SpaceStationShop : Control
         ModulePanelNode.Visible = false;
         ModulePanelNode.MouseFilter = MouseFilterEnum.Ignore;
         ModulePanelNode.CustomMinimumSize = Vector2.Zero;
-        MainLayoutNode.Set("theme_override_constants/separation", 0);
-        ContentAreaNode.ClipContents = true;
+        ContentAreaNode.ClipContents = false;
         CatalogTitle.Text = "空间站补给";
-        CatalogHint.Text = "属性、技能、遗物与道具集中展示在同一页。";
+        CatalogHint.Text = string.Empty;
+        UpdateSkillOfferColumns();
+    }
+
+    private void UpdateSkillOfferColumns()
+    {
+        if (!SinglePageLayoutEnabled || !IsInsideTree())
+            return;
+
+        // Match the scene's 14 px gutters and leave room for the scrollbar.
+        float width = SkillPanel.Size.X - 32f;
+        if (width <= 0f)
+            return;
+        float cardWidth = GetShopSkillCardDisplaySize().X;
+        int gap = SkillOffersContainer.GetThemeConstant("h_separation");
+        int columns = Mathf.Clamp(Mathf.FloorToInt((width + gap) / (cardWidth + gap)), 1, 5);
+        if (SkillOffersContainer.Columns != columns)
+            SkillOffersContainer.Columns = columns;
     }
 
     private void ArrangeSinglePageOffers()
@@ -576,6 +598,8 @@ public partial class SpaceStationShop : Control
             || !GodotObject.IsInstanceValid(BottomSkillOffersContainer)
             || InlineCatalogGrid == null
             || !GodotObject.IsInstanceValid(InlineCatalogGrid)
+            || InlinePotionGrid == null
+            || !GodotObject.IsInstanceValid(InlinePotionGrid)
             || InlineCardRemovalServiceSlot == null
             || !GodotObject.IsInstanceValid(InlineCardRemovalServiceSlot)
         )
@@ -589,9 +613,7 @@ public partial class SpaceStationShop : Control
             if (offer?.View == null || !GodotObject.IsInstanceValid(offer.View))
                 continue;
 
-            var target = i < GetSinglePageTopSkillOfferCount()
-                ? SkillOffersContainer
-                : BottomSkillOffersContainer;
+            var target = SkillOffersContainer;
             if (offer.View.GetParent() == target)
                 continue;
 
@@ -606,7 +628,7 @@ public partial class SpaceStationShop : Control
 
             Control target = offer.Kind == OfferKind.CardRemovalService
                 ? InlineCardRemovalServiceSlot
-                : InlineCatalogGrid;
+                : offer.Kind == OfferKind.Item ? InlinePotionGrid : InlineCatalogGrid;
             if (offer.View.GetParent() == target)
                 continue;
 
@@ -783,7 +805,10 @@ public partial class SpaceStationShop : Control
             Vector2 scale = GetShopSkillCardScaleVector();
             Vector2 cardSize = GetShopSkillCardDisplaySize();
             int characterCount = GetShopCharacterCount(players);
-            SkillOffersContainer.Columns = GetSinglePageTopSkillOfferCount(characterCount);
+            if (SinglePageLayoutEnabled)
+                UpdateSkillOfferColumns();
+            else
+                SkillOffersContainer.Columns = GetSinglePageTopSkillOfferCount(characterCount);
             BottomSkillOffersContainer.Columns = SkillOffersPerCharacter;
 
             for (int playerIndex = 0; playerIndex < characterCount; playerIndex++)
@@ -798,13 +823,15 @@ public partial class SpaceStationShop : Control
                     // Shop purchases decide their result after the click. Keep the generic
                     // card press-vanish effect off so an unaffordable card only shakes.
                     card.AutoPressEffect = false;
+                    card.PointerHoverScaleMultiplier = 1.04f;
                     card.ConfigureDisplayScale(scale);
 
                     var cardHolder = CreateSkillOfferCardHolder(card, cardSize, scale);
 
                     var priceLabel = CreateSkillOfferPriceLabel();
                     var tile = CreateSkillOfferTile(cardHolder, priceLabel, cardSize);
-                    var targetContainer = _skillOffers.Count < GetSinglePageTopSkillOfferCount(characterCount)
+                    var targetContainer = SinglePageLayoutEnabled
+                        || _skillOffers.Count < GetSinglePageTopSkillOfferCount(characterCount)
                         ? SkillOffersContainer
                         : BottomSkillOffersContainer;
                     targetContainer.AddChild(tile);
@@ -1086,87 +1113,16 @@ public partial class SpaceStationShop : Control
         if (offer == null)
             return;
 
-        var frame = new VBoxContainer
-        {
-            Name = $"CardRemovalServiceOffer{_catalogOffers.Count}",
-            CustomMinimumSize = CardRemovalServiceTileSize,
-            MouseFilter = MouseFilterEnum.Stop,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            Alignment = BoxContainer.AlignmentMode.Center,
-        };
-        frame.AddThemeConstantOverride("separation", 8);
+        var frame = GD.Load<PackedScene>("res://Shop/CardRemovalOffer.tscn").Instantiate<Button>();
+        frame.Name = $"CardRemovalServiceOffer{_catalogOffers.Count}";
+        var priceLabel = frame.GetNode<Label>("Price");
+        frame.Pressed += () => OnCatalogOfferPressed(offer);
+        frame.MouseEntered += () => ShowCatalogTip(BuildCardRemovalServiceTooltip(offer));
+        frame.MouseExited += HideRelicTip;
 
-        var cardFace = new PanelContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        cardFace.AddThemeStyleboxOverride("panel", CreateCardRemovalServiceCardStyle());
-        frame.AddChild(cardFace);
-
-        var content = new VBoxContainer
-        {
-            MouseFilter = MouseFilterEnum.Ignore,
-            Alignment = BoxContainer.AlignmentMode.Center,
-        };
-        content.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-        content.OffsetLeft = 10f;
-        content.OffsetTop = 12f;
-        content.OffsetRight = -10f;
-        content.OffsetBottom = -12f;
-        content.AddThemeConstantOverride("separation", 12);
-        cardFace.AddChild(content);
-
-        var iconHolder = new Control
-        {
-            CustomMinimumSize = new Vector2(104f, 180f),
-            MouseFilter = MouseFilterEnum.Ignore,
-            SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-        };
-        content.AddChild(iconHolder);
-
-        var icon = CreateCardRemovalServiceIcon();
-        iconHolder.AddChild(icon);
-
-        var titleLabel = new Label
-        {
-            Text = "战术清理",
-            MouseFilter = MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        titleLabel.AddThemeFontSizeOverride("font_size", 16);
-        titleLabel.AddThemeColorOverride("font_color", new Color(0.96f, 0.82f, 0.52f, 0.98f));
-        content.AddChild(titleLabel);
-
-        var priceLabel = CreateCatalogPriceLabel();
-        frame.AddChild(priceLabel);
-
-        frame.GuiInput += @event =>
-        {
-            if (
-                @event is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
-            )
-                return;
-            OnCatalogOfferPressed(offer);
-        };
-        frame.Resized += () => UpdateCatalogOfferPivot(frame);
-        frame.MouseEntered += () =>
-        {
-            ShowCatalogTip(BuildCardRemovalServiceTooltip(offer));
-            AnimateCatalogOfferHover(frame, true);
-        };
-        frame.MouseExited += () =>
-        {
-            HideRelicTip();
-            AnimateCatalogOfferHover(frame, false);
-        };
-
-        RelicGrid.AddChild(frame);
+        Control target = SinglePageLayoutEnabled ? InlineCardRemovalServiceSlot : RelicGrid;
+        target.AddChild(frame);
         offer.View = frame;
-        offer.IconRect = icon;
         offer.PriceLabel = priceLabel;
     }
 
@@ -1177,24 +1133,7 @@ public partial class SpaceStationShop : Control
 
         view.CustomMinimumSize = CardRemovalServiceTileSize;
         view.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        view.SizeFlagsVertical = SizeFlags.ExpandFill;
-    }
-
-    private static StyleBoxFlat CreateCardRemovalServiceCardStyle()
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = new Color(0.045f, 0.05f, 0.06f, 0.9f),
-            BorderWidthLeft = 2,
-            BorderWidthTop = 2,
-            BorderWidthRight = 2,
-            BorderWidthBottom = 2,
-            BorderColor = new Color(0.82f, 0.68f, 0.38f, 0.82f),
-            CornerRadiusTopLeft = 4,
-            CornerRadiusTopRight = 4,
-            CornerRadiusBottomRight = 4,
-            CornerRadiusBottomLeft = 4,
-        };
+        view.SizeFlagsVertical = SizeFlags.ShrinkBegin;
     }
 
     private PanelContainer CreateStatCharacterPanel(string characterName)
@@ -1542,7 +1481,7 @@ public partial class SpaceStationShop : Control
             CustomMinimumSize = new Vector2(0f, cardSize.Y + 34f),
             MouseFilter = MouseFilterEnum.Ignore,
         };
-        tile.AddThemeConstantOverride("separation", 6);
+        tile.AddThemeConstantOverride("separation", 14);
 
         var cardCenter = new CenterContainer
         {
@@ -2356,38 +2295,6 @@ public partial class SpaceStationShop : Control
         return $"{title}\n{effect}";
     }
 
-    private static ColorRect CreateCardRemovalServiceIcon()
-    {
-        var icon = new ColorRect
-        {
-            Name = "CardRemovalServiceIcon",
-            Color = new Color(0, 0, 0, 0),
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        icon.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        icon.OffsetLeft = 10f;
-        icon.OffsetTop = 10f;
-        icon.OffsetRight = -10f;
-        icon.OffsetBottom = -10f;
-
-        var glyph = new Label
-        {
-            Name = "Glyph",
-            Text = "X",
-            MouseFilter = MouseFilterEnum.Ignore,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        glyph.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        glyph.AddThemeFontSizeOverride("font_size", 44);
-        glyph.AddThemeConstantOverride("outline_size", 5);
-        glyph.AddThemeColorOverride("font_color", new Color(0.9f, 0.91f, 0.95f, 1f));
-        glyph.AddThemeColorOverride("font_outline_color", new Color(0.02f, 0.025f, 0.03f, 0.95f));
-        icon.AddChild(glyph);
-
-        return icon;
-    }
-
     private static int GetRelicAddAmount(RelicID relicId)
     {
         return Relic.GetAcquireAmount(relicId);
@@ -2408,6 +2315,9 @@ public partial class SpaceStationShop : Control
             child.QueueFree();
 
         foreach (var child in InlineCatalogGrid.GetChildren())
+            child.QueueFree();
+
+        foreach (var child in InlinePotionGrid.GetChildren())
             child.QueueFree();
 
         foreach (var child in InlineCardRemovalServiceSlot.GetChildren())
@@ -2894,10 +2804,11 @@ public partial class SpaceStationShop : Control
             RelicViewport.Visible = false;
             PotionViewport.Visible = false;
             SkillPanel.Visible = true;
-            SkillOffersContainer.Columns = GetSinglePageTopSkillOfferCount();
+            UpdateSkillOfferColumns();
             BottomSkillOffersContainer.Columns = SkillOffersPerCharacter;
             InlineCatalogGrid.Columns = 3;
-            SkillPanel.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            InlinePotionGrid.Columns = 3;
+            SkillPanel.SizeFlagsVertical = SizeFlags.ExpandFill;
             ArrangeSinglePageOffers();
 
             for (int i = 0; i < _catalogOffers.Count; i++)
@@ -2911,7 +2822,7 @@ public partial class SpaceStationShop : Control
             }
 
             CatalogTitle.Text = "空间站补给";
-            CatalogHint.Text = "技能、遗物与道具集中展示在同一页。";
+            CatalogHint.Text = string.Empty;
             return;
         }
 
@@ -3336,7 +3247,7 @@ public partial class SpaceStationShop : Control
             new AssemblyItem(CatalogTitle, new Vector2(0f, -18f), 0.1f),
             new AssemblyItem(CatalogHint, new Vector2(0f, -14f), 0.14f),
             new AssemblyItem(ModulePanelNode, new Vector2(-84f, 18f), 0.08f),
-            new AssemblyItem(ContentAreaNode, new Vector2(98f, 20f), 0.12f),
+            new AssemblyItem(ContentAreaNode, new Vector2(0f, 20f), 0.12f),
             new AssemblyItem(TopLine, new Vector2(0f, -12f), 0.18f),
             new AssemblyItem(FooterLine, new Vector2(0f, 12f), 0.2f),
             new AssemblyItem(StatusLabel, new Vector2(0f, 16f), 0.24f),

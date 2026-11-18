@@ -58,6 +58,10 @@ public partial class SceneTransitionLayer : CanvasLayer
         _ = RunSwitchSceneAsync(scenePath, fadeOutDuration, fadeInDuration);
     }
 
+    internal void EnterMapFromStart() {
+        _ = RunSwitchSceneAsync(Map.StartMapPath, DefaultFadeDuration, DefaultFadeDuration, fromStartToMap: true);
+    }
+
     public void ShowBlackImmediate()
     {
         BuildOverlay();
@@ -302,7 +306,8 @@ public partial class SceneTransitionLayer : CanvasLayer
     private async Task RunSwitchSceneAsync(
         string scenePath,
         float fadeOutDuration,
-        float fadeInDuration
+        float fadeInDuration,
+        bool fromStartToMap = false
     )
     {
         if (_isTransitioning)
@@ -315,7 +320,7 @@ public partial class SceneTransitionLayer : CanvasLayer
             if (!fadedToBlack)
                 return;
 
-            var err = GetTree().ChangeSceneToFile(scenePath);
+            var err = fromStartToMap ? Map.ChangeSceneFromStart(GetTree()) : GetTree().ChangeSceneToFile(scenePath);
             if (err != Error.Ok)
             {
                 GD.PushError($"SceneTransitionLayer: failed to change scene to {scenePath}: {err}");

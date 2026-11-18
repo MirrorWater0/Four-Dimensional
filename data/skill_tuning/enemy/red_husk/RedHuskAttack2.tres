@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "RedHuskAttack2"
+DisplayName = "轰鸣"
+Values = Dictionary[String, int]({
+"BaseDamage": 12,
+"EnemyEnergyCost": 0,
+"EnergyCost": 0,
+"ExhaustAfterExecutions": 0,
+"FrailStacks": 3,
+"HitCount": 1,
+"Multiplier": 1,
+"PowerGain": 5
+})

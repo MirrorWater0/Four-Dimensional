@@ -528,7 +528,7 @@ public static partial class GameInfo
     private static Skill.SkillTypes[] GetDisplaySkillTypes() =>
         [
             Skill.SkillTypes.Attack,
-            Skill.SkillTypes.Survive,
+            Skill.SkillTypes.Permanent,
             Skill.SkillTypes.Special,
             Skill.SkillTypes.Ability,
         ];
@@ -784,7 +784,7 @@ public static partial class GameInfo
         return type switch
         {
             Skill.SkillTypes.Attack => "攻击",
-            Skill.SkillTypes.Survive => "生存",
+            Skill.SkillTypes.Permanent => "常驻",
             Skill.SkillTypes.Special => "特殊",
             Skill.SkillTypes.Ability => "能力",
             _ => "其它",

@@ -508,22 +508,22 @@ public partial class CharacterControl
         int drawCount = 0;
         int discardCount = 0;
         int exhaustedCount = 0;
+        PlayerCharacter displayPlayer = GetHandDisplayPlayer();
         bool canReadPile =
-            _activePlayer != null
-            && GodotObject.IsInstanceValid(_activePlayer)
-            && _activePlayer.State != Character.CharacterState.Dying
+            displayPlayer != null
             && BattleNode != null
             && GodotObject.IsInstanceValid(BattleNode);
         bool canOpenPile =
             canReadPile
+            && _activePlayer == displayPlayer
             && (!IsPileLockedByCardResolution() || CanReadPileWhileCardSelectionIsHidden())
             && !IsManualTargetSelectionPending();
 
         if (canReadPile)
         {
-            drawCount = BattleNode.GetDrawBattleCardPile(_activePlayer).Length;
-            discardCount = BattleNode.GetDiscardBattleCardPile(_activePlayer).Length;
-            exhaustedCount = BattleNode.GetExhaustedBattleCardPile(_activePlayer).Length;
+            drawCount = BattleNode.GetDrawBattleCardPile(displayPlayer).Length;
+            discardCount = BattleNode.GetDiscardBattleCardPile(displayPlayer).Length;
+            exhaustedCount = BattleNode.GetExhaustedBattleCardPile(displayPlayer).Length;
         }
 
         if (_drawPileButton != null)

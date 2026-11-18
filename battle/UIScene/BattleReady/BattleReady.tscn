@@ -163,6 +163,7 @@ material = SubResource("ShaderMaterial_ejwt2")
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("2_wa4fa")
+mouse_filter = 2
 
 [node name="BG" type="ColorRect" parent="." unique_id=335133166]
 material = SubResource("ShaderMaterial_e2bq2")
@@ -183,10 +184,10 @@ metadata/_edit_lock_ = true
 
 [node name="ModeSelectorRoot" type="Control" parent="." unique_id=389790671]
 anchors_preset = 0
-offset_left = 120.0
-offset_top = 288.0
-offset_right = 208.0
-offset_bottom = 568.0
+offset_left = 336.0
+offset_top = 228.0
+offset_right = 596.0
+offset_bottom = 292.0
 
 [node name="ModeTrack" type="PanelContainer" parent="ModeSelectorRoot" unique_id=504437248]
 layout_mode = 1
@@ -202,8 +203,8 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 80.0
-offset_bottom = 134.0
+offset_right = 124.0
+offset_bottom = 56.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_thumb")
 
@@ -225,35 +226,32 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="ModeButtons" type="VBoxContainer" parent="ModeSelectorRoot/ModeButtonsMargin" unique_id=210837710]
+[node name="ModeButtons" type="HBoxContainer" parent="ModeSelectorRoot/ModeButtonsMargin" unique_id=210837710]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
 [node name="TacticsModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=374647924]
-custom_minimum_size = Vector2(0, 126)
+custom_minimum_size = Vector2(112, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = SubResource("Theme_mode_button")
 theme_override_font_sizes/font_size = 20
 toggle_mode = true
-text = "技
-能
-一
-览"
+text = "技能一览"
 flat = true
+size_flags_vertical = 3
 
 [node name="TalentModeButton" type="Button" parent="ModeSelectorRoot/ModeButtonsMargin/ModeButtons" unique_id=821664343]
-custom_minimum_size = Vector2(0, 126)
+custom_minimum_size = Vector2(112, 48)
 layout_mode = 2
 size_flags_horizontal = 3
 theme = SubResource("Theme_mode_button")
 theme_override_font_sizes/font_size = 20
 toggle_mode = true
-text = "天
-赋
-树"
+text = "天赋树"
 flat = true
+size_flags_vertical = 3
 
 [node name="TacticsModeRoot" type="Control" parent="." unique_id=1957179782]
 layout_mode = 1
@@ -284,7 +282,7 @@ text = "技能一览"
 
 [node name="SkillContainer" type="ScrollContainer" parent="TacticsModeRoot" unique_id=972831189]
 layout_mode = 0
-offset_left = 248.0
+offset_left = 336.0
 offset_top = 292.0
 offset_right = 1448.0
 offset_bottom = 952.0
@@ -294,29 +292,29 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-theme_override_constants/margin_left = 34
-theme_override_constants/margin_top = 44
-theme_override_constants/margin_right = 34
-theme_override_constants/margin_bottom = 34
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 8
 
 [node name="SkillGrid" type="GridContainer" parent="TacticsModeRoot/SkillContainer/SkillScrollMargin" unique_id=1439102249]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 32
-theme_override_constants/v_separation = 35
+theme_override_constants/v_separation = 24
 columns = 4
 
 [node name="CharacterSelectRoot" type="Control" parent="." unique_id=603340522]
 anchors_preset = 0
-offset_left = 248.0
-offset_top = 168.0
-offset_right = 948.0
-offset_bottom = 268.0
+offset_left = 624.0
+offset_top = 196.0
+offset_right = 1448.0
+offset_bottom = 296.0
 
 [node name="CharacterSelectFrame" type="PanelContainer" parent="CharacterSelectRoot" unique_id=1033239150]
 layout_mode = 0
 offset_top = 32.0
-offset_right = 700.0
+offset_right = 824.0
 offset_bottom = 92.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_mode_track")
@@ -349,7 +347,7 @@ text = "UNIT SELECT // 人物选择"
 layout_mode = 0
 offset_left = 6.0
 offset_top = 32.0
-offset_right = 694.0
+offset_right = 818.0
 offset_bottom = 92.0
 mouse_filter = 2
 theme_override_constants/margin_left = 8
@@ -428,7 +426,7 @@ offset_top = 9.0
 offset_right = 98.0
 offset_bottom = 43.0
 theme_override_font_sizes/font_size = 24
-text = "天赋树"
+text = "天赋选择"
 
 [node name="TalentPointFrame" type="Panel" parent="TalentModeRoot" unique_id=719139115]
 visible = false
@@ -448,7 +446,7 @@ offset_right = 114.0
 offset_bottom = 39.0
 theme_override_colors/font_color = Color(0.9, 0.91, 0.95, 1)
 theme_override_font_sizes/font_size = 18
-text = "天赋点 0"
+text = "待选天赋 0"
 
 [node name="TalentTreeRoot" type="Control" parent="TalentModeRoot" unique_id=655128754]
 anchors_preset = 0
@@ -466,3 +464,5 @@ offset_left = 128.0
 offset_top = 200.0
 offset_right = 192.0
 offset_bottom = 264.0
+visible = false
+

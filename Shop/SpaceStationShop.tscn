@@ -4,13 +4,17 @@
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="2_bxft0"]
 [ext_resource type="Shader" uid="uid://d87jvnuogxn0" path="res://shader/UI/SpaceStationShopAccent.gdshader" id="3_shop_accent"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+[ext_resource type="Theme" path="res://Shop/ShopTheme.tres" id="4_shop_theme"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bxft0"]
 shader = ExtResource("2_bxft0")
 shader_parameter/color_top = Color(0.06, 0.065, 0.075, 1)
 shader_parameter/color_mid = Color(0.035, 0.038, 0.045, 1)
 shader_parameter/color_bot = Color(0.01, 0.012, 0.016, 1)
-shader_parameter/star_color = Color(0.82, 0.84, 0.9, 1)
-shader_parameter/line_color = Color(0.62, 0.65, 0.72, 0.2)
+shader_parameter/star_color = Color(0.32, 0.38, 0.44, 1)
+shader_parameter/line_color = Color(0.52, 0.65, 0.74, 0.035)
 shader_parameter/spacing = 160.0
 shader_parameter/density = 0.28
 shader_parameter/star_base_size = 2.0
@@ -138,6 +142,8 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_shop")
 metadata/_edit_lock_ = true
+theme = ExtResource("4_shop_theme")
+ShopSkillCardScale = 0.7
 
 [node name="BG" type="ColorRect" parent="." unique_id=794907811]
 z_index = -2
@@ -148,27 +154,42 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="." unique_id=185374979]
+[node name="Panel" type="Control" parent="." unique_id=185374979]
 layout_mode = 1
-anchors_preset = -1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+offset_left = 368.0
+offset_top = 112.0
+offset_right = -160.0
+offset_bottom = -64.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="Inner" type="PanelContainer" parent="Panel" unique_id=559504060]
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+visible = false
 
-[node name="MainLayout" type="HBoxContainer" parent="Panel" unique_id=1795017865]
-layout_mode = 2
-theme_override_constants/separation = 16
+[node name="MainLayout" type="Control" parent="Panel" unique_id=1795017865]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 104.0
+offset_bottom = -60.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="ModulePanel" type="PanelContainer" parent="Panel/MainLayout" unique_id=1199063594]
 custom_minimum_size = Vector2(130, 0)
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+visible = false
 
 [node name="ModuleBar" type="VBoxContainer" parent="Panel/MainLayout/ModulePanel" unique_id=1696917646]
 layout_mode = 2
@@ -263,61 +284,75 @@ toggle_mode = true
 text = "道具"
 flat = true
 
-[node name="ContentArea" type="ScrollContainer" parent="Panel/MainLayout" unique_id=1644216060]
-layout_mode = 2
+[node name="ContentArea" type="HBoxContainer" parent="Panel/MainLayout" unique_id=1644216060]
+layout_mode = 1
 size_flags_horizontal = 3
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
-vertical_scroll_mode = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 24
+mouse_filter = 2
 
 [node name="Sections" type="VBoxContainer" parent="Panel/MainLayout/ContentArea" unique_id=1644216061]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 18
+size_flags_vertical = 3
+mouse_filter = 2
 
 [node name="SkillColumn" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=735109421]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
 [node name="TopSpacer" type="Control" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=1644216068]
 layout_mode = 2
 mouse_filter = 2
+visible = false
 
 [node name="SkillTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=1644216063]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "技能模块"
+theme_override_font_sizes/font_size = 18
+text = "技能"
+theme_override_colors/font_color = Color(0.61, 0.72, 0.8, 1)
 
-[node name="SkillPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=2003971415]
-custom_minimum_size = Vector2(0, 760)
+[node name="SkillPanel" type="ScrollContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn" unique_id=2003971415]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+size_flags_vertical = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 1
+mouse_filter = 0
 
 [node name="Margin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel" unique_id=53835426]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 150
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 6
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+size_flags_horizontal = 3
 
 [node name="VBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin" unique_id=409129123]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 24
 
 [node name="SkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=1103841539]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 10
-theme_override_constants/v_separation = 10
-columns = 6
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 24
+columns = 5
+size_flags_vertical = 0
 
 [node name="BottomRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=255268829]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
+visible = false
 
 [node name="BottomSkillOffers" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow" unique_id=716338886]
 layout_mode = 2
@@ -326,56 +361,13 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
 
-[node name="InlineCatalogPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow" unique_id=505300537]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
-
-[node name="InlineCatalogMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel" unique_id=808432649]
-layout_mode = 2
-theme_override_constants/margin_left = 18
-theme_override_constants/margin_top = 18
-theme_override_constants/margin_right = 18
-theme_override_constants/margin_bottom = 18
-
-[node name="InlineCatalogVBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin" unique_id=1907034088]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="InlineCatalogTitle" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=1764662206]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.84, 0.85, 0.89, 0.9)
-theme_override_font_sizes/font_size = 18
-text = "遗物 / 道具"
-horizontal_alignment = 1
-
-[node name="InlineCatalogContent" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=182779431]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 16
-
-[node name="InlineCatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=411383537]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/h_separation = 18
-theme_override_constants/v_separation = 10
-columns = 3
-
-[node name="CardRemovalServiceSlot" type="Control" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox/BottomRow/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=203611191]
-custom_minimum_size = Vector2(140, 286)
-layout_mode = 2
-size_flags_vertical = 4
-
 [node name="SkillFooter" type="Label" parent="Panel/MainLayout/ContentArea/Sections/SkillColumn/SkillPanel/Margin/VBox" unique_id=746639838]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.7, 0.72, 0.77, 0.68)
 theme_override_font_sizes/font_size = 13
 text = "技能卡购买后会立即加入其所属角色的技能池。"
 horizontal_alignment = 1
+visible = false
 
 [node name="TopRow" type="HBoxContainer" parent="Panel/MainLayout/ContentArea/Sections" unique_id=1644216065]
 visible = false
@@ -466,10 +458,96 @@ theme_override_constants/h_separation = 40
 theme_override_constants/v_separation = 18
 columns = 3
 
-[node name="Decor" type="Control" parent="Panel" unique_id=1783009613]
+[node name="CatalogDivider" type="VSeparator" parent="Panel/MainLayout/ContentArea"]
 layout_mode = 2
 mouse_filter = 2
+
+[node name="CatalogScroll" type="ScrollContainer" parent="Panel/MainLayout/ContentArea"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="InlineCatalogPanel" type="PanelContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll" unique_id=505300537]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_inner")
+size_flags_vertical = 0
+
+[node name="InlineCatalogMargin" type="MarginContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel" unique_id=808432649]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 0
+
+[node name="InlineCatalogVBox" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin" unique_id=1907034088]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 20
+alignment = 0
+
+[node name="InlineCatalogTitle" type="Label" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=1764662206]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.61, 0.72, 0.8, 1)
+theme_override_font_sizes/font_size = 18
+text = "遗物"
+horizontal_alignment = 0
+
+[node name="InlineCatalogContent" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox" unique_id=182779431]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="InlineCatalogGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=411383537]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 16
+columns = 3
+size_flags_horizontal = 3
+
+[node name="PotionTitle" type="Label" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.61, 0.72, 0.8, 1)
+text = "道具"
+
+[node name="InlinePotionGrid" type="GridContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 16
+columns = 3
+
+[node name="ServiceDivider" type="ColorRect" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+mouse_filter = 2
+color = Color(0.65, 0.78, 0.86, 0.15)
+
+[node name="ServiceTitle" type="Label" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.61, 0.72, 0.8, 1)
+text = "服务"
+
+[node name="CardRemovalServiceSlot" type="VBoxContainer" parent="Panel/MainLayout/ContentArea/CatalogScroll/InlineCatalogPanel/InlineCatalogMargin/InlineCatalogVBox/InlineCatalogContent" unique_id=203611191]
+custom_minimum_size = Vector2(296, 68)
+layout_mode = 2
+size_flags_vertical = 0
+size_flags_horizontal = 3
+
+[node name="Decor" type="Control" parent="Panel" unique_id=1783009613]
+layout_mode = 1
+mouse_filter = 2
 metadata/_edit_lock_ = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="HeaderBackplate" type="ColorRect" parent="Panel/Decor" unique_id=335426685]
 visible = false
@@ -489,13 +567,13 @@ mouse_filter = 2
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 24.0
-offset_top = 18.0
-offset_right = -24.0
-offset_bottom = 54.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = -156.0
+offset_bottom = 48.0
 grow_horizontal = 2
 theme_override_constants/separation = 14
-alignment = 1
+alignment = 0
 
 [node name="HeaderLineLeft" type="ColorRect" parent="Panel/Decor/Header" unique_id=368917711]
 custom_minimum_size = Vector2(0, 2)
@@ -504,11 +582,12 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
 color = Color(0.72, 0.74, 0.8, 0.38)
+visible = false
 
 [node name="HeaderTitle" type="Label" parent="Panel/Decor/Header" unique_id=1180721113]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.93, 0.94, 0.97, 0.96)
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 32
 text = "空间站商店"
 
 [node name="HeaderLineRight" type="ColorRect" parent="Panel/Decor/Header" unique_id=1194127999]
@@ -518,6 +597,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
 color = Color(0.72, 0.74, 0.8, 0.38)
+visible = false
 
 [node name="CatalogTitle" type="Label" parent="Panel/Decor" unique_id=1593891395]
 layout_mode = 0
@@ -528,6 +608,7 @@ offset_bottom = 108.0
 theme_override_colors/font_color = Color(0.88, 0.89, 0.93, 0.92)
 theme_override_font_sizes/font_size = 20
 text = "补给目录"
+visible = false
 
 [node name="CatalogHint" type="Label" parent="Panel/Decor" unique_id=514831313]
 layout_mode = 0
@@ -538,31 +619,38 @@ offset_bottom = 122.0
 theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.62)
 theme_override_font_sizes/font_size = 14
 text = "通过模块按钮切换商店区块。"
+visible = false
 
 [node name="CloseButton" type="Button" parent="Panel/Decor" unique_id=1471276139]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -112.0
-offset_top = 70.0
-offset_right = -24.0
-offset_bottom = 114.0
+offset_left = -120.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 48.0
 grow_horizontal = 0
-theme = SubResource("Theme_button")
+theme = ExtResource("90_action_theme")
 text = "离开"
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="Panel/Decor/CloseButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="TopLine" type="ColorRect" parent="Panel/Decor" unique_id=1649198424]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 24.0
-offset_top = 140.0
-offset_right = -24.0
-offset_bottom = 142.0
+offset_left = 0.0
+offset_top = 80.0
+offset_right = 0.0
+offset_bottom = 81.0
 grow_horizontal = 2
 mouse_filter = 2
-color = Color(0.72, 0.74, 0.8, 0.22)
+color = Color(0.65, 0.78, 0.86, 0.18)
 
 [node name="FooterLine" type="ColorRect" parent="Panel/Decor" unique_id=1844671991]
 layout_mode = 1
@@ -570,10 +658,10 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -42.400024
-offset_right = -24.0
-offset_bottom = -40.400024
+offset_left = 0.0
+offset_top = -38.0
+offset_right = 0.0
+offset_bottom = -37.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
@@ -585,15 +673,16 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 54.600006
-offset_top = -38.0
-offset_right = -30.0
-offset_bottom = -18.0
+offset_left = 0.0
+offset_top = -30.0
+offset_right = 0.0
+offset_bottom = -6.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_colors/font_color = Color(0.74, 0.76, 0.81, 0.64)
 theme_override_font_sizes/font_size = 14
-text = "浏览空间站补给目录"
+text = ""
+text_overrun_behavior = 3
 
 [node name="CornerTL_H" type="ColorRect" parent="Panel/Decor" unique_id=366967958]
 layout_mode = 0
@@ -603,6 +692,7 @@ offset_right = 46.0
 offset_bottom = 14.0
 mouse_filter = 2
 color = Color(0.74, 0.76, 0.82, 0.42)
+visible = false
 
 [node name="CornerTL_V" type="ColorRect" parent="Panel/Decor" unique_id=730699794]
 layout_mode = 0
@@ -612,6 +702,7 @@ offset_right = 14.0
 offset_bottom = 46.0
 mouse_filter = 2
 color = Color(0.74, 0.76, 0.82, 0.42)
+visible = false
 
 [node name="CornerTR_H" type="ColorRect" parent="Panel/Decor" unique_id=1024201182]
 layout_mode = 1
@@ -625,6 +716,7 @@ offset_bottom = 14.0
 grow_horizontal = 0
 mouse_filter = 2
 color = Color(0.74, 0.76, 0.82, 0.42)
+visible = false
 
 [node name="CornerTR_V" type="ColorRect" parent="Panel/Decor" unique_id=2127359639]
 layout_mode = 1
@@ -638,6 +730,7 @@ offset_bottom = 46.0
 grow_horizontal = 0
 mouse_filter = 2
 color = Color(0.74, 0.76, 0.82, 0.42)
+visible = false
 
 [node name="CornerBL_H" type="ColorRect" parent="Panel/Decor" unique_id=379827329]
 layout_mode = 1
@@ -651,6 +744,7 @@ offset_bottom = -26.0
 grow_vertical = 0
 mouse_filter = 2
 color = Color(0.64, 0.66, 0.72, 0.3)
+visible = false
 
 [node name="CornerBL_V" type="ColorRect" parent="Panel/Decor" unique_id=1668538783]
 layout_mode = 1
@@ -664,6 +758,7 @@ offset_bottom = -26.0
 grow_vertical = 0
 mouse_filter = 2
 color = Color(0.64, 0.66, 0.72, 0.3)
+visible = false
 
 [node name="CornerBR_H" type="ColorRect" parent="Panel/Decor" unique_id=180103764]
 layout_mode = 1
@@ -680,6 +775,7 @@ grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
 color = Color(0.64, 0.66, 0.72, 0.3)
+visible = false
 
 [node name="CornerBR_V" type="ColorRect" parent="Panel/Decor" unique_id=753573654]
 layout_mode = 1
@@ -696,3 +792,4 @@ grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
 color = Color(0.64, 0.66, 0.72, 0.3)
+visible = false

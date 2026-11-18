@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Mariya : PlayerCharacter
 {
-    public const int BattleEndPassiveHeal = 3;
+    public const int BattleEndPassiveHeal = 2;
     public const int BattleEndPassiveUpgradeHeal = 5;
 
     public const string PassiveNameText = "治愈";
@@ -66,11 +66,20 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.mariya.name", "玛瑞娅"),
         PassiveName = I18n.Tr("character.mariya.passive.name", global::Mariya.PassiveNameText),
         PassiveDescription = global::Mariya.PassiveDescriptionText,
-        LifeMax = 34,
+        LifeMax = 39,
         Power = 3,
-        Survivability = 2,
+        Survivability = 1,
         CharacterScenePath = "res://character/PlayerCharacter/Mariya/Mariya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Mariya/MariyaPortrait.png",
+        // 初始牌组：重复填写同一 SkillID 可配置多张同名卡。
+        GainedSkills =
+        [
+            SkillID.BasicAttack,
+            SkillID.BasicAttack,
+            SkillID.BasicDefense,
+            SkillID.BasicDefense,
+            SkillID.MariyaBasicSpecial,
+        ],
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.MariyaBasicSpecial],
     };
 }

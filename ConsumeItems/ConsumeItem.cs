@@ -54,7 +54,7 @@ public partial class ConsumeItem
             4,
             PropertyType: PropertyType.Survivability
         ),
-        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 40),
+        [ItemID.Explosion] = new("爆裂弹", ItemEffectType.Damage, 30),
         [ItemID.ElectromagneticInterference] = new(
             "电磁干扰",
             ItemEffectType.Buff,
@@ -136,7 +136,11 @@ public partial class ConsumeItem
         return true;
     }
 
-    public async Task UseEffect(Battle battle, Control sourceControl = null)
+    public Task UseEffect(Battle battle, Control sourceControl = null) => battle != null
+        ? battle.ExecuteBattleEffectAsync(() => UseEffectCoreAsync(battle, sourceControl), "战斗道具")
+        : UseEffectCoreAsync(battle, sourceControl);
+
+    private async Task UseEffectCoreAsync(Battle battle, Control sourceControl)
     {
         await PlayItemSourcePulseAsync(sourceControl ?? Icon);
 

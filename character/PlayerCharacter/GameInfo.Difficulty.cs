@@ -207,8 +207,6 @@ public static partial class GameInfo
     {
         difficulty = Math.Clamp(difficulty, MinDifficulty, MaxDifficulty);
 
-        if (difficulty >= 4)
-            yield return GameDifficultyPenalty.BattleStartDaze;
         if (difficulty >= 5)
             yield return GameDifficultyPenalty.ReducedRegionLifeRecovery;
     }
@@ -219,7 +217,7 @@ public static partial class GameInfo
         {
             GameDifficultyBonus.RandomRelics => "开局1随机遗物",
             GameDifficultyBonus.RandomTalentPoints =>
-                "开局随机2名角色各+1天赋点",
+                "开局随机2名角色各获得一次天赋二选一",
             GameDifficultyBonus.ElectricityCoin => "开局+100电力币",
             GameDifficultyBonus.PlayerStats =>
                 "全员力量/生存+1，血量+3",

@@ -32,7 +32,24 @@ public partial class CharacterControl
             ScheduleCardHoverRefresh();
     }
 
-    private void RefreshTurnUi()
+    private PlayerCharacter GetHandDisplayPlayer()
+    {
+        if (_activePlayer == null || !GodotObject.IsInstanceValid(_activePlayer))
+            return null;
+
+        if (_activePlayer.State != Character.CharacterState.Dying)
+            return _activePlayer;
+
+        // The shared hand outlives its turn actor. Keep that actor for action lifecycle checks.
+        return BattleNode?.ResolveTeamCardContextPlayer();
+    }
+
+    public void RefreshHandAfterDyingRemoval()
+    {
+        RefreshTurnUi(restoreSurvivingHand: true);
+    }
+
+    private void RefreshTurnUi(bool restoreSurvivingHand = false)
     {
         if (_turnUiRefreshQueued)
             _turnUiRefreshVersion++;
@@ -41,16 +58,13 @@ public partial class CharacterControl
         if (!_uiBuilt)
             return;
 
-        bool updateLayout = !_suppressNextRefreshLayout;
+        bool updateLayout = restoreSurvivingHand || !_suppressNextRefreshLayout;
         _suppressNextRefreshLayout = false;
         Array.Copy(_displayedSkills, _previousDisplayedSkillsSnapshot, _displayedSkills.Length);
         CaptureCardSlotPositions(_previousSlotPositionsSnapshot);
         CaptureCardSlotRotations(_previousSlotRotationsSnapshot);
-        if (
-            _activePlayer == null
-            || !GodotObject.IsInstanceValid(_activePlayer)
-            || _activePlayer.State == Character.CharacterState.Dying
-        )
+        PlayerCharacter displayPlayer = GetHandDisplayPlayer();
+        if (displayPlayer == null)
         {
             _handLayoutSyncPending = false;
             ClearCardEnergyPreview();
@@ -108,16 +122,23 @@ public partial class CharacterControl
         bool manualTargetSelectionPending = IsManualTargetSelectionPending();
         bool pileSelectionViewMode =
             _isPileCardSelectionActive && _pileOverlayContentTemporarilyHidden;
+        // Target selection blocks clicks, but does not change which hand cards are playable.
+        bool canShowHandPlayableHighlights =
+            _activePlayer.State != Character.CharacterState.Dying
+            && !_endTurnQueued
+            && BattleNode?.IsResolvingActionCards != true
+            && !_isPileCardSelectionActive;
         bool canInteractWithHandCards =
-            !_endTurnQueued
-            && !_isPileCardSelectionActive
-            && !manualTargetSelectionPending;
+            canShowHandPlayableHighlights && !manualTargetSelectionPending;
 
         for (int i = 0; i < _cards.Length; i++)
         {
             Skill skill = hand != null && i < hand.Length ? hand[i] : null;
             SkillCard card = skill != null ? GetOrCreateHandCardForSkill(skill, i) : _cards[i];
             bool isLiftedSkill = skill != null && ReferenceEquals(skill, _liftedCardSkill);
+            bool isArrowSelectedCard =
+                _manualTargetArrowSelectionActive
+                && ReferenceEquals(card, _manualTargetArrowPlayedCard);
 
             if (skill != null && card != null && !isLiftedSkill)
                 AssignHandCardToSlot(card, i);
@@ -142,7 +163,7 @@ public partial class CharacterControl
                 card.Visible = true;
                 SetCardButtonInputEnabled(card, false);
                 card.HideHoverUi();
-                card.SetPlayableHighlight(false, instant: true);
+                card.SetPlayableHighlight(isArrowSelectedCard, instant: true);
                 continue;
             }
 
@@ -164,8 +185,8 @@ public partial class CharacterControl
             if (card == null)
                 continue;
 
-            if (skill.OwnerCharater == null || !GodotObject.IsInstanceValid(skill.OwnerCharater))
-                skill.OwnerCharater = _activePlayer;
+            if (!skill.IsStatusCard && (skill.OwnerCharater == null || !GodotObject.IsInstanceValid(skill.OwnerCharater)))
+                skill.OwnerCharater = displayPlayer;
 
             bool isNewCardForHand =
                 !_cardDisplayInitialized[i] || !ReferenceEquals(_displayedSkills[i], skill);
@@ -181,12 +202,28 @@ public partial class CharacterControl
                 && _discardSelectionOriginalVisualHandIndexes.Contains(i);
             bool hideForDiscardReturn =
                 _discardSelectionReturningHandIndexes.Contains(i) && !isDiscardReturnFlying;
+            bool restoreSurvivingCard =
+                restoreSurvivingHand
+                && !isLiftedSkill
+                && !isOriginalSelectionVisual
+                && !isDiscardReturnFlying
+                && !isDiscardFlightInProgress
+                && !isDiscardReturnPending;
+            if (restoreSurvivingCard)
+            {
+                // These cards never left the hand. Do not wait for next turn's draw layout
+                // to reveal them after the dying owner's cards have been removed.
+                CancelDrawEntryPreview(i);
+                ClearDrawEntryState(i, revealCard: true);
+                _customDrawEntryStartPositions.Remove(i);
+            }
             bool movedFromExistingHandCard = previousSlotIndex >= 0;
             bool movedFromPendingReorder = PreparePendingHandReorderMove(i, skill);
             bool movedFromAnotherSlot =
                 isNewCardForHand && !movedFromPendingReorder && movedFromExistingHandCard;
             bool shouldAnimate =
                 isNewCardForHand
+                && !restoreSurvivingCard
                 && !isLiftedSkill
                 && !movedFromPendingReorder
                 && !movedFromAnotherSlot
@@ -194,10 +231,11 @@ public partial class CharacterControl
                 && !isDiscardFlightInProgress
                 && !isDiscardReturnPending;
             bool shouldResetDisplayState =
-                !isLiftedSkill
-                && !isDiscardReturnFlying
-                && !movedFromExistingHandCard
-                && (!card.Visible || isNewCardForHand);
+                restoreSurvivingCard
+                || (!isLiftedSkill
+                    && !isDiscardReturnFlying
+                    && !movedFromExistingHandCard
+                    && (!card.Visible || isNewCardForHand));
 
             if (shouldAnimate)
                 PrepareNewHandCardSlotForDrawEntry(i);
@@ -259,7 +297,11 @@ public partial class CharacterControl
                 }
 
                 card.SetHoverUiEnabled(!_isDiscardSelectionCompleting);
-                SetCardButtonInputEnabled(card, !_isDiscardSelectionCompleting);
+                SetCardButtonInputEnabled(
+                    card,
+                    !_isDiscardSelectionCompleting
+                        && _activePlayer.State != Character.CharacterState.Dying
+                );
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
@@ -279,17 +321,16 @@ public partial class CharacterControl
                 card.SetHoverUiEnabled(true);
                 SetCardButtonInputEnabled(card, false);
                 card.Modulate = SkillButton.EnabledModulate;
-                card.SetEnergyCostAffordable(skill.CanUseCurrentEnergy());
+                card.SetEnergyCostAffordable(skill.CanUseCurrentEnergy(displayPlayer));
                 card.SetPlayableHighlight(false, instant: true);
                 continue;
             }
 
-            bool isArrowSelectedCard =
-                _manualTargetArrowSelectionActive && i == _manualTargetArrowCardIndex;
-            bool canUseCurrentEnergy = skill.CanUseCurrentEnergy();
+            bool canUseCurrentEnergy = skill.CanUseCurrentEnergy(displayPlayer);
             bool isDiscardSelectionCandidate =
                 _isDiscardSelectionActive
                 && !_isDiscardSelectionCompleting
+                && _activePlayer.State != Character.CharacterState.Dying
                 && skill != null
                 && !IsCardDrawEntryInputBlocked(i);
             bool canInteract =
@@ -297,22 +338,19 @@ public partial class CharacterControl
                     ? i == _liftedCardIndex && canInteractWithHandCards
                     : (isDiscardSelectionCandidate || canInteractWithHandCards)
                         && !IsCardDrawEntryInputBlocked(i);
-            bool temporarilyBlockedByLift =
-                _liftedCardIndex != -1
-                && i != _liftedCardIndex
-                && canInteractWithHandCards
-                && !IsCardCommitted(i)
-                && !IsCardDrawEntryInputBlocked(i);
             card.SetHoverUiEnabled(
                 !_manualTargetArrowSelectionActive
                 && (i == _liftedCardIndex || _liftedCardIndex == -1)
             );
             bool shouldShowPlayableHighlight =
-                !_isDiscardSelectionActive
-                && !isArrowSelectedCard
-                && (canInteract || temporarilyBlockedByLift)
-                && skill.CanBePlayed
-                && canUseCurrentEnergy;
+                isArrowSelectedCard
+                || (
+                    !_isDiscardSelectionActive
+                    && canShowHandPlayableHighlights
+                    && !IsCardDrawEntryInputBlocked(i)
+                    && skill.CanBePlayed
+                    && canUseCurrentEnergy
+                );
             SetCardButtonInputEnabled(card, canInteract && !isArrowSelectedCard);
             card.Modulate = SkillButton.EnabledModulate;
             card.SetEnergyCostAffordable(canUseCurrentEnergy);
@@ -356,16 +394,21 @@ public partial class CharacterControl
                     || _endTurnQueued
                     || IsManualTargetSelectionPending();
             }
+            _endTurnButton.Disabled |= _activePlayer.State == Character.CharacterState.Dying;
         }
 
         UpdatePileButtons();
         SyncDiscardSelectionHideButton();
 
+        // Selection effects and dying-card removal must update the hand even during turn-end freeze.
+        bool canUpdateHandLayout = restoreSurvivingHand
+            || !_freezeHandLayout || _isDiscardSelectionActive || _isPileCardSelectionActive;
         bool delayHandLayoutForShuffleDraw =
-            updateLayout && !_freezeHandLayout && ShouldDelayHandLayoutForShuffleDraw();
+            !restoreSurvivingHand && updateLayout && canUpdateHandLayout
+                && ShouldDelayHandLayoutForShuffleDraw();
         if (delayHandLayoutForShuffleDraw)
             ScheduleHandLayoutAfterShuffleDrawDelay();
-        else if (updateLayout && !_freezeHandLayout && !manualTargetSelectionPending)
+        else if (updateLayout && canUpdateHandLayout && !manualTargetSelectionPending)
             LayoutActionCards();
         if (
             _isDiscardSelectionActive

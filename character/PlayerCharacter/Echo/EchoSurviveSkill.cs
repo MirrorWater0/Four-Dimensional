@@ -16,7 +16,7 @@ public partial class SoundBarrier : Skill
             this,
             AddCardsToHandStep(
                 SkillID.DefenceFocus,
-                V("DefenceFocusCount", 3),
+                V("DefenceFocusCount"),
                 TargetReference.ManualFriendly
             )
         );
@@ -26,9 +26,8 @@ public partial class SoundBarrier : Skill
 public partial class RelayShift : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override int EnergyCost => Cost(2);
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "后撤步";
 
@@ -36,24 +35,22 @@ public partial class RelayShift : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(V("BaseBlock", 7)),
-            CarryStep(target: TargetReference.Previous, skillIndex: 2),
-            CarryStep(target: TargetReference.Next, skillIndex: 2)
+            BlockStep(V("BaseBlock"), multiplier: V("Multiplier")),
+            TriggerInstalledCardsStep(
+                target: TargetReference.Next
+            )
         );
     }
 }
 
-
-
 public partial class DeflectionShield : Skill
 {
-    private const int BaseBlock = 7;
-    private const int DamageImmuneStacks = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int DamageImmuneStacks => V(nameof(DamageImmuneStacks));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "偏折之盾";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -62,24 +59,34 @@ public partial class DeflectionShield : Skill
             BlockStep(
                 target: TargetReference.Self,
                 baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1)
+                multiplier: V("Multiplier")
             ),
-            ApplyBuffFriendly(
-                buffName: Buff.BuffName.DamageImmune,
-                stacks: DamageImmuneStacks,
-                target: TargetReference.Next
+            ConditionStep(
+                IsEvenTurn,
+                "当前为偶数回合",
+                ApplyBuffFriendly(
+                    buffName: Buff.BuffName.DamageImmune,
+                    stacks: DamageImmuneStacks,
+                    target: TargetReference.Next
+                )
             )
         );
+    }
+
+    private bool IsEvenTurn()
+    {
+        int turnCount = OwnerCharater?.BattleNode?.ElapsedTurnCount ?? 0;
+        return turnCount > 0 && turnCount % 2 == 0;
     }
 }
 
 public partial class ResonantWard : Skill
 {
-    private const int DebuffImmunityStacks = 2;
-    private const int BaseBlock = 7;
-    public override int EnergyCost => Cost(2);
+    private int DebuffImmunityStacks => V(nameof(DebuffImmunityStacks));
+    private int BaseBlock => V(nameof(BaseBlock));
+
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "电磁排斥";
 
@@ -87,11 +94,11 @@ public partial class ResonantWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DebuffImmunity,
                 stacks: DebuffImmunityStacks,
-                target: TargetReference.ManualFriendly
+                target: TargetReference.Self
             )
         );
     }
@@ -100,11 +107,10 @@ public partial class ResonantWard : Skill
 public partial class DissonantField : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
-    private const int WeakenStacks = 2;
-    public override int EnergyCost => Cost(2);
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int WeakenStacks => V(nameof(WeakenStacks));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "失谐力场";
 
@@ -114,13 +120,13 @@ public partial class DissonantField : Skill
             this,
             BlockStep(
                 baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1),
-                target: TargetReference.ManualFriendly
+                multiplier: V("Multiplier"),
+                target: TargetReference.Self
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
-                target: HostileTargetReference.All
+                target: HostileTargetReference.RandomPreview
             )
         );
     }
@@ -128,27 +134,26 @@ public partial class DissonantField : Skill
 
 public partial class Shelter : Skill
 {
-    private const int BaseBlock = 5;
-    private const int CardRefreshStacks = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int CardRefreshStacks => V(nameof(CardRefreshStacks));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "护幕";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             BlockStep(
-                target: TargetReference.ManualFriendly,
+                target: TargetReference.Self,
                 baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1)
+                multiplier: V("Multiplier")
             ),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraDraw,
                 stacks: CardRefreshStacks,
-                target: TargetReference.Others
+                target: TargetReference.Self
             )
         );
     }
@@ -156,10 +161,9 @@ public partial class Shelter : Skill
 
 public partial class SoundPickup : Skill
 {
-    private const int BaseBlock = 7;
-    private const int DrawPilePickCount = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "拾音";
 
@@ -170,19 +174,19 @@ public partial class SoundPickup : Skill
             BlockStep(
                 target: TargetReference.Self,
                 baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1)
+                multiplier: V("Multiplier")
             ),
-            SelectDrawPileCardsToHandStep(DrawPilePickCount)
+            TriggerRightActionCardStep()
         );
     }
 }
 
 public partial class LingeringTone : Skill
 {
-    private const int BaseBlock = 7;
-    private const int HandKeywordCount = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int HandKeywordCount => V(nameof(HandKeywordCount));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "留音";
 
@@ -191,9 +195,9 @@ public partial class LingeringTone : Skill
         return new SkillPlan(
             this,
             BlockStep(
-                target: TargetReference.ManualFriendly,
+                target: TargetReference.Self,
                 baseBlock: BaseBlock,
-                multiplier: V("Multiplier", 1)
+                multiplier: V("Multiplier")
             ),
             SelectCardsAddKeywordStep(
                 BattleCardKeyword.Retain,

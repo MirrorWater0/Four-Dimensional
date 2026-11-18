@@ -62,6 +62,7 @@ public partial class CharacterControl
 
     private void UpdateLiftedCardPosition(float delta)
     {
+        BattleNode?.ActionCardsUi?.ShowReplacementPreview(_liftedCardIndex >= 0 ? _liftedCardSkill : null);
         if (_liftedCardIndex == -1)
         {
             UpdateProcessState();
@@ -368,7 +369,21 @@ public partial class CharacterControl
                 card.HoverHint != null
                 && GodotObject.IsInstanceValid(card.HoverHint)
                 && card.HoverHint.Visible;
-            if (!hasTrackedHover && !hasVisibleHover)
+            // Entry cleanup can hide the hint while an old hover transform remains.
+            // Only inspect cards in their ordinary hand slots, not detached visuals.
+            bool hasOrphanedTransform =
+                card.Visible
+                && card.GetParent() == _cardSlots[i]
+                && !IsCardCommitted(i)
+                && !(_manualTargetArrowSelectionActive && i == _manualTargetArrowCardIndex)
+                && !IsDiscardSelectionReturnSlot(i)
+                && !_discardSelectionFlyingToDiscardHandIndexes.Contains(i)
+                && !_discardSelectionOriginalVisualHandIndexes.Contains(i)
+                && (
+                    card.Position.LengthSquared() > 0.25f
+                    || card.Scale.DistanceSquaredTo(BattleCardScale) > 0.0001f
+                );
+            if (!hasTrackedHover && !hasVisibleHover && !hasOrphanedTransform)
                 continue;
 
             ClearHandCardHoverMotion(i, instant: false);
@@ -965,6 +980,8 @@ public partial class CharacterControl
         while (_queuedCardPlays.Count > 0)
         {
             QueuedCardPlay play = _queuedCardPlays.Dequeue();
+            if (play?.IsDrawPileCard == true)
+                ResolveBattlePileAfterQueuedPlay(play);
             play?.Skill?.RefundDisplayedEnergy();
             CompleteQueuedPlay(play, succeeded: false);
             QueueFreeQueuedPlayCard(play);
@@ -976,6 +993,8 @@ public partial class CharacterControl
         while (_queuedFollowUpCardPlays.Count > 0)
         {
             QueuedCardPlay play = _queuedFollowUpCardPlays.Dequeue();
+            if (play?.IsDrawPileCard == true)
+                ResolveBattlePileAfterQueuedPlay(play);
             play?.Skill?.RefundDisplayedEnergy();
             CompleteQueuedPlay(play, succeeded: false);
             QueueFreeQueuedPlayCard(play);

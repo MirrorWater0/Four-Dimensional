@@ -3,6 +3,9 @@
 [ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="SceneTheme"]
 [ext_resource type="PackedScene" path="res://battle/UIScene/PileSection.tscn" id="Section"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [node name="PileOverlayRoot" type="Control" unique_id=744976890]
 layout_mode = 3
 anchors_preset = 15
@@ -90,6 +93,13 @@ z_index = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "隐藏"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="PileHideButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="PileConfirmButton" type="Button" parent="." unique_id=1316220136]
 visible = false
@@ -107,3 +117,10 @@ z_index = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 22
 text = "确认"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="PileConfirmButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1

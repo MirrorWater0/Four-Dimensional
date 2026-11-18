@@ -3,11 +3,11 @@ public partial class MariyaSpecialSkill { }
 public partial class QuietVeil : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int InvisibleStacks = 2;
-    private const int SurvivabilityGain = 2;
+    private int InvisibleStacks => V(nameof(InvisibleStacks));
+    private int SurvivabilityGain => V(nameof(SurvivabilityGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
-    public override int EnergyCost => Cost(0);
+
     public override string SkillName { get; set; } = "静影庇护";
 
     protected override SkillPlan BuildPlan()
@@ -27,9 +27,8 @@ public partial class QuietVeil : Skill
 public partial class TouchOfGod : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 0;
-    private const int DivinityStacks = 1;
-    public override int EnergyCost => Cost(1);
+
+    private int DivinityStacks => V(nameof(DivinityStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -51,8 +50,7 @@ public partial class TouchOfGod : Skill
 public partial class EnergyTransfer : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int AllyEnergyGain = 3;
-    public override int EnergyCost => Cost(1);
+    private int AllyEnergyGain => V(nameof(AllyEnergyGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -67,13 +65,11 @@ public partial class EnergyTransfer : Skill
 public partial class RearlineRevival : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseRebirthHeal = 4;
+    private int BaseRebirthHeal => V(nameof(BaseRebirthHeal));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "死者苏生";
-    public override int EnergyCost => Cost(3);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -86,7 +82,7 @@ public partial class RearlineRevival : Skill
             ),
             ApplyBuffFriendly(
                 Buff.BuffName.RebirthI,
-                V("RebirthIStacks", 2),
+                V("RebirthIStacks"),
                 TargetReference.HealKey
             )
         );
@@ -96,14 +92,12 @@ public partial class RearlineRevival : Skill
 public partial class GroupHealing : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override bool ExhaustsAfterUse => true;
 
-    private const int BaseHeal = 8;
+    private int BaseHeal => V(nameof(BaseHeal));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "圣光沐浴";
-    public override int EnergyCost => Cost(3);
 
     protected override SkillPlan BuildPlan()
     {
@@ -122,14 +116,12 @@ public partial class GroupHealing : Skill
 public partial class Ragnarok : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int PowerGain = 3;
-    private const int DivinityStacks = 3;
+    private int PowerGain => V(nameof(PowerGain));
+    private int DivinityStacks => V(nameof(DivinityStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
-    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "诸神黄昏";
-    public override int EnergyCost => Cost(3);
 
     protected override SkillPlan BuildPlan()
     {
@@ -150,11 +142,10 @@ public partial class SacredLink : Skill
     public override SkillRarity Rarity => SkillRarity.Rare;
     public override SkillTypes SkillType => SkillTypes.Special;
 
-    public override string SkillName { get; set; } = I18n.Tr("skill.sacred_link.name", "神圣连携");
-    public override int EnergyCost => Cost(1);
+    public override string SkillName { get; set; } = I18n.Tr("skill.sacred_link.name", "神圣号令");
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, CarryStep(target: TargetReference.ManualOthers, skillIndex: 4));
+        return new SkillPlan(this, PlayDrawPileCardStep(SkillTypes.none));
     }
 }

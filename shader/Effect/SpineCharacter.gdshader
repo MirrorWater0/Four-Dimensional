@@ -1,4 +1,5 @@
 shader_type canvas_item;
+#include "res://shader/Effect/CharacterArrivalBody.gdshaderinc"
 
 // 这里我们需要手动设置角色的估计高度（像素单位）
 // 比如你的角色在 Godot 里大约高 200 像素
@@ -37,5 +38,5 @@ void fragment() {
 
     vec3 final_rgb = mix(color.rgb, beam_color.rgb * 4.0, line_effect);
     
-    COLOR = vec4(final_rgb, color.a * alpha_mask)*modulate;
+    COLOR = arrival_body(vec4(final_rgb, color.a * alpha_mask), normalized_y, arrival_phase) * modulate;
 }

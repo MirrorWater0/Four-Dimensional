@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://c0aaqkawj4wtm"]
+
+[ext_resource type="Script" uid="uid://c5nau2v6b8qda" path="res://battle/Effect/DamageImmuneShieldVfx.cs" id="1_script"]
+[ext_resource type="Shader" uid="uid://b2r7e4xas6nka" path="res://shader/Effect/DamageImmuneShield.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_back"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+shader_parameter/shield_color = Color(0.22, 0.95, 0.65, 1)
+shader_parameter/rim_color = Color(0.78, 1, 0.94, 1)
+shader_parameter/canvas_size = Vector2(300, 400)
+shader_parameter/presence = 1.0
+shader_parameter/depth_layer = -1.0
+shader_parameter/effect_time = 0.0
+shader_parameter/rotation_speed = 0.85
+shader_parameter/panel_arc = 1.08
+shader_parameter/panel_height = 0.46
+shader_parameter/impact_age = 0.55
+shader_parameter/impact_origin = Vector2(0.92, 0.58)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_front"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+shader_parameter/shield_color = Color(0.22, 0.95, 0.65, 1)
+shader_parameter/rim_color = Color(0.78, 1, 0.94, 1)
+shader_parameter/canvas_size = Vector2(300, 400)
+shader_parameter/presence = 1.0
+shader_parameter/depth_layer = 1.0
+shader_parameter/effect_time = 0.0
+shader_parameter/rotation_speed = 0.85
+shader_parameter/panel_arc = 1.08
+shader_parameter/panel_height = 0.46
+shader_parameter/impact_age = 0.55
+shader_parameter/impact_origin = Vector2(0.92, 0.58)
+
+[node name="DamageImmuneShieldVfx" type="Node2D" unique_id=1891149422]
+script = ExtResource("1_script")
+RotationSpeed = 0.41000000000000014
+
+[node name="Back" type="ColorRect" parent="." unique_id=234285599]
+z_index = -1
+material = SubResource("ShaderMaterial_back")
+offset_left = -144.0
+offset_top = -240.0
+offset_right = 156.0
+offset_bottom = 160.0
+mouse_filter = 2
+
+[node name="Front" type="ColorRect" parent="." unique_id=144323614]
+z_index = 1
+material = SubResource("ShaderMaterial_front")
+offset_left = -144.0
+offset_top = -240.0
+offset_right = 156.0
+offset_bottom = 160.0
+mouse_filter = 2

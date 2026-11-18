@@ -1,8 +1,0 @@
-﻿{
-    "enemies":  {
-                    "FearElite":  {
-                                      "Name":  "恐惧",
-                                      "MaxLife":  270
-                                  }
-                }
-}

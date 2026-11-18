@@ -176,7 +176,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
                 ),
                 new TutorialStep(
                     "结束回合",
-                    "点击结束回合，或按 E 快捷结束。\n\n我方角色会按站位依次普通攻击，每人默认1次。基础攻击牌会增加本回合的临时攻击次数；两种次数会显示在角色状态栏。攻击结算后，临时次数清零，弃掉手牌，再进入敌方行动。",
+                    "点击结束回合，或按 E 快捷结束。\n\n已安装的行动牌按角色站位执行，每个角色的牌从右到左结算，然后弃掉手牌并进入敌方行动。角色攻击牌和生存牌打出后会安装，后续每轮自动执行；消耗 X 的牌执行 X 次后移除。无色牌仍在打出时立即生效。",
                     battle => battle.CharacterControl?.EndTurnButton
                 ),
                 new TutorialStep(
@@ -223,7 +223,7 @@ public partial class BattleTutorialOverlay : CanvasLayer
     private static HBoxContainer GetItemContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.ItemContainer;
 
-    private static VFlowContainer GetRelicContainer(Battle battle) =>
+    private static Container GetRelicContainer(Battle battle) =>
         battle?.MapNode?.PlayerResourceState?.RelicContainer;
 
     private static Control GetCoreEnergyControl(Battle battle) =>

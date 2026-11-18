@@ -126,6 +126,7 @@ public partial class CharacterControl
     private Character[] _manualTargetArrowTargets = Array.Empty<Character>();
     private Character _manualTargetArrowOwner;
     private Character _manualTargetArrowHoveredTarget;
+    private Vector2? _manualTargetArrowLastPointerPosition;
     private Skill _manualTargetArrowSkill;
     private int _manualTargetArrowCardIndex = -1;
     private bool _manualTargetArrowSelectionActive;
@@ -153,27 +154,14 @@ public partial class CharacterControl
     private readonly List<Skill> _skillRemovalBuffer = new();
     private readonly List<SkillCard> _handCardReturnBuffer = new();
     private readonly List<int> _handCardInputPriorityOrderBuffer = new(HandCardCapacity);
-    private readonly List<Task> _endTurnHandDiscardAnimationTasks = new(HandCardCapacity);
-    private readonly List<(int Index, SkillCard Card)> _endTurnHandDiscardEntries =
-        new(HandCardCapacity);
-    private readonly List<(int Index, SkillCard Card)> _endTurnHandExhaustEntries =
-        new(HandCardCapacity);
     private readonly List<(Skill Skill, PlayerCharacter Owner, SkillCard Card)> _discardSelectionEntryBuffer =
         new(HandCardCapacity);
     private readonly List<Task> _discardSelectionFlyTasks = new(HandCardCapacity);
     private readonly Dictionary<SkillCard, Tween> _discardSelectionArrangeTweens = new();
     private readonly Dictionary<SkillCard, (Vector2 Position, Vector2 Scale, bool UsesOriginalHandVisual)> _discardSelectionArrangeTargets =
         new();
-    private readonly List<(
-        Character Target,
-        Character Source,
-        Skill StatusSkill,
-        BattleCardPileTarget PileTarget
-    )> _statusInsertExpandedEntries = new();
-    private readonly Dictionary<SkillID, Skill> _statusInsertSkillCache = new();
-    private readonly List<StatusInsertPreviewCard> _statusInsertPreviewCards = new();
-    private readonly List<Task> _statusInsertFlyTasks = new();
-    private bool _statusInsertAnimationBuffersInUse;
+    private ulong _statusInsertCardCreationFrame;
+    private int _statusInsertCardsCreatedThisFrame;
     private readonly List<SkillCard> _statusExhaustPreviewCards = new();
     private readonly List<SkillCard> _ownedExhaustPreviewCards = new();
     private readonly List<SkillCard> _dyingOwnedExhaustPreviewCards = new();
@@ -334,6 +322,7 @@ public partial class CharacterControl
     private sealed class QueuedCardPlay
     {
         public Character Actor { get; init; }
+        public Character OriginalOwner { get; init; }
         public int Index { get; init; }
         public Skill Skill { get; init; }
         public SkillID? SkillId { get; init; }
@@ -341,6 +330,7 @@ public partial class CharacterControl
         public bool HadStun { get; init; }
         public SkillCard Card { get; init; }
         public bool IsHandCard { get; init; }
+        public bool IsDrawPileCard { get; init; }
         public bool IsTemporaryCard { get; init; }
         public bool FlyToDiscardPileAfterUse { get; init; }
         public bool FreeEnergyCost { get; init; }

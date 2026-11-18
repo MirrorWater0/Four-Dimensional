@@ -1,0 +1,206 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/UIScene/ActionCardRack.cs" id="Script"]
+[ext_resource type="PackedScene" path="res://battle/UIScene/BattleHandCard.tscn" id="Card"]
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="Theme"]
+
+[sub_resource type="StyleBoxFlat" id="UninstallPreviewStyle"]
+bg_color = Color(1, 0.4, 0.2, 0.08)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.5, 0.3, 0.95)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[node name="ActionCardRack" type="Control"]
+offset_right = 210.0
+offset_bottom = 130.0
+mouse_filter = 2
+theme = ExtResource("Theme")
+script = ExtResource("Script")
+
+[node name="Cards" type="Control" parent="."]
+layout_mode = 0
+offset_right = 210.0
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card0" type="Control" parent="Cards"]
+visible = true
+z_index = 0
+layout_mode = 0
+offset_left = 22.2
+offset_right = 91.8
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card" parent="Cards/Card0" instance=ExtResource("Card")]
+scale = Vector2(0.29, 0.29)
+AutoAdjustDescriptionTextSize = false
+
+[node name="ShortTitle" type="Label" parent="Cards/Card0"]
+visible = false
+layout_mode = 0
+offset_top = 108.0
+offset_right = 69.6
+offset_bottom = 125.3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 0.77, 1)
+theme_override_font_sizes/font_size = 13
+text = "连击"
+
+[node name="Card1" type="Control" parent="Cards"]
+visible = true
+z_index = 1
+layout_mode = 0
+offset_left = 70.2
+offset_right = 139.8
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card" parent="Cards/Card1" instance=ExtResource("Card")]
+scale = Vector2(0.29, 0.29)
+AutoAdjustDescriptionTextSize = false
+
+[node name="ShortTitle" type="Label" parent="Cards/Card1"]
+visible = false
+layout_mode = 0
+offset_top = 108.0
+offset_right = 69.6
+offset_bottom = 125.3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 0.77, 1)
+theme_override_font_sizes/font_size = 13
+text = "淬刃"
+
+[node name="Card2" type="Control" parent="Cards"]
+visible = true
+z_index = 2
+layout_mode = 0
+offset_left = 118.2
+offset_right = 187.8
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card" parent="Cards/Card2" instance=ExtResource("Card")]
+scale = Vector2(0.29, 0.29)
+AutoAdjustDescriptionTextSize = false
+
+[node name="ShortTitle" type="Label" parent="Cards/Card2"]
+visible = false
+layout_mode = 0
+offset_top = 108.0
+offset_right = 69.6
+offset_bottom = 125.3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 0.77, 1)
+theme_override_font_sizes/font_size = 13
+text = "回响"
+
+[node name="Card3" type="Control" parent="Cards"]
+visible = false
+z_index = 3
+layout_mode = 0
+offset_left = 166.2
+offset_right = 235.79999999999998
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card" parent="Cards/Card3" instance=ExtResource("Card")]
+scale = Vector2(0.29, 0.29)
+AutoAdjustDescriptionTextSize = false
+
+[node name="ShortTitle" type="Label" parent="Cards/Card3"]
+visible = false
+layout_mode = 0
+offset_top = 108.0
+offset_right = 69.6
+offset_bottom = 125.3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 0.77, 1)
+theme_override_font_sizes/font_size = 13
+text = "蓄势"
+
+[node name="Card4" type="Control" parent="Cards"]
+visible = false
+z_index = 4
+layout_mode = 0
+offset_left = 214.2
+offset_right = 283.79999999999995
+offset_bottom = 125.3
+mouse_filter = 2
+
+[node name="Card" parent="Cards/Card4" instance=ExtResource("Card")]
+scale = Vector2(0.29, 0.29)
+AutoAdjustDescriptionTextSize = false
+
+[node name="ShortTitle" type="Label" parent="Cards/Card4"]
+visible = false
+layout_mode = 0
+offset_top = 108.0
+offset_right = 69.6
+offset_bottom = 125.3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.68, 0.74, 0.77, 1)
+theme_override_font_sizes/font_size = 13
+text = "追击"
+
+[node name="DetailLayer" type="CanvasLayer" parent="."]
+layer = 1
+
+[node name="Detail" type="Control" parent="DetailLayer"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -185.0
+offset_right = 120.0
+offset_bottom = 185.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Card" parent="DetailLayer/Detail" instance=ExtResource("Card")]
+AutoAdjustDescriptionTextSize = false
+
+[node name="Hint" type="Label" parent="DetailLayer/Detail"]
+layout_mode = 0
+offset_top = 375.0
+offset_right = 240.0
+offset_bottom = 395.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.5, 0.59, 0.63, 1)
+theme_override_font_sizes/font_size = 12
+text = "点击固定预览"
+
+[node name="UninstallPreviewFrame" type="Panel" parent="."]
+visible = false
+z_index = 20
+layout_mode = 0
+offset_right = 75.6
+offset_bottom = 113.3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("UninstallPreviewStyle")
+
+[node name="ReplacementHint" type="Label" parent="."]
+visible = false
+z_index = 20
+layout_mode = 0
+offset_left = -140.0
+offset_top = -27.0
+offset_right = 350.0
+offset_bottom = -7.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.65, 0.45, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 14
+text = "即将卸载：行动牌"
+horizontal_alignment = 1

@@ -66,6 +66,12 @@ public partial class CharacterControl
 
             if (isWaitingForDrawEntry)
             {
+                // Passives may generate cards before the turn's draw batch is ready.
+                // Keep them hidden until their final hand positions are known; hand
+                // selection effects still need their cards to enter immediately.
+                if (BattleNode?.IsPreparingPlayerTeamHand == true && !_isDiscardSelectionActive)
+                    continue;
+
                 Vector2 entryTargetPosition = _handLayoutTargetPositionValid[i]
                     ? _handLayoutTargetPositions[i]
                     : GetPendingDrawEntryLandingPosition(
@@ -684,6 +690,7 @@ public partial class CharacterControl
         card.CharacterName.Text = GetSkillOwnerDisplayName(skill);
         card.Visible = true;
         card.MouseFilter = MouseFilterEnum.Stop;
+        card.SetHoverUiEnabled(_liftedCardIndex == -1 && !_manualTargetArrowSelectionActive);
         SetCardButtonInputEnabled(card, true);
         card.HoverHint.Visible = false;
         card.PivotOffset = BattleCardBaseSize * 0.5f;
@@ -778,6 +785,10 @@ public partial class CharacterControl
             && CanHoverHandCardAt(index);
         if (!preserveHoverMotion)
         {
+            // Stop the old hover tween before resetting; its captured transform
+            // must not be written back after the card has landed.
+            card.StopBattleMotion();
+            card.HideHoverUi();
             card.Position = Vector2.Zero;
             card.Scale = BattleCardScale;
         }
@@ -830,6 +841,7 @@ public partial class CharacterControl
         Vector2 globalCenter = preserveGlobalCenter
             ? card.GetGlobalTransformWithCanvas() * card.PivotOffset
             : Vector2.Zero;
+        card.StopBattleMotion();
         Node parent = card.GetParent();
         parent?.RemoveChild(card);
         _cardSlots[index].AddChild(card);
@@ -984,7 +996,11 @@ public partial class CharacterControl
             return;
 
         _drawEntryPreviewCards.Remove(index);
-        if (previewCard != null && GodotObject.IsInstanceValid(previewCard))
+        if (
+            previewCard != null
+            && GodotObject.IsInstanceValid(previewCard)
+            && previewCard.GetParent() != _cardSlots[index]
+        )
             ReturnDrawEntryCardToSlot(index, previewCard);
     }
 
@@ -1201,11 +1217,23 @@ public partial class CharacterControl
         }
 
         SkillCard card = _cards[index];
-        Vector2 cardSize = BattleCardBaseSize * BattleCardScale;
-        if (card != null && GodotObject.IsInstanceValid(card) && card.Visible)
+        bool preserveCardMotion =
+            card != null
+            && GodotObject.IsInstanceValid(card)
+            && card.Visible
+            && card.GetParent() == _cardSlots[index];
+        float startRotation = preserveCardMotion ? _cardSlots[index].Rotation : 0f;
+        if (preserveCardMotion)
+        {
+            // Slot motion and hover motion use separate transforms. Continue the
+            // slot from its own position without baking the hover lift into it.
+            startPosition = _cardSlots[index].Position;
+        }
+        else if (card != null && GodotObject.IsInstanceValid(card) && card.Visible)
         {
             Vector2 globalCenter = card.GetGlobalTransformWithCanvas() * card.PivotOffset;
-            startPosition = GetCardRowLocalPosition(globalCenter) - cardSize * 0.5f;
+            startPosition = GetCardRowLocalPosition(globalCenter) - BattleCardBaseSize * 0.5f;
+            card.StopBattleMotion();
         }
         else if (_hiddenPendingDrawEntrySlotIndexes.Contains(index))
         {
@@ -1230,7 +1258,7 @@ public partial class CharacterControl
         _cardSlotLayoutPixelsPerSecondOverrides[index] = 0f;
         ClearDrawEntryArc(index);
         _cardSlots[index].Position = startPosition;
-        _cardSlots[index].Rotation = 0f;
+        _cardSlots[index].Rotation = startRotation;
         _cardSlots[index].Scale = Vector2.One;
 
         if (card != null && GodotObject.IsInstanceValid(card))
@@ -1241,14 +1269,18 @@ public partial class CharacterControl
                 _cardSlots[index].AddChild(card);
             }
 
-            card.Position = Vector2.Zero;
-            card.Rotation = 0f;
-            card.Scale = BattleCardScale;
+            if (!preserveCardMotion)
+            {
+                card.Position = Vector2.Zero;
+                card.Rotation = 0f;
+                card.Scale = BattleCardScale;
+                card.HoverHint.Visible = false;
+            }
             card.Visible = true;
-            card.HoverHint.Visible = false;
         }
 
-        startPosition = NormalizeHandReorderStartPosition(startPosition);
+        if (!preserveCardMotion)
+            startPosition = NormalizeHandReorderStartPosition(startPosition);
 
         return true;
     }

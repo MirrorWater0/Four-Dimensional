@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "VoidRotorAttack"
+DisplayName = "裂刃斩击"
+Values = Dictionary[String, int]({
+"BaseDamage": 5,
+"EnemyEnergyCost": 0,
+"EnergyCost": 1,
+"ExhaustAfterExecutions": 0,
+"HitCount": 3,
+"PowerMultiplier": 1,
+"WeakenStacks": 1
+})

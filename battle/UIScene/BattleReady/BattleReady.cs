@@ -15,12 +15,6 @@ public partial class BattleReady : Control
     public static PackedScene PortaitScene = GD.Load<PackedScene>(
         "res://battle/UIScene/BattleReady/PortaitFrame.tscn"
     );
-    private static readonly Shader TalentUnlockShockWaveShader = GD.Load<Shader>(
-        "res://shader/shockwave.gdshader"
-    );
-    private static readonly Shader TalentUnlockSparkLightShader = GD.Load<Shader>(
-        "res://shader/Effect/SparkLight.gdshader"
-    );
     private Control TacticsModeRoot => field ??= ResolveNode<Control>("TacticsModeRoot");
     private Control TalentModeRoot => field ??= ResolveNode<Control>("TalentModeRoot");
     private Control ModeSelectorRoot => field ??= ResolveNode<Control>("ModeSelectorRoot");
@@ -85,12 +79,8 @@ public partial class BattleReady : Control
     private const float SkillCardEnterStagger = 0.035f;
     private const float SkillCardExitSettleTime = 0.14f;
     private static readonly Vector2 SkillCardBaseDisplaySize = new(240f, 370f);
-    private static readonly Vector2 BattleReadySkillCardScale = new(0.92f, 0.92f);
+    private static readonly Vector2 BattleReadySkillCardScale = new(0.8f, 0.8f);
     private static readonly Vector2 SkillCardHoverPadding = Vector2.Zero;
-    private const float TalentNodeWidth = 76f;
-    private const float TalentNodeHeight = 76f;
-    private const float TalentNodeLabelHeight = 22f;
-    private const float TalentLineThickness = 2f;
     private T ResolveNode<T>(string path, string fallbackName = null)
         where T : Node
     {
@@ -127,7 +117,7 @@ public partial class BattleReady : Control
         return skillType switch
         {
             Skill.SkillTypes.Attack => 0,
-            Skill.SkillTypes.Survive => 1,
+            Skill.SkillTypes.Permanent => 1,
             Skill.SkillTypes.Special => 2,
             Skill.SkillTypes.Ability => 3,
             _ => -1,
@@ -234,54 +224,17 @@ public partial class BattleReady : Control
         return card;
     }
 
-    private void RefreshTalentTree(int characterIndex)
-    {
+    private void RefreshTalentTree(int characterIndex) {
         ClearTalentTree();
-
         var players = GameInfo.PlayerCharacters;
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
-        {
-            if (TalentPointLabel != null)
-                TalentPointLabel.Text = I18n.Tr("ui.common.talent_points_zero", "天赋点 0");
             return;
-        }
-
         var info = players[characterIndex];
-        info.UnlockedTalents ??= new List<string>();
+        var choices = TalentTree.GetChoices(ref info);
         players[characterIndex] = info;
-
         if (TalentPointLabel != null)
-            TalentPointLabel.Text = I18n.Format(
-                "ui.common.talent_points_value",
-                "天赋点 {value}",
-                ("value", info.TalentPoints)
-            );
-
-        var nodes = TalentTree.GetNodes(info);
-        var nodesById = nodes.ToDictionary(node => node.Id);
-
-        foreach (var node in nodes)
-        {
-            foreach (string prerequisiteId in node.Prerequisites)
-            {
-                if (!nodesById.TryGetValue(prerequisiteId, out var prerequisite))
-                    continue;
-
-                bool active =
-                    TalentTree.HasUnlocked(info, prerequisite.Id)
-                    && TalentTree.HasUnlocked(info, node.Id);
-                AddTalentConnection(prerequisite.Position, node.Position, active);
-            }
-        }
-
-        foreach (var node in nodes)
-        {
-            bool unlocked = TalentTree.HasUnlocked(info, node.Id);
-            bool canUnlock = TalentTree.CanUnlock(info, node, out string reason);
-            var button = CreateTalentNodeControl(characterIndex, node, unlocked, canUnlock, reason);
-            TalentTreeRoot.AddChild(button);
-        }
-
+            TalentPointLabel.Text = I18n.Format("ui.common.remaining_talent_points", "待选天赋 {value}", ("value", info.TalentPoints));
+        TalentChoiceView.Populate(TalentTreeRoot, info, choices, id => OnTalentNodePressed(characterIndex, id));
     }
 
     private async Task RefreshTalentTreeAnimatedAsync(int characterIndex)
@@ -334,6 +287,8 @@ public partial class BattleReady : Control
 
     private void ClearTalentTree()
     {
+        if (TalentTreeRoot == null || !GodotObject.IsInstanceValid(TalentTreeRoot))
+            return;
         for (int i = TalentTreeRoot.GetChildCount() - 1; i >= 0; i--)
         {
             var child = TalentTreeRoot.GetChild(i);
@@ -342,388 +297,20 @@ public partial class BattleReady : Control
         }
     }
 
-    private Control CreateTalentNodeControl(
-        int characterIndex,
-        TalentNodeDefinition node,
-        bool unlocked,
-        bool canUnlock,
-        string reason
-    )
-    {
-        var wrapper = new Control
-        {
-            Position = node.Position,
-            Size = new Vector2(TalentNodeWidth, TalentNodeHeight + TalentNodeLabelHeight),
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        wrapper.SetMeta("talent_id", node.Id);
+    private void HideTalentTooltip() => EnsureGlobalTooltip()?.HideTooltip();
 
-        var button = new Button
-        {
-            Position = Vector2.Zero,
-            Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
-            CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
-            Text = GetTalentIconText(node),
-            TooltipText = string.Empty,
-            FocusMode = FocusModeEnum.None,
-            Flat = false,
-            Disabled = false,
-        };
-
-        button.AddThemeFontSizeOverride("font_size", 30);
-        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
-        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
-        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
-        button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
-        button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
-        button.AddThemeStyleboxOverride(
-            "pressed",
-            CreateTalentNodeStyle(unlocked, canUnlock, 0.22f)
-        );
-        button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
-        button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
-        button.MouseExited += HideTalentTooltip;
-        button.Pressed += () => OnTalentNodePressed(characterIndex, node.Id);
-
-        var progressLabel = new Label
-        {
-            Position = new Vector2(0f, TalentNodeHeight - 2f),
-            Size = new Vector2(TalentNodeWidth, TalentNodeLabelHeight),
-            Text = unlocked ? "1/1" : "0/1",
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
-        progressLabel.AddThemeFontSizeOverride("font_size", 15);
-        progressLabel.AddThemeColorOverride(
-            "font_color",
-            unlocked ? new Color(1f, 0.88f, 0.54f, 1f)
-                : canUnlock ? new Color(0.82f, 0.94f, 1f, 0.95f)
-                : new Color(0.58f, 0.64f, 0.72f, 0.72f)
-        );
-
-        wrapper.AddChild(button);
-        wrapper.AddChild(progressLabel);
-        return wrapper;
-    }
-
-    private Button CreateTalentNodeButton(
-        int characterIndex,
-        TalentNodeDefinition node,
-        bool unlocked,
-        bool canUnlock,
-        string reason
-    )
-    {
-        var button = new Button
-        {
-            Position = node.Position,
-            Size = new Vector2(TalentNodeWidth, TalentNodeHeight),
-            CustomMinimumSize = new Vector2(TalentNodeWidth, TalentNodeHeight),
-            Text = I18n.Format(
-                "ui.battle_ready.talent_button",
-                "{icon} {name}\n阶段 {stage} / 消耗 {cost}",
-                ("icon", unlocked ? "◆" : canUnlock ? "◇" : "·"),
-                ("name", node.DisplayName),
-                ("stage", node.Stage + 1),
-                ("cost", node.Cost)
-            ),
-            TooltipText = string.Empty,
-            FocusMode = FocusModeEnum.None,
-            Flat = false,
-            Disabled = unlocked || !canUnlock,
-        };
-
-        button.AddThemeFontSizeOverride("font_size", 13);
-        button.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f, 1f));
-        button.AddThemeColorOverride("font_hover_color", new Color(1f, 0.92f, 0.72f, 1f));
-        button.AddThemeColorOverride("font_pressed_color", new Color(1f, 0.86f, 0.56f, 1f));
-        button.AddThemeColorOverride(
-            "font_disabled_color",
-            unlocked ? new Color(1f, 0.86f, 0.52f, 0.92f) : new Color(0.54f, 0.61f, 0.68f, 0.62f)
-        );
-        button.AddThemeStyleboxOverride("normal", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
-        button.AddThemeStyleboxOverride("hover", CreateTalentNodeStyle(unlocked, canUnlock, 0.12f));
-        button.AddThemeStyleboxOverride(
-            "pressed",
-            CreateTalentNodeStyle(unlocked, canUnlock, 0.22f)
-        );
-        button.AddThemeStyleboxOverride("disabled", CreateTalentNodeStyle(unlocked, canUnlock, 0f));
-        button.MouseEntered += () => ShowTalentTooltip(node, unlocked, canUnlock, reason);
-        button.MouseExited += HideTalentTooltip;
-        button.Pressed += () => OnTalentNodePressed(characterIndex, node.Id);
-        return button;
-    }
-
-    private void ShowTalentTooltip(
-        TalentNodeDefinition node,
-        bool unlocked,
-        bool canUnlock,
-        string reason
-    )
-    {
-        var tip = EnsureGlobalTooltip();
-        if (tip == null)
-            return;
-
-        tip.FollowMouse = true;
-        tip.AnchorOffset = new Vector2(24f, 20f);
-        tip.MinContentWidth = 360f;
-        tip.SetText(BuildTalentTooltipText(node, unlocked, canUnlock, reason));
-    }
-
-    private void HideTalentTooltip()
-    {
-        EnsureGlobalTooltip()?.HideTooltip();
-    }
-
-    private static string BuildTalentTooltipText(
-        TalentNodeDefinition node,
-        bool unlocked,
-        bool canUnlock,
-        string reason
-    )
-    {
-        string stateText = unlocked
-            ? I18n.Tr("ui.common.unlocked", "已点亮")
-            : canUnlock ? I18n.Tr("ui.common.available_to_unlock", "可点亮")
-            : reason;
-        string stateColor =
-            unlocked ? "#ffd987"
-            : canUnlock ? "#9ff5ff"
-            : "#9aa3b5";
-        string effect = string.IsNullOrWhiteSpace(node.EffectDescription)
-            ? I18n.Tr("ui.common.effect_unconfigured", "暂未配置效果。")
-            : node.EffectDescription;
-
-        return $"[b]{node.DisplayName}[/b]\n"
-            + I18n.Format(
-                "ui.common.talent_stage_cost_bbcode",
-                "[color=#cfd6e6]阶段 {stage} / 消耗 {cost} 点天赋点[/color]\n",
-                ("stage", node.Stage + 1),
-                ("cost", node.Cost)
-            )
-            + $"[color={stateColor}]{stateText}[/color]\n\n"
-            + I18n.Format(
-                "ui.common.effect_bbcode",
-                "[color=#ffd987]效果[/color]\n{value}",
-                ("value", effect)
-            );
-    }
-
-    private static StyleBoxFlat CreateTalentNodeStyle(
-        bool unlocked,
-        bool canUnlock,
-        float hoverBoost
-    )
-    {
-        // Angular plates rather than pills, to match the console language on the rest of the screen.
-        Color borderColor =
-            unlocked ? BattleReadyStyle.GoldBright with { A = 0.92f }
-            : canUnlock ? BattleReadyStyle.Cyan with { A = 0.7f }
-            : BattleReadyStyle.Steel with { A = 0.3f };
-        Color bgColor =
-            unlocked ? new Color(0.28f, 0.19f, 0.05f, 0.72f + hoverBoost)
-            : canUnlock ? new Color(0.04f, 0.11f, 0.2f, 0.7f + hoverBoost)
-            : new Color(0.031f, 0.047f, 0.094f, 0.55f + hoverBoost);
-
-        return new StyleBoxFlat
-        {
-            BgColor = bgColor,
-            BorderColor = borderColor,
-            BorderWidthLeft = unlocked ? 3 : 1,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 0,
-            CornerRadiusTopRight = 0,
-            CornerRadiusBottomRight = 0,
-            CornerRadiusBottomLeft = 0,
-            ContentMarginLeft = 6,
-            ContentMarginRight = 6,
-            ContentMarginTop = 6,
-            ContentMarginBottom = 6,
-        };
-    }
-
-    private static string GetTalentIconText(TalentNodeDefinition node)
-    {
-        if (node.Id.EndsWith(".Core", StringComparison.Ordinal))
-            return "✦";
-        if (node.Id.EndsWith(".Attack1", StringComparison.Ordinal))
-            return "◇";
-        if (node.Id.EndsWith(".Attack2", StringComparison.Ordinal))
-            return "✧";
-        if (node.Id.EndsWith(".Survive1", StringComparison.Ordinal))
-            return "◆";
-        return "✹";
-    }
-
-    private void AddTalentConnection(Vector2 fromPosition, Vector2 toPosition, bool active)
-    {
-        Color color = active
-            ? BattleReadyStyle.Gold with { A = 0.78f }
-            : BattleReadyStyle.Steel with { A = 0.24f };
-        Vector2 start = fromPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
-        Vector2 end = toPosition + new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
-        AddTalentLine(start, end, color);
-    }
-
-    private void AddTalentLine(Vector2 start, Vector2 end, Color color)
-    {
-        var line = new Line2D
-        {
-            Points = [start, end],
-            Width = TalentLineThickness,
-            DefaultColor = color,
-            Antialiased = true,
-        };
-        TalentTreeRoot.AddChild(line);
-    }
-
-    private async void OnTalentNodePressed(int characterIndex, string talentId)
-    {
+    private void OnTalentNodePressed(int characterIndex, string talentId) {
         var players = GameInfo.PlayerCharacters;
         if (players == null || characterIndex < 0 || characterIndex >= players.Length)
             return;
-
         var info = players[characterIndex];
-        bool unlocked = TalentTree.TryUnlock(ref info, talentId, out string message);
-        if (unlocked)
-        {
+        if (TalentTree.TryUnlock(ref info, talentId, out string message)) {
             players[characterIndex] = info;
             _skillPreviewCharacterIndex = -1;
             RefreshChrome();
         }
-
         GD.Print(message);
         RefreshTalentTree(characterIndex);
-        if (unlocked)
-            await PlayTalentUnlockEffectAsync(FindTalentNodeControl(talentId));
-    }
-
-    private Control FindTalentNodeControl(string talentId)
-    {
-        if (TalentTreeRoot == null || string.IsNullOrWhiteSpace(talentId))
-            return null;
-
-        foreach (var child in TalentTreeRoot.GetChildren())
-        {
-            if (child is Control control && (string)control.GetMeta("talent_id", string.Empty) == talentId)
-                return control;
-        }
-
-        return null;
-    }
-
-    private async Task PlayTalentUnlockEffectAsync(Control nodeControl)
-    {
-        if (nodeControl == null || !GodotObject.IsInstanceValid(nodeControl) || !IsInsideTree())
-            return;
-
-        var shockWave = CreateTalentUnlockEffectRect(
-            TalentUnlockShockWaveShader,
-            new Vector2(-104f, -104f),
-            new Vector2(284f, 284f)
-        );
-        var sparkLight = CreateTalentUnlockEffectRect(
-            TalentUnlockSparkLightShader,
-            new Vector2(-62f, -62f),
-            new Vector2(200f, 200f)
-        );
-
-        if (shockWave == null || sparkLight == null)
-            return;
-
-        nodeControl.AddChild(shockWave);
-        nodeControl.AddChild(sparkLight);
-
-        Vector2 baseScale = nodeControl.Scale;
-        nodeControl.PivotOffset = new Vector2(TalentNodeWidth * 0.5f, TalentNodeHeight * 0.5f);
-
-        var shockWaveMaterial = shockWave.Material as ShaderMaterial;
-        var sparkLightMaterial = sparkLight.Material as ShaderMaterial;
-
-        var tween = CreateTween();
-        tween.BindNode(this);
-        tween.BindNode(nodeControl);
-        tween.SetParallel(true);
-        tween.SetEase(Tween.EaseType.Out);
-        tween.TweenProperty(nodeControl, "scale", baseScale * 1.12f, 0.12f);
-        tween.TweenProperty(nodeControl, "scale", baseScale, 0.22f).SetDelay(0.12f);
-        tween.TweenProperty(nodeControl, "modulate", new Color(1.35f, 1.18f, 0.72f, 1f), 0.08f);
-        tween.TweenProperty(nodeControl, "modulate", Colors.White, 0.26f).SetDelay(0.08f);
-        tween.TweenMethod(
-            Callable.From<float>(value => SetTalentUnlockEffectProgress(shockWaveMaterial, value)),
-            0.24f,
-            1f,
-            0.42f
-        );
-        tween.TweenMethod(
-            Callable.From<float>(value => SetTalentUnlockEffectProgress(sparkLightMaterial, value)),
-            0f,
-            1f,
-            0.38f
-        );
-
-        await ToSignal(tween, Tween.SignalName.Finished);
-
-        if (!IsInsideTree())
-            return;
-
-        if (GodotObject.IsInstanceValid(shockWave))
-            shockWave.QueueFree();
-        if (GodotObject.IsInstanceValid(sparkLight))
-            sparkLight.QueueFree();
-        if (GodotObject.IsInstanceValid(nodeControl))
-        {
-            nodeControl.Scale = baseScale;
-            nodeControl.Modulate = Colors.White;
-        }
-    }
-
-    private static void SetTalentUnlockEffectProgress(ShaderMaterial material, float value)
-    {
-        if (material == null || !GodotObject.IsInstanceValid(material))
-            return;
-
-        material.SetShaderParameter("progress", value);
-    }
-
-    private static ColorRect CreateTalentUnlockEffectRect(
-        Shader shader,
-        Vector2 position,
-        Vector2 size
-    )
-    {
-        if (shader == null)
-            return null;
-
-        var material = new ShaderMaterial { Shader = shader, ResourceLocalToScene = true };
-        if (shader == TalentUnlockShockWaveShader)
-        {
-            material.SetShaderParameter("line_color", new Color(1f, 0.95f, 0.68f, 1f));
-            material.SetShaderParameter("glow_color", new Color(1f, 0.7f, 0.22f, 1f));
-            material.SetShaderParameter("progress", 1f);
-            material.SetShaderParameter("base_thickness", 0.005f);
-            material.SetShaderParameter("max_thickness", 0.0f);
-            material.SetShaderParameter("glow_intensity", 19.0f);
-        }
-        else
-        {
-            material.SetShaderParameter("main_color", new Color(1f, 0.72f, 0.24f, 1f));
-            material.SetShaderParameter("progress", 1f);
-            material.SetShaderParameter("glow_intensity", 25.0f);
-            material.SetShaderParameter("ray_count", 15.0f);
-        }
-
-        return new ColorRect
-        {
-            Position = position,
-            Size = size,
-            Material = material,
-            MouseFilter = MouseFilterEnum.Ignore,
-        };
     }
 
     private int _selectedCharacterIndex;
@@ -1338,6 +925,7 @@ public partial class BattleReady : Control
 
     public void Initialize()
     {
+        GameInfo.NormalizePlayerCharacters();
         InitializeCharacterButtons();
         _ = SelectCharacter(_selectedCharacterIndex);
     }

@@ -4,6 +4,9 @@
 
 [ext_resource type="Script" path="res://battle/BattleTutorialOverlay.cs" id="Script"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="StyleBoxFlat" id="Highlight"]
 bg_color = Color(0.5, 0.78, 1, 0.06)
 border_color = Color(0.65, 0.95, 1, 0.95)
@@ -136,7 +139,23 @@ text = "1/5"
 [node name="Skip" type="Button" parent="Root/Card/Layout/Footer"]
 layout_mode = 2
 text = "跳过"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+custom_minimum_size = Vector2(148, 48)
+
+[node name="ActionFeedback" parent="Root/Card/Layout/Footer/Skip" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="Next" type="Button" parent="Root/Card/Layout/Footer"]
 layout_mode = 2
 text = "下一步"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+custom_minimum_size = Vector2(148, 48)
+
+[node name="ActionFeedback" parent="Root/Card/Layout/Footer/Next" instance=ExtResource("91_action_feedback")]
+layout_mode = 1

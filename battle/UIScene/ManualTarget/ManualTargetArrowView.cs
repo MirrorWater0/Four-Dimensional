@@ -16,6 +16,9 @@ public partial class ManualTargetArrowView : Control
     public float ArrowWidth { get; set; } = 6f;
 
     [Export]
+    public float ArrowEndWidthScale { get; set; } = 1.8f;
+
+    [Export]
     public float ShadowWidth { get; set; } = 11f;
 
     [Export]
@@ -31,7 +34,16 @@ public partial class ManualTargetArrowView : Control
     public Vector2 TailSize { get; set; } = new(24f, 16f);
 
     [Export]
-    public float HeadShaftInset { get; set; } = 24f;
+    public float HeadDistanceScaleStart { get; set; } = 0.85f;
+
+    [Export]
+    public float HeadDistanceScaleEnd { get; set; } = 1.35f;
+
+    [Export]
+    public float HeadDistanceScaleRange { get; set; } = 520f;
+
+    [Export]
+    public float HeadShaftInset { get; set; } = 8f;
 
     [Export]
     public float TailShaftInset { get; set; } = 14f;
@@ -42,15 +54,15 @@ public partial class ManualTargetArrowView : Control
     [Export(PropertyHint.Range, "0,0.08,0.001")]
     public float TipEdgeSoftness { get; set; } = 0.01f;
 
-    public float HeadDefaultScale { get; set; } = 0.95f;
-    public float HeadHoverScale { get; set; } = 1.05f;
+    public float HeadDefaultScale { get; set; } = 1f;
+    public float HeadHoverScale { get; set; } = 1.12f;
 
     private ColorRect HeadTip => field ??= GetNodeOrNull<ColorRect>("HeadTip");
     private ColorRect TailTip => field ??= GetNodeOrNull<ColorRect>("TailTip");
     private ShaderMaterial _headTipMaterial;
     private ShaderMaterial _tailTipMaterial;
     private Tween _headTipScaleTween;
-    private float _headTipScale = 0.95f;
+    private float _headTipScale = 1f;
     private Vector2[] _lastPoints = System.Array.Empty<Vector2>();
     private Vector2[] _shaftPoints = System.Array.Empty<Vector2>();
     private int _shaftPointCount;
@@ -153,9 +165,19 @@ public partial class ManualTargetArrowView : Control
             return;
         }
 
-        DrawPolyline(_shaftPoints, ShadowColor, ShadowWidth, true);
-        DrawPolyline(_shaftPoints, ArrowColor, ArrowWidth, true);
+        DrawTaperedShaft(ShadowColor, ShadowWidth);
+        DrawTaperedShaft(ArrowColor, ArrowWidth);
         UpdateTipNodes();
+    }
+
+    private void DrawTaperedShaft(Color color, float baseWidth)
+    {
+        for (int i = 1; i < _shaftPointCount; i++)
+        {
+            float progress = i / (float)(_shaftPointCount - 1);
+            float widthScale = Mathf.Lerp(0.55f, ArrowEndWidthScale, progress);
+            DrawLine(_shaftPoints[i - 1], _shaftPoints[i], color, baseWidth * widthScale, true);
+        }
     }
 
     private void GetCurveControls(
@@ -272,6 +294,8 @@ public partial class ManualTargetArrowView : Control
             return;
 
         tip.MouseFilter = MouseFilterEnum.Ignore;
+        if (tip == HeadTip)
+            tip.ZIndex = 1;
         tip.PivotOffset = tip.Size * 0.5f;
         material = tip.Material as ShaderMaterial;
         if (material == null)
@@ -298,7 +322,19 @@ public partial class ManualTargetArrowView : Control
 
         ApplyTipShaderParameters(_headTipMaterial);
         ApplyTipShaderParameters(_tailTipMaterial);
-        PositionTip(HeadTip, _lastPoints[^2], _lastPoints[^1], HeadSize, _headTipScale);
+        float arrowLength = StartPosition.DistanceTo(EndPosition);
+        float distanceScale = Mathf.Lerp(
+            HeadDistanceScaleStart,
+            HeadDistanceScaleEnd,
+            Mathf.Clamp(arrowLength / Mathf.Max(1f, HeadDistanceScaleRange), 0f, 1f)
+        );
+        PositionTip(
+            HeadTip,
+            _lastPoints[^2],
+            _lastPoints[^1],
+            HeadSize,
+            distanceScale * _headTipScale
+        );
         PositionTip(TailTip, _lastPoints[1], _lastPoints[0], TailSize, 1f);
     }
 

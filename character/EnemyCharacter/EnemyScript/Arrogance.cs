@@ -3,7 +3,7 @@ using Godot;
 
 public partial class Arrogance : EnemyCharacter
 {
-    private const int StartStunStacks = 1;
+    private static int StartStunStacks => EnemyTuning.GetRequiredInt("Arrogance", nameof(StartStunStacks));
 
     public const string PassiveNameText = "傲慢";
     public static string PassiveDescriptionText =>
@@ -32,20 +32,13 @@ public partial class ArroganceRegedit : EnemyRegedit
     public ArroganceRegedit()
     {
         CharacterName = "Arrogance";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/Arrogance.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Arrogance.tscn");
-
-        MaxLife = 122;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.ArroganceAttack, SkillID.ArroganceSurvive, SkillID.ArroganceSpecial];
-        OpeningIntentionSkillIDs =
+        // 眩晕结束后追击蓄势，吞噬铺易伤，再连续两次全阵压制。
+        IntentionCycle =
         [
             SkillID.ArroganceSpecial,
-            SkillID.ArroganceAttack,
             SkillID.ArroganceSurvive,
             SkillID.ArroganceAttack,
         ];
@@ -56,7 +49,7 @@ public partial class ArroganceRegedit : EnemyRegedit
 
 public partial class ArroganceAttack : Skill
 {
-    private const int BaseDamage = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -66,16 +59,16 @@ public partial class ArroganceAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            LowerTargetPropertyStep(PropertyType.Survivability, V("SurvivabilityLoss", 4), HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount")),
+            LowerTargetPropertyStep(PropertyType.Survivability, V("SurvivabilityLoss"), HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class ArroganceSurvive : Skill
 {
-    private const int BaseBlock = 15;
-    private const int VulnerableStacks = 2;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -85,7 +78,7 @@ public partial class ArroganceSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
@@ -97,19 +90,18 @@ public partial class ArroganceSurvive : Skill
 
 public partial class ArroganceSpecial : Skill
 {
-    private const int PursuitStacks = 3;
+    private int PursuitStacks => V(nameof(PursuitStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚无追击";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            HealStep(baseHeal: V("BaseHeal", 30), target: TargetReference.Self),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 10)),
+            HealStep(baseHeal: V("BaseHeal"), target: TargetReference.Self),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain")),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Pursuit,
                 stacks: PursuitStacks,

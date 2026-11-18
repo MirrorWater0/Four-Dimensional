@@ -1,8 +1,9 @@
+using System.Threading.Tasks;
 using Godot;
 
 public partial class FearWorm : EnemyCharacter
 {
-    private const int PassivePowerGain = 1;
+    private static int PassivePowerGain => EnemyTuning.GetRequiredInt("FearWorm", nameof(PassivePowerGain));
 
     public const string PassiveNameText = "蜕皮";
     public static string PassiveDescriptionText =>
@@ -21,7 +22,7 @@ public partial class FearWorm : EnemyCharacter
         base.OnTurnEnd();
     }
 
-    public override async void Passive(Skill skill)
+    protected override async Task PassiveAsync(Skill skill)
     {
         if (BattleNode?.QueueEnemyPhaseEndPowerGain(this, PassivePowerGain, this, "被动") == true)
             return;
@@ -36,18 +37,12 @@ public partial class FearWormRegedit : EnemyRegedit
     public FearWormRegedit()
     {
         CharacterName = "FearWorm";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/FearWorm.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/FearWorm.tscn");
-
-        MaxLife = 67;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
         SkillIDs = [SkillID.FearWormAttack, SkillID.FearWormTermin];
-        OpeningIntentionSkillIDs = [SkillID.FearWormTermin];
+        // 梦魇起手，咬噬施加易伤，潜伏蓄势后进入随机段。
+        IntentionCycle = [SkillID.FearWormTermin, SkillID.FearWormAttack, random];
         PassiveName = global::FearWorm.PassiveNameText;
         PassiveDescription = global::FearWorm.PassiveDescriptionText;
     }
@@ -55,9 +50,8 @@ public partial class FearWormRegedit : EnemyRegedit
 
 public partial class FearWormAttack : Skill
 {
-    private const int BaseDamage = 5;
-    private const int VulnerableStacks = 2;
-    private const int MaxTargets = 3;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -70,8 +64,9 @@ public partial class FearWormAttack : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 target: HostileTargetReference.All,
-                times: V("HitCount", 1),
-                clampMax: V("ClampMax", 999)
+                times: V("HitCount"),
+                clampMax: V("ClampMax"),
+                multiplier: V("Multiplier")
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
@@ -84,7 +79,7 @@ public partial class FearWormAttack : Skill
 
 public partial class FearWormSurvive : Skill
 {
-    private const int BaseBlock = 12;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -94,24 +89,22 @@ public partial class FearWormSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 3), TargetReference.Self)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"), TargetReference.Self)
         );
     }
 }
 
 public partial class FearWormTermin : Skill
 {
-    private const int BaseDamage = 14;
-    private const int StunStacks = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "梦魇缠绕";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(BaseDamage));
+        return new SkillPlan(this, AttackStep(BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")));
     }
 }

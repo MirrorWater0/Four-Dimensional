@@ -5,10 +5,9 @@ public partial class EchoAbilitySkill : Node { }
 public class VoidForm : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int VoidStacks = 1;
+    private int VoidStacks => V(nameof(VoidStacks));
 
     public override string SkillName { get; set; } = "虚无形态";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -26,10 +25,9 @@ public class VoidForm : AbilitySkill
 public partial class CursePower : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int CursePowerStacks = 1;
+    private int CursePowerStacks => V(nameof(CursePowerStacks));
 
     public override string SkillName { get; set; } = "咒力";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -47,10 +45,9 @@ public partial class CursePower : AbilitySkill
 public partial class WeakeningField : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int WeakeningFieldStacks = 3;
+    private int WeakeningFieldStacks => V(nameof(WeakeningFieldStacks));
 
     public override string SkillName { get; set; } = "虚弱立场";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -68,10 +65,9 @@ public partial class WeakeningField : AbilitySkill
 public partial class EternalCore : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EnergyStorageStacks = 3;
+    private int EnergyStorageStacks => V(nameof(EnergyStorageStacks));
 
     public override string SkillName { get; set; } = "永恒核心";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
@@ -89,10 +85,9 @@ public partial class EternalCore : AbilitySkill
 public class EchoForm : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int EchoStacks = 1;
+    private int EchoStacks => V(nameof(EchoStacks));
 
     public override string SkillName { get; set; } = "回响形态";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {

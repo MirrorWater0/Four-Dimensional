@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "FearWormTermin"
+DisplayName = "梦魇缠绕"
+Values = Dictionary[String, int]({
+"BaseDamage": 15,
+"EnemyEnergyCost": 4,
+"EnergyCost": 4,
+"ExhaustAfterExecutions": 0,
+"HitCount": 1,
+"Multiplier": 1
+})

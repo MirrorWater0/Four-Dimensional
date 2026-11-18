@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "ReNewedSpirit"
+DisplayName = "重振精神"
+Values = Dictionary[String, int]({
+"BaseBlock": 0,
+"EnemyEnergyCost": 0,
+"EnergyCost": 2,
+"ExhaustAfterExecutions": 0,
+"Multiplier": 1,
+"PowerGain": 1,
+"SurvivabilityGain": 1
+})

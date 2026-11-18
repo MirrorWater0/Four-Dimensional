@@ -320,7 +320,7 @@ public partial class StartInterface : CanvasLayer
             return;
         }
 
-        var err = GetTree().ChangeSceneToFile("res://Map/Map.tscn");
+        var err = Map.ChangeSceneFromStart(GetTree());
         if (err != Error.Ok)
         {
             GD.PushError($"ContinueGame scene switch failed: {err}");
@@ -481,7 +481,7 @@ public partial class StartInterface : CanvasLayer
         GameInfo.InitNewGame();
         GameInfo.ApplyDifficultyStartBonuses();
         GameInfo.ApplyDifficultyRunStartPenalties();
-        SceneTransitionLayer.Ensure(this)?.SwitchScene("res://Map/Map.tscn");
+        SceneTransitionLayer.Ensure(this)?.EnterMapFromStart();
     }
 
     private static PlayerInfoStructure[] BuildDefaultRoster()
@@ -510,6 +510,7 @@ public partial class StartInterface : CanvasLayer
             Power = source.Power,
             Survivability = source.Survivability,
             TalentPoints = source.TalentPoints,
+            TalentOffer = source.TalentOffer != null ? new List<string>(source.TalentOffer) : new List<string>(),
             UnlockedTalents =
                 source.UnlockedTalents != null
                     ? new List<string>(source.UnlockedTalents)

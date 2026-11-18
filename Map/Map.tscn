@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://dxvldl73uw02a"]
 
+[ext_resource type="PackedScene" path="res://Map/UI/NodeHoloTip.tscn" id="node_holo_tip"]
 [ext_resource type="Script" uid="uid://cgpmcjgic6wbb" path="res://Map/Map.cs" id="1_exof5"]
 [ext_resource type="Texture2D" uid="uid://bibfa5ocaklns" path="res://asset/UI/button/SButton.png" id="6_2xeiv"]
 [ext_resource type="Script" uid="uid://yoj0g2qr2i3l" path="res://Map/ReadyButton.cs" id="7_1svsv"]
@@ -16,69 +17,16 @@
 [ext_resource type="Shader" uid="uid://cinsfrhlgonxw" path="res://shader/Icon/MapPeekIcon.gdshader" id="19_mappeek"]
 [ext_resource type="Shader" uid="uid://dlgce0jik8xvd" path="res://shader/Icon/HourglassIcon.gdshader" id="20_hourglass"]
 [ext_resource type="PackedScene" uid="uid://hhmnnh1smok3" path="res://ScreenEffectOverlay.tscn" id="21_screen_effect"]
+[ext_resource type="PackedScene" path="res://Map/UI/WorldLinePanel.tscn" id="22_world_line_panel"]
+[ext_resource type="Theme" path="res://Map/UI/WorldLineTheme.tres" id="23_world_line_theme"]
+
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
 
 [sub_resource type="Environment" id="Environment_cccvd"]
 background_mode = 3
 glow_enabled = true
 glow_intensity = 3.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_panel"]
-bg_color = Color(0.017500002, 0.034833334, 0.05, 0.42352942)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.94, 0.97900003, 1, 0.41960785)
-shadow_color = Color(0, 0, 0, 0.28)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.04, 0.075, 0.105, 0.78)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.58, 0.88, 1, 0.22)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_pressed"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.035, 0.065, 0.09, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.58, 0.88, 1, 0.28)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_node_legend_button_hover"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.09, 0.16, 0.2, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.58, 0.88, 1, 0.36)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cccvd"]
 shader = ExtResource("8_vk5l4")
@@ -111,12 +59,7 @@ Button/styles/hover = SubResource("StyleBoxTexture_fl2tk")
 Button/styles/normal = SubResource("StyleBoxTexture_hgu68")
 Button/styles/pressed = SubResource("StyleBoxTexture_7mxfi")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top_hud_band"]
-bg_color = Color(0.35, 0.35, 0.35, 0)
-border_width_bottom = 2
-border_color = Color(0.92, 0.92, 0.92, 1)
-shadow_color = Color(0, 0, 0, 0.26)
-shadow_size = 6
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_float_hud"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hourglass_icon"]
 resource_local_to_scene = true
@@ -151,8 +94,7 @@ corner_radius_bottom_left = 4
 ProgressBar/styles/background = SubResource("StyleBoxFlat_core_energy_bg")
 ProgressBar/styles/fill = SubResource("StyleBoxFlat_core_energy_fill")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_panel"]
-bg_color = Color(0, 0, 0, 0)
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_party_life_panel"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0g0qh"]
 shader = ExtResource("13_jq5q4")
@@ -173,46 +115,46 @@ shader_parameter/radius_percent = 0.35
 shader_parameter/hole_percent = 0.2
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button"]
-bg_color = Color(0.018, 0.052, 0.07, 0.78)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+bg_color = Color(0.7, 0.85, 0.94, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 border_color = Color(0.46666667, 0.85490197, 1, 0.58)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 shadow_color = Color(0, 0.58, 0.78, 0.2)
-shadow_size = 8
+shadow_size = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button_pressed"]
-bg_color = Color(0.01, 0.03, 0.045, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+bg_color = Color(0.7, 0.85, 0.94, 0.06)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 border_color = Color(1, 0.84, 0.36, 0.86)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 shadow_color = Color(1, 0.84, 0.36, 0.22)
-shadow_size = 8
+shadow_size = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_map_peek_button_hover"]
-bg_color = Color(0.035, 0.095, 0.13, 0.92)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
+bg_color = Color(0.7, 0.85, 0.94, 0.035)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 border_color = Color(0.7, 0.95, 1, 0.82)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 shadow_color = Color(0.2, 0.78, 1, 0.28)
-shadow_size = 10
+shadow_size = 0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_map_peek_icon"]
 resource_local_to_scene = true
@@ -238,6 +180,26 @@ shader_parameter/edge_color = Color(0.4, 0.69803923, 1, 0)
 shader_parameter/edge_thickness = 0.0090000004275
 shader_parameter/edge_softness = 0.014000000665
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_relic_scroll"]
+content_margin_left = 3.0
+content_margin_right = 3.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_relic_grab"]
+content_margin_left = 2.0
+content_margin_right = 2.0
+bg_color = Color(0.66, 0.82, 0.9, 0.2)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_left = 2
+corner_radius_bottom_right = 2
+
+[sub_resource type="Theme" id="Theme_relic_scroll"]
+ScrollContainer/styles/panel = SubResource("StyleBoxEmpty_float_hud")
+VScrollBar/styles/scroll = SubResource("StyleBoxEmpty_relic_scroll")
+VScrollBar/styles/grabber = SubResource("StyleBoxFlat_relic_grab")
+VScrollBar/styles/grabber_highlight = SubResource("StyleBoxFlat_relic_grab")
+VScrollBar/styles/grabber_pressed = SubResource("StyleBoxFlat_relic_grab")
+
 [node name="Map" type="Control" unique_id=675286840]
 layout_mode = 3
 anchors_preset = 15
@@ -251,19 +213,13 @@ metadata/_edit_lock_ = true
 
 [node name="ScreenEffectOverlay" parent="." unique_id=1669264291 instance=ExtResource("21_screen_effect")]
 
-[node name="DamageTint" parent="ScreenEffectOverlay" index="0"]
-visible = true
-
-[node name="HealTint" parent="ScreenEffectOverlay" index="1"]
-visible = true
-
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1386322302]
 environment = SubResource("Environment_cccvd")
 
 [node name="DragButton" type="Button" parent="." unique_id=121878651]
 self_modulate = Color(1, 1, 1, 0)
 layout_mode = 0
-offset_right = 3235.0
+offset_right = 3760.0
 offset_bottom = 1970.0
 disabled = true
 metadata/_edit_lock_ = true
@@ -274,322 +230,21 @@ metadata/_edit_lock_ = true
 
 [node name="MapLabel" type="CanvasLayer" parent="." unique_id=1947191991]
 
-[node name="NodeTypeLegend" type="PanelContainer" parent="MapLabel" unique_id=886855187]
-offset_left = 1757.0
-offset_top = 173.0
-offset_right = 1917.0
-offset_bottom = 475.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_node_legend_panel")
-
-[node name="Margin" type="MarginContainer" parent="MapLabel/NodeTypeLegend" unique_id=13944]
-layout_mode = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 12
-
-[node name="LegendList" type="VBoxContainer" parent="MapLabel/NodeTypeLegend/Margin" unique_id=101949173]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Title" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=1391801946]
-modulate = Color(0.78, 0.92, 1, 0.92)
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "节点图式"
-
-[node name="Normal" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=973285010]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 0
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal" unique_id=918914470]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row" unique_id=2075448356]
-modulate = Color(0.9, 0.96, 1, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row" unique_id=1573805867]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "普通战斗"
-vertical_alignment = 1
-
-[node name="Event" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=636747628]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 1
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event" unique_id=366562713]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row" unique_id=1154787538]
-modulate = Color(0.12, 0.7, 1, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row" unique_id=1140877608]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "事件"
-vertical_alignment = 1
-
-[node name="Shop" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=435770708]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 2
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop" unique_id=292925196]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row" unique_id=237807838]
-modulate = Color(1, 0.84, 0.18, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row" unique_id=360384259]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "商店"
-vertical_alignment = 1
-
-[node name="Treasure" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=341944748]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 6
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Treasure" unique_id=39968602]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Treasure/Row" unique_id=1864981264]
-modulate = Color(1, 0.69, 0.13, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "▣"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Treasure/Row" unique_id=411583503]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "宝箱"
-vertical_alignment = 1
-
-[node name="Rest" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=1614012455]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 5
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Rest" unique_id=342582642]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Rest/Row" unique_id=776169795]
-modulate = Color(0.2, 0.95, 0.68, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Rest/Row" unique_id=1186389502]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "休息"
-vertical_alignment = 1
-
-[node name="Elite" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=252471536]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 3
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite" unique_id=1618190482]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row" unique_id=4588641]
-modulate = Color(1, 0.18, 0.18, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row" unique_id=582479519]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "精英"
-vertical_alignment = 1
-
-[node name="Boss" type="Button" parent="MapLabel/NodeTypeLegend/Margin/LegendList" unique_id=1636216690]
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-size_flags_horizontal = 3
-focus_mode = 0
-theme_override_styles/normal = SubResource("StyleBoxFlat_node_legend_button")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_node_legend_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_node_legend_button_hover")
-metadata/level_type = 4
-
-[node name="Row" type="HBoxContainer" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss" unique_id=806406197]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 7.0
-offset_right = -10.0
-offset_bottom = -7.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Icon" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row" unique_id=705156581]
-modulate = Color(0.72, 0.22, 1, 1)
-custom_minimum_size = Vector2(22, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
-text = "●"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="Label" type="Label" parent="MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row" unique_id=1505722067]
-modulate = Color(0.9, 0.97, 1, 0.94)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "首领"
-vertical_alignment = 1
+[node name="RoadProbabilityPanel" parent="MapLabel" instance=ExtResource("22_world_line_panel")]
 
 [node name="UI" type="CanvasLayer" parent="." unique_id=1220601355]
 layer = 3
 
 [node name="SeedLabel" type="Label" parent="UI" unique_id=1990787412]
-modulate = Color(1, 1, 1, 0.78431374)
+modulate = Color(1, 1, 1, 0.4)
 layout_direction = 3
-offset_left = 1758.0
-offset_top = 112.0
-offset_right = 1916.0
-offset_bottom = 137.0
+offset_left = 1672.0
+offset_top = 89.0
+offset_right = 1900.0
+offset_bottom = 111.0
 text = "seed:"
 horizontal_alignment = 2
+theme_override_font_sizes/font_size = 12
 
 [node name="ReadyButton" type="Button" parent="UI" unique_id=870573151 node_paths=PackedStringArray("Layer", "ChangeEffect")]
 top_level = true
@@ -604,6 +259,21 @@ theme = SubResource("Theme_6uk3n")
 script = ExtResource("7_1svsv")
 Layer = NodePath("../../BattleReadyLayer")
 ChangeEffect = NodePath("../../MaskLayer/ChangeEffect")
+
+[node name="RoadAdvanceButton" type="Button" parent="UI"]
+offset_left = 1450.0
+offset_top = 895.0
+offset_right = 1698.0
+offset_bottom = 972.0
+theme = ExtResource("90_action_theme")
+theme_override_font_sizes/font_size = 22
+text = "向前探索"
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="UI/RoadAdvanceButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="Label" type="Label" parent="UI/ReadyButton" unique_id=1771873845]
 layout_mode = 0
@@ -631,43 +301,36 @@ layer = 2
 layer = 5
 script = ExtResource("13_ehio4")
 
-[node name="TopPartyBackplate" type="Panel" parent="PlayerResourceState" unique_id=1938551033]
-offset_left = 1.0
-offset_top = 4.0
-offset_right = 1918.0
-offset_bottom = 72.0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_top_hud_band")
-
 [node name="RegionLabel" type="Label" parent="PlayerResourceState" unique_id=1932745801]
 modulate = Color(1, 1, 1, 0.9)
 layout_direction = 3
-offset_left = 739.0
-offset_top = 17.0
-offset_right = 830.0
-offset_bottom = 55.0
+offset_left = 384.0
+offset_top = 32.0
+offset_right = 482.0
+offset_bottom = 60.0
 theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.96, 0.92, 0.2, 1)
+theme_override_colors/font_color = Color(0.84, 0.91, 0.95, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 25
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 18
 text = "区域1"
-horizontal_alignment = 2
+horizontal_alignment = 0
 
 [node name="StatusPanel" type="PanelContainer" parent="PlayerResourceState" unique_id=1703500274]
 modulate = Color(1, 1, 1, 0.92)
-offset_left = 1732.0
-offset_top = 7.0
-offset_right = 1864.0
-offset_bottom = 55.0
+offset_left = 564.0
+offset_top = 24.0
+offset_right = 704.0
+offset_bottom = 66.0
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_float_hud")
 
 [node name="StatusMargin" type="MarginContainer" parent="PlayerResourceState/StatusPanel" unique_id=1795688238]
 layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 7
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 7
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
 
 [node name="StatusRow" type="HBoxContainer" parent="PlayerResourceState/StatusPanel/StatusMargin" unique_id=1921807102]
 layout_mode = 2
@@ -675,30 +338,34 @@ theme_override_constants/separation = 5
 
 [node name="HourglassIcon" type="ColorRect" parent="PlayerResourceState/StatusPanel/StatusMargin/StatusRow" unique_id=1919220531]
 material = SubResource("ShaderMaterial_hourglass_icon")
-custom_minimum_size = Vector2(30, 22)
+custom_minimum_size = Vector2(20, 22)
 layout_mode = 2
 mouse_filter = 2
+size_flags_vertical = 4
 
 [node name="TimerBlock" type="VBoxContainer" parent="PlayerResourceState/StatusPanel/StatusMargin/StatusRow" unique_id=837675892]
 custom_minimum_size = Vector2(82, 0)
 layout_mode = 2
 size_flags_horizontal = 3
+alignment = 1
 
 [node name="Value" type="Label" parent="PlayerResourceState/StatusPanel/StatusMargin/StatusRow/TimerBlock" unique_id=1256083058]
 layout_mode = 2
 theme = ExtResource("10_svc60")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 14
 text = "00:00:00"
-horizontal_alignment = 1
+horizontal_alignment = 0
+theme_override_constants/outline_size = 1
 
 [node name="SessionTimer" type="Timer" parent="PlayerResourceState" unique_id=1531783413]
 
-[node name="TransitionEnergyControl" type="HBoxContainer" parent="PlayerResourceState" unique_id=1719365360]
-offset_left = 20.0
-offset_top = 9.0
-offset_right = 740.0
-offset_bottom = 69.0
-theme_override_constants/separation = 5
+[node name="TransitionEnergyControl" type="VBoxContainer" parent="PlayerResourceState" unique_id=1719365360]
+offset_left = 28.0
+offset_top = 126.0
+offset_right = 288.0
+offset_bottom = 330.0
+theme_override_constants/separation = 12
+mouse_filter = 2
 
 [node name="CoreEnergyBar" type="ProgressBar" parent="PlayerResourceState/TransitionEnergyControl" unique_id=690674300]
 visible = false
@@ -718,191 +385,313 @@ theme = ExtResource("10_svc60")
 text = "100/100"
 horizontal_alignment = 1
 
-[node name="PartyLifeSlot1" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=2124584661]
-custom_minimum_size = Vector2(220, 58)
+[node name="PartyLifeSlot1" type="Control" parent="PlayerResourceState/TransitionEnergyControl" unique_id=2124584661]
+custom_minimum_size = Vector2(260, 60)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 0
 
 [node name="Panel" type="PanelContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1" unique_id=358830326]
-custom_minimum_size = Vector2(220, 58)
-layout_mode = 2
+custom_minimum_size = Vector2(260, 60)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_party_life_panel")
+mouse_filter = 0
+mouse_default_cursor_shape = 6
+theme_override_styles/panel = SubResource("StyleBoxEmpty_party_life_panel")
 
 [node name="Margin" type="MarginContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel" unique_id=759371783]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+mouse_filter = 2
 
 [node name="Content" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin" unique_id=1990372937]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 12
 
-[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content" unique_id=23227926]
-clip_contents = true
-custom_minimum_size = Vector2(48, 42)
+[node name="PortraitSlot" type="Control" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content"]
+custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content/PortraitSlot" unique_id=23227926]
+clip_contents = true
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 0
+offset_right = 50.0
+offset_bottom = 50.0
+size_flags_vertical = 4
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
+[node name="FormationNumber" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1"]
+layout_mode = 0
+offset_left = -24.0
+offset_top = 6.0
+offset_right = -4.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.75, 0.86, 0.91, 1)
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+
 [node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot1/Panel/Margin/Content" unique_id=336796229 instance=ExtResource("9_7a0j3")]
 layout_mode = 2
 
-[node name="PartyLifeSlot2" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=322386857]
-custom_minimum_size = Vector2(220, 58)
+[node name="PartyLifeSlot2" type="Control" parent="PlayerResourceState/TransitionEnergyControl" unique_id=322386857]
+custom_minimum_size = Vector2(260, 60)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 0
 
 [node name="Panel" type="PanelContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2" unique_id=381255328]
-custom_minimum_size = Vector2(220, 58)
-layout_mode = 2
+custom_minimum_size = Vector2(260, 60)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_party_life_panel")
+mouse_filter = 0
+mouse_default_cursor_shape = 6
+theme_override_styles/panel = SubResource("StyleBoxEmpty_party_life_panel")
 
 [node name="Margin" type="MarginContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel" unique_id=1472589759]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+mouse_filter = 2
 
 [node name="Content" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin" unique_id=1436906057]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 12
 
-[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content" unique_id=523047302]
-clip_contents = true
-custom_minimum_size = Vector2(48, 42)
+[node name="PortraitSlot" type="Control" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content"]
+custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content/PortraitSlot" unique_id=523047302]
+clip_contents = true
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 0
+offset_right = 50.0
+offset_bottom = 50.0
+size_flags_vertical = 4
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
+[node name="FormationNumber" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2"]
+layout_mode = 0
+offset_left = -24.0
+offset_top = 6.0
+offset_right = -4.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.75, 0.86, 0.91, 1)
+text = "2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+
 [node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot2/Panel/Margin/Content" unique_id=1020041966 instance=ExtResource("9_7a0j3")]
 layout_mode = 2
 
-[node name="PartyLifeSlot3" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl" unique_id=186204161]
-custom_minimum_size = Vector2(220, 58)
+[node name="PartyLifeSlot3" type="Control" parent="PlayerResourceState/TransitionEnergyControl" unique_id=186204161]
+custom_minimum_size = Vector2(260, 60)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 3
 size_flags_vertical = 0
 theme_override_constants/separation = 0
 
 [node name="Panel" type="PanelContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3" unique_id=1608962116]
-custom_minimum_size = Vector2(220, 58)
-layout_mode = 2
+custom_minimum_size = Vector2(260, 60)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_party_life_panel")
+mouse_filter = 0
+mouse_default_cursor_shape = 6
+theme_override_styles/panel = SubResource("StyleBoxEmpty_party_life_panel")
 
 [node name="Margin" type="MarginContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel" unique_id=1270444638]
 layout_mode = 2
-theme_override_constants/margin_left = 6
-theme_override_constants/margin_top = 5
-theme_override_constants/margin_right = 6
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_left = 0
+theme_override_constants/margin_top = 0
+theme_override_constants/margin_right = 0
+theme_override_constants/margin_bottom = 0
+
+mouse_filter = 2
 
 [node name="Content" type="HBoxContainer" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin" unique_id=886556861]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 mouse_filter = 2
-theme_override_constants/separation = 7
+theme_override_constants/separation = 12
 
-[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content" unique_id=658710604]
-clip_contents = true
-custom_minimum_size = Vector2(48, 42)
+[node name="PortraitSlot" type="Control" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content"]
+custom_minimum_size = Vector2(50, 50)
 layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Portrait" type="TextureRect" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content/PortraitSlot" unique_id=658710604]
+clip_contents = true
+custom_minimum_size = Vector2(50, 50)
+layout_mode = 0
+offset_right = 50.0
+offset_bottom = 50.0
+size_flags_vertical = 4
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content" unique_id=1310587314 instance=ExtResource("9_7a0j3")]
-layout_mode = 2
-
-[node name="Difficulty" type="Label" parent="PlayerResourceState/TransitionEnergyControl" unique_id=647921054]
-custom_minimum_size = Vector2(54, 58)
-layout_mode = 2
-theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.88, 0.94, 1, 0.92)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 14
-text = "难度"
+[node name="FormationNumber" type="Label" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3"]
+layout_mode = 0
+offset_left = -24.0
+offset_top = 6.0
+offset_right = -4.0
+offset_bottom = 54.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+theme_override_colors/font_color = Color(0.75, 0.86, 0.91, 1)
+text = "3"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+
+[node name="Body" parent="PlayerResourceState/TransitionEnergyControl/PartyLifeSlot3/Panel/Margin/Content" unique_id=1310587314 instance=ExtResource("9_7a0j3")]
+layout_mode = 2
+
+[node name="Difficulty" type="Label" parent="PlayerResourceState" unique_id=647921054]
+layout_mode = 0
+theme = ExtResource("10_svc60")
+theme_override_colors/font_color = Color(0.76, 0.83, 0.88, 0.72)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 13
+text = "难度"
+horizontal_alignment = 1
+vertical_alignment = 1
+offset_left = 496.0
+offset_top = 32.0
+offset_right = 550.0
+offset_bottom = 60.0
+
 [node name="ElectricityCoin" type="ColorRect" parent="PlayerResourceState" unique_id=360590376]
 material = SubResource("ShaderMaterial_0g0qh")
-offset_left = 758.0
-offset_top = 19.0
-offset_right = 791.0
-offset_bottom = 52.0
+offset_left = 252.0
+offset_top = 37.0
+offset_right = 278.0
+offset_bottom = 63.0
+mouse_filter = 2
 
 [node name="Label" type="Label" parent="PlayerResourceState/ElectricityCoin" unique_id=150578415]
 layout_mode = 0
-offset_left = 40.0
-offset_top = -4.0
-offset_right = 93.0
-offset_bottom = 41.0
+offset_left = 34.0
+offset_top = -2.0
+offset_right = 114.0
+offset_bottom = 28.0
 theme = ExtResource("10_svc60")
-theme_override_colors/font_color = Color(0.9018106, 0.8334029, 0, 1)
-theme_override_font_sizes/font_size = 29
+theme_override_colors/font_color = Color(0.88, 0.83, 0.66, 1)
+theme_override_font_sizes/font_size = 20
 text = "0"
+theme_override_constants/outline_size = 1
 
 [node name="MenuButton" type="Button" parent="PlayerResourceState" unique_id=1744181871]
 self_modulate = Color(1, 1, 1, 0)
 top_level = true
 z_index = 20
-custom_minimum_size = Vector2(50, 50)
-offset_left = 1870.0
-offset_top = 4.0
-offset_right = 1920.0
-offset_bottom = 54.0
+custom_minimum_size = Vector2(48, 48)
+offset_left = 1852.0
+offset_top = 20.0
+offset_right = 1900.0
+offset_bottom = 68.0
 
 [node name="ColorRect" type="ColorRect" parent="PlayerResourceState/MenuButton" unique_id=668687700]
 material = SubResource("ShaderMaterial_t64y5")
-custom_minimum_size = Vector2(50, 50)
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 0
-offset_right = 50.0
-offset_bottom = 50.0
-mouse_filter = 1
-
-[node name="RelicContainer" type="VFlowContainer" parent="PlayerResourceState" unique_id=1026858854]
-custom_minimum_size = Vector2(310, 440)
-offset_left = 3.0
-offset_top = 75.0
-offset_right = 313.0
-offset_bottom = 625.0
+offset_right = 46.0
+offset_bottom = 46.0
 mouse_filter = 2
-theme_override_constants/h_separation = 15
-theme_override_constants/v_separation = 15
+offset_left = 2.0
+offset_top = 2.0
+
+[node name="RelicDock" type="VBoxContainer" parent="PlayerResourceState"]
+offset_left = 28.0
+offset_top = 370.0
+offset_right = 106.0
+offset_bottom = 1008.0
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="Label" type="Label" parent="PlayerResourceState/RelicDock"]
+layout_mode = 2
+mouse_filter = 2
+theme = ExtResource("10_svc60")
+theme_override_colors/font_color = Color(0.7, 0.8, 0.86, 0.55)
+theme_override_font_sizes/font_size = 11
+theme_override_constants/outline_size = 0
+text = "遗物"
+
+[node name="Scroll" type="ScrollContainer" parent="PlayerResourceState/RelicDock"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+theme = SubResource("Theme_relic_scroll")
+
+[node name="RelicContainer" type="VFlowContainer" parent="PlayerResourceState/RelicDock/Scroll" unique_id=1026858854]
+custom_minimum_size = Vector2(50, 608)
+layout_mode = 2
+size_flags_vertical = 0
+mouse_filter = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
 
 [node name="MapPeekButton" type="Button" parent="PlayerResourceState" unique_id=902117998]
 self_modulate = Color(1, 1, 1, 0)
-custom_minimum_size = Vector2(54, 54)
-offset_left = 1512.0
-offset_top = 3.0
-offset_right = 1566.0
-offset_bottom = 57.0
+custom_minimum_size = Vector2(48, 48)
+offset_left = 1784.0
+offset_top = 20.0
+offset_right = 1832.0
+offset_bottom = 68.0
 focus_mode = 0
 theme = ExtResource("10_svc60")
 theme_override_colors/font_color = Color(0.92, 0.98, 1, 0.96)
@@ -920,19 +709,21 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -15.0
+offset_left = 4.0
 offset_top = 4.0
-offset_right = -12.0
-offset_bottom = 7.0
+offset_right = -4.0
+offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 1
+mouse_filter = 2
 
 [node name="ItemsHContainer" type="HBoxContainer" parent="PlayerResourceState" unique_id=1217216392]
-offset_left = 1557.0
-offset_top = 8.0
-offset_right = 1727.0
-offset_bottom = 62.0
+offset_left = 28.0
+offset_top = 28.0
+offset_right = 226.0
+offset_bottom = 86.0
+theme_override_constants/separation = 12
+mouse_filter = 2
 
 [node name="Panel" parent="PlayerResourceState/ItemsHContainer" unique_id=1242127179 instance=ExtResource("18_bl6si")]
 layout_mode = 2
@@ -942,6 +733,11 @@ layout_mode = 2
 
 [node name="Panel3" parent="PlayerResourceState/ItemsHContainer" unique_id=1306712741 instance=ExtResource("18_bl6si")]
 layout_mode = 2
+
+[node name="NodeProjection" type="CanvasLayer" parent="."]
+layer = 6
+
+[node name="NodeHoloTip" parent="NodeProjection" instance=ExtResource("node_holo_tip")]
 
 [node name="MenuLayer" type="CanvasLayer" parent="." unique_id=1987654321]
 layer = 30
@@ -964,10 +760,11 @@ position = Vector2(960, 540)
 limit_enabled = false
 limit_left = 0
 limit_top = 0
-limit_right = 3500
+limit_right = 3760
 limit_bottom = 1082
 position_smoothing_enabled = true
 script = ExtResource("15_dcam")
+WorldRightBoundary = 3760.0
 
 [connection signal="pressed" from="UI/Button" to="." method="CloseWindow"]
 

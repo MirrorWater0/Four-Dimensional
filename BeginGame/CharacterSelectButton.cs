@@ -2,6 +2,8 @@ using Godot;
 
 public partial class CharacterSelectButton : Button
 {
+    private Tween _hoverTween;
+    private Control Content => field ??= GetNode<Control>("Content");
     private TextureRect IconRect =>
         field ??= GetNodeOrNull<TextureRect>("Content/Row/IconFrame/IconMargin/Icon");
     private Label NameLabel => field ??= GetNodeOrNull<Label>("Content/Row/TextStack/NameLabel");
@@ -16,22 +18,31 @@ public partial class CharacterSelectButton : Button
         IgnoreChildMouseFilters(this);
     }
 
-    public void SetCharacter(Texture2D icon, Texture2D fallbackPortrait, PlayerInfoStructure info)
+    public void SetCharacter(Texture2D art, Texture2D fallback, PlayerInfoStructure info, string callsign)
     {
-        if (IconRect != null)
-            IconRect.Texture = icon ?? fallbackPortrait;
+        // The four archive illustrations are landscape plates with the face in the upper centre.
+        if (IconRect != null && art != null) {
+            Vector2 size = art.GetSize();
+            float side = size.Y * 0.56f;
+            IconRect.Texture = new AtlasTexture {
+                Atlas = art,
+                Region = new Rect2((size.X - side) * 0.5f, size.Y * 0.015f, side, side),
+                FilterClip = true,
+            };
+        } else if (IconRect != null) {
+            IconRect.Texture = fallback;
+        }
 
         if (NameLabel != null)
             NameLabel.Text = info.CharacterName ?? I18n.Tr("ui.common.character", "Character");
-
         if (StatsLabel != null)
-            StatsLabel.Text = I18n.Format(
-                "ui.common.character_stats_inline",
-                "生命 {life}  力量 {power}  生存 {survivability}",
-                ("life", info.LifeMax),
-                ("power", info.Power),
-                ("survivability", info.Survivability)
-            );
+            StatsLabel.Text = string.IsNullOrEmpty(callsign) ? "OPERATOR" : $"OPERATOR   /   {callsign.ToUpperInvariant()}";
+    }
+
+    public void SetHoverMotion(bool hovered) {
+        _hoverTween?.Kill();
+        _hoverTween = CreateTween().SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        _hoverTween.TweenProperty(Content, "offset_left", hovered ? 7f : 0f, 0.16f);
     }
 
     public void SetBadge(bool visible, string text)

@@ -4,6 +4,10 @@
 [ext_resource type="Shader" path="res://shader/UI/Start/DimensionalField.gdshader" id="2_shader"]
 [ext_resource type="Shader" path="res://shader/UI/CharacterSelect/HeroFeather.gdshader" id="3_feather_shader"]
 
+[ext_resource type="Texture2D" path="res://asset/UI/CharacterSelect/EchoHero.png" id="4_hero"]
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="ShaderMaterial" id="Material_atmosphere"]
 resource_local_to_scene = true
 shader = ExtResource("2_shader")
@@ -11,7 +15,7 @@ shader_parameter/emphasis = 0.0
 
 [sub_resource type="ShaderMaterial" id="Material_hero_feather"]
 shader = ExtResource("3_feather_shader")
-shader_parameter/softness = 0.55
+resource_local_to_scene = true
 
 [sub_resource type="SystemFont" id="Font_ui"]
 font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
@@ -36,13 +40,13 @@ border_color = Color(0, 0, 0, 0)
 shadow_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dossier_panel"]
-content_margin_left = 26.0
-content_margin_top = 22.0
-content_margin_right = 26.0
-content_margin_bottom = 22.0
-bg_color = Color(0.04, 0.05, 0.07, 0.65)
-border_width_left = 1
-border_color = Color(0.78, 0.82, 0.88, 0.25)
+bg_color = Color(0.10, 0.14, 0.18, 1)
+
+[sub_resource type="StyleBoxFlat" id="Primary"]
+bg_color = Color(0.80, 0.89, 0.92, 1)
+
+[sub_resource type="StyleBoxFlat" id="PrimaryHover"]
+bg_color = Color(0.93, 0.97, 0.99, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_input"]
 content_margin_left = 12.0
@@ -71,42 +75,6 @@ bg_color = Color(0.04, 0.05, 0.06, 0.25)
 border_width_bottom = 1
 border_color = Color(0.40, 0.43, 0.48, 0.25)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel"]
-content_margin_left = 22.0
-content_margin_top = 8.0
-content_margin_right = 22.0
-content_margin_bottom = 8.0
-bg_color = Color(0.06, 0.07, 0.09, 0.50)
-border_width_bottom = 1
-border_color = Color(0.78, 0.80, 0.82, 0.50)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_cancel_hover"]
-content_margin_left = 22.0
-content_margin_top = 8.0
-content_margin_right = 22.0
-content_margin_bottom = 8.0
-bg_color = Color(0.12, 0.14, 0.18, 0.70)
-border_width_bottom = 1
-border_color = Color(0.94, 0.96, 0.98, 0.95)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm"]
-content_margin_left = 22.0
-content_margin_top = 8.0
-content_margin_right = 22.0
-content_margin_bottom = 8.0
-bg_color = Color(0.91, 0.98, 0.97, 0.20)
-border_width_bottom = 1
-border_color = Color(0.91, 0.98, 0.97, 0.85)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_confirm_hover"]
-content_margin_left = 22.0
-content_margin_top = 8.0
-content_margin_right = 22.0
-content_margin_bottom = 8.0
-bg_color = Color(0.91, 0.98, 0.97, 0.32)
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
-
 [node name="CharacterSelectionOverlay" type="Control" unique_id=755585865]
 layout_mode = 3
 anchors_preset = 15
@@ -126,24 +94,6 @@ grow_vertical = 2
 mouse_filter = 2
 material = SubResource("Material_atmosphere")
 
-[node name="HeroImage" type="TextureRect" parent="." unique_id=2014720372]
-material = SubResource("Material_hero_feather")
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -410.0
-offset_right = 360.0
-offset_bottom = 410.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-expand_mode = 1
-stretch_mode = 6
-
 [node name="Shade" type="ColorRect" parent="." unique_id=130710203]
 layout_mode = 1
 anchors_preset = 15
@@ -152,7 +102,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0, 0, 0, 0)
+color = Color(0.028, 0.048, 0.071, 0.78)
 
 [node name="SafeArea" type="MarginContainer" parent="." unique_id=1658685177]
 layout_mode = 1
@@ -191,7 +141,7 @@ theme_override_constants/margin_bottom = 24
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin" unique_id=337259187]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 20
 
 [node name="Header" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=100000001]
 layout_mode = 2
@@ -205,12 +155,28 @@ theme_override_fonts/font = SubResource("Font_title")
 theme_override_font_sizes/font_size = 14
 text = "SQUAD ASSEMBLY // 编队组建"
 
-[node name="ScreenTitle" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Header" unique_id=100000002]
+[node name="TitleRow" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Header"]
+mouse_filter = 2
+
+[node name="ScreenTitle" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Header/TitleRow" unique_id=100000002]
+size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
 theme_override_fonts/font = SubResource("Font_technical")
 theme_override_font_sizes/font_size = 40
 text = "选择出击小队"
+
+[node name="Guide" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Header/TitleRow"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_ui")
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.71, 0.77, 0.83, 1)
+text = "满队时，新干员替换当前查看的队员。点击下方出战位可移出。"
+
+[node name="MastheadRule" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox/Header"]
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.62, 0.72, 0.80, 0.36)
 
 [node name="Body" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=100000010]
 layout_mode = 2
@@ -220,7 +186,7 @@ mouse_filter = 2
 theme_override_constants/separation = 32
 
 [node name="RosterColumn" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000011]
-custom_minimum_size = Vector2(510, 0)
+custom_minimum_size = Vector2(376, 0)
 layout_mode = 2
 size_flags_vertical = 0
 mouse_filter = 2
@@ -233,99 +199,219 @@ theme_override_fonts/font = SubResource("Font_title")
 theme_override_font_sizes/font_size = 13
 text = "ROSTER // 可选干员"
 
-[node name="CardGrid" type="HFlowContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn" unique_id=106678245]
+[node name="CardGrid" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/RosterColumn" unique_id=106678245]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
-
-[node name="Spacer" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000013]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
+theme_override_constants/separation = 10
 
 [node name="DossierColumn" type="PanelContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body" unique_id=100000014]
-custom_minimum_size = Vector2(500, 0)
+clip_contents = true
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(640, 0)
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_dossier_panel")
 
-[node name="Stack" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn" unique_id=100000015]
-layout_mode = 2
+[node name="Plate" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn"]
+clip_contents = true
 mouse_filter = 2
-theme_override_constants/separation = 10
 
-[node name="DossierLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=100000016]
+[node name="HeroImage" type="TextureRect" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Plate"]
+layout_mode = 1
+anchor_left = 0.24
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("4_hero")
+expand_mode = 1
+stretch_mode = 6
+material = SubResource("Material_hero_feather")
+
+[node name="Folio" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Plate"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.16, 0.21, 0.27, 1)
+text = "FIELD ARCHIVE     /     01"
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -246
+offset_right = -24
+offset_top = 20
+horizontal_alignment = 2
+
+[node name="CaptionArea" type="Control" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn"]
+mouse_filter = 2
+
+[node name="Stack" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea" unique_id=100000015]
+anchor_top = 0.12
+anchor_right = 0.43
+anchor_bottom = 0.93
+offset_left = 36
+offset_right = -20
+layout_mode = 1
+mouse_filter = 2
+theme_override_constants/separation = 16
+
+[node name="DossierLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack" unique_id=100000016]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.75)
 theme_override_fonts/font = SubResource("Font_title")
 theme_override_font_sizes/font_size = 13
 text = "DOSSIER // 干员档案"
 
-[node name="Title" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=2084307780]
+[node name="Callsign" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 19
+theme_override_colors/font_color = Color(0.63, 0.82, 0.87, 1)
+text = "ECHO"
+
+[node name="Title" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack" unique_id=2084307780]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.96, 0.98, 1, 1)
 theme_override_fonts/font = SubResource("Font_technical")
-theme_override_font_sizes/font_size = 38
-text = "Echo"
+theme_override_font_sizes/font_size = 54
+text = "回声"
 
-[node name="StatusLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=941368602]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.88, 0.90, 0.94, 0.95)
-theme_override_fonts/font = SubResource("Font_ui")
-theme_override_font_sizes/font_size = 16
-text = "生命 0    力量 0    生存 0"
-autowrap_mode = 3
+[node name="Vitals" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack"]
+mouse_filter = 2
+theme_override_constants/separation = 12
 
-[node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=1874506412]
+[node name="Life" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals"]
+mouse_filter = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Value" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Life"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 33
+text = "44"
+
+[node name="Caption" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Life"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.68, 0.76, 0.83, 1)
+theme_override_font_sizes/font_size = 14
+text = "生命"
+
+[node name="Power" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals"]
+mouse_filter = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Value" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Power"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 33
+text = "3"
+
+[node name="Caption" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Power"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.68, 0.76, 0.83, 1)
+theme_override_font_sizes/font_size = 14
+text = "力量"
+
+[node name="Survival" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals"]
+mouse_filter = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Value" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Survival"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.94, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 33
+text = "3"
+
+[node name="Caption" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/Vitals/Survival"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_colors/font_color = Color(0.68, 0.76, 0.83, 1)
+theme_override_font_sizes/font_size = 14
+text = "生存"
+
+[node name="Divider" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack" unique_id=1874506412]
 custom_minimum_size = Vector2(0, 1)
 layout_mode = 2
 mouse_filter = 2
 color = Color(0.78, 0.82, 0.88, 0.25)
 
-[node name="DossierScroll" type="ScrollContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack"]
+[node name="DossierScroll" type="ScrollContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-vertical_scroll_mode = 2
+vertical_scroll_mode = 1
 
-[node name="DossierContent" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/DossierScroll"]
+[node name="DossierContent" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/DossierScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/DossierScroll/DossierContent" unique_id=1473406607]
-custom_minimum_size = Vector2(0, 80)
+[node name="PassiveTitle" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/DossierScroll/DossierContent"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 23
+theme_override_colors/font_color = Color(0.89, 0.95, 0.98, 1)
+text = "余响  /  被动"
+autowrap_mode = 3
+
+[node name="HintLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/CaptionArea/Stack/DossierScroll/DossierContent" unique_id=1473406607]
+custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.92, 0.94, 0.97, 1)
 theme_override_fonts/font = SubResource("Font_label")
-theme_override_font_sizes/font_size = 16
-text = "被动"
+theme_override_font_sizes/font_size = 18
+vertical_alignment = 0
+text = "第1次回合开始时：额外获得1点能量。"
 autowrap_mode = 3
 
-[node name="TeamBar" type="VBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack" unique_id=238699404]
-custom_minimum_size = Vector2(0, 60)
+[node name="FormationRule" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.62, 0.72, 0.80, 0.36)
+
+[node name="TeamBar" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=238699404]
+custom_minimum_size = Vector2(0, 78)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="TeamLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/TeamBar" unique_id=273650220]
+[node name="TeamLabel" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar" unique_id=273650220]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.70, 0.74, 0.80, 0.75)
 theme_override_fonts/font = SubResource("Font_title")
 theme_override_font_sizes/font_size = 13
 text = "TEAM // 出战顺序"
 
-[node name="TeamSlots" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Body/DossierColumn/Stack/TeamBar" unique_id=217232594]
+[node name="TeamCount" type="Label" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar"]
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_technical")
+theme_override_font_sizes/font_size = 24
+theme_override_colors/font_color = Color(0.72, 0.86, 0.90, 1)
+text = "03 / 03"
+custom_minimum_size = Vector2(120, 0)
+horizontal_alignment = 1
+
+[node name="TeamSlots" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/TeamBar" unique_id=217232594]
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_constants/separation = 8
+
+[node name="FooterRule" type="ColorRect" parent="SafeArea/Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 1)
+mouse_filter = 2
+color = Color(0.62, 0.72, 0.80, 0.36)
 
 [node name="Footer" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox" unique_id=927023461]
 layout_mode = 2
@@ -335,7 +421,7 @@ theme_override_constants/separation = 16
 alignment = 2
 
 [node name="SeedBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=208974967]
-custom_minimum_size = Vector2(384, 36)
+custom_minimum_size = Vector2(258, 44)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -350,7 +436,7 @@ text = "SEED"
 vertical_alignment = 1
 
 [node name="SeedInput" type="LineEdit" parent="SafeArea/Center/Panel/Margin/VBox/Footer/SeedBox" unique_id=1213545331]
-custom_minimum_size = Vector2(264, 36)
+custom_minimum_size = Vector2(198, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.94, 0.97, 0.95)
 theme_override_colors/font_placeholder_color = Color(0.58, 0.60, 0.66, 0.45)
@@ -364,7 +450,7 @@ placeholder_text = "empty = random, 0-999999999"
 max_length = 9
 
 [node name="DifficultyBox" type="HBoxContainer" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1907724302]
-custom_minimum_size = Vector2(336, 36)
+custom_minimum_size = Vector2(280, 44)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -429,44 +515,51 @@ layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = SubResource("Font_label")
 theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel")
 text = "返回"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="SafeArea/Center/Panel/Margin/VBox/Footer/CancelButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="RandomStartButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer"]
-custom_minimum_size = Vector2(180, 54)
+custom_minimum_size = Vector2(236, 56)
 layout_mode = 2
 focus_mode = 0
 theme_override_colors/font_color = Color(0.90, 0.91, 0.95, 1)
 theme_override_colors/font_hover_color = Color(0.98, 0.98, 1, 1)
 theme_override_colors/font_disabled_color = Color(0.54, 0.56, 0.62, 0.60)
-theme_override_fonts/font = SubResource("Font_label")
 theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_cancel")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_cancel_hover")
-theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_cancel")
 text = "随机并开始"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="SafeArea/Center/Panel/Margin/VBox/Footer/RandomStartButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="ConfirmButton" type="Button" parent="SafeArea/Center/Panel/Margin/VBox/Footer" unique_id=1176823235]
-custom_minimum_size = Vector2(240, 54)
+custom_minimum_size = Vector2(268, 56)
 layout_mode = 2
 focus_mode = 0
-theme_override_colors/font_color = Color(0.94, 0.95, 0.97, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_colors/font_pressed_color = Color(0.90, 0.91, 0.95, 1)
+theme_override_colors/font_color = Color(0.075, 0.11, 0.14, 1)
+theme_override_colors/font_hover_color = Color(0.045, 0.08, 0.10, 1)
+theme_override_colors/font_pressed_color = Color(0.08, 0.12, 0.15, 1)
 theme_override_colors/font_disabled_color = Color(0.54, 0.56, 0.62, 0.60)
-theme_override_fonts/font = SubResource("Font_label")
 theme_override_font_sizes/font_size = 20
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_confirm")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_confirm_hover")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_confirm_hover")
+theme_override_styles/normal = SubResource("Primary")
+theme_override_styles/hover = SubResource("PrimaryHover")
+theme_override_styles/pressed = SubResource("Primary")
 theme_override_styles/disabled = SubResource("StyleBoxFlat_button_disabled")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_confirm")
 text = "确认并开始"
+theme = ExtResource("90_action_theme")
+alignment = 1
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="SafeArea/Center/Panel/Margin/VBox/Footer/ConfirmButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1

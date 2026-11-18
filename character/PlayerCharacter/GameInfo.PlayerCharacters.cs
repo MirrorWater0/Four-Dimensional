@@ -6,15 +6,9 @@ public static partial class GameInfo
 {
     public const int DefaultPlayerPartySize = 3;
 
-    private const int MaxFormationSlots = 9;
+    // The three party positions are configured in tactics; extra battle slots are for summons.
+    private const int MaxFormationSlots = DefaultPlayerPartySize;
     private static readonly int[] DefaultPlayerFormationSlots = [1, 2, 3];
-
-    private static readonly SkillID[] StarterBattleDeckBase =
-    [
-        SkillID.BasicGuard,
-        SkillID.BasicDefense,
-        SkillID.BasicAttack,
-    ];
 
     private static readonly HashSet<SkillID> BasicSkillIds =
     [
@@ -141,21 +135,7 @@ public static partial class GameInfo
         for (int i = 0; i < PlayerCharacters.Length; i++)
         {
             var info = PlayerCharacters[i];
-            info.GainedSkills ??= new List<SkillID>();
-            if (IsStarterBasicOnlyDeck(info.GainedSkills))
-            {
-                info.GainedSkills = new List<SkillID>(GetStarterBattleDeck(info));
-            }
-            else
-            {
-                foreach (var skillId in info.TakenSkills ?? Array.Empty<SkillID>())
-                {
-                    if (!info.GainedSkills.Contains(skillId))
-                    {
-                        info.GainedSkills.Add(skillId);
-                    }
-                }
-            }
+            EnsureTakenSkillsAreTracked(ref info);
 
             PlayerCharacters[i] = info;
         }
@@ -169,6 +149,7 @@ public static partial class GameInfo
         info.TakenSkills = NormalizeArray(info.TakenSkills, 3);
         info.LifeMax = Math.Max(1, info.LifeMax);
         TalentTree.ApplyMaxLifeBonus(ref info);
+        info.PassiveDescription = TalentTree.GetPassiveDescription(info);
         if (!info.LifeInitialized)
         {
             info.Life = info.LifeMax;
@@ -185,7 +166,6 @@ public static partial class GameInfo
 
         info.AllSkills = Skill.GetPlayerSkillPool(info.CharacterName, info.CharacterScenePath);
         NormalizeTakenSkillsForPool(ref info);
-        NormalizeStarterBattleDeckIfNeeded(ref info);
         NormalizeStarterTakenSpecialIfNeeded(ref info);
         EnsureTakenSkillsAreTracked(ref info);
     }
@@ -286,18 +266,6 @@ public static partial class GameInfo
         info.TakenSkills = normalized.Select(skill => skill ?? pool[0]).ToArray();
     }
 
-    private static bool IsStarterBasicOnlyDeck(List<SkillID> gainedSkills)
-    {
-        return gainedSkills == null
-            || gainedSkills.Count == 0
-            || gainedSkills.All(BasicSkillIds.Contains);
-    }
-
-    private static SkillID[] GetStarterBattleDeck(PlayerInfoStructure info)
-    {
-        return StarterBattleDeckBase.Append(GetStarterSpecialSkill(info)).ToArray();
-    }
-
     private static SkillID GetStarterSpecialSkill(PlayerInfoStructure info)
     {
         return Skill.TryResolvePlayerCharacterKey(
@@ -314,13 +282,6 @@ public static partial class GameInfo
             _ => SkillID.BasicSpecial,
         }
             : SkillID.BasicSpecial;
-    }
-
-    private static void NormalizeStarterBattleDeckIfNeeded(ref PlayerInfoStructure info)
-    {
-        info.GainedSkills ??= new List<SkillID>();
-        if (IsStarterBasicOnlyDeck(info.GainedSkills))
-            info.GainedSkills = new List<SkillID>(GetStarterBattleDeck(info));
     }
 
     private static void NormalizeStarterTakenSpecialIfNeeded(ref PlayerInfoStructure info)
@@ -368,6 +329,10 @@ public static partial class GameInfo
         info.GainedSkills ??= new List<SkillID>();
         foreach (var skillId in info.TakenSkills ?? Array.Empty<SkillID>())
         {
+            // Legacy equipped basic skills must not add cards to the battle deck.
+            if (IsBasicSkill(skillId))
+                continue;
+
             if (!info.GainedSkills.Contains(skillId))
                 info.GainedSkills.Add(skillId);
         }

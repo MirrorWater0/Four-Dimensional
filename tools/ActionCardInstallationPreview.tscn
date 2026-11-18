@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/Diagnostics/ActionCardInstallationPreview.cs" id="Script"]
+[ext_resource type="PackedScene" path="res://battle/UIScene/BattleHandCard.tscn" id="Card"]
+[ext_resource type="PackedScene" path="res://battle/UIScene/ActionCardRack.tscn" id="Rack"]
+[ext_resource type="Texture2D" path="res://tools/ActionCardsUiReference.png" id="Background"]
+
+[node name="ActionCardInstallationPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("Script")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("Background")
+expand_mode = 1
+stretch_mode = 6
+modulate = Color(0.65, 0.65, 0.65, 1)
+
+[node name="Title" type="Label" parent="."]
+offset_left = 740.0
+offset_top = 84.0
+offset_right = 1240.0
+offset_bottom = 136.0
+theme_override_font_sizes/font_size = 26
+text = "安装行动牌 · 蓄势 / 甩出 / 冲击归位"
+
+[node name="Rack" parent="." instance=ExtResource("Rack")]
+offset_left = 565.0
+offset_top = 640.0
+offset_right = 775.0
+offset_bottom = 770.0
+
+[node name="FlyingCard" parent="." instance=ExtResource("Card")]
+offset_left = 835.0
+offset_top = 260.0
+offset_right = 1075.0
+offset_bottom = 630.0
+scale = Vector2(0.72, 0.72)
+z_index = 100
+
+[node name="Replay" type="Button" parent="."]
+offset_left = 1400.0
+offset_top = 120.0
+offset_right = 1630.0
+offset_bottom = 175.0
+theme_override_font_sizes/font_size = 23
+text = "重播安装动画"

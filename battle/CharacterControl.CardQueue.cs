@@ -17,9 +17,9 @@ public partial class CharacterControl
             return;
         }
 
-        if (!HasManualFriendlyTargetCandidates(skill))
+        if (!HasManualTargetCandidates(skill))
         {
-            // A manual-target card with no valid ally is still playable, but its manual part
+            // A manual-target card with no valid candidate is still playable, but its manual part
             // has no target to resolve. Keep the normal lift-then-click-outside interaction
             // instead of treating the first click as a confirmed play.
             if (_liftedCardIndex != index)
@@ -27,26 +27,26 @@ public partial class CharacterControl
             return;
         }
 
-        skill.ClearManualFriendlyTarget();
+        skill.ClearManualTargetSelection();
         SkillCard sourceCard = _cards[index];
         PrepareManualTargetArrowLiftedCard(index, skill);
         Character target = await ShowManualTargetArrowPickerAsync(skill, sourceCard, index);
         if (target == null || !GodotObject.IsInstanceValid(target))
         {
-            skill.ClearManualFriendlyTarget();
+            skill.ClearManualTargetSelection();
             RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
-        skill.SetManualFriendlyTarget(target);
-        if (!skill.HasManualFriendlyTarget())
+        skill.SetManualTargetSelection(target);
+        if (!skill.HasManualTargetSelection())
         {
-            skill.ClearManualFriendlyTarget();
+            skill.ClearManualTargetSelection();
             RequestTurnUiRefresh(refreshHover: true);
             return;
         }
 
-        QueueCardPlay(index, skill, keepManualFriendlyTarget: true);
+        QueueCardPlay(index, skill, keepManualTarget: true);
     }
 
     private void ClearCardButtonPressSuppression()
@@ -124,7 +124,7 @@ public partial class CharacterControl
 
     private bool TryStartHandCardPress(int index, bool allowSuppressedPress = false)
     {
-        if (!IsCardIndexValid(index) || _handLayoutSyncPending)
+        if (!IsCardIndexValid(index) || _handLayoutSyncPending || IsCardDrawEntryInputBlocked(index))
             return false;
 
         if (IsLeftMouseButtonPressActive())
@@ -148,10 +148,11 @@ public partial class CharacterControl
         _queuedHoverRefreshVersion = 0;
     }
 
-    private void QueueCardPlay(int index, Skill skill, bool keepManualFriendlyTarget = false)
+    private void QueueCardPlay(int index, Skill skill, bool keepManualTarget = false)
     {
         if (
             skill == null
+            || !skill.CanBePlayed
             || _endTurnQueued
             || _handLayoutSyncPending
             || _activePlayer == null
@@ -180,13 +181,19 @@ public partial class CharacterControl
             return;
         }
 
-        if (!keepManualFriendlyTarget)
-            skill.ClearManualFriendlyTarget();
+        if (!keepManualTarget)
+            skill.ClearManualTargetSelection();
 
-        Character actor = skill.OwnerCharater ?? _activePlayer;
+        Character actor = skill.IsStatusCard ? _activePlayer : skill.OwnerCharater ?? _activePlayer;
+        Character previousOwner = skill.OwnerCharater;
+        // Team status cards have no persistent owner; bind their actor only when they are played.
+        if (skill.IsStatusCard)
+            skill.OwnerCharater = actor;
         bool hadStun = HasActiveStun(actor);
         if (!hadStun && !skill.TrySpendDisplayedEnergy())
         {
+            if (skill.IsStatusCard)
+                skill.OwnerCharater = previousOwner;
             ResetCardMotion(index, instant: false);
             RequestTurnUiRefresh(refreshHover: true);
             return;
@@ -199,6 +206,8 @@ public partial class CharacterControl
         if (card == null || !GodotObject.IsInstanceValid(card))
         {
             skill.RefundDisplayedEnergy();
+            if (skill.IsStatusCard)
+                skill.OwnerCharater = previousOwner;
             ResetCardMotion(index, instant: false);
             RequestTurnUiRefresh(refreshHover: true);
             return;
@@ -213,6 +222,7 @@ public partial class CharacterControl
         var play = new QueuedCardPlay
         {
             Actor = actor,
+            OriginalOwner = previousOwner,
             Index = index,
             Skill = skill,
             SkillId = skill.SkillId,
@@ -250,6 +260,7 @@ public partial class CharacterControl
 
     private void PrepareHandVisualsBeforeQueuedPlay(int playedIndex, SkillCard playedCard)
     {
+        BattleNode?.ActionCardsUi?.ShowReplacementPreview(null);
         if (_liftedCardIndex != -1 && _liftedCardIndex != playedIndex)
             ClearLiftedCard(instant: true);
         else if (_liftedCardIndex == playedIndex)
@@ -337,7 +348,7 @@ public partial class CharacterControl
         return card;
     }
 
-    public Task QueueCarryCardAsync(Character actor, Skill skill)
+    public Task QueueDrawPileCardAsync(Character actor, Skill skill)
     {
         if (
             actor == null
@@ -350,17 +361,19 @@ public partial class CharacterControl
             return Task.CompletedTask;
         }
 
+        Character previousOwner = skill.OwnerCharater;
         skill.OwnerCharater = actor;
         skill.UpdateDescription();
 
         bool hadStun = HasActiveStun(actor);
-        SkillCard card = CreateTemporaryPlayCard(actor, skill, "连携", "CarryCard");
+        SkillCard card = CreateTemporaryPlayCard(actor, skill, "打出", "DrawPileCard");
         var completion = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
         var play = new QueuedCardPlay
         {
             Actor = actor,
+            OriginalOwner = previousOwner,
             Index = -1,
             Skill = skill,
             SkillId = skill.SkillId,
@@ -370,10 +383,11 @@ public partial class CharacterControl
             IsTemporaryCard = card != null,
             FlyToDiscardPileAfterUse = card != null,
             FreeEnergyCost = true,
+            IsDrawPileCard = true,
             Completion = completion,
         };
         if (card != null)
-            play.MoveToCenterTask = ShowTemporaryCardAtCenterAsync(play, "连携");
+            play.MoveToCenterTask = ShowTemporaryCardAtCenterAsync(play, "打出");
 
         bool shouldWaitForCompletion = !_isProcessingCardQueue;
         if (_isProcessingCardQueue)
@@ -381,7 +395,6 @@ public partial class CharacterControl
         else
             _queuedCardPlays.Enqueue(play);
 
-        BattleNode?.DiscardBattleSkill(actor, skill);
         _ = ProcessCardQueueAsync();
         return shouldWaitForCompletion ? completion.Task : Task.CompletedTask;
     }
@@ -433,6 +446,8 @@ public partial class CharacterControl
                 bool shouldStop;
                 try
                 {
+                    // Card presentation owns its lifetime here; Skill.Effect queues the
+                    // gameplay work without holding the battle queue during card flights.
                     shouldStop = await ExecuteQueuedCardAsync(play);
                 }
                 catch
@@ -538,7 +553,7 @@ public partial class CharacterControl
             );
         }
 
-        if (!await SelectManualFriendlyTargetIfNeededAsync(play))
+        if (!await SelectManualTargetIfNeededAsync(play))
         {
             play.Skill.RefundDisplayedEnergy();
             RestoreHandSlotForQueuedPlay(play);
@@ -547,7 +562,25 @@ public partial class CharacterControl
             return play.IsHandCard;
         }
 
-        if (play.MoveToCenterTask != null)
+        if (!play.FreeEnergyCost && !HasActiveStun(play.Actor)
+            && !await BattleNode.PrepareActionCardInstallationAsync(play.Skill)) {
+            play.Skill.RefundDisplayedEnergy();
+            BattleNode.CancelActionCardInstallation(play.Skill);
+            RestoreHandSlotForQueuedPlay(play);
+            QueueFreeQueuedPlayCard(play);
+            CompleteQueuedPlay(play, succeeded: false);
+            RequestTurnUiRefresh(refreshHover: true);
+            return false;
+        }
+
+        bool installingAction = (!play.FreeEnergyCost || play.IsDrawPileCard) && !HasActiveStun(play.Actor)
+            && play.Skill.IsActionCard && play.Actor is PlayerCharacter;
+        if (installingAction) {
+            // Installation starts from the hand's release pose instead of waiting at the centre.
+            play.AbilityActivationVisualInProgress = true;
+            CancelQueuedPlayMoveTween(play);
+        }
+        else if (play.MoveToCenterTask != null)
             await play.MoveToCenterTask;
         else if (play.IsHandCard && play.MoveToCenterBeforeEffect)
             await MoveHandPlayCardToCenterAsync(play);
@@ -557,19 +590,51 @@ public partial class CharacterControl
         if (play.Skill.IsAbilityCard)
             await PlayAbilityCardActivationAsync(play);
 
-        if (play.FreeEnergyCost)
-        {
-            using (play.Skill.BeginEnergyCostWaiver())
+        Task installationAnimation = null;
+        void StartInstallationAnimation(PlayerCharacter owner, Skill skill) {
+            if (owner != play.Actor || !ReferenceEquals(skill, play.Skill) || installationAnimation != null)
+                return;
+            play.ResolvedToBattlePile = true;
+            // Start at the installation mutation, before pending effects are drained.
+            installationAnimation = PlayActionCardInstallationAsync(play);
+        }
+        Battle installationBattle = BattleNode;
+        installationBattle.ActionCardInstalled += StartInstallationAnimation;
+        try {
+            if (play.FreeEnergyCost)
+            {
+                using (play.Skill.BeginEnergyCostWaiver())
+                {
+                    await play.Skill.Effect();
+                }
+            }
+            else
             {
                 await play.Skill.Effect();
             }
         }
-        else
-        {
-            await play.Skill.Effect();
+        finally {
+            installationBattle.ActionCardInstalled -= StartInstallationAnimation;
+            try {
+                // This card stays owned by its flight until it can safely be pooled.
+                if (installationAnimation != null)
+                    await installationAnimation;
+            }
+            finally {
+                if (installingAction)
+                    play.AbilityActivationVisualInProgress = false;
+            }
         }
 
-        DeferBattlePileResolutionUntilCardQueueCompletes(play);
+        if (BattleNode.IsActionCardInstalled(play.Skill)) {
+            play.ResolvedToBattlePile = true; // The same physical card now belongs to the installed zone.
+            if (installationAnimation == null)
+                await PlayActionCardInstallationAsync(play);
+        }
+        else {
+            BattleNode.CancelActionCardInstallation(play.Skill);
+            DeferBattlePileResolutionUntilCardQueueCompletes(play);
+        }
         if (BattleNode?.IsAutomationBattleLogActive == true)
         {
             BattleNode.RecordAutomationEvent(
@@ -608,7 +673,7 @@ public partial class CharacterControl
 
         if (CanRetireQueuedPlayCardVisualAsync(play))
         {
-            StartQueuedPlayCardVisualRetirement(play);
+            _ = RetireQueuedPlayCardVisualAsync(play);
             CompleteQueuedPlay(play, succeeded: true);
             RequestTurnUiRefresh(refreshHover: true);
             return false;
@@ -654,14 +719,9 @@ public partial class CharacterControl
             && play.Actor.State != Character.CharacterState.Dying;
     }
 
-    private void StartQueuedPlayCardVisualRetirement(QueuedCardPlay play)
-    {
-        _retiringQueuedPlayVisualCount++;
-        _ = RetireQueuedPlayCardVisualAsync(play);
-    }
-
     private async Task RetireQueuedPlayCardVisualAsync(QueuedCardPlay play)
     {
+        _retiringQueuedPlayVisualCount++;
         try
         {
             await PlayCardVanishAfterExecutionAsync(play);
@@ -757,18 +817,24 @@ public partial class CharacterControl
         if (BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
-        if (BattleNode.TryRestorePlayerTeamBattleHandCardAt(play.Index, play.Skill))
-        {
-            _queuedCardSkills.Remove(play.Skill);
-            play.RemovedFromHand = false;
-            RequestTurnUiRefresh();
+        if (play.Skill == null)
+            return;
+
+        play.Skill.OwnerCharater = play.OriginalOwner;
+        if (!BattleNode.TryRestorePlayerTeamBattleHandCardAt(play.Index, play.Skill)) {
+            // Effects from earlier queued cards may have filled the released hand slot.
+            play.ResolvedToBattlePile = BattleNode.AddPlayerTeamBattleHandCardOrDiscard(
+                play.Skill, HandCardEntryOrigin.PlayedCard, play.Actor, play.Card) < 0;
         }
+        _queuedCardSkills.Remove(play.Skill);
+        play.RemovedFromHand = play.ResolvedToBattlePile;
+        RequestTurnUiRefresh();
     }
 
     private void DeferBattlePileResolutionUntilCardQueueCompletes(QueuedCardPlay play)
     {
         if (
-            play?.IsHandCard != true
+            (play == null || (!play.IsHandCard && !play.IsDrawPileCard))
             || play.PendingBattlePileResolution
             || play.ResolvedToBattlePile
         )
@@ -801,7 +867,7 @@ public partial class CharacterControl
     private void ResolveBattlePileAfterQueuedPlay(QueuedCardPlay play)
     {
         if (
-            play?.IsHandCard != true
+            (play == null || (!play.IsHandCard && !play.IsDrawPileCard))
             || play.ResolvedToBattlePile
             || play.Actor == null
             || !GodotObject.IsInstanceValid(play.Actor)
@@ -811,6 +877,9 @@ public partial class CharacterControl
             return;
         }
 
+        // Execution may borrow an actor for an ownerless card (e.g. Plague).
+        // Restore its real owner before recording pile ownership and exhaust triggers.
+        play.Skill.OwnerCharater = play.OriginalOwner;
         BattleNode?.DiscardBattleSkill(play.Actor, play.Skill);
         play.ResolvedToBattlePile = true;
     }
@@ -820,6 +889,11 @@ public partial class CharacterControl
         if (play == null)
             return;
 
+        BattleNode?.CancelActionCardInstallation(play.Skill);
+        if (play.IsDrawPileCard)
+            ResolveBattlePileAfterQueuedPlay(play);
+        if (BattleNode?.IsActionCardInstalled(play.Skill) == true)
+            play.ResolvedToBattlePile = true;
         if (!play.PendingBattlePileResolution && !play.ResolvedToBattlePile)
             RestoreHandSlotForQueuedPlay(play);
 
@@ -866,7 +940,7 @@ public partial class CharacterControl
             return;
 
         card.Button.Disabled = true;
-        if (play?.Skill?.ResolvesExhaustsAfterUse == true)
+        if (play?.Skill?.ShouldExhaustAfterUse(BattleNode) == true)
             card.PlayExhaustEffect(CardPlayVanishDuration);
         else if (play?.IsHandCard == true || play?.FlyToDiscardPileAfterUse == true)
         {
@@ -969,12 +1043,9 @@ public partial class CharacterControl
         if (player == null || !GodotObject.IsInstanceValid(player))
             return;
 
-        List<Task> animationTasks = _endTurnHandDiscardAnimationTasks;
-        List<(int Index, SkillCard Card)> discardEntries = _endTurnHandDiscardEntries;
-        List<(int Index, SkillCard Card)> exhaustCards = _endTurnHandExhaustEntries;
-        animationTasks.Clear();
-        discardEntries.Clear();
-        exhaustCards.Clear();
+        var animationTasks = new List<Task>(HandCardCapacity);
+        var discardEntries = new List<(int Index, SkillCard Card)>(HandCardCapacity);
+        var exhaustCards = new List<(int Index, SkillCard Card)>(HandCardCapacity);
 
         for (int i = 0; i < _cards.Length; i++)
         {
@@ -1044,6 +1115,11 @@ public partial class CharacterControl
         animationTasks.Clear();
         discardEntries.Clear();
         exhaustCards.Clear();
+    }
+
+    public void PlayEndTurnHandDiscardAnimations(PlayerCharacter player, HashSet<int> handIndexes = null) {
+        // The async method captures independent overlay cards before its first await.
+        StartBattleCardAnimation(() => PlayEndTurnHandDiscardAnimationsAsync(player, handIndexes), "回合末弃牌动画");
     }
 
     private SkillCard CreateEndTurnHandDiscardAnimationCard(
@@ -1209,12 +1285,12 @@ public partial class CharacterControl
         card.HoverHint.Visible = false;
     }
 
-    private async Task PlayCardDiscardFlyAsync(SkillCard card)
+    private async Task PlayCardDiscardFlyAsync(SkillCard card, bool enableTrailParticles = true)
     {
-        await PlayCardFlyToPileAsync(card, _discardPileButton);
+        await PlayCardFlyToPileAsync(card, _discardPileButton, enableTrailParticles);
     }
 
-    private async Task PlayCardFlyToPileAsync(SkillCard card, Button pileButton)
+    private async Task PlayCardFlyToPileAsync(SkillCard card, Button pileButton, bool enableTrailParticles = true)
     {
         if (
             card == null
@@ -1285,8 +1361,8 @@ public partial class CharacterControl
             return;
 
         Vector2 flyStartCenter = startCenter;
-        bool enableTrailParticles = GetQueuedCardPlayVisualPressure() <= 1;
-        PrepareCardDiscardTrail(card, out Line trail, out GpuParticles2D particles, enableTrailParticles);
+        PrepareCardDiscardTrail(card, out Line trail, out GpuParticles2D particles,
+            enableTrailParticles && GetQueuedCardPlayVisualPressure() <= 1);
         Vector2 control = GetRandomCardDiscardControlPoint(flyStartCenter, endCenter);
         Vector2 initialVelocity = GetQuadraticBezierVelocity(
             flyStartCenter,

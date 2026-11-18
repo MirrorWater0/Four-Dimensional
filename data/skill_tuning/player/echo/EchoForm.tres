@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "EchoForm"
+DisplayName = "回响形态"
+Values = Dictionary[String, int]({
+"EchoStacks": 1,
+"EnemyEnergyCost": 3,
+"EnergyCost": 3,
+"ExhaustAfterExecutions": 0
+})

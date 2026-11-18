@@ -4,6 +4,9 @@ render_mode unshaded;
 uniform vec4 void_color : source_color = vec4(0.018, 0.019, 0.022, 1.0);
 uniform vec4 plane_color : source_color = vec4(0.21, 0.215, 0.225, 1.0);
 uniform vec4 edge_color : source_color = vec4(0.86, 0.87, 0.89, 1.0);
+uniform vec4 floor_color : source_color = vec4(0.15, 0.205, 0.25, 1.0);
+uniform vec4 mist_color : source_color = vec4(0.105, 0.15, 0.20, 1.0);
+uniform float floor_y : hint_range(0.35, 0.65) = 0.49;
 uniform vec2 space_center = vec2(0.5, 0.43);
 uniform vec2 field_size = vec2(2560.0, 1440.0);
 uniform vec2 field_origin = vec2(-257.0, -225.0);
@@ -35,9 +38,9 @@ float hairline(float distance_to_line, float width) {
 	return 1.0 - smoothstep(width, width + aa, abs(distance_to_line));
 }
 
-float soft_line(float distance_to_line, float width, float strength) {
-	float aa = max(fwidth(distance_to_line) * 1.8, 0.0012);
-	return (1.0 - smoothstep(width, width + aa, abs(distance_to_line))) * strength;
+float soft_pool(vec2 uv, vec2 center, vec2 radii) {
+    vec2 d = (uv - center) / radii;
+    return exp(-dot(d, d));
 }
 
 void fragment() {
@@ -52,19 +55,18 @@ void fragment() {
 	vec3 wall_times = 1.0 / max(abs(ray), vec3(0.00001));
 	float distance_to_wall = min(wall_times.x, min(wall_times.y, wall_times.z));
 	vec3 hit = ray * distance_to_wall;
-	vec3 normal;
 	vec2 wall;
 	float face_shade;
 	if (wall_times.x < wall_times.y && wall_times.x < wall_times.z) {
-		normal = vec3(sign(ray.x), 0.0, 0.0);
+
 		wall = hit.zy;
 		face_shade = ray.x > 0.0 ? 0.42 : 0.68;
 	} else if (wall_times.y < wall_times.z) {
-		normal = vec3(0.0, sign(ray.y), 0.0);
+
 		wall = hit.xz;
 		face_shade = ray.y > 0.0 ? 0.34 : 0.78;
 	} else {
-		normal = vec3(0.0, 0.0, sign(ray.z));
+
 		wall = hit.xy;
 		face_shade = ray.z > 0.0 ? 0.51 : 0.61;
 	}
@@ -81,22 +83,27 @@ void fragment() {
 	color += plane_color.rgb * fold * plane_strength * 0.18;
 	float edge = hairline(border_distance, 0.012 * outer_line_width);
 	float seam = hairline(panel_distance, 0.009);
-	// Large inset panel joints make the six faces read as constructed walls.
-	float panel_joint_x = soft_line(abs(abs(wall.x) - 0.58), 0.010, 0.70);
-	float panel_joint_y = soft_line(abs(abs(wall.y) - 0.58), 0.010, 0.70);
-	float corner_marks = hairline(panel_distance - 0.045, 0.008)
-		* smoothstep(0.48, 0.67, min(abs(wall.x), abs(wall.y)));
-	// A short light trace travels along the physical edges of the cube.
-	vec3 tangent = cross(normal, normalize(vec3(0.37, 0.61, 0.73)));
-	float trace = pow(0.5 + 0.5 * cos(dot(hit, tangent) * 7.0 - space_time * 0.65), 14.0);
-	float structure = edge * (0.42 + trace * 0.72) + seam * 0.18
-		+ (panel_joint_x + panel_joint_y) * 0.08 + corner_marks * 0.10;
-	float combat_band = smoothstep(0.22, 0.34, uv.y) * (1.0 - smoothstep(0.60, 0.72, uv.y));
-	float team_mask = smoothstep(0.08, 0.27, abs(uv.x - 0.5)) * combat_band;
-	color += edge_color.rgb * structure * edge_strength * 0.72 * (1.0 - team_mask * 0.46)
-		* (1.0 - focus_amount * 0.32 + impact_amount * 0.18);
-	float hand = smoothstep(0.65, 0.91, uv.y);
+	// Read walls by their value changes, not bright outlines behind the sprites.
+	float periphery = smoothstep(0.34, 0.57, abs(uv.x - 0.5))
+		+ 0.55 * (1.0 - smoothstep(0.09, 0.30, uv.y));
+	color += edge_color.rgb * edge_strength * min(1.0, periphery) * (0.40 * edge + 0.12 * seam);
+
+	// Two broad banks of reflected light, with no glows tied to individual units.
+	float drift = sin(space_time * 0.14) * 0.009;
+	float banks = soft_pool(uv, vec2(0.25 + drift, floor_y - 0.12), vec2(0.23, 0.13))
+		+ 0.94 * soft_pool(uv, vec2(0.71 - drift, floor_y - 0.11), vec2(0.19, 0.14));
+	color += mist_color.rgb * banks * 0.72;
+
+	// One continuous receiving plane: a soft far lip, then a long falloff toward the hand.
+	float depth = uv.y - floor_y;
+	float spread = exp(-pow(abs(uv.x - 0.48) / 0.48, 4.0));
+	float shelf = smoothstep(-0.041, 0.012, depth) * exp(-max(depth, 0.0) * 10.0);
+	float grazing = exp(-abs(depth - 0.006) * 84.0);
+	float wash = 0.92 + 0.08 * sin(uv.x * 8.0 - space_time * 0.11) + 0.035 * impact_amount;
+	color += floor_color.rgb * spread * wash * (0.68 * shelf + 0.20 * grazing);
+
+	float hand = smoothstep(0.58, 0.80, uv.y);
 	float vignette = smoothstep(0.48, 1.24, length(p));
-	color *= (1.0 - hand * 0.72) * (1.0 - vignette * 0.22);
+	color *= (1.0 - hand * 0.88) * (1.0 - vignette * 0.30) * (1.0 - focus_amount * 0.12);
 	COLOR *= vec4(color, 1.0);
 }

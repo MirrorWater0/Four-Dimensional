@@ -7,10 +7,10 @@ public partial class MariyaSurviveSkill { }
 
 public partial class FinalGuard : Skill
 {
-    private const int BaseBlock = 5;
-    private const int PowerGain = 3;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int PowerGain => V(nameof(PowerGain));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "终守";
 
@@ -18,11 +18,11 @@ public partial class FinalGuard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ModifyPropertyStep(
                 type: PropertyType.Power,
                 value: PowerGain,
-                target: TargetReference.ManualFriendly
+                target: TargetReference.Self
             )
         );
     }
@@ -30,13 +30,12 @@ public partial class FinalGuard : Skill
 
 public partial class RebirthPrayer : Skill
 {
-    private const int BaseRebirthHeal = 5;
+    private int BaseRebirthHeal => V(nameof(BaseRebirthHeal));
+    private int BaseHeal => V(nameof(BaseHeal));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "复苏祷告";
-    public override int EnergyCost => Cost(2);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -47,30 +46,30 @@ public partial class RebirthPrayer : Skill
                 target: TargetReference.ManualFriendly,
                 preferNonFull: true
             ),
-            BlockStep(target: TargetReference.HealKey, baseBlock: V("BaseBlock", 7))
+            HealStep(baseHeal: BaseHeal, target: TargetReference.LowestLife)
         );
     }
 }
 
 public partial class CrystalGuard : Skill
 {
-    private const int BaseBlock = 5;
+    private int BaseBlock => V(nameof(BaseBlock));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "水晶守护";
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, target: TargetReference.All));
+        return new SkillPlan(this, BlockStep(baseBlock: BaseBlock, target: TargetReference.All, multiplier: V("Multiplier")));
     }
 }
 
 public partial class StillWaterMirror : Skill
 {
-    private const int BaseBlock = 7;
+    private int BaseBlock => V(nameof(BaseBlock));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "明镜止水";
 
@@ -78,8 +77,8 @@ public partial class StillWaterMirror : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock),
-            AddCardsStep(SkillID.Calmness, V("CalmnessCount", 2))
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            AddCardsStep(SkillID.Calmness, V("CalmnessCount"))
         );
     }
 }
@@ -87,9 +86,8 @@ public partial class StillWaterMirror : Skill
 public partial class EnergyRelay : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    public override int EnergyCost => Cost(1);
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "能量接续";
 
@@ -97,8 +95,8 @@ public partial class EnergyRelay : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.Self, baseBlock: V("BaseBlock", 7)),
-            ApplyBuffFriendly(Buff.BuffName.NextEnergy, V("NextEnergyStacks", 2))
+            BlockStep(target: TargetReference.Self, baseBlock: V("BaseBlock"), multiplier: V("Multiplier")),
+            ApplyBuffFriendly(Buff.BuffName.NextEnergy, V("NextEnergyStacks"))
         );
     }
 }

@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://m44hfaa5v2ex" path="res://battle/UIScene/Tip.cs" id="1_mhy24"]
 [ext_resource type="Shader" uid="uid://cjeq7gbii4ti" path="res://shader/UI/CutCornerPanel.gdshader" id="2_cut_corner"]
+[ext_resource type="SystemFont" path="res://battle/UIScene/BattleUiFont.tres" id="3_tip_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tip_bg"]
 content_margin_left = 0.0
@@ -9,21 +10,39 @@ content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
 bg_color = Color(0, 0, 0, 0)
+shadow_color = Color(0, 0, 0, 0.38)
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
 
 [sub_resource type="Theme" id="Theme_tip_bg"]
 Panel/styles/panel = SubResource("StyleBoxFlat_tip_bg")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tip_plate_outer"]
 shader = ExtResource("2_cut_corner")
-shader_parameter/fill_color = Color(0.9, 0.92, 0.94, 0.86)
-shader_parameter/cut_size_px = 18.0
+shader_parameter/fill_color = Color(0.67, 0.7, 0.76, 0.38)
+shader_parameter/cut_size_px = 10.0
 shader_parameter/anti_alias_strength = 1.25
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tip_plate_inner"]
 shader = ExtResource("2_cut_corner")
-shader_parameter/fill_color = Color(0.075, 0.085, 0.1, 0.98)
-shader_parameter/cut_size_px = 18.0
+shader_parameter/fill_color = Color(1, 1, 1, 1)
+shader_parameter/cut_size_px = 9.0
 shader_parameter/anti_alias_strength = 1.25
+
+[sub_resource type="Gradient" id="Gradient_tip_surface"]
+offsets = PackedFloat32Array(0, 0.36, 1)
+colors = PackedColorArray(0.072, 0.079, 0.094, 0.98, 0.045, 0.05, 0.061, 0.98, 0.029, 0.032, 0.039, 0.99)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture_tip_surface"]
+gradient = SubResource("Gradient_tip_surface")
+width = 8
+height = 128
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="SystemFont" id="SystemFont_tip_heading"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Segoe UI")
+font_weight = 700
 
 [node name="Tip" type="Control" unique_id=376716572]
 z_index = 24
@@ -33,11 +52,12 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_mhy24")
+ContentPadding = Vector2(40, 40)
 
 [node name="bg" type="Panel" parent="." unique_id=1720827472]
 layout_mode = 0
 offset_right = 388.0
-offset_bottom = 192.0
+offset_bottom = 164.0
 mouse_filter = 2
 theme = SubResource("Theme_tip_bg")
 
@@ -51,34 +71,76 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="PlateInner" type="ColorRect" parent="bg" unique_id=1938204431]
+[node name="PlateInner" type="TextureRect" parent="bg" unique_id=1938204431]
 material = SubResource("ShaderMaterial_tip_plate_inner")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = -2.0
-offset_bottom = -2.0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = -1.0
+offset_bottom = -1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = SubResource("GradientTexture_tip_surface")
+expand_mode = 1
+
+[node name="TopAccent" type="ColorRect" parent="bg"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 49.0
+offset_bottom = 2.0
+mouse_filter = 2
+color = Color(0.93, 0.95, 0.98, 0.88)
+
+[node name="LeftAccent" type="ColorRect" parent="bg"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 2.0
+offset_bottom = 13.0
+mouse_filter = 2
+color = Color(0.93, 0.95, 0.98, 0.6)
+
+[node name="BottomAccent" type="ColorRect" parent="bg"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -33.0
+offset_top = -2.0
+offset_right = -1.0
+offset_bottom = -1.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.73, 0.77, 0.84, 0.45)
 
 [node name="Description" type="RichTextLabel" parent="." unique_id=1080839497]
 layout_mode = 0
-offset_left = 16.0
-offset_top = 14.0
-offset_right = 350.0
-offset_bottom = 106.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 368.0
+offset_bottom = 144.0
 mouse_filter = 2
-theme_override_colors/default_color = Color(0.88, 0.9, 0.92, 0.96)
+theme_override_colors/default_color = Color(0.82, 0.85, 0.9, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
-theme_override_constants/line_separation = 2
+theme_override_constants/line_separation = 5
 theme_override_constants/outline_size = 0
+theme_override_fonts/normal_font = ExtResource("3_tip_font")
+theme_override_fonts/bold_font = SubResource("SystemFont_tip_heading")
+theme_override_fonts/italics_font = ExtResource("3_tip_font")
+theme_override_fonts/bold_italics_font = SubResource("SystemFont_tip_heading")
 theme_override_font_sizes/normal_font_size = 19
+theme_override_font_sizes/bold_font_size = 21
+theme_override_font_sizes/italics_font_size = 19
+theme_override_font_sizes/bold_italics_font_size = 21
 bbcode_enabled = true
-text = "关键词说明"
+text = "[b]关键词说明[/b]\n[color=#f0f3fa]数值[/color]与效果说明\n[color=#a4acba]补充条件与状态信息[/color]"
 autowrap_mode = 3
 fit_content = true
 scroll_active = false

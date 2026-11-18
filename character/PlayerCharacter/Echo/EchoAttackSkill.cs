@@ -5,8 +5,7 @@ using Godot;
 
 public partial class SacredOnslaught : Skill
 {
-    private const int BaseDamage = 7;
-    private const int MaxTargets = 4;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
     public override SkillRarity Rarity => SkillRarity.Uncommon;
@@ -18,8 +17,8 @@ public partial class SacredOnslaught : Skill
             this,
             AttackStep(
                 baseDamage: BaseDamage,
-                multiplier: V("Multiplier", 1),
-                times: V("HitCount", 1)
+                multiplier: V("Multiplier"),
+                times: V("HitCount")
             ),
             CustomStep(
                 _ =>
@@ -69,7 +68,7 @@ public partial class SacredOnslaught : Skill
 
 public partial class ResonantSlash : Skill
 {
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -79,10 +78,10 @@ public partial class ResonantSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: V("HitCount", 1)),
+            AttackStep(baseDamage: BaseDamage, times: V("HitCount"), multiplier: V("Multiplier")),
             ApplyBuffHostile(
                 Buff.BuffName.Weaken,
-                V("WeakenStacks", 2),
+                V("WeakenStacks"),
                 HostileTargetReference.AttackKey
             )
         );
@@ -91,8 +90,8 @@ public partial class ResonantSlash : Skill
 
 public partial class EchoPuncture : Skill
 {
-    private const int BaseDamage = 1;
-    private const int VulnerableStacks = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -104,8 +103,9 @@ public partial class EchoPuncture : Skill
             this,
             AttackStep(
                 baseDamage: BaseDamage,
-                times: V("HitCount", 2),
-                target: HostileTargetReference.All
+                times: V("HitCount"),
+                target: HostileTargetReference.All,
+                multiplier: V("Multiplier")
             ),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
@@ -119,19 +119,28 @@ public partial class EchoPuncture : Skill
 public partial class Extract : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Common;
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int ExtraDrawStacks => V(nameof(ExtraDrawStacks));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "萃取";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            DrawCardsStep(V("DrawCount", 2))
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: ExtraDrawStacks,
+                target: TargetReference.Previous
+            ),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: ExtraDrawStacks,
+                target: TargetReference.Next
+            )
         );
     }
 }
@@ -139,7 +148,7 @@ public partial class Extract : Skill
 public partial class BladeOfSlaughter : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Common;
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -149,8 +158,8 @@ public partial class BladeOfSlaughter : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            CarryStep(target: TargetReference.Previous, skillIndex: 1)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            PlayDrawPileCardStep(SkillTypes.Attack)
         );
     }
 }
@@ -158,9 +167,8 @@ public partial class BladeOfSlaughter : Skill
 public partial class DisasterImpact : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseDamage = 4;
-    private const int WeakenStacksPerExtraDraw = 1;
-    public override int EnergyCost => Cost(0);
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int WeakenStacksPerExtraDraw => V(nameof(WeakenStacksPerExtraDraw));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -168,23 +176,31 @@ public partial class DisasterImpact : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        int drawCount = 0;
+        int extraDrawStacks = 0;
         return new SkillPlan(
             this,
             AttackStep(
                 baseDamage: BaseDamage,
                 onTargetsResolved: targets =>
-                    drawCount = GetTargetWeakenStacks(targets.FirstOrDefault()) / WeakenStacksPerExtraDraw
+                    extraDrawStacks = GetTargetWeakenStacks(targets.FirstOrDefault()) / WeakenStacksPerExtraDraw,
+                multiplier: V("Multiplier"),
+                times: V("HitCount")
             ),
-            DrawCardsStep(_ => drawCount, description: GetExtraDrawFromTargetWeakenText())
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.ExtraDraw,
+                stacks: _ => extraDrawStacks,
+                target: TargetReference.Self,
+                hideDescription: true
+            ),
+            TextStep(GetExtraDrawFromTargetWeakenText())
         );
     }
 
-    private static string GetExtraDrawFromTargetWeakenText()
+    private string GetExtraDrawFromTargetWeakenText()
     {
         string weakenText = Buff.BuffName.Weaken.GetDescription();
         string extraDrawText = Buff.GetBuffDisplayName(Buff.BuffName.ExtraDraw);
-        return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，抽{1}张。";
+        return $"攻击目标每有{WeakenStacksPerExtraDraw}层{weakenText}，获得{1}层{extraDrawText}。";
     }
 
     private static int GetTargetWeakenStacks(Character target)
@@ -202,14 +218,12 @@ public partial class DisasterImpact : Skill
 
 public class EchonicResonance : Skill
 {
-    private const int PowerGainPerCast = 1;
+    private int PowerGainPerCast => V(nameof(PowerGainPerCast));
 
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override SkillTypes SkillType => SkillTypes.Attack;
-    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "回响共鸣";
-    public override int EnergyCost => XEnergyCost;
 
     protected override SkillPlan BuildPlan()
     {
@@ -218,7 +232,7 @@ public class EchonicResonance : Skill
             WhileStep(
                 loopSteps:
                 [
-                    AttackStep(baseDamage: V("BaseDamage", 0), multiplier: V("Multiplier", 1)),
+                    AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount")),
                     ModifyPropertyStep(PropertyType.Power, PowerGainPerCast),
                 ]
             )
@@ -229,20 +243,19 @@ public class EchonicResonance : Skill
 public class SonicBoom : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Common;
-    private const int BaseDamage = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "音爆";
-    public override int EnergyCost => Cost(3);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             WhileStep(
-                times: () => V("LoopCount", 4),
-                loopSteps: [AttackStep(BaseDamage, target: HostileTargetReference.All)]
+                times: () => V("LoopCount"),
+                loopSteps: [AttackStep(BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount"))]
             )
         );
     }
@@ -250,18 +263,17 @@ public class SonicBoom : Skill
 
 public class PhaseEcho : Skill
 {
-    int damage = 7;
+    private int damage => V("BaseDamage");
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "相位回声";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: damage, target: HostileTargetReference.One),
+            AttackStep(baseDamage: damage, target: HostileTargetReference.One, multiplier: V("Multiplier"), times: V("HitCount")),
             ShuffleDiscardPileIntoDrawPileStep()
         );
     }
@@ -270,12 +282,11 @@ public class PhaseEcho : Skill
 public class ReverbChain : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 0;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回声连奏";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -289,7 +300,7 @@ public class ReverbChain : Skill
             ),
             WhileStep(
                 times: GetLoopTimes,
-                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1))]
+                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount"))]
             )
         );
     }

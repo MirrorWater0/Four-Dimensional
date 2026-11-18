@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "DefenceFocus"
+DisplayName = "防御专注"
+Values = Dictionary[String, int]({
+"BaseBlock": 0,
+"EnemyEnergyCost": 0,
+"EnergyCost": 0,
+"ExhaustAfterExecutions": 1,
+"Multiplier": 1
+})

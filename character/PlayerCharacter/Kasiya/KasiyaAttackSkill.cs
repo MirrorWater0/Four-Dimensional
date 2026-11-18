@@ -6,8 +6,7 @@ public partial class KasiyaAttackSkill { }
 
 public partial class Determination : Skill
 {
-    private const int BaseDamage = 7;
-    public override int EnergyCost => Cost(2);
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -17,16 +16,15 @@ public partial class Determination : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 3), HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks"), HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class Smite : Skill
 {
-    private const int BaseDamage = 7;
-    private const int SurvivalDown = 5;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -36,15 +34,15 @@ public partial class Smite : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount", 1), false)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount"), false)
         );
     }
 }
 
 public partial class Charge : Skill
 {
-    private const int BaseDamage = 4;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -54,7 +52,7 @@ public partial class Charge : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             BlockStep(
                 baseBlock: _ =>
                     OwnerCharater?.BattleNode?.GetLastRecordedDamageFromCurrentEffectSource(
@@ -63,7 +61,7 @@ public partial class Charge : Skill
                         includeBlockedDamage: true
                     ) ?? 0,
                 describe: false,
-                multiplier: V("Multiplier", 0)
+                multiplier: V("Multiplier")
             ),
             TextStep(
                 I18n.Format(
@@ -78,7 +76,7 @@ public partial class Charge : Skill
 
 public partial class Vower : Skill
 {
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -88,8 +86,8 @@ public partial class Vower : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            CarryStep(target: TargetReference.ManualFriendly, skillIndex: 2)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            PlayDrawPileCardStep(SkillTypes.Permanent)
         );
     }
 }
@@ -97,7 +95,7 @@ public partial class Vower : Skill
 public partial class VulnerablePurge : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 10;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -109,7 +107,7 @@ public partial class VulnerablePurge : Skill
             this,
             AttackStep(
                 baseDamage: BaseDamage,
-                multiplier: V("Multiplier", 1),
+                multiplier: V("Multiplier"),
                 target: HostileTargetReference.All,
                 targetCondition: character =>
                     character?.HurtBuffs?.Any(buff =>
@@ -117,9 +115,10 @@ public partial class VulnerablePurge : Skill
                         && buff.ThisBuffName == Buff.BuffName.Vulnerable
                         && buff.Stack > 0
                     ) == true,
-                conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}"
+                conditionText: $"拥有{Buff.BuffName.Vulnerable.GetDescription()}",
+                times: V("HitCount")
             ),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 1), HostileTargetReference.All)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks"), HostileTargetReference.All)
         );
     }
 }
@@ -127,7 +126,7 @@ public partial class VulnerablePurge : Skill
 public partial class VulnerabilityStrike : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 9;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -142,15 +141,17 @@ public partial class VulnerabilityStrike : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             ConditionStep(
                 () => TargetHasVulnerable(GetAttackTarget()),
                 $"若目标拥有{Buff.BuffName.Vulnerable.GetDescription()}",
                 AttackStep(
-                    target: HostileTargetReference.AttackKey,
-                    baseDamage: BaseDamage,
-                    prefix: "额外造成"
-                )
+                target: HostileTargetReference.AttackKey,
+                baseDamage: BaseDamage,
+                prefix: "额外造成",
+                multiplier: V("Multiplier"),
+                times: V("HitCount")
+            )
             )
         );
     }
@@ -159,19 +160,18 @@ public partial class VulnerabilityStrike : Skill
 public class TerminateLight : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int BaseDamage = 4;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "终末之光";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 4)),
-            HurtFriendly(V("FriendlyDamage", 4), ignoreBlock: true)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            HurtFriendly(V("FriendlyDamage"), ignoreBlock: true)
         );
     }
 }
@@ -183,7 +183,6 @@ public class VulnerabilityConversion : Skill
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "万军取敌";
-    public override int EnergyCost => Cost(2);
 
     private static int GetVulnerableStacks(Character target) =>
         target
@@ -207,7 +206,7 @@ public class VulnerabilityConversion : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 7), multiplier: V("Multiplier", 2)),
+            AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount")),
             ModifyPropertyStep(
                 PropertyType.Power,
                 _ => GetTotalHostileVulnerableStacks(),

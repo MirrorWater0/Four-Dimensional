@@ -6,9 +6,8 @@ public partial class MariyaAttackSkill { }
 
 public partial class MendSlash : Skill
 {
-    private const int BaseDamage = 7;
-    private const int BaseHeal = 2;
-    public override bool ExhaustsAfterUse => true;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int BaseHeal => V(nameof(BaseHeal));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -18,7 +17,7 @@ public partial class MendSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             HealStep(
                 baseHeal: BaseHeal,
                 target: TargetReference.All,
@@ -31,7 +30,7 @@ public partial class MendSlash : Skill
 
 public partial class SwapSlash : Skill
 {
-    private const int BaseDamage = 12;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -41,15 +40,15 @@ public partial class SwapSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 2)),
-            HurtFriendly(V("FriendlyDamage", 3), TargetReference.All)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            HurtFriendly(V("FriendlyDamage"), TargetReference.All)
         );
     }
 }
 
 public partial class SiphonSlash : Skill
 {
-    private const int BaseDamage = 5;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -59,11 +58,11 @@ public partial class SiphonSlash : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             HealStep(
                 _ => GetSiphonHealAmount(),
                 target: TargetReference.Self,
-                descriptionOverride: "回复等同于此次造成伤害一半的生命。"
+                descriptionOverride: $"回复等同于此次造成伤害的 1/{V("HealDivisor")} 的生命。"
             )
         );
     }
@@ -76,9 +75,9 @@ public partial class SiphonSlash : Skill
                 target: GetAttackTarget()
             ) ?? 0;
         if (damage > 0)
-            return Math.Max(0, damage / 2);
+            return Math.Max(0, damage / V("HealDivisor"));
 
-        return Math.Max(0, DamageFromPower(BaseDamage) / 2);
+        return Math.Max(0, DamageFromPower(BaseDamage, V("Multiplier")) / V("HealDivisor"));
     }
 }
 
@@ -91,15 +90,14 @@ public partial class ShatterSlash : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(V("BaseDamage", 4)), SelectDrawPileCardsToHandStep(V("SelectDrawCount", 1)));
+        return new SkillPlan(this, AttackStep(V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount")), SelectDrawPileCardsToHandStep(V("SelectDrawCount")));
     }
 }
 
 public partial class ChargedBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Common;
-    private const int BaseDamage = 4;
-    private const int SurvivabilityLoss = 3;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -109,9 +107,11 @@ public partial class ChargedBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            AttackStep(baseDamage: BaseDamage),
-            ModifyPropertyStep(PropertyType.Survivability, -SurvivabilityLoss)
+            TextStep("X为回合结束时剩余能量。"),
+            WhileStep(
+                times: () => Math.Max(0, OwnerEnergy),
+                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount"))]
+            )
         );
     }
 }
@@ -119,8 +119,8 @@ public partial class ChargedBlade : Skill
 public partial class CrescentWind : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 4;
-    private const int WeakenStacks = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int WeakenStacks => V(nameof(WeakenStacks));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -130,7 +130,7 @@ public partial class CrescentWind : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), target: HostileTargetReference.All, times: V("HitCount")),
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Weaken,
                 stacks: WeakenStacks,
@@ -143,20 +143,19 @@ public partial class CrescentWind : Skill
 public partial class ArcTrack : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "弧形轨迹";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            AddCardsStep(SkillID.Calmness, V("CalmnessCount", 1)),
-            AddCardsStep(SkillID.Calmness, V("CalmnessCount", 1), BattleCardPileTarget.DiscardPileCards)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            AddCardsStep(SkillID.Calmness, V("CalmnessCount")),
+            AddCardsStep(SkillID.Calmness, V("CalmnessCount"), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
@@ -164,12 +163,11 @@ public partial class ArcTrack : Skill
 public partial class RenewalFlurry : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 4;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "回春连刃";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -178,7 +176,7 @@ public partial class RenewalFlurry : Skill
             TextStep("x为本场战斗己方角色恢复血量的总次数。"),
             WhileStep(
                 times: GetAlliedHealCount,
-                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1))]
+                loopSteps: [AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount"))]
             )
         );
     }
@@ -189,10 +187,9 @@ public partial class RenewalFlurry : Skill
 
 public partial class Sacrifice : Skill
 {
-    int basisDamage = 12;
-    int allyHurt = 4;
+    private int basisDamage => V("BaseDamage");
+    private int allyHurt => V("FriendlyDamage");
     public override string SkillName { get; set; } = "献祭";
-    public override int EnergyCost => Cost(2);
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -201,7 +198,7 @@ public partial class Sacrifice : Skill
         return new SkillPlan(
             this,
             HurtFriendly(allyHurt, TargetReference.All),
-            AttackStep(baseDamage: basisDamage, multiplier: V("Multiplier", 2), target: HostileTargetReference.All)
+            AttackStep(baseDamage: basisDamage, multiplier: V("Multiplier"), target: HostileTargetReference.All, times: V("HitCount"))
         );
     }
 }

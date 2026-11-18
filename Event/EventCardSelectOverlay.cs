@@ -529,51 +529,7 @@ public partial class EventCardSelectOverlay : Control
         button.AddThemeColorOverride("font_disabled_color", new Color(0.5f, 0.52f, 0.58f, 0.64f));
         button.AddThemeColorOverride("font_outline_color", Colors.Transparent);
         button.AddThemeConstantOverride("outline_size", 0);
-        button.AddThemeStyleboxOverride(
-            "normal",
-            CreateSelectionButtonStyle(
-                new Color(0.045f, 0.05f, 0.06f, 0.9f),
-                new Color(0.64f, 0.66f, 0.72f, 0.5f)
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "hover",
-            CreateSelectionButtonStyle(
-                new Color(0.1f, 0.11f, 0.13f, 0.96f),
-                new Color(0.92f, 0.93f, 0.97f, 0.82f)
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "pressed",
-            CreateSelectionButtonStyle(
-                new Color(0.13f, 0.14f, 0.16f, 1f),
-                new Color(0.97f, 0.98f, 1f, 0.94f)
-            )
-        );
-        button.AddThemeStyleboxOverride(
-            "disabled",
-            CreateSelectionButtonStyle(
-                new Color(0.03f, 0.035f, 0.045f, 0.55f),
-                new Color(0.42f, 0.44f, 0.5f, 0.28f)
-            )
-        );
-    }
-
-    private static StyleBoxFlat CreateSelectionButtonStyle(Color background, Color border)
-    {
-        return new StyleBoxFlat
-        {
-            BgColor = background,
-            BorderColor = border,
-            BorderWidthLeft = 2,
-            BorderWidthTop = 1,
-            BorderWidthRight = 1,
-            BorderWidthBottom = 1,
-            CornerRadiusTopLeft = 0,
-            CornerRadiusTopRight = 0,
-            CornerRadiusBottomRight = 0,
-            CornerRadiusBottomLeft = 0,
-        };
+        ActionButtonFeedback.ApplyTo(button);
     }
 
     private void SuspendTacticsButton()

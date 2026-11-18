@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnemyTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/EnemyCharacter/EnemyTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+EnemyKey = "Turbine"
+Values = Dictionary[String, int]({
+"MaxLife": 81,
+"Power": 0,
+"Survivability": 0,
+"BasePowerContribution": 0,
+"BaseSurvivabilityContribution": 0,
+"StartThornStacks": 7,
+"ActionTriggerCount": 2,
+"TriggerThornStacks": 5
+})

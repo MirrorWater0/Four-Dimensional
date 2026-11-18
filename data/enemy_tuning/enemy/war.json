@@ -1,8 +1,0 @@
-﻿{
-    "enemies":  {
-                    "War":  {
-                                "Name":  "War",
-                                "MaxLife":  256
-                            }
-                }
-}

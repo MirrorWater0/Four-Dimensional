@@ -8,14 +8,14 @@ using Godot;
 /// </summary>
 public partial class BattleReady
 {
-    private const float ChromeContentLeft = 248f;
+    private const float ChromeContentLeft = 336f;
     private const float ChromeContentRight = 1448f;
     private const float ChromeContentTop = 292f;
     private const float ChromeContentBottom = 952f;
     private const float ChromeColumnLeft = 1488f;
     private const float ChromeColumnWidth = 344f;
     private const float ChromeColumnTop = 200f;
-    private const float ChromeColumnHeight = 752f;
+    private const float ChromeColumnHeight = 640f;
     private static readonly Vector2 ChromeScreenSize = new(1920f, 1080f);
 
     private Control _chromeRoot;
@@ -33,7 +33,7 @@ public partial class BattleReady
     private static ModeCaption GetModeCaption(BattleReadyMode mode) =>
         mode switch
         {
-            BattleReadyMode.Talent => new("TALENT MATRIX // 天赋矩阵", "ui.battle_ready.mode_talent", "天赋树"),
+            BattleReadyMode.Talent => new("TALENTS // 天赋", "ui.battle_ready.mode_talent", "天赋"),
             _ => new("TACTICAL LOADOUT // 战术编成", "ui.battle_ready.mode_tactics", "技能一览"),
         };
 
@@ -106,17 +106,17 @@ public partial class BattleReady
 
     private void BuildChromeHeader()
     {
-        _chromeEyebrow = BattleReadyStyle.MicroLabel(string.Empty, 18, 0.8f);
-        _chromeEyebrow.Position = new Vector2(96f, 44f);
+        _chromeEyebrow = BattleReadyStyle.MicroLabel(string.Empty, 14, 0.8f);
+        _chromeEyebrow.Position = new Vector2(336f, 100f);
         _chromeRoot.AddChild(_chromeEyebrow);
 
-        _chromeTitle = BattleReadyStyle.DisplayLabel(string.Empty, 52, BattleReadyStyle.GoldBright);
-        _chromeTitle.Position = new Vector2(92f, 70f);
+        _chromeTitle = BattleReadyStyle.DisplayLabel(string.Empty, 38, BattleReadyStyle.GoldBright);
+        _chromeTitle.Position = new Vector2(332f, 122f);
         _chromeRoot.AddChild(_chromeTitle);
 
         var rule = BattleReadyStyle.TitleRule(180f);
-        rule.Position = new Vector2(96f, 152f);
-        rule.Size = new Vector2(1736f, 12f);
+        rule.Position = new Vector2(336f, 176f);
+        rule.Size = new Vector2(1496f, 12f);
         _chromeRoot.AddChild(rule);
     }
 
@@ -124,16 +124,16 @@ public partial class BattleReady
     {
         var footer = new HBoxContainer
         {
-            Position = new Vector2(96f, 986f),
-            Size = new Vector2(1736f, 24f),
+            Position = new Vector2(336f, 986f),
+            Size = new Vector2(1328f, 24f),
             MouseFilter = MouseFilterEnum.Ignore,
         };
         footer.AddThemeConstantOverride("separation", 16);
         _chromeRoot.AddChild(footer);
 
-        footer.AddChild(BattleReadyStyle.MicroLabel("SECTOR // COMBAT PREP", 18, 0.85f));
+        footer.AddChild(BattleReadyStyle.MicroLabel("SECTOR // COMBAT PREP", 15, 0.85f));
 
-        var hatch = BattleReadyStyle.HatchBar(280f, 10f, 1f, BattleReadyStyle.Steel);
+        var hatch = BattleReadyStyle.HatchBar(120f, 10f, 1f, BattleReadyStyle.Steel);
         hatch.SizeFlagsVertical = SizeFlags.ShrinkCenter;
         footer.AddChild(hatch);
 
@@ -148,7 +148,7 @@ public partial class BattleReady
             }
         );
 
-        _chromeFooterRight = BattleReadyStyle.MicroLabel(string.Empty, 18, 0.85f);
+        _chromeFooterRight = BattleReadyStyle.MicroLabel(string.Empty, 15, 0.85f);
         footer.AddChild(_chromeFooterRight);
     }
 
@@ -178,9 +178,19 @@ public partial class BattleReady
         margin.AddThemeConstantOverride("margin_bottom", 22);
         column.AddChild(margin);
 
-        _briefBody = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-        ((VBoxContainer)_briefBody).AddThemeConstantOverride("separation", 14);
-        margin.AddChild(_briefBody);
+        var scroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+            VerticalScrollMode = ScrollContainer.ScrollMode.Auto,
+        };
+        margin.AddChild(scroll);
+        _briefBody = new VBoxContainer
+        {
+            MouseFilter = MouseFilterEnum.Ignore,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+        };
+        ((VBoxContainer)_briefBody).AddThemeConstantOverride("separation", 10);
+        scroll.AddChild(_briefBody);
     }
 
     private static void AddOpenSectionRule(Control host, Vector2 position, float width)
@@ -347,7 +357,7 @@ public partial class BattleReady
 
     private void AddBriefTalentBlock(PlayerInfoStructure unit)
     {
-        _briefBody.AddChild(BattleReadyStyle.MicroLabel("TALENT POINTS", 15, 0.5f));
+        _briefBody.AddChild(BattleReadyStyle.MicroLabel("TALENTS", 15, 0.5f));
 
         int unlocked = unit.UnlockedTalents?.Count ?? 0;
         int total = TalentTree.GetNodes(unit)?.Count ?? 0;
@@ -367,7 +377,7 @@ public partial class BattleReady
         var caption = BattleReadyStyle.TextLabel(
             I18n.Format(
                 "ui.battle_ready.talent_progress",
-                "已点亮 {value}/{total}",
+                "已获得 {value}/{total}",
                 ("value", unlocked),
                 ("total", total)
             ),
@@ -404,7 +414,7 @@ public partial class BattleReady
 
         var detail = new RichTextLabel
         {
-            CustomMinimumSize = new Vector2(0f, 116f),
+            CustomMinimumSize = new Vector2(0f, 92f),
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             BbcodeEnabled = true,
             ScrollActive = true,

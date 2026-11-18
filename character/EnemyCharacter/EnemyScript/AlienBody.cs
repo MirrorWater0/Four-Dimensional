@@ -3,7 +3,7 @@ using Godot;
 
 public partial class AlienBody : EnemyCharacter
 {
-    private const int StartDebuffImmunityStacks = 1;
+    private static int StartDebuffImmunityStacks => EnemyTuning.GetRequiredInt("AlienBody", nameof(StartDebuffImmunityStacks));
 
     public const string PassiveNameText = "寄生馈赠";
     public static string PassiveDescriptionText =>
@@ -32,17 +32,12 @@ public partial class AlienBodyRegedit : EnemyRegedit
     public AlienBodyRegedit()
     {
         CharacterName = "AlienBody";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/AlienBody.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AlienBody.tscn");
-
-        MaxLife = 32;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.AlienBodyAttack, SkillID.AlienBodySurvive];
-
+        SkillIDs = [SkillID.AlienBodyAttack];
+        // 已有减生存，只有缺少优先施加者的多人阵容启用第三轮护壳脆弱。
+        IntentionCycle = [random, SkillID.AlienBodyAttack, SkillID.AlienBodySurvive];
+        RandomizeIntentionCycleStart = true;
         PassiveName = global::AlienBody.PassiveNameText;
         PassiveDescription = global::AlienBody.PassiveDescriptionText;
     }
@@ -50,7 +45,7 @@ public partial class AlienBodyRegedit : EnemyRegedit
 
 public partial class AlienBodyAttack : Skill
 {
-    private const int BaseDamage = 13;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -60,10 +55,10 @@ public partial class AlienBodyAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(BaseDamage),
+            AttackStep(BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
-                V("SurvivabilityLoss", 2),
+                V("SurvivabilityLoss"),
                 HostileTargetReference.AttackKey
             )
         );
@@ -72,8 +67,7 @@ public partial class AlienBodyAttack : Skill
 
 public partial class AlienBodySurvive : Skill
 {
-    private const int BaseBlock = 8;
-    private const int SurvivabilityDown = 4;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -83,11 +77,11 @@ public partial class AlienBodySurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, 2),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain")),
             AddCardsStep(
                 SkillID.DazeStatus,
-                V("DazeCount", 2),
+                V("DazeCount"),
                 BattleCardPileTarget.DiscardPileCards
             )
         );
@@ -96,20 +90,19 @@ public partial class AlienBodySurvive : Skill
 
 public partial class AlienBodySpecial : Skill
 {
-    private const int PowerDown = 1;
-    private const int SurvivabilityDown = 1;
+    private int PowerDown => V(nameof(PowerDown));
+    private int SurvivabilityDown => V(nameof(SurvivabilityDown));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
-    public override string SkillName { get; set; } = "共生连携";
-    public override int EnergyCost => Cost(4);
+    public override string SkillName { get; set; } = I18n.Tr("skill.alien_body_special.name", "异体压制");
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(V("BaseDamage", 16), target: HostileTargetReference.RandomPreview),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1)),
+            AttackStep(V("BaseDamage"), target: HostileTargetReference.RandomPreview, multiplier: V("Multiplier"), times: V("HitCount")),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount")),
             LowerTargetPropertyStep(PropertyType.Power, PowerDown, HostileTargetReference.One),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,

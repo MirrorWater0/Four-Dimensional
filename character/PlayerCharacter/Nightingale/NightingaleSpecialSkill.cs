@@ -7,9 +7,7 @@ public partial class NightingaleSpecialSkill { }
 
 public partial class VeilStep : Skill
 {
-    private const int InvisibleStacks = 3;
-    private const int BaseBlock = 6;
-    public override int EnergyCost => Cost(0);
+    private int InvisibleStacks => V(nameof(InvisibleStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -31,10 +29,8 @@ public partial class VeilStep : Skill
 public partial class TwilightParadox : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int VulnerableStacks = 9;
-    private const int selfStacks = 3;
-    public override int EnergyCost => Cost(1);
-    public override bool ExhaustsAfterUse => true;
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
+    private int selfStacks => V(nameof(selfStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -60,39 +56,37 @@ public partial class TwilightParadox : Skill
 
 public partial class NightingaleEnergy : Skill
 {
-    private const int EnergyGain = 1;
+    private int EnergyGain => V(nameof(EnergyGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "安息之歌";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            EnergyStep(V("EnergyGain", 1)),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2))
+            EnergyStep(V("EnergyGain")),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"))
         );
     }
 }
 
 public partial class RequiemBloom : Skill
 {
-    public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int PowerGain = 2;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+    private int PowerGain => V(nameof(PowerGain));
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "安魂花";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(V("DrawCount", 2)),
-            DiscardCardsStep(V("DiscardCount", 2)),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            DrawCardsStep(V("DrawCount")),
+            DiscardCardsStep(V("DiscardCount")),
+            ModifyPropertyStep(PropertyType.Power, PowerGain,TargetReference.All)
         );
     }
 }
@@ -101,8 +95,6 @@ public partial class LongNight : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "长夜";
-    public override int EnergyCost => Cost(1);
-    public override bool ExhaustsAfterUse => true;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -110,8 +102,8 @@ public partial class LongNight : Skill
     {
         return new SkillPlan(
             this,
-            CarryStep(target: TargetReference.Previous, skillIndex: 3),
-            CarryStep(target: TargetReference.Next, skillIndex: 3)
+            PlayDrawPileCardStep(SkillTypes.Attack),
+            PlayDrawPileCardStep(SkillTypes.Attack)
         );
     }
 }
@@ -119,13 +111,11 @@ public partial class LongNight : Skill
 public partial class CurtainCallMoment : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int WeakenStacks = 2;
-    private const int InvisibleStacks = 2;
+    private int WeakenStacks => V(nameof(WeakenStacks));
+    private int InvisibleStacks => V(nameof(InvisibleStacks));
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "落幕时刻";
-    public override int EnergyCost => Cost(2);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -148,13 +138,12 @@ public partial class CurtainCallMoment : Skill
 public partial class SunMoonCycle : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int DrawCount = 2;
-    private const int CardRefreshStacks = 1;
+    private int DrawCount => V(nameof(DrawCount));
+    private int CardRefreshStacks => V(nameof(CardRefreshStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "日月轮回";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -173,12 +162,11 @@ public partial class SunMoonCycle : Skill
 public partial class BrightestMoment : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int SurvivabilityGainPerInvisible = 2;
+    private int SurvivabilityGainPerInvisible => V(nameof(SurvivabilityGainPerInvisible));
     private int _lostInvisibleStacks;
-    public override bool ExhaustsAfterUse => true;
 
     public override string SkillName { get; set; } = "至亮时刻";
-    public override int EnergyCost => Cost(1);
+
     public override SkillTypes SkillType => SkillTypes.Special;
 
     protected override SkillPlan BuildPlan()
@@ -186,9 +174,10 @@ public partial class BrightestMoment : Skill
         return new SkillPlan(
             this,
             TextStep(
-                I18n.Tr(
+                I18n.Format(
                     "skill.brightest_moment.text.lose_invisible_gain_survivability",
-                    "失去所有隐身层数,每失去1层隐身,全阵获得2点生存."
+                    "失去所有隐身层数，每失去1层隐身，全阵获得{amount}点生存。",
+                    ("amount", SurvivabilityGainPerInvisible)
                 )
             ),
             CustomStep(

@@ -2,7 +2,7 @@ public partial class NightingaleAbilitySkill { }
 
 public partial class Search : AbilitySkill
 {
-    private const int SearchStacks = 1;
+    private int SearchStacks => V(nameof(SearchStacks));
 
     public override string SkillName { get; set; } = "搜寻";
     protected override SkillPlan BuildPlan()
@@ -22,7 +22,6 @@ public partial class TempoSurge : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "疾奏";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -30,7 +29,7 @@ public partial class TempoSurge : AbilitySkill
             this,
             ModifyPropertyStep(
                 PropertyType.Survivability,
-                V("SurvivabilityGain", 3),
+                V("SurvivabilityGain"),
                 TargetReference.All
             )
         );
@@ -40,7 +39,7 @@ public partial class TempoSurge : AbilitySkill
 public partial class Swift : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int SwiftStacks = 1;
+    private int SwiftStacks => V(nameof(SwiftStacks));
 
     public override string SkillName { get; set; } = "迅捷";
 
@@ -60,10 +59,9 @@ public partial class Swift : AbilitySkill
 public partial class ShadowForm : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Rare;
-    private const int ShadowStacks = 1;
+    private int ShadowStacks => V(nameof(ShadowStacks));
 
     public override string SkillName { get; set; } = "暗影形态";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
@@ -81,9 +79,8 @@ public partial class ShadowForm : AbilitySkill
 public partial class EternalDarkSkill : AbilitySkill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int EternalDarkStacks = 2;
+    private int EternalDarkStacks => V(nameof(EternalDarkStacks));
     public override string SkillName { get; set; } = "永暗";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {

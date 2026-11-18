@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "BlackHawkSpecial"
+DisplayName = "黑羽风暴"
+Values = Dictionary[String, int]({
+"BaseDamage": 5,
+"EnemyEnergyCost": 5,
+"EnergyCost": 5,
+"ExhaustAfterExecutions": 0,
+"HitCount": 1,
+"LoopCount": 2,
+"Multiplier": 1
+})

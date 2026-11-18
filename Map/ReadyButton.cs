@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
@@ -14,6 +15,10 @@ public partial class ReadyButton : Button
     public CanvasLayer Layer;
     private Color _originalColor;
     private Tween _colorTween;
+    private readonly HashSet<Reward> _talentOverlays = new();
+    private CanvasLayer _talentButtonCanvas;
+    private int _savedFrontCanvasLayer;
+    private int _savedButtonCanvasLayer;
     [Export]
     ColorRect ChangeEffect;
 
@@ -119,6 +124,12 @@ public partial class ReadyButton : Button
             await ThisBattleReady.PlayCloseAnimationAsync();
             if (GodotObject.IsInstanceValid(ThisBattleReady))
                 ThisBattleReady.QueueFree();
+
+            // Choices may also be selected from the tactics screen's talent tab.
+            var siteUi = ThisMap?.GetNodeOrNull<CanvasLayer>("SiteUI");
+            if (siteUi != null)
+                foreach (var reward in siteUi.GetChildren().OfType<Reward>())
+                    reward.RefreshOpenTalentChoices();
         }
         finally
         {
@@ -132,6 +143,39 @@ public partial class ReadyButton : Button
         return ThisBattleReady != null
             && GodotObject.IsInstanceValid(ThisBattleReady)
             && ThisBattleReady.IsInsideTree();
+    }
+
+    public void SetTalentOverlayActive(Reward reward, bool active)
+    {
+        if (active)
+        {
+            if (_talentOverlays.Count == 0)
+            {
+                _talentButtonCanvas = GetParent() as CanvasLayer;
+                if (Layer == null || _talentButtonCanvas == null)
+                    return;
+                _savedFrontCanvasLayer = Layer.Layer;
+                _savedButtonCanvasLayer = _talentButtonCanvas.Layer;
+            }
+            _talentOverlays.Add(reward);
+        }
+        else if (!_talentOverlays.Remove(reward))
+            return;
+
+        if (_talentOverlays.Count > 0)
+        {
+            int talentLayer = _talentOverlays.Max(overlay => overlay.Layer);
+            Layer.Layer = Math.Max(_savedFrontCanvasLayer, talentLayer + 1);
+            _talentButtonCanvas.Layer = Math.Max(_savedButtonCanvasLayer, Layer.Layer + 1);
+        }
+        else
+        {
+            if (GodotObject.IsInstanceValid(Layer))
+                Layer.Layer = _savedFrontCanvasLayer;
+            if (GodotObject.IsInstanceValid(_talentButtonCanvas))
+                _talentButtonCanvas.Layer = _savedButtonCanvasLayer;
+            _talentButtonCanvas = null;
+        }
     }
 
     public void mouse_entered()

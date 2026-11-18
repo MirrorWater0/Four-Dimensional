@@ -197,12 +197,14 @@ public partial class CharacterControl
         card.Button.ActionMode = BaseButton.ActionModeEnum.Press;
         card.Button.SetMeta("suppress_ui_click_sfx", true);
         card.Button.SetMeta("suppress_ui_hover_sfx", true);
-        SetCardButtonInputEnabled(card, false);
         card.SetMeta("hand_card_index", index);
 
         if (_wiredBattleCards.Contains(card))
             return;
 
+        // Refreshing an existing card's index must not produce a synthetic
+        // MouseExited/MouseEntered cycle by disabling and enabling its button.
+        SetCardButtonInputEnabled(card, false);
         _wiredBattleCards.Add(card);
 
         card.Button.Pressed += () =>

@@ -6,21 +6,20 @@ public partial class Skill
 {
     protected const string UnfixedPlaceholder = "x";
     protected const int TooltipTotalMax = 999;
-    public const string CarryKeyword = "连携";
-    public const string CarryKeywordEffectText =
-        "随机从抽牌堆中打出1张目标所属的牌，可指定类型，不消耗能量。";
     public const string ExhaustKeyword = "消耗";
     public const string ExhaustKeywordEffectText =
-        "打出后，本场战斗中移出。";
+        "正常触发指定次数后，本场战斗中移出。回响不扣次数，在回响结算完成后消耗。";
     public const string RetainKeyword = "保留";
     public const string RetainKeywordEffectText =
         "回合结束时若在手牌中，不会被丢弃。";
     public const string VoidnessKeyword = "虚无";
     public const string VoidnessKeywordEffectText =
-        "回合结束时若在手牌中则消耗。";
+        "回合结束时若在手牌中则消耗，即使具有保留。";
     public const string ColorlessKeyword = "无色";
     public const string ColorlessKeywordEffectText =
         "不属于任何角色的牌。";
+    public const string ImmediateKeyword = "即时";
+    public const string ImmediateKeywordEffectText = "打出时立即生效。";
     public const string RebirthKeyword = "复生";
     public const string RebirthKeywordEffectText =
         "可对濒死目标生效。";
@@ -167,7 +166,8 @@ public partial class Skill
         UseZeroScalingStatsForDescription ? 0 : OwnerSurvivability;
 
     protected int DescriptionEnergy =>
-        UseZeroScalingStatsForDescription ? 0 : OwnerEnergy;
+        UseZeroScalingStatsForDescription ? 0 : UsesXEnergyCost
+            && OwnerCharater?.BattleNode?.IsActionCardInstalled(this) == true ? GetPaidEnergyLoopCount() : OwnerEnergy;
 
     protected string XWithBattleTotal(StatX stat, int total, int clampMax = TooltipTotalMax) =>
         WithBattleTotal(X(stat), total, clampMax);
@@ -186,10 +186,10 @@ public partial class Skill
         IEnumerable<string> lines = plan?.DescribeLines() ?? Array.Empty<string>();
         if (ShowsRetainKeyword)
             lines = new[] { GetRetainKeywordLine() }.Concat(lines);
-        if (IsColorless)
-            lines = new[] { GetColorlessKeywordLine() }.Concat(lines);
+        if (HasImmediateKeyword)
+            lines = new[] { GetImmediateKeywordLine() }.Concat(lines);
         if (ShowsExhaustKeyword)
-            lines = new[] { GetExhaustKeywordLine() }.Concat(lines);
+            lines = new[] { $"{GetExhaustKeyword()}{ExhaustExecutionLimit}（剩余{RemainingExecutions}次）。" }.Concat(lines);
         if (ShowsVoidnessKeyword)
             lines = new[] { GetVoidnessKeywordLine() }.Concat(lines);
 
@@ -398,7 +398,8 @@ public partial class Skill
         if (skill.ShowsExhaustKeyword)
         {
             entries.Add(
-                BuildKeywordTooltipEntry(GetExhaustKeyword(), GetExhaustKeywordEffectText())
+                BuildKeywordTooltipEntry($"{GetExhaustKeyword()}{skill.ExhaustExecutionLimit}",
+                    $"正常触发{skill.ExhaustExecutionLimit}次后，本场战斗中移出。回响不扣次数，在回响结算完成后消耗。当前剩余{skill.RemainingExecutions}次。")
             );
         }
         if (skill.ShowsRetainKeyword)
@@ -414,12 +415,13 @@ public partial class Skill
             );
         }
 
-        if (hints.Keywords.Contains(SkillTooltipKeyword.Carry))
+        if (skill.HasImmediateKeyword)
         {
             entries.Add(
-                BuildKeywordTooltipEntry(GetCarryKeyword(), GetCarryKeywordEffectText())
+                BuildKeywordTooltipEntry(GetImmediateKeyword(), GetImmediateKeywordEffectText())
             );
         }
+
         if (hints.Keywords.Contains(SkillTooltipKeyword.Voidness))
         {
             entries.Add(
@@ -565,15 +567,7 @@ public partial class Skill
         return new string(buffer, 0, count);
     }
 
-    private static string GetCarryKeyword() => I18n.Tr("keyword.carry", CarryKeyword);
-
-    private static string GetCarryKeywordEffectText() =>
-        I18n.Tr("keyword.carry.effect", CarryKeywordEffectText);
-
     private static string GetExhaustKeyword() => I18n.Tr("keyword.exhaust", ExhaustKeyword);
-
-    private static string GetExhaustKeywordEffectText() =>
-        I18n.Tr("keyword.exhaust.effect", ExhaustKeywordEffectText);
 
     private static string GetRetainKeyword() => I18n.Tr("keyword.retain", RetainKeyword);
 
@@ -590,13 +584,18 @@ public partial class Skill
     private static string GetColorlessKeywordEffectText() =>
         I18n.Tr("keyword.colorless.effect", ColorlessKeywordEffectText);
 
+    private static string GetImmediateKeyword() =>
+        I18n.Tr("keyword.immediate", ImmediateKeyword);
+
+    private static string GetImmediateKeywordEffectText() =>
+        I18n.Tr("keyword.immediate.effect", ImmediateKeywordEffectText);
+
     private static string GetRebirthKeyword() => I18n.Tr("keyword.rebirth", RebirthKeyword);
 
     private static string GetRebirthKeywordEffectText() =>
         I18n.Tr("keyword.rebirth.effect", RebirthKeywordEffectText);
 
-    private static string GetExhaustKeywordLine() => $"{GetExhaustKeyword()}。";
     private static string GetRetainKeywordLine() => $"{GetRetainKeyword()}。";
     private static string GetVoidnessKeywordLine() => $"{GetVoidnessKeyword()}。";
-    private static string GetColorlessKeywordLine() => $"{GetColorlessKeyword()}。";
+    private static string GetImmediateKeywordLine() => $"{GetImmediateKeyword()}。";
 }

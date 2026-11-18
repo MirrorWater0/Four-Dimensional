@@ -1,266 +1,232 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text.Json;
 using Godot;
 
-public static class EnemyTuning
-{
-    private const string ProjectTuningDirectory = "res://data/enemy_tuning";
-    private const string ProjectLegacyTuningPath = "res://data/enemy_tuning.dev.json";
-    private const string UserTuningDirectory = "user://enemy_tuning";
-    private const string UserTuningPath = "user://enemy_tuning.dev.json";
-
-    private static readonly Dictionary<string, Dictionary<string, int>> Values =
-        new(StringComparer.OrdinalIgnoreCase);
-
+public static class EnemyTuning {
+    private const string CatalogPath = "res://data/enemy_tuning/catalog.tres";
+    private const string UserDirectory = "user://enemy_tuning";
+    private static Dictionary<string, EnemyTuningResource> _defaults = new(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, EnemyTuningResource> _active = new(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, string> _projectPaths = new(StringComparer.OrdinalIgnoreCase);
     private static bool _loaded;
 
     public static int Revision { get; private set; }
     public static string LastLoadedPath { get; private set; } = string.Empty;
     public static string LastError { get; private set; } = string.Empty;
-
-    public static ulong GetTuningFilesFingerprint()
-    {
-        ulong hash = 1469598103934665603UL;
-        AddDirectoryFingerprint(ProjectTuningDirectory, ref hash);
-        AddFileFingerprint(ProjectLegacyTuningPath, ref hash);
-        AddDirectoryFingerprint(UserTuningDirectory, ref hash);
-        AddFileFingerprint(UserTuningPath, ref hash);
-        return hash;
+    public static bool CanSaveProject => OS.HasFeature("editor");
+    public static EnemyTuningResource GetEnemy(string key) {
+        EnsureLoaded();
+        if (!_active.TryGetValue(key, out var enemy))
+            throw new InvalidOperationException($"缺少敌人 Resource：{key}。");
+        return enemy.Copy();
     }
 
-    public static bool TryGetInt(EnemyRegedit registry, string key, out int value)
-    {
-        value = 0;
-        if (registry == null || string.IsNullOrWhiteSpace(key))
-            return false;
+    public static bool TryGetInt(EnemyRegedit registry, string key, out int value) =>
+        TryGetInt(registry?.TuningKey, key, out value);
 
-        foreach (string enemyKey in EnumerateRegistryKeys(registry))
-        {
-            if (TryGetInt(enemyKey, key, out value))
-                return true;
-        }
-
-        return false;
-    }
-
-    public static bool TryGetInt(string enemyKey, string key, out int value)
-    {
+    public static bool TryGetInt(string enemyKey, string key, out int value) {
         EnsureLoaded();
         value = 0;
-
-        if (string.IsNullOrWhiteSpace(enemyKey) || string.IsNullOrWhiteSpace(key))
-            return false;
-
-        return Values.TryGetValue(enemyKey, out Dictionary<string, int> enemyValues)
-            && enemyValues.TryGetValue(key, out value);
+        return enemyKey != null && _active.TryGetValue(enemyKey, out var enemy) && enemy.Values.TryGetValue(key, out value);
     }
 
-    public static bool Reload(out string message)
-    {
-        Values.Clear();
-        LastError = string.Empty;
-        _loaded = true;
-
-        var loadedPaths = new List<string>();
-        try
-        {
-            LoadDirectoryIfExists(ProjectTuningDirectory, loadedPaths);
-            LoadPathIfExists(ProjectLegacyTuningPath, loadedPaths);
-            LoadDirectoryIfExists(UserTuningDirectory, loadedPaths);
-            LoadPathIfExists(UserTuningPath, loadedPaths);
-
-            Revision++;
-            LastLoadedPath = loadedPaths.Count > 0 ? string.Join(", ", loadedPaths) : "(none)";
-            message =
-                loadedPaths.Count > 0
-                    ? $"敌人数值表已重载：{LastLoadedPath}，{CountValueEntries()} 项。"
-                    : $"未找到敌人数值表，使用代码默认值。期望目录：{ProjectTuningDirectory}";
-            return true;
+    public static int GetRequiredInt(string enemyKey, string key) {
+        if (string.IsNullOrWhiteSpace(enemyKey) || string.IsNullOrWhiteSpace(key))
+            throw new InvalidOperationException("敌人 ID 或参数名不能为空。");
+        if (TryGetInt(enemyKey, key, out int value))
+            return value;
+        if (!_active.TryGetValue(enemyKey, out var enemy))
+            throw new InvalidOperationException($"缺少敌人 Resource：{enemyKey}。请登记到 {CatalogPath}。");
+        var baseline = _defaults[enemyKey];
+        if (!baseline.Values.TryGetValue(key, out value)) {
+            value = EnemyTuningParameters.GetInitialValue(key);
+            baseline.Values[key] = value;
         }
-        catch (Exception e)
-        {
+        enemy.Values[key] = value;
+        Revision++;
+        GD.PushWarning($"[Tuning] 已自动补齐 {enemyKey}.{key} = {value}，请在图鉴检查数值。");
+        PersistAddedParameter(enemyKey);
+        return value;
+    }
+
+    public static bool Apply(EnemyTuningResource draft, out string message) {
+        EnsureLoaded();
+        try {
+            Validate(draft, _defaults[draft.EnemyKey]);
+            _active[draft.EnemyKey] = draft.Copy();
+            Revision++;
+            message = "已应用，尚未保存。";
+            return true;
+        } catch (Exception e) {
+            message = $"应用失败：{e.Message}";
+            return false;
+        }
+    }
+
+    public static bool Save(EnemyTuningResource draft, bool toProject, out string message) {
+        EnsureLoaded();
+        try {
+            Validate(draft, _defaults[draft.EnemyKey]);
+            if (toProject && !CanSaveProject)
+                throw new InvalidOperationException("请保存为本地设置，当前环境不能写回项目资源。");
+            Error error = DirAccess.MakeDirRecursiveAbsolute(UserDirectory);
+            if (error != Error.Ok && error != Error.AlreadyExists)
+                throw new InvalidOperationException($"无法创建保存目录：{error}");
+            string userPath = GetUserPath(draft.EnemyKey);
+            string path = toProject ? _projectPaths[draft.EnemyKey] : userPath;
+            error = ResourceSaver.Save(draft.Copy(), path);
+            if (error != Error.Ok)
+                throw new InvalidOperationException($"保存 {path} 失败：{error}");
+            if (toProject) {
+                // A local override must not hide the freshly saved project definition on restart.
+                if (FileAccess.FileExists(userPath) && DirAccess.RemoveAbsolute(userPath) != Error.Ok)
+                    throw new InvalidOperationException("项目已保存，但清除本地覆盖失败。");
+                _defaults[draft.EnemyKey] = draft.Copy();
+            }
+            _active[draft.EnemyKey] = draft.Copy();
+            Revision++;
+            message = toProject ? "已保存到项目 Resource。" : "已保存为本地设置。";
+            return true;
+        } catch (Exception e) {
+            message = $"保存失败：{e.Message}";
+            return false;
+        }
+    }
+
+    public static bool RestoreDefault(string key, out string message) {
+        EnsureLoaded();
+        string path = GetUserPath(key);
+        if (FileAccess.FileExists(path) && DirAccess.RemoveAbsolute(path) != Error.Ok) {
+            message = "恢复失败：无法删除本地覆盖。";
+            return false;
+        }
+        _active[key] = _defaults[key].Copy();
+        Revision++;
+        message = "已恢复项目资源中的数值。";
+        return true;
+    }
+
+    public static bool Reload(out string message) {
+        try {
+            var catalog = ResourceLoader.Load<EnemyTuningCatalog>(CatalogPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+            if (catalog == null)
+                throw new InvalidOperationException($"无法加载 {CatalogPath}");
+            var defaults = new Dictionary<string, EnemyTuningResource>(StringComparer.OrdinalIgnoreCase);
+            var active = new Dictionary<string, EnemyTuningResource>(StringComparer.OrdinalIgnoreCase);
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var repairs = new List<(Resource Definition, string Path)>();
+            foreach (var enemy in catalog.Enemies) {
+                bool projectChanged = Validate(enemy);
+                string userPath = GetUserPath(enemy.EnemyKey);
+                var selected = enemy;
+                bool localChanged = false;
+                if (FileAccess.FileExists(userPath)) {
+                    selected = ResourceLoader.Load<EnemyTuningResource>(userPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+                    localChanged = Validate(selected, enemy);
+                }
+                if (!defaults.TryAdd(enemy.EnemyKey, enemy.Copy()))
+                    throw new InvalidOperationException($"重复的敌人资源：{enemy.EnemyKey}");
+                paths.Add(enemy.EnemyKey, enemy.ResourcePath);
+                active.Add(enemy.EnemyKey, selected.Copy());
+                if (projectChanged && CanSaveProject)
+                    repairs.Add((enemy.Copy(), enemy.ResourcePath));
+                if (localChanged || (projectChanged && !CanSaveProject))
+                    repairs.Add((selected.Copy(), userPath));
+            }
+            if (defaults.Count == 0)
+                throw new InvalidOperationException("敌人资源目录为空。");
+            // Keep the previous complete revision if any file fails to load.
+            _defaults = defaults;
+            _active = active;
+            _projectPaths = paths;
+            _loaded = true;
+            LastError = string.Empty;
+            LastLoadedPath = CatalogPath;
+            Revision++;
+            // Persist only after the entire catalog has passed validation.
+            foreach (var repair in repairs)
+                TuningResourceRepair.Persist(repair.Definition, repair.Path);
+            message = $"敌人 Resource 已重载：{active.Count} 个敌人。";
+            return true;
+        } catch (Exception e) {
             LastError = e.Message;
-            message = $"敌人数值表重载失败：{e.Message}";
+            message = $"敌人 Resource 重载失败：{e.Message}";
             GD.PushError(message);
             return false;
         }
     }
 
-    private static void EnsureLoaded()
-    {
-        if (_loaded)
-            return;
-
-        Reload(out _);
-    }
-
-    private static IEnumerable<string> EnumerateRegistryKeys(EnemyRegedit registry)
-    {
-        string typeName = registry.GetType().Name;
-        if (!string.IsNullOrWhiteSpace(typeName))
-        {
-            yield return typeName;
-            if (typeName.EndsWith("Regedit", StringComparison.Ordinal))
-                yield return typeName[..^"Regedit".Length];
+    public static ulong GetTuningFilesFingerprint() {
+        EnsureLoaded();
+        ulong hash = 1469598103934665603UL;
+        foreach (string path in _projectPaths.Values.Append(CatalogPath).Concat(_active.Keys.Select(GetUserPath)).OrderBy(path => path)) {
+            foreach (char c in path) {
+                hash ^= c;
+                hash *= 1099511628211UL;
+            }
+            hash ^= FileAccess.FileExists(path) ? FileAccess.GetModifiedTime(path) : 0;
+            hash *= 1099511628211UL;
         }
-
-        if (!string.IsNullOrWhiteSpace(registry.CharacterName))
-            yield return registry.CharacterName;
+        return hash;
     }
 
-    private static void LoadPathIfExists(string path, List<string> loadedPaths)
-    {
-        if (!FileAccess.FileExists(path))
+    private static string GetUserPath(string key) => $"{UserDirectory}/{key}.tres";
+    private static void EnsureLoaded() {
+        if (!_loaded && !Reload(out string message))
+            throw new InvalidOperationException(message);
+    }
+
+    private static void PersistAddedParameter(string key) {
+        var baseline = _defaults[key];
+        if (CanSaveProject) {
+            try {
+                // Merge into the latest saved file so external editor changes are not overwritten.
+                string projectPath = _projectPaths[key];
+                var savedProject = ResourceLoader.Load<EnemyTuningResource>(projectPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+                Validate(savedProject, baseline);
+                TuningResourceRepair.Persist(savedProject.Copy(), projectPath);
+            } catch (Exception exception) {
+                GD.PushWarning($"[Tuning] {key} 的字段已在当前会话补齐，但更新项目 Resource 失败：{exception.Message}。可在图鉴手动保存。");
+            }
+        }
+        string userPath = GetUserPath(key);
+        if (CanSaveProject && !FileAccess.FileExists(userPath))
             return;
+        try {
+            // Use saved definitions only: applying a draft does not authorize persisting its other edits.
+            var saved = FileAccess.FileExists(userPath)
+                ? ResourceLoader.Load<EnemyTuningResource>(userPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep)
+                : baseline.Copy();
+            Validate(saved, baseline);
+            TuningResourceRepair.Persist(saved.Copy(), userPath);
+        } catch (Exception exception) {
+            GD.PushWarning($"[Tuning] {key} 的字段已在当前会话补齐，但更新本地 Resource 失败：{exception.Message}。可在图鉴手动保存。");
+        }
+    }
 
-        using FileAccess file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-        if (file == null)
-            throw new InvalidOperationException($"无法打开 {path}");
-
-        string json = file.GetAsText();
-        if (string.IsNullOrWhiteSpace(json))
-            return;
-
-        using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions
-        {
-            AllowTrailingCommas = true,
-            CommentHandling = JsonCommentHandling.Skip,
-        });
-
-        JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object)
-            throw new InvalidOperationException($"{path} 根节点必须是 JSON 对象。");
-
-        if (root.TryGetProperty("enemies", out JsonElement enemiesElement))
-            root = enemiesElement;
-
-        if (root.ValueKind != JsonValueKind.Object)
-            throw new InvalidOperationException($"{path} 的 enemies 节点必须是 JSON 对象。");
-
-        foreach (JsonProperty enemyProperty in root.EnumerateObject())
-        {
-            if (enemyProperty.Value.ValueKind != JsonValueKind.Object)
+    private static bool Validate(EnemyTuningResource enemy, EnemyTuningResource baseline = null) {
+        if (enemy == null || !EnemyCatalog.Contains(enemy.EnemyKey))
+            throw new InvalidOperationException("敌人资源 ID 无效。");
+        if (enemy.Values == null)
+            throw new InvalidOperationException($"{enemy.EnemyKey} 缺少 Values。");
+        if (baseline != null && enemy.EnemyKey != baseline.EnemyKey)
+            throw new InvalidOperationException("敌人 ID 与项目定义不一致。");
+        bool changed = TuningResourceRepair.Synchronize(enemy.Values, TuningParameterSchema.GetEnemy(enemy.EnemyKey),
+            EnemyTuningParameters.GetInitialValue, baseline?.Values);
+        foreach (string required in new[] { "MaxLife", "Power", "Survivability", "BasePowerContribution", "BaseSurvivabilityContribution" }) {
+            if (enemy.Values.ContainsKey(required))
                 continue;
-
-            Dictionary<string, int> enemyValues = GetOrCreateEnemyValues(enemyProperty.Name);
-            foreach (JsonProperty valueProperty in enemyProperty.Value.EnumerateObject())
-            {
-                if (TryReadInt(valueProperty.Value, out int value))
-                    enemyValues[valueProperty.Name] = value;
-            }
+            int value = EnemyTuningParameters.GetInitialValue(required);
+            enemy.Values[required] = value;
+            changed = true;
+            GD.PushWarning($"[Tuning] 已自动补齐 {enemy.EnemyKey}.{required} = {value}，请在图鉴检查数值。");
         }
-
-        loadedPaths.Add(path);
-    }
-
-    private static void LoadDirectoryIfExists(string directoryPath, List<string> loadedPaths)
-    {
-        using DirAccess directory = DirAccess.Open(directoryPath);
-        if (directory == null)
-            return;
-
-        foreach (string filePath in EnumerateJsonFiles(directoryPath))
-            LoadPathIfExists(filePath, loadedPaths);
-    }
-
-    private static void AddDirectoryFingerprint(string directoryPath, ref ulong hash)
-    {
-        foreach (string filePath in EnumerateJsonFiles(directoryPath).OrderBy(path => path))
-            AddFileFingerprint(filePath, ref hash);
-    }
-
-    private static void AddFileFingerprint(string path, ref ulong hash)
-    {
-        if (!FileAccess.FileExists(path))
-            return;
-
-        AddStringToHash(path, ref hash);
-        AddUlongToHash(FileAccess.GetModifiedTime(path), ref hash);
-    }
-
-    private static void AddStringToHash(string value, ref ulong hash)
-    {
-        foreach (char c in value ?? string.Empty)
-            AddUlongToHash(c, ref hash);
-    }
-
-    private static void AddUlongToHash(ulong value, ref ulong hash)
-    {
-        hash ^= value;
-        hash *= 1099511628211UL;
-    }
-
-    private static IEnumerable<string> EnumerateJsonFiles(string directoryPath)
-    {
-        using DirAccess directory = DirAccess.Open(directoryPath);
-        if (directory == null)
-            yield break;
-
-        directory.ListDirBegin();
-        while (true)
-        {
-            string name = directory.GetNext();
-            if (string.IsNullOrEmpty(name))
-                break;
-
-            if (name == "." || name == "..")
-                continue;
-
-            string path = $"{directoryPath}/{name}";
-            if (directory.CurrentIsDir())
-            {
-                foreach (string nestedPath in EnumerateJsonFiles(path))
-                    yield return nestedPath;
-            }
-            else if (name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            {
-                yield return path;
-            }
+        foreach (var pair in enemy.Values) {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+                throw new InvalidOperationException($"{enemy.EnemyKey} 的参数名不能为空。");
+            EnemyTuningParameters.Validate(pair.Key, pair.Value);
         }
-
-        directory.ListDirEnd();
+        return changed;
     }
-
-    private static Dictionary<string, int> GetOrCreateEnemyValues(string enemyKey)
-    {
-        if (!Values.TryGetValue(enemyKey, out Dictionary<string, int> enemyValues))
-        {
-            enemyValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            Values[enemyKey] = enemyValues;
-        }
-
-        return enemyValues;
-    }
-
-    private static bool TryReadInt(JsonElement element, out int value)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Number:
-                if (element.TryGetInt32(out value))
-                    return true;
-
-                if (element.TryGetDouble(out double number))
-                {
-                    value = Mathf.RoundToInt((float)number);
-                    return true;
-                }
-                break;
-            case JsonValueKind.String:
-                return int.TryParse(
-                    element.GetString(),
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    out value
-                );
-        }
-
-        value = 0;
-        return false;
-    }
-
-    private static int CountValueEntries() => Values.Values.Sum(enemyValues => enemyValues.Count);
 }

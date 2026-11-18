@@ -1,8 +1,9 @@
+using System.Threading.Tasks;
 using Godot;
 
 public partial class VoidRotor : EnemyCharacter
 {
-    private const int PassivePowerGain = 1;
+    private static int PassivePowerGain => EnemyTuning.GetRequiredInt("VoidRotor", nameof(PassivePowerGain));
 
     public const string PassiveNameText = "虚空蚀咒";
     public static string PassiveDescriptionText =>
@@ -23,7 +24,7 @@ public partial class VoidRotor : EnemyCharacter
         base.OnTurnEnd();
     }
 
-    public override void Passive(Skill skill)
+    protected override async Task PassiveAsync(Skill skill)
     {
         if (BattleNode == null)
             return;
@@ -39,7 +40,7 @@ public partial class VoidRotor : EnemyCharacter
                 continue;
             }
 
-            _ = target.IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
+            await BattleNode.ExecuteBattleEffectAsync(() => target.IncreaseProperties(PropertyType.Power, PassivePowerGain, this), "被动：力量提升");
         }
     }
 }
@@ -49,16 +50,11 @@ public partial class VoidRotorRegedit : EnemyRegedit
     public VoidRotorRegedit()
     {
         CharacterName = "VoidRotor";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/VoidRotor.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/VoidRotor.tscn");
-
-        MaxLife = 121;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.VoidRotorAttack, SkillID.VoidRotorSurvive, SkillID.VoidRotorSpecial];
+        // 裂刃虚弱，蚀甲干扰，灌注后再追击。
+        IntentionCycle = [SkillID.VoidRotorAttack, SkillID.VoidRotorSurvive, SkillID.VoidRotorSpecial, SkillID.VoidRotorAttack, random];
 
         PassiveName = global::VoidRotor.PassiveNameText;
         PassiveDescription = global::VoidRotor.PassiveDescriptionText;
@@ -67,8 +63,8 @@ public partial class VoidRotorRegedit : EnemyRegedit
 
 public partial class VoidRotorAttack : Skill
 {
-    private const int BaseDamage = 8;
-    private const int PowerMultiplier = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int PowerMultiplier => V(nameof(PowerMultiplier));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -78,15 +74,15 @@ public partial class VoidRotorAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: V("HitCount", 3)),
-            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1), HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, multiplier: PowerMultiplier, times: V("HitCount")),
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks"), HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class VoidRotorSurvive : Skill
 {
-    private const int BaseBlock = 19;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -96,27 +92,26 @@ public partial class VoidRotorSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 2))
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount"))
         );
     }
 }
 
 public partial class VoidRotorSpecial : Skill
 {
-    private const int BaseDamage = 8;
-    private const int DazeCardsPerTarget = 3;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int DazeCardsPerTarget => V(nameof(DazeCardsPerTarget));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "虚界灌注";
-    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), times: V("HitCount", 2)),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             AddCardsStep(
                 SkillID.DazeStatus,
                 DazeCardsPerTarget,

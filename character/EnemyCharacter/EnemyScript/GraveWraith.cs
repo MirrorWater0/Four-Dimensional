@@ -2,7 +2,7 @@ using Godot;
 
 public partial class GraveWraith : EnemyCharacter
 {
-    private const int PassiveHeal = 7;
+    private static int PassiveHeal => EnemyTuning.GetRequiredInt("GraveWraith", nameof(PassiveHeal));
 
     public const string PassiveNameText = "凋零威压";
     public static string PassiveDescriptionText =>
@@ -36,21 +36,16 @@ public partial class GraveWraithRegedit : EnemyRegedit
     public GraveWraithRegedit()
     {
         CharacterName = "冥骨游魂";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/GraveWraith.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/GraveWraith.tscn");
-
-        MaxLife = 152;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs =
         [
             SkillID.GraveWraithAttack,
             SkillID.GraveWraithSurvive,
             SkillID.GraveWraithSpecial,
         ];
+        // 噬咬削生存，蜷护施加易伤，觉醒全阵攻击后再噬咬。
+        IntentionCycle = [SkillID.GraveWraithAttack, SkillID.GraveWraithSurvive, SkillID.GraveWraithSpecial, SkillID.GraveWraithAttack, random];
 
         PassiveName = global::GraveWraith.PassiveNameText;
         PassiveDescription = global::GraveWraith.PassiveDescriptionText;
@@ -59,7 +54,7 @@ public partial class GraveWraithRegedit : EnemyRegedit
 
 public partial class GraveWraithAttack : Skill
 {
-    private const int BaseDamage = 28;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -69,10 +64,10 @@ public partial class GraveWraithAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
-                99,
+                V("SurvivabilityLossAmount"),
                 HostileTargetReference.AttackKey
             )
         );
@@ -81,7 +76,7 @@ public partial class GraveWraithAttack : Skill
 
 public partial class GraveWraithSurvive : Skill
 {
-    private const int BaseBlock = 28;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -91,10 +86,10 @@ public partial class GraveWraithSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ApplyBuffHostile(
                 Buff.BuffName.Vulnerable,
-                V("VulnerableStacks", 2),
+                V("VulnerableStacks"),
                 HostileTargetReference.All
             )
         );
@@ -106,18 +101,18 @@ public partial class GraveWraithSpecial : Skill
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "冥骸觉醒";
-    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AttackStep(
-                baseDamage: V("BaseDamage", 18),
-                multiplier: V("Multiplier", 1),
-                target: HostileTargetReference.All
+                baseDamage: V("BaseDamage"),
+                multiplier: V("Multiplier"),
+                target: HostileTargetReference.All,
+                times: V("HitCount")
             ),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 5))
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"))
         );
     }
 }

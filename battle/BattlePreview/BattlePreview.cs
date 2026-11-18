@@ -689,7 +689,7 @@ public partial class BattlePreview : Control
         if (UserSettings.HideEnemySkills)
             return BuildSkillTooltipText(name, passiveName, passiveDescription, Array.Empty<Skill>());
 
-        var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
+        var ids = regedit.GetAllSkillIds();
         var skills = ids.Select(Skill.GetSkill).Where(x => x != null).ToArray();
         bool useEnemySkillDamageScaling =
             WhichNode?.Type != LevelNode.LevelType.Elite
@@ -793,6 +793,7 @@ public partial class BattlePreview : Control
 
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Attack);
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Survive);
+        AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Permanent);
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Special);
         AppendOwnedSkillNameLine(sb, skills, Skill.SkillTypes.Ability);
 
@@ -1018,7 +1019,7 @@ public partial class BattlePreview : Control
                 await transitionLayer.FadeFromBlackAsync(0.24f);
             return;
         }
-        battle.BattleIntentionRandom = new Random(RandomNum);
+        battle.BattleRandomNum = RandomNum;
         battle.CurrentLevelNode = WhichNode;
         layer.AddChild(battle);
         await battle.WhenPresentationReadyAsync();

@@ -7,7 +7,7 @@ using Godot;
 public partial class PlayerCharacter : Character
 {
     public const int MaxBattleHandSize = 10;
-    public const int TeamTurnStartDrawBase = 3;
+    public const int TeamTurnStartDrawBase = 2;
     public const int TeamTurnStartDrawPerAlivePlayer = 1;
     public const int TeamTurnStartDrawContribution = 2;
     public const int TeamTurnStartEnergyBase = 3;
@@ -43,7 +43,6 @@ public partial class PlayerCharacter : Character
             info.LifeMax
         );
         base.Initialize();
-        AttackCountBuff.Initialize(this);
         Life = Math.Clamp(info.LifeInitialized ? info.Life : BattleMaxLife, 0, BattleMaxLife);
         if (Life <= 0)
         {
@@ -364,7 +363,7 @@ public partial class PlayerCharacter : Character
                         GetBattlePileOwner(skill),
                         skill,
                         atTurnEnd: true,
-                        forceDiscard: true
+                        forceDiscard: !skill.ResolvesExhaustsAtTurnEndInHand
                     );
                     Skills[i] = null;
                     handChanged = true;
@@ -431,7 +430,7 @@ public partial class PlayerCharacter : Character
         Dictionary<(int PlayerIndex, SkillID SkillId), int> toolboxRetainedCounts
     )
     {
-        if (skill == null)
+        if (skill == null || skill.ResolvesExhaustsAtTurnEndInHand)
             return false;
 
         if (skill.IntrinsicRetainsAtTurnEndInHand)

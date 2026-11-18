@@ -1,0 +1,417 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://tools/SwordSlashPreview.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://battle/Effect/SwordSlashVfx.tscn" id="2_slash"]
+[ext_resource type="Texture2D" path="res://asset/EnemyCharater/Evil.png" id="3_target"]
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="4_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_stage"]
+bg_color = Color(0.025, 0.038, 0.056, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.15, 0.23, 0.28, 0.7)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_controls"]
+bg_color = Color(0.035, 0.052, 0.072, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[node name="SwordSlashPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("4_theme")
+script = ExtResource("1_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.014, 0.022, 0.033, 1)
+
+[node name="Eyebrow" type="Label" parent="."]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 44.0
+offset_right = 1000.0
+offset_bottom = 78.0
+theme_override_colors/font_color = Color(0.36, 0.72, 0.84, 1)
+theme_override_font_sizes/font_size = 19
+text = "COMBAT VFX / 02"
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 77.0
+offset_top = 87.0
+offset_right = 1000.0
+offset_bottom = 160.0
+theme_override_colors/font_color = Color(0.91, 0.96, 0.99, 1)
+theme_override_font_sizes/font_size = 52
+text = "刀光 · 剑气"
+
+[node name="Description" type="Label" parent="."]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 176.0
+offset_right = 1700.0
+offset_bottom = 215.0
+theme_override_colors/font_color = Color(0.53, 0.65, 0.72, 1)
+theme_override_font_sizes/font_size = 22
+text = "折回交叉连斩  /  长度与粗细独立  /  末刀加重  /  重播保留同一组轨迹"
+
+[node name="Stages" type="Control" parent="."]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 248.0
+offset_right = 1840.0
+offset_bottom = 810.0
+mouse_filter = 2
+
+[node name="Isolated" type="Panel" parent="Stages"]
+layout_mode = 0
+offset_right = 860.0
+offset_bottom = 562.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_stage")
+
+[node name="Caption" type="Label" parent="Stages/Isolated"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = 820.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.64, 0.79, 0.86, 1)
+theme_override_font_sizes/font_size = 22
+text = "01  /  独立刀光 · STS2 逐帧参考"
+
+[node name="Slash" parent="Stages/Isolated" instance=ExtResource("2_slash")]
+position = Vector2(410, 290)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitCount = 4
+
+[node name="Slash2" parent="Stages/Isolated" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(410, 290)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 1
+HitCount = 4
+
+[node name="Slash3" parent="Stages/Isolated" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(410, 290)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 2
+HitCount = 4
+
+[node name="Slash4" parent="Stages/Isolated" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(410, 290)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 3
+HitCount = 4
+
+[node name="Target" type="Panel" parent="Stages"]
+layout_mode = 0
+offset_left = 900.0
+offset_right = 1760.0
+offset_bottom = 562.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_stage")
+
+[node name="Caption" type="Label" parent="Stages/Target"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = 820.0
+offset_bottom = 60.0
+theme_override_colors/font_color = Color(0.64, 0.79, 0.86, 1)
+theme_override_font_sizes/font_size = 22
+text = "02  /  角色命中示意"
+
+[node name="Character" type="TextureRect" parent="Stages/Target"]
+layout_mode = 0
+offset_left = 160.0
+offset_top = 65.0
+offset_right = 700.0
+offset_bottom = 535.0
+mouse_filter = 2
+texture = ExtResource("3_target")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Slash" parent="Stages/Target" instance=ExtResource("2_slash")]
+position = Vector2(420, 280)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitCount = 4
+
+[node name="Slash2" parent="Stages/Target" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(420, 280)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 1
+HitCount = 4
+
+[node name="Slash3" parent="Stages/Target" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(420, 280)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 2
+HitCount = 4
+
+[node name="Slash4" parent="Stages/Target" instance=ExtResource("2_slash")]
+visible = false
+position = Vector2(420, 280)
+AutoPlay = false
+AutoFree = false
+VariationSeed = 137
+HitIndex = 3
+HitCount = 4
+
+[node name="Controls" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 822.0
+offset_right = 1840.0
+offset_bottom = 1064.0
+theme_override_styles/panel = SubResource("StyleBox_controls")
+
+[node name="Replay" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 160.0
+offset_bottom = 74.0
+focus_mode = 0
+text = "重播  R"
+
+[node name="Pause" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 178.0
+offset_top = 24.0
+offset_right = 292.0
+offset_bottom = 74.0
+focus_mode = 0
+text = "暂停"
+
+[node name="Timeline" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 326.0
+offset_top = 35.0
+offset_right = 1254.0
+offset_bottom = 65.0
+focus_mode = 0
+max_value = 0.62
+step = 0.001
+
+[node name="Time" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 1290.0
+offset_top = 25.0
+offset_right = 1718.0
+offset_bottom = 74.0
+theme_override_colors/font_color = Color(0.73, 0.86, 0.93, 1)
+theme_override_font_sizes/font_size = 21
+text = "0.00 s · 1/4 刀 · 1/4 帧"
+
+[node name="SpeedLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 108.0
+offset_right = 84.0
+offset_bottom = 147.0
+text = "速度"
+
+[node name="Speed" type="OptionButton" parent="Controls"]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 104.0
+offset_right = 230.0
+offset_bottom = 150.0
+focus_mode = 0
+selected = 2
+item_count = 3
+popup/item_0/text = "0.25 ×"
+popup/item_0/id = 0
+popup/item_1/text = "0.5 ×"
+popup/item_1/id = 1
+popup/item_2/text = "1 ×"
+popup/item_2/id = 2
+
+[node name="DirectionLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 278.0
+offset_top = 108.0
+offset_right = 338.0
+offset_bottom = 147.0
+text = "方向"
+
+[node name="Direction" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 350.0
+offset_top = 113.0
+offset_right = 620.0
+offset_bottom = 143.0
+focus_mode = 0
+min_value = -180.0
+max_value = 180.0
+step = 1.0
+value = 0.0
+
+[node name="Mirror" type="CheckButton" parent="Controls"]
+layout_mode = 0
+offset_left = 658.0
+offset_top = 103.0
+offset_right = 832.0
+offset_bottom = 152.0
+focus_mode = 0
+text = "反向斩击"
+
+[node name="PaletteLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 912.0
+offset_top = 108.0
+offset_right = 972.0
+offset_bottom = 147.0
+text = "剑气"
+
+[node name="Palette" type="OptionButton" parent="Controls"]
+layout_mode = 0
+offset_left = 982.0
+offset_top = 104.0
+offset_right = 1148.0
+offset_bottom = 150.0
+focus_mode = 0
+selected = 0
+item_count = 4
+popup/item_0/text = "场景配色"
+popup/item_0/id = 0
+popup/item_1/text = "猩红"
+popup/item_1/id = 1
+popup/item_2/text = "冰蓝"
+popup/item_2/id = 2
+popup/item_3/text = "幽紫"
+popup/item_3/id = 3
+
+[node name="Style" type="OptionButton" parent="Controls"]
+layout_mode = 0
+offset_left = 1290.0
+offset_top = 104.0
+offset_right = 1718.0
+offset_bottom = 150.0
+focus_mode = 0
+selected = 0
+item_count = 2
+popup/item_0/text = "普通斩击 · 4 帧 / 15 FPS"
+popup/item_0/id = 0
+popup/item_1/text = "弧形剑气 · 6 帧 / 0.3 秒"
+popup/item_1/id = 1
+
+[node name="Pattern" type="OptionButton" parent="Controls"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 176.0
+offset_right = 310.0
+offset_bottom = 220.0
+focus_mode = 0
+selected = 2
+item_count = 3
+popup/item_0/text = "单刀 · 独立随机"
+popup/item_0/id = 0
+popup/item_1/text = "二连斩 · 折返接刀"
+popup/item_1/id = 1
+popup/item_2/text = "四连斩 · 折回交叉"
+popup/item_2/id = 2
+
+[node name="Shuffle" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 338.0
+offset_top = 176.0
+offset_right = 496.0
+offset_bottom = 220.0
+focus_mode = 0
+text = "换一组"
+
+[node name="LengthLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 530.0
+offset_top = 180.0
+offset_right = 594.0
+offset_bottom = 220.0
+text = "长度"
+
+[node name="Length" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 606.0
+offset_top = 185.0
+offset_right = 906.0
+offset_bottom = 215.0
+focus_mode = 0
+min_value = 64.0
+max_value = 1000.0
+step = 1.0
+value = 360.0
+
+[node name="LengthValue" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 928.0
+offset_top = 180.0
+offset_right = 1008.0
+offset_bottom = 220.0
+text = "360"
+
+[node name="ThicknessLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 1050.0
+offset_top = 180.0
+offset_right = 1114.0
+offset_bottom = 220.0
+text = "粗细"
+
+[node name="Thickness" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 1126.0
+offset_top = 185.0
+offset_right = 1426.0
+offset_bottom = 215.0
+focus_mode = 0
+min_value = 0.3
+max_value = 2.0
+step = 0.05
+value = 1.0
+
+[node name="ThicknessValue" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 1448.0
+offset_top = 180.0
+offset_right = 1540.0
+offset_bottom = 220.0
+text = "1.00"

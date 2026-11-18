@@ -8,6 +8,7 @@ public enum HandCardEntryOrigin
     Default,
     DrawPile,
     PlayedCard,
+    DiscardPile,
 }
 
 public partial class CharacterControl : Control
@@ -16,8 +17,13 @@ public partial class CharacterControl : Control
 
     public Battle BattleNode => field ??= FindBattleNode();
     public bool IsManualTargetArrowSelectionActive => _manualTargetArrowSelectionActive;
+
+    internal bool ShouldSuppressInstalledCardInteraction(Vector2 pointerPosition) =>
+        _liftedCardIndex >= 0 || _manualTargetArrowSelectionActive || _isDiscardSelectionActive
+        || _isPileCardSelectionActive || IsHandInputBlockedByOverlay()
+        || (_uiBuilt && Visible && ResolveHandCardHoverIndex(pointerPosition) >= 0);
     public bool IsInspectingBattlePresentation =>
-        _hoveredCardIndex >= 0 || _liftedCardIndex >= 0
+        BattleNode?.ActionCardsUi?.IsInspectingCards == true || _hoveredCardIndex >= 0 || _liftedCardIndex >= 0
         || _manualTargetArrowSelectionActive || _isDiscardSelectionActive
         || _isPileCardSelectionActive || IsPileOverlayVisible() || IsBlockingMenuOpen();
     public Frame CharaterFrame1 => field ??= GetNodeOrNull<Frame>("frame1");
@@ -85,6 +91,16 @@ public partial class CharacterControl : Control
         if (@event is InputEventMouseButton trackedMouseButton)
         {
             TrackCardLeftMouseButtonState(trackedMouseButton);
+            if (
+                _manualTargetArrowSelectionActive
+                && trackedMouseButton.Pressed
+                && trackedMouseButton.ButtonIndex == MouseButton.Left
+            )
+            {
+                OnManualTargetArrowMaskGuiInput(trackedMouseButton);
+                return;
+            }
+
             if (TryHandleResponsiveHandCardPress(trackedMouseButton))
             {
                 GetViewport().SetInputAsHandled();
@@ -325,6 +341,7 @@ public partial class CharacterControl : Control
             && _pileOverlayRoot.Visible
             && !_pileOverlayContentTemporarilyHidden;
         return pileOverlayBlocksInput
+            || BattleNode?.ActionCardsUi?.IsChoosingReplacement == true
             || IsBattleInputSuspended()
             || IsManualTargetSelectionPending()
             || IsBlockingMenuOpen()

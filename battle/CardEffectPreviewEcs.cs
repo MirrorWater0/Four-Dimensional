@@ -237,7 +237,7 @@ public static class CardEffectPreviewEcs
             Character owner = skill.OwnerCharater;
             Battle battle =
                 owner != null && GodotObject.IsInstanceValid(owner) ? owner.BattleNode : null;
-            Character manualTarget = skill.GetManualFriendlyTarget();
+            Character manualTarget = skill.GetManualTargetSelection();
             return new CardPreviewQuery(
                 skill,
                 skill.ComputePreviewCacheRevision(),

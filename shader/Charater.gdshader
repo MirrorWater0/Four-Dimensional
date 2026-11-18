@@ -1,4 +1,5 @@
 shader_type canvas_item;
+#include "res://shader/Effect/CharacterArrivalBody.gdshaderinc"
 
 varying vec4 modulate;
 uniform float progress : hint_range(0.0, 1.0) = 0.0;
@@ -67,5 +68,5 @@ void fragment() {
     final_rgb += beam_color.rgb * edge_glow * 2.0;
 
     // 最终 Alpha：原始透明度 * 消融遮罩
-    COLOR = vec4(final_rgb, color.a * alpha_mask)*modulate;
+    COLOR = arrival_body(vec4(final_rgb, color.a * alpha_mask), current_height, arrival_phase) * modulate;
 }

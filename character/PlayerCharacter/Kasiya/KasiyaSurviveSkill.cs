@@ -8,32 +8,22 @@ public partial class KasiyaSurviveSkill { }
 
 public partial class ShockWave : Skill
 {
-    private const int VulnerableStacks = 1;
-    private const int BaseBlock = 0;
-    public override int EnergyCost => XEnergyCost;
+    private int WeakenStacks => V(nameof(WeakenStacks));
+    private int BaseBlock => V(nameof(BaseBlock));
+
     public override string SkillName { get; set; } = "冲击波";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            WhileStep(
-                loopSteps:
-                [
-                    BlockStep(baseBlock: BaseBlock),
-                    ApplyBuffHostile(
-                        buffName: Buff.BuffName.Vulnerable,
-                        stacks: VulnerableStacks,
-                        target: HostileTargetReference.All
-                    ),
-                    ApplyBuffHostile(
-                        buffName: Buff.BuffName.Weaken,
-                        stacks: VulnerableStacks,
-                        target: HostileTargetReference.All
-                    ),
-                ]
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ApplyBuffHostile(
+                buffName: Buff.BuffName.Weaken,
+                stacks: WeakenStacks,
+                target: HostileTargetReference.All
             )
         );
     }
@@ -41,18 +31,18 @@ public partial class ShockWave : Skill
 
 public partial class ReNewedSpirit : Skill
 {
-    private const int PowerGain = 2;
-    private const int SurvivabilityGain = 2;
+    private int PowerGain => V(nameof(PowerGain));
+    private int SurvivabilityGain => V(nameof(SurvivabilityGain));
 
     public override string SkillName { get; set; } = "重振精神";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: V("BaseBlock", 0)),
+            BlockStep(baseBlock: V("BaseBlock"), multiplier: V("Multiplier")),
             ModifyPropertyStep(PropertyType.Power, PowerGain),
             ModifyPropertyStep(PropertyType.Survivability, SurvivabilityGain)
         );
@@ -62,31 +52,31 @@ public partial class ReNewedSpirit : Skill
 public partial class AbsouluteDefense : Skill
 {
     public override string SkillName { get; set; } = "绝对防御";
-    public override int EnergyCost => XEnergyCost;
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillRarity Rarity => SkillRarity.Rare;
+
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             WhileStep(
-                loopSteps: [BlockStep(baseBlock: V("BaseBlock", 6), multiplier: V("Multiplier", 1))]
+                loopSteps: [BlockStep(baseBlock: V("BaseBlock"), multiplier: V("Multiplier"))]
             ),
-            ApplyBuffFriendly(Buff.BuffName.Taunt, V("TauntStacks", 1))
+            ApplyBuffFriendly(Buff.BuffName.Taunt, V("TauntStacks"))
         );
     }
 }
 
 public partial class TauntingGuard : Skill
 {
-    private const int TauntStacks = 2;
-    private const int BaseBlock = 5;
+    private int TauntStacks => V(nameof(TauntStacks));
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override string SkillName { get; set; } = "嘲讽守势";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     protected override SkillPlan BuildPlan()
     {
@@ -97,7 +87,7 @@ public partial class TauntingGuard : Skill
                 stacks: TauntStacks,
                 target: TargetReference.Self
             ),
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1))
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier"))
         );
     }
 }
@@ -105,17 +95,15 @@ public partial class TauntingGuard : Skill
 public partial class WeakpointBulwark : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
 
     public override string SkillName { get; set; } = "蓄势待发";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock),
             new DoubleEnemyFormationVulnerableStep()
         );
     }
@@ -210,6 +198,7 @@ public partial class WeakpointBulwark : Skill
                     SkillBuff.BuffAdd(name, target, stacks, source);
                     break;
                 case Buff.BuffName.Disaster:
+                case Buff.BuffName.Frail:
                     EndActionBuff.BuffAdd(name, target, stacks, source);
                     break;
             }
@@ -221,13 +210,12 @@ public partial class Purification : Skill
 {
     public override string SkillName { get; set; } = "净化";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(V("BaseBlock", 0)),
             CustomStep(
                 skill =>
                     skill?.OwnerCharater?.BattleNode?.ExhaustAllPlayerBattleStatusCardsAsync(
@@ -244,13 +232,13 @@ public partial class BarrierDuplication : Skill
     public override SkillRarity Rarity => SkillRarity.Uncommon;
     public override string SkillName { get; set; } = "固守";
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: 0, target: TargetReference.ManualFriendly, describe: false),
+            BlockStep(baseBlock: V("BaseBlock"), target: TargetReference.Self, describe: false, multiplier: V("Multiplier")),
             new DoubleBlockStep()
         );
     }
@@ -259,7 +247,7 @@ public partial class BarrierDuplication : Skill
     {
         public override Task Execute(Skill skill)
         {
-            Character target = skill?.GetManualFriendlyTarget();
+            Character target = skill?.OwnerCharater;
             if (target == null)
                 return Task.CompletedTask;
 
@@ -274,7 +262,7 @@ public partial class BarrierDuplication : Skill
 
         public override IEnumerable<string> Describe(Skill skill)
         {
-            yield return "令选择的己方角色的格挡翻倍。";
+            yield return "令自身的格挡翻倍。";
         }
     }
 }
@@ -282,15 +270,15 @@ public partial class BarrierDuplication : Skill
 public partial class Resistance : Skill
 {
     public override string SkillName { get; set; } = "抵御";
-    public override int EnergyCost => Cost(2);
-    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(V("BaseBlock", 4), TargetReference.ManualFriendly),
-            ExhaustCardsStep(BattleCardPileTarget.HandCards, V("ExhaustCount", 2), false)
+            BlockStep(V("BaseBlock"), TargetReference.Self, multiplier: V("Multiplier")),
+            ExhaustCardsStep(BattleCardPileTarget.HandCards, V("ExhaustCount"), false)
         );
     }
 }

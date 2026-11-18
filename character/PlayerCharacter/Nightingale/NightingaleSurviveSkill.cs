@@ -4,14 +4,12 @@ using Godot;
 
 public partial class NightingaleSurviveSkill { }
 
-
-
 public partial class FlashOfLight : Skill
 {
-    private const int VulnerableStacks = 2;
-    private const int BaseBlock = 5;
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
+    private int BaseBlock => V(nameof(BaseBlock));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "闪耀之光";
 
@@ -22,9 +20,9 @@ public partial class FlashOfLight : Skill
             ApplyBuffHostile(
                 buffName: Buff.BuffName.Vulnerable,
                 stacks: VulnerableStacks,
-                target: HostileTargetReference.One
+                target: HostileTargetReference.RandomPreview
             ),
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock)
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: V("Multiplier"))
         );
     }
 }
@@ -32,10 +30,10 @@ public partial class FlashOfLight : Skill
 public partial class AfterimageWard : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
-    private const int AfterimageStacks = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int AfterimageStacks => V(nameof(AfterimageStacks));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "月落残影";
 
@@ -43,25 +41,21 @@ public partial class AfterimageWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            BlockStep(target: TargetReference.Next, baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.Afterimage,
                 stacks: AfterimageStacks,
-                target: TargetReference.All
+                target: TargetReference.Next
             )
         );
     }
 }
 
-public partial class StarWard : Skill
+public partial class StarWard : AbilitySkill
 {
-    public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseBlock = 7;
-    private const int ExtraPowerStacks = 1;
-    public override int EnergyCost => Cost(2);
-
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillRarity Rarity => SkillRarity.Rare;
+    private int ExtraPowerStacks => V(nameof(ExtraPowerStacks));
 
     public override string SkillName { get; set; } = "星辉守势";
 
@@ -69,11 +63,10 @@ public partial class StarWard : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.ExtraPower,
                 stacks: ExtraPowerStacks,
-                target: TargetReference.ManualFriendly
+                target: TargetReference.Self
             )
         );
     }
@@ -81,84 +74,67 @@ public partial class StarWard : Skill
 
 public partial class BladeDance : Skill
 {
-    private const int BladeCount = 3;
+    private int BladeCount => V(nameof(BladeCount));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "刀刃之舞";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(V("BaseBlock", 5)),
-            ModifyAttackCountStep(BladeCount, temporary: true, target: TargetReference.ManualFriendly)
+            AddCardsToHandStep(SkillID.Blade, BladeCount)
         );
     }
 }
 
 public partial class WardGift : Skill
 {
-    private const int BaseBlock = 5;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int BrokenStacks => V(nameof(BrokenStacks));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
-    public override int EnergyCost => Cost(0);
+    public override SkillTypes SkillType => SkillTypes.Special;
+
     public override string SkillName { get; set; } = "护障转赠";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
-            CustomStep(
-                skill =>
-                {
-                    Character caster = skill?.OwnerCharater;
-                    Character ally = skill?.GetManualFriendlyTarget();
-                    if (caster?.BattleNode == null || ally == null)
-                        return Task.CompletedTask;
-
-                    int selfBlock = caster.Block;
-                    if (selfBlock <= 0)
-                        return Task.CompletedTask;
-
-                    ally.UpdataBlock(selfBlock, source: caster);
-                    caster.UpdataBlock(-selfBlock, source: caster);
-
-                    return Task.CompletedTask;
-                },
-                _ => new[] { "将自身所有格挡转移给该角色。" }
+            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.Broken,
+                stacks: BrokenStacks,
+                target: TargetReference.Self
             )
         );
     }
 }
 
-
-
 public partial class ShadowBladeWard : Skill
 {
-    private const int BaseBlock = 7;
+    private int BaseBlock => V(nameof(BaseBlock));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = "隐刃守势";
-    public override int EnergyCost => Cost(0);
+
     protected override SkillPlan BuildPlan()
     {
-        string attackName = Buff.GetBuffDisplayName(Buff.BuffName.TemporaryAttackCount);
+        string powerName = "力量";
         string invisibleName = Buff.BuffName.Invisible.GetDescription();
 
         return new SkillPlan(
             this,
-            BlockStep(target: TargetReference.ManualFriendly, baseBlock: BaseBlock, multiplier: V("Multiplier", 1)),
+            BlockStep(target: TargetReference.Self, baseBlock: BaseBlock, multiplier: V("Multiplier")),
             CustomStep(
-                skill =>
+                async skill =>
                 {
                     Character caster = skill?.OwnerCharater;
                     Battle battle = caster?.BattleNode;
                     if (battle == null)
-                        return Task.CompletedTask;
+                        return;
 
                     foreach (
                         Character ally in battle.GetOrderedTeamCharacters(
@@ -174,15 +150,15 @@ public partial class ShadowBladeWard : Skill
                         )
                             continue;
 
-                        AttackCountBuff.Modify(player, 1, temporary: true, source: caster);
+                        await player.IncreaseProperties(PropertyType.Power, V("InvisiblePowerGain"), caster);
                     }
 
-                    return Task.CompletedTask;
+                    return;
                 },
                 _ =>
                     new[]
                     {
-                        $"每一位拥有{invisibleName}的角色获得1次{attackName}（仅本回合生效）。",
+                        $"每一位拥有{invisibleName}的角色获得{V("InvisiblePowerGain")}点{powerName}。",
                     }
             )
         );

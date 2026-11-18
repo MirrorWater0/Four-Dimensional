@@ -61,6 +61,7 @@ public partial class SkillButton : Button
                 TerminateSkillIcon.Visible = false;
                 break;
             case Skill.SkillTypes.Survive:
+            case Skill.SkillTypes.Permanent:
                 SwordIcon.Visible = false;
                 TerminateSkillIcon.Visible = false;
                 break;

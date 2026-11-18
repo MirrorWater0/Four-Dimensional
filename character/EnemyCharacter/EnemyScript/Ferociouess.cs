@@ -3,8 +3,8 @@ using Godot;
 
 public partial class Ferociouess : EnemyCharacter
 {
-    private const int StartDamageImmuneStacks = 4;
-    private const int TurnEndDamageImmuneStacks = 1;
+    private static int StartDamageImmuneStacks => EnemyTuning.GetRequiredInt("Ferociouess", nameof(StartDamageImmuneStacks));
+    private static int TurnEndDamageImmuneStacks => EnemyTuning.GetRequiredInt("Ferociouess", nameof(TurnEndDamageImmuneStacks));
 
     public const string PassiveNameText = "骨骼硬化";
     public static string PassiveDescriptionText =>
@@ -41,17 +41,11 @@ public partial class FerociouessRegedit : EnemyRegedit
     public FerociouessRegedit()
     {
         CharacterName = "Ferociouess";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/Ferociouess.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Ferociouess.tscn");
-
-        MaxLife = 51;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.FerociouessAttack, SkillID.FerociouessSurvive];
-        OpeningIntentionSkillIDs = [SkillID.FerociouessAttack];
+        // 冲击后免疫并施加易伤，下一步狂暴兑现压力。
+        IntentionCycle = [SkillID.FerociouessAttack, SkillID.FerociouessSurvive, SkillID.FerociouessSpecial, random];
         PassiveName = global::Ferociouess.PassiveNameText;
         PassiveDescription = global::Ferociouess.PassiveDescriptionText;
     }
@@ -59,8 +53,8 @@ public partial class FerociouessRegedit : EnemyRegedit
 
 public partial class FerociouessAttack : Skill
 {
-    private const int BaseDamage = 14;
-    private const int SelfPowerGain = 0;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int SelfPowerGain => V(nameof(SelfPowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -70,7 +64,7 @@ public partial class FerociouessAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount")),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }
@@ -78,9 +72,9 @@ public partial class FerociouessAttack : Skill
 
 public partial class FerociouessSurvive : Skill
 {
-    private const int BaseBlock = 10;
-    private const int DamageImmuneStacks = 0;
-    private const int VulnerableStacks = 2;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int DamageImmuneStacks => V(nameof(DamageImmuneStacks));
+    private int VulnerableStacks => V(nameof(VulnerableStacks));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -90,7 +84,7 @@ public partial class FerociouessSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.DamageImmune,
                 stacks: DamageImmuneStacks,
@@ -107,18 +101,17 @@ public partial class FerociouessSurvive : Skill
 
 public partial class FerociouessSpecial : Skill
 {
-    private const int HitCount = 2;
+    private int HitCount => V(nameof(HitCount));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "狂暴";
-    public override int EnergyCost => Cost(4);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 7), times: HitCount, target: HostileTargetReference.All)
+            AttackStep(baseDamage: V("BaseDamage"), times: HitCount, target: HostileTargetReference.All, multiplier: V("Multiplier"))
         );
     }
 }

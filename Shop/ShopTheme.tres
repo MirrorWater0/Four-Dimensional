@@ -1,0 +1,32 @@
+[gd_resource type="Theme" load_steps=6 format=3]
+
+[sub_resource type="SystemFont" id="Font"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="StyleBoxFlat" id="Scroll"]
+content_margin_left = 2.0
+content_margin_right = 2.0
+bg_color = Color(0.65, 0.8, 0.9, 0.25)
+
+[sub_resource type="StyleBoxFlat" id="ScrollHover"]
+content_margin_left = 2.0
+content_margin_right = 2.0
+bg_color = Color(0.75, 0.86, 0.94, 0.5)
+
+[sub_resource type="StyleBoxLine" id="Separator"]
+color = Color(0.65, 0.78, 0.86, 0.15)
+thickness = 1
+vertical = true
+
+[resource]
+default_font = SubResource("Font")
+default_font_size = 18
+Label/colors/font_color = Color(0.83, 0.89, 0.94, 1)
+PanelContainer/styles/panel = SubResource("Empty")
+VScrollBar/styles/scroll = SubResource("Empty")
+VScrollBar/styles/grabber = SubResource("Scroll")
+VScrollBar/styles/grabber_highlight = SubResource("ScrollHover")
+VScrollBar/styles/grabber_pressed = SubResource("ScrollHover")
+VSeparator/styles/separator = SubResource("Separator")

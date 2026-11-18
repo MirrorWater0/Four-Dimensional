@@ -5,7 +5,7 @@ using Godot;
 
 public partial class Fear : EnemyCharacter
 {
-    private const int StartFearStacks = 3;
+    private static int StartFearStacks => EnemyTuning.GetRequiredInt("FearElite", nameof(StartFearStacks));
 
     public const string PassiveNameText = "恐惧具现";
     public static string PassiveDescriptionText =>
@@ -43,16 +43,11 @@ public partial class FearEliteRegedit : EnemyRegedit
     public FearEliteRegedit()
     {
         CharacterName = "恐惧";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/FearElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Fear.tscn");
-
-        MaxLife = 270;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.FearEliteAttack, SkillID.FearEliteSurvive, SkillID.FearEliteSpecial];
+        // 开场被动已施加恐惧；凝视后蓄势，再扩散梦魇。
+        IntentionCycle = [SkillID.FearEliteAttack, SkillID.FearEliteSurvive, SkillID.FearEliteSpecial, random, SkillID.FearEliteAttack];
 
         PassiveName = global::Fear.PassiveNameText;
         PassiveDescription = global::Fear.PassiveDescriptionText;
@@ -61,7 +56,7 @@ public partial class FearEliteRegedit : EnemyRegedit
 
 public partial class FearEliteAttack : Skill
 {
-    private const int BaseDamage = 13;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -71,14 +66,15 @@ public partial class FearEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount", 2))
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount"), multiplier: V("Multiplier")),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable,4,HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class FearEliteSurvive : Skill
 {
-    private const int BaseBlock = 21;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -88,29 +84,28 @@ public partial class FearEliteSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2))
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"))
         );
     }
 }
 
 public partial class FearEliteSpecial : Skill
 {
-    private const int BaseDamage = 14;
-    private const int FearStacks = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int FearStacks => V(nameof(FearStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "梦魇扩散";
-    public override int EnemySpecialIntentionCooldown => 2;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             ApplyBuffHostile(Buff.BuffName.Fear, FearStacks, HostileTargetReference.All),
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
-            HealStep(V("BaseHeal", 15))
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount")),
+            HealStep(V("BaseHeal"))
         );
     }
 }

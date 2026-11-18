@@ -11,7 +11,6 @@ public partial class Encyclopedia : Control
     private const float SkillCardSwitchExitDuration = 0.22f;
     private const float SkillCardSwitchMaxExitTotalDuration = 0.32f;
     private const float SkillCardSwitchEnterStagger = 0.024f;
-    private const float SkillCardSwitchEnterDuration = 0.32f;
     private const float SkillCardSwitchMaxTotalDuration = 0.5f;
     private const float InterfaceEnterDuration = 0.34f;
     private const float InterfaceExitDuration = 0.22f;
@@ -36,6 +35,8 @@ public partial class Encyclopedia : Control
             "res://asset/third_party/kenney_board_game_icons/Vector/Icons/crown_b.svg",
         [EncyclopediaModule.Buffs] =
             "res://asset/third_party/kenney_board_game_icons/Vector/Icons/shield.svg",
+        [EncyclopediaModule.Enemies] =
+            "res://asset/third_party/kenney_board_game_icons/Vector/Icons/skull.svg",
     };
 
     private readonly struct AssemblyItem
@@ -66,7 +67,7 @@ public partial class Encyclopedia : Control
     {
         All,
         Attack,
-        Survive,
+        Permanent,
         Special,
         Ability,
         Status,
@@ -101,6 +102,7 @@ public partial class Encyclopedia : Control
         public SkillID? SkillId { get; init; }
         public RelicID? RelicId { get; init; }
         public Buff.BuffName? BuffName { get; init; }
+        public string EnemyKey { get; init; }
         public SkillTypeFilter SkillTypeFilter { get; init; }
         public Skill.SkillRarity SkillRarity { get; init; }
         public SkillCostFilter SkillCostFilter { get; init; }
@@ -196,8 +198,11 @@ public partial class Encyclopedia : Control
         MouseFilter = MouseFilterEnum.Stop;
         BuildCatalog();
         BindUi();
+        BindTuningEditor();
+        BindEnemyEditor();
         SelectModule(EncyclopediaModule.Home);
         _observedSkillTuningRevision = SkillTuning.Revision;
+        _observedEnemyTuningRevision = EnemyTuning.Revision;
         PrepareInterfaceEnterState();
         PlayEnterAnimationDeferred();
     }
@@ -206,11 +211,18 @@ public partial class Encyclopedia : Control
     {
         UpdateScrollFeel((float)delta);
 
-        if (!OS.IsDebugBuild() || SkillTuning.Revision == _observedSkillTuningRevision)
+        if (EnemyTuning.Revision != _observedEnemyTuningRevision) {
+            _observedEnemyTuningRevision = EnemyTuning.Revision;
+            RefreshEnemyTuningCatalog();
+        }
+
+        if (SkillTuning.Revision == _observedSkillTuningRevision)
             return;
 
         _observedSkillTuningRevision = SkillTuning.Revision;
         RefreshSkillTuningCatalog();
+        RefreshTuningEditorRevision();
+        RefreshEnemyTuningCatalog();
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -534,8 +546,8 @@ public partial class Encyclopedia : Control
         );
         AddSkillTypeFilterButton(
             typeFlow,
-            I18n.Tr("skill_type.survive", "生存"),
-            SkillTypeFilter.Survive
+            I18n.Tr("skill_type.permanent", "常驻"),
+            SkillTypeFilter.Permanent
         );
         AddSkillTypeFilterButton(
             typeFlow,
@@ -607,6 +619,7 @@ public partial class Encyclopedia : Control
             EncyclopediaModule.Buffs,
             I18n.Tr("ui.encyclopedia.entry.buffs", "Buff图鉴")
         );
+        AddModuleNavigationButton(EncyclopediaModule.Enemies, ModuleNames[EncyclopediaModule.Enemies]);
     }
 
     private void SetupHsrPanel(ColorRect bg)
@@ -1137,6 +1150,7 @@ public partial class Encyclopedia : Control
     private List<EncyclopediaEntry> BuildBuffEntries()
     {
         return Enum.GetValues<Buff.BuffName>()
+            .Where(buff => buff is not (Buff.BuffName.AttackCount or Buff.BuffName.TemporaryAttackCount))
             .Select(buff =>
             {
                 string name = Buff.GetBuffDisplayName(buff);
@@ -1154,10 +1168,15 @@ public partial class Encyclopedia : Control
     private List<EncyclopediaEntry> BuildSkillEntries()
     {
         var entries = new List<EncyclopediaEntry>();
+        // Shared basic cards have no character pool, but belong on every character page.
+        var sharedBasicSkills = Enum.GetValues<SkillID>()
+            .Where(GameInfo.IsBasicSkill)
+            .Where(skillId => !Skill.TryGetPlayerCharacterKey(skillId, out _))
+            .ToArray();
         foreach (PlayerCharacterKey character in Enum.GetValues<PlayerCharacterKey>())
         {
             string characterName = GetPlayerCharacterDisplayName(character);
-            foreach (SkillID skillId in Skill.GetPlayerSkillPool(character))
+            foreach (SkillID skillId in Skill.GetPlayerSkillPool(character).Concat(sharedBasicSkills).Distinct())
             {
                 Skill skill = Skill.GetSkill(skillId);
                 if (skill == null)
@@ -1285,42 +1304,17 @@ public partial class Encyclopedia : Control
                     ("survivability", regedit.Survivability)
                 );
                 string detail =
-                    $"[b]{EscapeBbcode(title)}[/b]\n{EscapeBbcode(subtitle)}\n"
-                    + I18n.Format(
-                        "ui.encyclopedia.enemy.type_line",
-                        "类型：{type}\n\n",
-                        ("type", regedit.PType)
-                    )
+                    $"[b]{EscapeBbcode(title)}[/b]\n{EscapeBbcode(subtitle)}\n\n"
                     + BuildPassiveDetail(regedit)
                     + BuildEnemySkillDetail(regedit);
-                return CreateEntry(title, subtitle, detail, regedit.GetType().Name);
+                return CreateEntry(title, subtitle, detail, regedit.GetType().Name,
+                    enemyKey: regedit.TuningKey);
             })
             .OrderBy(entry => entry.Title)
             .ToList();
     }
 
-    private static EnemyRegedit[] CreateEnemyCatalog()
-    {
-        return
-        [
-            new EvilRegedit(),
-            new FearWormRegedit(),
-            new ArmonRegedit(),
-            new ArroganceRegedit(),
-            new AlienBodyRegedit(),
-            new RedHuskRegedit(),
-            new WarRegedit(),
-            new FerociouessRegedit(),
-            new TurbineRegedit(),
-            new BlackHawkRegedit(),
-            new InexorabilityRegedit(),
-            new GraveWraithRegedit(),
-            new VoidAcolyteRegedit(),
-            new HollowBulwarkRegedit(),
-            new MarrowReaverRegedit(),
-            new DeathRegedit(),
-        ];
-    }
+    private static EnemyRegedit[] CreateEnemyCatalog() => EnemyCatalog.CreateAll();
 
     private static string BuildPassiveDetail(EnemyRegedit regedit)
     {
@@ -1342,39 +1336,83 @@ public partial class Encyclopedia : Control
 
     private static string BuildEnemySkillDetail(EnemyRegedit regedit)
     {
-        UserSettings.EnsureLoaded();
-        if (UserSettings.HideEnemySkills)
-            return string.Empty;
-
-        var ids = regedit.SkillIDs ?? Array.Empty<SkillID>();
+        var ids = GetEnemySkillIds(regedit);
         if (ids.Length == 0)
             return string.Empty;
 
         var lines = new List<string>
         {
+            BuildEnemyIntentionCycleDetail(regedit),
             I18n.Tr("ui.encyclopedia.enemy.skills_header", "[b]技能[/b]"),
         };
+        var insertions = regedit.GetIntentionCycleInsertions();
         foreach (SkillID id in ids)
         {
-            Skill skill = Skill.GetSkill(id);
-            if (skill == null)
-                continue;
+            try {
+                Skill skill = Skill.GetSkill(id);
+                if (skill == null)
+                    continue;
 
-            skill.SetPreviewStats(
-                regedit.Power,
-                regedit.Survivability,
-                1,
-                basePowerContribution: regedit.BasePowerContribution,
-                baseSurvivabilityContribution: regedit.BaseSurvivabilityContribution
-            );
-            skill.UpdateDescription();
-            string type = skill.SkillType.GetDescription();
-            lines.Add($"[b]{EscapeBbcode(skill.SkillName)}[/b] · {EscapeBbcode(type)}");
-            if (!string.IsNullOrWhiteSpace(skill.Description))
-                lines.Add(skill.Description);
+                skill.SetPreviewStats(
+                    regedit.Power,
+                    regedit.Survivability,
+                    1,
+                    isPlayer: false,
+                    basePowerContribution: regedit.BasePowerContribution,
+                    baseSurvivabilityContribution: regedit.BaseSurvivabilityContribution
+                );
+                skill.UpdateDescription();
+                string type = skill.SkillType.GetDescription();
+                string role = string.Empty;
+                if (regedit.SkillIDs?.Contains(id) == true)
+                    role += I18n.Tr("ui.encyclopedia.enemy.random_pool_tag", " · 随机池");
+                if (regedit.IntentionCycle?.Any(step => step.SkillId == id) == true)
+                    role += I18n.Tr("ui.encyclopedia.enemy.fixed_cycle_tag", " · 固定流程");
+                if (insertions.Any(insertion => insertion.SkillId == id))
+                    role += I18n.Tr("ui.encyclopedia.enemy.insertion_tag", " · 临时插入");
+                lines.Add($"[b]{EscapeBbcode(skill.SkillName)}[/b] · {EscapeBbcode(type)}{role}");
+                if (!string.IsNullOrWhiteSpace(skill.Description))
+                    lines.Add(skill.Description);
+            } catch (Exception e) {
+                // A malformed skill must stay visible so its resource can be repaired.
+                string error = $"{id}：{e.GetBaseException().Message}";
+                lines.Add($"[color=#ff8888]{EscapeBbcode(error)}[/color]");
+                GD.PushWarning($"[Encyclopedia] {error}");
+            }
         }
 
         return string.Join("\n", lines);
+    }
+
+    private static string BuildEnemyIntentionCycleDetail(EnemyRegedit regedit)
+    {
+        var cycle = regedit.IntentionCycle ?? Array.Empty<EnemyIntentionStep>();
+        string randomText = I18n.Tr("ui.encyclopedia.enemy.random_step", "随机");
+        string sequence = cycle.Length == 0 ? randomText
+            : string.Join(" → ", cycle.Select(step => step.IsRandom ? randomText
+                : GetEnemyIntentionStepName(step.SkillId.Value)));
+        string detail = I18n.Format("ui.encyclopedia.enemy.cycle_line",
+            "[b]意图循环[/b]：{sequence} → 循环\n", ("sequence", sequence));
+        var insertions = regedit.GetIntentionCycleInsertions();
+        if (insertions.Length > 0)
+        {
+            string schedule = string.Join("；", insertions.Select(insertion =>
+                I18n.Format("ui.encyclopedia.enemy.insertion_step", "第{turn}回合：{skill}",
+                    ("turn", insertion.Turn), ("skill", GetEnemyIntentionStepName(insertion.SkillId)))));
+            detail += I18n.Format("ui.encyclopedia.enemy.insertions_line",
+                "[b]临时插入[/b]：{schedule}\n", ("schedule", schedule));
+        }
+        return detail;
+    }
+
+    private static string GetEnemyIntentionStepName(SkillID id)
+    {
+        try {
+            return EscapeBbcode(SkillTuning.GetCard(id).DisplayName);
+        } catch (Exception) {
+            // The skill detail below reports errors; the sequence itself should remain readable.
+            return EscapeBbcode(id.ToString());
+        }
     }
 
     private void SelectModule(EncyclopediaModule module)
@@ -1455,7 +1493,9 @@ public partial class Encyclopedia : Control
         else
             AddFlatResults(filtered);
 
-        SelectEntry(filtered.FirstOrDefault());
+        SelectEntry(filtered.FirstOrDefault(entry => _currentModule == EncyclopediaModule.Enemies
+                ? entry.EnemyKey == _selectedEntry?.EnemyKey : entry.SkillId == _selectedEntry?.SkillId)
+            ?? filtered.FirstOrDefault(), syncTuning: false);
     }
 
     private void RefreshCharacterFilter()
@@ -1477,6 +1517,8 @@ public partial class Encyclopedia : Control
 
     private void RefreshContentMode()
     {
+        _tuningPanel.Visible = _currentModule == EncyclopediaModule.Skills;
+        _enemyPanel.Visible = _currentModule == EncyclopediaModule.Enemies;
         bool showFlatDetail =
             _currentModule == EncyclopediaModule.Relics
             || _currentModule == EncyclopediaModule.Buffs;
@@ -1516,7 +1558,7 @@ public partial class Encyclopedia : Control
         {
             _skillGrid.Columns =
                 _currentModule == EncyclopediaModule.Home ? 1
-                : _currentModule == EncyclopediaModule.Skills ? 5
+                : _currentModule == EncyclopediaModule.Skills ? 3
                 : showFlatDetail ? 2
                 : 2;
             _skillGrid.AddThemeConstantOverride(
@@ -1536,6 +1578,8 @@ public partial class Encyclopedia : Control
                     ? I18n.Tr("ui.encyclopedia.search.relics", "搜索遗物名称或效果")
                 : _currentModule == EncyclopediaModule.Buffs
                     ? I18n.Tr("ui.encyclopedia.search.buffs", "搜索Buff名称或效果")
+                : _currentModule == EncyclopediaModule.Enemies
+                    ? I18n.Tr("ui.encyclopedia.search.enemies", "搜索敌人名称、被动或技能")
                     : I18n.Tr("ui.encyclopedia.search.skills", "搜索卡牌名称、类型或描述");
         }
     }
@@ -1581,6 +1625,8 @@ public partial class Encyclopedia : Control
 
     private void AddHomeEntries()
     {
+        AddHomeEntryButton(EncyclopediaModule.Enemies, ModuleNames[EncyclopediaModule.Enemies],
+            I18n.Tr("ui.encyclopedia.entry.enemies_desc", "查看敌人属性、被动和技能，并编辑数值。"));
         AddHomeEntryButton(
             EncyclopediaModule.Skills,
             I18n.Tr("ui.encyclopedia.entry.skills", "卡牌图鉴"),
@@ -1746,6 +1792,14 @@ public partial class Encyclopedia : Control
             {
                 ConfigureBuffEntryButton(button, entry);
             }
+            else if (entry.EnemyKey != null) {
+                string path = EnemyCatalog.Create(entry.EnemyKey).PortaitPath;
+                if (!string.IsNullOrEmpty(path) && ResourceLoader.Exists(path)) {
+                    button.Icon = GD.Load<Texture2D>(path);
+                    button.ExpandIcon = true;
+                    button.AddThemeConstantOverride("icon_max_width", 52);
+                }
+            }
 
             button.Pressed += () => SelectEntry(entry);
             _skillGrid.AddChild(button);
@@ -1872,9 +1926,8 @@ public partial class Encyclopedia : Control
                 if (ShouldAnimateSkillCardAtIndex(i))
                 {
                     card.CallDeferred(
-                        nameof(SkillCard.StartAnimationWithDuration),
-                        GetSkillCardEnterDelay(i, GetSkillCardAnimatedCount(entries.Count)),
-                        SkillCardSwitchEnterDuration
+                        nameof(SkillCard.StartAnimation),
+                        GetSkillCardEnterDelay(i, GetSkillCardAnimatedCount(entries.Count))
                     );
                 }
                 else
@@ -1908,6 +1961,7 @@ public partial class Encyclopedia : Control
         card.Set("stretch", true);
         card.Set("stretch_shrink", 1);
         card.PreviewCharacterName = entry.Group;
+        card.PreviewCharacterKey = entry.CharacterKey?.ToString();
         card.DisplayNameOverride = entry.Title;
         card.CustomMinimumSize = EncyclopediaSkillCardDisplaySize;
         card.Size = EncyclopediaSkillCardDisplaySize;
@@ -2001,9 +2055,13 @@ public partial class Encyclopedia : Control
         TweenSkillCardHover(frame, card, hovered);
     }
 
-    private void SelectEntry(EncyclopediaEntry entry)
+    private void SelectEntry(EncyclopediaEntry entry, bool syncTuning = true)
     {
         _selectedEntry = entry;
+        if (syncTuning && entry?.SkillId is SkillID id)
+            SelectTuningCard(SkillTuning.ResolveKey(id));
+        if (_currentModule == EncyclopediaModule.Enemies)
+            SelectEnemyEntry(entry);
         _detailLabel.Text =
             entry?.Detail ?? I18n.Tr("ui.encyclopedia.no_match", "没有找到匹配条目。");
         UpdateDetailIcon(entry);
@@ -2221,7 +2279,7 @@ public partial class Encyclopedia : Control
 
         float maxDelay = Mathf.Max(
             0f,
-            SkillCardSwitchMaxTotalDuration - SkillCardSwitchEnterDuration
+            SkillCardSwitchMaxTotalDuration - SkillCard.DefaultEnterAnimationDuration
         );
         float stagger = Mathf.Min(SkillCardSwitchEnterStagger, maxDelay / (count - 1));
         return stagger * index;
@@ -2379,7 +2437,8 @@ public partial class Encyclopedia : Control
         int skillCostSortValue = 0,
         bool isStatusCard = false,
         RelicID? relicId = null,
-        Buff.BuffName? buffName = null
+        Buff.BuffName? buffName = null,
+        string enemyKey = null
     )
     {
         string search = NormalizeSearch(
@@ -2396,6 +2455,7 @@ public partial class Encyclopedia : Control
             SkillId = skillId,
             RelicId = relicId,
             BuffName = buffName,
+            EnemyKey = enemyKey,
             SkillTypeFilter = skillTypeFilter,
             SkillRarity = skillRarity,
             SkillCostFilter = skillCostFilter,
@@ -2443,7 +2503,7 @@ public partial class Encyclopedia : Control
         return skillType switch
         {
             Skill.SkillTypes.Attack => SkillTypeFilter.Attack,
-            Skill.SkillTypes.Survive => SkillTypeFilter.Survive,
+            Skill.SkillTypes.Permanent => SkillTypeFilter.Permanent,
             Skill.SkillTypes.Special => SkillTypeFilter.Special,
             Skill.SkillTypes.Ability => SkillTypeFilter.Ability,
             _ => SkillTypeFilter.Status,
@@ -2489,7 +2549,7 @@ public partial class Encyclopedia : Control
         return filter switch
         {
             SkillTypeFilter.Attack => 0,
-            SkillTypeFilter.Survive => 1,
+            SkillTypeFilter.Permanent => 1,
             SkillTypeFilter.Special => 2,
             SkillTypeFilter.Ability => 3,
             SkillTypeFilter.Status => 4,

@@ -20,6 +20,7 @@ public partial class CharacterControl
 
         if (
             _endTurnQueued
+            || BattleNode?.IsResolvingActionCards == true
             || _isPileCardSelectionActive
             || _handLayoutSyncPending
             || IsHandInputBlockedByOverlay()
@@ -35,7 +36,7 @@ public partial class CharacterControl
         }
 
         Skill skill = GetActiveHandSkills()?[index];
-        if (skill == null || !skill.CanUseCurrentEnergy())
+        if (skill == null || !skill.CanUseCurrentEnergy(_activePlayer))
             return;
 
         // The logical hand can compact one frame before the visual slots are
@@ -57,7 +58,7 @@ public partial class CharacterControl
             return;
 
         bool shouldUseManualTargetArrowSelection =
-            ShouldUseManualTargetArrowSelection(skill) && HasManualFriendlyTargetCandidates(skill);
+            ShouldUseManualTargetArrowSelection(skill) && HasManualTargetCandidates(skill);
         if (shouldUseManualTargetArrowSelection)
         {
             await SelectManualTargetFromHandAndQueueAsync(index, skill);
@@ -90,6 +91,7 @@ public partial class CharacterControl
 
         if (
             _endTurnQueued
+            || BattleNode?.IsResolvingActionCards == true
             || _isPileCardSelectionActive
             || _handLayoutSyncPending
             || IsHandInputBlockedByOverlay()
@@ -105,7 +107,7 @@ public partial class CharacterControl
         }
 
         Skill skill = GetActiveHandSkills()?[index];
-        if (skill == null || !skill.CanUseCurrentEnergy())
+        if (skill == null || !skill.CanUseCurrentEnergy(_activePlayer))
             return Task.CompletedTask;
 
         SkillCard visualCard = _cards[index];
@@ -129,7 +131,7 @@ public partial class CharacterControl
         if (_liftedCardIndex != -1)
             ClearLiftedCard(instant: true);
 
-        if (ShouldUseManualTargetArrowSelection(skill) && HasManualFriendlyTargetCandidates(skill))
+        if (ShouldUseManualTargetArrowSelection(skill) && HasManualTargetCandidates(skill))
             return SelectManualTargetFromHandAndQueueAsync(index, skill);
 
         LiftCard(index);
@@ -821,7 +823,7 @@ public partial class CharacterControl
             {
                 movingCard.SetSkill(skill);
                 movingCard.CharacterName.Text = GetSkillOwnerDisplayName(skill);
-                movingCard.SetEnergyCostAffordable(skill.CanUseCurrentEnergy());
+                movingCard.SetEnergyCostAffordable(skill.CanUseCurrentEnergy(_activePlayer));
             }
             movingCard.StopBattleMotion();
             movingCard.Position = Vector2.Zero;
@@ -947,7 +949,7 @@ public partial class CharacterControl
         handCard.Modulate = SkillButton.EnabledModulate;
         handCard.SetSkill(skill);
         handCard.CharacterName.Text = GetSkillOwnerDisplayName(skill);
-        handCard.SetEnergyCostAffordable(skill.CanUseCurrentEnergy());
+        handCard.SetEnergyCostAffordable(skill.CanUseCurrentEnergy(_activePlayer));
         handCard.SetPlayableHighlight(false, instant: true);
         handCard.SetHoverUiEnabled(true);
         handCard.HoverHint.Visible = false;
@@ -990,7 +992,8 @@ public partial class CharacterControl
         if (restoreIndex < 0)
             return -1;
 
-        if (skill.OwnerCharater == null || !GodotObject.IsInstanceValid(skill.OwnerCharater))
+        if (!skill.IsStatusCard
+            && (skill.OwnerCharater == null || !GodotObject.IsInstanceValid(skill.OwnerCharater)))
             skill.OwnerCharater = _activePlayer;
         skill.UpdateDescription();
         hand[restoreIndex] = skill;

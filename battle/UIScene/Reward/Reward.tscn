@@ -5,6 +5,9 @@
 [ext_resource type="Script" uid="uid://bsmpg1cd6evq" path="res://Equipment/InventoryGrid.cs" id="3_f2bgc"]
 [ext_resource type="Shader" path="res://shader/UI/HSRPanel.gdshader" id="4_hsrpanel"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_f2bgc")
 shader_parameter/bg_color_top = Color(0.16, 0.17, 0.19, 1)
@@ -323,9 +326,15 @@ offset_right = 80.0
 offset_bottom = -28.0
 grow_horizontal = 2
 grow_vertical = 0
-theme = SubResource("Theme_button")
+theme = ExtResource("90_action_theme")
 theme_override_font_sizes/font_size = 15
 text = "跳过"
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="Panel/Decor/SkipButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="CornerTL_H" type="ColorRect" parent="Panel/Decor" unique_id=318913950]
 layout_mode = 0
@@ -487,9 +496,15 @@ offset_right = 90.0
 offset_bottom = 359.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = SubResource("Theme_button")
+theme = ExtResource("90_action_theme")
 theme_override_font_sizes/font_size = 18
 text = "跳过"
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="SkillRewardSkipButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="TalentTreeOverlay" type="Control" parent="."]
 visible = false
@@ -558,13 +573,13 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.92, 0.93, 0.96, 0.95)
 theme_override_font_sizes/font_size = 22
-text = "天赋树"
+text = "天赋选择"
 
 [node name="PointLabel" type="Label" parent="TalentTreeOverlay/TalentPanel/Header"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.86, 0.87, 0.91, 0.9)
 theme_override_font_sizes/font_size = 18
-text = "剩余天赋点 0"
+text = "待选天赋 0"
 horizontal_alignment = 2
 
 [node name="TopLine" type="ColorRect" parent="TalentTreeOverlay/TalentPanel"]
@@ -590,7 +605,7 @@ offset_bottom = 104.0
 grow_horizontal = 2
 theme_override_colors/font_color = Color(0.68, 0.7, 0.75, 0.5)
 theme_override_font_sizes/font_size = 13
-text = "拾取后可立即点亮天赋"
+text = "从随机候选中选择一个天赋，战斗开始时作为Buff生效"
 horizontal_alignment = 1
 
 [node name="TalentTreeRoot" type="Control" parent="TalentTreeOverlay/TalentPanel"]
@@ -623,6 +638,12 @@ alignment = 2
 [node name="CloseButton" type="Button" parent="TalentTreeOverlay/TalentPanel/Footer"]
 layout_mode = 2
 custom_minimum_size = Vector2(132, 38)
-theme = SubResource("Theme_button")
+theme = ExtResource("90_action_theme")
 theme_override_font_sizes/font_size = 18
 text = "完成"
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="TalentTreeOverlay/TalentPanel/Footer/CloseButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1

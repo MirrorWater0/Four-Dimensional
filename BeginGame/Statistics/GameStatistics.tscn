@@ -5,6 +5,9 @@
 [ext_resource type="Script" path="res://Map/UI/ExitButton.cs" id="3"]
 [ext_resource type="Script" path="res://BeginGame/StartFlowCurves.cs" id="4"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="SystemFont" id="Font_ui"]
 font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
 
@@ -486,8 +489,14 @@ offset_left = 1640.0
 offset_top = 48.0
 offset_right = 1792.0
 offset_bottom = 96.0
-theme = SubResource("ArchiveTheme")
-text = "返回  ↗"
+theme = ExtResource("90_action_theme")
+text = "返回"
 script = ExtResource("3")
 SnapPositionOnReady = false
 HoverSlideOffset = Vector2(0, 0)
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ExitButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1

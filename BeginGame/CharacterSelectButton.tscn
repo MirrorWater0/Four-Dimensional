@@ -31,8 +31,8 @@ border_color = Color(0, 0, 0, 0)
 
 [node name="CharacterSelectButton" type="Button"]
 clip_contents = true
-custom_minimum_size = Vector2(600, 104)
-offset_right = 600.0
+custom_minimum_size = Vector2(340, 104)
+offset_right = 376.0
 offset_bottom = 104.0
 focus_mode = 0
 theme_override_styles/normal = SubResource("StyleBoxFlat_button")
@@ -49,19 +49,19 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 18
+theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 78
+theme_override_constants/margin_right = 52
 theme_override_constants/margin_bottom = 12
 
 [node name="Row" type="HBoxContainer" parent="Content"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 12
 alignment = 0
 
 [node name="IconFrame" type="PanelContainer" parent="Content/Row"]
-custom_minimum_size = Vector2(76, 76)
+custom_minimum_size = Vector2(84, 80)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -80,7 +80,7 @@ custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 mouse_filter = 2
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="TextStack" type="VBoxContainer" parent="Content/Row"]
 layout_mode = 2
@@ -101,7 +101,8 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.76, 0.82, 0.85)
 theme_override_fonts/font = SubResource("Font_ui")
 theme_override_font_sizes/font_size = 15
-text = "生命 0  力量 0"
+clip_text = true
+text = "OPERATOR  /  ECHO"
 
 [node name="SelectedBadge" type="Label" parent="."]
 visible = false
@@ -110,13 +111,13 @@ anchors_preset = -1
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -70.0
+offset_left = -54.0
 offset_top = 12.0
 offset_right = -14.0
 offset_bottom = -12.0
 theme_override_colors/font_color = Color(0.91, 0.98, 0.97, 1)
 theme_override_fonts/font = SubResource("Font_technical")
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("StyleBoxFlat_badge")
 text = "1"
 horizontal_alignment = 1

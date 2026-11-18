@@ -7,7 +7,7 @@ public partial class NightingaleAttackSkill { }
 
 public partial class ShadowAmbush : Skill
 {
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
     bool hasInvisible =>
         OwnerCharater?.StartActionBuffs?.Any(x => x.ThisBuffName == Buff.BuffName.Invisible)
         == true;
@@ -20,11 +20,11 @@ public partial class ShadowAmbush : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             ConditionStep(
                 () => hasInvisible,
                 $"拥有{Buff.BuffName.Invisible.GetDescription()}",
-                AttackStep(baseDamage: BaseDamage, prefix: "额外造成")
+                AttackStep(baseDamage: BaseDamage, prefix: "额外造成", multiplier: V("Multiplier"), times: V("HitCount"))
             )
         );
     }
@@ -32,8 +32,8 @@ public partial class ShadowAmbush : Skill
 
 public partial class ShadowExecution : Skill
 {
-    private const int BaseDamage = 10;
-    private const int DoubleStrikeBaseDamage = 10;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int DoubleStrikeBaseDamage => V(nameof(DoubleStrikeBaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -43,11 +43,12 @@ public partial class ShadowExecution : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One),
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
             ConditionStep(
                 AnyAttackTargetDying,
                 "击杀任一目标",
-                AttackStep(baseDamage: DoubleStrikeBaseDamage, times: V("HitCount", 1))
+                AttackStep(baseDamage: DoubleStrikeBaseDamage, target: HostileTargetReference.Random,
+                    times: V("HitCount"), multiplier: V("Multiplier"))
             )
         );
     }
@@ -61,7 +62,7 @@ public partial class ShadowExecution : Skill
 
 public partial class BreakStrike : Skill
 {
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -74,8 +75,7 @@ public partial class BreakStrike : Skill
             CustomStep(
                 _ =>
                 {
-                    var targets = ChosetargetByOrder(byBehindRow: false, applyTaunt: true);
-                    var target = targets[0];
+                    Character target = GetManualHostileTarget();
                     if (target == null || target == OwnerCharater?.BattleNode?.dummy)
                         return Task.CompletedTask;
 
@@ -86,7 +86,7 @@ public partial class BreakStrike : Skill
                 },
                 _ => new[] { "去掉目标的格挡。" }
             ),
-            AttackStep(baseDamage: BaseDamage)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount"))
         );
     }
 }
@@ -94,7 +94,7 @@ public partial class BreakStrike : Skill
 public partial class StasisBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -104,8 +104,8 @@ public partial class StasisBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            SelectDiscardPileCardsToHandStep(V("SelectDiscardCount", 1))
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            SelectDiscardPileCardsToHandStep(V("SelectDiscardCount"))
         );
     }
 }
@@ -113,21 +113,21 @@ public partial class StasisBlade : Skill
 public partial class ContinuousPierce : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     private bool IsAtFullLife =>
         OwnerCharater != null && OwnerCharater.Life >= OwnerCharater.BattleMaxLife;
 
     public override SkillTypes SkillType => SkillTypes.Attack;
-    public override int EnergyCost => Cost(0);
+
     public override string SkillName { get; set; } = "连续贯穿";
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks", 1), TargetReference.ManualFriendly)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks"), TargetReference.ManualFriendly)
         );
     }
 }
@@ -135,7 +135,7 @@ public partial class ContinuousPierce : Skill
 public partial class RuinBlade : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int BaseDamage = 10;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -145,22 +145,22 @@ public partial class RuinBlade : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier", 1), times: V("HitCount", 1)),
-            AddCardsStep(SkillID.None, V("RandomCardCount", 1), BattleCardPileTarget.HandCards),
-            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount", 1))
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            AddCardsStep(SkillID.None, V("RandomCardCount"), BattleCardPileTarget.HandCards),
+            ExhaustCardsStep(BattleCardPileTarget.DrawPileCards, V("ExhaustCount"))
         );
     }
 }
 
 public partial class NightfallFlurry : Skill
 {
-    private const int BaseDamage = 7;
-    private const int PowerMultiplier = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int PowerMultiplier => V(nameof(PowerMultiplier));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "夜幕连袭";
-    public override int EnergyCost => Cost(2);
+
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     protected override SkillPlan BuildPlan()
@@ -170,24 +170,24 @@ public partial class NightfallFlurry : Skill
             AttackStep(
                 baseDamage: BaseDamage,
                 multiplier: PowerMultiplier,
-                target: HostileTargetReference.All
+                target: HostileTargetReference.All,
+                times: V("HitCount")
             ),
-            CarryStep(target: TargetReference.Next, skillIndex: 3)
+            PlayDrawPileCardStep(SkillTypes.Permanent)
         );
     }
 }
 
 public partial class BladeSalvo : Skill
 {
-    private const int BladeCount = 2;
+    private int BladeCount => V(nameof(BladeCount));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "利刃齐发";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(V("BaseDamage", 0)), AddCardsToHandStep(SkillID.Blade, BladeCount));
+        return new SkillPlan(this,AttackStep(V("basisdamge")), AddCardsStep(SkillID.Blade, BladeCount,BattleCardPileTarget.HandCards));
     }
 }

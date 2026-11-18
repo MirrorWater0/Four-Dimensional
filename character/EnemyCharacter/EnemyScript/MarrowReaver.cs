@@ -4,7 +4,7 @@ using Godot;
 
 public partial class MarrowReaver : EnemyCharacter
 {
-    private const int PassiveMaxLifeDown = 2;
+    private static int PassiveMaxLifeDown => EnemyTuning.GetRequiredInt("MarrowReaver", nameof(PassiveMaxLifeDown));
 
     public const string PassiveNameText = "蚀髓";
     public static string PassiveDescriptionText =>
@@ -19,7 +19,7 @@ public partial class MarrowReaver : EnemyCharacter
         PassiveDescription = PassiveDescriptionText;
     }
 
-    public override async void OnDealUnblockedDamage(
+    public override void OnDealUnblockedDamage(
         Character target,
         int actualDamage,
         DamageKind damageKind
@@ -28,6 +28,12 @@ public partial class MarrowReaver : EnemyCharacter
         if (target == null || actualDamage <= 0 || target == this)
             return;
 
+        BattleNode?.QueueBattleEffect(() => ApplyUnblockedDamagePassiveAsync(target), "蚀髓");
+    }
+
+    private async Task ApplyUnblockedDamagePassiveAsync(Character target) {
+        if (!GodotObject.IsInstanceValid(this) || !GodotObject.IsInstanceValid(target))
+            return;
         using var _ = BeginEffectSource("被动");
         int loss = Math.Min(PassiveMaxLifeDown, Math.Max(0, target.BattleMaxLife - 1));
         if (loss <= 0)
@@ -62,16 +68,11 @@ public partial class MarrowReaverRegedit : EnemyRegedit
     public MarrowReaverRegedit()
     {
         CharacterName = "蚀髓刃虫";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/MarrowReaver.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/MarrowReaver.tscn");
-
-        MaxLife = 178;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.MarrowReaverAttack, SkillID.MarrowReaverSpecial];
+        // 第四轮蓄力随机施加脆弱，第五轮全阵裂髓斩保证命中脆弱角色。
+        IntentionCycle = [SkillID.MarrowReaverAttack, SkillID.MarrowReaverSpecial, random, SkillID.MarrowReaverSurvive, SkillID.MarrowReaverAttack];
 
         PassiveName = global::MarrowReaver.PassiveNameText;
         PassiveDescription = global::MarrowReaver.PassiveDescriptionText;
@@ -80,7 +81,7 @@ public partial class MarrowReaverRegedit : EnemyRegedit
 
 public partial class MarrowReaverAttack : Skill
 {
-    private const int BaseDamage = 16;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -90,15 +91,15 @@ public partial class MarrowReaverAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All)
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount"))
         );
     }
 }
 
 public partial class MarrowReaverSurvive : Skill
 {
-    private const int BaseBlock = 22;
-    private const int PowerGain = 3;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int PowerGain => V(nameof(PowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -108,16 +109,17 @@ public partial class MarrowReaverSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.RandomPreview)
         );
     }
 }
 
 public partial class MarrowReaverSpecial : Skill
 {
-    private const int BaseDamage = 15;
-    private const int HitCount = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int HitCount => V(nameof(HitCount));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -127,8 +129,8 @@ public partial class MarrowReaverSpecial : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, times: HitCount),
-            AddCardsStep(SkillID.WoundStatus, 2)
+            AttackStep(baseDamage: BaseDamage, times: HitCount, multiplier: V("Multiplier")),
+            AddCardsStep(SkillID.WoundStatus, V("WoundCount"))
         );
     }
 }

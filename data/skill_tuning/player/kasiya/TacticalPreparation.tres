@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "TacticalPreparation"
+DisplayName = "战术整备"
+Values = Dictionary[String, int]({
+"DrawCount": 2,
+"EnemyEnergyCost": 1,
+"EnergyCost": 1,
+"ExhaustAfterExecutions": 0,
+"ExtraDrawStacks": 1,
+"VoidCount": 1
+})

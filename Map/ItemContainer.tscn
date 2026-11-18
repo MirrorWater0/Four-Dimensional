@@ -7,51 +7,39 @@ content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
-bg_color = Color(0.07, 0.07, 0.07, 0.78039217)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.96, 0.98933333, 1, 0.8784314)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_icon_backplate"]
-bg_color = Color(0.26099998, 0.2755, 0.29, 0.23921569)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
 border_width_bottom = 1
-border_color = Color(1, 0.8224637, 0.36149508, 0.16078432)
+border_color = Color(0.7, 0.82, 0.9, 0.48)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
-bg_color = Color(0.16, 0.16, 0.16, 0.9019608)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
 border_width_bottom = 1
 border_color = Color(1, 0.45, 0.48, 0.68)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-bg_color = Color(0.11, 0.02, 0.028, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
+bg_color = Color(0.8, 0.2, 0.25, 0.12)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
 border_width_bottom = 1
 border_color = Color(1, 0.3, 0.34, 1)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-bg_color = Color(0.34, 0.34, 0.34, 0.9607843)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
+bg_color = Color(0.8, 0.2, 0.25, 0.06)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
 border_width_bottom = 1
 border_color = Color(1, 0.64, 0.66, 0.95)
 
 [node name="ItemContainer" type="Panel" unique_id=1601172188]
-custom_minimum_size = Vector2(54, 54)
+custom_minimum_size = Vector2(58, 58)
 theme_override_styles/panel = SubResource("StyleBoxFlat_item_container")
 script = ExtResource("1_item_container")
 
@@ -63,34 +51,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-
-[node name="Backplate" type="Panel" parent="SlotRoot" unique_id=275167189]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 5.0
-offset_top = 5.0
-offset_right = -5.0
-offset_bottom = -5.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_icon_backplate")
-
-[node name="InnerGlow" type="ColorRect" parent="SlotRoot" unique_id=1643555127]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 3.0
-offset_top = 3.0
-offset_right = -3.0
-offset_bottom = -3.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.08, 0.38, 0.44, 0.1)
 
 [node name="IconHost" type="Control" parent="SlotRoot" unique_id=1070228856]
 layout_mode = 1
@@ -108,14 +68,14 @@ mouse_filter = 2
 [node name="DiscardButton" type="Button" parent="." unique_id=1390653461]
 visible = false
 layout_mode = 0
-offset_top = 54.0
-offset_right = 55.0
-offset_bottom = 79.0
+offset_top = 62.0
+offset_right = 58.0
+offset_bottom = 90.0
 focus_mode = 0
 theme_override_colors/font_color = Color(1, 0.82, 0.82, 1)
 theme_override_colors/font_pressed_color = Color(1, 0.72, 0.72, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")

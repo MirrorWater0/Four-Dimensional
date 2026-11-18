@@ -1,0 +1,39 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://battle/UIScene/ActionCardSlotsIcon.cs" id="1_script"]
+[ext_resource type="Texture2D" path="res://asset/svg/BuffIcon/ActionCardSlots.svg" id="2_icon"]
+
+[sub_resource type="Theme" id="Theme_count"]
+Label/constants/outline_size = 4
+Label/font_sizes/font_size = 25
+
+[node name="ActionCardSlotsIcon" type="TextureRect"]
+custom_minimum_size = Vector2(40, 40)
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 0
+tooltip_text = "行动卡槽\n已安装：0/2\n槽位上限：4\n满槽时打出行动牌可选择替换。"
+texture = ExtResource("2_icon")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("1_script")
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -6.0
+offset_top = -9.0
+offset_right = 24.0
+offset_bottom = 26.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = SubResource("Theme_count")
+theme_override_colors/font_color = Color(0.8, 1, 1, 1)
+text = "2"
+horizontal_alignment = 1
+vertical_alignment = 1

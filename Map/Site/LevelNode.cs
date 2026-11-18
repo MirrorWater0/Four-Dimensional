@@ -6,15 +6,10 @@ using Godot;
 
 public partial class LevelNode : ColorRect
 {
-    private static readonly Color CompletedInnerColor = Colors.White;
     private const float RegionTwoEliteStatMultiplier = 1f;
     private const float RegionTwoEliteMaxLifeMultiplier = 1f;
     internal const float RegionTwoBossStatMultiplier = 1f;
-    private static readonly PackedScene TipScene = GD.Load<PackedScene>(
-        "res://battle/UIScene/Tip.tscn"
-    );
-    private static readonly Vector2 HoverTipOffset = new Vector2(36f, 28f);
-    private Tip _hoverTip;
+    private NodeHoloTip _hoverTip;
 
     [Export]
     bool BarVisible = true;
@@ -74,6 +69,11 @@ public partial class LevelNode : ColorRect
     private string _lastHoverTipText;
     private Tween _hoverScaleTween;
     private Tween _mainVisualScaleTween;
+    public bool ConcealEncounterType { get; set; }
+    public bool IsFixedEncounterType { get; set; }
+    private bool IsEncounterConcealed => ConcealEncounterType && !IsFixedEncounterType
+        && State == LevelState.Locked;
+    private Label EncounterTypeLabel => field ??= GetNodeOrNull<Label>("EncounterType");
 
     public override void _Ready()
     {
@@ -81,13 +81,11 @@ public partial class LevelNode : ColorRect
         mat = Material.Duplicate() as ShaderMaterial;
         mat.ResourceLocalToScene = true;
         Material = mat;
-        mat.SetShaderParameter("show_inner", false);
         if (Ghost.Material is ShaderMaterial ghostMaterial)
         {
             _ghostMat = ghostMaterial.Duplicate() as ShaderMaterial;
             _ghostMat.ResourceLocalToScene = true;
             Ghost.Material = _ghostMat;
-            _ghostMat.SetShaderParameter("show_inner", false);
         }
 
         ApplyTypeVisualStyle();
@@ -120,6 +118,9 @@ public partial class LevelNode : ColorRect
 
         MouseEntered += OnNodeMouseEntered;
         MouseExited += OnNodeMouseExited;
+        VisibilityChanged += () => {
+            if (!IsVisibleInTree()) OnNodeMouseExited();
+        };
     }
 
     public override void _Process(double delta)
@@ -133,7 +134,7 @@ public partial class LevelNode : ColorRect
             return;
         }
 
-        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Visible)
+        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Tracks(this))
             TryShowHoverTip();
     }
 
@@ -141,7 +142,16 @@ public partial class LevelNode : ColorRect
     {
         _isNodeHovered = false;
         HideHoverTip();
-        DisposeHoverTip();
+        _hoverTip = null;
+    }
+
+    public void RefreshRoadPresentation()
+    {
+        if (State == LevelState.Completed)
+            ApplyCompletedVisuals();
+        else
+            ColorChose();
+        UpdateHoverTipIfVisible();
     }
 
     public void SetTypeLegendHighlighted(bool highlighted)
@@ -239,7 +249,7 @@ public partial class LevelNode : ColorRect
     {
         // Only the visual effects, no state changes
         Color = 2 * new Color(1, 1, 1, 1);
-        SetNodeShaderStyle(GetTypeRingColor(), CompletedInnerColor, true, GetTypePolygonSides());
+        ApplyTypeVisualStyle();
     }
 
     public void Completed()
@@ -329,12 +339,24 @@ public partial class LevelNode : ColorRect
 
     private void ApplyTypeVisualStyle()
     {
-        Color ringColor = GetTypeRingColor();
-        SetNodeShaderStyle(ringColor, ringColor, false, GetTypePolygonSides());
+        SetNodeShaderColor(GetTypeRingColor());
+        if (EncounterTypeLabel != null)
+        {
+            EncounterTypeLabel.Visible = ConcealEncounterType && !IsEncounterConcealed
+                && State != LevelState.Completed;
+            if (EncounterTypeLabel.Visible)
+            {
+                EncounterTypeLabel.Text = LevelProgress.GetNodeTypeDisplayName(Type);
+                EncounterTypeLabel.AddThemeColorOverride("font_color", GetTypeRingColor());
+            }
+        }
     }
 
     private Color GetTypeRingColor()
     {
+        if (IsEncounterConcealed)
+            return new Color("#B3CBD7");
+
         var levelProgress = GetParent()?.GetParent<LevelProgress>();
         if (levelProgress != null)
             return levelProgress.GetNodeTypeRingColor(Type);
@@ -351,47 +373,10 @@ public partial class LevelNode : ColorRect
         };
     }
 
-    private float GetTypePolygonSides()
+    private void SetNodeShaderColor(Color ringColor)
     {
-        return Type switch
-        {
-            LevelType.Event => 5f,
-            LevelType.Shop => 4f,
-            LevelType.Rest => 3f,
-            LevelType.Treasure => 4f,
-            _ => 6f,
-        };
-    }
-
-    private void SetNodeShaderStyle(
-        Color ringColor,
-        Color innerColor,
-        bool showInner,
-        float polygonSides
-    )
-    {
-        bool showChest = Type == LevelType.Treasure;
-        ApplyNodeShaderStyle(mat, ringColor, innerColor, showInner, polygonSides, showChest);
-        ApplyNodeShaderStyle(_ghostMat, ringColor, innerColor, showInner, polygonSides, showChest);
-    }
-
-    private static void ApplyNodeShaderStyle(
-        ShaderMaterial shader,
-        Color ringColor,
-        Color innerColor,
-        bool showInner,
-        float polygonSides,
-        bool showChestIcon = false
-    )
-    {
-        if (shader == null)
-            return;
-
-        shader.SetShaderParameter("ring_color", ringColor);
-        shader.SetShaderParameter("inner_color", innerColor);
-        shader.SetShaderParameter("show_inner", showInner);
-        shader.SetShaderParameter("polygon_sides", polygonSides);
-        shader.SetShaderParameter("show_chest_icon", showChestIcon);
+        mat?.SetShaderParameter("ring_color", ringColor);
+        _ghostMat?.SetShaderParameter("ring_color", ringColor);
     }
 
     private bool IsAnimate = false;
@@ -401,7 +386,16 @@ public partial class LevelNode : ColorRect
         if (State != LevelState.Unlocked)
             return;
 
-        GetParent()?.GetParent<LevelProgress>()?.LockAllNodes();
+        var levelProgress = GetParent()?.GetParent<LevelProgress>();
+        if (ConcealEncounterType && levelProgress != null)
+        {
+            if (!levelProgress.TryPrepareNodeEntry(this))
+                return;
+        }
+        else
+        {
+            levelProgress?.LockAllNodes();
+        }
         switch (Type)
         {
             case LevelType.Normal:
@@ -430,11 +424,21 @@ public partial class LevelNode : ColorRect
 
     public async void GotoBattle()
     {
+        var map = GetTree().Root.GetNodeOrNull<Map>("Map");
+        map?.HideHudForBattleEntry();
+        try {
+            await OpenBattleFromMapAsync(map);
+        } finally {
+            if (GodotObject.IsInstanceValid(map)) map.FinishBattleEntry();
+        }
+    }
+
+    private async Task OpenBattleFromMapAsync(Map map) {
         GameInfo.BeginLevelNodeTracking(this);
         var tween = ExplodeAnimation();
         EnsureBattleEncounter();
         int battleRandomNum = NextBattleRandomNum();
-        RandomizePlayerPreviewPositions(battleRandomNum);
+        GameInfo.NormalizePlayerCharacters();
         var prewarmTask = BattleStartResourcePreloader.PrewarmBattleNodeAsync(
             this,
             this,
@@ -448,6 +452,7 @@ public partial class LevelNode : ColorRect
         await prewarmTask;
         if (!GodotObject.IsInstanceValid(this))
         {
+            if (GodotObject.IsInstanceValid(map)) map.FinishBattleEntry();
             if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
                 await transitionLayer.FadeFromBlackAsync(0.24f);
             return;
@@ -461,6 +466,7 @@ public partial class LevelNode : ColorRect
         {
             layer.QueueFree();
             GetParent()?.GetParent<LevelProgress>()?.UnlockAllNodes();
+            if (GodotObject.IsInstanceValid(map)) map.FinishBattleEntry();
             if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
                 await transitionLayer.FadeFromBlackAsync(0.24f);
             return;
@@ -474,6 +480,7 @@ public partial class LevelNode : ColorRect
         {
             layer.QueueFree();
             GetParent()?.GetParent<LevelProgress>()?.UnlockAllNodes();
+            if (GodotObject.IsInstanceValid(map)) map.FinishBattleEntry();
             if (transitionLayer != null && GodotObject.IsInstanceValid(transitionLayer))
                 await transitionLayer.FadeFromBlackAsync(0.24f);
             return;
@@ -503,21 +510,6 @@ public partial class LevelNode : ColorRect
             GameInfo.GetBattleRngQueueIndex(this),
             BattleEntryCount ^ GameInfo.BattleFormationSalt
         );
-    }
-
-    private void RandomizePlayerPreviewPositions(int battleRandomNum)
-    {
-        if (GameInfo.PlayerCharacters == null || GameInfo.PlayerCharacters.Length == 0)
-            return;
-
-        var pickedPositions = Enumerable.Range(1, GameInfo.PlayerCharacters.Length).ToList();
-        ShuffleInPlace(pickedPositions, new Random(battleRandomNum));
-
-        if (IsSameFormationPattern(pickedPositions, EnemiesRegeditList))
-            OffsetFormationPattern(pickedPositions);
-
-        for (int i = 0; i < pickedPositions.Count; i++)
-            GameInfo.PlayerCharacters[i].PositionIndex = pickedPositions[i];
     }
 
     public void GotoEvent()
@@ -642,45 +634,6 @@ public partial class LevelNode : ColorRect
         }
     }
 
-    private static bool IsSameFormationPattern(
-        IReadOnlyList<int> playerPositions,
-        IReadOnlyList<EnemyRegedit> enemies
-    )
-    {
-        if (playerPositions == null || enemies == null || playerPositions.Count != enemies.Count)
-            return false;
-
-        for (int i = 0; i < playerPositions.Count; i++)
-        {
-            if (enemies[i] == null || enemies[i].PositionIndex != playerPositions[i])
-                return false;
-        }
-
-        return true;
-    }
-
-    private static void OffsetFormationPattern(List<int> positions)
-    {
-        if (positions == null || positions.Count <= 1)
-            return;
-
-        int first = positions[0];
-        positions.RemoveAt(0);
-        positions.Add(first);
-    }
-
-    private static void ShuffleInPlace<T>(IList<T> list, Random rng)
-    {
-        if (list == null || rng == null)
-            return;
-
-        for (int i = list.Count - 1; i > 0; i--)
-        {
-            int swapIndex = rng.Next(i + 1);
-            (list[i], list[swapIndex]) = (list[swapIndex], list[i]);
-        }
-    }
-
     public List<EnemyRegedit> GetNormalEnemies(bool allocateVisitIndex = true)
     {
         int visitIndex = allocateVisitIndex
@@ -756,14 +709,7 @@ public partial class LevelNode : ColorRect
         if (enemy == null)
             return;
 
-        enemy.Power = ScaleStat(enemy.Power, multiplier);
-        enemy.Survivability = ScaleStat(enemy.Survivability, multiplier);
-        enemy.BasePowerContribution = ScaleStat(enemy.BasePowerContribution, multiplier);
-        enemy.BaseSurvivabilityContribution = ScaleStat(
-            enemy.BaseSurvivabilityContribution,
-            multiplier
-        );
-        enemy.MaxLife = ScaleStat(enemy.MaxLife, multiplier);
+        enemy.ApplyStatMultiplier(multiplier, multiplier);
     }
 
     private static void ApplyEliteRegionTwoMultiplier(EnemyRegedit enemy)
@@ -771,30 +717,12 @@ public partial class LevelNode : ColorRect
         if (enemy == null)
             return;
 
-        enemy.Power = ScaleStat(enemy.Power, RegionTwoEliteStatMultiplier);
-        enemy.Survivability = ScaleStat(enemy.Survivability, RegionTwoEliteStatMultiplier);
-        enemy.BasePowerContribution = ScaleStat(
-            enemy.BasePowerContribution,
-            RegionTwoEliteStatMultiplier
-        );
-        enemy.BaseSurvivabilityContribution = ScaleStat(
-            enemy.BaseSurvivabilityContribution,
-            RegionTwoEliteStatMultiplier
-        );
-        enemy.MaxLife = ScaleStat(enemy.MaxLife, RegionTwoEliteMaxLifeMultiplier);
-    }
-
-    private static int ScaleStat(int value, float multiplier)
-    {
-        if (value <= 0)
-            return value;
-
-        return Math.Max(1, Mathf.CeilToInt(value * multiplier));
+        enemy.ApplyStatMultiplier(RegionTwoEliteStatMultiplier, RegionTwoEliteMaxLifeMultiplier);
     }
 
     private void UpdateHoverTipIfVisible()
     {
-        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Visible)
+        if (_hoverTip == null || !GodotObject.IsInstanceValid(_hoverTip) || !_hoverTip.Tracks(this))
             return;
 
         string text = BuildHoverTipText();
@@ -804,12 +732,27 @@ public partial class LevelNode : ColorRect
             return;
         }
 
-        _hoverTip.SetText(text);
+        if (_lastHoverTipText == text) return;
+        _hoverTip.Present(this, text);
         _lastHoverTipText = text;
     }
 
     private string BuildHoverTipText()
     {
+        if (ConcealEncounterType && State != LevelState.Completed)
+        {
+            var levelProgress = GetParent()?.GetParent<LevelProgress>();
+            if (levelProgress != null && SelfCoordinate.X == levelProgress.RoadStageCount - 1)
+                return "[b]终点 · 首领[/b]\n所有世界线的最后一个节点固定为首领。";
+            if (!IsEncounterConcealed)
+            {
+                string title = IsFixedEncounterType ? "固定节点" : "下一节点";
+                return ColorizeHoverTipText($"[b]{title} · {LevelProgress.GetNodeTypeDisplayName(Type)}[/b]");
+            }
+            string probabilities = levelProgress?.GetNodeProbabilityText(SelfCoordinate.X) ?? string.Empty;
+            return $"[b]未知节点[/b]\n\n{probabilities}";
+        }
+
         string bossPreview = BuildBossPreviewText();
         string summary = GameInfo.GetLevelNodeCompletionSummary(SelfCoordinate);
         string dropPreview = GameInfo.BuildBattleRewardDropPreviewText();
@@ -865,35 +808,8 @@ public partial class LevelNode : ColorRect
         return GlobalFunction.ColorizeKeywords(text);
     }
 
-    private Tip EnsureHoverTip()
-    {
-        if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
-            return _hoverTip;
-
-        var root = GetTree()?.Root;
-        if (root == null || TipScene == null)
-            return null;
-
-        var layer = root.GetNodeOrNull<CanvasLayer>("TipLayer");
-        if (layer == null)
-        {
-            layer = new CanvasLayer { Layer = 6, Name = "TipLayer" };
-            root.AddChild(layer);
-        }
-
-        string tipName = $"LevelNodeTip_{GetInstanceId()}";
-        _hoverTip = layer.GetNodeOrNull<Tip>(tipName);
-        if (_hoverTip == null)
-        {
-            _hoverTip = TipScene.Instantiate<Tip>();
-            _hoverTip.Name = tipName;
-            layer.AddChild(_hoverTip);
-        }
-
-        _hoverTip.FollowMouse = true;
-        _hoverTip.AnchorOffset = HoverTipOffset;
-        return _hoverTip;
-    }
+    private NodeHoloTip EnsureHoverTip() => GodotObject.IsInstanceValid(_hoverTip) ? _hoverTip
+        : _hoverTip = GetTree()?.Root.GetNodeOrNull<NodeHoloTip>("Map/NodeProjection/NodeHoloTip");
 
     private void TryShowHoverTip()
     {
@@ -913,7 +829,7 @@ public partial class LevelNode : ColorRect
         if (tip == null)
             return;
 
-        if (tip.Visible)
+        if (tip.Tracks(this))
             return;
 
         string text = BuildHoverTipText();
@@ -923,34 +839,22 @@ public partial class LevelNode : ColorRect
             return;
         }
 
-        if (!string.Equals(_lastHoverTipText, text, StringComparison.Ordinal))
-        {
-            tip.SetText(text);
-            _lastHoverTipText = text;
-        }
+        tip.Present(this, text);
+        _lastHoverTipText = text;
     }
 
     private bool ShouldShowHoverTip()
     {
         return _isNodeHovered
             && IsVisibleInTree()
-            && (State == LevelState.Completed || Type == LevelType.Boss);
+            && (State == LevelState.Completed || ConcealEncounterType || Type == LevelType.Boss);
     }
 
     private void HideHoverTip()
     {
         if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
-            _hoverTip.HideTooltip();
+            _hoverTip.Dismiss(this);
 
-        _lastHoverTipText = null;
-    }
-
-    private void DisposeHoverTip()
-    {
-        if (_hoverTip != null && GodotObject.IsInstanceValid(_hoverTip))
-            _hoverTip.QueueFree();
-
-        _hoverTip = null;
         _lastHoverTipText = null;
     }
 

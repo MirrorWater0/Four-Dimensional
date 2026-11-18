@@ -7,56 +7,50 @@
 [ext_resource type="Texture2D" uid="uid://db57mlgxptddt" path="res://asset/particle/particle2.png" id="4_particle"]
 [ext_resource type="Shader" uid="uid://cqhlq7i8p42di" path="res://shader/Effect/PlayableCardCrystalBorder.gdshader" id="5_playable_highlight"]
 [ext_resource type="Texture2D" uid="uid://djywemb5bhgf3" path="res://asset/UI/CardFrame/SkillCardTrim.svg" id="5_tttt4"]
-[ext_resource type="Shader" path="res://shader/UI/ChamferedRect.gdshader" id="6_chamfered_rect"]
+[ext_resource type="Shader" uid="uid://dc4rj8vkellso" path="res://shader/UI/ChamferedRect.gdshader" id="6_chamfered_rect"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_wi1bx"]
 shader = ExtResource("1_wi1bx")
 shader_parameter/progress = 0.0
 shader_parameter/center_vanish = 0.0
+shader_parameter/appearing = true
+shader_parameter/card_size = Vector2(240, 370)
+shader_parameter/phantom_count = 5
+shader_parameter/phantom_rotation = 1.9
+shader_parameter/phantom_opacity = 0.24
+shader_parameter/phantom_outline_width = 1.5
+shader_parameter/phantom_color = Color(0.58, 0.78, 1, 1)
+shader_parameter/phantom_blur_px = 4.5
+shader_parameter/phantom_trail_length = 0.18
+shader_parameter/card_focus_blur_px = 4.0
 shader_parameter/line_density = 80.0
 shader_parameter/line_speed = 8.0
 shader_parameter/line_strength = 0.7310000347225
 shader_parameter/aberration_amount = 0.002000000095
 shader_parameter/beam_color = Color(0.34, 0.37, 0.4, 1)
 
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_playable_highlight"]
-seed = 918273
-frequency = 0.024
-fractal_lacunarity = 2.18
-fractal_gain = 0.58
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_playable_highlight"]
-width = 256
-height = 256
-noise = SubResource("FastNoiseLite_playable_highlight")
-seamless = true
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_playable_highlight"]
 resource_local_to_scene = true
 shader = ExtResource("5_playable_highlight")
-shader_parameter/ease = 0.005
-shader_parameter/modulo_width = 0.05999999865888
-shader_parameter/width = 0.10000000149012
-shader_parameter/ripple_speed = 0.28000000119209
+shader_parameter/width = 0.1490000070775
 shader_parameter/card_size = Vector2(240, 370)
-shader_parameter/effect_margin = Vector2(32, 32)
-shader_parameter/corner_radius_px = 10.0
-shader_parameter/glow_radius_px = 46.0
-shader_parameter/noise_tex = SubResource("NoiseTexture2D_playable_highlight")
-shader_parameter/core_color = Color(0.96, 0.97, 0.98, 1)
-shader_parameter/accent_color = Color(0.66, 0.69, 0.73, 1)
-shader_parameter/spark_color = Color(0.86, 0.88, 0.9, 1)
-shader_parameter/pulse_speed = 2.25
-shader_parameter/flame_height_px = 34.0
-shader_parameter/flame_scale = 7.0
-shader_parameter/flame_speed = 0.85000002384186
-shader_parameter/flame_turbulence = 0.41999998688698
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
-bg_color = Color(0.035, 0.046, 0.065, 1)
-shadow_color = Color(0, 0, 0, 0.48)
-shadow_size = 10
-shadow_offset = Vector2(0, 4)
+shader_parameter/effect_margin = Vector2(96, 96)
+shader_parameter/ray_length_px = Vector2(84, 76)
+shader_parameter/line_width_px = 1.1
+shader_parameter/ray_width_px = 4.5
+shader_parameter/glow_radius_px = 12.0
+shader_parameter/fill_extent_px = Vector2(72, 68)
+shader_parameter/fill_strength = 0.406000019285
+shader_parameter/inner_fill_strength = 1.0
+shader_parameter/inner_fill_color = Color(0.68, 0.8986667, 1, 0)
+shader_parameter/inner_center_color = Color(0.14, 0.3, 0.55, 1)
+shader_parameter/core_color = Color(0.88, 0.97, 1, 0)
+shader_parameter/accent_color = Color(0.32, 0.68, 0.9, 1)
+shader_parameter/fill_outer_color = Color(0.16, 0.36, 0.7, 1)
+shader_parameter/spark_color = Color(0.68, 0.9, 1, 1)
+shader_parameter/flow_speed = 0.65
+shader_parameter/pulse_speed = 2.0
+shader_parameter/intensity = 1.0
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_card_chamfer"]
 shader = ExtResource("6_chamfered_rect")
@@ -64,15 +58,15 @@ shader_parameter/rect_size = Vector2(240, 370)
 shader_parameter/cut_size_px = 14.0
 shader_parameter/anti_alias_strength = 1.25
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card_bg"]
+bg_color = Color(0.035, 0.046, 0.065, 1)
+shadow_color = Color(0, 0, 0, 0.48)
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_inner_chamfer"]
 shader = ExtResource("6_chamfered_rect")
 shader_parameter/rect_size = Vector2(224, 344)
-shader_parameter/cut_size_px = 10.0
-shader_parameter/anti_alias_strength = 1.25
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_art_chamfer"]
-shader = ExtResource("6_chamfered_rect")
-shader_parameter/rect_size = Vector2(220, 192)
 shader_parameter/cut_size_px = 10.0
 shader_parameter/anti_alias_strength = 1.25
 
@@ -93,6 +87,12 @@ corner_detail = 1
 bg_color = Color(0.043, 0.056, 0.08, 1)
 corner_radius_bottom_right = 7
 corner_radius_bottom_left = 7
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_art_chamfer"]
+shader = ExtResource("6_chamfered_rect")
+shader_parameter/rect_size = Vector2(220, 192)
+shader_parameter/cut_size_px = 10.0
+shader_parameter/anti_alias_strength = 1.25
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_art_frame"]
 bg_color = Color(0.075, 0.1, 0.15, 1)
@@ -254,11 +254,8 @@ anchors_preset = 0
 offset_right = 240.0
 offset_bottom = 370.0
 script = ExtResource("1_td24b")
-MinDescriptionFontSize = 8
-EnergyCostNumberFontSize = 28
 EnergyCostNumberTint = Color(0.9098039, 0.9215686, 0.9333333, 1)
 EnergyCostInsufficientNumberTint = Color(0.5215686, 0.545098, 0.572549, 1)
-OrnateFrameBrightness = 1.56
 
 [node name="VisualTransform" type="Control" parent="." unique_id=2635845]
 custom_minimum_size = Vector2(240, 370)
@@ -274,10 +271,10 @@ clear_margin = 32.0
 
 [node name="PlayableHighlight" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=1878566179]
 material = SubResource("ShaderMaterial_playable_highlight")
-offset_left = -32.0
-offset_top = -32.0
-offset_right = 272.0
-offset_bottom = 402.0
+offset_left = -80.0
+offset_top = -88.0
+offset_right = 320.0
+offset_bottom = 456.0
 mouse_filter = 2
 
 [node name="BackShade" type="ColorRect" parent="VisualTransform/SubViewport" unique_id=577549818]
@@ -393,8 +390,8 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="SkillPicture" type="TextureRect" parent="VisualTransform/SubViewport/ArtFrame" unique_id=679889421]
-material = SubResource("ShaderMaterial_art_chamfer")
 texture_filter = 4
+material = SubResource("ShaderMaterial_art_chamfer")
 layout_mode = 0
 offset_right = 220.0
 offset_bottom = 192.0

@@ -13,21 +13,17 @@ public partial class BattleAtmosphere : Control {
     [Export] public float ProjectionHeight { get; set; } = 1.08f;
     [Export] public Vector2 OrbitRadius { get; set; } = new(226f, 166f);
     [Export] public Vector2 GlowRadius { get; set; } = new(278f, 226f);
-    [Export] public float OuterCubeSize { get; set; } = 420f;
-    [Export] public float OuterCubeLineWidth { get; set; } = 1.1f;
-    [Export] public float VertexConnectorWidth { get; set; } = 0.9f;
     [Export] public Color EnemyPhaseTint { get; set; } = new(0.67f, 0.60f, 0.59f);
     [Export] public bool AnimateEditorPreview { get; set; } = false;
     private readonly Vector2[] _arcPoints = new Vector2[49];
     private readonly Vector2[] _cubeVertices = new Vector2[8];
+    private static readonly int[,] CubeEdges = { { 0, 1 }, { 0, 2 }, { 0, 4 }, { 1, 3 }, { 1, 5 }, { 2, 3 }, { 2, 6 }, { 3, 7 }, { 4, 5 }, { 4, 6 }, { 5, 7 }, { 6, 7 } };
     private readonly float[] _cubeDepths = new float[8];
     private Battle _battle;
     private ColorRect _spaceControl;
     private ShaderMaterial _space;
     private ShaderMaterial _grade;
     private Texture2D _glow;
-    private BattleCubeNode _innerCubeNode;
-    private BattleCubeNode _outerCubeNode;
     private CanvasLayer _tipLayer;
     private float _time;
     private float _structureTime;
@@ -38,6 +34,7 @@ public partial class BattleAtmosphere : Control {
     private bool _inspecting;
     private Color _tint;
     private Color _phaseTint;
+    private float _arrivalLight;
     private float _encounterStrength = 1f;
     private float _buttonWake;
     private float _buttonPress;
@@ -51,8 +48,6 @@ public partial class BattleAtmosphere : Control {
         _tint = _phaseTint = NormalTint;
         _spaceControl = GetNodeOrNull<ColorRect>("../DimensionalSpace");
         _space = _spaceControl?.Material as ShaderMaterial;
-        _innerCubeNode = GetNodeOrNull<BattleCubeNode>("InnerCube");
-        _outerCubeNode = GetNodeOrNull<BattleCubeNode>("OuterCube");
         if (Engine.IsEditorHint()) {
             UpdateGrade();
             QueueRedraw();
@@ -101,12 +96,13 @@ public partial class BattleAtmosphere : Control {
         _buttonWake = Mathf.Lerp(_buttonWake, ReadButtonWake(), 1f - Mathf.Exp(-dt * 10f));
         _buttonPress = Mathf.Lerp(_buttonPress, ReadButtonPress(), 1f - Mathf.Exp(-dt * 18f));
         _impact = Mathf.MoveToward(_impact, 0f, dt * 0.85f);
+        _arrivalLight = Mathf.MoveToward(_arrivalLight, 0f, dt * 0.8f);
         _impactCooldown = Mathf.Max(0f, _impactCooldown - dt);
         float motion = Mathf.Lerp(0.48f, 0.10f, _focus);
         _time += dt * motion;
-        // Rotate the surrounding cube and central landmark on the same clock.
+        // Keep the distant walls and landmark on one slow clock.
         // Inspection softens their movement without freezing the space.
-        _structureTime += dt * Mathf.Lerp(1f, 0.35f, _focus) * (1f + _impact * 0.5f);
+        _structureTime += dt * Mathf.Lerp(1f, 0.35f, _focus);
         UpdateGrade();
         QueueRedraw();
     }
@@ -135,11 +131,14 @@ public partial class BattleAtmosphere : Control {
                 }
             }
         }
+        float previousStrength = _encounterStrength;
         (_tint, _encounterStrength) = _battle.CurrentLevelNode?.Type switch {
             LevelNode.LevelType.Elite => (EliteTint, 1.25f),
             LevelNode.LevelType.Boss => (BossTint, 1.6f),
             _ => (NormalTint, 1f)
         };
+        if (_encounterStrength > previousStrength && !_battle.WarmupMode)
+            _arrivalLight = _encounterStrength - 0.5f;
         Button endTurn = _battle.CharacterControl?.EndTurnButton;
         _phaseTint = GodotObject.IsInstanceValid(endTurn) && endTurn.Disabled
             ? EnemyPhaseTint
@@ -166,7 +165,6 @@ public partial class BattleAtmosphere : Control {
             _space.SetShaderParameter("space_time", _structureTime);
             _space.SetShaderParameter("focus_amount", _focus);
             _space.SetShaderParameter("impact_amount", _impact);
-            _space.SetShaderParameter("outer_line_width", Mathf.Clamp(OuterCubeLineWidth, 0.35f, 2.5f));
         }
         if (!GodotObject.IsInstanceValid(_grade))
             return;
@@ -193,22 +191,12 @@ public partial class BattleAtmosphere : Control {
     }
 
     private void DrawDistantStructure(Vector2 size, float scale) {
-        // The projection occupies the combat space between both teams.
+        // Only the distant landmark has drawn edges. The room reads as matte faces.
         Vector2 center = size * StructureCenter;
-        float strength = _encounterStrength * (1f - _focus * 0.25f) + _impact * 0.8f + _buttonWake * 0.38f;
-        float gateScale = 1f - _buttonPress * 0.28f;
-        float angle = _structureTime * 0.42f;
-        if (GodotObject.IsInstanceValid(_innerCubeNode)) {
-            _innerCubeNode.Position = center;
-            _innerCubeNode.Rotation = _structureTime * _innerCubeNode.RotationSpeed;
-            _innerCubeNode.Scale = Vector2.One * _innerCubeNode.CubeSize;
-        }
-        if (GodotObject.IsInstanceValid(_outerCubeNode)) {
-            _outerCubeNode.Position = center;
-            _outerCubeNode.Rotation = _structureTime * _outerCubeNode.RotationSpeed;
-            _outerCubeNode.Scale = Vector2.One * _outerCubeNode.CubeSize;
-        }
-        Color structureTint = _phaseTint.Lerp(Colors.White, 0.72f);
+        float strength = (0.69f + 0.10f * (_encounterStrength - 1f)) * (1f - _focus * 0.35f);
+        float gateScale = 1f - _buttonPress * 0.045f;
+        float angle = 0.53f + _structureTime * 0.085f;
+        Color structureTint = _phaseTint.Lerp(new Color(0.59f, 0.73f, 0.85f), 0.45f);
         DrawGlow(center, GlowRadius * scale * gateScale, structureTint, (0.045f + _buttonWake * 0.04f) * strength);
 
         // Rear orbital paths disappear behind the projected geometry.
@@ -222,7 +210,7 @@ public partial class BattleAtmosphere : Control {
             float a = angle;
             float rx = x * Mathf.Cos(a) - z * Mathf.Sin(a);
             float rz = x * Mathf.Sin(a) + z * Mathf.Cos(a);
-            float b = _structureTime * 0.31f + 0.22f;
+            float b = _structureTime * 0.058f + 0.26f;
             float ry = y * Mathf.Cos(b) - rz * Mathf.Sin(b);
             rz = y * Mathf.Sin(b) + rz * Mathf.Cos(b);
             float depth = 1.0f / (1.0f + rz * 0.18f);
@@ -230,46 +218,22 @@ public partial class BattleAtmosphere : Control {
                 * StructureSize * 0.72f * scale * gateScale * depth;
             _cubeDepths[i] = depth;
         }
-        int[,] edges = { { 0, 1 }, { 0, 2 }, { 0, 4 }, { 1, 3 }, { 1, 5 }, { 2, 3 }, { 2, 6 }, { 3, 7 }, { 4, 5 }, { 4, 6 }, { 5, 7 }, { 6, 7 } };
-        for (int edge = 0; edge < edges.GetLength(0); edge++) {
-            Vector2 from = _cubeVertices[edges[edge, 0]];
-            Vector2 to = _cubeVertices[edges[edge, 1]];
-            float alpha = Mathf.Clamp((_cubeDepths[edges[edge, 0]] + _cubeDepths[edges[edge, 1]]) * 0.18f, 0.11f, 0.30f) * strength;
+        for (int edge = 0; edge < CubeEdges.GetLength(0); edge++) {
+            Vector2 from = _cubeVertices[CubeEdges[edge, 0]];
+            Vector2 to = _cubeVertices[CubeEdges[edge, 1]];
+            float depth = 0.5f * (_cubeDepths[CubeEdges[edge, 0]] + _cubeDepths[CubeEdges[edge, 1]]);
+            float light = Mathf.SmoothStep(0.90f, 1.18f, depth);
+            float alpha = Mathf.Lerp(0.085f, 0.44f, light * light) * strength;
+            if (edge == 9)
+                alpha += _arrivalLight * 0.26f;
             Color edgeColor = structureTint.Lightened(0.24f) with { A = alpha };
             // Leave a small break in each edge so the cube reads as assembled parts.
             DrawLine(from.Lerp(to, 0.04f), from.Lerp(to, 0.70f), edgeColor, 1.55f * scale, true);
             DrawLine(from.Lerp(to, 0.82f), to.Lerp(from, 0.03f), edgeColor with { A = alpha * 0.72f }, 1.25f * scale, true);
         }
         for (int vertex = 0; vertex < 8; vertex++)
-            DrawCircle(_cubeVertices[vertex], 2.4f * scale, structureTint.Lightened(0.48f) with { A = 0.38f * strength });
+            DrawCircle(_cubeVertices[vertex], 1.6f * scale, structureTint.Lightened(0.48f) with { A = 0.19f * strength });
 
-        // Sparse struts connect the inner cube to the surrounding cube's
-        // corresponding vertices. They are intentionally broken and faint so
-        // the space reads as depth instead of a solid wireframe cage.
-        float innerSize = GodotObject.IsInstanceValid(_innerCubeNode) ? _innerCubeNode.CubeSize : StructureSize * 0.72f;
-        float innerNodeScale = GodotObject.IsInstanceValid(_innerCubeNode) ? _innerCubeNode.Scale.X : innerSize;
-        float outerNodeScale = GodotObject.IsInstanceValid(_outerCubeNode) ? _outerCubeNode.Scale.X : OuterCubeSize;
-        float outerScale = Mathf.Max(1.25f, outerNodeScale / Mathf.Max(1f, innerNodeScale));
-        for (int vertex = 0; vertex < 8; vertex++) {
-            Vector2 outer = center + ( _cubeVertices[vertex] - center) * outerScale;
-            Vector2 inner = _cubeVertices[vertex];
-            float connectorAlpha = GodotObject.IsInstanceValid(_innerCubeNode) ? _innerCubeNode.LineAlpha * 0.55f : 0.095f;
-            float connectorWidth = GodotObject.IsInstanceValid(_innerCubeNode) ? _innerCubeNode.LineWidth * 0.62f : VertexConnectorWidth;
-            Color connector = structureTint.Lightened(0.10f) with { A = connectorAlpha * strength };
-            DrawLine(inner.Lerp(outer, 0.10f), inner.Lerp(outer, 0.66f), connector, connectorWidth * scale, true);
-            DrawLine(inner.Lerp(outer, 0.78f), outer.Lerp(inner, 0.03f), connector with { A = connector.A * 0.58f }, connectorWidth * 0.8f * scale, true);
-        }
-        // The outer cage is only a hint: segmented edges keep it from becoming
-        // a bright rectangular frame over the characters.
-        for (int edge = 0; edge < edges.GetLength(0); edge++) {
-            Vector2 from = center + (_cubeVertices[edges[edge, 0]] - center) * outerScale;
-            Vector2 to = center + (_cubeVertices[edges[edge, 1]] - center) * outerScale;
-            float cageAlpha = GodotObject.IsInstanceValid(_outerCubeNode) ? _outerCubeNode.LineAlpha : 0.055f;
-            float cageWidth = GodotObject.IsInstanceValid(_outerCubeNode) ? _outerCubeNode.LineWidth : OuterCubeLineWidth;
-            Color cage = structureTint with { A = cageAlpha * strength };
-            DrawLine(from.Lerp(to, 0.08f), from.Lerp(to, 0.38f), cage, cageWidth * scale, true);
-            DrawLine(from.Lerp(to, 0.58f), from.Lerp(to, 0.79f), cage with { A = cage.A * 0.75f }, cageWidth * 0.82f * scale, true);
-        }
         // Front arcs pass over the projection, making the depth order legible.
         DrawOrbitPlanes(center, angle, scale * gateScale, structureTint, strength, true);
         Color core = structureTint.Lightened(0.52f) with { A = (0.22f + _buttonWake * 0.28f + _buttonPress * 0.20f) * strength };
@@ -295,10 +259,10 @@ public partial class BattleAtmosphere : Control {
             if (!foreground)
                 continue;
 
-            float sweep = Mathf.PosMod(_structureTime * (0.22f + orbit * 0.04f) + orbit * 0.37f, 1f);
+            float sweep = Mathf.PosMod(_structureTime * (0.048f + orbit * 0.009f) + orbit * 0.37f, 1f);
             float streamAngle = phase + sweep * Mathf.Tau;
             DrawGradientStream(center, radius * scale, tilt, streamAngle,
-                0.34f, tint.Lightened(0.40f), 0.52f * strength, 2.25f * scale);
+                0.34f, tint.Lightened(0.40f), 0.29f * strength, 1.55f * scale);
             float markAngle = streamAngle;
             Vector2 mark = center + (new Vector2(Mathf.Cos(markAngle), Mathf.Sin(markAngle)) * radius).Rotated(tilt) * scale;
             DrawCircle(mark, 1.7f * scale, tint.Lightened(0.45f) with { A = 0.34f * strength });

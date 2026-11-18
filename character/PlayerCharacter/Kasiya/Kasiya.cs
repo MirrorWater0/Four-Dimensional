@@ -78,7 +78,7 @@ public partial class Kasiya : PlayerCharacter
         if (candidates.Length == 0)
             return;
 
-        Random rng = BattleNode.BattleIntentionRandom ?? new Random();
+        Random rng = BattleNode.GetEffectRandom(this);
         candidates[rng.Next(candidates.Length)].UpdataBlock(PassiveAttackBlock, source: this);
     }
 
@@ -98,11 +98,9 @@ public partial class Kasiya : PlayerCharacter
             .Cast<Character>()
             .ToArray();
 
-        await Task.WhenAll(
-            players.Select(player =>
-                player.IncreaseMaxLifeFromPassive(PassiveUpgradePartyMaxLife, this)
-            )
-        );
+        foreach (Character player in players)
+            await BattleNode.ExecuteBattleEffectAsync(() =>
+                player.IncreaseMaxLifeFromPassive(PassiveUpgradePartyMaxLife, this), "被动：生命上限提升");
     }
 }
 
@@ -113,11 +111,20 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.kasiya.name", "Kasiya"),
         PassiveName = I18n.Tr("character.kasiya.passive.name", global::Kasiya.PassiveNameText),
         PassiveDescription = global::Kasiya.PassiveDescriptionText,
-        LifeMax = 42,
+        LifeMax = 49,
         Power = 4,
-        Survivability = 4,
+        Survivability = 3,
         CharacterScenePath = "res://character/PlayerCharacter/Kasiya/kasiya.tscn",
         PortaitPath = "res://asset/PlayerCharater/Kasiya/KasiyaPortrait.png",
+        // 初始牌组：重复填写同一 SkillID 可配置多张同名卡。
+        GainedSkills =
+        [
+            SkillID.BasicAttack,
+            SkillID.BasicAttack,
+            SkillID.BasicDefense,
+            SkillID.BasicDefense,
+            SkillID.KasiyaBasicSpecial,
+        ],
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.KasiyaBasicSpecial],
     };
 }

@@ -4,7 +4,7 @@ using Godot;
 
 public partial class RedHusk : EnemyCharacter
 {
-    private const int StartAutoArmorStacks = 4;
+    private static int StartAutoArmorStacks => EnemyTuning.GetRequiredInt("RedHusk", nameof(StartAutoArmorStacks));
 
     public const string PassiveNameText = "赤壳护盾";
     public static string PassiveDescriptionText =>
@@ -31,17 +31,13 @@ public partial class RedHuskRegedit : EnemyRegedit
     public RedHuskRegedit()
     {
         CharacterName = "RedHusk";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/RedHusk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/RedHusk.tscn");
-
-        MaxLife = 136;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.RedHuskAttack, SkillID.RedHuskSurvive];
-        OpeningIntentionSkillIDs = [SkillID.RedHuskSpecial];
+        SkillIDs = [SkillID.RedHuskAttack];
+        // 第四轮聚合压缩随机施加脆弱，第五轮全阵突刺兑现压力。
+        IntentionCycle = [SkillID.RedHuskAttack, random, SkillID.RedHuskAttack2, SkillID.RedHuskAttack];
+        RandomizeIntentionCycleStart = true;
+        IntentionCycleInsertions = [(SkillID.RedHuskSpecial,1),(SkillID.RedHuskSurvive,6)];
         PassiveName = global::RedHusk.PassiveNameText;
         PassiveDescription = global::RedHusk.PassiveDescriptionText;
     }
@@ -49,7 +45,7 @@ public partial class RedHuskRegedit : EnemyRegedit
 
 public partial class RedHuskAttack : Skill
 {
-    private const int BaseDamage = 14;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -61,8 +57,9 @@ public partial class RedHuskAttack : Skill
             this,
             AttackStep(
                 baseDamage: BaseDamage,
-                multiplier: V("Multiplier", 1),
-                target: HostileTargetReference.All
+                multiplier: V("Multiplier"),
+                target: HostileTargetReference.All,
+                times: V("HitCount")
             )
         );
     }
@@ -71,7 +68,7 @@ public partial class RedHuskAttack : Skill
 public partial class RedHuskSurvive : Skill
 {
 
-    public override SkillTypes SkillType => SkillTypes.Attack;
+    public override SkillTypes SkillType => SkillTypes.Survive;
 
     public override string SkillName { get; set; } = "聚合压缩";
 
@@ -79,15 +76,31 @@ public partial class RedHuskSurvive : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 21)),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 4))
+            BlockStep(10),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"))
         );
     }
 }
+public partial class RedHuskAttack2 : Skill
+{
 
+    public override SkillTypes SkillType => SkillTypes.Attack;
+
+    public override string SkillName { get; set; } = "轰鸣";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount")),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain")),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.AttackKey)
+        );
+    }
+}
 public partial class RedHuskSpecial : Skill
 {
-    private const int AutoArmorStacks = 4;
+    private int AutoArmorStacks => V(nameof(AutoArmorStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 

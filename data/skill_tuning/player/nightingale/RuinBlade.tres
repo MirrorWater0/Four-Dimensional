@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "RuinBlade"
+DisplayName = "破灭之刃"
+Values = Dictionary[String, int]({
+"BaseDamage": 10,
+"EnemyEnergyCost": 0,
+"EnergyCost": 1,
+"ExhaustAfterExecutions": 0,
+"ExhaustCount": 1,
+"HitCount": 1,
+"Multiplier": 1,
+"RandomCardCount": 1
+})

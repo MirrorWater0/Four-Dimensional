@@ -2,15 +2,12 @@ using Godot;
 
 public partial class Nightingale : PlayerCharacter
 {
-    private const int PassiveUpgradeZeroCostDamageBonus = 3;
-
     public const string PassiveNameText = "夜光";
-    public static string PassiveDescriptionText =>
-        I18n.Format(
-            "character.nightingale.passive.turn_end_attack_description",
-            "回合开始时：获得1次{attack}。",
-            ("attack", Buff.GetBuffDisplayName(Buff.BuffName.TemporaryAttackCount))
-        );
+    public static string PassiveDescriptionText => I18n.Format(
+        "character.nightingale.passive.description",
+        "回合开始时：在手牌中加入1张{blade}。",
+        ("blade", I18n.Tr("skill.blade.name", "利刃"))
+    );
 
     public override PackedScene CharaterScene { get; set; } = StartInterface._Nightingale;
     public override string CharacterName { get; set; } = "Nightingale";
@@ -25,20 +22,11 @@ public partial class Nightingale : PlayerCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-
-        if (State == CharacterState.Dying || BattleNode == null)
+        if (State == CharacterState.Dying || BattleNode == null || !GodotObject.IsInstanceValid(BattleNode))
             return;
 
-        using var _ = BeginEffectSource(PassiveNameText);
-        AttackCountBuff.Modify(this, 1, temporary: true, source: this);
-    }
-
-    public override int GetSkillAttackDamageBonus(Skill skill)
-    {
-        if (!HasPassiveTalentUpgrade() || skill == null || skill.CardEnergyCost != 0)
-            return 0;
-
-        return PassiveUpgradeZeroCostDamageBonus;
+        using var source = BeginEffectSource("被动");
+        BattleNode.AddPlayerBattleStatusCardsToHand(this, SkillID.Blade, 1, source: this);
     }
 
     private void UpdatePassiveDescription()
@@ -62,11 +50,19 @@ public partial class PlayerCharacterRegistry
             global::Nightingale.PassiveNameText
         ),
         PassiveDescription = global::Nightingale.PassiveDescriptionText,
-        LifeMax = 36,
+        LifeMax = 41,
         Power = 4,
-        Survivability = 3,
+        Survivability = 2,
         CharacterScenePath = "res://character/PlayerCharacter/Nightingale/Nightingale.tscn",
         PortaitPath = "res://asset/PlayerCharater/Nightingale/NightingalePortrait.png",
+        // 初始牌组：重复填写同一 SkillID 可配置多张同名卡。
+        GainedSkills =
+        [
+            SkillID.BasicAttack,
+            SkillID.BasicDefense,
+            SkillID.BasicDefense,
+            SkillID.NightingaleBasicSpecial,
+        ],
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.NightingaleBasicSpecial],
     };
 }

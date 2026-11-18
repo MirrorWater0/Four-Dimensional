@@ -1,4 +1,5 @@
 using Godot;
+using System;
 
 // The same scene-authored row settings drive the editor preview and live hand.
 [Tool]
@@ -15,6 +16,8 @@ public partial class BattleHandLayout : Control {
     [Export] public float MaxHoverSpread { get; set; } = 58f;
     [Export] public float SidePadding { get; set; } = 80f;
     [Export(PropertyHint.Range, "1,10,1")] public int PreviewCardCount { get; set; } = 5;
+    private int _appliedPreviewHash;
+    private bool _previewApplied;
 
     public float GetCardStep(int count, Vector2 cardSize, float width) => count > 1
         ? Mathf.Clamp((Mathf.Max(cardSize.X, width - SidePadding) - cardSize.X) / (count - 1),
@@ -25,6 +28,14 @@ public partial class BattleHandLayout : Control {
             SetProcess(false);
             return;
         }
+        var hash = new HashCode();
+        hash.Add(Size); hash.Add(CardScale); hash.Add(CardYOffset); hash.Add(SidePadding);
+        hash.Add(MinStepRatio); hash.Add(OverlapStepRatio); hash.Add(PreviewCardCount); hash.Add(GetChildCount());
+        int previewHash = hash.ToHashCode();
+        if (_previewApplied && _appliedPreviewHash == previewHash)
+            return;
+        _previewApplied = true;
+        _appliedPreviewHash = previewHash;
         Vector2 cardSize = new Vector2(240f, 370f) * CardScale;
         int count = Mathf.Clamp(PreviewCardCount, 1, 10);
         float step = GetCardStep(count, cardSize, Size.X);

@@ -4,13 +4,14 @@ using Godot;
 
 public partial class Evil : EnemyCharacter
 {
-    private const int RebirthStacks = 1;
+    private static int RebirthStacks => EnemyTuning.GetRequiredInt("Evil", nameof(RebirthStacks));
+    private static int PassiveTriggerInterval => EnemyTuning.GetRequiredInt("Evil", nameof(PassiveTriggerInterval));
 
     public const string PassiveNameText = "重生律动";
     public static string PassiveBaseDescriptionText =>
-        $"第1次与第3次回合开始时：获得{RebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
+        $"每{PassiveTriggerInterval}回合开始时：获得{RebirthStacks}层{Buff.BuffName.RebirthI.GetDescription()}。";
 
-    private int _turnCount;
+    private int _turnStartCount;
     public override string CharacterName { get; set; } = "Evil";
 
     public override void _Ready()
@@ -28,8 +29,8 @@ public partial class Evil : EnemyCharacter
     public override void OnTurnStart()
     {
         base.OnTurnStart();
-        _turnCount++;
-        if (_turnCount == 1 || _turnCount == 3)
+        _turnStartCount++;
+        if (_turnStartCount % PassiveTriggerInterval == 0)
             TriggerPassive(null);
     }
 
@@ -45,17 +46,11 @@ public partial class EvilRegedit : EnemyRegedit
     public EvilRegedit()
     {
         CharacterName = "Evil";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/Evil.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Evil.tscn");
-
-        MaxLife = 46;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.EvilAttack, SkillID.EvilSurvive];
-        OpeningIntentionSkillIDs = [SkillID.EvilAttack];
+        SkillIDs = [SkillID.EvilAttack];
+        // 前两轮进攻，第三轮扭曲施加全阵脆弱；随机池不提前抽到脆弱。
+        IntentionCycle = [SkillID.EvilAttack, SkillID.EvilAttack, SkillID.EvilSurvive, random];
         PassiveName = global::Evil.PassiveNameText;
         PassiveDescription = global::Evil.PassiveBaseDescriptionText;
     }
@@ -63,7 +58,7 @@ public partial class EvilRegedit : EnemyRegedit
 
 public partial class EvilAttack : Skill
 {
-    private const int HitDamage = 7;
+    private int HitDamage => V(nameof(HitDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -71,14 +66,14 @@ public partial class EvilAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(HitDamage, times: V("HitCount", 2)));
+        return new SkillPlan(this, AttackStep(HitDamage, times: V("HitCount"), multiplier: V("Multiplier")));
     }
 }
 
 public partial class EvilSurvive : Skill
 {
-    private const int PowerGain = 2;
-    private const int BaseBlock = 6;
+    private int PowerGain => V(nameof(PowerGain));
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -88,20 +83,20 @@ public partial class EvilSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ModifyPropertyStep(PropertyType.Power, PowerGain)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, PowerGain),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.All)
         );
     }
 }
 
 public partial class EvilTermin : Skill
 {
-    private const int AttackTimes = 5;
+    private int AttackTimes => V(nameof(AttackTimes));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { set; get; } = "虚空终结";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -109,7 +104,7 @@ public partial class EvilTermin : Skill
             this,
             WhileStep(
                 times: () => AttackTimes,
-                loopSteps: [AttackStep(baseDamage: V("BaseDamage", 9), multiplier: V("Multiplier", 1), clampMax: V("ClampMax", 9999))]
+                loopSteps: [AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), clampMax: V("ClampMax"), times: V("HitCount"))]
             )
         );
     }

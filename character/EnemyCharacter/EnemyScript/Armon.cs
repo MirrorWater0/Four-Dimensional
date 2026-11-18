@@ -4,7 +4,8 @@ using Godot;
 
 public partial class Armon : EnemyCharacter
 {
-    private const int TurnEndBaseBlock = 4;
+    private static int TurnEndBaseBlock =>
+        EnemyTuning.GetRequiredInt("Armon", nameof(TurnEndBaseBlock));
 
     public const string PassiveNameText = "矩阵核心";
 
@@ -49,17 +50,12 @@ public partial class ArmonRegedit : EnemyRegedit
     public ArmonRegedit()
     {
         CharacterName = "Armon";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/Armon.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Armon.tscn");
-
-        MaxLife = 65;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.ArmonAttack, SkillID.ArmonSpecial];
-
+        // 第三轮护盾随机施加脆弱，由另外两名队友利用；不随机起始到后段。
+        IntentionCycle = [random, SkillID.ArmonSpecial, SkillID.ArmonSurvive];
+        RandomizeIntentionCycleStart = true;
         PassiveName = global::Armon.PassiveNameText;
         PassiveDescription = global::Armon.UpdatedPassiveDescriptionText;
     }
@@ -67,7 +63,7 @@ public partial class ArmonRegedit : EnemyRegedit
 
 public partial class ArmonAttack : Skill
 {
-    private const int BaseDamage = 7;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -75,13 +71,16 @@ public partial class ArmonAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(BaseDamage, times: 2));
+        return new SkillPlan(
+            this,
+            AttackStep(BaseDamage, times: V("HitCount"), multiplier: V("Multiplier"))
+        );
     }
 }
 
 public partial class ArmonSurvive : Skill
 {
-    private const int BaseBlock = 10;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -91,32 +90,28 @@ public partial class ArmonSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            AddCardsStep(
-                SkillID.DazeStatus,
-                V("DazeCount", 1),
-                BattleCardPileTarget.DiscardPileCards
-            )
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, V("power"), TargetReference.Self),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.RandomPreview)
         );
     }
 }
 
 public partial class ArmonSpecial : Skill
 {
-    private const int OverloadTimes = 3;
-    private const int PowerGainPerLoop = 2;
-
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "矩阵过载";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 9)),
-            ModifyPropertyStep(PropertyType.Power, PowerGainPerLoop, TargetReference.Self)
+            AttackStep(
+                baseDamage: V("BaseDamage"),
+                multiplier: V("Multiplier"),
+                times: V("HitCount")
+            )
         );
     }
 }

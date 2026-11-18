@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "RadiantOverload"
+DisplayName = "辉光"
+Values = Dictionary[String, int]({
+"DazeCount": 1,
+"DiscardDazeCount": 1,
+"EnemyEnergyCost": 0,
+"EnergyCost": 0,
+"EnergyGain": 3,
+"ExhaustAfterExecutions": 1
+})

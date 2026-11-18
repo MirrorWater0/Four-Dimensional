@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
 /// 普通战斗固定遭遇表。每组遭遇是预先设计好的编队；整局队列由 GameInfo.InitializeNormalEncounterQueue 预生成。
@@ -116,17 +117,17 @@ public static class NormalBattleEncounter
 
     private static readonly EncounterDefinition[] RegionTwoEncounters =
     [
-        Weak(() => Formation([Slot<RedHuskRegedit>(2)])),
+        Weak(() => Formation([Slot<RedHuskRegedit>(2), Slot<RedHuskRegedit>(3)])),
         Weak(() =>
             Formation([Slot<ArmonRegedit>(1), Slot<ArmonRegedit>(2), Slot<ArmonRegedit>(3)])
         ),
         Strong(() => Formation([Slot<GraveWraithRegedit>(2)])),
-        Strong(() => Formation([Slot<MarrowReaverRegedit>(FrontRight)])),
+        Strong(() => Formation([Slot<MarrowReaverRegedit>(1),Slot<EvilRegedit>(2)])),
         Strong(() =>
             Formation([Slot<HollowBulwarkRegedit>(FrontRight), Slot<VoidAcolyteRegedit>(BackRight)])
         ),
         Strong(() =>
-            Formation([Slot<VoidAcolyteRegedit>(FrontRight), Slot<VoidRotorRegedit>(BackRight)])
+            Formation([Slot<VoidAcolyteRegedit>(1), Slot<VoidRotorRegedit>(2),Slot<AlienBodyRegedit>(3)])
         ),
     ];
 
@@ -148,6 +149,25 @@ public static class NormalBattleEncounter
             list.Add(enemy);
         }
 
+        // A single carrier keeps multi-enemy formations within the intended coverage budget.
+        EnemyRegedit frailCarrier = list
+            .Where(enemy => FrailCarrierPriority(enemy) < int.MaxValue)
+            .OrderBy(FrailCarrierPriority)
+            .ThenBy(enemy => enemy.PositionIndex)
+            .FirstOrDefault();
+        foreach (EnemyRegedit enemy in list)
+            enemy.CanApplyFrail = enemy == frailCarrier;
+
         return list;
     }
+
+    private static int FrailCarrierPriority(EnemyRegedit enemy) => enemy switch
+    {
+        BlackHawkRegedit or MarrowReaverRegedit or HollowBulwarkRegedit => 0,
+        RedHuskRegedit or ArmonRegedit or VoidAcolyteRegedit => 1,
+        EvilRegedit => 2,
+        // AlienBody already reduces Survivability, so use it only without a preferred carrier.
+        AlienBodyRegedit => 3,
+        _ => int.MaxValue,
+    };
 }

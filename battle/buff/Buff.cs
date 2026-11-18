@@ -92,6 +92,16 @@ public partial class Buff
             new Godot.Color(0.55f, 0.55f, 0.72f, 1f),
             8f
         ),
+        [BuffName.Frail] = new(
+            "res://asset/svg/BuffIcon/Frail.svg",
+            new Godot.Color(0.78f, 0.52f, 0.92f, 1f),
+            6f
+        ),
+        [BuffName.Broken] = new(
+            "res://asset/svg/BuffIcon/Broken.svg",
+            new Godot.Color(1f, 0.42f, 0.32f, 1f),
+            6f
+        ),
         [BuffName.Fear] = new(
             "res://asset/svg/BuffIcon/Kenney/skull.svg",
             new Godot.Color(0.94f, 0.22f, 0.3f, 1f),
@@ -193,12 +203,18 @@ public partial class Buff
     public static string GetBuffDisplayName(BuffName name) =>
         I18n.Tr(GetBuffNameKey(name), GetLegacyBuffName(name));
 
-    public static string GetBuffEffectText(BuffName name)
+    public static string GetBuffEffectText(BuffName name, Character owner = null)
     {
+        if (TalentTree.IsTalentBuff(name))
+            return TalentTree.GetByBuff(name).EffectDescription;
+        if (name == BuffName.Divinity && owner?.BattleNode?.GetTalentDivinityMultiplier(owner) > 2f)
+            return I18n.Tr("buff.divinity.talent_effect", "攻击伤害变为2.5倍；回合开始时消耗1层。");
+        if (name == BuffName.Vulnerable && owner?.BattleNode?.GetTalentVulnerableMultiplier(owner) > 1.5f)
+            return I18n.Tr("buff.vulnerable.talent_effect", "受到攻击时，伤害提高70%；阵营回合开始时减少1层。");
         string fallback = name switch
         {
-            BuffName.AttackCount => "回合结束时，按层数进行普通攻击；默认1次，持续至本场战斗结束。",
-            BuffName.TemporaryAttackCount => "本回合结束时，每层额外进行1次普通攻击；攻击结算后清零。",
+            BuffName.AttackCount => "已停用的旧攻击次数标识。",
+            BuffName.TemporaryAttackCount => "已停用的旧临时攻击标识。",
             BuffName.RebirthI => "濒死时，回复最大生命的50%，消耗1层。",
             BuffName.DamageImmune => "受到伤害时，伤害变为0，消耗1层。",
             BuffName.Vulnerable => "受到攻击时，伤害提高50%；阵营回合开始时减少1层。",
@@ -213,17 +229,19 @@ public partial class Buff
             BuffName.ExtraPower => "获得力量时，每层额外获得1点力量。",
             BuffName.ExtraSurvivability => "获得生存时，每层额外获得1点生存。",
             BuffName.AutoArmor => "受到攻击后，每层获得1点格挡。",
-            BuffName.Barricade => "阵营回合开始时，保留你的格挡。",
-            BuffName.Afterimage => "阵营回合开始时，格挡不会消失，减少1层。",
+            BuffName.Barricade => "阵营回合开始时，每层少失去50%的格挡，最多减少100%（损失向下取整）。",
+            BuffName.Afterimage => "阵营回合开始时，格挡损失减半（损失向下取整），减少1层。",
             BuffName.Weaken => "造成的伤害降低25%；阵营回合结束时减少1层。",
+            BuffName.Frail => "每次获得的格挡减少25%（向下取整）；己方阵营回合结束时减少1层，层数不影响减幅。",
+            BuffName.Broken => "无法获得格挡；己方阵营回合开始时减少1层。",
             BuffName.Disaster => "己方阵营回合结束时，每层受到1点伤害，并消耗1层。",
             BuffName.Divinity => "攻击伤害变为2倍；回合开始时消耗1层。",
-            BuffName.Shadow => "其他己方角色攻击时，己方全阵每层获得1点力量。",
+            BuffName.Shadow => "每当有角色获得隐身时，己方全阵每层获得1点力量。",
             BuffName.Demon =>
-                "每有一张牌被消耗，己方全阵每层获得1点力量。",
+                "每累计消耗2张牌，己方全阵每层获得1点力量。",
             BuffName.Void =>
-                "任意己方角色使用生存牌时，己方全阵每层获得1点力量。",
-            BuffName.Echo => "每回合每层使前1张技能牌释放2次。",
+                "己方每累计获得2点能量，己方全阵每层获得1点力量。",
+            BuffName.Echo => "每回合每层使前1张行动牌额外触发1次。",
             BuffName.Sanctuary => "每当有角色恢复或失去生命时，己方全阵每层获得1点力量。",
             BuffName.ExtraDraw => "回合开始时，消耗1层抽1张牌。",
             BuffName.Source => "己方阵营回合开始时，每层额外获得1点能量。",
@@ -232,10 +250,10 @@ public partial class Buff
             BuffName.NextEnergy => "下回合开始时，消耗所有层数，每层获得1点能量。",
             BuffName.Beacon => "获得格挡时，其他队友每层获得1点格挡。",
             BuffName.CursePower => "每次攻击时，每层给予目标1层虚弱。",
-            BuffName.WeakeningField => "每给予1层虚弱，每层使己方全阵获得{block}点格挡。",
-            BuffName.ExhaustShield => "每有一张牌被消耗，每层获得1点格挡。",
-            BuffName.Foresight => "每次使用生成卡牌的技能时，每层抽1张牌。",
-            BuffName.Recycling => "每当有一张牌被消耗时，抽1张牌。",
+            BuffName.WeakeningField => "己方回合结束时，敌方每有1层虚弱，每层虚弱立场使己方全阵获得{block}点格挡。",
+            BuffName.ExhaustShield => "每当有一张卡牌被消耗时，每层使己方全阵获得1点格挡。",
+            BuffName.Foresight => "每生成一张卡牌，己方全阵每层获得1点格挡。",
+        BuffName.Recycling => "每当有一张有归属的牌被消耗时，每层从该牌所属角色的完整非基础牌池中随机生成1张卡牌加入手牌。无归属的牌不触发。",
             BuffName.NoDraw => "无法抽牌；回合结束时减少1层。",
             BuffName.Search => "洗牌时，从抽牌堆中选择1张牌加入手牌。",
             BuffName.Prediction =>
@@ -265,6 +283,8 @@ public partial class Buff
 
     private static string GetLegacyBuffName(BuffName name)
     {
+        if (TalentTree.IsTalentBuff(name))
+            return TalentTree.GetByBuff(name).DisplayName;
         if (name == BuffName.Void)
             return "虚空";
 
@@ -355,8 +375,9 @@ public partial class Buff
         if (preserveSourcePosition)
         {
             var parentControl = parent as Control;
-            sourceCenterInParent =
-                node.GetGlobalRect().GetCenter() - parentControl.GetGlobalRect().Position;
+            Transform2D sourceTransformInParent = parentControl.GetGlobalTransformWithCanvas().AffineInverse()
+                * node.GetGlobalTransformWithCanvas();
+            sourceCenterInParent = sourceTransformInParent * (node.Size * 0.5f);
         }
 
         if (parent != null)
@@ -596,6 +617,28 @@ public partial class Buff
 
         [Description("临时攻击")]
         TemporaryAttackCount,
+        TalentSpecialGuard,
+        TalentExhaustPower,
+        TalentVulnerableShock,
+        TalentVulnerableAmplify,
+        TalentSecondEnergy,
+        TalentEnergyReserve,
+        TalentWeakenGuard,
+        TalentTeamSurvivability,
+        TalentHealingPlus,
+        TalentMapHealing,
+        TalentOpeningHeal,
+        TalentDivinity,
+        TalentStealthPower,
+        TalentExhaustDamage,
+        TalentFirstPowerShare,
+        TalentTeamAfterimage,
+
+        [Description("脆弱")]
+        Frail,
+
+        [Description("破碎")]
+        Broken,
     }
 
     public Character Owner;
@@ -622,6 +665,8 @@ public partial class Buff
             BuffName.DamageImmune => Nature.positive,
             BuffName.Vulnerable => Nature.negative,
             BuffName.Weaken => Nature.negative,
+            BuffName.Frail => Nature.negative,
+            BuffName.Broken => Nature.negative,
             BuffName.Fear => Nature.negative,
             BuffName.Taunt => Nature.positive,
             BuffName.Thorn => Nature.positive,
@@ -672,6 +717,9 @@ public partial class Buff
             return;
 
         target.BattleNode.RecordBuffGain(target, name, stack, source);
+        target.BattleNode.NotifyTalentBuffGain(target, name, stack, source);
+        if (name == BuffName.Invisible && stack > 0)
+            target.BattleNode.NotifyCharacterGainedStealth(target);
     }
 
     private static void CleanupVisualBudget(ulong now)
@@ -975,6 +1023,8 @@ public partial class Buff
 
     protected static ColorRect CreateBuffIcon(BuffName name)
     {
+        if (TalentTree.IsTalentBuff(name))
+            return CreateBuffIcon(BuffName.Source);
         if (TextureIconOverrides.ContainsKey(name))
         {
             var textureIcon = InstantiateBuffIconScene(IconTemplateScenePath);
@@ -1273,6 +1323,7 @@ public partial class HurtBuff : Buff
         switch (ThisBuffName)
         {
             case BuffName.DamageImmune:
+                Owner.PlayDamageImmuneShieldImpact(attacker);
                 damage = 0;
                 Stack--;
                 UpdateStackLabel();
@@ -1281,7 +1332,7 @@ public partial class HurtBuff : Buff
             case BuffName.Vulnerable:
                 if (damageKind == Character.DamageKind.Attack && damage > 0)
                 {
-                    damage *= 1.5f;
+                    damage *= Owner.BattleNode?.GetTalentVulnerableMultiplier(Owner) ?? 1.5f;
                     triggered = true;
                 }
                 break;
@@ -1387,8 +1438,18 @@ public partial class StartActionBuff : Buff
     public StartActionBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public static bool KeepsBlockOnTurnStart(BuffName name) =>
-        name == BuffName.Barricade || name == BuffName.Afterimage;
+    public int ModifyTurnStartBlockLoss(int blockLoss)
+    {
+        if (Stack <= 0)
+            return blockLoss;
+
+        return ThisBuffName switch
+        {
+            BuffName.Barricade => Stack >= 2 ? 0 : blockLoss / 2,
+            BuffName.Afterimage => blockLoss / 2,
+            _ => blockLoss,
+        };
+    }
 
     public void Trigger()
     {
@@ -1416,13 +1477,17 @@ public partial class StartActionBuff : Buff
                     Owner.BattleNode?.QueuePredictionAtTurnStart(Owner, Stack);
                 break;
             case BuffName.Barricade:
-                // Passive effect: checked by Character.StartAction before block reset.
+                // Applied by Character.ResolveBlockExpirationAtTeamTurnStart before buff triggers.
                 break;
             case BuffName.Afterimage:
+                // Opening Afterimage must last until the next player turn's block retention.
+                if (Owner.IsPlayer && Owner.BattleNode?.PlayerTotalTurnCount == 1)
+                    return;
                 Stack--;
                 UpdateStackLabel();
                 break;
             case BuffName.Divinity:
+            case BuffName.Broken:
                 Stack--;
                 UpdateStackLabel();
                 break;
@@ -1456,8 +1521,13 @@ public partial class StartActionBuff : Buff
         if (IsDebuff(name) && SpecialBuff.TryConsumeDebuffImmunity(target, source, name))
             return;
 
-        if (TryStackExisting(target?.StartActionBuffs, name, stack, target, source))
+        bool entersStealth = name == BuffName.Invisible && stack > 0
+            && target != null && !target.HasActiveStartActionBuff(BuffName.Invisible);
+        if (TryStackExisting(target?.StartActionBuffs, name, stack, target, source)) {
+            if (entersStealth && target.HasActiveStartActionBuff(BuffName.Invisible))
+                target.BattleNode?.NotifyTalentEnteredStealth(target);
             return;
+        }
 
         if (
             target?.StartActionBuffs == null
@@ -1470,6 +1540,7 @@ public partial class StartActionBuff : Buff
                 && name != BuffName.Divinity
                 && name != BuffName.NextEnergy
                 && name != BuffName.Prediction
+                && name != BuffName.Broken
             )
         )
             return;
@@ -1480,6 +1551,8 @@ public partial class StartActionBuff : Buff
 
         target.StartActionBuffs.Add(buff);
         FinalizeBuffAdd(buff, target, source);
+        if (entersStealth)
+            target.BattleNode?.NotifyTalentEnteredStealth(target);
     }
 }
 
@@ -1611,7 +1684,7 @@ public partial class AttackBuff : Buff
         if (!isPreview && HasDivinity(attacker))
         {
             context.Damage = Math.Max(
-                (int)MathF.Floor(context.Damage * DivinityMultiplier),
+                (int)MathF.Floor(context.Damage * (attacker.BattleNode?.GetTalentDivinityMultiplier(attacker) ?? DivinityMultiplier)),
                 0
             );
             StartActionBuff divinity = attacker.StartActionBuffs?.FirstOrDefault(x =>
@@ -1622,7 +1695,7 @@ public partial class AttackBuff : Buff
         else if (isPreview && HasDivinity(attacker))
         {
             context.Damage = Math.Max(
-                (int)MathF.Floor(context.Damage * DivinityMultiplier),
+                (int)MathF.Floor(context.Damage * (attacker.BattleNode?.GetTalentDivinityMultiplier(attacker) ?? DivinityMultiplier)),
                 0
             );
         }
@@ -1663,11 +1736,7 @@ public partial class AttackBuff : Buff
             return;
 
         if (TryStackExisting(target?.AttackBuffs, name, stack, target, source))
-        {
-            if (name == BuffName.Weaken)
-                SpecialBuff.TriggerWeakeningFieldBlock(source, stack);
             return;
-        }
 
         if (
             target?.AttackBuffs == null
@@ -1681,8 +1750,6 @@ public partial class AttackBuff : Buff
 
         target.AttackBuffs.Add(buff);
         FinalizeBuffAdd(buff, target, source);
-        if (name == BuffName.Weaken)
-            SpecialBuff.TriggerWeakeningFieldBlock(source, stack);
     }
 }
 
@@ -1696,6 +1763,17 @@ public partial class SkillBuff : Buff
     public void ResetTurnState()
     {
         _echoTriggeredCountThisTurn = 0;
+    }
+
+    public bool TryTriggerEchoForActionCard(Skill skill)
+    {
+        if (ThisBuffName != BuffName.Echo || skill?.IsActionCard != true
+            || Stack <= 0 || IsOwnerUnavailableForTrigger() || _echoTriggeredCountThisTurn >= Stack)
+            return false;
+
+        _echoTriggeredCountThisTurn++;
+        FlashTrigger();
+        return true;
     }
 
     public async Task Trigger(Skill skill)
@@ -1737,12 +1815,6 @@ public partial class SkillBuff : Buff
                 }
                 break;
             case BuffName.Echo:
-                if (_echoTriggeredCountThisTurn < Stack)
-                {
-                    triggered = true;
-                    _echoTriggeredCountThisTurn++;
-                    skill?.QueueExtraSkillExecutions(1);
-                }
                 break;
             case BuffName.Fear:
                 if (skill?.SkillType == Skill.SkillTypes.Attack && Owner != null && Stack > 0)
@@ -1784,8 +1856,38 @@ public partial class SkillBuff : Buff
 
 public partial class EndActionBuff : Buff
 {
+    private int _voidEnergyRemainder;
+    private int _demonExhaustRemainder;
+
     public EndActionBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
+
+    internal static int ModifyBlockGain(int amount, bool hasFrail) =>
+        amount > 0 && hasFrail ? (int)((long)amount * 3 / 4) : amount;
+
+    internal int AccumulateVoidEnergy(int gainedEnergy)
+    {
+        if (ThisBuffName != BuffName.Void || Stack <= 0 || gainedEnergy <= 0)
+            return 0;
+
+        // Keep progress on the buff so energy gained before applying it never counts.
+        int remainder = _voidEnergyRemainder + gainedEnergy % 2;
+        int triggers = gainedEnergy / 2 + remainder / 2;
+        _voidEnergyRemainder = remainder % 2;
+        return triggers;
+    }
+
+    private int AccumulateDemonExhaust(int exhaustedCardCount)
+    {
+        if (ThisBuffName != BuffName.Demon || Stack <= 0 || exhaustedCardCount <= 0)
+            return 0;
+
+        // Progress belongs to this buff and carries across turns.
+        int remainder = _demonExhaustRemainder + exhaustedCardCount % 2;
+        int triggers = exhaustedCardCount / 2 + remainder / 2;
+        _demonExhaustRemainder = remainder % 2;
+        return triggers;
+    }
 
     public bool ConsumeOneStack(bool showVanishHint = true)
     {
@@ -1824,6 +1926,9 @@ public partial class EndActionBuff : Buff
                 TweenLabel();
                 TryRemoveIfEmpty(Owner.EndActionBuffs);
                 break;
+            case BuffName.Frail:
+                ConsumeOneStack();
+                break;
         }
     }
 
@@ -1855,7 +1960,8 @@ public partial class EndActionBuff : Buff
         if (battle == null || exhaustedCardCount <= 0)
             return;
 
-        _ = TriggerDemonPowerOnExhaustAsync(battle, exhaustedCardCount);
+        battle.QueueBattleEffect(() => TriggerDemonPowerOnExhaustAsync(battle, exhaustedCardCount),
+            "恶魔：消耗增力", consumeFrameBudget: false);
     }
 
     private static async Task TriggerDemonPowerOnExhaustAsync(Battle battle, int exhaustedCardCount)
@@ -1877,26 +1983,29 @@ public partial class EndActionBuff : Buff
 
         foreach (Character formOwner in formOwners)
         {
-            if (formOwner.EndActionBuffs == null)
+            if (!GodotObject.IsInstanceValid(formOwner)
+                || formOwner.State == Character.CharacterState.Dying || formOwner.EndActionBuffs == null)
                 continue;
 
-            int stacks = formOwner
+            int powerGain = formOwner
                 .EndActionBuffs.Where(x =>
                     x != null && x.ThisBuffName == BuffName.Demon && x.Stack > 0
                 )
-                .Sum(x => x.Stack);
-            if (stacks <= 0)
+                .Sum(x => x.Stack * x.AccumulateDemonExhaust(exhaustedCardCount));
+            if (powerGain <= 0)
                 continue;
 
-            int powerGain = stacks * exhaustedCardCount;
             FlashTriggersOnOwner(formOwner, BuffName.Demon);
             using var _ = formOwner.BeginEffectSource(GetBuffDisplayName(BuffName.Demon));
             foreach (Character ally in team)
             {
-                if (ally == null || !GodotObject.IsInstanceValid(ally))
-                    continue;
-
-                await ally.IncreaseProperties(PropertyType.Power, powerGain, formOwner);
+                await battle.ExecuteBattleEffectAsync(async () => {
+                    if (GodotObject.IsInstanceValid(formOwner)
+                        && formOwner.State != Character.CharacterState.Dying
+                        && GodotObject.IsInstanceValid(ally)
+                        && ally.State != Character.CharacterState.Dying)
+                        await ally.IncreaseProperties(PropertyType.Power, powerGain, formOwner);
+                }, "恶魔：目标增力");
             }
         }
     }
@@ -1919,6 +2028,7 @@ public partial class EndActionBuff : Buff
             && name != BuffName.Void
             && name != BuffName.Sanctuary
             && name != BuffName.NoDraw
+            && name != BuffName.Frail
         )
             return;
 
@@ -1933,42 +2043,51 @@ public partial class EndActionBuff : Buff
 
 public partial class SpecialBuff : Buff
 {
-    private static bool _sharingBeaconBlock;
     internal const int WeakeningFieldBlock = 1;
-
     public SpecialBuff(Character owner, BuffName name, int stack)
         : base(owner, name, stack) { }
 
-    public static void TriggerWeakeningFieldBlock(Character owner, int weakenStacks)
+    public static async Task TriggerWeakeningFieldBlockAtTurnEndAsync(Battle battle, bool isPlayer)
     {
-        if (owner?.SpecialBuffs == null || weakenStacks <= 0)
+        if (battle == null || !GodotObject.IsInstanceValid(battle))
             return;
 
-        int fieldStacks = owner
-            .SpecialBuffs.Where(x =>
-                x != null && x.ThisBuffName == BuffName.WeakeningField && x.Stack > 0
-            )
-            .Sum(x => x.Stack);
-        if (fieldStacks <= 0)
-            return;
-
-        var allies = owner
-            .BattleNode?.GetTeamCharacters(owner.IsPlayer, includeSummons: true)
-            .Where(x => x != null && x.State != Character.CharacterState.Dying)
+        Character[] allies = battle.GetTeamCharacters(isPlayer, includeSummons: true)
+            .Where(x => x != null && GodotObject.IsInstanceValid(x)
+                && x.State != Character.CharacterState.Dying)
             .ToArray();
-        if (allies == null || allies.Length == 0)
+        if (allies.Length == 0)
             return;
 
-        int block = WeakeningFieldBlock * weakenStacks * fieldStacks;
-        using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.WeakeningField));
-        FlashTriggersOnOwner(owner, BuffName.WeakeningField);
-        foreach (var ally in allies)
-            ally.UpdataBlock(block, source: owner);
+        int weakenStacks = battle.GetTeamCharacters(!isPlayer, includeSummons: true)
+            .Where(x => x != null && GodotObject.IsInstanceValid(x)
+                && x.State != Character.CharacterState.Dying)
+            .Sum(x => x.AttackBuffs?.Where(buff =>
+                buff != null && buff.ThisBuffName == BuffName.Weaken && buff.Stack > 0)
+                .Sum(buff => buff.Stack) ?? 0);
+        if (weakenStacks <= 0)
+            return;
+
+        foreach (Character owner in allies)
+        {
+            if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying
+                || owner.SpecialBuffs == null)
+                continue;
+
+            int fieldStacks = owner.SpecialBuffs
+                .Where(x => x != null && x.ThisBuffName == BuffName.WeakeningField && x.Stack > 0)
+                .Sum(x => x.Stack);
+            if (fieldStacks <= 0)
+                continue;
+
+            int block = WeakeningFieldBlock * weakenStacks * fieldStacks;
+            await GrantBlockToTargetsAsync(battle, owner, allies, block, BuffName.WeakeningField);
+        }
     }
 
     public static void TriggerBeaconBlockShare(Character owner, int gainedBlock)
     {
-        if (_sharingBeaconBlock || owner?.SpecialBuffs == null || gainedBlock <= 0)
+        if (owner?.SpecialBuffs == null || gainedBlock <= 0)
             return;
 
         int beaconStacks = owner
@@ -1986,17 +2105,37 @@ public partial class SpecialBuff : Buff
         if (allies == null || allies.Length == 0)
             return;
 
-        _sharingBeaconBlock = true;
-        try
+        Battle battle = owner.BattleNode;
+        // Shared block cannot share again. Keep this local to the grant rather than
+        // holding a global recursion guard while the queue yields to another frame.
+        battle.QueueBattleEffect(() => GrantBlockToTargetsAsync(
+            battle, owner, allies, sharedBlock, BuffName.Beacon, triggerBeaconShare: false),
+            "烽火：共享格挡", consumeFrameBudget: false);
+    }
+
+    private static async Task GrantBlockToTargetsAsync(Battle battle, Character owner,
+        Character[] targets, int block, BuffName buffName, bool triggerBeaconShare = true)
+    {
+        bool flashed = false;
+        foreach (Character target in targets)
         {
-            using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.Beacon));
-            FlashTriggersOnOwner(owner, BuffName.Beacon);
-            foreach (var ally in allies)
-                ally.UpdataBlock(sharedBlock, source: owner);
-        }
-        finally
-        {
-            _sharingBeaconBlock = false;
+            await battle.ExecuteBattleEffectAsync(() => {
+                if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying
+                    || !GodotObject.IsInstanceValid(target) || target.State == Character.CharacterState.Dying)
+                    return Task.CompletedTask;
+
+                using var _ = owner.BeginEffectSource(GetBuffDisplayName(buffName));
+                if (!flashed)
+                {
+                    FlashTriggersOnOwner(owner, buffName);
+                    flashed = true;
+                }
+                if (triggerBeaconShare)
+                    target.UpdataBlock(block, source: owner);
+                else
+                    target.UpdataBlockWithoutBeaconShare(block, owner);
+                return Task.CompletedTask;
+            }, "格挡：目标结算");
         }
     }
 
@@ -2005,6 +2144,12 @@ public partial class SpecialBuff : Buff
         if (battle == null || exhaustedCardCount <= 0)
             return;
 
+        battle.QueueBattleEffect(() => TriggerExhaustShieldBlockAsync(battle, exhaustedCardCount),
+            "消耗护盾：格挡", consumeFrameBudget: false);
+    }
+
+    private static async Task TriggerExhaustShieldBlockAsync(Battle battle, int exhaustedCardCount)
+    {
         Character[] allies = battle
             .GetTeamCharacters(isPlayer: true, includeSummons: true)
             .Where(x => x != null && x.State != Character.CharacterState.Dying)
@@ -2014,7 +2159,8 @@ public partial class SpecialBuff : Buff
 
         foreach (Character ally in allies)
         {
-            if (ally.SpecialBuffs == null)
+            if (!GodotObject.IsInstanceValid(ally) || ally.State == Character.CharacterState.Dying
+                || ally.SpecialBuffs == null)
                 continue;
 
             int stacks = ally
@@ -2026,25 +2172,33 @@ public partial class SpecialBuff : Buff
                 continue;
 
             int block = stacks * exhaustedCardCount;
-            using var _ = ally.BeginEffectSource(GetBuffDisplayName(BuffName.ExhaustShield));
-            FlashTriggersOnOwner(ally, BuffName.ExhaustShield);
-            ally.UpdataBlock(block, source: ally);
+            await GrantBlockToTargetsAsync(battle, ally, allies, block, BuffName.ExhaustShield);
         }
     }
 
-    public static void TriggerRecyclingDraw(Battle battle, int exhaustedCardCount)
+    public static void TriggerRecyclingCardGeneration(Battle battle, PlayerCharacter exhaustedCardOwner)
+    {
+        if (exhaustedCardOwner == null || !GodotObject.IsInstanceValid(exhaustedCardOwner))
+            return;
+
+        battle?.QueueBattleEffect(() => TriggerRecyclingCardGenerationAsync(battle, exhaustedCardOwner),
+            "回收：生成手牌", consumeFrameBudget: false);
+    }
+
+    private static async Task TriggerRecyclingCardGenerationAsync(Battle battle, PlayerCharacter exhaustedCardOwner)
     {
         if (
             battle == null
-            || exhaustedCardCount <= 0
-            || battle.GetPlayerTeamBattleHandEmptySlotCount() <= 0
+            || exhaustedCardOwner == null
+            || !GodotObject.IsInstanceValid(exhaustedCardOwner)
         )
         {
             return;
         }
 
-        Character[] owners = battle
+        PlayerCharacter[] owners = battle
             .GetTeamCharacters(isPlayer: true, includeSummons: false)
+            .OfType<PlayerCharacter>()
             .Where(x =>
                 x != null
                 && x.State != Character.CharacterState.Dying
@@ -2056,12 +2210,36 @@ public partial class SpecialBuff : Buff
         if (owners.Length == 0)
             return;
 
-        int drawCount = exhaustedCardCount * owners.Length;
-        if (!battle.TryDrawPlayerTeamBattleCards(drawCount))
-            return;
+        foreach (PlayerCharacter owner in owners)
+        {
+            if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying)
+                continue;
 
-        foreach (Character owner in owners)
-            FlashTriggersOnOwner(owner, BuffName.Recycling);
+            int stacks = owner.SpecialBuffs?.Where(buff =>
+                buff != null && buff.ThisBuffName == BuffName.Recycling && buff.Stack > 0)
+                .Sum(buff => buff.Stack) ?? 0;
+            for (int stackIndex = 0; stackIndex < stacks; stackIndex++)
+            {
+                if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying)
+                    break;
+
+                await battle.ExecuteBattleEffectAsync(() => {
+                    if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying
+                        || !GodotObject.IsInstanceValid(exhaustedCardOwner))
+                        return Task.CompletedTask;
+                    SkillID? skillId = battle.PickRandomGeneratedBattleSkillId(exhaustedCardOwner);
+                    if (!skillId.HasValue)
+                        return Task.CompletedTask;
+                    using var _ = owner.BeginEffectSource(GetBuffDisplayName(BuffName.Recycling));
+                    int added = battle.AddPlayerBattleStatusCardsToHand(
+                        exhaustedCardOwner, skillId.Value, 1, source: owner,
+                        entryOrigin: HandCardEntryOrigin.PlayedCard);
+                    if (added > 0)
+                        FlashTriggersOnOwner(owner, BuffName.Recycling);
+                    return Task.CompletedTask;
+                }, "循环利用：入手");
+            }
+        }
     }
 
     public static bool TryConsumeDebuffImmunity(
@@ -2144,24 +2322,42 @@ public partial class SpecialBuff : Buff
             return 0;
 
         return target
-                ?.SpecialBuffs?.FirstOrDefault(x =>
+                ?.SpecialBuffs?.Where(x =>
                     x != null && x.ThisBuffName == BuffName.Foresight && x.Stack > 0
                 )
-                ?.Stack ?? 0;
+                .Sum(x => x.Stack) ?? 0;
     }
 
-    public static int GetTotalForesightDrawCount(Battle battle)
+    public static void TriggerForesightBlock(Battle battle, int generatedCardCount)
     {
-        if (battle == null)
-            return 0;
+        if (battle == null || generatedCardCount <= 0)
+            return;
 
-        return battle
+        battle.QueueBattleEffect(() => TriggerForesightBlockAsync(battle, generatedCardCount),
+            "印牌：全队格挡", consumeFrameBudget: false);
+    }
+
+    private static async Task TriggerForesightBlockAsync(Battle battle, int generatedCardCount)
+    {
+        Character[] allies = battle
+            .GetTeamCharacters(isPlayer: true, includeSummons: true)
+            .Where(x => x != null && x.State != Character.CharacterState.Dying)
+            .ToArray();
+        Character[] owners = battle
             .GetTeamCharacters(isPlayer: true, includeSummons: false)
-            .Sum(x =>
-                x is PlayerCharacter player && x.State != Character.CharacterState.Dying
-                    ? GetForesightStack(player)
-                    : 0
-            );
+            .Where(x =>
+                x != null && x.State != Character.CharacterState.Dying && GetForesightStack(x) > 0
+            )
+            .ToArray();
+
+        foreach (Character owner in owners)
+        {
+            if (!GodotObject.IsInstanceValid(owner) || owner.State == Character.CharacterState.Dying)
+                continue;
+            int block = 2 * generatedCardCount * GetForesightStack(owner);
+            if (block > 0)
+                await GrantBlockToTargetsAsync(battle, owner, allies, block, BuffName.Foresight);
+        }
     }
 
     public static PlayerCharacter[] GetSearchOwners(Battle battle)
@@ -2226,6 +2422,7 @@ public partial class SpecialBuff : Buff
             && name != BuffName.Foresight
             && name != BuffName.Recycling
             && name != BuffName.Search
+            && !TalentTree.IsTalentBuff(name)
         )
             return;
 

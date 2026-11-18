@@ -1,240 +1,241 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using System.Text.Json;
 using Godot;
 
-public static class SkillTuning
-{
-    private const string ProjectTuningDirectory = "res://data/skill_tuning";
-    private const string ProjectLegacyTuningPath = "res://data/skill_tuning.dev.json";
-    private const string UserTuningDirectory = "user://skill_tuning";
-    private const string UserTuningPath = "user://skill_tuning.dev.json";
-
-    private static readonly Dictionary<string, Dictionary<string, int>> Values =
-        new(StringComparer.OrdinalIgnoreCase);
-
+public static class SkillTuning {
+    private const string CatalogPath = "res://data/skill_tuning/catalog.tres";
+    private const string UserDirectory = "user://skill_tuning";
+    private static Dictionary<string, CardTuningResource> _defaults = new(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, CardTuningResource> _active = new(StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, string> _projectPaths = new(StringComparer.OrdinalIgnoreCase);
     private static bool _loaded;
 
     public static int Revision { get; private set; }
     public static string LastLoadedPath { get; private set; } = string.Empty;
     public static string LastError { get; private set; } = string.Empty;
+    public static bool CanSaveProject => OS.HasFeature("editor");
+    public static string ResolveKey(SkillID id) => Skill.ResolveTuningId(id).ToString();
 
-    public static ulong GetTuningFilesFingerprint()
-    {
-        ulong hash = 1469598103934665603UL;
-        AddDirectoryFingerprint(ProjectTuningDirectory, ref hash);
-        AddFileFingerprint(ProjectLegacyTuningPath, ref hash);
-        AddDirectoryFingerprint(UserTuningDirectory, ref hash);
-        AddFileFingerprint(UserTuningPath, ref hash);
-        return hash;
+    public static IReadOnlyList<CardTuningResource> GetCards() {
+        EnsureLoaded();
+        return _active.Values.OrderBy(card => card.DisplayName).ThenBy(card => card.SkillKey)
+            .Select(card => card.Copy()).ToArray();
     }
 
-    public static bool TryGetInt(SkillID skillId, string key, out int value) =>
-        TryGetInt(skillId.ToString(), key, out value);
+    public static CardTuningResource GetCard(SkillID id) => GetCard(ResolveKey(id));
+    public static CardTuningResource GetCard(string key) {
+        EnsureLoaded();
+        if (!_active.TryGetValue(key, out var card))
+            throw new InvalidOperationException($"缺少卡牌 Resource：{key}。请登记到 {CatalogPath}。");
+        return card.Copy();
+    }
 
-    public static bool TryGetInt(string skillKey, string key, out int value)
-    {
+    public static bool TryGetInt(SkillID id, string key, out int value) => TryGetInt(ResolveKey(id), key, out value);
+    public static bool TryGetInt(string skillKey, string key, out int value) {
         EnsureLoaded();
         value = 0;
-
-        if (string.IsNullOrWhiteSpace(skillKey) || string.IsNullOrWhiteSpace(key))
-            return false;
-
-        return Values.TryGetValue(skillKey, out Dictionary<string, int> skillValues)
-            && skillValues.TryGetValue(key, out value);
+        return _active.TryGetValue(skillKey, out var card) && card.Values.TryGetValue(key, out value);
     }
 
-    public static bool Reload(out string message)
-    {
-        Values.Clear();
-        LastError = string.Empty;
-        _loaded = true;
-
-        var loadedPaths = new List<string>();
-        try
-        {
-            LoadDirectoryIfExists(ProjectTuningDirectory, loadedPaths);
-            LoadPathIfExists(ProjectLegacyTuningPath, loadedPaths);
-            LoadDirectoryIfExists(UserTuningDirectory, loadedPaths);
-            LoadPathIfExists(UserTuningPath, loadedPaths);
-
-            Revision++;
-            LastLoadedPath = loadedPaths.Count > 0 ? string.Join(", ", loadedPaths) : "(none)";
-            message =
-                loadedPaths.Count > 0
-                    ? $"技能数值表已重载：{LastLoadedPath}，{CountValueEntries()} 项。"
-                    : $"未找到技能数值表，使用代码默认值。期望目录：{ProjectTuningDirectory}";
-            return true;
+    public static int GetRequiredInt(string skillKey, string key) {
+        if (string.IsNullOrWhiteSpace(skillKey) || string.IsNullOrWhiteSpace(key))
+            throw new InvalidOperationException("卡牌 ID 或参数名不能为空。");
+        if (TryGetInt(skillKey, key, out int value))
+            return value;
+        if (!_active.TryGetValue(skillKey, out var card))
+            throw new InvalidOperationException($"缺少卡牌 Resource：{skillKey}。请登记到 {CatalogPath}。");
+        var baseline = _defaults[skillKey];
+        if (!baseline.Values.TryGetValue(key, out value)) {
+            value = CardTuningParameters.GetInitialValue(key);
+            baseline.Values[key] = value;
         }
-        catch (Exception e)
-        {
+        card.Values[key] = value;
+        Revision++;
+        GD.PushWarning($"[Tuning] 已自动补齐 {skillKey}.{key} = {value}，请在图鉴检查数值。");
+        PersistAddedParameter(skillKey);
+        return value;
+    }
+
+    public static bool Apply(CardTuningResource draft, out string message) {
+        EnsureLoaded();
+        try {
+            Validate(draft, _defaults[draft.SkillKey]);
+            _active[draft.SkillKey] = draft.Copy();
+            Revision++;
+            message = "已应用，尚未保存。";
+            return true;
+        } catch (Exception e) {
+            message = $"应用失败：{e.Message}";
+            return false;
+        }
+    }
+
+    public static bool Save(CardTuningResource draft, bool toProject, out string message) {
+        EnsureLoaded();
+        try {
+            Validate(draft, _defaults[draft.SkillKey]);
+            if (toProject && !CanSaveProject)
+                throw new InvalidOperationException("请保存为本地设置，当前环境不能写回项目资源。");
+            Error error = DirAccess.MakeDirRecursiveAbsolute(UserDirectory);
+            if (error != Error.Ok && error != Error.AlreadyExists)
+                throw new InvalidOperationException($"无法创建保存目录：{error}");
+            string userPath = GetUserPath(draft.SkillKey);
+            string path = toProject ? _projectPaths[draft.SkillKey] : userPath;
+            error = ResourceSaver.Save(draft.Copy(), path);
+            if (error != Error.Ok)
+                throw new InvalidOperationException($"保存 {path} 失败：{error}");
+            if (toProject) {
+                // A local override must not hide the freshly saved project definition on restart.
+                if (FileAccess.FileExists(userPath) && DirAccess.RemoveAbsolute(userPath) != Error.Ok)
+                    throw new InvalidOperationException("项目已保存，但清除本地覆盖失败。");
+                _defaults[draft.SkillKey] = draft.Copy();
+            }
+            _active[draft.SkillKey] = draft.Copy();
+            Revision++;
+            message = toProject ? "已保存到项目 Resource。" : "已保存为本地设置。";
+            return true;
+        } catch (Exception e) {
+            message = $"保存失败：{e.Message}";
+            return false;
+        }
+    }
+
+    public static bool RestoreDefault(string key, out string message) {
+        EnsureLoaded();
+        string path = GetUserPath(key);
+        if (FileAccess.FileExists(path) && DirAccess.RemoveAbsolute(path) != Error.Ok) {
+            message = "恢复失败：无法删除本地覆盖。";
+            return false;
+        }
+        _active[key] = _defaults[key].Copy();
+        Revision++;
+        message = "已恢复项目资源中的数值。";
+        return true;
+    }
+
+    public static bool Reload(out string message) {
+        try {
+            var catalog = ResourceLoader.Load<CardTuningCatalog>(CatalogPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+            if (catalog == null)
+                throw new InvalidOperationException($"无法加载 {CatalogPath}");
+            var defaults = new Dictionary<string, CardTuningResource>(StringComparer.OrdinalIgnoreCase);
+            var active = new Dictionary<string, CardTuningResource>(StringComparer.OrdinalIgnoreCase);
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var repairs = new List<(Resource Definition, string Path)>();
+            foreach (var card in catalog.Cards) {
+                bool projectChanged = Validate(card);
+                string userPath = GetUserPath(card.SkillKey);
+                var selected = card;
+                bool localChanged = false;
+                if (FileAccess.FileExists(userPath)) {
+                    selected = ResourceLoader.Load<CardTuningResource>(userPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+                    localChanged = Validate(selected, card);
+                }
+                if (!defaults.TryAdd(card.SkillKey, card.Copy()))
+                    throw new InvalidOperationException($"重复的卡牌资源：{card.SkillKey}");
+                paths.Add(card.SkillKey, card.ResourcePath);
+                active.Add(card.SkillKey, selected.Copy());
+                if (projectChanged && CanSaveProject)
+                    repairs.Add((card.Copy(), card.ResourcePath));
+                if (localChanged || (projectChanged && !CanSaveProject))
+                    repairs.Add((selected.Copy(), userPath));
+            }
+            if (defaults.Count == 0)
+                throw new InvalidOperationException("卡牌资源目录为空。");
+            // Keep the previous complete revision if any file fails to load.
+            _defaults = defaults;
+            _active = active;
+            _projectPaths = paths;
+            _loaded = true;
+            LastError = string.Empty;
+            LastLoadedPath = CatalogPath;
+            Revision++;
+            // Persist only after the entire catalog has passed validation.
+            foreach (var repair in repairs)
+                TuningResourceRepair.Persist(repair.Definition, repair.Path);
+            message = $"卡牌 Resource 已重载：{active.Count} 张卡牌。";
+            return true;
+        } catch (Exception e) {
             LastError = e.Message;
-            message = $"技能数值表重载失败：{e.Message}";
+            message = $"卡牌 Resource 重载失败：{e.Message}";
             GD.PushError(message);
             return false;
         }
     }
 
-    private static void EnsureLoaded()
-    {
-        if (_loaded)
-            return;
-
-        Reload(out _);
+    public static ulong GetTuningFilesFingerprint() {
+        EnsureLoaded();
+        ulong hash = 1469598103934665603UL;
+        foreach (string path in _projectPaths.Values.Append(CatalogPath).Concat(_active.Keys.Select(GetUserPath)).OrderBy(path => path)) {
+            foreach (char c in path) {
+                hash ^= c;
+                hash *= 1099511628211UL;
+            }
+            hash ^= FileAccess.FileExists(path) ? FileAccess.GetModifiedTime(path) : 0;
+            hash *= 1099511628211UL;
+        }
+        return hash;
     }
 
-    private static void LoadPathIfExists(string path, List<string> loadedPaths)
-    {
-        if (!FileAccess.FileExists(path))
+    private static string GetUserPath(string key) => $"{UserDirectory}/{key}.tres";
+    private static void EnsureLoaded() {
+        if (!_loaded && !Reload(out string message))
+            throw new InvalidOperationException(message);
+    }
+
+    private static void PersistAddedParameter(string key) {
+        var baseline = _defaults[key];
+        if (CanSaveProject) {
+            try {
+                // Merge into the latest saved file so external editor changes are not overwritten.
+                string projectPath = _projectPaths[key];
+                var savedProject = ResourceLoader.Load<CardTuningResource>(projectPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep);
+                Validate(savedProject, baseline);
+                TuningResourceRepair.Persist(savedProject.Copy(), projectPath);
+            } catch (Exception exception) {
+                GD.PushWarning($"[Tuning] {key} 的字段已在当前会话补齐，但更新项目 Resource 失败：{exception.Message}。可在图鉴手动保存。");
+            }
+        }
+        string userPath = GetUserPath(key);
+        if (CanSaveProject && !FileAccess.FileExists(userPath))
             return;
+        try {
+            // Use saved definitions only: applying a draft does not authorize persisting its other edits.
+            var saved = FileAccess.FileExists(userPath)
+                ? ResourceLoader.Load<CardTuningResource>(userPath, cacheMode: ResourceLoader.CacheMode.IgnoreDeep)
+                : baseline.Copy();
+            Validate(saved, baseline);
+            TuningResourceRepair.Persist(saved.Copy(), userPath);
+        } catch (Exception exception) {
+            GD.PushWarning($"[Tuning] {key} 的字段已在当前会话补齐，但更新本地 Resource 失败：{exception.Message}。可在图鉴手动保存。");
+        }
+    }
 
-        using FileAccess file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-        if (file == null)
-            throw new InvalidOperationException($"无法打开 {path}");
-
-        string json = file.GetAsText();
-        if (string.IsNullOrWhiteSpace(json))
-            return;
-
-        using JsonDocument document = JsonDocument.Parse(json, new JsonDocumentOptions
-        {
-            AllowTrailingCommas = true,
-            CommentHandling = JsonCommentHandling.Skip,
-        });
-
-        JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object)
-            throw new InvalidOperationException($"{path} 根节点必须是 JSON 对象。");
-
-        if (root.TryGetProperty("skills", out JsonElement skillsElement))
-            root = skillsElement;
-
-        if (root.ValueKind != JsonValueKind.Object)
-            throw new InvalidOperationException($"{path} 的 skills 节点必须是 JSON 对象。");
-
-        foreach (JsonProperty skillProperty in root.EnumerateObject())
-        {
-            if (skillProperty.Value.ValueKind != JsonValueKind.Object)
+    private static bool Validate(CardTuningResource card, CardTuningResource baseline = null) {
+        if (card == null || !Enum.TryParse<SkillID>(card.SkillKey, out var id) || id == SkillID.None || !Enum.IsDefined(id))
+            throw new InvalidOperationException("卡牌资源 ID 无效。");
+        if (card.Values == null)
+            throw new InvalidOperationException($"{card.SkillKey} 缺少 Values。");
+        if (baseline != null && card.SkillKey != baseline.SkillKey)
+            throw new InvalidOperationException("卡牌 ID 与项目定义不一致。");
+        bool changed = TuningResourceRepair.Synchronize(card.Values, TuningParameterSchema.GetCard(card.SkillKey),
+            CardTuningParameters.GetInitialValue, baseline?.Values);
+        // Remove the retired field after merging old local overrides and editor drafts.
+        changed |= card.Values.Remove("EnemySpecialIntentionCooldown");
+        foreach (string required in new[] { "EnergyCost", "EnemyEnergyCost", "ExhaustAfterExecutions" }) {
+            if (card.Values.ContainsKey(required))
                 continue;
-
-            Dictionary<string, int> skillValues = GetOrCreateSkillValues(skillProperty.Name);
-            foreach (JsonProperty valueProperty in skillProperty.Value.EnumerateObject())
-            {
-                if (TryReadInt(valueProperty.Value, out int value))
-                    skillValues[valueProperty.Name] = value;
-            }
+            int value = CardTuningParameters.GetInitialValue(required);
+            card.Values[required] = value;
+            changed = true;
+            GD.PushWarning($"[Tuning] 已自动补齐 {card.SkillKey}.{required} = {value}，请在图鉴检查数值。");
         }
-
-        loadedPaths.Add(path);
-    }
-
-    private static void LoadDirectoryIfExists(string directoryPath, List<string> loadedPaths)
-    {
-        using DirAccess directory = DirAccess.Open(directoryPath);
-        if (directory == null)
-            return;
-
-        foreach (string filePath in EnumerateJsonFiles(directoryPath))
-            LoadPathIfExists(filePath, loadedPaths);
-    }
-
-    private static void AddDirectoryFingerprint(string directoryPath, ref ulong hash)
-    {
-        foreach (string filePath in EnumerateJsonFiles(directoryPath).OrderBy(path => path))
-            AddFileFingerprint(filePath, ref hash);
-    }
-
-    private static void AddFileFingerprint(string path, ref ulong hash)
-    {
-        if (!FileAccess.FileExists(path))
-            return;
-
-        AddStringToHash(path, ref hash);
-        AddUlongToHash(FileAccess.GetModifiedTime(path), ref hash);
-    }
-
-    private static void AddStringToHash(string value, ref ulong hash)
-    {
-        foreach (char c in value ?? string.Empty)
-            AddUlongToHash(c, ref hash);
-    }
-
-    private static void AddUlongToHash(ulong value, ref ulong hash)
-    {
-        hash ^= value;
-        hash *= 1099511628211UL;
-    }
-
-    private static IEnumerable<string> EnumerateJsonFiles(string directoryPath)
-    {
-        using DirAccess directory = DirAccess.Open(directoryPath);
-        if (directory == null)
-            yield break;
-
-        directory.ListDirBegin();
-        while (true)
-        {
-            string name = directory.GetNext();
-            if (string.IsNullOrEmpty(name))
-                break;
-
-            if (name == "." || name == "..")
-                continue;
-
-            string path = $"{directoryPath}/{name}";
-            if (directory.CurrentIsDir())
-            {
-                foreach (string nestedPath in EnumerateJsonFiles(path))
-                    yield return nestedPath;
-            }
-            else if (name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
-            {
-                yield return path;
-            }
+        foreach (var pair in card.Values) {
+            if (string.IsNullOrWhiteSpace(pair.Key))
+                throw new InvalidOperationException($"{card.SkillKey} 的参数名不能为空。");
+            CardTuningParameters.Validate(pair.Key, pair.Value);
         }
-
-        directory.ListDirEnd();
+        return changed;
     }
-
-    private static Dictionary<string, int> GetOrCreateSkillValues(string skillKey)
-    {
-        if (!Values.TryGetValue(skillKey, out Dictionary<string, int> skillValues))
-        {
-            skillValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            Values[skillKey] = skillValues;
-        }
-
-        return skillValues;
-    }
-
-    private static bool TryReadInt(JsonElement element, out int value)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Number:
-                if (element.TryGetInt32(out value))
-                    return true;
-
-                if (element.TryGetDouble(out double number))
-                {
-                    value = Mathf.RoundToInt((float)number);
-                    return true;
-                }
-                break;
-            case JsonValueKind.String:
-                return int.TryParse(
-                    element.GetString(),
-                    NumberStyles.Integer,
-                    CultureInfo.InvariantCulture,
-                    out value
-                );
-        }
-
-        value = 0;
-        return false;
-    }
-
-    private static int CountValueEntries() => Values.Values.Sum(skillValues => skillValues.Count);
 }

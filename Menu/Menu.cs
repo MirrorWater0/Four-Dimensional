@@ -6,39 +6,33 @@ public partial class Menu : Control
     private const float OpenDuration = 0.22f;
     private const float CloseDuration = 0.18f;
     private const float ReturnToStartFadeDuration = 0.12f;
-    private const float MainPanelOffsetLeft = -270f;
-    private const float MainPanelOffsetRight = 270f;
-    private const float SettingsPanelOffsetLeft = -470f;
-    private const float SettingsPanelOffsetRight = 470f;
-    private static readonly Vector2 ClosedPanelScale = new(0.92f, 0.92f);
+    private static readonly Vector2 ClosedPanelScale = new(0.985f, 0.985f);
     private static readonly PackedScene EncyclopediaScene = GD.Load<PackedScene>(
         "res://Menu/Encyclopedia.tscn"
     );
 
     private ColorRect Backdrop => field ??= GetNodeOrNull<ColorRect>("Backdrop");
-    private ColorRect GlowTopRight => field ??= GetNodeOrNull<ColorRect>("GlowTopRight");
-    private ColorRect GlowBottomLeft => field ??= GetNodeOrNull<ColorRect>("GlowBottomLeft");
     private Control CenterPanel => field ??= GetNodeOrNull<Control>("CenterPanel");
-    private Label TagLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Tag");
-    private Label TitleLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Title");
+    private Control SettingsLayout => field ??= GetNode<Control>("CenterPanel/Margin");
+    private Label PauseTitle => field ??= GetNode<Label>("%PauseTitle");
+    private Label TagLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Mast/Tag");
+    private Label TitleLabel => field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Body/Rail/Title");
     private Label DescriptionLabel =>
-        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Description");
+        field ??= GetNodeOrNull<Label>("CenterPanel/Margin/VBox/Body/Rail/Description");
     private Button SaveQuitButton =>
-        field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/SaveQuitButton");
+        field ??= GetNodeOrNull<Button>("%SaveQuitButton");
     private Button AbandonGameButton =>
-        field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/AbandonGameButton");
+        field ??= GetNodeOrNull<Button>("%AbandonGameButton");
     private Button ReturnButton =>
-        field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/ReturnButton");
+        field ??= GetNodeOrNull<Button>("%ReturnButton");
     private Button EncyclopediaButton =>
-        field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/EncyclopediaButton");
+        field ??= GetNodeOrNull<Button>("%EncyclopediaButton");
     private Button SettingsButton =>
-        field ??= GetNodeOrNull<Button>("CenterPanel/Margin/VBox/Buttons/SettingsButton");
+        field ??= GetNodeOrNull<Button>("%SettingsButton");
     private Control MainButtons =>
-        field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/Buttons");
+        field ??= GetNodeOrNull<Control>("CenterPanel/PausePage");
     private Control SettingsPanel =>
-        field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/SettingsPanel");
-    private Label SettingsTitle =>
-        field ??= GetSettingsPanelNode<Label>("SettingsTitle");
+        field ??= GetNodeOrNull<Control>("CenterPanel/Margin/VBox/Body/Pages/SettingsPanel");
     private CheckBox DescriptionModeCheckBox =>
         field ??= GetSettingsPanelNode<CheckBox>("DescriptionModeCheckBox");
     private CheckBox HideStatXKeywordTooltipsCheckBox =>
@@ -88,6 +82,8 @@ public partial class Menu : Control
     private Button SettingsBackButton =>
         field ??= GetSettingsPanelNode<Button>("SettingsBackButton");
     private Tween _transitionTween;
+    private Tween _pageTween;
+    private ShaderMaterial MastRuleInk => field ??= (ShaderMaterial)GetNode<ColorRect>("CenterPanel/Margin/VBox/MastRule").Material;
     private bool _isAbandoningGame;
     private bool _settingsOnlyMode;
 
@@ -183,14 +179,8 @@ public partial class Menu : Control
         if (!MobilePlatform.IsMobile)
             return;
 
-        if (MainButtons != null)
-        {
-            foreach (Node child in MainButtons.GetChildren())
-            {
-                if (child is Button button)
-                    MobilePlatform.EnsureContainerTouchTarget(button, minimumHeight: 76f);
-            }
-        }
+        foreach (var button in new[] { ReturnButton, SettingsButton, EncyclopediaButton, SaveQuitButton, AbandonGameButton })
+            MobilePlatform.EnsureContainerTouchTarget(button, minimumHeight: 64f);
 
         ApplyMobileSettingsTouchLayout(SettingsPanel);
     }
@@ -269,13 +259,12 @@ public partial class Menu : Control
         _transitionTween = CreateTween();
         _transitionTween.SetParallel(true);
         _transitionTween.TweenProperty(this, "modulate:a", 1.0f, OpenDuration);
+        MastRuleInk.SetShaderParameter("reveal", 0f);
+        _transitionTween.TweenProperty(MastRuleInk, "shader_parameter/reveal", 1f, 0.23f)
+            .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
 
         if (Backdrop != null)
             _transitionTween.TweenProperty(Backdrop, "modulate:a", 1.0f, OpenDuration);
-        if (GlowTopRight != null)
-            _transitionTween.TweenProperty(GlowTopRight, "modulate:a", 1.0f, OpenDuration);
-        if (GlowBottomLeft != null)
-            _transitionTween.TweenProperty(GlowBottomLeft, "modulate:a", 1.0f, OpenDuration);
         if (CenterPanel != null)
         {
             _transitionTween
@@ -290,6 +279,7 @@ public partial class Menu : Control
 
     public void Close()
     {
+        _pageTween?.Kill();
         _transitionTween?.Kill();
         CloseAllDropdowns();
 
@@ -299,10 +289,6 @@ public partial class Menu : Control
 
         if (Backdrop != null)
             _transitionTween.TweenProperty(Backdrop, "modulate:a", 0.0f, CloseDuration);
-        if (GlowTopRight != null)
-            _transitionTween.TweenProperty(GlowTopRight, "modulate:a", 0.0f, CloseDuration);
-        if (GlowBottomLeft != null)
-            _transitionTween.TweenProperty(GlowBottomLeft, "modulate:a", 0.0f, CloseDuration);
         if (CenterPanel != null)
         {
             _transitionTween
@@ -547,11 +533,13 @@ public partial class Menu : Control
     private void ShowSettingsPanel()
     {
         RefreshSettingsPanel();
-        SetCenterPanelWide(true);
         if (MainButtons != null)
             MainButtons.Visible = false;
+        SettingsLayout.Visible = true;
         if (SettingsPanel != null)
             SettingsPanel.Visible = true;
+        RefreshPageHeading(true);
+        PlayPageEntrance(true);
     }
 
     private void ShowMainPanel()
@@ -563,21 +551,43 @@ public partial class Menu : Control
             return;
         }
 
-        SetCenterPanelWide(false);
         if (SettingsPanel != null)
             SettingsPanel.Visible = false;
+        SettingsLayout.Visible = false;
         if (MainButtons != null)
             MainButtons.Visible = true;
+        RefreshPageHeading(false);
+        PlayPageEntrance(false);
     }
 
-    private void SetCenterPanelWide(bool wide)
-    {
-        if (CenterPanel == null)
-            return;
+    private void PlayPageEntrance(bool settings) {
+        _pageTween?.Kill();
+        _pageTween = CreateTween().SetParallel().SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        if (settings) {
+            FadeMenuPart(TitleLabel, 0f);
+            FadeMenuPart(DescriptionLabel, 0.025f);
+            FadeMenuPart(SettingsPanel.GetNode<Control>("SettingsColumns/LeftColumn"), 0.025f);
+            FadeMenuPart(SettingsPanel.GetNode<Control>("SettingsColumns/RightColumn"), 0.060f);
+            FadeMenuPart(SettingsPanel.GetNode<Control>("Footer"), 0.090f);
+        } else {
+            int index = 0;
+            FadeMenuPart(PauseTitle, 0f);
+            foreach (var button in new[] { ReturnButton, SettingsButton, EncyclopediaButton, SaveQuitButton, AbandonGameButton })
+                FadeMenuPart(button, 0.018f * index++);
+        }
+    }
 
-        CenterPanel.OffsetLeft = wide ? SettingsPanelOffsetLeft : MainPanelOffsetLeft;
-        CenterPanel.OffsetRight = wide ? SettingsPanelOffsetRight : MainPanelOffsetRight;
-        CenterPanel.PivotOffset = CenterPanel.Size * 0.5f;
+    private void FadeMenuPart(Control part, float delay) {
+        // Only animate the presentation; focus, hit boxes and container geometry stay put.
+        part.Modulate = part.Modulate with { A = 0.0f };
+        _pageTween.TweenProperty(part, "modulate:a", 1f, 0.16f).SetDelay(delay);
+    }
+
+    private void RefreshPageHeading(bool settings) {
+        TitleLabel.Text = settings ? I18n.Tr("ui.settings.title", "设置") : I18n.Tr("ui.menu.title", "菜单");
+        DescriptionLabel.Text = settings
+            ? I18n.Tr("ui.menu.preferences_intro", "调整战斗信息、显示与声音。")
+            : I18n.Tr("ui.menu.description", "调整设置，或结束本局返回主菜单。");
     }
 
     private void RefreshSettingsPanel()
@@ -794,25 +804,23 @@ public partial class Menu : Control
     {
         if (TagLabel != null)
             TagLabel.Text = I18n.Tr("ui.menu.tag", "SYSTEM MENU");
-        if (TitleLabel != null)
-            TitleLabel.Text = I18n.Tr("ui.menu.title", "菜单");
-        if (DescriptionLabel != null)
-            DescriptionLabel.Text = I18n.Tr(
-                "ui.menu.description",
-                "保存当前进度、调整设置，或直接结束本局。"
-            );
+        RefreshPageHeading(SettingsPanel.Visible);
         if (ReturnButton != null)
-            ReturnButton.Text = I18n.Tr("ui.menu.return", "返回");
+            ReturnButton.Text = I18n.Tr("ui.menu.return", "继续游戏");
         if (SaveQuitButton != null)
-            SaveQuitButton.Text = I18n.Tr("ui.menu.save_quit", "退出");
+            SaveQuitButton.Text = I18n.Tr("ui.menu.save_quit", "回到主界面");
         if (SettingsButton != null)
             SettingsButton.Text = I18n.Tr("ui.menu.settings", "设置");
         if (EncyclopediaButton != null)
             EncyclopediaButton.Text = I18n.Tr("ui.menu.encyclopedia", "百科");
         if (AbandonGameButton != null)
-            AbandonGameButton.Text = I18n.Tr("ui.menu.abandon", "放弃游戏");
-        if (SettingsTitle != null)
-            SettingsTitle.Text = I18n.Tr("ui.settings.title", "设置");
+            AbandonGameButton.Text = I18n.Tr("ui.menu.abandon", "放弃本局");
+        PauseTitle.Text = I18n.Tr("ui.menu.pause_heading", "航程菜单");
+        GetNode<Label>("%CombatGroup").Text = I18n.Tr("ui.menu.group.combat", "战斗提示");
+        GetNode<Label>("%HandGroup").Text = I18n.Tr("ui.menu.group.hand", "手牌与牌堆");
+        GetNode<Label>("%DisplayGroup").Text = I18n.Tr("ui.menu.group.display", "显示与反馈");
+        GetNode<Label>("%AudioGroup").Text = I18n.Tr("ui.menu.group.audio", "声音");
+        GetNode<Label>("%SaveNote").Text = I18n.Tr("ui.menu.autosave_settings", "更改自动保存");
         if (DescriptionModeCheckBox != null)
             DescriptionModeCheckBox.Text = I18n.Tr(
                 "ui.settings.formula_card_description",
@@ -924,10 +932,6 @@ public partial class Menu : Control
 
         if (Backdrop != null)
             Backdrop.Modulate = new Color(1, 1, 1, 0);
-        if (GlowTopRight != null)
-            GlowTopRight.Modulate = new Color(1, 1, 1, 0);
-        if (GlowBottomLeft != null)
-            GlowBottomLeft.Modulate = new Color(1, 1, 1, 0);
         if (CenterPanel != null)
         {
             CenterPanel.Scale = ClosedPanelScale;

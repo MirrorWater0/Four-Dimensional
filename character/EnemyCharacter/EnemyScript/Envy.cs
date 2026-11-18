@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 using Godot;
 
 public partial class Envy : EnemyCharacter
@@ -21,7 +22,7 @@ public partial class Envy : EnemyCharacter
         if (BattleNode == null)
             return;
 
-        _skillUsedHandler ??= TriggerPassive;
+        _skillUsedHandler ??= skill => TriggerPassive(skill);
         BattleNode.UsedSkills.ItemAdded -= _skillUsedHandler;
         BattleNode.UsedSkills.ItemAdded += _skillUsedHandler;
     }
@@ -33,7 +34,7 @@ public partial class Envy : EnemyCharacter
         base._ExitTree();
     }
 
-    private async void TriggerPassive(Skill skill)
+    protected override async Task PassiveAsync(Skill skill)
     {
         if (
             State == CharacterState.Dying
@@ -93,16 +94,11 @@ public partial class EnvyEliteRegedit : EnemyRegedit
     public EnvyEliteRegedit()
     {
         CharacterName = "嫉妒";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/Envy.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Envy.tscn");
-
-        MaxLife = 207;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         SkillIDs = [SkillID.EnvyEliteAttack, SkillID.EnvyEliteSurvive, SkillID.EnvyEliteSpecial];
+        // 刺击削生存，藏锋虚弱干扰，再夺辉削力量并成长。
+        IntentionCycle = [SkillID.EnvyEliteAttack, SkillID.EnvyEliteSurvive, SkillID.EnvyEliteSpecial, random];
 
         PassiveName = global::Envy.PassiveNameText;
         PassiveDescription = global::Envy.PassiveDescriptionText;
@@ -111,8 +107,8 @@ public partial class EnvyEliteRegedit : EnemyRegedit
 
 public partial class EnvyEliteAttack : Skill
 {
-    private const int BaseDamage = 14;
-    private const int SurvivabilityDown = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int SurvivabilityDown => V(nameof(SurvivabilityDown));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -122,20 +118,20 @@ public partial class EnvyEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount", 2)),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.One, times: V("HitCount"), multiplier: V("Multiplier")),
             LowerTargetPropertyStep(
                 PropertyType.Survivability,
                 SurvivabilityDown,
                 HostileTargetReference.AttackKey
             ),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 1), BattleCardPileTarget.DrawPileCards)
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount"), BattleCardPileTarget.DrawPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSurvive : Skill
 {
-    private const int BaseBlock = 20;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -145,32 +141,31 @@ public partial class EnvyEliteSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1), HostileTargetReference.All),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 3), BattleCardPileTarget.DiscardPileCards)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks"), HostileTargetReference.All),
+            AddCardsStep(SkillID.DazeStatus, V("DazeCount"), BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class EnvyEliteSpecial : Skill
 {
-    private const int BaseDamage = 18;
-    private const int PowerDown = 2;
-    private const int SelfPowerGain = 3;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int SurvivDown => V(nameof(SurvivDown));
+    private int SelfPowerGain => V(nameof(SelfPowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = "夺辉";
-    public override int EnemySpecialIntentionCooldown => 3;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All),
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, multiplier: V("Multiplier"), times: V("HitCount")),
             LowerTargetPropertyStep(
-                PropertyType.Power,
-                PowerDown,
+                PropertyType.Survivability,
+                SurvivDown,
                 HostileTargetReference.AttackKey
             ),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)

@@ -154,6 +154,8 @@ public static class SaveSystem
 
         FieldInfo[] fields = GetSavableGameInfoFields();
         GameInfo.NormalEncounterQueueVersion = 0;
+        // Older saves have no world-line fields; never inherit a previous run's values.
+        GameInfo.ResetWorldLineState();
 
         foreach (var field in fields)
         {

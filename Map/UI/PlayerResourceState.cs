@@ -24,18 +24,34 @@ public partial class PlayerResourceState : CanvasLayer
             "res://asset/PlayerCharater/Echo/EchoMapPortrait_v1.png",
     };
 
+    private readonly Dictionary<ulong, RelicAssemblyBurst> _relicBursts = new();
     private readonly List<PartyLifeSlot> _partyLifeSlots = new();
     private readonly List<ResourceVisibilitySnapshot> _mapPeekHiddenResources = new();
     private Tip _mapPeekTip;
     private bool _mapPeekButtonHovered;
     private Tween _mapPeekHoverTween;
     private int _activeBattleCount;
+    private float? _mapRelicDockTop;
+    private int _formationDragIndex = -1;
+    private int _formationDropIndex = -1;
+    private Vector2 _formationDragStart;
+    private bool _formationSettling;
+    private Tween _formationSettleTween;
+
+    [Export(PropertyHint.Range, "0,1080,1")]
+    public float BattleRelicDockTop { get; set; } = 126f;
 
     private sealed class PartyLifeSlot
     {
         public Control Root;
         public TextureRect Portrait;
+        public Control StatusPanel;
+        public int CharacterIndex = -1;
+        public Tween MoveTween;
         public ProgressBar LifeBar;
+        public int DisplayLife;
+        public float RevealFraction = 1f;
+        public StyleBoxFlat LifeFill;
         public Label NameLabel;
         public Label ValueLabel;
     }
@@ -96,7 +112,7 @@ public partial class PlayerResourceState : CanvasLayer
     private Label DifficultyLabel => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
-        : field = TransitionEnergyControl?.GetNodeOrNull<Label>("Difficulty");
+        : field = GetNodeOrNull<Label>("Difficulty");
 
     public ColorRect ElectricityCoinIcon => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -104,10 +120,26 @@ public partial class PlayerResourceState : CanvasLayer
         : field = GetNodeOrNull<ColorRect>("ElectricityCoin");
 
     public List<Relic> RelicList = new();
+    private Control RelicDock => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = GetNodeOrNull<Control>("RelicDock");
     public VFlowContainer RelicContainer => field is not null
         && GodotObject.IsInstanceValid(field)
         ? field
-        : field = GetNodeOrNull<VFlowContainer>("RelicContainer");
+        : field = GetNodeOrNull<VFlowContainer>("RelicDock/Scroll/RelicContainer");
+    private ScrollContainer RelicScroll => field is not null
+        && GodotObject.IsInstanceValid(field)
+        ? field
+        : field = GetNodeOrNull<ScrollContainer>("RelicDock/Scroll");
+
+    public bool IsPointerOverRelicScroll()
+    {
+        var scroll = RelicScroll;
+        return scroll != null && scroll.IsVisibleInTree()
+            && scroll.GetGlobalRect().HasPoint(scroll.GetGlobalMousePosition());
+    }
+
     public List<ConsumeItem> Items = new();
     public HBoxContainer ItemContainer => field is not null
         && GodotObject.IsInstanceValid(field)
@@ -163,6 +195,8 @@ public partial class PlayerResourceState : CanvasLayer
     public override void _Ready()
     {
         SetProcessUnhandledInput(true);
+        SetProcessInput(false);
+        GetWindow().FocusExited += CancelFormationDrag;
         EnsureMenuOverlay();
         ElectricityCoin = GameInfo.ElectricityCoin;
         InitTransitionEnergyMax();
@@ -190,6 +224,10 @@ public partial class PlayerResourceState : CanvasLayer
 
     public override void _ExitTree()
     {
+        _formationSettleTween?.Kill();
+        foreach (var slot in _partyLifeSlots)
+            slot.MoveTween?.Kill();
+        GetWindow().FocusExited -= CancelFormationDrag;
         SetProcessUnhandledInput(false);
         HideMapPeekTip();
         base._ExitTree();
@@ -285,14 +323,24 @@ public partial class PlayerResourceState : CanvasLayer
         }
     }
 
-    public Task PlayRelicAcquireAnimationAsync(RelicID relicId, Vector2 sourcePosition)
-    {
-        return PlayResourceAcquireAnimationAsync(
-            sourcePosition,
-            () => FindRelicIcon(relicId),
-            () => CreateRelicAcquireIcon(relicId),
-            spin: -0.45f
-        );
+    public Task PlayRelicAcquireAnimationAsync(RelicID relicId, Vector2 sourcePosition) {
+        if (!IsInsideTree() || !Visible || FindRelicIcon(relicId) is not { } target
+            || !GodotObject.IsInstanceValid(target) || !target.IsVisibleInTree())
+            return Task.CompletedTask;
+
+        // Use the exact texture already bound to the dock, including its alpha mask.
+        var art = target.GetNodeOrNull<TextureRect>("GeneratedTextureIcon");
+        if (art?.Texture == null)
+            return Task.CompletedTask;
+
+        ulong id = target.GetInstanceId();
+        if (_relicBursts.TryGetValue(id, out var previous))
+            previous.Finish();
+
+        var burst = new RelicAssemblyBurst();
+        _relicBursts[id] = burst;
+        AddChild(burst);
+        return burst.Start(target, art, sourcePosition, RelicScroll, () => _relicBursts.Remove(id));
     }
 
     public Task PlayItemAcquireAnimationAsync(ItemID itemId, Vector2 sourcePosition)
@@ -425,17 +473,6 @@ public partial class PlayerResourceState : CanvasLayer
         return null;
     }
 
-    private static Control CreateRelicAcquireIcon(RelicID relicId)
-    {
-        Control icon = Relic.IconScene?.Instantiate<Control>()
-            ?? new ColorRect { Color = Colors.White };
-        Relic.ApplyIconVisual(icon, relicId);
-        var countLabel = icon.GetNodeOrNull<Label>("Label");
-        if (countLabel != null)
-            countLabel.Visible = false;
-        return icon;
-    }
-
     private static Control CreateItemAcquireIcon(ItemID itemId)
     {
         Control icon = ConsumeItem.IconSence?.Instantiate<Control>()
@@ -473,6 +510,9 @@ public partial class PlayerResourceState : CanvasLayer
 
     private void RefreshTransitionEnergyUI(int value)
     {
+        // Keep the current panel contents until the exchange animation has finished.
+        if (_formationSettling)
+            return;
         if (TransitionEnergyControl == null || !GodotObject.IsInstanceValid(TransitionEnergyControl))
             return;
 
@@ -491,21 +531,77 @@ public partial class PlayerResourceState : CanvasLayer
             if (slot?.Root == null || !GodotObject.IsInstanceValid(slot.Root))
                 continue;
 
-            bool hasPlayer = i < players.Length;
+            int characterIndex = Array.FindIndex(players, info => info.PositionIndex == i + 1);
+            slot.CharacterIndex = characterIndex;
+            bool hasPlayer = characterIndex >= 0;
             slot.Root.Visible = hasPlayer;
             if (!hasPlayer)
                 continue;
 
-            var info = players[i];
+            var info = players[characterIndex];
             int lifeMax = Math.Max(1, info.LifeMax);
             int life = Math.Clamp(info.Life, 0, lifeMax);
-            slot.NameLabel.Text = BuildPartyLifeSlotName(info, i);
-            slot.ValueLabel.Text = $"{life}/{lifeMax}";
+            slot.NameLabel.Text = BuildPartyLifeSlotName(info, characterIndex);
+            slot.ValueLabel.Text = $"{life} / {lifeMax}";
             slot.LifeBar.MaxValue = lifeMax;
-            slot.LifeBar.Value = life;
+            slot.DisplayLife = life;
+            slot.LifeBar.Value = life * slot.RevealFraction;
+            RefreshPartyLifeAppearance(slot, life, lifeMax);
             slot.Portrait.Texture = LoadPortraitTexture(GetMapPortraitPath(info));
-            slot.Root.TooltipText = $"{slot.NameLabel.Text}  {life}/{lifeMax}";
+            slot.StatusPanel.TooltipText = $"{slot.NameLabel.Text}  {life}/{lifeMax}\n拖动状态栏交换战斗站位";
         }
+    }
+
+    internal void RevealPartyLifeBars(Tween sequence, float delay) {
+        for (int i = 0; i < _partyLifeSlots.Count; i++) {
+            var slot = _partyLifeSlots[i];
+            if (slot.CharacterIndex < 0 || !GodotObject.IsInstanceValid(slot.LifeBar) || !slot.LifeBar.IsVisibleInTree())
+                continue;
+            SetPartyLifeReveal(slot, 0f);
+            sequence.TweenMethod(Callable.From<float>(fraction => SetPartyLifeReveal(slot, fraction)),
+                0f, 1f, 0.41f).SetDelay(delay + i * 0.045f);
+        }
+    }
+
+    internal void FinishPartyLifeReveal() {
+        foreach (var slot in _partyLifeSlots)
+            if (slot.RevealFraction < 1f) SetPartyLifeReveal(slot, 1f);
+    }
+
+    private static void SetPartyLifeReveal(PartyLifeSlot slot, float fraction) {
+        slot.RevealFraction = fraction;
+        if (GodotObject.IsInstanceValid(slot.LifeBar))
+            slot.LifeBar.Value = slot.DisplayLife * fraction;
+    }
+
+    private static void RefreshPartyLifeAppearance(PartyLifeSlot slot, int life, int lifeMax)
+    {
+        float ratio = (float)life / lifeMax;
+        Color color = ratio <= 0.25f
+            ? new Color(0.88f, 0.43f, 0.46f)
+            : ratio <= 0.5f
+                ? new Color(0.87f, 0.71f, 0.46f)
+                : new Color(0.66f, 0.82f, 0.85f);
+
+        // Each member owns its fill so a warning does not recolor the other bars.
+        if (slot.LifeFill == null
+            && slot.LifeBar.GetThemeStylebox("fill") is StyleBoxFlat fill)
+        {
+            slot.LifeFill = (StyleBoxFlat)fill.Duplicate();
+            slot.LifeBar.AddThemeStyleboxOverride("fill", slot.LifeFill);
+        }
+        if (slot.LifeFill != null)
+        {
+            slot.LifeFill.BgColor = color;
+            slot.LifeFill.BorderColor = color.Lightened(0.35f);
+        }
+        slot.ValueLabel.AddThemeColorOverride(
+            "font_color",
+            ratio <= 0.5f ? color.Lightened(0.15f) : new Color(0.9f, 0.95f, 0.96f)
+        );
+        slot.Portrait.SelfModulate = life == 0
+            ? new Color(0.55f, 0.6f, 0.64f, 0.65f)
+            : Colors.White;
     }
 
     public void RefreshDebugView()
@@ -560,8 +656,9 @@ public partial class PlayerResourceState : CanvasLayer
                 {
                     Root = root,
                     Portrait = root.GetNodeOrNull<TextureRect>(
-                        "Panel/Margin/Content/Portrait"
+                        "Panel/Margin/Content/PortraitSlot/Portrait"
                     ),
+                    StatusPanel = root.GetNode<Control>("Panel"),
                     LifeBar = root.GetNodeOrNull<ProgressBar>(
                         "Panel/Margin/Content/Body/LifeBar"
                     ),
@@ -573,7 +670,167 @@ public partial class PlayerResourceState : CanvasLayer
                     ),
                 }
             );
+            BindPartyStatusDrag(_partyLifeSlots[^1], i - 1);
         }
+    }
+
+    private void BindPartyStatusDrag(PartyLifeSlot slot, int slotIndex)
+    {
+        slot.StatusPanel.GuiInput += inputEvent =>
+        {
+            if (inputEvent is not InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
+                || _formationSettling || _formationDragIndex >= 0
+                || _activeBattleCount > 0 || MapNode?.IsMapPeekModeActive == true
+                || slot.CharacterIndex < 0)
+                return;
+
+            foreach (var entry in _partyLifeSlots)
+                entry.MoveTween?.Kill();
+            _formationDragIndex = slotIndex;
+            _formationDropIndex = -1;
+            _formationDragStart = slot.StatusPanel.GetGlobalMousePosition();
+            slot.StatusPanel.ZIndex = 30;
+            slot.StatusPanel.Modulate = new Color(0.8f, 0.95f, 1f, 0.9f);
+            SetProcessInput(true);
+            slot.StatusPanel.AcceptEvent();
+        };
+        slot.StatusPanel.VisibilityChanged += () =>
+        {
+            if (_formationDragIndex == slotIndex && !slot.StatusPanel.IsVisibleInTree())
+                CancelFormationDrag();
+        };
+    }
+
+    private void AnimateFormationPanel(PartyLifeSlot slot, Vector2 position, float duration)
+    {
+        slot.MoveTween?.Kill();
+        slot.MoveTween = CreateTween();
+        slot.MoveTween.TweenProperty(slot.StatusPanel, "position", position, duration)
+            .SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+    }
+
+    private void UpdateFormationDrag()
+    {
+        var source = _partyLifeSlots[_formationDragIndex];
+        Vector2 mouse = source.StatusPanel.GetGlobalMousePosition();
+        // Slot roots never move, so the hit areas stay fixed while the panels preview a swap.
+        AnimateFormationPanel(source, mouse - _formationDragStart, 0.06f);
+        int targetIndex = -1;
+        if (mouse.DistanceTo(_formationDragStart) >= 6f)
+        {
+            for (int i = 0; i < _partyLifeSlots.Count; i++)
+            {
+                var slot = _partyLifeSlots[i];
+                if (i != _formationDragIndex && slot.CharacterIndex >= 0
+                    && slot.Root.IsVisibleInTree() && slot.Root.GetGlobalRect().HasPoint(mouse))
+                {
+                    targetIndex = i;
+                    break;
+                }
+            }
+        }
+        if (targetIndex == _formationDropIndex)
+            return;
+
+        _formationDropIndex = targetIndex;
+        for (int i = 0; i < _partyLifeSlots.Count; i++)
+        {
+            if (i == _formationDragIndex)
+                continue;
+            var slot = _partyLifeSlots[i];
+            Vector2 destination = i == targetIndex
+                ? source.Root.GlobalPosition - slot.Root.GlobalPosition
+                : Vector2.Zero;
+            AnimateFormationPanel(slot, destination, 0.18f);
+        }
+    }
+
+    public override void _Input(InputEvent inputEvent)
+    {
+        if (_formationDragIndex < 0)
+            return;
+
+        if (inputEvent is InputEventMouseMotion)
+        {
+            UpdateFormationDrag();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (inputEvent is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false })
+        {
+            UpdateFormationDrag();
+            FinishFormationDrag(confirm: _formationDropIndex >= 0);
+            GetViewport().SetInputAsHandled();
+        }
+        else if (inputEvent is InputEventKey { Pressed: true, Keycode: Key.Escape })
+        {
+            CancelFormationDrag();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void CancelFormationDrag()
+    {
+        if (_formationDragIndex >= 0)
+            FinishFormationDrag(confirm: false);
+    }
+
+    private void FinishFormationDrag(bool confirm)
+    {
+        int sourceIndex = _formationDragIndex;
+        int targetIndex = confirm ? _formationDropIndex : -1;
+        _formationDragIndex = -1;
+        _formationDropIndex = -1;
+        SetProcessInput(false);
+        if (sourceIndex < 0)
+            return;
+
+        _formationSettling = true;
+        if (targetIndex >= 0
+            && !SetPartyFormationPosition(_partyLifeSlots[sourceIndex].CharacterIndex, targetIndex + 1))
+            targetIndex = -1;
+        _formationSettleTween?.Kill();
+        _formationSettleTween = CreateTween().SetParallel(true);
+        _formationSettleTween.SetTrans(Tween.TransitionType.Cubic).SetEase(Tween.EaseType.Out);
+        for (int i = 0; i < _partyLifeSlots.Count; i++)
+        {
+            var slot = _partyLifeSlots[i];
+            slot.MoveTween?.Kill();
+            int destinationIndex = targetIndex < 0 ? i
+                : i == sourceIndex ? targetIndex : i == targetIndex ? sourceIndex : i;
+            Vector2 destination = _partyLifeSlots[destinationIndex].Root.GlobalPosition - slot.Root.GlobalPosition;
+            _formationSettleTween.TweenProperty(slot.StatusPanel, "position", destination, 0.2f);
+            _formationSettleTween.TweenProperty(slot.StatusPanel, "modulate", Colors.White, 0.2f);
+        }
+        _formationSettleTween.Chain().TweenCallback(Callable.From(() =>
+        {
+            // Rebind characters to their fixed numbered slots only after both panels arrive.
+            foreach (var slot in _partyLifeSlots)
+            {
+                slot.StatusPanel.Position = Vector2.Zero;
+                slot.StatusPanel.ZIndex = 0;
+            }
+            _formationSettling = false;
+            _formationSettleTween = null;
+            RefreshPartyLifeResource();
+        }));
+    }
+
+    private bool SetPartyFormationPosition(int characterIndex, int positionIndex)
+    {
+        var players = GameInfo.PlayerCharacters;
+        if (_activeBattleCount > 0 || MapNode?.IsMapPeekModeActive == true
+            || players == null || characterIndex < 0 || characterIndex >= players.Length
+            || positionIndex < 1 || positionIndex > GameInfo.DefaultPlayerPartySize)
+            return false;
+
+        int previousPosition = players[characterIndex].PositionIndex;
+        int occupant = Array.FindIndex(players, info => info.PositionIndex == positionIndex);
+        if (occupant >= 0 && occupant != characterIndex)
+            players[occupant].PositionIndex = previousPosition;
+        players[characterIndex].PositionIndex = positionIndex;
+
+        GetNodeOrNull<BattlePreview>("/root/Map/SiteUI/BattlePreview")?.SetPortraitPostion();
+        return true;
     }
 
     private static string BuildPartyLifeSlotName(PlayerInfoStructure info, int index)
@@ -619,6 +876,7 @@ public partial class PlayerResourceState : CanvasLayer
 
     private void OnMenuButtonPressed()
     {
+        CancelFormationDrag();
         MenuOverlay?.Toggle();
     }
 
@@ -676,11 +934,24 @@ public partial class PlayerResourceState : CanvasLayer
 
     private void RefreshPartyStatusVisibility()
     {
+        RefreshRelicDockLayout();
         Control partyStatus = TransitionEnergyControl;
         if (partyStatus == null || !GodotObject.IsInstanceValid(partyStatus))
             return;
 
         partyStatus.Visible = _activeBattleCount == 0 && MapNode?.IsMapPeekModeActive != true;
+        if (!partyStatus.Visible)
+            CancelFormationDrag();
+    }
+
+    private void RefreshRelicDockLayout()
+    {
+        Control dock = RelicDock;
+        if (dock == null)
+            return;
+
+        _mapRelicDockTop ??= dock.OffsetTop;
+        dock.OffsetTop = _activeBattleCount > 0 ? BattleRelicDockTop : _mapRelicDockTop.Value;
     }
 
     private void RefreshMapPeekButton()
@@ -805,12 +1076,14 @@ public partial class PlayerResourceState : CanvasLayer
             return;
         }
 
+        CancelFormationDrag();
         HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("TopPartyBackplate"));
         HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("RegionLabel"));
         HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("StatusPanel"));
+        HideResourceForMapPeek(DifficultyLabel);
         HideResourceForMapPeek(TransitionEnergyControl);
         HideResourceForMapPeek(ElectricityCoinIcon);
-        HideResourceForMapPeek(RelicContainer);
+        HideResourceForMapPeek(GetNodeOrNull<CanvasItem>("RelicDock"));
         HideResourceForMapPeek(ItemContainer);
         HideResourceForMapPeek(MenuButton);
     }

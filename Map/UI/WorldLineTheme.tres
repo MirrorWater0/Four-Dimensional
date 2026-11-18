@@ -1,0 +1,83 @@
+[gd_resource type="Theme" format=3 uid="uid://bd6oom7uq27y3"]
+
+[sub_resource type="StyleBoxFlat" id="Disabled"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.6, 0.75, 0.85, 0.08)
+
+[sub_resource type="StyleBoxFlat" id="Focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 2
+border_color = Color(0.8, 0.9, 1, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="Hover"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.7, 0.86, 0.94, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="Pressed"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.7, 0.86, 0.94, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="Normal"]
+content_margin_left = 10.0
+content_margin_top = 5.0
+content_margin_right = 10.0
+content_margin_bottom = 5.0
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.65, 0.8, 0.9, 0.16)
+
+[sub_resource type="StyleBoxLine" id="Separator"]
+color = Color(0.6, 0.75, 0.86, 0.16)
+
+[sub_resource type="StyleBoxEmpty" id="Panel"]
+
+[sub_resource type="StyleBoxFlat" id="Track"]
+bg_color = Color(0.65, 0.8, 0.9, 0.14)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="Fill"]
+bg_color = Color(0.67, 0.81, 0.92, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[resource]
+default_font_size = 16
+Button/colors/font_color = Color(0.74, 0.82, 0.88, 1)
+Button/colors/font_disabled_color = Color(0.42, 0.52, 0.6, 1)
+Button/colors/font_hover_color = Color(0.94, 0.97, 1, 1)
+Button/colors/font_pressed_color = Color(0.94, 0.97, 1, 1)
+Button/styles/disabled = SubResource("Disabled")
+Button/styles/focus = SubResource("Focus")
+Button/styles/hover = SubResource("Hover")
+Button/styles/hover_pressed = SubResource("Pressed")
+Button/styles/normal = SubResource("Normal")
+Button/styles/pressed = SubResource("Pressed")
+HSeparator/styles/separator = SubResource("Separator")
+Label/colors/font_color = Color(0.85, 0.9, 0.95, 1)
+Label/colors/font_outline_color = Color(0.025, 0.04, 0.055, 0.65)
+Label/constants/outline_size = 1
+MarginContainer/constants/margin_left = 0
+MarginContainer/constants/margin_right = 0
+PanelContainer/styles/panel = SubResource("Panel")
+ProgressBar/styles/background = SubResource("Track")
+ProgressBar/styles/fill = SubResource("Fill")

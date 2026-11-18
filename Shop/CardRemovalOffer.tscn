@@ -1,0 +1,46 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="1"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="2"]
+
+[sub_resource type="StyleBoxEmpty" id="Action"]
+content_margin_left = 12.0
+content_margin_top = 16.0
+content_margin_right = 128.0
+content_margin_bottom = 16.0
+
+[node name="CardRemovalOffer" type="Button"]
+custom_minimum_size = Vector2(296, 68)
+size_flags_horizontal = 3
+focus_mode = 0
+mouse_default_cursor_shape = 2
+theme = ExtResource("1")
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("Action")
+theme_override_styles/hover = SubResource("Action")
+theme_override_styles/pressed = SubResource("Action")
+theme_override_styles/disabled = SubResource("Action")
+theme_override_styles/focus = SubResource("Action")
+text = "战术清理"
+alignment = 0
+clip_text = true
+
+[node name="Price" type="Label" parent="."]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -124.0
+offset_top = -14.0
+offset_right = -12.0
+offset_bottom = 14.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.84, 0.8, 0.67, 1)
+theme_override_font_sizes/font_size = 14
+text = "80 电力币"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="ActionFeedback" parent="." instance=ExtResource("2")]
+layout_mode = 1

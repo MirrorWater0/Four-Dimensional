@@ -140,6 +140,14 @@ public partial class Battle
     {
         var state = new Dictionary<string, object>
         {
+            ["installedActions"] = character is PlayerCharacter actionOwner
+                ? GetInstalledActionCards(actionOwner).Select(entry => new Dictionary<string, object> {
+                    ["instanceId"] = entry.Skill.BattleCardInstanceId,
+                    ["skillId"] = entry.Skill.SkillId?.ToString(),
+                    ["name"] = entry.Skill.SkillName,
+                    ["friendlyTarget"] = CharacterAutomationId(entry.FriendlyTarget),
+                    ["paidEnergy"] = entry.PaidEnergy,
+                }).ToArray() : Array.Empty<object>(),
             ["id"] = CharacterAutomationId(character),
             ["name"] = GetRecordCharacterName(character),
             ["type"] = character.GetType().Name,
@@ -190,7 +198,11 @@ public partial class Battle
             ["requiresManualFriendlyTarget"] = skill.RequiresManualFriendlyTarget(),
             ["manualFriendlyExcludesSelf"] = skill.ManualFriendlyTargetExcludesSelf(),
             ["manualFriendlyAllowsDying"] = skill.ManualFriendlyTargetAllowsDying(),
+            ["isActionCard"] = skill.IsActionCard,
+            ["installed"] = IsActionCardInstalled(skill),
             ["exhaustsAfterUse"] = skill.ExhaustsAfterUse,
+            ["exhaustExecutionLimit"] = skill.ExhaustExecutionLimit,
+            ["remainingExecutions"] = skill.RemainingExecutions,
             ["retainsAtTurnEnd"] = ShouldShowRetainKeyword(skill),
             ["preview"] = BuildSkillPreviewAutomationState(skill),
         };

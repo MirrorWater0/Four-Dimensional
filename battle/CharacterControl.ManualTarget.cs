@@ -21,8 +21,10 @@ public partial class CharacterControl
         DetachDrawEntryForInteraction(index, card);
         SuppressCardButtonPressForCurrentLeftPress();
         _liftedCardIndex = index;
+        BattleNode?.ActionCardsUi?.ClearHoverPreviews();
         _liftedCardSkill = skill;
         _liftedCard = card;
+        BattleNode?.ActionCardsUi?.ShowReplacementPreview(skill);
         AudioManager.PlayCardPickup(card);
         _liftedCardMouseOffset = GetSkillCardCenterOffset(card);
         SetHandInputBlockerVisible(true);
@@ -73,6 +75,7 @@ public partial class CharacterControl
 
     private void ClearLiftedCard(bool instant)
     {
+        BattleNode?.ActionCardsUi?.ShowReplacementPreview(null);
         if (_liftedCardIndex == -1)
         {
             UpdateProcessState();
@@ -84,7 +87,7 @@ public partial class CharacterControl
         Skill skill = _liftedCardSkill;
         if (skill == null && hand != null && index < hand.Length)
             skill = hand[index];
-        skill?.ClearManualFriendlyTarget();
+        skill?.ClearManualTargetSelection();
         SyncLiftedSlotPositionToCard(index);
         _liftedCardIndex = -1;
         _liftedCardSkill = null;
@@ -195,6 +198,14 @@ public partial class CharacterControl
         SetCardHoverUiEnabled(false);
         HideAllCardHoverPreviews();
 
+        if (BattleNode != null)
+        {
+            foreach (bool isPlayer in new[] { true, false })
+                foreach (Character character in BattleNode.GetTeamCharacters(isPlayer, includeSummons: true))
+                    if (GodotObject.IsInstanceValid(character))
+                        character.SuppressHoverTooltipsForTargetSelection();
+        }
+
         for (int i = 0; i < _cards.Length; i++)
         {
             SkillCard card = _cards[i];
@@ -214,6 +225,7 @@ public partial class CharacterControl
         if (MobilePlatform.IsTouchPrimary || _manualTargetArrowMouseHidden)
             return;
 
+        GetTree()?.Root.GetNodeOrNull<MouseTrail>("MouseTrail")?.SetCursorSuppressed(true);
         _manualTargetArrowPreviousMouseMode = Input.MouseMode;
         Input.MouseMode = Input.MouseModeEnum.Hidden;
         _manualTargetArrowMouseHidden = true;
@@ -221,6 +233,7 @@ public partial class CharacterControl
 
     private void RestoreMouseAfterManualTargetArrowSelection()
     {
+        GetTree()?.Root.GetNodeOrNull<MouseTrail>("MouseTrail")?.SetCursorSuppressed(false);
         if (!_manualTargetArrowMouseHidden)
             return;
 
@@ -278,58 +291,54 @@ public partial class CharacterControl
         WireBattleCard(card, index);
     }
 
-    private async Task<bool> SelectManualFriendlyTargetIfNeededAsync(QueuedCardPlay play)
+    private async Task<bool> SelectManualTargetIfNeededAsync(QueuedCardPlay play)
     {
-        if (play?.Skill?.RequiresManualFriendlyTarget() != true)
+        if (play?.Skill?.RequiresManualTargetSelection() != true)
             return true;
 
-        if (play.Skill.HasManualFriendlyTarget())
+        if (play.Skill.HasManualTargetSelection())
             return true;
 
-        Character[] candidates = GetManualFriendlyTargetCandidates(play.Skill);
+        Character[] candidates = GetManualTargetCandidates(play.Skill);
         if (candidates.Length == 0)
             return true;
 
-        if (play.IsTemporaryCard)
+        if (play.IsDrawPileCard || (play.IsTemporaryCard && !play.Skill.RequiresManualHostileTarget()))
         {
-            if (play.Skill.TryGetManualFriendlyCarrySkillType(out Skill.SkillTypes carrySkillType))
-            {
-                Character[] drawableCandidates = GetDrawableManualFriendlyTargetCandidates(
-                    candidates,
-                    carrySkillType
-                );
-                if (drawableCandidates.Length > 0)
-                    candidates = drawableCandidates;
-            }
-
-            Random rng = BattleNode?.BattleIntentionRandom ?? new Random();
+            Random rng = BattleNode?.GetTargetRandom(play.Skill.OwnerCharater) ?? new Random();
             Character randomTarget = candidates[rng.Next(candidates.Length)];
-            play.Skill.SetManualFriendlyTarget(randomTarget);
-            return play.Skill.HasManualFriendlyTarget();
+            play.Skill.SetManualTargetSelection(randomTarget);
+            return play.Skill.HasManualTargetSelection();
         }
 
         Character target = await ShowManualTargetArrowPickerAsync(play.Skill, play.Card);
         if (target == null || !GodotObject.IsInstanceValid(target))
             return false;
 
-        play.Skill.SetManualFriendlyTarget(target);
-        return play.Skill.HasManualFriendlyTarget();
+        play.Skill.SetManualTargetSelection(target);
+        return play.Skill.HasManualTargetSelection();
     }
 
-    private bool HasManualFriendlyTargetCandidates(Skill skill)
+    private bool HasManualTargetCandidates(Skill skill)
     {
-        return GetManualFriendlyTargetCandidates(skill).Length > 0;
+        return GetManualTargetCandidates(skill).Length > 0;
     }
 
     private static bool ShouldUseManualTargetArrowSelection(Skill skill)
     {
-        return skill?.RequiresManualFriendlyTarget() == true;
+        return skill?.RequiresManualTargetSelection() == true;
     }
 
-    private Character[] GetManualFriendlyTargetCandidates(Skill skill)
+    private Character[] GetManualTargetCandidates(Skill skill)
     {
         if (skill?.OwnerCharater == null || BattleNode == null)
             return Array.Empty<Character>();
+
+        if (skill.RequiresManualHostileTarget()) {
+            Character[] enemies = skill.GetManualHostileTargetCandidates();
+            Array.Sort(enemies, CompareTargetPosition);
+            return enemies;
+        }
 
         bool excludeSelf = skill.ManualFriendlyTargetExcludesSelf();
         bool allowDying = skill.ManualFriendlyTargetAllowsDying();
@@ -355,9 +364,6 @@ public partial class CharacterControl
                 candidates[write++] = character;
         }
 
-        if (skill.TryGetManualFriendlyCarrySkillType(out Skill.SkillTypes carrySkillType))
-            candidates = GetDrawableManualFriendlyTargetCandidates(candidates, carrySkillType);
-
         Array.Sort(candidates, CompareTargetPosition);
         return candidates;
     }
@@ -373,44 +379,6 @@ public partial class CharacterControl
             && GodotObject.IsInstanceValid(character)
             && (allowDying || character.State != Character.CharacterState.Dying)
             && (!excludeSelf || !ReferenceEquals(character, owner));
-    }
-
-    private Character[] GetDrawableManualFriendlyTargetCandidates(
-        Character[] candidates,
-        Skill.SkillTypes carrySkillType
-    )
-    {
-        if (candidates == null || candidates.Length == 0)
-            return Array.Empty<Character>();
-
-        int count = 0;
-        for (int i = 0; i < candidates.Length; i++)
-        {
-            if (
-                candidates[i] is PlayerCharacter player
-                && BattleNode?.HasDrawablePlayerCarrySkill(player, carrySkillType) == true
-            )
-            {
-                count++;
-            }
-        }
-        if (count == 0)
-            return Array.Empty<Character>();
-
-        var drawableCandidates = new Character[count];
-        int write = 0;
-        for (int i = 0; i < candidates.Length; i++)
-        {
-            if (
-                candidates[i] is PlayerCharacter player
-                && BattleNode?.HasDrawablePlayerCarrySkill(player, carrySkillType) == true
-            )
-            {
-                drawableCandidates[write++] = candidates[i];
-            }
-        }
-
-        return drawableCandidates;
     }
 
     private void EnsureManualTargetArrowUi()
@@ -445,7 +413,7 @@ public partial class CharacterControl
             return null;
 
         Character owner = skill.OwnerCharater;
-        Character[] targets = GetManualFriendlyTargetCandidates(skill);
+        Character[] targets = GetManualTargetCandidates(skill);
         if (targets.Length == 0)
             return null;
         ShowManualRebirthTargetPreviews(skill, targets);
@@ -461,9 +429,13 @@ public partial class CharacterControl
         _manualTargetArrowCardIndex = sourceCardIndex;
         _manualTargetArrowSourcePosition = null;
         _manualTargetArrowSourceTangent = null;
-        _manualTargetArrowStatusText = "选择一名己方角色";
+        _manualTargetArrowStatusText = skill.RequiresManualHostileTarget()
+            ? I18n.Tr("battle.manual_target.choose_enemy", "选择一名敌方目标")
+            : "选择一名己方角色";
         _manualTargetArrowSelectionActive = true;
         _manualTargetArrowPlayedCard = playedCard;
+        if (playedCard != null && GodotObject.IsInstanceValid(playedCard))
+            playedCard.SetPlayableHighlight(true, instant: true);
         SuppressHandInteractionForManualTargetSelection();
         _hoveredCardIndex = -1;
         ShowCardEnergyPreview(skill);
@@ -473,7 +445,7 @@ public partial class CharacterControl
             _manualTargetArrowMask.MouseFilter = MouseFilterEnum.Ignore;
         if (_manualTargetArrowHintLabel != null)
             _manualTargetArrowHintLabel.Text = _manualTargetArrowStatusText;
-        _statusLabel.Text = "选择一名己方角色";
+        _statusLabel.Text = _manualTargetArrowStatusText;
         SetManualTargetArrowHoveredTarget(GetDefaultManualTargetArrowTarget(owner, targets));
         ShowCardEnergyPreview(skill);
         if (sourceCardIndex >= 0 && IsCardIndexValid(sourceCardIndex))
@@ -647,9 +619,11 @@ public partial class CharacterControl
             GetManualTargetArrowStartTangent(startPosition, mousePosition, owner, playedCard),
             GetManualTargetArrowEndTangent(startPosition, mousePosition)
         );
-        Character hoveredTarget = ResolveManualTargetArrowHoveredTarget(mousePosition);
-        if (hoveredTarget != null)
-            SetManualTargetArrowHoveredTarget(hoveredTarget);
+        if (_manualTargetArrowLastPointerPosition != mousePosition)
+        {
+            _manualTargetArrowLastPointerPosition = mousePosition;
+            SetManualTargetArrowHoveredTarget(ResolveManualTargetArrowHoveredTarget(mousePosition));
+        }
     }
 
     public void NotifyManualTargetHover(Character target, bool hovered)
@@ -657,11 +631,9 @@ public partial class CharacterControl
         if (!_manualTargetArrowSelectionActive || !IsManualTargetArrowCandidate(target))
             return;
 
-        Character nextHoveredTarget = hovered ? target : null;
-        if (!hovered && _manualTargetArrowHoveredTarget != target)
-            return;
-
-        SetManualTargetArrowHoveredTarget(nextHoveredTarget);
+        SetManualTargetArrowHoveredTarget(
+            ResolveManualTargetArrowHoveredTarget(GetViewport().GetMousePosition())
+        );
     }
 
     public bool TrySelectManualTargetFromCharacter(Character target)
@@ -902,15 +874,21 @@ public partial class CharacterControl
 
     private static bool IsMouseOverManualTargetCandidate(Character target, Vector2 mousePosition)
     {
+        // Intersect a circle at the arrow tip with the character's unchanged hit rectangle.
+        const float arrowPointerRadius = 50f;
         if (target?.Hoverframe != null && GodotObject.IsInstanceValid(target.Hoverframe))
         {
-            Rect2 rect = target.Hoverframe.GetGlobalRect().Grow(10f);
-            if (rect.HasPoint(mousePosition))
-                return true;
+            Rect2 rect = target.Hoverframe.GetGlobalRect();
+            Vector2 nearestPoint = new(
+                Mathf.Clamp(mousePosition.X, rect.Position.X, rect.End.X),
+                Mathf.Clamp(mousePosition.Y, rect.Position.Y, rect.End.Y)
+            );
+            return nearestPoint.DistanceSquaredTo(mousePosition)
+                <= arrowPointerRadius * arrowPointerRadius;
         }
 
         return GetManualTargetCandidateScreenCenter(target).DistanceSquaredTo(mousePosition)
-            <= 140f * 140f;
+            <= arrowPointerRadius * arrowPointerRadius;
     }
 
     private static Vector2 GetManualTargetCandidateScreenCenter(Character target)
@@ -1112,16 +1090,16 @@ public partial class CharacterControl
         HideManualTargetArrowEffectPreview();
         if (!_manualTargetArrowSelectionActive || _manualTargetArrowSkill == null)
         {
-            _manualTargetArrowSkill?.ClearManualFriendlyTarget();
+            _manualTargetArrowSkill?.ClearManualTargetSelection();
             return;
         }
 
         if (hoveredTarget != null && GodotObject.IsInstanceValid(hoveredTarget))
-            _manualTargetArrowSkill.SetManualFriendlyTarget(hoveredTarget);
+            _manualTargetArrowSkill.SetManualTargetSelection(hoveredTarget);
         else
-            _manualTargetArrowSkill.ClearManualFriendlyTarget();
+            _manualTargetArrowSkill.ClearManualTargetSelection();
 
-        if (hoveredTarget != null && !_manualTargetArrowSkill.HasManualFriendlyTarget())
+        if (hoveredTarget != null && !_manualTargetArrowSkill.HasManualTargetSelection())
             return;
 
         CardEffectPreviewSnapshot snapshot = CardEffectPreviewEcs.GetSnapshot(
@@ -1487,8 +1465,11 @@ public partial class CharacterControl
             Material localMaterial = (Material)material.Duplicate();
             localMaterial.ResourceLocalToScene = true;
             canvas.Material = localMaterial;
-            if (localMaterial is ShaderMaterial shaderMaterial)
+            if (localMaterial is ShaderMaterial shaderMaterial) {
                 shaderMaterial.SetShaderParameter("progress", 0f);
+                if (shaderMaterial.Shader?.ResourcePath == "res://shader/Charater.gdshader")
+                    shaderMaterial.SetShaderParameter("arrival_phase", 1f);
+            }
         }
 
         if (renderSprite.GetClass() != "SpineSprite")
@@ -1504,8 +1485,11 @@ public partial class CharacterControl
         Material localNormalMaterial = (Material)normalMaterial.Duplicate();
         localNormalMaterial.ResourceLocalToScene = true;
         renderSprite.Set("normal_material", localNormalMaterial);
-        if (localNormalMaterial is ShaderMaterial localShaderMaterial)
+        if (localNormalMaterial is ShaderMaterial localShaderMaterial) {
             localShaderMaterial.SetShaderParameter("progress", 0f);
+            if (localShaderMaterial.Shader?.ResourcePath == "res://shader/Effect/SpineCharacter.gdshader")
+                localShaderMaterial.SetShaderParameter("arrival_phase", 1f);
+        }
     }
 
     private void OnManualTargetArrowMaskGuiInput(InputEvent @event)
@@ -1525,6 +1509,9 @@ public partial class CharacterControl
         if (mouseButton.ButtonIndex == MouseButton.Left)
         {
             UpdateManualTargetArrowVisual();
+            SetManualTargetArrowHoveredTarget(
+                ResolveManualTargetArrowHoveredTarget(mouseButton.Position)
+            );
             if (
                 _manualTargetArrowHoveredTarget != null
                 && GodotObject.IsInstanceValid(_manualTargetArrowHoveredTarget)
@@ -1556,12 +1543,13 @@ public partial class CharacterControl
         HideManualTargetArrowPreviews();
         HideManualTargetArrowEffectPreview();
         if (wasArrowSelectionActive)
-            _manualTargetArrowSkill?.ClearManualFriendlyTarget();
+            _manualTargetArrowSkill?.ClearManualTargetSelection();
         if (wasArrowSelectionActive)
             RestoreMouseAfterManualTargetArrowSelection();
         if (wasArrowSelectionActive)
             SetCardHoverUiEnabled(true);
         _manualTargetArrowTargets = Array.Empty<Character>();
+        _manualTargetArrowLastPointerPosition = null;
         _manualTargetArrowOwner = null;
         _manualTargetArrowHoveredTarget = null;
         _manualTargetArrowSkill = null;
@@ -1585,6 +1573,8 @@ public partial class CharacterControl
         )
         {
             _manualTargetArrowPlayedCard.Visible = true;
+            if (!resetArrowCardVisual)
+                _manualTargetArrowPlayedCard.SetPlayableHighlight(false, instant: true);
         }
         _manualTargetArrowPlayedCard = null;
         if (wasArrowSelectionActive && resetArrowCardVisual)

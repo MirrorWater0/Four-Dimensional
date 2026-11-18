@@ -8,7 +8,7 @@ public partial class Tip : Control
     public const string TipLayerName = "TipLayer";
     public const int TipLayerOrder = 200;
 
-    private static readonly Vector2 BackgroundPadding = new Vector2(28f, 24f);
+    private static readonly Vector2 BackgroundPadding = new Vector2(40f, 40f);
     private static readonly Color DefaultTextColor = new Color(0.88f, 0.9f, 0.92f, 0.96f);
     private static readonly Color DefaultOutlineColor = new Color(0f, 0f, 0f, 0f);
     private const float FadeInDuration = 0.12f;
@@ -55,6 +55,9 @@ public partial class Tip : Control
     public Vector2 ContentPadding = BackgroundPadding;
 
     private int _sceneFontSize;
+    private int _sceneBoldFontSize;
+    private int _sceneItalicsFontSize;
+    private int _sceneBoldItalicsFontSize;
     private int NormalFontSize => _sceneFontSize;
 
     private Vector2 _manualAnchorPosition = Vector2.Zero;
@@ -84,6 +87,9 @@ public partial class Tip : Control
     public override void _Ready()
     {
         _sceneFontSize = Description.GetThemeFontSize("normal_font_size");
+        _sceneBoldFontSize = Description.GetThemeFontSize("bold_font_size");
+        _sceneItalicsFontSize = Description.GetThemeFontSize("italics_font_size");
+        _sceneBoldItalicsFontSize = Description.GetThemeFontSize("bold_italics_font_size");
         EnsureTipLayerOrder();
 
         if (Description != null)
@@ -334,6 +340,8 @@ public partial class Tip : Control
             return;
 
         ApplyDescriptionTheme();
+        // Keep the scene's symmetric inset when callers change the padding.
+        Description.Position = ContentPadding * 0.5f;
         float preferredContentWidth = GetPreferredContentWidth();
         Description.CustomMinimumSize = new Vector2(preferredContentWidth, 0);
         Description.Size = new Vector2(preferredContentWidth, 0);
@@ -367,6 +375,9 @@ public partial class Tip : Control
         Description.CustomMinimumSize = new Vector2(GetPreferredContentWidth(), 0);
         // Accessibility text scaling is the only runtime font adjustment.
         Description.AddThemeFontSizeOverride("normal_font_size", UserSettings.ScaleTextFontSize(_sceneFontSize));
+        Description.AddThemeFontSizeOverride("bold_font_size", UserSettings.ScaleTextFontSize(_sceneBoldFontSize));
+        Description.AddThemeFontSizeOverride("italics_font_size", UserSettings.ScaleTextFontSize(_sceneItalicsFontSize));
+        Description.AddThemeFontSizeOverride("bold_italics_font_size", UserSettings.ScaleTextFontSize(_sceneBoldItalicsFontSize));
     }
 
     private float GetPreferredContentWidth()

@@ -1408,6 +1408,51 @@
       "Colorless": false,
       "Managed": "generated",
       "ImplementationClass": "SacredLink"
+    },
+    {
+      "EnumName": "DeathDisarm",
+      "Id": 185,
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "DeathDisarm"
+    },
+    {
+      "EnumName": "BattleCommand",
+      "Id": 186,
+      "Player": "Kasiya",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "BattleCommand"
+    },
+    {
+      "EnumName": "FinalResonance",
+      "Id": 187,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "FinalResonance"
+    },
+    {
+      "EnumName": "HarmonicBarrier",
+      "Id": 188,
+      "Player": "Echo",
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "HarmonicBarrier"
+    },
+    {
+      "EnumName": "RedHuskAttack2",
+      "Id": 189,
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "RedHuskAttack2"
+    },
+    {
+      "EnumName": "DeathFortify",
+      "Id": 190,
+      "Colorless": false,
+      "Managed": "generated",
+      "ImplementationClass": "DeathFortify"
     }
   ]
 }

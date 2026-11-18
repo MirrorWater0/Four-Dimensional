@@ -116,7 +116,7 @@ public partial class GameStatistics : CanvasLayer
     private readonly Skill.SkillTypes[] _skillTypes =
     [
         Skill.SkillTypes.Attack,
-        Skill.SkillTypes.Survive,
+        Skill.SkillTypes.Permanent,
         Skill.SkillTypes.Special,
         Skill.SkillTypes.Ability,
     ];
@@ -1737,7 +1737,7 @@ public partial class GameStatistics : CanvasLayer
         return type switch
         {
             Skill.SkillTypes.Attack => new Color(1.00f, 0.48f, 0.36f, 1f),
-            Skill.SkillTypes.Survive => new Color(0.42f, 0.78f, 1.00f, 1f),
+            Skill.SkillTypes.Permanent => new Color(0.42f, 0.78f, 1.00f, 1f),
             Skill.SkillTypes.Special => new Color(0.86f, 0.72f, 1.00f, 1f),
             Skill.SkillTypes.Ability => new Color(1.00f, 0.82f, 0.38f, 1f),
             _ => new Color(0.82f, 0.86f, 0.92f, 1f),
@@ -1749,7 +1749,7 @@ public partial class GameStatistics : CanvasLayer
         return type switch
         {
             Skill.SkillTypes.Attack => I18n.Tr("skill_type.attack", "攻击"),
-            Skill.SkillTypes.Survive => I18n.Tr("skill_type.survive", "生存"),
+            Skill.SkillTypes.Permanent => I18n.Tr("skill_type.permanent", "常驻"),
             Skill.SkillTypes.Special => I18n.Tr("skill_type.special", "特殊"),
             Skill.SkillTypes.Ability => I18n.Tr("skill_type.ability", "能力"),
             Skill.SkillTypes.Status => I18n.Tr("ui.encyclopedia.skill_type.status", "状态"),

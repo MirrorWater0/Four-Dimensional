@@ -348,9 +348,7 @@ public partial class CharacterControl
         Battle.BattleCardPileEntry[] pile = GetPileEntriesForSelection(player, kind);
         if (visibleCardCount > 0 && pile.Length > visibleCardCount)
             pile = pile.Take(visibleCardCount).ToArray();
-        int availableCount = action == PileCardSelectionAction.MoveToHand
-            ? Math.Min(pile.Length, BattleNode.GetPlayerTeamBattleHandEmptySlotCount())
-            : pile.Length;
+        int availableCount = pile.Length;
         if (availableCount <= 0)
             return 0;
 

@@ -32,29 +32,17 @@ public partial class Skill
             ["EternalDarkSkill"] = SkillID.EternalDark,
         };
 
-    // Keep old numeric IDs for saves, while removing player attack cards from every factory/pool.
-    private static readonly HashSet<SkillID> UnregisteredAttackCards = new();
+    private static readonly Dictionary<SkillID, Type> SkillImplementationTypes = new();
+    private static readonly Dictionary<SkillID, Func<Skill>> SkillFactories = BuildSkillFactories();
 
-    private static readonly Dictionary<SkillID, Func<Skill>> SkillFactories =
-        BuildSkillFactories();
-
-    static Skill()
-    {
-        // Build all factories before inspecting card types: descriptions can create related cards.
-        foreach (var pair in SkillFactories)
-        {
-            FieldInfo idField = typeof(SkillID).GetField(pair.Key.ToString());
-            bool isPlayerCard = idField?.GetCustomAttribute<PlayerSkillAttribute>() != null
-                || idField?.GetCustomAttribute<ColorlessSkillAttribute>() != null;
-            if (isPlayerCard && pair.Value().SkillType == SkillTypes.Attack)
-                UnregisteredAttackCards.Add(pair.Key);
-        }
-        foreach (SkillID id in UnregisteredAttackCards)
-            SkillFactories.Remove(id);
-    }
+    internal static Type GetTuningImplementationType(SkillID id) =>
+        SkillImplementationTypes.GetValueOrDefault(ResolveTuningId(id));
 
     public static bool IsSkillRegistered(SkillID skillId) =>
         SkillFactories.ContainsKey(SkillIdAliases.TryGetValue(skillId, out var alias) ? alias : skillId);
+
+    internal static SkillID ResolveTuningId(SkillID skillId) =>
+        SkillIdAliases.TryGetValue(skillId, out var alias) ? alias : skillId;
 
     public static Skill GetSkill(SkillID skillID)
     {
@@ -77,6 +65,7 @@ public partial class Skill
 
         skill = factory();
         skill.SkillId = skillID;
+        skill.UpdateDescription();
         return true;
     }
 
@@ -112,6 +101,7 @@ public partial class Skill
             }
 
             Type implementationType = type;
+            SkillImplementationTypes[skillId] = implementationType;
             factories[skillId] = () => (Skill)Activator.CreateInstance(implementationType);
         }
 
@@ -157,7 +147,7 @@ public partial class Skill
             SkillID resolvedId = SkillIdAliases.TryGetValue(skillId, out SkillID alias)
                 ? alias
                 : skillId;
-            if (!factories.ContainsKey(resolvedId) && !UnregisteredAttackCards.Contains(resolvedId))
+            if (!factories.ContainsKey(resolvedId))
                 GD.PushWarning($"Skill registry missing implementation for {skillId}");
         }
     }

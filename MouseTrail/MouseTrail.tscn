@@ -7,31 +7,33 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_cpg7l"]
 resource_local_to_scene = true
 shader = ExtResource("3_ecg7h")
-shader_parameter/face_color = Color(0.93, 0.96, 0.98, 1)
-shader_parameter/facet_color = Color(0.45, 0.7, 0.82, 1)
-shader_parameter/edge_color = Color(0.08, 0.14, 0.2, 1)
-shader_parameter/accent_color = Color(0.93, 0.82, 0.59, 1)
+shader_parameter/face_color = Color(0.97, 0.77, 0.26, 1)
+shader_parameter/edge_color = Color(0.73, 0.5621, 0.2263, 1)
+shader_parameter/accent_color = Color(1, 0.91, 0.55, 1)
+shader_parameter/outline_width = 0.90000001341108
+shader_parameter/triangle_gap_pixels = 0.60000000894072
+shader_parameter/tilt_degrees = -46.99999801814039
+shader_parameter/offset_pixels = Vector2(-25, 0)
+shader_parameter/press_amount = 0.0
+shader_parameter/burst_amount = 0.0
+shader_parameter/motion_amount = 0.0
 
 [node name="MouseTrail" type="CanvasLayer" unique_id=695303506]
 process_mode = 3
 layer = 1000
 script = ExtResource("1_bf3sd")
-_cursorHotspot = Vector2(8, 8)
 
-[node name="TrailVisual" type="Node2D" parent="."]
+[node name="TrailVisual" type="Node2D" parent="." unique_id=511056640]
 z_index = 10
 script = ExtResource("2_trail")
-TrailLifetime = 0.22
-MaxTrailLength = 150.0
-PointSpacing = 4.0
-TrailColor = Color(0.58, 0.82, 0.94, 1)
-HighlightColor = Color(0.93, 0.97, 1, 1)
-ClickColor = Color(0.93, 0.82, 0.59, 1)
+TrailColor = Color(1, 1, 1, 1)
+HighlightColor = Color(1, 0.89, 0.48, 1)
+ClickColor = Color(0.73637766, 0.8157918, 0.8849431, 1)
 
 [node name="Cursor" type="ColorRect" parent="." unique_id=1465019521]
 top_level = true
 z_index = 20
 material = SubResource("ShaderMaterial_cpg7l")
-offset_right = 48.0
-offset_bottom = 48.0
+offset_right = 70.0
+offset_bottom = 70.0
 mouse_filter = 2

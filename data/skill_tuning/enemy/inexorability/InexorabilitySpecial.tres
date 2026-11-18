@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "InexorabilitySpecial"
+DisplayName = "终局律令"
+Values = Dictionary[String, int]({
+"BaseDamage": 14,
+"EnemyEnergyCost": 5,
+"EnergyCost": 5,
+"ExhaustAfterExecutions": 0,
+"HitCount": 1,
+"PowerMultiplier": 1
+})

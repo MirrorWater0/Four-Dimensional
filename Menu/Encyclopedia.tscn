@@ -6,6 +6,9 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="4_serif"]
 [ext_resource type="Script" uid="uid://kssfc5b1jusw" path="res://Menu/SettingsDropdown.cs" id="21_settings_dropdown"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_starbg"]
 shader = ExtResource("2_starbg")
 shader_parameter/bg_color_top = Color(0.06, 0.065, 0.075, 1)
@@ -116,6 +119,14 @@ height = 540
 fill = 1
 fill_from = Vector2(0.5, 0.5)
 fill_to = Vector2(1, 0.5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tuning_panel"]
+bg_color = Color(0.075, 0.08, 0.095, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.62, 0.7, 0.28)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_corner_tl"]
 bg_color = Color(1, 1, 1, 0)
@@ -740,6 +751,230 @@ size_flags_vertical = 3
 theme_override_font_sizes/normal_font_size = 18
 bbcode_enabled = true
 text = "请选择一个条目。"
+
+[node name="TuningPanel" type="PanelContainer" parent="ScreenMargin/Root/Body/Content/Split"]
+visible = false
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tuning_panel")
+
+[node name="Margin" type="MarginContainer" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Root" type="VBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Heading" type="Label" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "卡牌数值"
+
+[node name="Hint" type="Label" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "点击卡牌编辑，或在下方选择其他牌。\n应用后生效，保存后下次启动仍有效。"
+autowrap_mode = 2
+
+[node name="CardChoice" type="OptionButton" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+fit_to_longest_item = false
+text_overrun_behavior = 3
+
+[node name="Preview" type="RichTextLabel" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = "选择卡牌查看当前效果。"
+
+[node name="FieldsScroll" type="ScrollContainer" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 160)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Fields" type="VBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/FieldsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Message" type="Label" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.83, 0.9, 1)
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Apply" type="Button" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/Actions"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "应用"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/Actions/Apply" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
+
+[node name="Save" type="Button" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/Actions"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "保存"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/Actions/Save" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
+
+[node name="Restore" type="Button" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "恢复项目数值"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/TuningPanel/Margin/Root/Restore" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
+
+[node name="EnemyPanel" type="PanelContainer" parent="ScreenMargin/Root/Body/Content/Split"]
+visible = false
+custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tuning_panel")
+
+[node name="Margin" type="MarginContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="Root" type="VBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "敌人档案与数值"
+
+[node name="Hint" type="Label" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 15
+text = "点击下方技能名称编辑伤害、层数等数值。\n应用后生效，保存后下次启动仍有效。"
+autowrap_mode = 2
+
+[node name="Overview" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Portrait" type="TextureRect" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Overview"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Detail" type="RichTextLabel" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Overview"]
+layout_mode = 2
+size_flags_horizontal = 3
+bbcode_enabled = true
+theme_override_font_sizes/normal_font_size = 16
+text = "选择敌人查看属性、被动和技能。"
+
+[node name="EditSections" type="HFlowContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+
+[node name="EditHeading" type="Label" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "基础属性与被动"
+autowrap_mode = 2
+
+[node name="FieldsScroll" type="ScrollContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Fields" type="VBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/FieldsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Message" type="Label" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.83, 0.9, 1)
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Apply" type="Button" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Actions"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "应用"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Actions/Apply" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
+
+[node name="Save" type="Button" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Actions"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "保存"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Actions/Save" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
+
+[node name="Restore" type="Button" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root"]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+text = "恢复项目数值"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="ScreenMargin/Root/Body/Content/Split/EnemyPanel/Margin/Root/Restore" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="Vignette" type="TextureRect" parent="." unique_id=1815377657]
 visible = false

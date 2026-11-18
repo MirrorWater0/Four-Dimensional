@@ -58,6 +58,9 @@ public partial class Skill
 
         [Description("能力")]
         Ability = 5,
+
+        [Description("常驻")]
+        Permanent = 6,
     }
 
     private string _skillName;
@@ -80,11 +83,13 @@ public partial class Skill
     public Character OwnerCharater;
     public SkillID? SkillId { get; internal set; }
     public ulong BattleCardInstanceId { get; internal set; }
-    public virtual int EnergyCost => GetDefaultEnergyCost();
-    public virtual int EnemySpecialIntentionCooldown => SkillType == SkillTypes.Special ? 1 : 0;
-    public virtual bool ExhaustsAfterUse => false;
+    public virtual int EnergyCost => V((OwnerCharater != null ? !OwnerCharater.IsPlayer : !_previewIsPlayer)
+        ? "EnemyEnergyCost" : nameof(EnergyCost));
+    public virtual int ExhaustAfterExecutions => V(nameof(ExhaustAfterExecutions));
+    public bool ExhaustsAfterUse => ExhaustAfterExecutions > 0;
     public virtual bool ExhaustsAtTurnEndInHand => false;
     public virtual bool IntrinsicRetainsAtTurnEndInHand => false;
+    public virtual bool HasImmediateKeyword => HasBattleCardKeyword(BattleCardKeyword.Immediate);
     public virtual bool RetainsAtTurnEndInHand =>
         IntrinsicRetainsAtTurnEndInHand || HasToolboxRetainFeature() || HasBattleRetainFeature();
     public virtual bool TriggersAtTurnEndInHand => false;
@@ -115,6 +120,9 @@ public partial class Skill
 
         public override SkillTypes SkillType => _skillType;
 
+        public override int EnergyCost => 0;
+        public override int ExhaustAfterExecutions => 0;
+
         protected override SkillPlan BuildPlan() => null;
     }
 
@@ -134,8 +142,15 @@ public partial class Skill
         return I18n.ToSnakeCase(GetType().Name);
     }
 
-    public virtual async Task Effect()
+    public virtual Task Effect() => OwnerCharater?.BattleNode is Battle battle
+        ? battle.ExecuteBattleEffectAsync(ExecuteEffectAsync, SkillName)
+        : ExecuteEffectAsync();
+
+    private async Task ExecuteEffectAsync()
     {
+        if (OwnerCharater == null || !GodotObject.IsInstanceValid(OwnerCharater)
+            || OwnerCharater.BattleNode?.ShouldAbortSkillResolution() == true)
+            return;
         using var _ = OwnerCharater?.BattleNode?.PushEffectSource(OwnerCharater, SkillName);
         bool effectExecuted = false;
         try
@@ -155,43 +170,72 @@ public partial class Skill
                 }
             }
 
+            Battle actionBattle = OwnerCharater?.BattleNode;
+            bool installsAction = IsActionCard && OwnerCharater is PlayerCharacter
+                && actionBattle != null && !actionBattle.IsResolvingActionCards;
+            if (installsAction && !actionBattle.CanInstallActionCard(this)) {
+                RefundDisplayedEnergy();
+                return;
+            }
             if (!TryPayEnergyCostForEffect())
                 return;
 
             effectExecuted = true;
             RecordSkillUse();
-            foreach (var buff in OwnerCharater.SkillBuffs)
+            if (actionBattle != null)
+                await actionBattle.ResolvePendingBattleEffectsAsync();
+            foreach (var buff in OwnerCharater.SkillBuffs.ToArray())
             {
-                await buff.Trigger(this);
+                if (actionBattle != null)
+                    await actionBattle.ExecuteBattleEffectAsync(() => buff.Trigger(this), buff.ThisBuffName.ToString());
+                else
+                    await buff.Trigger(this);
+            }
+            if (installsAction) {
+                actionBattle.InstallActionCard(this, _paidEnergyForCurrentEffect);
+                _actionInitialExtraExecutions = ConsumeQueuedExtraSkillExecutions();
+                return;
             }
             var plan = GetPlan();
             if (plan != null)
             {
                 await plan.Execute();
-                if (await ResolveBattleOverAfterEffectAsync())
-                    return;
-
-                int extraSkillExecutions = ConsumeQueuedExtraSkillExecutions();
-                for (int i = 0; i < extraSkillExecutions; i++)
+                try
                 {
-                    if (
-                        OwnerCharater == null
-                        || OwnerCharater.State == Character.CharacterState.Dying
-                        || OwnerCharater.BattleNode?.ShouldAbortSkillResolution() == true
-                    )
-                    {
-                        break;
-                    }
-
-                    await PlayEchoCardAnimationAsync();
-                    RecordSkillUse();
-                    await plan.Execute();
+                    int extraSkillExecutions = ConsumeQueuedExtraSkillExecutions();
                     if (await ResolveBattleOverAfterEffectAsync())
                         return;
+
+                    for (int i = 0; i < extraSkillExecutions; i++)
+                    {
+                        if (
+                            OwnerCharater == null
+                            || OwnerCharater.State == Character.CharacterState.Dying
+                            || OwnerCharater.BattleNode?.ShouldAbortSkillResolution() == true
+                        )
+                        {
+                            break;
+                        }
+
+                        await PlayEchoCardAnimationAsync();
+                        RecordSkillUse();
+                        if (actionBattle != null)
+                            await actionBattle.ResolvePendingBattleEffectsAsync();
+                        await plan.Execute();
+                        if (await ResolveBattleOverAfterEffectAsync())
+                            return;
+                    }
+                }
+                finally
+                {
+                    // Echo repeats share the normal trigger's single exhaust use.
+                    actionBattle?.RecordBattleCardExecution(this);
                 }
             }
             else if (effectExecuted)
             {
+                // Playable cards without an effect plan still count as executed (e.g. Plague).
+                actionBattle?.RecordBattleCardExecution(this);
                 await ResolveBattleOverAfterEffectAsync();
             }
         }
@@ -199,7 +243,9 @@ public partial class Skill
         {
             _prepaidDisplayedEnergy = 0;
             _paidEnergyForCurrentEffect = 0;
-            _previewableRandomHostileTargets.Clear();
+            // Action cards keep this round's choice even if installation was cancelled.
+            if (!IsActionCard)
+                ClearPreviewableRandomHostileTargets();
             ClearLockedExecutionTargets();
             ClearManualFriendlyTarget();
         }
@@ -220,6 +266,7 @@ public partial class Skill
             return;
 
         OwnerCharater.BattleNode?.UsedSkills.Add(this);
+        OwnerCharater.BattleNode?.NotifyTalentSkillPlayed(this);
     }
 
     internal void QueueExtraSkillExecutions(int count)
@@ -253,13 +300,26 @@ public partial class Skill
     internal bool HasBattleCardKeyword(BattleCardKeyword keyword) =>
         OwnerCharater?.BattleNode?.HasBattleCardKeyword(this, keyword) == true;
 
-    internal bool ResolvesExhaustsAfterUse =>
-        !IsAbilityCard && (ExhaustsAfterUse || HasBattleExhaustAfterUseFeature());
+    public int ExhaustExecutionLimit => GetExhaustExecutionLimit(OwnerCharater?.BattleNode);
+    public int RemainingExecutions => Math.Max(0, ExhaustExecutionLimit
+        - (OwnerCharater?.BattleNode?.GetBattleCardExecutionCount(this) ?? 0));
+    internal bool ResolvesExhaustsAfterUse => ShouldExhaustAfterUse(OwnerCharater?.BattleNode);
+
+    private int GetExhaustExecutionLimit(Battle battle) => IsAbilityCard ? 0
+        : Math.Max(ExhaustAfterExecutions,
+            battle?.HasBattleCardKeyword(this, BattleCardKeyword.ExhaustAfterUse) == true ? 1 : 0);
+
+    internal bool ShouldExhaustAfterUse(Battle battle)
+    {
+        // Ownerless cards still have execution counts and keywords in their battle.
+        int limit = GetExhaustExecutionLimit(battle);
+        return limit > 0 && (battle?.GetBattleCardExecutionCount(this) ?? 0) >= limit;
+    }
 
     internal bool ResolvesExhaustsAtTurnEndInHand =>
         ExhaustsAtTurnEndInHand || HasBattleVoidnessFeature();
 
-    internal bool ShowsExhaustKeyword => ResolvesExhaustsAfterUse;
+    internal bool ShowsExhaustKeyword => ExhaustExecutionLimit > 0;
 
     internal bool ShowsVoidnessKeyword => ResolvesExhaustsAtTurnEndInHand;
 
@@ -308,11 +368,11 @@ public partial class Skill
 
     protected int OwnerPower =>
         OwnerCharater != null
-            ? OwnerCharater.GetEffectivePowerForSkillScaling()
+            ? OwnerCharater.GetEffectivePowerForSkillScaling() + (_actionPreview?.PowerDelta(OwnerCharater) ?? 0)
             : _previewPower + _previewBasePowerContribution;
     protected int OwnerSurvivability =>
         OwnerCharater != null
-            ? OwnerCharater.GetEffectiveSurvivabilityForSkillScaling()
+            ? OwnerCharater.GetEffectiveSurvivabilityForSkillScaling() + (_actionPreview?.SurvivabilityDelta(OwnerCharater) ?? 0)
             : _previewSurvivability + _previewBaseSurvivabilityContribution;
     protected int OwnerEnergy => OwnerCharater?.CurrentEnergy ?? _previewEnergy;
     protected bool IsInBattle => OwnerCharater?.BattleNode != null;
@@ -336,6 +396,7 @@ public partial class Skill
                 : _previewSurvivability + _previewBaseSurvivabilityContribution;
 
         HashCode hash = new();
+        hash.Add(SkillTuning.Revision);
         hash.Add(OwnerEnergy);
         hash.Add(power);
         hash.Add(survivability);
@@ -388,6 +449,10 @@ public partial class Skill
 
     internal int GetPaidEnergyLoopCount()
     {
+        if (_actionPaidEnergy.HasValue)
+            return Math.Max(0, _actionPaidEnergy.Value);
+        if (OwnerCharater?.BattleNode?.TryGetInstalledActionPaidEnergy(this, out int installedEnergy) == true)
+            return Math.Max(0, installedEnergy);
         if (IsEnergyCostWaived)
             return Math.Max(0, OwnerCharater?.CurrentEnergy ?? 0);
 
@@ -427,17 +492,19 @@ public partial class Skill
         }
     }
 
-    public bool CanUseCurrentEnergy()
+    public bool CanUseCurrentEnergy(Character executionContext = null)
     {
-        if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
+        Character actor = IsStatusCard ? executionContext ?? OwnerCharater : OwnerCharater;
+        if (actor == null || !GodotObject.IsInstanceValid(actor) || actor.State == Character.CharacterState.Dying)
             return false;
 
-        return CanUseEnergy(OwnerCharater.CurrentEnergy);
+        return CanUseEnergy(actor.CurrentEnergy, executionContext);
     }
 
-    public bool CanUseEnergy(int availableEnergy)
+    public bool CanUseEnergy(int availableEnergy, Character executionContext = null)
     {
-        if (OwnerCharater == null || OwnerCharater.State == Character.CharacterState.Dying)
+        Character actor = IsStatusCard ? executionContext ?? OwnerCharater : OwnerCharater;
+        if (actor == null || !GodotObject.IsInstanceValid(actor) || actor.State == Character.CharacterState.Dying)
             return false;
 
         if (!CanBePlayed)
@@ -562,25 +629,6 @@ public partial class Skill
         return true;
     }
 
-    private int GetDefaultEnergyCost()
-    {
-        bool isEnemy = OwnerCharater != null ? !OwnerCharater.IsPlayer : !_previewIsPlayer;
-        if (isEnemy)
-        {
-            if (SkillType == SkillTypes.Attack || SkillType == SkillTypes.Survive)
-                return 0;
-        }
-
-        return SkillType switch
-        {
-            SkillTypes.Attack => 1,
-            SkillTypes.Survive => 1,
-            SkillTypes.Special => 1,
-            SkillTypes.Ability => 1,
-            _ => 0,
-        };
-    }
-
     public static bool HasTauntBuff(Character target) =>
         target?.HurtBuffs?.Any(buff =>
             buff != null && buff.ThisBuffName == Buff.BuffName.Taunt && buff.Stack > 0
@@ -701,6 +749,8 @@ public partial class Skill
         if (OwnerCharater?.BattleNode == null)
             return Array.Empty<Character>();
 
+        if (_actionPreview != null)
+            return _actionPreview.HostileTargets(OwnerCharater, false, applyTaunt, respectInvisible);
         Character[] orderedTargets = OwnerCharater.BattleNode.GetOrderedTeamCharacters(
             !OwnerCharater.IsPlayer,
             includeSummons: true,
@@ -720,7 +770,8 @@ public partial class Skill
         bool applyTaunt = false,
         bool respectInvisible = true
     ) =>
-        ChooseHostileTargetsByOrder(
+        _actionPreview?.HostileTargets(OwnerCharater, byBehindRow, applyTaunt, respectInvisible)
+        ?? ChooseHostileTargetsByOrder(
             OwnerCharater,
             byBehindRow,
             returnDummyWhenEmpty: true,
@@ -1023,14 +1074,25 @@ public partial class Skill
         return targets[0];
     }
 
-    private void SpawnAttackHitEffect(Character target)
+    private void SpawnAttackHitEffect(Character target, SwordSlashSequence sequence = null, int hitIndex = 0)
     {
-        var attack = AttackEffect.Spawn(target);
-        if (attack == null)
+        if (!GodotObject.IsInstanceValid(target) || !target.IsInsideTree()
+            || target.IsQueuedForDeletion() || target.WarmupMode
+            || target.State == Character.CharacterState.Dying)
             return;
 
-        attack.GlobalPosition = target.GlobalPosition;
-        attack.PlayAttack();
+        Node2D parent = target.GetParent() as Node2D ?? target;
+        Transform2D toLocal = parent.GetGlobalTransformWithCanvas().AffineInverse();
+        Vector2 center = toLocal * target.GetVisualCenterGlobalPosition();
+        Control frame = target.GetNodeOrNull<Control>("Hoverframe");
+        if (GodotObject.IsInstanceValid(frame) && frame.IsInsideTree() && frame.Size.Y > 0f)
+        {
+            Transform2D frameToParent = toLocal * frame.GetGlobalTransformWithCanvas();
+            center = frameToParent * (frame.Size * 0.5f);
+        }
+        SwordSlashVfx.Spawn(parent, center,
+            flipHorizontally: GodotObject.IsInstanceValid(OwnerCharater) && !OwnerCharater.IsPlayer,
+            sequenceSeed: sequence?.Seed ?? 0, hitIndex: hitIndex, hitCount: sequence?.HitCount ?? 1);
     }
 
     private async Task ExecuteAttackSequence(
@@ -1050,9 +1112,11 @@ public partial class Skill
         if (times <= 0)
             return;
 
-        OwnerCharater?.BattleNode?.NotifyAllyAttackExecuted(OwnerCharater);
+        if (OwnerCharater?.BattleNode is Battle battle)
+            await battle.ResolvePendingBattleEffectsAsync();
 
-        await AttackAnimation(target);
+        var slashSequence = new SwordSlashSequence(times);
+        await AttackAnimation(target, slashSequence, playHitEffect: !playHitEffectForFirstHit);
 
         int modifiedDamage = damage;
         if (applyAttackBuff)
@@ -1075,7 +1139,7 @@ public partial class Skill
                 break;
 
             if (playHitEffectForFirstHit || i > 0)
-                SpawnAttackHitEffect(target);
+                SpawnAttackHitEffect(target, slashSequence, i);
 
             await target.GetHurt(
                 modifiedDamage,
@@ -1112,122 +1176,24 @@ public partial class Skill
     public async Task AOE(int damage, int Num, int times, bool byBehindRow = false)
     {
         var targets = ChosetargetByOrder(byBehindRow: byBehindRow, applyTaunt: true);
-        if (targets.Length == 0)
+        if (targets.Length == 0 || Num <= 0 || times <= 0)
             return;
 
         int count = Math.Min(Num, targets.Length);
-        List<Task> tasks = new();
-        for (int hit = 0; hit < times; hit++)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (IsDummyTarget(this, targets[i]))
-                    continue;
-
-                tasks.Add(
-                    Attack(
-                        damage,
-                        times: 1,
-                        target: targets[i],
-                        playHitEffectForFirstHit: true,
-                        delayAfterLastHit: true
-                    )
-                );
-
-                if (i < count - 1)
-                    await YieldBatchedCombatFrameAsync();
-            }
-        }
-
-        if (tasks.Count > 0)
-            await Task.WhenAll(tasks);
+        await AttackAreaAsync(targets.Take(count).ToArray(), damage, times, prepareEveryHit: true);
     }
 
-    private async Task YieldBatchedCombatFrameAsync()
-    {
-        if (
-            OwnerCharater != null
-            && GodotObject.IsInstanceValid(OwnerCharater)
-            && OwnerCharater.GetTree() != null
-        )
-        {
-            await OwnerCharater.ToSignal(
-                OwnerCharater.GetTree(),
-                SceneTree.SignalName.ProcessFrame
-            );
-            return;
-        }
-
-        await Task.Yield();
-    }
-
-    public async Task AttackAnimation(Character target)
+    public async Task AttackAnimation(Character target, SwordSlashSequence sequence = null,
+        bool playHitEffect = true)
     {
         if (target == null || IsDummyTarget(this, target))
             return;
 
-        AttackEffect attack = AttackEffect.Spawn(OwnerCharater);
         CharacterEffect.Spawn(OwnerCharater, "explode");
         await Task.Delay(300);
         AudioManager.PlayAttack(OwnerCharater);
-        if (attack != null && GodotObject.IsInstanceValid(attack))
-        {
-            attack.GlobalPosition = target.GlobalPosition;
-            attack.PlayAttack();
-        }
+        if (playHitEffect)
+            SpawnAttackHitEffect(target, sequence);
     }
 
-    public async Task Carry(Character target, int skillIndex)
-    {
-        if (
-            target == null
-            || !target.IsFullCharacter
-            || target.State == Character.CharacterState.Dying
-            || target == OwnerCharater
-        )
-            return;
-
-        if (!TryGetCarrySkillType(skillIndex, out SkillTypes skillType))
-            return;
-
-        Skill carriedSkill = target.BattleNode?.DrawCarrySkill(target, skillType);
-        if (carriedSkill == null)
-            return;
-
-        Relic.ApplyCarryRelicEffects(target);
-
-        carriedSkill.OwnerCharater = target;
-        carriedSkill.UpdateDescription();
-        CharacterControl characterControl = target.BattleNode?.CharacterControl;
-        if (
-            OwnerCharater is PlayerCharacter
-            && target is PlayerCharacter
-            && characterControl != null
-            && GodotObject.IsInstanceValid(characterControl)
-        )
-        {
-            await characterControl.QueueCarryCardAsync(target, carriedSkill);
-            return;
-        }
-
-        using (carriedSkill.BeginEnergyCostWaiver())
-        {
-            await carriedSkill.Effect();
-        }
-    }
-
-    private static bool TryGetCarrySkillType(int skillIndex, out SkillTypes skillType)
-    {
-        skillType = skillIndex switch
-        {
-            0 => SkillTypes.none,
-            1 => SkillTypes.Attack,
-            2 => SkillTypes.Survive,
-            3 => SkillTypes.Special,
-            4 => SkillTypes.Ability,
-            _ => SkillTypes.none,
-        };
-
-        return skillIndex is >= 0 and <= 4;
-    }
 }

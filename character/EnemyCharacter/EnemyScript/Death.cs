@@ -2,7 +2,7 @@ using Godot;
 
 public partial class Death : EnemyCharacter
 {
-    private const int DisasterStacks = 4;
+    private static int DisasterStacks => EnemyTuning.GetRequiredInt("Death", nameof(DisasterStacks));
 
     public const string PassiveNameText = "终末游行";
     public static string PassiveDescriptionText =>
@@ -37,7 +37,7 @@ public partial class Death : EnemyCharacter
             dyingFilter: true
         );
         int targetIndex =
-            targets.Length > 0 ? BattleNode?.BattleIntentionRandom?.Next(targets.Length) ?? 0 : -1;
+            targets.Length > 0 ? BattleNode?.GetEffectRandom(this).Next(targets.Length) ?? 0 : -1;
         Character target = targetIndex >= 0 ? targets[targetIndex] : null;
         if (target == null)
             return;
@@ -51,16 +51,12 @@ public partial class DeathRegedit : EnemyRegedit
     public DeathRegedit()
     {
         CharacterName = "Death";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/Death.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Death.tscn");
-
-        MaxLife = 567;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.DeathAttack, SkillID.DeathSurvive, SkillID.DeathSpecial];
+        SkillIDs = [SkillID.DeathAttack, SkillID.DeathSurvive, SkillID.DeathSpecial, SkillID.DeathDisarm];
+        // 第三轮死寂施加全阵脆弱，跨过断魂衔接下一轮双魂裁决。
+        IntentionCycle = [SkillID.DeathAttack, SkillID.DeathSpecial, SkillID.DeathSurvive, SkillID.DeathDisarm];
+        IntentionCycleInsertions = [(SkillID.DeathFortify, 10)];
 
         PassiveName = global::Death.PassiveNameText;
         PassiveDescription = global::Death.PassiveDescriptionText;
@@ -69,8 +65,8 @@ public partial class DeathRegedit : EnemyRegedit
 
 public partial class DeathAttack : Skill
 {
-    private const int BaseDamage = 10;
-    private const int HitCount = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int HitCount => V(nameof(HitCount));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -80,16 +76,17 @@ public partial class DeathAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, times: HitCount),
-            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks", 1))
+            AttackStep(baseDamage: BaseDamage, target: HostileTargetReference.All, times: HitCount, multiplier: V("Multiplier")),
+            ApplyBuffHostile(Buff.BuffName.Weaken, V("WeakenStacks"),target: HostileTargetReference.AttackKey),
+            AddCardsStep(SkillID.WoundStatus,V("statusNum"),BattleCardPileTarget.DiscardPileCards)
         );
     }
 }
 
 public partial class DeathSurvive : Skill
 {
-    private const int BaseBlock = 33;
-    private const int Heal = 15;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int Heal => V(nameof(Heal));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -99,23 +96,21 @@ public partial class DeathSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2)),
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
             HealStep(Heal, target: TargetReference.Self),
-            AddCardsStep(SkillID.DazeStatus, V("DazeCount", 3), BattleCardPileTarget.DiscardPileCards)
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.All)
         );
     }
 }
 
 public partial class DeathSpecial : Skill
 {
-    private const int SelfPowerGain = 2;
-    private const int DisasterStacks = 4;
+    private int SelfPowerGain => V(nameof(SelfPowerGain));
+    private int DisasterStacks => V(nameof(DisasterStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "终焉宣告";
-    public override int EnemySpecialIntentionCooldown => 3;
-
 
     protected override SkillPlan BuildPlan()
     {
@@ -123,7 +118,44 @@ public partial class DeathSpecial : Skill
             this,
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain),
             ApplyBuffHostile(Buff.BuffName.Disaster, DisasterStacks, HostileTargetReference.All),
-            AddCardsStep(SkillID.PlagueStatus, V("PlagueCount", 2))
+            AddCardsStep(SkillID.PlagueStatus, V("PlagueCount"))
+        );
+    }
+}
+
+public partial class DeathDisarm : Skill
+{
+    private int BaseDamage => V(nameof(BaseDamage));
+
+    public override SkillTypes SkillType => SkillTypes.Special;
+
+    public override string SkillName { get; set; } = "断魂";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            UninstallAttackTargetActionCardsStep()
+        );
+    }
+}
+
+public partial class DeathFortify : Skill
+{
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int SelfPowerGain => V(nameof(SelfPowerGain));
+
+    public override SkillTypes SkillType => SkillTypes.Survive;
+
+    public override string SkillName { get; set; } = "终末武装";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            BlockStep(baseBlock: BaseBlock, target: TargetReference.Self, multiplier: V("Multiplier")),
+            ModifyPropertyStep(PropertyType.Power, SelfPowerGain, target: TargetReference.Self)
         );
     }
 }

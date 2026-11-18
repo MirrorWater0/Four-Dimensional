@@ -2,20 +2,38 @@ using Godot;
 
 public partial class EchoSpecialSkill : Node { }
 
-public partial class Overdraw : Skill
+public partial class FinalResonance : Skill
 {
-    private const int NoDrawStacks = 1;
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
-    public override string SkillName { get; set; } = "透支";
-    public override int EnergyCost => Cost(0);
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.final_resonance.name", "终奏");
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(V("DrawCount", 3)),
+            TriggerInstalledCardsStep(target: TargetReference.ManualFriendly,
+                returnToHandAfterTrigger: true)
+        );
+    }
+}
+
+public partial class Overdraw : Skill
+{
+    private int NoDrawStacks => V(nameof(NoDrawStacks));
+
+    public override SkillTypes SkillType => SkillTypes.Special;
+
+    public override string SkillName { get; set; } = "透支";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            DrawCardsStep(V("DrawCount")),
             ApplyBuffFriendly(
                 buffName: Buff.BuffName.NoDraw,
                 stacks: NoDrawStacks,
@@ -27,29 +45,27 @@ public partial class Overdraw : Skill
 
 public partial class TuningStance : Skill
 {
-    public override int EnergyCost => Cost(1);
+
     public override bool IntrinsicRetainsAtTurnEndInHand => true;
 
     public override SkillTypes SkillType => SkillTypes.Special;
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     public override string SkillName { get; set; } = "韵律";
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, SelectDiscardPileCardsToHandStep(V("SelectDiscardCount", 2)));
+        return new SkillPlan(this, SelectDiscardPileCardsToHandStep(V("SelectDiscardCount")));
     }
 }
 
 public partial class Purity : Skill
 {
-    private const int EnergyGain = 2;
+    private int EnergyGain => V(nameof(EnergyGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "纯净";
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -59,13 +75,11 @@ public partial class Purity : Skill
 
 public partial class SonicDeflection : Skill
 {
-    private const int DamageImmuneStacks = 2;
-    private const int BaseBlock = 0;
+    private int DamageImmuneStacks => V(nameof(DamageImmuneStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "声波偏转";
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
@@ -78,8 +92,29 @@ public partial class SonicDeflection : Skill
             ),
             ModifyPropertyStep(
                 PropertyType.Survivability,
-                -V("SurvivabilityLoss", 3),
+                -V("SurvivabilityLoss"),
                 TargetReference.Self
+            )
+        );
+    }
+}
+
+public partial class HarmonicBarrier : Skill
+{
+    private int DamageImmuneStacks => V(nameof(DamageImmuneStacks));
+
+    public override SkillTypes SkillType => SkillTypes.Special;
+
+    public override string SkillName { get; set; } = "和声屏障";
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            ApplyBuffFriendly(
+                buffName: Buff.BuffName.DamageImmune,
+                stacks: DamageImmuneStacks,
+                target: TargetReference.All
             )
         );
     }

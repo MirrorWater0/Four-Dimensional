@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "RenewalFlurry"
+DisplayName = "回春连刃"
+Values = Dictionary[String, int]({
+"BaseDamage": 4,
+"EnemyEnergyCost": 2,
+"EnergyCost": 2,
+"ExhaustAfterExecutions": 0,
+"HitCount": 1,
+"Multiplier": 1
+})

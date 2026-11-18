@@ -85,7 +85,7 @@ Godot 配置位于 `project.godot`：
 - `Menu/`：菜单、设置、百科。
 - `Audio/`：全局音频管理器与音效资源。
 - `localization/`：本地化加载与辅助函数。
-- `data/`：技能与敌人数值 JSON。
+- `data/`：卡牌与敌人角色数值 Resource。
 - `asset/`：美术资源。
 - `shader/`：Godot shader。
 - `scripts/`：项目脚本，包含数值导出、图片生成辅助、日志查看等。
@@ -195,7 +195,7 @@ Godot 配置位于 `project.godot`：
 4. 若类名与枚举名一致，`Skill.Registry` 可自动匹配；不一致时使用 `[SkillDefinition(SkillID.Xxx)]` 或更新注册覆盖。
 5. 运行 `dotnet run --project tools/SkillIdGenerator/SkillIdGenerator.csproj -- generate`。
 6. 检查 `character/SkillBase/SkillID.Generated.cs` 与 `tools/skill-id-registry.json`。
-7. 添加或更新 `data/skill_tuning/...json` 中的数值。
+7. 添加或更新 `data/skill_tuning/**/*.tres`，并在 `catalog.tres` 登记卡牌资源。
 8. 添加本地化到 `localization/zh_CN.json` 和 `localization/en.json`。
 9. 添加卡图到 `asset/CardPicture/{CharacterName}/{SkillId}.jpg` 或对应目录。
 10. 运行 `dotnet build tower.sln`，再进游戏检查奖励、百科、战斗出牌和描述。
@@ -212,31 +212,26 @@ Godot 配置位于 `project.godot`：
 技能数值：
 
 - 目录：`data/skill_tuning/`
-- 项目内默认目录：`res://data/skill_tuning`
-- 用户覆盖目录：`user://skill_tuning`
-- 兼容旧路径：`res://data/skill_tuning.dev.json` 和 `user://skill_tuning.dev.json`
-- 读取入口：`SkillTuning.TryGetInt(...)`
+- 每张卡牌一个 `CardTuningResource`，保存为 `.tres`。
+- 目录入口：`res://data/skill_tuning/catalog.tres`，显式引用全部卡牌资源。
+- 本地覆盖：`user://skill_tuning/{SkillID}.tres`。
+- 技能使用 `V("参数名")` 读取 Resource；缺失字段自动创建为 0 或约束要求的最小正值，C# 不保留每张卡的数值默认值。
+- 可在卡牌图鉴直接编辑、应用和保存。F9 只重载，不从源码生成卡牌数值。
+- 详细流程见 [CARD_TUNING_RESOURCES.md](CARD_TUNING_RESOURCES.md)。
 
 敌人数值：
 
-- 目录：`data/enemy_tuning/`
-- 项目内默认目录：`res://data/enemy_tuning`
-- 用户覆盖目录：`user://enemy_tuning`
-- 兼容旧路径：`res://data/enemy_tuning.dev.json` 和 `user://enemy_tuning.dev.json`
-- 读取入口：`EnemyTuning.TryGetInt(...)`
-
-JSON 约定：
-
-- 根节点可以直接是对象，也可以包一层 `skills` 或 `enemies`。
-- 数值读取大小写不敏感。
-- 支持注释和尾随逗号。
-- 项目目录值先加载，用户目录值后加载；后加载的值会覆盖前面的同名 key。
-
-常用脚本：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/export_skill_tuning_from_source.ps1
-```
+- 每个敌人一个 `EnemyTuningResource`：`data/enemy_tuning/{EnemyKey}.tres`。
+- 目录入口：`res://data/enemy_tuning/catalog.tres`，显式引用全部敌人资源。
+- 本地覆盖：`user://enemy_tuning/{EnemyKey}.tres`；旧 JSON 不再加载。
+- 基础生命、力量、生存、基础属性加成及被动参数均读取 Resource；缺失字段自动补齐，代码不保留各敌人的数值默认值。
+- 卡牌和敌人按当前编译代码中的参数引用同步字段清单：添加缺失字段、清理已删除的参数，旧本地字段不会再补回项目；仍在使用的参数保留已有数值。编辑器运行时写回项目，导出游戏写入本地。自动保存不包含其他未保存的会话调整；新增初始值请在图鉴修改。参数名使用字符串常量或 `nameof`，无法完整识别时保留已有字段并提示。
+- 敌人图鉴可查看头像、属性、被动、技能和循环意图，并编辑属性与技能数值。
+- `EnemyRegedit.SkillIDs` 定义随机意图池，`IntentionCycle = [SkillID.Xxx, random, ...]` 定义循环流程。`RandomizeIntentionCycleStart` 默认 `false`，固定从第一项开始；设为 `true` 时，每个敌人初始化时随机选择一次起点。随后按数组顺序循环，末尾回到第一步，随机段从池中选一次；默认流程为 `[random]`，眩晕不推进流程。
+- `IntentionCycleInsertions = [(SkillID.Xxx, 3), ...]` 配置按敌人回合（从 1 开始）插入的一次性意图；插入占用一回合，主循环暂停后顺延。同回合多项依配置顺序逐回合处理；眩晕保留意图和插入项，错过的插入会在保留意图结算后补上。插入技能自动加入图鉴与技能数值刷新，不会自动进入随机池。
+- 地区和精英倍率保留在遭遇逻辑中；修改 Resource 后仍按原顺序取整并应用倍率。
+- 详细操作见 [ENEMY_ENCYCLOPEDIA.md](ENEMY_ENCYCLOPEDIA.md)。
+- 旧 `scripts/export_skill_tuning_from_source.ps1` 仅显示迁移提示，不再生成任何数值文件。
 
 ## 10. 敌人系统
 
@@ -245,8 +240,16 @@ powershell -ExecutionPolicy Bypass -File scripts/export_skill_tuning_from_source
 - `character/EnemyRegedit.cs`：敌人注册 / 配置基类。
 - `character/EnemyCharacter/EnemyScript/`：敌人行为脚本。
 - `character/EnemyCharacter/`：敌人场景与配置。
-- `data/enemy_tuning/enemy/*.json`：敌人数值覆盖。
-- `data/skill_tuning/enemy/*.json`：敌方技能数值。
+- `data/enemy_tuning/*.tres`：敌人属性与被动数值。
+- `data/skill_tuning/enemy/**/*.tres`：敌方技能数值资源。
+
+战斗随机数：
+
+- `battle/Battle.Random.cs` 按角色分别维护意图、目标和效果随机流，均由本次战斗种子和角色出生标识派生。角色出生标识在第一次初始化时固定，换位不会重置随机流。
+- 敌人循环随机起点、随机意图使用 `GetEnemyIntentionRandom`；技能随机目标、抽牌堆打出卡牌的自动选目标使用 `GetTargetRandom`；卡西娅、Death 等被动随机效果使用 `GetEffectRandom`。不同角色和不同用途不共享随机数消耗。
+- 双方召唤物的随机站位各用独立随机流；抽牌、洗牌和抽牌堆卡牌抽取继续使用各自已有的随机流。
+- 纯界面预览不消耗随机数：优先读取已锁定或已缓存的目标，尚未确定的随机目标展示候选范围；意图锁定或实际执行时才抽取目标。嘲讽、隐身、死亡等仍按实际战斗规则影响目标。
+- 重进节点仍使用 `BattleEntryCount` 派生新战斗种子；随机流解耦不改变这条规则。新版本的随机结果不与解耦前逐项兼容。
 
 新增敌人建议流程：
 
@@ -254,8 +257,8 @@ powershell -ExecutionPolicy Bypass -File scripts/export_skill_tuning_from_source
 2. 创建 / 复制敌人场景，保持节点路径与脚本期望一致。
 3. 创建或更新 `EnemyRegedit` 配置。
 4. 把敌人加入普通、精英或 Boss 遭遇队列。
-5. 添加 `data/enemy_tuning/enemy/{enemy_key}.json`。
-6. 若敌人技能走技能系统，添加 `data/skill_tuning/enemy/{enemy_key}.json`。
+5. 添加 `data/enemy_tuning/{EnemyKey}.tres` 并登记到敌人 `catalog.tres`；在 `EnemyCatalog` 登记配置工厂。基础属性不再赋代码默认值，被动参数通过 `EnemyTuning.GetRequiredInt` 读取。
+6. 若敌人技能走技能系统，添加 `data/skill_tuning/enemy/{enemy_key}/{SkillID}.tres`，并登记到 `catalog.tres`。
 7. 添加敌人图像到 `asset/EnemyCharater/`。
 8. 添加本地化名称、百科描述和必要图标。
 9. 从地图节点进入战斗验证意图、行动、奖励和死亡结算。
@@ -442,7 +445,7 @@ powershell -ExecutionPolicy Bypass -File scripts/show_godot_log.ps1
 技能 / 卡牌改动：
 
 - 技能 ID 已生成并检查。
-- 技能数值 JSON 已更新。
+- 技能数值 Resource 与目录引用已更新。
 - 中文和英文文案已补齐。
 - 卡图路径正确。
 - 奖励池、百科、战斗预览都能看到。

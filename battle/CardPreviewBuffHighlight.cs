@@ -72,7 +72,7 @@ public partial class Buff
 
 public partial class SkillBuff
 {
-    public bool CanTriggerForCardPreview(Skill skill)
+    public bool CanTriggerForCardPreview(Skill skill, int simulatedEchoTriggers = 0)
     {
         if (Stack <= 0 || IsOwnerUnavailableForTrigger())
             return false;
@@ -80,7 +80,8 @@ public partial class SkillBuff
         return ThisBuffName switch
         {
             BuffName.Stun => true,
-            BuffName.Echo => _echoTriggeredCountThisTurn < Stack,
+            BuffName.Echo => skill?.IsActionCard == true
+                && _echoTriggeredCountThisTurn + simulatedEchoTriggers < Stack,
             BuffName.Fear => skill?.SkillType == Skill.SkillTypes.Attack,
             _ => false,
         };
@@ -107,7 +108,6 @@ public static class CardPreviewBuffHighlighter
 
         CardEffectPreviewSnapshot snapshot = CardEffectPreviewEcs.GetSnapshot(skill);
         Skill.PreviewEffectEntry[] entries = snapshot.EffectEntries;
-        bool hasHostileAttack = false;
 
         for (int i = 0; i < entries.Length; i++)
         {
@@ -129,7 +129,6 @@ public static class CardPreviewBuffHighlighter
                     {
                         bool isHostileAttack = target.IsPlayer != owner.IsPlayer;
                         AddDamageTriggers(highlighted, owner, target, entry, isHostileAttack);
-                        hasHostileAttack |= isHostileAttack;
                     }
                     break;
                 case Skill.PreviewEffectKind.Heal:
@@ -142,6 +141,8 @@ public static class CardPreviewBuffHighlighter
                         );
                     break;
                 case Skill.PreviewEffectKind.Block:
+                    AddActiveBuffs(highlighted, target.StartActionBuffs, Buff.BuffName.Broken);
+                    AddActiveBuffs(highlighted, target.EndActionBuffs, Buff.BuffName.Frail);
                     if (entry.Value > 0 && target.Block < 99999)
                         AddActiveBuffs(
                             highlighted,
@@ -166,27 +167,6 @@ public static class CardPreviewBuffHighlighter
                     AddBuffApplicationTriggers(highlighted, owner, target, entry);
                     break;
             }
-        }
-
-        if (hasHostileAttack && owner.IsPlayer)
-        {
-            AddTeamBuffs(
-                highlighted,
-                owner.BattleNode,
-                owner.IsPlayer,
-                Buff.BuffName.Shadow,
-                excludedOwner: owner
-            );
-        }
-
-        if (skill.SkillType == Skill.SkillTypes.Survive && owner.TriggersSkillUseEvents)
-        {
-            AddTeamBuffs(
-                highlighted,
-                owner.BattleNode,
-                owner.IsPlayer,
-                Buff.BuffName.Void
-            );
         }
 
         return highlighted.ToArray();
@@ -235,12 +215,6 @@ public static class CardPreviewBuffHighlighter
             {
                 AddActiveBuffs(highlighted, owner.AttackBuffs, Buff.BuffName.CursePower);
                 AddDebuffImmunityTrigger(highlighted, target);
-                if (!HasActiveBuff(target.SpecialBuffs, Buff.BuffName.DebuffImmunity))
-                    AddActiveBuffs(
-                        highlighted,
-                        owner.SpecialBuffs,
-                        Buff.BuffName.WeakeningField
-                    );
             }
 
             AddAttackHurtBuffTriggers(highlighted, target);
@@ -300,20 +274,15 @@ public static class CardPreviewBuffHighlighter
             return;
 
         Buff.BuffName addedBuff = entry.BuffName.Value;
+        if (addedBuff == Buff.BuffName.Invisible)
+        {
+            AddTeamBuffs(highlighted, target.BattleNode, true, Buff.BuffName.Shadow);
+            AddTeamBuffs(highlighted, target.BattleNode, false, Buff.BuffName.Shadow);
+        }
         if (!Buff.IsDebuff(addedBuff))
             return;
 
         AddDebuffImmunityTrigger(highlighted, target);
-        if (HasActiveBuff(target.SpecialBuffs, Buff.BuffName.DebuffImmunity))
-            return;
-
-        if (addedBuff == Buff.BuffName.Weaken)
-        {
-            Character source = entry.Source;
-            if (source == null || !GodotObject.IsInstanceValid(source))
-                source = owner;
-            AddActiveBuffs(highlighted, source.SpecialBuffs, Buff.BuffName.WeakeningField);
-        }
     }
 
     private static void AddDebuffImmunityTrigger(HashSet<Buff> highlighted, Character target)

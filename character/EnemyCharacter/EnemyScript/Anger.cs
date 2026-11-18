@@ -4,7 +4,7 @@ using Godot;
 
 public partial class Anger : EnemyCharacter
 {
-    private const int PassivePowerGain = 2;
+    private static int PassivePowerGain => EnemyTuning.GetRequiredInt("AngerElite", nameof(PassivePowerGain));
     private Action<Skill> _skillUsedHandler;
 
     public const string PassiveNameText = "愤怒";
@@ -30,7 +30,7 @@ public partial class Anger : EnemyCharacter
         base._ExitTree();
     }
 
-    public override async void Passive(Skill skill)
+    protected override async Task PassiveAsync(Skill skill)
     {
         if (
             State == CharacterState.Dying
@@ -58,18 +58,12 @@ public partial class AngerEliteRegedit : EnemyRegedit
     public AngerEliteRegedit()
     {
         CharacterName = "愤怒";
-        PType = EnemyPositionType.FrontRow;
         PortaitPath = "res://asset/EnemyCharater/AngerElite.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/AngerElite.tscn");
-
-        MaxLife = 134;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
-        SkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSpecial];
-        OpeningIntentionSkillIDs = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive];
+        SkillIDs = [SkillID.AngerEliteAttack];
+        // 已有易伤，作为覆盖率补位；第四轮弧刃才追加全阵脆弱。
+        IntentionCycle = [SkillID.AngerEliteAttack, SkillID.AngerEliteSurvive, SkillID.AngerEliteAttack, SkillID.AngerEliteSpecial, random];
         PassiveName = global::Anger.PassiveNameText;
         PassiveDescription = global::Anger.PassiveDescriptionText;
     }
@@ -77,7 +71,7 @@ public partial class AngerEliteRegedit : EnemyRegedit
 
 public partial class AngerEliteAttack : Skill
 {
-    private const int BaseDamage = 18;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -87,15 +81,15 @@ public partial class AngerEliteAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: BaseDamage),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 9), HostileTargetReference.AttackKey)
+            AttackStep(baseDamage: BaseDamage, multiplier: V("Multiplier"), times: V("HitCount")),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks"), HostileTargetReference.AttackKey)
         );
     }
 }
 
 public partial class AngerEliteSurvive : Skill
 {
-    private const int BaseBlock = 15;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -105,16 +99,16 @@ public partial class AngerEliteSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock),
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 3), HostileTargetReference.All)
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks"), HostileTargetReference.All)
         );
     }
 }
 
 public partial class AngerEliteSpecial : Skill
 {
-    private const int BaseDamage = 8;
-    private const int HitCount = 2;
+    private int BaseDamage => V(nameof(BaseDamage));
+    private int HitCount => V(nameof(HitCount));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -122,6 +116,9 @@ public partial class AngerEliteSpecial : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: HitCount));
+        return new SkillPlan(
+            this,
+            AttackStep(baseDamage: BaseDamage, times: HitCount, multiplier: V("Multiplier"))
+        );
     }
 }

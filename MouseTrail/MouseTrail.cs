@@ -23,9 +23,6 @@ public partial class MouseTrail : CanvasLayer
     }
 
     [Export]
-    private Vector2 _cursorHotspot = Vector2.Zero;
-
-    [Export]
     private bool _enableStutterMonitor = true;
 
     [Export]
@@ -51,6 +48,7 @@ public partial class MouseTrail : CanvasLayer
 
     private MouseTrailVisual _trailVisual;
     private bool _useSystemCursor;
+    private bool _cursorSuppressed;
     private Control _cursor;
     private ShaderMaterial _cursorMaterial;
     private Label _stutterLabel;
@@ -92,10 +90,7 @@ public partial class MouseTrail : CanvasLayer
         _cursor = GetNodeOrNull<Control>("Cursor");
         _cursorMaterial = _cursor?.Material as ShaderMaterial;
         if (_cursor != null)
-        {
-            UpdateCursorPivot();
-            _cursor.Resized += UpdateCursorPivot;
-        }
+            _cursor.PivotOffset = Vector2.Zero;
 
         Vector2 mousePosition = GetResponsiveMousePosition();
         _previousMousePosition = mousePosition;
@@ -166,6 +161,13 @@ public partial class MouseTrail : CanvasLayer
             : Input.MouseModeEnum.Hidden;
     }
 
+    public void SetCursorSuppressed(bool suppressed)
+    {
+        _cursorSuppressed = suppressed;
+        if (_cursor != null)
+            _cursor.Visible = !suppressed && !_useSystemCursor && Visible;
+    }
+
     public override void _Input(InputEvent @event)
     {
         if (_traceMouseFrames && @event is InputEventMouseMotion mouseMotion)
@@ -195,7 +197,7 @@ public partial class MouseTrail : CanvasLayer
         bool pointerActive = !_useSystemCursor && Visible && GetWindow()?.HasFocus() == true
             && GetViewport().GetVisibleRect().HasPoint(mousePosition);
         if (_cursor != null)
-            _cursor.Visible = pointerActive;
+            _cursor.Visible = pointerActive && !_cursorSuppressed;
         if (pointerActive)
             _trailVisual?.Advance(deltaF, mousePosition);
         else
@@ -421,16 +423,7 @@ public partial class MouseTrail : CanvasLayer
     private void UpdateCursorPosition(Vector2 mousePosition)
     {
         if (_cursor != null)
-            _cursor.GlobalPosition = mousePosition - _cursorHotspot;
-    }
-
-    private void UpdateCursorPivot()
-    {
-        if (_cursor == null)
-            return;
-
-        // Rotation stays anchored to the visible tip, which is also the GUI hit position.
-        _cursor.PivotOffset = _cursorHotspot;
+            _cursor.GlobalPosition = mousePosition;
     }
 
     private void UpdateCursorRotation(float deltaSeconds)

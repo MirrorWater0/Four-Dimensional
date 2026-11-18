@@ -4,7 +4,7 @@ using Godot;
 
 public partial class BlackHawk : EnemyCharacter
 {
-    private const int PassivePowerGain = 1;
+    private static int PassivePowerGain => EnemyTuning.GetRequiredInt("BlackHawk", nameof(PassivePowerGain));
     private Func<bool, Task> _teamTurnEndHandler;
 
     public const string PassiveNameText = "暗羽蓄势";
@@ -39,10 +39,10 @@ public partial class BlackHawk : EnemyCharacter
         return Task.CompletedTask;
     }
 
-    public override void Passive(Skill skill)
+    protected override async Task PassiveAsync(Skill skill)
     {
         using var effectScope = BeginEffectSource("被动");
-        _ = IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
+        await IncreaseProperties(PropertyType.Power, PassivePowerGain, this);
     }
 }
 
@@ -51,17 +51,12 @@ public partial class BlackHawkRegedit : EnemyRegedit
     public BlackHawkRegedit()
     {
         CharacterName = "BlackHawk";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/BlackHawk.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/BlackHawk.tscn");
-
-        MaxLife = 74;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
         HasAttackVulnerableIntention = true;
         SkillIDs = [SkillID.BlackHawkAttack, SkillID.BlackHawkSpecial];
+        // 第四轮回翔随机施加脆弱，第五轮全阵风暴保证压到脆弱角色。
+        IntentionCycle = [SkillID.BlackHawkAttack, random, SkillID.BlackHawkAttack, SkillID.BlackHawkSurvive, SkillID.BlackHawkSpecial];
 
         PassiveName = global::BlackHawk.PassiveNameText;
         PassiveDescription = global::BlackHawk.PassiveDescriptionText;
@@ -70,8 +65,8 @@ public partial class BlackHawkRegedit : EnemyRegedit
 
 public partial class BlackHawkAttack : Skill
 {
-    private const int PowerMultiplier = 1;
-    private const int InvisibleStacks = 1;
+    private int PowerMultiplier => V(nameof(PowerMultiplier));
+    private int InvisibleStacks => V(nameof(InvisibleStacks));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -81,7 +76,7 @@ public partial class BlackHawkAttack : Skill
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 6), multiplier: PowerMultiplier, times: V("HitCount", 3)),
+            AttackStep(baseDamage: V("BaseDamage"), multiplier: PowerMultiplier, times: V("HitCount")),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -89,8 +84,8 @@ public partial class BlackHawkAttack : Skill
 
 public partial class BlackHawkSurvive : Skill
 {
-    private const int HealAmount = 10;
-    private const int InvisibleStacks = 2;
+    private int HealAmount => V(nameof(HealAmount));
+    private int InvisibleStacks => V(nameof(InvisibleStacks));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -101,7 +96,8 @@ public partial class BlackHawkSurvive : Skill
         return new SkillPlan(
             this,
             HealStep(HealAmount, TargetReference.Previous),
-            ModifyPropertyStep(PropertyType.Power, V("PowerGain", 2), TargetReference.Previous),
+            ModifyPropertyStep(PropertyType.Power, V("PowerGain"), TargetReference.Previous),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.RandomPreview),
             ApplyBuffFriendly(Buff.BuffName.Invisible, InvisibleStacks, TargetReference.Self)
         );
     }
@@ -109,12 +105,11 @@ public partial class BlackHawkSurvive : Skill
 
 public partial class BlackHawkSpecial : Skill
 {
-    int rtimes = 2;
+    private int rtimes => V("LoopCount");
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "黑羽风暴";
-    public override int EnergyCost => Cost(5);
 
     protected override SkillPlan BuildPlan()
     {
@@ -124,7 +119,7 @@ public partial class BlackHawkSpecial : Skill
                 times: () => rtimes,
                 loopSteps:
                 [
-                    AttackStep(baseDamage: V("BaseDamage", 6), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
+                    AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), target: HostileTargetReference.All, times: V("HitCount")),
                 ]
             )
         );

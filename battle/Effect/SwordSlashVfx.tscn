@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://i8td1knok8yr"]
+
+[ext_resource type="Script" uid="uid://c4h8p7x3nsq2a" path="res://battle/Effect/SwordSlashVfx.cs" id="1_script"]
+[ext_resource type="Shader" uid="uid://bh6s21am4v8ka" path="res://shader/Effect/SwordSlash.gdshader" id="2_shader"]
+[ext_resource type="Texture2D" uid="uid://cnhnb5r2sxe4j" path="res://asset/Effect/SwordSlash/AttackCut.png" id="3_cut"]
+[ext_resource type="Texture2D" uid="uid://bw7whdkpntyht" path="res://asset/Effect/SwordSlash/SwordEnergy.png" id="4_energy"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_e7i2c"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+shader_parameter/cut_atlas = ExtResource("3_cut")
+shader_parameter/energy_atlas = ExtResource("4_energy")
+shader_parameter/blade_color = Color(0.94, 0.99, 1, 1)
+shader_parameter/energy_color = Color(0.22, 0.74, 1, 1)
+shader_parameter/sword_energy = false
+shader_parameter/frame_index = 1
+shader_parameter/effect_progress = 0.27
+shader_parameter/visible_amount = 1.0
+shader_parameter/stroke_axis = Vector2(0.72223574, -0.69164693)
+shader_parameter/surface_span = Vector2(0.9908266, 0.9666673)
+shader_parameter/length_scale = 0.97900844
+shader_parameter/thickness = 0.42039782
+shader_parameter/travel_distance = 0.5
+shader_parameter/brightness = 0.9811002
+
+[node name="SwordSlashVfx" type="Node2D" unique_id=2118664880]
+z_index = 10
+position = Vector2(549, 387)
+script = ExtResource("1_script")
+Length = 321.0
+AngleDegrees = -32.0
+EnergyColor = Color(0.22, 0.74, 1, 1)
+Thickness = 0.4
+TravelDistance = 0.65
+PlaybackSpeed = 0.8
+
+[node name="Surface" type="ColorRect" parent="." unique_id=1696134543]
+material = SubResource("ShaderMaterial_e7i2c")
+offset_left = -269.46664
+offset_top = -264.0263
+offset_right = 265.57974
+offset_bottom = 257.97406
+rotation = -0.38943565
+pivot_offset = Vector2(267.5232, 261.00018)
+mouse_filter = 2

@@ -18,8 +18,9 @@ public partial class CharacterControl
                 continue;
 
             if (
-                hand[i].OwnerCharater == null
-                || !GodotObject.IsInstanceValid(hand[i].OwnerCharater)
+                !hand[i].IsStatusCard
+                && (hand[i].OwnerCharater == null
+                    || !GodotObject.IsInstanceValid(hand[i].OwnerCharater))
             )
                 hand[i].OwnerCharater = player;
             hand[i].UpdateDescription();
@@ -154,13 +155,15 @@ public partial class CharacterControl
             && _activePlayer.State != Character.CharacterState.Dying;
     }
 
-    private Task ExecuteQueuedEndTurnAsync()
+    private async Task ExecuteQueuedEndTurnAsync()
     {
+        if (BattleNode != null)
+            await BattleNode.ResolvePendingBattleEffectsAsync();
         if (!_endTurnQueued || !CanExecuteQueuedEndTurn())
         {
             _endTurnQueued = false;
             RefreshTurnUi();
-            return Task.CompletedTask;
+            return;
         }
 
         _endTurnQueued = false;
@@ -182,11 +185,10 @@ public partial class CharacterControl
         )
         {
             _isResolvingEndTurn = false;
-            return Task.CompletedTask;
+            return;
         }
 
         endingPlayer.EndAction();
-        return Task.CompletedTask;
     }
 
     private bool CanExecuteQueuedEndTurn()

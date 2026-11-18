@@ -24,15 +24,9 @@ public partial class EventInterface : Control
     private Label TitleLabel => field ??= GetNode<Label>("Frame/Title");
     private RichTextLabel StoryText =>
         field ??= GetNode<RichTextLabel>("Frame/ContentGroup/StoryText");
-    private Label SubtitleLabel => field ??= GetNode<Label>("Frame/Subtitle");
     private ColorRect Background => field ??= GetNode<ColorRect>("BG");
-    private Control HeaderBar => field ??= GetNode<Control>("Frame/HeaderBar");
-    private Control HeaderTitle => field ??= GetNode<Control>("Frame/HeaderBar/HeaderTitle");
-    private Control HeaderCode => field ??= GetNode<Control>("Frame/HeaderBar/HeaderCode");
+    private Label HeaderTitle => field ??= GetNode<Label>("Frame/HeaderBar/HeaderTitle");
     private Control HeaderAccent => field ??= GetNode<Control>("Frame/HeaderBar/HeaderAccent");
-    private Control FrameNode => field ??= GetNode<Control>("Frame");
-    private Control LeftAccent => field ??= GetNode<Control>("Frame/LeftAccent");
-    private Control RightAccent => field ??= GetNode<Control>("Frame/RightAccent");
     private Control Divider => field ??= GetNode<Control>("Frame/Divider");
     private Control ContentRow => field ??= GetNode<Control>("Frame/ContentGroup");
     private Tip OptionTooltip => field ??= GetTree().Root.GetNodeOrNull<Tip>("TipLayer/EventTip");
@@ -169,30 +163,14 @@ public partial class EventInterface : Control
             return;
 
         if (TitleLabel != null && !string.IsNullOrWhiteSpace(ThisEvent.EventName))
-        {
-            TitleLabel.Text = ThisEvent.IsRestSite
-                || ThisEvent.IsTreasureChest
-                || ThisEvent.IsStarterBonus
-                || ThisEvent.IsBossRelicChoice
-                ? ThisEvent.EventName
-                : $"事件：{ThisEvent.EventName}";
-        }
+            TitleLabel.Text = ThisEvent.EventName;
+        HeaderTitle.Text = ThisEvent.IsStarterBonus ? "启程"
+            : ThisEvent.IsBossRelicChoice ? "区域奖励"
+            : ThisEvent.IsRestSite ? "休憩"
+            : ThisEvent.IsTreasureChest ? "补给"
+            : "航程事件";
         if (StoryText != null && !string.IsNullOrWhiteSpace(ThisEvent.Text))
             StoryText.Text = ThisEvent.Text;
-        if (SubtitleLabel != null)
-        {
-            SubtitleLabel.Text = ThisEvent.IsRestSite
-                ? I18n.Tr("ui.rest.prompt", "要做点什么？")
-                : ThisEvent.IsTreasureChest
-                    ? I18n.Tr("ui.treasure.prompt", "领取遗物后继续冒险。")
-                : ThisEvent.IsStarterBonus
-                    ? I18n.Tr("ui.starter_bonus.subtitle", "本次冒险只能保留一项")
-                : ThisEvent.IsBossRelicChoice
-                    ? I18n.Tr("ui.boss_relic.subtitle", "区域二即将展开")
-                    : string.IsNullOrWhiteSpace(SubtitleLabel.Text)
-                        ? "——"
-                        : SubtitleLabel.Text;
-        }
 
         var options = ThisEvent.Options ?? Array.Empty<EventOption>();
         RollOptionResourceRewards(options);
@@ -230,6 +208,8 @@ public partial class EventInterface : Control
             OptionButtons[i].Pressed += () => OnOptionPressed(capturedIndex);
             OptionButtons[i].MouseEntered += () => ShowOptionTip(capturedIndex);
             OptionButtons[i].MouseExited += HideOptionTip;
+            OptionButtons[i].FocusEntered += () => ShowOptionTip(capturedIndex);
+            OptionButtons[i].FocusExited += HideOptionTip;
         }
     }
 
@@ -934,12 +914,12 @@ public partial class EventInterface : Control
     {
         var talentReward = GameInfo.TryGrantRestTalentPointReward(WhichNode);
         if (!talentReward.Granted)
-            return "没有可获得天赋点的角色";
+            return "没有可获得天赋的角色";
 
         GameInfo.AppendActiveLevelNodeNote(
             I18n.Format(
                 "ui.rest.history_talent",
-                "选择：{name} 获得 {amount} 点天赋点",
+                "选择：{name} 获得 {amount} 次天赋选择",
                 ("name", talentReward.CharacterName),
                 ("amount", talentReward.Amount)
             )
@@ -947,13 +927,13 @@ public partial class EventInterface : Control
         GD.Print(
             I18n.Format(
                 "ui.rest.talent_reward_log",
-                "休息奖励：{name} 获得 {amount} 点天赋点。",
+                "休息奖励：{name} 获得 {amount} 次天赋选择。",
                 ("name", talentReward.CharacterName),
                 ("amount", talentReward.Amount)
             )
         );
         _pendingRestTalentCharacterName = talentReward.CharacterName;
-        return $"[b]{talentReward.CharacterName}[/b]\n天赋点 {FormatSigned(talentReward.Amount)}";
+        return $"[b]{talentReward.CharacterName}[/b]\n天赋选择 +{talentReward.Amount}";
     }
 
     private async Task<string> ApplyCardOptionActionAsync(
@@ -1024,14 +1004,14 @@ public partial class EventInterface : Control
     private string BuildStarterBonusTalentOutcomeText(StarterBonusTalentPointResult result)
     {
         if (!result.Granted || result.CharacterNames.Length == 0)
-            return "没有可获得天赋点的角色";
+            return "没有可获得天赋的角色";
 
         _pendingStarterBonusTalentCharacterNames = result.CharacterNames.ToList();
         var lines = new List<string>(result.CharacterNames.Length);
         foreach (string name in result.CharacterNames)
         {
             lines.Add(
-                $"[b]{name}[/b]\n天赋点 {FormatSigned(result.AmountPerCharacter)}"
+                $"[b]{name}[/b]\n天赋选择 +{result.AmountPerCharacter}"
             );
         }
 
@@ -1077,12 +1057,12 @@ public partial class EventInterface : Control
 
     private string GrantTalentPointReward(EventOption option)
     {
-        var candidates = GetTalentPointCandidateIndices();
+        var candidates = GameInfo.GetTalentPointRewardCandidateIndices();
         if (candidates.Count == 0)
-            return "没有可获得天赋点的角色";
+            return "没有可获得天赋的角色";
 
-        _resourceRandom ??= CreateResourceRandom();
-        int characterIndex = candidates[_resourceRandom.Next(candidates.Count)];
+        var rng = GameInfo.CreateTalentPointRewardRng(WhichNode);
+        int characterIndex = candidates[rng.Next(candidates.Count)];
         int amount = Math.Max(1, option?.TalentPointAmount ?? 1);
         var players = GameInfo.PlayerCharacters;
         var info = players[characterIndex];
@@ -1091,46 +1071,10 @@ public partial class EventInterface : Control
         GameInfo.PlayerCharacters = players;
 
         string name = GetPlayerDisplayName(characterIndex);
-        return $"[b]{name}[/b]\n天赋点 {FormatSigned(amount)}";
+        return $"[b]{name}[/b]\n天赋选择 +{amount}";
     }
 
-    private static bool HasTalentPointCandidate() => GetTalentPointCandidateIndices().Count > 0;
-
-    private static List<int> GetTalentPointCandidateIndices()
-    {
-        GameInfo.NormalizePlayerCharacters();
-        var players = GameInfo.PlayerCharacters ?? Array.Empty<PlayerInfoStructure>();
-        var result = new List<int>();
-
-        for (int i = 0; i < players.Length; i++)
-        {
-            if (!string.IsNullOrWhiteSpace(players[i].CharacterName) && CanGainTalentPoint(players[i]))
-                result.Add(i);
-        }
-
-        return result;
-    }
-
-    private static bool CanGainTalentPoint(PlayerInfoStructure info)
-    {
-        var nodes = TalentTree.GetNodes(info);
-        if (nodes.Count == 0)
-            return false;
-
-        int totalCost = nodes.Sum(node => node.Cost);
-        if (totalCost <= 0)
-            return false;
-
-        var unlockedTalentIds = new HashSet<string>(
-            info.UnlockedTalents ?? [],
-            StringComparer.Ordinal
-        );
-        int spentCost = nodes
-            .Where(node => unlockedTalentIds.Contains(node.Id))
-            .Sum(node => node.Cost);
-        int earnedTalentPoints = Math.Max(0, info.TalentPoints) + spentCost;
-        return earnedTalentPoints < totalCost;
-    }
+    private static bool HasTalentPointCandidate() => GameInfo.GetTalentPointRewardCandidateIndices().Count > 0;
 
     private PlayerResourceState GetResourceState()
     {
@@ -1357,7 +1301,7 @@ public partial class EventInterface : Control
         Vector2 baseScale = button.Scale == Vector2.Zero ? Vector2.One : button.Scale;
         Color baseModulate = button.Modulate;
         button.PivotOffset = button.Size * 0.5f;
-        button.Modulate = new Color(1.18f, 1.12f, 0.78f, baseModulate.A);
+        button.Modulate = new Color(1.08f, 1.16f, 1.22f, baseModulate.A);
 
         Tween tween = CreateTween();
         tween.SetParallel(false);
@@ -1392,7 +1336,8 @@ public partial class EventInterface : Control
             return;
 
         bool shouldDismiss =
-            (inputEvent is InputEventMouseButton mouseButton && mouseButton.Pressed)
+            (inputEvent is InputEventMouseButton mouseButton
+                && mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.Left)
             || (inputEvent is InputEventScreenTouch screenTouch && screenTouch.Pressed);
 
         if (!shouldDismiss)
@@ -1576,14 +1521,9 @@ public partial class EventInterface : Control
             new AssemblyItem(OptionsTitle, new Vector2(0f, 12f), 0.04f, 0.22f, 0.18f),
             new AssemblyItem(ContentRow, new Vector2(0f, 26f), 0.08f, 0.26f, 0.2f),
             new AssemblyItem(Divider, new Vector2(0f, -10f), 0.12f, 0.22f, 0.18f),
-            new AssemblyItem(SubtitleLabel, new Vector2(0f, -16f), 0.14f, 0.24f, 0.18f),
             new AssemblyItem(TitleLabel, new Vector2(0f, -22f), 0.18f, 0.26f, 0.2f),
-            new AssemblyItem(LeftAccent, new Vector2(-14f, 0f), 0.22f, 0.22f, 0.18f),
-            new AssemblyItem(RightAccent, new Vector2(14f, 0f), 0.24f, 0.22f, 0.18f),
             new AssemblyItem(HeaderAccent, new Vector2(-28f, 0f), 0.28f, 0.24f, 0.18f),
-            new AssemblyItem(HeaderCode, new Vector2(24f, 0f), 0.30f, 0.24f, 0.18f),
             new AssemblyItem(HeaderTitle, new Vector2(-24f, 0f), 0.32f, 0.24f, 0.18f),
-            new AssemblyItem(HeaderBar, new Vector2(0f, -20f), 0.36f, 0.26f, 0.2f),
             new AssemblyItem(EnterButton, new Vector2(0f, 12f), 0.02f, 0.22f, 0.16f),
             new AssemblyItem(ExitButton, new Vector2(0f, 16f), 0.06f, 0.22f, 0.16f),
         ];
@@ -1593,14 +1533,9 @@ public partial class EventInterface : Control
     {
         return
         [
-            new AssemblyItem(HeaderBar, new Vector2(0f, -24f), 0.00f, 0.34f, 0.28f),
             new AssemblyItem(HeaderTitle, new Vector2(-26f, 0f), 0.06f, 0.30f, 0.24f),
-            new AssemblyItem(HeaderCode, new Vector2(26f, 0f), 0.08f, 0.30f, 0.24f),
             new AssemblyItem(HeaderAccent, new Vector2(-36f, 0f), 0.10f, 0.28f, 0.22f),
-            new AssemblyItem(LeftAccent, new Vector2(-16f, 0f), 0.14f, 0.26f, 0.22f),
-            new AssemblyItem(RightAccent, new Vector2(16f, 0f), 0.16f, 0.26f, 0.22f),
             new AssemblyItem(TitleLabel, new Vector2(0f, -26f), 0.22f, 0.30f, 0.24f),
-            new AssemblyItem(SubtitleLabel, new Vector2(0f, -16f), 0.28f, 0.28f, 0.22f),
             new AssemblyItem(Divider, new Vector2(0f, -12f), 0.34f, 0.26f, 0.2f),
             new AssemblyItem(ContentRow, new Vector2(0f, 24f), 0.42f, 0.32f, 0.26f),
         ];
@@ -1749,7 +1684,7 @@ public partial class EventInterface : Control
                 break;
             case EventOptionActionType.GainTalentPoint:
                 int amount = Math.Max(1, option.TalentPointAmount);
-                sb.Append($"随机角色 天赋点 {FormatSigned(amount)}\n");
+                sb.Append($"随机角色 天赋选择 +{amount}\n");
                 break;
             case EventOptionActionType.RestHeal:
                 int healPercent = (int)MathF.Round(LevelProgress.RestHealPercent * 100f);
@@ -1780,7 +1715,7 @@ public partial class EventInterface : Control
                     sb.Append(
                         I18n.Format(
                             "ui.rest.talent_description",
-                            "随机一名角色获得 [color=#ffd987]1[/color] 点天赋点。\n预览：[color=#cfd6e6]{name}[/color]",
+                            "随机一名角色获得 [color=#ffd987]1[/color] 次天赋选择。\n预览：[color=#cfd6e6]{name}[/color]",
                             ("name", talentPreview.CharacterName)
                         )
                     );
@@ -1788,7 +1723,7 @@ public partial class EventInterface : Control
                 }
                 else
                 {
-                    sb.Append("没有可获得天赋点的角色\n");
+                    sb.Append("没有可获得天赋的角色\n");
                 }
                 break;
             case EventOptionActionType.StarterBonus:
@@ -1845,7 +1780,7 @@ public partial class EventInterface : Control
                     sb.Append(
                         I18n.Format(
                             "starter_bonus.random_talent.description",
-                            "随机2名队员各获得1点天赋点。\n预览：[color=#cfd6e6]{names}[/color]",
+                            "随机2名队员各获得1次天赋选择。\n预览：[color=#cfd6e6]{names}[/color]",
                             ("names", names)
                         )
                     );
@@ -1853,7 +1788,7 @@ public partial class EventInterface : Control
                 }
                 else
                 {
-                    sb.Append("没有可获得天赋点的角色\n");
+                    sb.Append("没有可获得天赋的角色\n");
                 }
 
                 break;

@@ -3,25 +3,24 @@ using System.Globalization;
 
 public partial class Skill
 {
-    protected int Cost(int defaultValue) => V(nameof(EnergyCost), defaultValue);
+    private string TuningKey => SkillId is SkillID id ? SkillTuning.ResolveKey(id)
+        : TryResolveSkillId(GetType(), out var resolved) ? SkillTuning.ResolveKey(resolved)
+        : throw new InvalidOperationException($"技能没有数值资源 ID：{GetType().Name}");
 
-    protected int V(string key, int defaultValue)
+    protected int V(string key)
     {
-        if (SkillId is SkillID skillId && SkillTuning.TryGetInt(skillId, key, out int idValue))
-            return idValue;
-
-        return SkillTuning.TryGetInt(GetType().Name, key, out int typeValue)
-            ? typeValue
-            : defaultValue;
+        return SkillTuning.GetRequiredInt(TuningKey, key);
     }
 
-    protected static Func<Skill, int> VFromExpression(string expression, int defaultValue)
+    protected Func<Skill, int> TuningProviderFromExpression(string expression)
     {
         if (!TryNormalizeTuningExpression(expression, out string key, out int sign))
             return null;
 
-        int unsignedDefault = sign < 0 ? Math.Abs(defaultValue) : defaultValue;
-        return skill => skill != null ? sign * skill.V(key, unsignedDefault) : defaultValue;
+        // Local variables and calculated values are not resource keys. Only bind actual parameters.
+        if (!SkillTuning.TryGetInt(TuningKey, key, out _))
+            return null;
+        return skill => sign * skill.V(key);
     }
 
     public void RefreshTuning()

@@ -4,6 +4,9 @@
 [ext_resource type="FontFile" uid="uid://bklanx6cdoraw" path="res://asset/font/CormorantSC-Bold.ttf" id="2_font"]
 [ext_resource type="Shader" uid="uid://dm7ky02ftld3" path="res://shader/BG2.gdshader" id="3_shader"]
 
+[ext_resource type="Theme" path="res://UI/ActionButtonTheme.tres" id="90_action_theme"]
+[ext_resource type="PackedScene" path="res://UI/ActionButtonFeedback.tscn" id="91_action_feedback"]
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("3_shader")
 shader_parameter/color_top = Color(0.13, 0.14, 0.16, 1)
@@ -20,54 +23,6 @@ shader_parameter/drift_speed = 0.42
 shader_parameter/drift_dist = 0.18
 shader_parameter/flow_strength = 0.15
 shader_parameter/line_breath = 0.18
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_normal"]
-content_margin_left = 20.0
-content_margin_top = 12.0
-content_margin_right = 20.0
-content_margin_bottom = 12.0
-bg_color = Color(0.045, 0.05, 0.06, 0.42)
-border_width_left = 2
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.68, 0.7, 0.75, 0.46)
-corner_radius_top_left = 0
-corner_radius_top_right = 0
-corner_radius_bottom_right = 0
-corner_radius_bottom_left = 0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
-content_margin_left = 20.0
-content_margin_top = 12.0
-content_margin_right = 20.0
-content_margin_bottom = 12.0
-bg_color = Color(0.11, 0.12, 0.14, 0.7)
-border_width_left = 2
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.92, 0.93, 0.97, 0.82)
-corner_radius_top_left = 0
-corner_radius_top_right = 0
-corner_radius_bottom_right = 0
-corner_radius_bottom_left = 0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-content_margin_left = 20.0
-content_margin_top = 12.0
-content_margin_right = 20.0
-content_margin_bottom = 12.0
-bg_color = Color(0.09, 0.1, 0.12, 0.72)
-border_width_left = 2
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.94, 0.95, 0.98, 0.8)
-corner_radius_top_left = 0
-corner_radius_top_right = 0
-corner_radius_bottom_right = 0
-corner_radius_bottom_left = 0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip"]
 content_margin_left = 12.0
@@ -157,19 +112,21 @@ theme_override_font_sizes/font_size = 14
 text = "终局数据会完整铺开，路线、战利品与技能快照都在这里。"
 
 [node name="ReturnButton" type="Button" parent="CenterPanel/Margin/VBox/HeaderRow" unique_id=1640347617]
-custom_minimum_size = Vector2(132, 38)
+custom_minimum_size = Vector2(156, 44)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.9, 0.91, 0.95, 1)
 theme_override_colors/font_pressed_color = Color(0.82, 0.84, 0.9, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 18
-theme_override_styles/normal = SubResource("StyleBoxFlat_button_normal")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
-theme_override_styles/focus = SubResource("StyleBoxFlat_button_hover")
 text = "返回标题"
+theme = ExtResource("90_action_theme")
+alignment = 0
+clip_text = true
+mouse_default_cursor_shape = 2
+
+[node name="ActionFeedback" parent="CenterPanel/Margin/VBox/HeaderRow/ReturnButton" instance=ExtResource("91_action_feedback")]
+layout_mode = 1
 
 [node name="Divider" type="ColorRect" parent="CenterPanel/Margin/VBox" unique_id=1324699257]
 custom_minimum_size = Vector2(0, 1)

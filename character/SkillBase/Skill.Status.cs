@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 
 public partial class VoidStatus : Skill
 {
-    private const int EnergyLossOnDraw = 1;
+    private int EnergyLossOnDraw => V(nameof(EnergyLossOnDraw));
 
     public override SkillTypes SkillType => SkillTypes.Status;
 
@@ -11,7 +11,7 @@ public partial class VoidStatus : Skill
         get => I18n.Tr("skill.void_status.name", "虚空之唤");
         set { }
     }
-    public override int EnergyCost => Cost(0);
+
     public override bool CanBePlayed => false;
     public override bool ExhaustsAtTurnEndInHand => true;
 
@@ -27,10 +27,11 @@ public partial class VoidStatus : Skill
     {
         SetDescriptionLines(
             I18n.Format(
-                "skill.void_status.desc.on_draw_lose_energy",
+                "skill.status.desc.on_draw_lose_energy",
                 "抽到时: 失去{amount}点能量.",
                 ("amount", EnergyLossOnDraw)
             ),
+            I18n.Tr("skill.status.desc.unplayable", "不可打出。"),
             I18n.Tr("skill.status.desc.ethereal", "虚无.")
         );
     }
@@ -45,7 +46,7 @@ public partial class WoundStatus : Skill
         get => I18n.Tr("skill.wound_status.name", "伤口");
         set { }
     }
-    public override int EnergyCost => Cost(0);
+
     public override bool CanBePlayed => false;
 
     public override void UpdateDescription()
@@ -66,7 +67,7 @@ public partial class DazeStatus : Skill
         get => I18n.Tr("skill.daze_status.name", "晕眩");
         set { }
     }
-    public override int EnergyCost => Cost(0);
+
     public override bool CanBePlayed => false;
     public override bool ExhaustsAtTurnEndInHand => true;
 
@@ -82,7 +83,7 @@ public partial class DazeStatus : Skill
 
 public partial class PlagueStatus : Skill
 {
-    private const int TeamDamageAtTurnEnd = 3;
+    private int TeamDamageAtTurnEnd => V(nameof(TeamDamageAtTurnEnd));
 
     public override SkillTypes SkillType => SkillTypes.Status;
 
@@ -91,9 +92,9 @@ public partial class PlagueStatus : Skill
         get => I18n.Tr("skill.plague_status.name", "瘟疫");
         set { }
     }
-    public override int EnergyCost => Cost(1);
+
     public override bool CanBePlayed => true;
-    public override bool ExhaustsAfterUse => true;
+
     public override bool TriggersAtTurnEndInHand => true;
 
     public override async Task OnTurnEndInHand(PlayerCharacter player)

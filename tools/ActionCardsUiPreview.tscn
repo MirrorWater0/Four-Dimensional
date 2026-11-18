@@ -1,0 +1,211 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://battle/Diagnostics/ActionCardsUiPreview.cs" id="Script"]
+[ext_resource type="PackedScene" path="res://battle/UIScene/ActionCardRack.tscn" id="Rack"]
+[ext_resource type="Texture2D" path="res://tools/ActionCardsUiReference.png" id="Background"]
+[ext_resource type="Theme" path="res://battle/UIScene/BattleUiTheme.tres" id="Theme"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Echo/BasicAttack.png" id="Art00"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Echo/EchoBasicSpecial.png" id="Art01"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Echo/BasicDefense.png" id="Art02"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Mariya/BasicGuard.png" id="Art10"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Mariya/RebirthPrayer.png" id="Art11"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Mariya/SanctuaryForm.png" id="Art12"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Kasiya/VulnerabilityStrike.png" id="Art20"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Kasiya/WarGodWill.png" id="Art21"]
+
+[ext_resource type="Texture2D" path="res://asset/CardPicture/Kasiya/Smite.png" id="Art22"]
+
+[node name="ActionCardsUiPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("Theme")
+script = ExtResource("Script")
+
+[node name="BattleReference" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("Background")
+expand_mode = 1
+
+[node name="Echo" parent="." instance=ExtResource("Rack")]
+offset_left = 135.0
+offset_top = 638.0
+offset_right = 345.0
+offset_bottom = 768.0
+OwnerKey = "Echo"
+OwnerName = "回声"
+
+[node name="SkillPicture" parent="Echo/Cards/Card0/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art00")
+
+[node name="ShortTitle" parent="Echo/Cards/Card0"]
+text = "连击"
+
+[node name="SkillPicture" parent="Echo/Cards/Card1/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art01")
+
+[node name="ShortTitle" parent="Echo/Cards/Card1"]
+text = "淬刃"
+
+[node name="SkillPicture" parent="Echo/Cards/Card2/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art02")
+
+[node name="ShortTitle" parent="Echo/Cards/Card2"]
+text = "回响"
+
+[node name="Mariya" parent="." instance=ExtResource("Rack")]
+offset_left = 365.0
+offset_top = 638.0
+offset_right = 575.0
+offset_bottom = 768.0
+OwnerKey = "Mariya"
+OwnerName = "玛瑞娅"
+
+[node name="SkillPicture" parent="Mariya/Cards/Card0/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art10")
+
+[node name="ShortTitle" parent="Mariya/Cards/Card0"]
+text = "守护"
+
+[node name="SkillPicture" parent="Mariya/Cards/Card1/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art11")
+
+[node name="ShortTitle" parent="Mariya/Cards/Card1"]
+text = "祈愿"
+
+[node name="SkillPicture" parent="Mariya/Cards/Card2/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art12")
+
+[node name="ShortTitle" parent="Mariya/Cards/Card2"]
+text = "庇护"
+
+[node name="Kasiya" parent="." instance=ExtResource("Rack")]
+offset_left = 595.0
+offset_top = 638.0
+offset_right = 805.0
+offset_bottom = 768.0
+OwnerKey = "Kasiya"
+OwnerName = "卡西娅"
+
+[node name="SkillPicture" parent="Kasiya/Cards/Card0/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art20")
+
+[node name="ShortTitle" parent="Kasiya/Cards/Card0"]
+text = "破甲"
+
+[node name="SkillPicture" parent="Kasiya/Cards/Card1/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art21")
+
+[node name="ShortTitle" parent="Kasiya/Cards/Card1"]
+text = "战意"
+
+[node name="SkillPicture" parent="Kasiya/Cards/Card2/Card/VisualTransform/SubViewport/ArtFrame"]
+texture = ExtResource("Art22")
+
+[node name="ShortTitle" parent="Kasiya/Cards/Card2"]
+text = "重击"
+
+[node name="Controls" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 87.0
+offset_right = 880.0
+offset_bottom = 121.0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Label" type="Label" parent="Controls"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.55, 0.64, 0.68, 1)
+text = "行动牌布局预览"
+
+[node name="Count2" type="Button" parent="Controls"]
+layout_mode = 2
+toggle_mode = true
+text = "2 张"
+theme_override_font_sizes/font_size = 14
+
+[node name="Count3" type="Button" parent="Controls"]
+layout_mode = 2
+toggle_mode = true
+text = "3 张"
+theme_override_font_sizes/font_size = 14
+
+[node name="Count4" type="Button" parent="Controls"]
+layout_mode = 2
+toggle_mode = true
+text = "4 张"
+theme_override_font_sizes/font_size = 14
+
+[node name="Count5" type="Button" parent="Controls"]
+layout_mode = 2
+toggle_mode = true
+text = "5 张"
+theme_override_font_sizes/font_size = 14
+
+[node name="Trigger" type="Button" parent="Controls"]
+layout_mode = 2
+text = "模拟触发"
+theme_override_font_sizes/font_size = 14
+
+[node name="Toggle" type="Button" parent="Controls"]
+layout_mode = 2
+text = "显示 / 隐藏"
+theme_override_font_sizes/font_size = 14
+
+[node name="PreviewNote" type="Label" parent="."]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 128.0
+offset_right = 850.0
+offset_bottom = 150.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.4, 0.48, 0.52, 1)
+theme_override_font_sizes/font_size = 13
+text = "悬停抬起卡牌 · 点击固定说明 · 示例行动牌仅用于布局预览"
+
+[editable path="Echo"]
+
+[editable path="Mariya"]
+
+[editable path="Kasiya"]
+
+[editable path="Echo/Cards/Card0/Card"]
+[editable path="Mariya/Cards/Card0/Card"]
+[editable path="Kasiya/Cards/Card0/Card"]
+
+[editable path="Echo/Cards/Card1/Card"]
+[editable path="Mariya/Cards/Card1/Card"]
+[editable path="Kasiya/Cards/Card1/Card"]
+
+[editable path="Echo/Cards/Card2/Card"]
+[editable path="Mariya/Cards/Card2/Card"]
+[editable path="Kasiya/Cards/Card2/Card"]
+
+[editable path="Echo/Cards/Card3/Card"]
+[editable path="Mariya/Cards/Card3/Card"]
+[editable path="Kasiya/Cards/Card3/Card"]
+
+[editable path="Echo/Cards/Card4/Card"]
+[editable path="Mariya/Cards/Card4/Card"]
+[editable path="Kasiya/Cards/Card4/Card"]

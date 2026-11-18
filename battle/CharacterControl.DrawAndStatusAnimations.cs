@@ -187,7 +187,8 @@ public partial class CharacterControl
 
     public void PrepareHandCardDrawEntry(
         IReadOnlyList<int> handIndexes,
-        HandCardEntryOrigin origin
+        HandCardEntryOrigin origin,
+        Character source = null
     )
     {
         _preparedHandDrawEntrySlotCount = 0;
@@ -201,6 +202,9 @@ public partial class CharacterControl
             case HandCardEntryOrigin.PlayedCard:
             {
                 Vector2? startCenter = GetPlayedCardDrawEntryStartGlobalCenter();
+                if (!startCenter.HasValue && source != null && GodotObject.IsInstanceValid(source)
+                    && source.IsInsideTree())
+                    startCenter = source.GetGlobalTransformWithCanvas().Origin;
                 if (!startCenter.HasValue)
                     return;
 
@@ -217,13 +221,17 @@ public partial class CharacterControl
                 break;
             }
             case HandCardEntryOrigin.DrawPile:
+            case HandCardEntryOrigin.DiscardPile:
             {
                 foreach (int index in handIndexes)
                 {
                     if (!IsCardIndexValid(index))
                         continue;
 
-                    MarkHandDrawEntryFromDrawPile(index);
+                    if (origin == HandCardEntryOrigin.DrawPile)
+                        MarkHandDrawEntryFromDrawPile(index);
+                    else
+                        SetHandEntryStartPositionFromPileKind(index, BattlePileKind.Discard);
                     AddPreparedHandDrawEntrySlot(index);
                 }
                 break;
@@ -244,11 +252,11 @@ public partial class CharacterControl
         if (_preparedHandDrawEntrySlotCount == 0)
             return;
 
-        await WaitForHandDrawEntrySlotsAsync(
-            _preparedHandDrawEntrySlots,
-            _preparedHandDrawEntrySlotCount
-        );
+        int count = _preparedHandDrawEntrySlotCount;
+        var slots = new int[count];
+        Array.Copy(_preparedHandDrawEntrySlots, slots, count);
         _preparedHandDrawEntrySlotCount = 0;
+        await WaitForHandDrawEntrySlotsAsync(slots, count);
     }
 
     public void MarkHandDrawEntryFromDrawPile(int handIndex)
@@ -271,26 +279,7 @@ public partial class CharacterControl
 
     public bool CanAnimateAddCardsToHand(PlayerCharacter player, int count)
     {
-        if (count <= 0 || !CanAnimateHandCardsFor(player))
-            return false;
-
-        return CountEmptyHandSlots(count) > 0;
-    }
-
-    private int CountEmptyHandSlots(int maxCount)
-    {
-        Skill[] hand = GetActiveHandSkills();
-        if (hand == null || maxCount <= 0)
-            return 0;
-
-        int count = 0;
-        for (int i = 0; i < hand.Length && count < maxCount; i++)
-        {
-            if (hand[i] == null)
-                count++;
-        }
-
-        return count;
+        return count > 0 && CanAnimateHandCardsFor(player);
     }
 
     public async Task WaitForHandDrawEntrySlotsAsync(IReadOnlyList<int> slotIndexes)
@@ -357,6 +346,10 @@ public partial class CharacterControl
         );
     }
 
+    public void PlayStatusCardInsertAnimation(IReadOnlyList<StatusCardInsertAnimationEntry> entries) {
+        StartBattleCardAnimation(() => PlayStatusCardInsertAnimationAsync(entries), "塞牌动画");
+    }
+
     public async Task PlayStatusCardInsertAnimationAsync(
         IReadOnlyList<StatusCardInsertAnimationEntry> entries
     )
@@ -364,16 +357,14 @@ public partial class CharacterControl
         if (entries == null || entries.Count == 0 || !IsInsideTree())
             return;
 
-        while (_statusInsertAnimationBuffersInUse && IsInsideTree())
-            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-        if (_statusInsertAnimationBuffersInUse || !IsInsideTree())
-            return;
-
-        _statusInsertAnimationBuffersInUse = true;
-        var expandedEntries = _statusInsertExpandedEntries;
-        var statusSkillCache = _statusInsertSkillCache;
-        expandedEntries.Clear();
-        statusSkillCache.Clear();
+        // Each batch owns its previews. Overlapping presentation must not reuse buffers
+        // or postpone ordered pile mutations until an older animation finishes.
+        var expandedEntries = new List<(
+            Character Target, Character Source, Skill StatusSkill, BattleCardPileTarget PileTarget
+        )>();
+        var statusSkillCache = new Dictionary<SkillID, Skill>();
+        var cards = new List<StatusInsertPreviewCard>();
+        var flyTasks = new List<Task>();
         try
         {
             foreach (StatusCardInsertAnimationEntry entry in entries)
@@ -401,10 +392,6 @@ public partial class CharacterControl
             if (overlay == null)
                 return;
 
-            var cards = _statusInsertPreviewCards;
-            var flyTasks = _statusInsertFlyTasks;
-            cards.Clear();
-            flyTasks.Clear();
             Vector2 viewportSize = GetViewport().GetVisibleRect().Size;
             Vector2 scale = GetStatusInsertScale(expandedEntries.Count, viewportSize);
             Vector2 cardSize = BattleCardBaseSize * scale;
@@ -422,6 +409,9 @@ public partial class CharacterControl
             float stagger = GetStatusInsertStagger(expandedEntries.Count);
             for (int i = 0; i < expandedEntries.Count; i++)
             {
+                await WaitForStatusInsertCardCreationBudgetAsync();
+                if (!GodotObject.IsInstanceValid(this) || !IsInsideTree() || !GodotObject.IsInstanceValid(overlay))
+                    return;
                 var entry = expandedEntries[i];
                 SkillCard card = CreateStatusInsertPreviewCard(
                     entry.StatusSkill,
@@ -479,12 +469,6 @@ public partial class CharacterControl
                     .SetDelay(i * stagger)
                     .SetTrans(Tween.TransitionType.Cubic)
                     .SetEase(Tween.EaseType.Out);
-
-                if (
-                    (i + 1) % StatusInsertCardsCreatedPerFrame == 0
-                    && i + 1 < expandedEntries.Count
-                )
-                    await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             }
 
             if (cards.Count == 0)
@@ -509,19 +493,27 @@ public partial class CharacterControl
                 flyTasks.Add(PlayStatusInsertCardIntoPileAsync(card, pileButton, delay));
             }
 
-            for (int i = 0; i < flyTasks.Count; i++)
-                await flyTasks[i];
+            await Task.WhenAll(flyTasks);
         }
         finally
         {
-            foreach (StatusInsertPreviewCard preview in _statusInsertPreviewCards)
+            foreach (StatusInsertPreviewCard preview in cards)
                 QueueFreeTemporaryCard(preview.Card);
+        }
+    }
 
-            _statusInsertFlyTasks.Clear();
-            _statusInsertPreviewCards.Clear();
-            expandedEntries.Clear();
-            statusSkillCache.Clear();
-            _statusInsertAnimationBuffersInUse = false;
+    private async Task WaitForStatusInsertCardCreationBudgetAsync() {
+        while (GodotObject.IsInstanceValid(this) && IsInsideTree()) {
+            ulong frame = Engine.GetProcessFrames();
+            if (_statusInsertCardCreationFrame != frame) {
+                _statusInsertCardCreationFrame = frame;
+                _statusInsertCardsCreatedThisFrame = 0;
+            }
+            if (_statusInsertCardsCreatedThisFrame < StatusInsertCardsCreatedPerFrame) {
+                _statusInsertCardsCreatedThisFrame++;
+                return;
+            }
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         }
     }
 

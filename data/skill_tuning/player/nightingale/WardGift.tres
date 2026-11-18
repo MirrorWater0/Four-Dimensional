@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "WardGift"
+DisplayName = "护障转赠"
+Values = Dictionary[String, int]({
+"BaseBlock": 10,
+"BrokenStacks": 1,
+"EnemyEnergyCost": 0,
+"EnergyCost": 0,
+"ExhaustAfterExecutions": 0,
+"Multiplier": 1
+})

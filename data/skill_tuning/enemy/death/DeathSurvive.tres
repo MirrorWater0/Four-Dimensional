@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardTuningResource" format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "DeathSurvive"
+DisplayName = "死寂"
+Values = Dictionary[String, int]({
+"BaseBlock": 33,
+"EnemyEnergyCost": 0,
+"EnergyCost": 1,
+"ExhaustAfterExecutions": 0,
+"FrailStacks": 3,
+"Heal": 30,
+"Multiplier": 2
+})

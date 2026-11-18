@@ -1,7 +1,6 @@
 public partial class BasicAttack : Skill
 {
-    public override SkillTypes SkillType => SkillTypes.Special;
-    public override int EnergyCost => Cost(0);
+    public override SkillTypes SkillType => SkillTypes.Attack;
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_attack.name", "基础攻击");
 
@@ -9,17 +8,17 @@ public partial class BasicAttack : Skill
     {
         return new SkillPlan(
             this,
-            ModifyAttackCountStep(V("TemporaryAttackCount", 1), temporary: true)
+            AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), times: V("HitCount"))
         );
     }
 }
 
 public partial class BasicDefense : Skill
 {
-    private const int BaseBlock = 4;
-    private const int SurvivabilityMultiplier = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int SurvivabilityMultiplier => V(nameof(SurvivabilityMultiplier));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.basic_defense.name", "基础防御");
@@ -29,8 +28,8 @@ public partial class BasicDefense : Skill
         return new SkillPlan(
             this,
             BlockStep(
-                baseBlock: V(nameof(BaseBlock), BaseBlock),
-                multiplier: V(nameof(SurvivabilityMultiplier), SurvivabilityMultiplier)
+                baseBlock: V("BaseBlock"),
+                multiplier: V("SurvivabilityMultiplier")
             )
         );
     }
@@ -38,10 +37,10 @@ public partial class BasicDefense : Skill
 
 public partial class BasicGuard : Skill
 {
-    private const int BaseBlock = 2;
-    private const int SurvivabilityMultiplier = 1;
+    private int BaseBlock => V(nameof(BaseBlock));
+    private int SurvivabilityMultiplier => V(nameof(SurvivabilityMultiplier));
 
-    public override SkillTypes SkillType => SkillTypes.Survive;
+    public override SkillTypes SkillType => SkillTypes.Permanent;
 
     public override string SkillName { get; set; } = I18n.Tr("skill.basic_guard.name", "护卫");
 
@@ -50,50 +49,28 @@ public partial class BasicGuard : Skill
         return new SkillPlan(
             this,
             BlockStep(
-                target: TargetReference.ManualFriendly,
-                baseBlock: V(nameof(BaseBlock), BaseBlock),
-                multiplier: V(nameof(SurvivabilityMultiplier), SurvivabilityMultiplier)
+                target: TargetReference.Self,
+                baseBlock: V("BaseBlock"),
+                multiplier: V("SurvivabilityMultiplier")
             )
-        );
-    }
-}
-
-public partial class BasicSpecial : Skill
-{
-    private const int PowerGain = 1;
-
-    public override SkillTypes SkillType => SkillTypes.Special;
-
-    public override string SkillName { get; set; } =
-        I18n.Tr("skill.basic_special.name", "基础特殊");
-    public override int EnergyCost => Cost(2);
-
-    protected override SkillPlan BuildPlan()
-    {
-        return new SkillPlan(
-            this,
-            ModifyPropertyStep(PropertyType.Power, V(nameof(PowerGain), PowerGain)),
-            ModifyAttackCountStep(1, temporary: true, target: TargetReference.Next)
         );
     }
 }
 
 public partial class KasiyaBasicSpecial : Skill
 {
-    private const int PowerGain = 1;
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.kasiya_basic_special.name", "侵袭");
-    public override int EnergyCost => Cost(2);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks", 2)),
-            ModifyAttackCountStep(1, temporary: true, target: TargetReference.Next)
+            ApplyBuffHostile(Buff.BuffName.Vulnerable, V("VulnerableStacks"), HostileTargetReference.Manual),
+            PlayDrawPileCardStep(SkillTypes.Attack, random: true)
         );
     }
 }
@@ -104,7 +81,6 @@ public partial class EchoBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.echo_basic_special.name", "解离");
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
@@ -112,7 +88,7 @@ public partial class EchoBasicSpecial : Skill
             this,
             ApplyBuffHostile(
                 Buff.BuffName.Weaken,
-                V("WeakenStacks", 1),
+                V("WeakenStacks"),
                 HostileTargetReference.All
             )
         );
@@ -125,12 +101,10 @@ public partial class MariyaBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.mariya_basic_special.name", "治愈");
-    public override int EnergyCost => Cost(1);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, HealStep(V("Heal", 6), TargetReference.ManualFriendly));
+        return new SkillPlan(this, HealStep(V("Heal"), TargetReference.ManualFriendly));
     }
 }
 
@@ -140,14 +114,13 @@ public partial class NightingaleBasicSpecial : Skill
 
     public override string SkillName { get; set; } =
         I18n.Tr("skill.nightingale_basic_special.name", "隐藏");
-    public override int EnergyCost => Cost(0);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks", 1)),
-            DrawCardsStep(V("DrawCount", 1))
+            ApplyBuffFriendly(Buff.BuffName.Invisible, V("InvisibleStacks")),
+            DrawCardsStep(V("DrawCount"))
         );
     }
 }

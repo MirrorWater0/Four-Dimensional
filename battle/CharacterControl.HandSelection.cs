@@ -41,7 +41,9 @@ public partial class CharacterControl
 
     public bool CanAnimateHandCardsFor(PlayerCharacter player)
     {
-        return player != null && player == _activePlayer && _uiBuilt && IsInsideTree();
+        return player != null && player == _activePlayer && _uiBuilt && IsInsideTree()
+            && IsVisibleInTree()
+            && (!_freezeHandLayout || _isDiscardSelectionActive || _isPileCardSelectionActive);
     }
 
     public async Task<int> SelectAndDiscardHandCardsAsync(PlayerCharacter player, int count)

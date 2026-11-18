@@ -1,24 +1,13 @@
 shader_type canvas_item;
 
-// Broad, seamless organic falloff to eliminate any rectangular window or harsh edges.
-uniform float softness : hint_range(0.1, 0.9) = 0.55;
-
+// The illustration is a printed plate: keep the pale paper and the face intact.
+// Only its inner edge dissolves into the ink-coloured column carrying the copy.
+uniform float reveal : hint_range(0.0, 1.0) = 1.0;
 void fragment() {
-    vec4 tex = texture(TEXTURE, UV);
-    
-    // Normalized distance from center (0.0 at center, 1.0 at border)
-    vec2 d = abs(UV - vec2(0.5, 0.5)) * 2.0; // 0 at center, 1 at edge
-    
-    // Standard GLSL ascending edges: edge0 < edge1
-    float edge0 = 1.0 - softness;
-    float edge1 = 1.0;
-    float fx = 1.0 - smoothstep(edge0, edge1, d.x);
-    float fy = 1.0 - smoothstep(edge0, edge1, d.y);
-    
-    // Radial corner softening with ascending edges
-    float corner = 1.0 - smoothstep(0.85, 1.25, length(d));
-    
-    float alpha_mask = fx * fy * corner;
-    
-    COLOR = vec4(tex.rgb, tex.a * alpha_mask * COLOR.a);
+    float edge = UV.x + (UV.y - 0.5) * 0.11;
+    float ink = smoothstep(0.16, 0.55, edge);
+    vec2 sample_uv = (UV - vec2(0.5, 0.23)) / mix(1.045, 1.0, reveal) + vec2(0.5, 0.23);
+    vec4 art = texture(TEXTURE, sample_uv);
+    float pass = smoothstep(-0.20, 0.17, 1.30 * reveal - UV.x);
+    COLOR = vec4(art.rgb * mix(0.88, 1.0, pass), ink * art.a * mix(0.40, 1.0, pass) * COLOR.a);
 }

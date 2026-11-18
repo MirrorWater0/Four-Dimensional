@@ -74,11 +74,20 @@ public partial class PlayerCharacterRegistry
         CharacterName = I18n.Tr("character.echo.name", "Echo"),
         PassiveName = I18n.Tr("character.echo.passive.name", global::Echo.PassiveNameText),
         PassiveDescription = global::Echo.PassiveDescriptionText,
-        LifeMax = 38,
+        LifeMax = 44,
         Power = 3,
-        Survivability = 4,
+        Survivability = 3,
         CharacterScenePath = "res://character/PlayerCharacter/Echo/Echo.tscn",
         PortaitPath = "res://asset/PlayerCharater/Echo/EchoPortrait.png",
+        // 初始牌组：重复填写同一 SkillID 可配置多张同名卡。
+        GainedSkills =
+        [
+            SkillID.BasicAttack,
+            SkillID.BasicAttack,
+            SkillID.BasicDefense,
+            SkillID.BasicDefense,
+            SkillID.EchoBasicSpecial,
+        ],
         TakenSkills = [SkillID.BasicAttack, SkillID.BasicDefense, SkillID.EchoBasicSpecial],
     };
 }

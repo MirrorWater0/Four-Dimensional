@@ -51,11 +51,14 @@ public partial class Character : Node2D
             _state = value;
             if (_state == CharacterState.Dying)
             {
-                AttackCountBuff.ClearTemporary(this);
+                HideActionOutcomePreview();
                 BattleNode?.ClearNextActionPreviewCharacter(this);
             }
             if (changed)
+            {
+                RefreshDamageImmuneShield();
                 BattleNode?.RefreshTurnOrderPreview();
+            }
         }
     }
     public GridContainer StateIconContainer => field ??= GetNode<GridContainer>("State");
@@ -106,6 +109,10 @@ public partial class Character : Node2D
         field ??= GetNodeOrNull<Control>("LifeBar/Block/SurvivabilityIcon");
     public ProgressBar LifeBar => field ??= GetNode<ProgressBar>("LifeBar");
     public ProgressBar BufferBar => field ??= GetNode<ProgressBar>("LifeBar/BufferBar");
+    private Control ActionDamagePreview => field ??= GetNodeOrNull<Control>("LifeBar/ActionDamagePreview");
+    private Label ActionDamagePreviewValue => field ??= GetNodeOrNull<Label>("LifeBar/ActionDamagePreview/Value");
+    private Label ActionBlockPreview => field ??= GetNodeOrNull<Label>("LifeBar/ActionBlockPreview");
+    private ColorRect ActionDamagePreviewFill => field ??= GetNodeOrNull<ColorRect>("LifeBar/ActionDamagePreviewFill");
     public Label PowerIconLabel => field ??= GetNode<Label>("State/PowerIcon/Label");
     public Label SurvivabilityIconLabel =>
         field ??= GetNode<Label>("State/SurvivabilityIcon/Label");
@@ -201,15 +208,21 @@ public partial class Character : Node2D
     private Tween _spriteImpactTween;
     private Vector2 _spriteRestScale;
     private bool _spriteRestScaleCached;
+    private bool _dyingResolutionWasDeferred;
     private Tween _bufferBarTween;
     private Tween _lifeBarTween;
     private Tween _lifeBarMaxTween;
     private StyleBox _defaultLifeBarFillStyle;
     private StyleBox _defaultBufferBarFillStyle;
     private bool _lifeBarBlockColorActive;
-    private Tween _blockDisplayTween;
-    private Vector2 _blockLabelBaseScale;
-    private bool _blockLabelBaseScaleCached;
+    private sealed class CombatReadoutAnimationState
+    {
+        public Vector2 BaseScale;
+        public Color BaseModulate;
+        public bool Shown;
+        public Tween Tween;
+    }
+    private readonly Dictionary<Control, CombatReadoutAnimationState> _combatReadoutAnimations = new();
     private Tween _nextActionPreviewTween;
     private Tween _trailPreviewTween;
     private Tween _turnOrderPreviewTween;
@@ -267,6 +280,13 @@ public partial class Character : Node2D
     {
         BasePowerContribution = power;
         BaseSurvivabilityContribution = survivability;
+    }
+
+    protected void RefreshCombatStatDisplay() {
+        PowerIconLabel.Text = BattlePower.ToString();
+        SurvivabilityIconLabel.Text = BattleSurvivability.ToString();
+        RefreshCombatStatIconVisibility();
+        InvalidateSkillTooltipCache();
     }
 
     public int GetEffectivePowerForSkillScaling() => BattlePower + BasePowerContribution;
@@ -336,6 +356,7 @@ public partial class Character : Node2D
         Block = 0;
         RefreshBlockDisplay(immediate: true);
         RefreshLifeBarBlockColor();
+        HideActionOutcomePreview(immediate: true);
 
         Hoverframe.PivotOffset = Hoverframe.Size / 2;
         _isHoverframeHovered = false;
@@ -353,7 +374,12 @@ public partial class Character : Node2D
         RefreshBuffDrivenVisualState();
     }
 
-    public override async void _Ready()
+    public override void _EnterTree() {
+        // Child Spine scripts run _Ready first; only standalone previews own their old tween.
+        GetNodeOrNull<Node2D>("SpineSprite")?.SetMeta("skip_spawn_shader", true);
+    }
+
+    public override void _Ready()
     {
         SetProcess(false);
 
@@ -369,21 +395,13 @@ public partial class Character : Node2D
             return;
         }
 
+        RefreshDamageImmuneShield();
         Hoverframe.MouseEntered += OnHoverEntered;
         Hoverframe.MouseExited += OnHoverExited;
         Hoverframe.GuiInput += OnHoverframeGuiInput;
 
-        if (Sprite.Material != null)
-        {
-            ShaderMaterial material = (ShaderMaterial)Sprite.Material.Duplicate();
-            material.ResourceLocalToScene = true;
-            Sprite.Material = material;
-            ((ShaderMaterial)Sprite.Material).SetShaderParameter("progress", 1f);
-            Tween tween = CreateTween();
-            tween.TweenProperty(Sprite, "material:shader_parameter/progress", 0, 0.8f);
-        }
-        await ToSignal(GetTree().CreateTimer(0.4f), "timeout");
-        CharacterEffect.Spawn(this, "transition");
+        if (State != CharacterState.Dying)
+            PlayBattleArrival();
     }
 
     private void OnHoverframeGuiInput(InputEvent @event)
@@ -433,7 +451,7 @@ public partial class Character : Node2D
         else
             Hover();
         BattleNode?.LogHoverPerfWork(this, "character-hover-visual", stepStartUsec);
-        if (State == CharacterState.Dying)
+        if (State == CharacterState.Dying || isManualTargetSelection)
             return;
 
         stepStartUsec = Time.GetTicksUsec();
@@ -453,7 +471,7 @@ public partial class Character : Node2D
 
     private void ShowHoverTooltips()
     {
-        if (State == CharacterState.Dying)
+        if (State == CharacterState.Dying || BattleNode?.CharacterControl?.IsManualTargetArrowSelectionActive == true)
         {
             HideHoverTooltips();
             return;
@@ -466,6 +484,12 @@ public partial class Character : Node2D
         _localSkillTooltip?.HideTooltip();
         SkillTooltip?.HideTooltip();
         BuffTooltip?.HideTooltip();
+    }
+
+    internal virtual void SuppressHoverTooltipsForTargetSelection()
+    {
+        _skillTooltipHoverVersion++;
+        HideHoverTooltips();
     }
 
     private async Task ShowHoverTooltipsDelayed(int hoverVersion)
@@ -482,6 +506,7 @@ public partial class Character : Node2D
             hoverVersion != _skillTooltipHoverVersion
             || !_isHoverframeHovered
             || State == CharacterState.Dying
+            || BattleNode?.CharacterControl?.IsManualTargetArrowSelectionActive == true
         )
             return;
 
@@ -548,7 +573,8 @@ public partial class Character : Node2D
             BattleNode?.LogHoverPerfWork(this, "character-hover-skilltip", stepStartUsec);
         }
 
-        if (hoverVersion != _skillTooltipHoverVersion || !_isHoverframeHovered)
+        if (hoverVersion != _skillTooltipHoverVersion || !_isHoverframeHovered
+            || BattleNode?.CharacterControl?.IsManualTargetArrowSelectionActive == true)
             return;
 
         if (BuffTooltip != null)
@@ -716,6 +742,7 @@ public partial class Character : Node2D
 
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Attack);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Survive);
+        AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Permanent);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Special);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Ability);
         AppendSkillPileNameLine(sb, skills, Skill.SkillTypes.Status);
@@ -808,6 +835,7 @@ public partial class Character : Node2D
 
         if (
             _isHoverframeHovered
+            && BattleNode?.CharacterControl?.IsManualTargetArrowSelectionActive != true
             && SkillTooltip != null
             && GodotObject.IsInstanceValid(SkillTooltip)
         )
@@ -841,6 +869,7 @@ public partial class Character : Node2D
 
     internal void RefreshBuffDrivenVisualState()
     {
+        RefreshDamageImmuneShield();
         if (Sprite == null || !GodotObject.IsInstanceValid(Sprite))
             return;
 
@@ -866,7 +895,8 @@ public partial class Character : Node2D
 
     private void RefreshVisibleSkillTooltipText()
     {
-        if (!_isHoverframeHovered || State == CharacterState.Dying)
+        if (!_isHoverframeHovered || State == CharacterState.Dying
+            || BattleNode?.CharacterControl?.IsManualTargetArrowSelectionActive == true)
             return;
 
         string skillText = GetOrBuildSkillTooltipText();
@@ -947,7 +977,7 @@ public partial class Character : Node2D
 
         if (SpecialBuffs != null)
         {
-            foreach (var buff in SpecialBuffs.Where(x => x != null && (x.Stack > 0 || x.ThisBuffName == Buff.BuffName.AttackCount)))
+            foreach (var buff in SpecialBuffs.Where(x => x != null && x.Stack > 0))
             {
                 AppendBuffTooltipEntry(sb, buff, colord);
                 any = true;
@@ -986,7 +1016,7 @@ public partial class Character : Node2D
         sb.Append(
             $"{Buff.BuildTooltipIconTag(buff.ThisBuffName)}       {Buff.GetBuffDisplayName(buff.ThisBuffName)} x{buff.Stack}\n"
         );
-        var effect = Buff.GetBuffEffectText(buff.ThisBuffName);
+        var effect = Buff.GetBuffEffectText(buff.ThisBuffName, buff.Owner);
         if (!string.IsNullOrWhiteSpace(effect))
             sb.Append($"[color={effectColor}]{effect}[/color]\n");
     }
@@ -1012,6 +1042,9 @@ public partial class Character : Node2D
 
     public override void _ExitTree()
     {
+        foreach (var animation in _combatReadoutAnimations.Values)
+            StopTween(ref animation.Tween);
+        _combatReadoutAnimations.Clear();
         if (_curvedTrailPreviewLine != null && GodotObject.IsInstanceValid(_curvedTrailPreviewLine))
         {
             _curvedTrailPreviewLine.QueueFree();
@@ -1236,7 +1269,13 @@ public partial class Character : Node2D
         // Iterate over a snapshot to avoid skipping the next buff due to index shifting.
         foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0).ToArray())
         {
-            buff.Trigger();
+            if (BattleNode is Battle battle)
+                battle.QueueBattleEffect(() => {
+                    buff.Trigger();
+                    return Task.CompletedTask;
+                }, buff.ThisBuffName.ToString());
+            else
+                buff.Trigger();
         }
     }
 
@@ -1250,17 +1289,15 @@ public partial class Character : Node2D
         if (!ClearsBlockOnActionStart)
             return;
 
-        bool keepBlock =
-            StartActionBuffs != null
-            && StartActionBuffs.Any(x =>
-                x != null && x.Stack > 0 && StartActionBuff.KeepsBlockOnTurnStart(x.ThisBuffName)
-            );
-
-        if (!keepBlock)
+        int blockLoss = Math.Max(0, Block);
+        if (StartActionBuffs != null)
         {
-            Block = 0;
-            UpdataBlock(0);
+            foreach (var buff in StartActionBuffs.Where(x => x != null && x.Stack > 0))
+                blockLoss = buff.ModifyTurnStartBlockLoss(blockLoss);
         }
+
+        Block -= blockLoss;
+        UpdataBlock(0);
 
         ClearOwnedSummonsBlock();
     }
@@ -1301,7 +1338,10 @@ public partial class Character : Node2D
         {
             foreach (var buff in EndActionBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                await buff.Trigger();
+                if (BattleNode is Battle battle)
+                    await battle.ExecuteBattleEffectAsync(buff.Trigger, buff.ThisBuffName.ToString());
+                else
+                    await buff.Trigger();
             }
         }
 
@@ -1313,13 +1353,24 @@ public partial class Character : Node2D
         return ResolveTurnEndPhaseAsync();
     }
 
-    public virtual async Task GetHurt(
+    public virtual Task GetHurt(
+        float damage,
+        Character source = null,
+        DamageKind damageKind = DamageKind.Other,
+        bool ignoreBlock = false
+    ) => BattleNode is Battle battle
+        ? battle.ExecuteBattleEffectAsync(() => GetHurtCoreAsync(damage, source, damageKind, ignoreBlock), "伤害结算")
+        : GetHurtCoreAsync(damage, source, damageKind, ignoreBlock);
+
+    private async Task GetHurtCoreAsync(
         float damage,
         Character source = null,
         DamageKind damageKind = DamageKind.Other,
         bool ignoreBlock = false
     )
     {
+        if (!GodotObject.IsInstanceValid(this) || BattleNode?.ShouldAbortSkillResolution() == true)
+            return;
         HitParticle.Spawn(this);
 
         if (HurtBuffs != null)
@@ -1377,7 +1428,10 @@ public partial class Character : Node2D
 
         if (Life == 0)
         {
-            await Dying(source);
+            if (BattleNode is Battle battle && battle.IsDeferringDyingResolution)
+                battle.DeferDyingResolution(this, source);
+            else
+                await Dying(source);
         }
     }
 
@@ -1619,6 +1673,10 @@ public partial class Character : Node2D
 
     private CharacterEffect ApplyRecover(int heal, bool rebirth, Character source, bool canRevive)
     {
+        if (heal > 0)
+            heal = Math.Clamp(BattleNode == null || BattleNode.HasBattleEnded()
+                ? GameInfo.ApplyTalentMapHealingBonus(heal)
+                : heal + BattleNode.GetTalentHealingBonus(), 0, 999);
         if (State == CharacterState.Dying)
         {
             if (!rebirth)
@@ -1659,9 +1717,14 @@ public partial class Character : Node2D
 
     public virtual async Task Dying(Character source = null)
     {
+        // The temporary dying state must not decide victory before rebirth has resolved.
+        using var dyingResolution = BattleNode?.BeginDyingResolution();
+        bool wasDeferred = _dyingResolutionWasDeferred;
+        _dyingResolutionWasDeferred = false;
         bool enteredDying = State != CharacterState.Dying;
         State = CharacterState.Dying;
-        BattleNode?.RecordDying(this, source);
+        if (enteredDying)
+            BattleNode?.RecordDying(this, source);
         if (BattleNode != null)
             await BattleNode.EmitCharacterDying(this, source);
 
@@ -1671,22 +1734,34 @@ public partial class Character : Node2D
             // Iterate over a snapshot to avoid skipping subsequent buffs.
             foreach (var buff in DyingBuffs.Where(x => x != null && x.Stack > 0).ToArray())
             {
-                await buff.Trigger();
+                if (BattleNode is Battle battle)
+                    await battle.ExecuteBattleEffectAsync(buff.Trigger, buff.ThisBuffName.ToString());
+                else
+                    await buff.Trigger();
             }
 
         if (State == CharacterState.Dying)
         {
-            if (enteredDying)
+            if (enteredDying || wasDeferred)
             {
                 BattleNode?.HandleCharacterEnteredDying(this);
                 BattleNode?.NotifyHandPreviewContextChanged();
             }
-            TriggerOwnedSummonsDying();
-            BattleNode?.QueueBattleOverCheck();
+            await TriggerOwnedSummonsDyingAsync();
         }
     }
 
-    private void TriggerOwnedSummonsDying()
+    internal void MarkDyingResolutionDeferred(Character source)
+    {
+        if (State == CharacterState.Dying)
+            return;
+
+        State = CharacterState.Dying;
+        _dyingResolutionWasDeferred = true;
+        BattleNode?.RecordDying(this, source);
+    }
+
+    private async Task TriggerOwnedSummonsDyingAsync()
     {
         if (Summons == null || Summons.Count == 0)
             return;
@@ -1698,7 +1773,12 @@ public partial class Character : Node2D
             .ToArray();
         for (int i = 0; i < ownedSummons.Length; i++)
         {
-            _ = ownedSummons[i].DyingFromSummoner();
+            SummonCharacter summon = ownedSummons[i];
+            if (BattleNode is Battle battle)
+                await battle.ExecuteBattleEffectAsync(() => GodotObject.IsInstanceValid(summon)
+                    ? summon.DyingFromSummoner() : Task.CompletedTask, "召唤者濒死：移除召唤物");
+            else
+                await summon.DyingFromSummoner();
         }
     }
 
@@ -1746,8 +1826,38 @@ public partial class Character : Node2D
 
     public void UpdataBlock(int num, bool record = true, Character source = null)
     {
+        UpdateBlockCore(num, record, source, triggerBeaconShare: true);
+    }
+
+    internal int PreviewBlockGain(int amount)
+    {
+        if (amount > 0 && HasActiveStartActionBuff(Buff.BuffName.Broken))
+            return 0;
+
+        return EndActionBuff.ModifyBlockGain(
+            amount,
+            EndActionBuffs?.Any(buff => buff != null && buff.ThisBuffName == Buff.BuffName.Frail && buff.Stack > 0) == true
+        );
+    }
+
+    internal void UpdataBlockWithoutBeaconShare(int num, Character source)
+    {
+        UpdateBlockCore(num, record: true, source: source, triggerBeaconShare: false);
+    }
+
+    private void UpdateBlockCore(int num, bool record, Character source, bool triggerBeaconShare)
+    {
         if (State == CharacterState.Dying)
             return;
+
+        if (num > 0)
+        {
+            int effectiveBlock = PreviewBlockGain(num);
+            if (effectiveBlock != num)
+                Buff.FlashTriggersOnOwner(this, HasActiveStartActionBuff(Buff.BuffName.Broken)
+                    ? Buff.BuffName.Broken : Buff.BuffName.Frail);
+            num = effectiveBlock;
+        }
 
         int previousBlock = Block;
         if (num > 0)
@@ -1773,7 +1883,8 @@ public partial class Character : Node2D
                 BattleNode?.RecordBlockGain(this, num, source);
 
             int gainedBlock = Math.Max(0, Block - previousBlock);
-            SpecialBuff.TriggerBeaconBlockShare(this, gainedBlock);
+            if (triggerBeaconShare)
+                SpecialBuff.TriggerBeaconBlockShare(this, gainedBlock);
         }
     }
 
@@ -1928,6 +2039,8 @@ public partial class Character : Node2D
         );
         InvalidateSkillTooltipCache();
         BattleNode?.RecordPropertyChange(this, type, appliedValue, source);
+        if (type == PropertyType.Power && appliedValue > 0)
+            BattleNode?.NotifyTalentPowerGained(this, appliedValue);
         BattleNode?.RefreshEnemyIntentionPreviews();
         BattleNode?.NotifyHandPreviewContextChanged();
         await ToSignal(GetTree().CreateTimer(0.01f), "timeout");
@@ -1959,10 +2072,23 @@ public partial class Character : Node2D
         if (!allowWhenDying && State == CharacterState.Dying)
             return;
 
-        Passive(skill);
+        if (BattleNode is Battle battle) {
+            battle.QueueBattleEffect(() => {
+                if (!GodotObject.IsInstanceValid(this) || (!allowWhenDying && State == CharacterState.Dying))
+                    return Task.CompletedTask;
+                return PassiveAsync(skill);
+            }, $"{CharacterName}：被动");
+        }
+        else
+            Passive(skill);
     }
 
     public virtual void Passive(Skill skill) { }
+
+    protected virtual Task PassiveAsync(Skill skill) {
+        Passive(skill);
+        return Task.CompletedTask;
+    }
 
     protected bool IsExtraActionPhase => BattleNode?.IsResolvingExtraAction(this) == true;
 
@@ -2028,66 +2154,112 @@ public partial class Character : Node2D
         RestoreProgressBarFillStyle(BufferBar, _defaultBufferBarFillStyle);
     }
 
+    internal void ShowActionOutcomePreview(int damage, int hits, int absorbedBlock, int blockGained,
+        bool approximate, bool truncated)
+    {
+        bool alive = State == CharacterState.Normal && Life > 0;
+        string qualifier = truncated ? "（部分预览）" : approximate ? "（估算）" : "";
+        if (ActionDamagePreview != null)
+        {
+            bool showDamage = alive && !IsPlayer && hits > 0;
+            if (showDamage)
+            {
+                if (ActionDamagePreviewValue != null)
+                    ActionDamagePreviewValue.Text = Math.Max(0, damage).ToString();
+                ActionDamagePreview.TooltipText = $"本轮行动牌预计造成 {damage} 点生命伤害{qualifier}"
+                    + (absorbedBlock > 0 ? $"\n格挡吸收 {absorbedBlock} 点伤害" : "");
+            }
+            SetCombatReadoutVisible(ActionDamagePreview, showDamage);
+        }
+        if (ActionBlockPreview != null)
+        {
+            // Keep this a sibling of Block: the current-block label is hidden when Block == 0.
+            bool showBlock = alive && IsPlayer && blockGained > 0;
+            if (showBlock)
+            {
+                ActionBlockPreview.Text = $"+{blockGained}";
+                ActionBlockPreview.TooltipText = $"本轮行动牌预计新获得 {blockGained} 点格挡{qualifier}";
+            }
+            SetCombatReadoutVisible(ActionBlockPreview, showBlock);
+        }
+        if (ActionDamagePreviewFill != null)
+        {
+            int loss = Math.Clamp(damage, 0, Life);
+            bool showFill = alive && !IsPlayer && loss > 0 && BattleMaxLife > 0;
+            if (showFill)
+            {
+                float currentRatio = Mathf.Clamp((float)Life / BattleMaxLife, 0f, 1f);
+                float remainingRatio = Mathf.Clamp((float)(Life - loss) / BattleMaxLife, 0f, 1f);
+                // Overlay only the health predicted to be lost; leave the real health/buffer values intact.
+                ActionDamagePreviewFill.Position = new Vector2(LifeBar.Size.X * remainingRatio, 0f);
+                ActionDamagePreviewFill.Size = new Vector2(LifeBar.Size.X * (currentRatio - remainingRatio), LifeBar.Size.Y);
+            }
+            SetCombatReadoutVisible(ActionDamagePreviewFill, showFill);
+        }
+    }
+
+    internal void HideActionOutcomePreview(bool immediate = false)
+    {
+        SetCombatReadoutVisible(ActionDamagePreview, false, immediate);
+        SetCombatReadoutVisible(ActionBlockPreview, false, immediate);
+        SetCombatReadoutVisible(ActionDamagePreviewFill, false, immediate);
+    }
+
     private void RefreshBlockDisplay(bool immediate = false)
     {
-        CacheBlockLabelBaseScale();
-        bool hasBlock = Block > 0;
-        bool wasVisible = BlockLabel.Visible;
         BlockLabel.Text = Block.ToString();
-        _blockDisplayTween?.Kill();
+        SetCombatReadoutVisible(BlockLabel, Block > 0, immediate, BlockIcon);
+    }
 
+    private void SetCombatReadoutVisible(Control control, bool visible, bool immediate = false,
+        Control exitVisual = null)
+    {
+        if (control == null || !GodotObject.IsInstanceValid(control))
+            return;
+        if (!_combatReadoutAnimations.TryGetValue(control, out var animation))
+        {
+            _combatReadoutAnimations[control] = animation = new CombatReadoutAnimationState {
+                BaseScale = control.Scale == Vector2.Zero ? Vector2.One : control.Scale,
+                BaseModulate = control.Modulate,
+                Shown = control.Visible,
+            };
+        }
+        if (control != BlockLabel)
+            control.PivotOffset = control.Size * 0.5f;
+        immediate |= !IsInsideTree();
         if (immediate)
         {
-            BlockLabel.Visible = hasBlock;
-            BlockLabel.Scale = _blockLabelBaseScale;
-            BlockLabel.Modulate = hasBlock ? Colors.White : new Color(1f, 1f, 1f, 0f);
+            StopTween(ref animation.Tween);
+            animation.Shown = visible;
+            control.Visible = visible;
+            control.Scale = animation.BaseScale;
+            control.Modulate = animation.BaseModulate;
             return;
         }
-
-        if (hasBlock)
+        // Polling updates the values frequently; only a visibility transition starts an animation.
+        if (animation.Shown == visible)
+            return;
+        StopTween(ref animation.Tween);
+        animation.Shown = visible;
+        if (visible)
         {
-            if (!wasVisible)
-            {
-                BlockLabel.Visible = true;
-                BlockLabel.Scale = _blockLabelBaseScale * BlockDisplayShowScaleFactor;
-                BlockLabel.Modulate = new Color(1f, 1f, 1f, 0f);
-
-                _blockDisplayTween = CreateTween();
-                _blockDisplayTween.SetParallel(true);
-                _blockDisplayTween.TweenProperty(
-                    BlockLabel,
-                    "modulate",
-                    Colors.White,
-                    BlockDisplayFadeDuration
-                );
-                _blockDisplayTween
-                    .TweenProperty(
-                        BlockLabel,
-                        "scale",
-                        _blockLabelBaseScale,
-                        BlockDisplayFadeDuration
-                    )
-                    .SetEase(Tween.EaseType.Out);
-            }
-            else
-            {
-                BlockLabel.Scale = _blockLabelBaseScale;
-                BlockLabel.Modulate = Colors.White;
-            }
+            control.Visible = true;
+            control.Scale = animation.BaseScale * BlockDisplayShowScaleFactor;
+            Color transparent = animation.BaseModulate;
+            transparent.A = 0f;
+            control.Modulate = transparent;
+            animation.Tween = control.CreateTween();
+            animation.Tween.SetParallel(true);
+            animation.Tween.TweenProperty(control, "modulate", animation.BaseModulate, BlockDisplayFadeDuration);
+            animation.Tween.TweenProperty(control, "scale", animation.BaseScale, BlockDisplayFadeDuration)
+                .SetEase(Tween.EaseType.Out);
             return;
         }
 
-        if (!wasVisible)
-        {
-            BlockLabel.Scale = _blockLabelBaseScale;
-            BlockLabel.Modulate = new Color(1f, 1f, 1f, 0f);
-            return;
-        }
-
-        if (BlockIcon != null)
+        if (control.Visible)
         {
             Buff.GhostExplode(
-                BlockIcon,
+                exitVisual ?? control,
                 BlockGhostExplodeScale,
                 LifeBar,
                 useOffsetMotion: false,
@@ -2095,18 +2267,9 @@ public partial class Character : Node2D
                 alphaScale: BlockGhostExplodeAlphaScale
             );
         }
-        BlockLabel.Visible = false;
-        BlockLabel.Scale = _blockLabelBaseScale;
-        BlockLabel.Modulate = Colors.White;
-    }
-
-    private void CacheBlockLabelBaseScale()
-    {
-        if (_blockLabelBaseScaleCached)
-            return;
-
-        _blockLabelBaseScale = BlockLabel.Scale == Vector2.Zero ? Vector2.One : BlockLabel.Scale;
-        _blockLabelBaseScaleCached = true;
+        control.Visible = false;
+        control.Scale = animation.BaseScale;
+        control.Modulate = animation.BaseModulate;
     }
 
     private void CacheDefaultLifeBarFillStyles()

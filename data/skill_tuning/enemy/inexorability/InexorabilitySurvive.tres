@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CardTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/SkillBase/CardTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+SkillKey = "InexorabilitySurvive"
+DisplayName = "存续封缄"
+Values = Dictionary[String, int]({
+"BaseBlock": 10,
+"EnemyEnergyCost": 0,
+"EnergyCost": 1,
+"ExhaustAfterExecutions": 0,
+"Multiplier": 1,
+"PowerGain": 3
+})

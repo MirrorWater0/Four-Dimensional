@@ -3,6 +3,7 @@ public enum BattleCardKeyword
     Retain,
     ExhaustAfterUse,
     Voidness,
+    Immediate,
 }
 
 public static class BattleCardKeywordExtensions
@@ -11,8 +12,9 @@ public static class BattleCardKeywordExtensions
         keyword switch
         {
             BattleCardKeyword.Retain => I18n.Tr("keyword.retain", Skill.RetainKeyword),
-            BattleCardKeyword.ExhaustAfterUse => I18n.Tr("keyword.exhaust", Skill.ExhaustKeyword),
+            BattleCardKeyword.ExhaustAfterUse => $"{I18n.Tr("keyword.exhaust", Skill.ExhaustKeyword)}1",
             BattleCardKeyword.Voidness => I18n.Tr("keyword.voidness", Skill.VoidnessKeyword),
+            BattleCardKeyword.Immediate => I18n.Tr("keyword.immediate", Skill.ImmediateKeyword),
             _ => string.Empty,
         };
 
@@ -22,9 +24,11 @@ public static class BattleCardKeywordExtensions
             BattleCardKeyword.Retain =>
                 I18n.Tr("keyword.retain.effect", Skill.RetainKeywordEffectText),
             BattleCardKeyword.ExhaustAfterUse =>
-                I18n.Tr("keyword.exhaust.effect", Skill.ExhaustKeywordEffectText),
+                I18n.Tr("keyword.exhaust_execution.effect", "执行1次后，本场战斗中移出。"),
             BattleCardKeyword.Voidness =>
                 I18n.Tr("keyword.voidness.effect", Skill.VoidnessKeywordEffectText),
+            BattleCardKeyword.Immediate =>
+                I18n.Tr("keyword.immediate.effect", Skill.ImmediateKeywordEffectText),
             _ => string.Empty,
         };
 }

@@ -21,6 +21,7 @@ public sealed class CardTrailMoveOptions
 
 public partial class SkillCard : Control
 {
+    public const float DefaultEnterAnimationDuration = 0.26f;
     private const int DefaultDescriptionFontSize = 17;
     [ExportGroup("Card Appearance")]
     [Export] public int MinDescriptionFontSize { get; set; } = 8;
@@ -153,6 +154,7 @@ public partial class SkillCard : Control
     private static readonly Dictionary<string, Texture2D> SkillPictureCache = new();
     private static readonly HashSet<string> MissingSkillPicturePaths = new(StringComparer.Ordinal);
     private static readonly string[] SkillPictureExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+    private const string DefaultSkillPicturePath = "res://asset/CardPicture/Colorless/Blade.jpg";
     private static Shader _defaultCardShader;
     private static Shader _defaultCanvasGroupCardShader;
     private static Shader _cardExhaustShader;
@@ -395,7 +397,7 @@ public partial class SkillCard : Control
 
     public void StartAnimation(float delay = 0f)
     {
-        StartAnimationWithDuration(delay, 0.4f);
+        StartAnimationWithDuration(delay, DefaultEnterAnimationDuration);
     }
 
     public void StartAnimationWithDuration(float delay, float duration)
@@ -405,6 +407,8 @@ public partial class SkillCard : Control
 
         _progressTween?.Kill();
 
+        if (UsesCanvasGroupCardMaterial)
+            shader.SetShaderParameter("appearing", true);
         shader.SetShaderParameter("progress", 1f);
 
         _progressTween = CreateTween();
@@ -1415,6 +1419,8 @@ public partial class SkillCard : Control
             return;
 
         _progressTween?.Kill();
+        if (UsesCanvasGroupCardMaterial)
+            shader.SetShaderParameter("appearing", false);
         shader.SetShaderParameter("line_strength", 0f);
         _progressTween = CreateTween();
         _progressTween
@@ -2395,6 +2401,8 @@ public partial class SkillCard : Control
             foreach (string extension in SkillPictureExtensions)
                 yield return $"res://asset/CardPicture/{legacyFileName}{extension}";
         }
+
+        yield return DefaultSkillPicturePath;
     }
 
     private static IEnumerable<string> GetSkillPictureFolders(
@@ -2458,7 +2466,7 @@ public partial class SkillCard : Control
         string path = skillType switch
         {
             Skill.SkillTypes.Attack => "res://asset/svg/SkillIcon/attack.svg",
-            Skill.SkillTypes.Survive => "res://asset/svg/SkillIcon/survive.svg",
+            Skill.SkillTypes.Survive or Skill.SkillTypes.Permanent => "res://asset/svg/SkillIcon/survive.svg",
             Skill.SkillTypes.Special => "res://asset/svg/SkillIcon/special.svg",
             Skill.SkillTypes.Ability => "res://asset/svg/SkillIcon/ability.svg",
             _ => "res://asset/svg/SkillIcon/default.svg",

@@ -3,22 +3,25 @@
 [ext_resource type="Theme" uid="uid://c2vpeachxq8yw" path="res://battle/UIScene/LabelTheme1.tres" id="1_27l78"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_bg"]
-content_margin_left = 2.0
-content_margin_top = 2.0
-content_margin_right = 2.0
-content_margin_bottom = 2.0
-bg_color = Color(0, 0, 0, 0)
-skew = Vector2(0.22, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.96, 0.97, 0.98, 0.96)
-anti_aliasing_size = 3.305
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.65, 0.8, 0.86, 0.16)
+skew = Vector2(0, 0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0.68, 0.78, 0.83, 0.48)
+anti_aliasing_size = 1.0
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_party_life_bar_fill"]
-bg_color = Color(0.94, 0.95, 0.96, 0.96)
-skew = Vector2(0.22, 0)
+bg_color = Color(0.66, 0.82, 0.85, 0.95)
+skew = Vector2(0, 0)
+border_width_top = 0
+border_color = Color(0.84, 0.94, 0.95, 0.8)
+anti_aliasing_size = 1.0
 
 [sub_resource type="Theme" id="Theme_party_life_bar"]
 ProgressBar/styles/background = SubResource("StyleBoxFlat_party_life_bar_bg")
@@ -26,41 +29,86 @@ ProgressBar/styles/fill = SubResource("StyleBoxFlat_party_life_bar_fill")
 
 [node name="Body" type="VBoxContainer" unique_id=336796229]
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 3
-
-[node name="LifeBar" type="ProgressBar" parent="." unique_id=108825647]
-custom_minimum_size = Vector2(132, 11)
-layout_mode = 2
-size_flags_horizontal = 3
-theme = SubResource("Theme_party_life_bar")
-value = 80.0
-show_percentage = false
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 8
 
 [node name="BottomRow" type="HBoxContainer" parent="." unique_id=2109723277]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 5
+mouse_filter = 2
+theme_override_constants/separation = 8
 
 [node name="Name" type="Label" parent="BottomRow" unique_id=1170030103]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 2
 theme = ExtResource("1_27l78")
-theme_override_colors/font_color = Color(0.9, 0.96, 1, 0.92)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.95)
-theme_override_constants/outline_size = 2
+theme_override_colors/font_color = Color(0.78, 0.85, 0.89, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.055, 0.07, 0.8)
+theme_override_constants/outline_size = 1
 theme_override_font_sizes/font_size = 14
-text = "P1"
+text = "队员"
+text_overrun_behavior = 3
 vertical_alignment = 1
 
 [node name="Value" type="Label" parent="BottomRow" unique_id=1611471154]
 custom_minimum_size = Vector2(68, 0)
 layout_mode = 2
 size_flags_horizontal = 8
+mouse_filter = 2
 theme = ExtResource("1_27l78")
-theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 17
-text = "0/0"
+theme_override_colors/font_color = Color(0.9, 0.95, 0.96, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.055, 0.07, 0.8)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 15
+text = "80 / 100"
 horizontal_alignment = 2
 vertical_alignment = 1
+
+[node name="LifeBar" type="ProgressBar" parent="." unique_id=108825647]
+custom_minimum_size = Vector2(132, 4)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme = SubResource("Theme_party_life_bar")
+fill_mode = 0
+step = 0.0
+value = 80.0
+show_percentage = false
+
+[node name="QuarterMark" type="ColorRect" parent="LifeBar"]
+layout_mode = 0
+anchor_left = 0.25
+anchor_right = 0.25
+anchor_bottom = 1.0
+offset_top = 2.0
+offset_right = 1.0
+offset_bottom = -2.0
+mouse_filter = 2
+color = Color(0.06, 0.09, 0.11, 0.32)
+visible = false
+
+[node name="HalfMark" type="ColorRect" parent="LifeBar"]
+layout_mode = 0
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_top = 2.0
+offset_right = 1.0
+offset_bottom = -2.0
+mouse_filter = 2
+color = Color(0.06, 0.09, 0.11, 0.32)
+visible = false
+
+[node name="ThreeQuarterMark" type="ColorRect" parent="LifeBar"]
+layout_mode = 0
+anchor_left = 0.75
+anchor_right = 0.75
+anchor_bottom = 1.0
+offset_top = 2.0
+offset_right = 1.0
+offset_bottom = -2.0
+mouse_filter = 2
+color = Color(0.06, 0.09, 0.11, 0.32)
+visible = false

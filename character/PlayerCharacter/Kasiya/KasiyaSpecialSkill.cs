@@ -2,12 +2,30 @@ using Godot;
 
 public partial class KasiyaSpecialSkill : Node { }
 
+public partial class BattleCommand : Skill
+{
+    public override SkillRarity Rarity => SkillRarity.Uncommon;
+
+    public override string SkillName { get; set; } =
+        I18n.Tr("skill.battle_command.name", "战术号令");
+
+    public override SkillTypes SkillType => SkillTypes.Special;
+
+    protected override SkillPlan BuildPlan()
+    {
+        return new SkillPlan(
+            this,
+            TriggerInstalledCardsStep(target: TargetReference.ManualFriendly,
+                exhaustAfterTrigger: true)
+        );
+    }
+}
+
 public partial class ReadyStance : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
 
     public override string SkillName { get; set; } = "能量爆发";
-    public override int EnergyCost => Cost(1);
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
@@ -18,7 +36,7 @@ public partial class ReadyStance : Skill
             DoubleEnergyStep(),
             AddCardsStep(
                 SkillID.VoidStatus,
-                V("VoidCount", 1),
+                V("VoidCount"),
                 BattleCardPileTarget.DiscardPileCards
             )
         );
@@ -28,13 +46,11 @@ public partial class ReadyStance : Skill
 public class HolySeal : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int StunStacks = 1;
+    private int StunStacks => V(nameof(StunStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "圣光封印";
-    public override int EnergyCost => Cost(3);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
@@ -52,21 +68,20 @@ public class HolySeal : Skill
 public class TacticalPreparation : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Uncommon;
-    private const int ExtraDrawStacks = 1;
+    private int ExtraDrawStacks => V(nameof(ExtraDrawStacks));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "战术整备";
-    public override int EnergyCost => Cost(1);
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            DrawCardsStep(V("DrawCount", 2)),
+            DrawCardsStep(V("DrawCount")),
             AddCardsStep(
                 SkillID.VoidStatus,
-                V("VoidCount", 1),
+                V("VoidCount"),
                 BattleCardPileTarget.DiscardPileCards
             ),
             ApplyBuffFriendly(
@@ -81,21 +96,19 @@ public class TacticalPreparation : Skill
 public class RadiantOverload : Skill
 {
     public override SkillRarity Rarity => SkillRarity.Common;
-    private const int DazeCount = 1;
-    private const int EnergyGain = 3;
+    private int DazeCount => V(nameof(DazeCount));
+    private int EnergyGain => V(nameof(EnergyGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "辉光";
-    public override int EnergyCost => Cost(0);
-    public override bool ExhaustsAfterUse => true;
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
             AddCardsStep(SkillID.DazeStatus, DazeCount),
-            AddCardsStep(SkillID.DazeStatus, 1, BattleCardPileTarget.DiscardPileCards),
+            AddCardsStep(SkillID.DazeStatus, V("DiscardDazeCount"), BattleCardPileTarget.DiscardPileCards),
             EnergyStep(EnergyGain)
         );
     }

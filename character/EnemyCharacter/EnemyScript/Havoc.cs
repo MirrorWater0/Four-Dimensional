@@ -3,8 +3,8 @@ using Godot;
 
 public partial class Havoc : EnemyCharacter
 {
-    private const int PassiveTriggerInterval = 3;
-    private const int PassiveDisasterStacks = 6;
+    private static int PassiveTriggerInterval => EnemyTuning.GetRequiredInt("Havoc", nameof(PassiveTriggerInterval));
+    private static int PassiveDisasterStacks => EnemyTuning.GetRequiredInt("Havoc", nameof(PassiveDisasterStacks));
     private int _turnStartCount;
 
     public const string PassiveNameText = "灾厄脉冲";
@@ -51,16 +51,11 @@ public partial class HavocRegedit : EnemyRegedit
     public HavocRegedit()
     {
         CharacterName = "Havoc";
-        PType = EnemyPositionType.BackRow;
         PortaitPath = "res://asset/EnemyCharater/Havoc_v4.png";
         CharacterScene = GD.Load<PackedScene>("res://character/EnemyCharacter/Havoc.tscn");
-
-        MaxLife = 345;
-        Power = 0;
-        Survivability = 0;
-        BasePowerContribution = 0;
-        BaseSurvivabilityContribution = 0;
-        SkillIDs = [SkillID.HavocAttack, SkillID.HavocSurvive, SkillID.HavocSpecial];
+        SkillIDs = [SkillID.HavocAttack, SkillID.HavocSpecial];
+        // 第四轮天灾之证施加全阵脆弱，第五轮崩坏回响全阵爆发。
+        IntentionCycle = [SkillID.HavocAttack, SkillID.HavocAttack, random, SkillID.HavocSurvive, SkillID.HavocSpecial, SkillID.HavocAttack];
 
         PassiveName = global::Havoc.PassiveNameText;
         PassiveDescription = global::Havoc.PassiveDescriptionText;
@@ -69,8 +64,7 @@ public partial class HavocRegedit : EnemyRegedit
 
 public partial class HavocAttack : Skill
 {
-    private const int BaseDamage = 11;
-    private const int WeakenStacks = 1;
+    private int BaseDamage => V(nameof(BaseDamage));
 
     public override SkillTypes SkillType => SkillTypes.Attack;
 
@@ -78,14 +72,13 @@ public partial class HavocAttack : Skill
 
     protected override SkillPlan BuildPlan()
     {
-        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount", 2)));
+        return new SkillPlan(this, AttackStep(baseDamage: BaseDamage, times: V("HitCount"), multiplier: V("Multiplier")));
     }
 }
 
 public partial class HavocSurvive : Skill
 {
-    private const int BaseBlock = 22;
-    private const int SurvivabilityGain = 2;
+    private int BaseBlock => V(nameof(BaseBlock));
 
     public override SkillTypes SkillType => SkillTypes.Survive;
 
@@ -95,28 +88,27 @@ public partial class HavocSurvive : Skill
     {
         return new SkillPlan(
             this,
-            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier", 2))
+            BlockStep(baseBlock: BaseBlock, multiplier: V("Multiplier")),
+            ApplyBuffHostile(Buff.BuffName.Frail, V("FrailStacks"), HostileTargetReference.All)
         );
     }
 }
 
 public partial class HavocSpecial : Skill
 {
-    private const int DisasterStacks = 7;
-    private const int SelfPowerGain = 4;
+
+    private int SelfPowerGain => V(nameof(SelfPowerGain));
 
     public override SkillTypes SkillType => SkillTypes.Special;
 
     public override string SkillName { get; set; } = "崩坏回响";
-    public override int EnemySpecialIntentionCooldown => 3;
-
 
     protected override SkillPlan BuildPlan()
     {
         return new SkillPlan(
             this,
-            AttackStep(baseDamage: V("BaseDamage", 16), multiplier: V("Multiplier", 1), target: HostileTargetReference.All),
-            AddCardsStep(SkillID.WoundStatus, V("PlagueCount", 2), BattleCardPileTarget.HandCards),
+            AttackStep(baseDamage: V("BaseDamage"), multiplier: V("Multiplier"), target: HostileTargetReference.All, times: V("HitCount")),
+            AddCardsStep(SkillID.WoundStatus, V("PlagueCount"), BattleCardPileTarget.HandCards),
             ModifyPropertyStep(PropertyType.Power, SelfPowerGain)
         );
     }

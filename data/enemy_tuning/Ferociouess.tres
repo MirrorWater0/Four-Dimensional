@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="EnemyTuningResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://character/EnemyCharacter/EnemyTuningResource.cs" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+EnemyKey = "Ferociouess"
+Values = Dictionary[String, int]({
+"MaxLife": 39,
+"Power": 0,
+"Survivability": 0,
+"BasePowerContribution": 0,
+"BaseSurvivabilityContribution": 0,
+"StartDamageImmuneStacks": 4,
+"TurnEndDamageImmuneStacks": 1
+})

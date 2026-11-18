@@ -70,6 +70,10 @@ folder_colors={
 "res://shader/": "red"
 }
 
+[filesystem]
+
+import/blender/enabled=false
+
 [global]
 
 HDR=true

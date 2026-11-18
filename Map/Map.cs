@@ -18,6 +18,7 @@ public partial class Map : Control
         "DragButton",
         "LevelProgress",
         "MapLabel",
+        "NodeProjection",
         "UI",
         "BattleReadyLayer",
         "SiteUI",
@@ -38,32 +39,12 @@ public partial class Map : Control
             ?? GetNodeOrNull<Label>("MapLabel/RegionLabel")
             ?? GetNodeOrNull<Label>("UI/RegionLabel");
     public Label DifficultyLabel =>
-        field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Difficulty");
+        field ??= GetNodeOrNull<Label>("PlayerResourceState/Difficulty");
     private Label TransitionEnergyLabel =>
         field ??= GetNodeOrNull<Label>("PlayerResourceState/TransitionEnergyControl/Label");
     private Label RelicLabel =>
-        field ??= GetNodeOrNull<Label>("PlayerResourceState/RelicContainer/Label");
+        field ??= GetNodeOrNull<Label>("PlayerResourceState/RelicDock/Label");
     private Label ReadyButtonLabel => field ??= GetNodeOrNull<Label>("UI/ReadyButton/Label");
-    private Label NodeLegendTitleLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Title");
-    private Label NodeLegendNormalLabel =>
-        field ??= GetNodeOrNull<Label>(
-            "MapLabel/NodeTypeLegend/Margin/LegendList/Normal/Row/Label"
-        );
-    private Label NodeLegendEventLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Event/Row/Label");
-    private Label NodeLegendShopLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Shop/Row/Label");
-    private Label NodeLegendTreasureLabel =>
-        field ??= GetNodeOrNull<Label>(
-            "MapLabel/NodeTypeLegend/Margin/LegendList/Treasure/Row/Label"
-        );
-    private Label NodeLegendRestLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Rest/Row/Label");
-    private Label NodeLegendEliteLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Elite/Row/Label");
-    private Label NodeLegendBossLabel =>
-        field ??= GetNodeOrNull<Label>("MapLabel/NodeTypeLegend/Margin/LegendList/Boss/Row/Label");
     private Control MiniMapRoot => field ??= GetNodeOrNull<Control>("UI/MiniMap");
     private TextureRect MiniMapPreview =>
         field ??= GetNodeOrNull<TextureRect>("UI/MiniMap/MapPreview");
@@ -71,7 +52,6 @@ public partial class Map : Control
         field ??= GetNodeOrNull<Control>("UI/MiniMap/MapPreview/PlayerIndicator");
     private LevelProgress LevelProgressNode =>
         field ??= GetNodeOrNull<LevelProgress>("LevelProgress");
-    private Control NodeTypeLegend => field ??= GetNodeOrNull<Control>("MapLabel/NodeTypeLegend");
 
     [Export(PropertyHint.Range, "0,40,1")]
     public float DragStartThreshold = 16.0f;
@@ -165,6 +145,8 @@ public partial class Map : Control
         float dt = (float)delta;
         ulong frame = Engine.GetProcessFrames();
         UpdateRegionLabel();
+        UpdateRoadWorldLineUi();
+        UpdateMapRevealState();
 
         if (HasBlockingOverlay())
         {
@@ -181,7 +163,7 @@ public partial class Map : Control
             return;
         }
 
-        if (_wheelHandledFrame != frame)
+        if (_wheelHandledFrame != frame && !PlayerResourceState.IsPointerOverRelicScroll())
         {
             if (Input.IsActionJustPressed("Wheelup"))
             {
@@ -316,7 +298,7 @@ public partial class Map : Control
 
     public override void _Input(InputEvent @event)
     {
-        if (HasBlockingOverlay())
+        if (HasBlockingOverlay() || PlayerResourceState.IsPointerOverRelicScroll())
             return;
 
         if (@event is InputEventMouseButton mouseButton && mouseButton.Pressed)
@@ -387,7 +369,8 @@ public partial class Map : Control
         UpdateMiniMapIndicator();
         SceneTransitionLayer.Ensure(this);
         EnsureDebugConsole();
-        ConnectNodeTypeLegend(NodeTypeLegend);
+        SetupRoadWorldLineUi();
+        PrepareMapReveal();
         DragButton.ButtonDown += () =>
         {
             _isDrag = true;
@@ -421,6 +404,7 @@ public partial class Map : Control
 
     public override void _ExitTree()
     {
+        ResetMapReveal();
         _battleWorldSuspensionRequested = false;
         ExitMapPeekMode();
         RestoreBattleWorldSuspension();
@@ -511,13 +495,20 @@ public partial class Map : Control
 
     public void SetBattleWorldSuspended(bool suspended)
     {
+        bool returningFromBattle = _battleWorldSuspensionRequested && !suspended;
         _battleWorldSuspensionRequested = suspended;
         if (!suspended)
         {
+            if (returningFromBattle && !WarmupMode) {
+                ResetMapReveal();
+                _mapRevealPending = true;
+                StageMapReveal();
+            }
             RestoreBattleWorldSuspension();
             return;
         }
 
+        FinishBattleEntry();
         if (!_mapPeekModeActive)
             ApplyBattleWorldSuspension();
     }
@@ -528,6 +519,7 @@ public partial class Map : Control
             return;
 
         _battleWorldNodeSnapshots.Clear();
+        ResetMapReveal();
         SuspendBattleWorldNode(this, hide: false, disableProcessMode: false);
         foreach (string path in BattleWorldBranchPaths)
         {
@@ -720,39 +712,6 @@ public partial class Map : Control
 
         _mapPeekHiddenNodes.Add(new VisibilitySnapshot { Node = node, Visible = visible });
         node.Set("visible", false);
-    }
-
-    private void ConnectNodeTypeLegend(Control legend)
-    {
-        if (legend == null)
-            return;
-
-        foreach (Node child in legend.GetChildren())
-            ConnectLegendButtonsRecursive(child);
-    }
-
-    private void ConnectLegendButtonsRecursive(Node node)
-    {
-        if (node is Button button && button.HasMeta("level_type"))
-        {
-            var variant = button.GetMeta("level_type");
-            var type = (LevelNode.LevelType)(int)variant;
-            button.MouseEntered += () => SetNodeTypeLegendHighlight(type);
-            button.MouseExited += ClearNodeTypeLegendHighlight;
-        }
-
-        foreach (Node child in node.GetChildren())
-            ConnectLegendButtonsRecursive(child);
-    }
-
-    private void SetNodeTypeLegendHighlight(LevelNode.LevelType type)
-    {
-        LevelProgressNode?.SetNodeTypeLegendHighlight(type);
-    }
-
-    private void ClearNodeTypeLegendHighlight()
-    {
-        LevelProgressNode?.SetNodeTypeLegendHighlight(null);
     }
 
     public void CloseWindow()
@@ -1092,30 +1051,6 @@ public partial class Map : Control
 
         if (ReadyButtonLabel != null)
             ReadyButtonLabel.Text = I18n.Tr("ui.map.tactic", "战术");
-
-        if (NodeLegendTitleLabel != null)
-            NodeLegendTitleLabel.Text = I18n.Tr("ui.map.legend_title", "节点图式");
-
-        if (NodeLegendNormalLabel != null)
-            NodeLegendNormalLabel.Text = I18n.Tr("ui.map.node_type.normal", "普通战斗");
-
-        if (NodeLegendEventLabel != null)
-            NodeLegendEventLabel.Text = I18n.Tr("ui.map.node_type.event", "事件");
-
-        if (NodeLegendShopLabel != null)
-            NodeLegendShopLabel.Text = I18n.Tr("ui.map.node_type.shop", "商店");
-
-        if (NodeLegendTreasureLabel != null)
-            NodeLegendTreasureLabel.Text = I18n.Tr("ui.map.node_type.treasure", "宝箱");
-
-        if (NodeLegendRestLabel != null)
-            NodeLegendRestLabel.Text = I18n.Tr("ui.map.node_type.rest", "休息");
-
-        if (NodeLegendEliteLabel != null)
-            NodeLegendEliteLabel.Text = I18n.Tr("ui.map.node_type.elite", "精英");
-
-        if (NodeLegendBossLabel != null)
-            NodeLegendBossLabel.Text = I18n.Tr("ui.map.node_type.boss", "首领");
     }
 
     private void GetCameraHorizontalCenterBoundary(out float minX, out float maxX)
