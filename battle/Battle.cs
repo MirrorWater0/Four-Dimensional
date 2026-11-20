@@ -5780,7 +5780,7 @@ public partial class Battle : Node2D
         bool allowRareSkillRewards =
             GameInfo.GetNodeRegionBattleQueueIndex(CurrentLevelNode) >= 2;
         reward.AllowRareSkillRewards = allowRareSkillRewards;
-        int skillRewardGroups = GameInfo.GetBattleSkillRewardGroupCount();
+        int skillRewardGroups = GameInfo.GetBattleSkillRewardGroupCount(CurrentLevelNode);
         for (int i = 0; i < skillRewardGroups; i++)
             reward.AddSkillRewardEntry(
                 forceRare: allowRareSkillRewards && levelType == LevelNode.LevelType.Boss

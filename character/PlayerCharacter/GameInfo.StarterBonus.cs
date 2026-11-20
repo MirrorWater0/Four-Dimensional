@@ -61,18 +61,26 @@ public static partial class GameInfo
     public static bool HasEarlyBattleExtraSkillReward =>
         SelectedStarterBonus == StarterBonusOption.ExtraBattleSkillRewards;
 
-    public static int GetBattleSkillRewardGroupCount()
+    public static int GetBattleSkillRewardGroupCount(LevelNode node = null)
     {
         int groups = 1;
         if (
             HasEarlyBattleExtraSkillReward
-            && GetCompletedBattleCount() + 1 <= EarlyBattleExtraSkillRewardBattles
+            && GetRegionalBattleOrdinal(node) <= EarlyBattleExtraSkillRewardBattles
         )
         {
             groups += 1;
         }
 
         return groups;
+    }
+
+    private static int GetRegionalBattleOrdinal(LevelNode node)
+    {
+        if (node != null)
+            return GetNodeRegionBattleQueueIndex(node) + 1;
+
+        return GetCompletedBattleCount() + 1;
     }
 
     public static StarterBonusOption[] RollStarterBonusOptions()

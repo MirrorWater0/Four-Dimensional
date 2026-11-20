@@ -43,6 +43,16 @@ public static partial class GameInfo
         )
             return;
 
+        if (
+            NormalEncounterQueueVersion <= 0
+            && NormalEncounterQueue != null
+            && NormalEncounterQueue.Count >= MaxNormalBattlesPerRegion
+        )
+        {
+            NormalEncounterQueueVersion = CurrentNormalEncounterQueueVersion;
+            return;
+        }
+
         InitializeNormalEncounterQueue();
     }
 
